@@ -1,0 +1,116 @@
+/* ========== CSS Variables ========== */
+:root {
+  --color-primary: #1A3A4A;
+  --color-secondary: #2D5A6B;
+  --color-accent: #4ECDC4;
+  --color-gold: #C9A962;
+  --color-text: #E8F4F0;
+  --color-text-secondary: #8BA5B5;
+  --color-bg: #0D1F27;
+  --color-cloud: rgba(255, 255, 255, 0.08);
+  --color-danger: #E85A5A;
+  --color-success: #4ECDC4;
+
+  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-sans: 'Noto Sans SC', 'Source Han Sans SC', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+
+  --radius: 12px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --transition: all 0.3s ease;
+}
+
+/* ========== Reset ========== */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-secondary);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}
+
+/* ========== Common Utilities ========== */
+.text-accent { color: var(--color-accent); }
+.text-gold { color: var(--color-gold); }
+.text-secondary { color: var(--color-text-secondary); }
+.font-serif { font-family: var(--font-serif); }
+
+/* ========== Animation ========== */
+@keyframes float-island {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes cloud-drift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(100px); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes light-sweep {
+  0% { left: -30%; opacity: 0; }
+  50% { opacity: 1; }
+  100% { left: 130%; opacity: 0; }
+}
+
+/* ========== Element Plus Override ========== */
+.el-button--primary {
+  --el-button-bg-color: var(--color-accent) !important;
+  --el-button-border-color: var(--color-accent) !important;
+  --el-button-hover-bg-color: #3dbdb5 !important;
+  --el-button-hover-border-color: #3dbdb5 !important;
+}
+
+.el-input__wrapper {
+  background-color: rgba(45, 90, 107, 0.5) !important;
+  border: 1px solid rgba(78, 205, 196, 0.3) !important;
+  box-shadow: none !important;
+}
+
+.el-input__inner {
+  color: var(--color-text) !important;
+}
+
+.el-input__wrapper:hover {
+  border-color: var(--color-accent) !important;
+}
+
+.el-input__wrapper.is-focus {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2) !important;
+}
+
+.el-message-box {
+  background: var(--color-primary) !important;
+  border: 1px solid rgba(78, 205, 196, 0.3) !important;
+}
