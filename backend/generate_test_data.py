@@ -26,7 +26,7 @@ def create_test_data():
             print("[INFO] Creating admin account...")
             admin = User(
                 email="admin@yexingchen.cn",
-                password_hash=get_password_hash("Chen@12345678"),
+                password_hash=get_password_hash("TestPassword123!"),  # 测试环境密码
                 role="super_admin",
                 status="approved",
                 nickname="Admin"

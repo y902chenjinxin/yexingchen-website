@@ -544,7 +544,7 @@ INSERT INTO global_settings (key, value, description) VALUES
         "target_type": "music",
         "target_id": 1,
         "detail": "上传音乐：菊花台",
-        "ip_address": "203.195.208.25",
+        "ip_address": "x.x.x.x",
         "created_at": "2026-05-26T10:00:00Z"
       }
     ],
