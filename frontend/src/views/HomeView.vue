@@ -40,35 +40,35 @@
     <!-- 主内容：浮空岛屿 -->
     <main class="islands-container">
       <div class="island music-island" @click="router.push('/island/music')">
-        <div class="island-icon">🎵</div>
+        <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
         <div class="island-name">音乐岛</div>
         <div class="island-subtitle">音律飘渺</div>
         <div class="island-enter">点击进入</div>
       </div>
 
       <div class="island novel-island" @click="router.push('/island/novel')">
-        <div class="island-icon">📖</div>
+        <img src="@/assets/islands/novel-island.svg" class="island-image" alt="小说岛" />
         <div class="island-name">小说岛</div>
         <div class="island-subtitle">书卷悠长</div>
         <div class="island-enter">点击进入</div>
       </div>
 
       <div class="island video-island" @click="router.push('/island/video')">
-        <div class="island-icon">🎬</div>
+        <img src="@/assets/islands/video-island.svg" class="island-image" alt="视频岛" />
         <div class="island-name">视频岛</div>
         <div class="island-subtitle">光影流转</div>
         <div class="island-enter">点击进入</div>
       </div>
 
       <div class="island log-island" @click="router.push('/island/log')">
-        <div class="island-icon">📝</div>
+        <img src="@/assets/islands/log-island.svg" class="island-image" alt="日志岛" />
         <div class="island-name">日志岛</div>
         <div class="island-subtitle">岁月留痕</div>
         <div class="island-enter">点击进入</div>
       </div>
 
       <div class="island tool-island" @click="router.push('/island/tool')">
-        <div class="island-icon">⚙️</div>
+        <img src="@/assets/islands/tool-island.svg" class="island-image" alt="工具岛" />
         <div class="island-name">工具岛</div>
         <div class="island-subtitle">机关万千</div>
         <div class="island-enter">点击进入</div>
@@ -88,23 +88,23 @@
       <div class="island-list-panel">
         <div class="panel-title">岛屿导航</div>
         <div class="island-item" @click="router.push('/island/music'); showIslandList = false">
-          <span class="island-item-icon">🎵</span>
+          <img src="@/assets/islands/music-island.svg" class="island-item-icon" alt="音乐岛" />
           <span>音乐岛</span>
         </div>
         <div class="island-item" @click="router.push('/island/novel'); showIslandList = false">
-          <span class="island-item-icon">📖</span>
+          <img src="@/assets/islands/novel-island.svg" class="island-item-icon" alt="小说岛" />
           <span>小说岛</span>
         </div>
         <div class="island-item" @click="router.push('/island/video'); showIslandList = false">
-          <span class="island-item-icon">🎬</span>
+          <img src="@/assets/islands/video-island.svg" class="island-item-icon" alt="视频岛" />
           <span>视频岛</span>
         </div>
         <div class="island-item" @click="router.push('/island/log'); showIslandList = false">
-          <span class="island-item-icon">📝</span>
+          <img src="@/assets/islands/log-island.svg" class="island-item-icon" alt="日志岛" />
           <span>日志岛</span>
         </div>
         <div class="island-item" @click="router.push('/island/tool'); showIslandList = false">
-          <span class="island-item-icon">⚙️</span>
+          <img src="@/assets/islands/tool-island.svg" class="island-item-icon" alt="工具岛" />
           <span>工具岛</span>
         </div>
         <div class="panel-divider"></div>
@@ -168,9 +168,27 @@ function handleLogout() {
 <style scoped>
 .home-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
+  background: linear-gradient(180deg,
+    #87CEEB 0%,
+    #B0E0E6 30%,
+    #E0F0FF 60%,
+    #F5F9FF 100%
+  );
   position: relative;
   overflow: hidden;
+}
+
+/* 天空云朵装饰 */
+.cloud-sea::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse 300px 120px at 10% 85%, rgba(255,255,255,0.8) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 150px at 80% 90%, rgba(255,255,255,0.7) 0%, transparent 70%),
+    radial-gradient(ellipse 250px 100px at 50% 95%, rgba(255,255,255,0.6) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 /* 云海背景 */
@@ -204,7 +222,8 @@ function handleLogout() {
 
 .site-name {
   font-size: 20px;
-  color: var(--color-text);
+  color: #1a1a2e;
+  text-shadow: 0 1px 3px rgba(255,255,255,0.5);
 }
 
 .top-bar-right {
@@ -214,9 +233,9 @@ function handleLogout() {
 }
 
 .music-btn {
-  background: rgba(78, 205, 196, 0.2) !important;
-  border: 1px solid rgba(78, 205, 196, 0.4) !important;
-  color: var(--color-accent) !important;
+  background: rgba(78, 205, 196, 0.2);
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  color: var(--color-accent);
 }
 
 .username {
@@ -239,10 +258,10 @@ function handleLogout() {
 
 /* 岛屿卡片 */
 .island {
-  width: 200px;
-  height: 220px;
-  background: linear-gradient(180deg, rgba(45, 90, 107, 0.9) 0%, rgba(26, 58, 74, 0.95) 100%);
-  border: 1px solid rgba(78, 205, 196, 0.3);
+  width: 220px;
+  height: 260px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.9) 100%);
+  border: 2px solid rgba(255,255,255,0.8);
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
@@ -252,6 +271,15 @@ function handleLogout() {
   transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
   position: relative;
   animation: float-island 6s ease-in-out infinite;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+
+.island-image {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  margin-bottom: 8px;
 }
 
 .island::before {
@@ -281,27 +309,23 @@ function handleLogout() {
   border-color: var(--color-accent);
 }
 
-.island-icon {
-  font-size: 48px;
-  margin-bottom: 15px;
-}
 
 .island-name {
   font-family: var(--font-serif);
   font-size: 20px;
-  color: var(--color-text);
+  color: #1a1a2e;
   margin-bottom: 8px;
 }
 
 .island-subtitle {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: #4a5568;
   margin-bottom: 12px;
 }
 
 .island-enter {
   font-size: 12px;
-  color: var(--color-accent);
+  color: #667eea;
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -317,22 +341,24 @@ function handleLogout() {
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  background: rgba(26, 58, 74, 0.9);
-  border: 1px solid rgba(78, 205, 196, 0.3);
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(102, 126, 234, 0.3);
   border-radius: 20px;
   padding: 8px 20px;
   cursor: pointer;
   transition: all 0.3s;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
 }
 
 .bottom-switcher:hover {
-  border-color: var(--color-accent);
-  box-shadow: 0 4px 20px rgba(78, 205, 196, 0.2);
+  border-color: #667eea;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
 }
 
 .switcher-hint {
-  color: var(--color-accent);
+  color: #667eea;
   font-size: 14px;
+  font-weight: 500;
 }
 
 /* 岛屿弹层 */
@@ -350,8 +376,8 @@ function handleLogout() {
 .island-list-panel {
   width: 100%;
   max-width: 400px;
-  background: var(--color-primary);
-  border: 1px solid rgba(78, 205, 196, 0.3);
+  background: rgba(255, 255, 255, 0.98);
+  border: 2px solid rgba(102, 126, 234, 0.3);
   border-bottom: none;
   border-radius: var(--radius) var(--radius) 0 0;
   padding: 20px 30px;
@@ -360,7 +386,7 @@ function handleLogout() {
 
 .panel-title {
   text-align: center;
-  color: var(--color-text);
+  color: #1a1a2e;
   font-family: var(--font-serif);
   font-size: 18px;
   margin-bottom: 20px;
@@ -373,16 +399,18 @@ function handleLogout() {
   padding: 12px 15px;
   border-radius: 8px;
   cursor: pointer;
-  color: var(--color-text);
+  color: #1a1a2e;
   transition: background 0.2s;
 }
 
 .island-item:hover {
-  background: rgba(78, 205, 196, 0.15);
+  background: rgba(102, 126, 234, 0.1);
 }
 
 .island-item-icon {
-  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .logout-item {
@@ -391,7 +419,7 @@ function handleLogout() {
 
 .panel-divider {
   height: 1px;
-  background: rgba(78, 205, 196, 0.2);
+  background: rgba(102, 126, 234, 0.2);
   margin: 15px 0;
 }
 

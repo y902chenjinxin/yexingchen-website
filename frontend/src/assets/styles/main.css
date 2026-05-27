@@ -83,6 +83,21 @@ body {
   100% { left: 130%; opacity: 0; }
 }
 
+/* 纯净白光扫过效果 */
+@keyframes light-sweep-pure {
+  0% { left: -60%; opacity: 0; filter: blur(8px); }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 160%; opacity: 0; filter: blur(12px); }
+}
+
+/* 开门时光芒绽放 */
+@keyframes door-glow-burst {
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
 /* ========== Element Plus Override ========== */
 .el-button--primary {
   --el-button-bg-color: var(--color-accent) !important;

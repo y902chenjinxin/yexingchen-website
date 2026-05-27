@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="sky3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+    <linearGradient id="island3-base" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a4a6a"/>
+      <stop offset="100%" style="stop-color:#2a2a4a"/>
+    </linearGradient>
+    <radialGradient id="film-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#FFD700"/>
+      <stop offset="100%" style="stop-color:#FFA500"/>
+    </radialGradient>
+    <filter id="shadow3" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+    <filter id="glow-effect">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark cinematic sky -->
+  <rect width="400" height="400" fill="url(#sky3)"/>
+
+  <!-- Stars -->
+  <g fill="#fff">
+    <circle cx="50" cy="50" r="1.5"/>
+    <circle cx="120" cy="80" r="1"/>
+    <circle cx="200" cy="40" r="1.5"/>
+    <circle cx="280" cy="90" r="1"/>
+    <circle cx="350" cy="60" r="1.5"/>
+    <circle cx="80" cy="120" r="1"/>
+    <circle cx="320" cy="130" r="1"/>
+    <circle cx="180" cy="100" r="1"/>
+    <circle cx="30" cy="160" r="1"/>
+    <circle cx="370" cy="170" r="1"/>
+  </g>
+
+  <!-- Film strip decoration at top -->
+  <g fill="#1a1a1a">
+    <rect x="0" y="20" width="400" height="30" rx="2"/>
+    <g fill="#333">
+      <rect x="10" y="25" width="8" height="20"/>
+      <rect x="30" y="25" width="8" height="20"/>
+      <rect x="50" y="25" width="8" height="20"/>
+      <rect x="70" y="25" width="8" height="20"/>
+      <rect x="90" y="25" width="8" height="20"/>
+      <rect x="110" y="25" width="8" height="20"/>
+      <rect x="130" y="25" width="8" height="20"/>
+      <rect x="150" y="25" width="8" height="20"/>
+      <rect x="170" y="25" width="8" height="20"/>
+      <rect x="190" y="25" width="8" height="20"/>
+      <rect x="210" y="25" width="8" height="20"/>
+      <rect x="230" y="25" width="8" height="20"/>
+      <rect x="250" y="25" width="8" height="20"/>
+      <rect x="270" y="25" width="8" height="20"/>
+      <rect x="290" y="25" width="8" height="20"/>
+      <rect x="310" y="25" width="8" height="20"/>
+      <rect x="330" y="25" width="8" height="20"/>
+      <rect x="350" y="25" width="8" height="20"/>
+      <rect x="370" y="25" width="8" height="20"/>
+    </g>
+  </g>
+
+  <!-- Island base -->
+  <ellipse cx="200" cy="320" rx="140" ry="40" fill="url(#island3-base)" filter="url(#shadow3)"/>
+  <ellipse cx="200" cy="310" rx="120" ry="30" fill="#3a3a5a"/>
+
+  <!-- Film reel / clapperboard -->
+  <g filter="url(#shadow3)" transform="translate(200, 230)">
+    <!-- Main reel circle -->
+    <circle cx="0" cy="0" r="50" fill="#2a2a3a" stroke="#FFD700" stroke-width="3"/>
+    <!-- Inner ring -->
+    <circle cx="0" cy="0" r="35" fill="none" stroke="#FFA500" stroke-width="2"/>
+    <!-- Center hub -->
+    <circle cx="0" cy="0" r="12" fill="#FFD700"/>
+    <circle cx="0" cy="0" r="6" fill="#2a2a3a"/>
+
+    <!-- Reel holes -->
+    <g fill="#1a1a2e">
+      <circle cx="0" cy="-28" r="8"/>
+      <circle cx="24" cy="14" r="8"/>
+      <circle cx="-24" cy="14" r="8"/>
+    </g>
+  </g>
+
+  <!-- Film strip floating -->
+  <g transform="translate(80, 150) rotate(-15)">
+    <rect x="0" y="0" width="80" height="25" rx="2" fill="#1a1a1a"/>
+    <g fill="#333">
+      <rect x="5" y="5" width="6" height="15"/>
+      <rect x="15" y="5" width="6" height="15"/>
+      <rect x="25" y="5" width="6" height="15"/>
+      <rect x="35" y="5" width="6" height="15"/>
+      <rect x="45" y="5" width="6" height="15"/>
+      <rect x="55" y="5" width="6" height="15"/>
+      <rect x="65" y="5" width="6" height="15"/>
+    </g>
+  </g>
+
+  <!-- Play button above -->
+  <g filter="url(#glow-effect)">
+    <polygon points="200,100 230,130 200,160" fill="#FFD700"/>
+  </g>
+
+  <!-- Movie clapperboard -->
+  <g transform="translate(290, 260)" filter="url(#shadow3)">
+    <rect x="0" y="15" width="60" height="40" fill="#2a2a3a" stroke="#FFD700" stroke-width="2"/>
+    <rect x="0" y="0" width="60" height="18" fill="#1a1a1a" stroke="#FFD700" stroke-width="2"/>
+    <g fill="#333">
+      <rect x="5" y="3" width="8" height="12"/>
+      <rect x="16" y="3" width="8" height="12"/>
+      <rect x="27" y="3" width="8" height="12"/>
+      <rect x="38" y="3" width="8" height="12"/>
+      <rect x="49" y="3" width="6" height="12"/>
+    </g>
+  </g>
+
+  <!-- Spotlight beams -->
+  <g fill="rgba(255,215,0,0.1)">
+    <polygon points="200,180 150,320 250,320"/>
+  </g>
+</svg>
