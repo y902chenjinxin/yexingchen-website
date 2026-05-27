@@ -2,8 +2,9 @@ from datetime import datetime, timedelta
 import hashlib
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
 from app.config import settings
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -57,10 +58,22 @@ async def get_current_active_user(current_user: dict = Depends(get_current_user)
     return current_user
 
 
-def require_super_admin(current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "super_admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="需要超级管理员权限",
-        )
-    return current_user
+def require_super_admin(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """检查是否为超级管理员，支持 role='admin' 或 is_super_admin=1"""
+    # 先检查 token 中的 role
+    if current_user.get("role") in ("admin", "super_admin"):
+        return current_user
+
+    # 检查数据库中的 is_super_admin 字段
+    from app.models.user import User
+    user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if user and user.is_super_admin == 1:
+        return current_user
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="需要超级管理员权限",
+    )

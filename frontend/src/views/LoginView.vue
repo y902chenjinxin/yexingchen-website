@@ -118,11 +118,11 @@ const showCard = ref(false)
 const showGlow = ref(false)
 
 onMounted(() => {
-  // 动画时序：纯净白光扫过 → 云散 → 门开 + 光芒绽放 → 卡片
-  setTimeout(() => { showLight.value = true }, 200)
-  setTimeout(() => { showClouds.value = true }, 800)
-  setTimeout(() => { showDoors.value = true; showGlow.value = true }, 1200)
-  setTimeout(() => { showCard.value = true }, 2000)
+  // 动画时序：延长到1.5s，光效延长
+  setTimeout(() => { showLight.value = true }, 300)
+  setTimeout(() => { showClouds.value = true }, 900)
+  setTimeout(() => { showDoors.value = true; showGlow.value = true }, 1500)
+  setTimeout(() => { showCard.value = true }, 2500)
 })
 
 async function handleLogin() {
@@ -196,31 +196,36 @@ function resetRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 40%, #1a1a2e 100%);
+  background: #0a0f14;
   position: relative;
   overflow: hidden;
 }
 
-/* 登录页背景装饰 - 年轻化渐变光斑 */
+/* 水墨山水背景层 */
 .login-page::before {
   content: '';
   position: absolute;
-  width: 600px;
-  height: 600px;
-  top: -200px;
-  right: -200px;
-  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+  inset: 0;
+  background:
+    /* 远山剪影 */
+    radial-gradient(ellipse 80% 40% at 20% 70%, rgba(30, 50, 40, 0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 35% at 80% 65%, rgba(25, 45, 35, 0.5) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 25% at 50% 80%, rgba(20, 40, 30, 0.4) 0%, transparent 60%),
+    /* 月光 */
+    radial-gradient(circle at 75% 15%, rgba(200, 210, 200, 0.08) 0%, transparent 40%),
+    /* 整体氛围 */
+    linear-gradient(180deg, #0d1215 0%, #151c1f 50%, #0a0f14 100%);
   pointer-events: none;
 }
 
+/* 墨韵层次 */
 .login-page::after {
   content: '';
   position: absolute;
-  width: 400px;
-  height: 400px;
-  bottom: -150px;
-  left: -150px;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  inset: 0;
+  background:
+    radial-gradient(ellipse 100% 50% at 0% 100%, rgba(20, 35, 30, 0.4) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 40% at 100% 90%, rgba(25, 40, 35, 0.3) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -236,7 +241,11 @@ function resetRegister() {
   position: absolute;
   width: 50%;
   height: 100%;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.2) 0%, transparent 70%);
+  background: linear-gradient(90deg,
+    rgba(200, 210, 200, 0.05) 0%,
+    rgba(200, 210, 200, 0.1) 50%,
+    rgba(200, 210, 200, 0.05) 100%
+  );
   transition: opacity 1000ms ease-out, transform 1000ms ease-out;
 }
 
@@ -272,21 +281,30 @@ function resetRegister() {
   position: absolute;
   width: 50%;
   height: 100%;
-  background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
-  border: 4px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(180deg, #1a1512 0%, #0d0a08 100%);
+  border: 2px solid rgba(201, 169, 110, 0.3);
   transition: transform 1200ms cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 .door-left {
   left: 0;
-  border-right: 2px solid rgba(255, 255, 255, 0.4);
+  border-right: 1px solid rgba(201, 169, 110, 0.2);
   transform-origin: left center;
 }
 
 .door-right {
   right: 0;
-  border-left: 2px solid rgba(255, 255, 255, 0.4);
+  border-left: 1px solid rgba(201, 169, 110, 0.2);
   transform-origin: right center;
+}
+
+/* 门框金线 */
+.door::before {
+  content: '';
+  position: absolute;
+  inset: 20px 10px;
+  border: 1px solid rgba(201, 169, 110, 0.15);
+  pointer-events: none;
 }
 
 .doors-open .door-left {
@@ -297,54 +315,67 @@ function resetRegister() {
   transform: scaleX(0);
 }
 
-/* 光效 - 纯净白光 */
+/* 灵气光效 - 青绿色 */
 .light-effect {
   position: absolute;
-  width: 25%;
+  width: 20%;
   height: 300%;
   top: -100%;
-  left: -25%;
+  left: -20%;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.1) 20%,
-    rgba(255, 255, 255, 0.9) 45%,
-    rgba(255, 255, 255, 1) 50%,
-    rgba(255, 255, 255, 0.9) 55%,
-    rgba(255, 255, 255, 0.1) 80%,
+    rgba(127, 255, 212, 0.05) 20%,
+    rgba(127, 255, 212, 0.4) 45%,
+    rgba(127, 255, 212, 0.6) 50%,
+    rgba(127, 255, 212, 0.4) 55%,
+    rgba(127, 255, 212, 0.05) 80%,
     transparent 100%
   );
   transform: rotate(-15deg);
-  animation: light-sweep-pure 1000ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: spirit-flow 2000ms ease-out forwards;
   pointer-events: none;
-  filter: blur(2px);
+  filter: blur(3px);
 }
 
-/* 开门光芒绽放 */
+/* 开门灵气绽放 */
 .glow-burst {
   position: absolute;
   width: 100%;
   height: 100%;
   top: 0;
   left: 0;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 30%, transparent 70%);
-  animation: door-glow-burst 800ms ease-out forwards;
+  background: radial-gradient(ellipse at center, rgba(127, 255, 212, 0.3) 0%, rgba(127, 255, 212, 0.1) 30%, transparent 60%);
+  animation: spirit-burst 1000ms ease-out forwards;
   pointer-events: none;
 }
 
-/* 登录卡片 */
+/* 登录卡片 - 磨砂玻璃+金边框 */
 .login-card {
   position: relative;
   z-index: 10;
-  width: 420px;
-  padding: 40px 50px;
-  background: rgba(30, 30, 60, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 80px rgba(102, 126, 234, 0.15);
+  width: 400px;
+  padding: 45px 50px;
+  background: rgba(20, 25, 22, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(201, 169, 110, 0.25);
+  border-radius: 4px;
+  box-shadow:
+    0 0 60px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(127, 255, 212, 0.05),
+    inset 0 1px 0 rgba(201, 169, 110, 0.1);
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 600ms ease-out, transform 600ms ease-out;
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 169, 110, 0.5), transparent);
 }
 
 .card-visible {
@@ -353,29 +384,58 @@ function resetRegister() {
 }
 
 .site-title {
-  font-size: 26px;
-  color: #ffffff;
+  font-size: 24px;
+  color: #e8f0e8;
   text-align: center;
-  margin-bottom: 8px;
-  text-shadow: 0 2px 20px rgba(102, 126, 234, 0.5);
+  margin-bottom: 6px;
+  font-weight: normal;
+  letter-spacing: 4px;
+  text-shadow: 0 0 30px rgba(127, 255, 212, 0.2);
 }
 
 .site-subtitle {
   text-align: center;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
-  margin-bottom: 30px;
+  color: rgba(201, 169, 110, 0.6);
+  font-size: 13px;
+  margin-bottom: 35px;
+  letter-spacing: 2px;
 }
 
 .login-form {
   margin-top: 20px;
 }
 
+/* 表单样式override */
+.login-form :deep(.el-input__wrapper) {
+  background: rgba(15, 20, 18, 0.8);
+  border: 1px solid rgba(201, 169, 110, 0.2);
+  box-shadow: none;
+}
+
+.login-form :deep(.el-input__inner) {
+  color: #e8f0e8;
+}
+
+.login-form :deep(.el-input__inner::placeholder) {
+  color: rgba(201, 169, 110, 0.4);
+}
+
+.login-form :deep(.el-button--primary) {
+  background: linear-gradient(135deg, rgba(127, 255, 212, 0.2) 0%, rgba(127, 255, 212, 0.1) 100%);
+  border-color: rgba(127, 255, 212, 0.3);
+  color: #e8f0e8;
+}
+
+.login-form :deep(.el-button--primary:hover) {
+  background: linear-gradient(135deg, rgba(127, 255, 212, 0.3) 0%, rgba(127, 255, 212, 0.2) 100%);
+  border-color: rgba(127, 255, 212, 0.5);
+}
+
 .register-link,
 .back-link {
   text-align: center;
-  color: #a78bfa;
-  font-size: 14px;
+  color: rgba(201, 169, 110, 0.6);
+  font-size: 13px;
   cursor: pointer;
   margin-top: 15px;
   transition: color 0.3s;
@@ -383,7 +443,7 @@ function resetRegister() {
 
 .register-link:hover,
 .back-link:hover {
-  color: #ffffff;
+  color: rgba(201, 169, 110, 0.9);
 }
 
 .register-flow {
@@ -395,9 +455,10 @@ function resetRegister() {
 }
 
 .step-title {
-  color: var(--color-text);
-  font-size: 16px;
+  color: rgba(201, 169, 110, 0.8);
+  font-size: 14px;
   margin-bottom: 15px;
+  text-align: center;
 }
 
 .back-link {
@@ -409,21 +470,50 @@ function resetRegister() {
 }
 
 .text-secondary {
-  color: var(--color-text-secondary);
-  font-size: 14px;
+  color: rgba(201, 169, 110, 0.5);
+  font-size: 13px;
   margin-top: 10px;
 }
 
 .success-icon {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   margin: 0 auto 20px;
-  border: 3px solid var(--color-accent);
+  border: 1px solid rgba(127, 255, 212, 0.4);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
-  color: var(--color-accent);
+  font-size: 24px;
+  color: rgba(127, 255, 212, 0.8);
+}
+
+/* 灵气流动动画 */
+@keyframes spirit-flow {
+  0% {
+    left: -30%;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    left: 120%;
+    opacity: 0;
+  }
+}
+
+@keyframes spirit-burst {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
 }
 </style>

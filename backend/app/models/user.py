@@ -11,7 +11,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     nickname = Column(String(100), default="")
-    role = Column(String(20), nullable=False, default="normal")
+    role = Column(String(20), nullable=False, default="user")
+    is_super_admin = Column(Integer, default=0)  # 1=超级管理员, 0=普通用户
+    is_test_user = Column(Integer, default=0)  # 1=测试用户, 0=真实用户
     status = Column(String(20), nullable=False, default="pending")
     allowed_islands = Column(String(500), default="music,novel,video,diary,tools")
     last_login_at = Column(DateTime, nullable=True)
@@ -48,6 +50,7 @@ class Music(Base):
     category = Column(String(100), default="")
     tags = Column(String(500), default="")
     uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    is_test_data = Column(Integer, default=0)  # 1=测试数据, 0=真实数据
     file_size = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
@@ -67,6 +70,7 @@ class Novel(Base):
     category = Column(String(100), default="")
     tags = Column(String(500), default="")
     uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    is_test_data = Column(Integer, default=0)
     file_size = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
@@ -85,6 +89,7 @@ class Video(Base):
     category = Column(String(100), default="")
     tags = Column(String(500), default="")
     uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    is_test_data = Column(Integer, default=0)
     file_size = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
@@ -101,6 +106,7 @@ class Tool(Base):
     description = Column(String(500), default="")
     icon = Column(String(255), default="")
     uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    is_test_data = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
