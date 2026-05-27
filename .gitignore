@@ -12,6 +12,21 @@ node_modules/
 
 # Environment
 .env
+.env.local
+.env.*.local
+
+# Credentials (never commit)
+credentials.md
+*.pem
+*.key
+
+# Chrome user data
+chrome_user_data/
+
+# Temp files
+temp_screenshot/
+*.tmp
+config.toml
 
 # IDE
 .idea/
