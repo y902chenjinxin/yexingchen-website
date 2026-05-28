@@ -160,19 +160,19 @@ function formatSize(bytes) {
 </script>
 
 <style scoped>
-.island-page { min-height: 100vh; background: var(--color-bg); padding-bottom: 40px; }
-.island-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(26, 58, 74, 0.8); border-bottom: 1px solid rgba(78, 205, 196, 0.2); }
+.island-page { min-height: 100vh; background: linear-gradient(180deg, #F5F0FA 0%, #EDE5F5 100%); padding-bottom: 40px; }
+.island-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(167, 139, 201, 0.2); border-bottom: 1px solid rgba(167, 139, 201, 0.3); }
 .header-left { display: flex; align-items: center; gap: 20px; }
-.back-btn { color: var(--color-accent); cursor: pointer; font-size: 14px; }
-.back-btn:hover { color: var(--color-text); }
+.back-btn { color: var(--color-video); cursor: pointer; font-size: 14px; }
+.back-btn:hover { color: #8B6BA9; }
 .island-title { font-family: var(--font-serif); font-size: 20px; color: var(--color-text); }
 .header-right { display: flex; gap: 15px; }
 .content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 30px 40px; }
 .loading-placeholder, .empty-placeholder { grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--color-text-secondary); }
 .empty-icon { font-size: 60px; margin-bottom: 15px; }
-.content-card { background: rgba(45, 90, 107, 0.6); border: 1px solid rgba(78, 205, 196, 0.2); border-radius: var(--radius); padding: 15px; transition: all 0.3s; }
-.content-card:hover { border-color: var(--color-accent); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-.card-cover { width: 100%; height: 140px; background: rgba(26, 58, 74, 0.8); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; overflow: hidden; }
+.content-card { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(167, 139, 201, 0.3); border-radius: var(--radius); padding: 15px; transition: all 0.3s; }
+.content-card:hover { border-color: var(--color-video); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+.card-cover { width: 100%; height: 140px; background: rgba(167, 139, 201, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; overflow: hidden; }
 .cover-img { width: 100%; height: 100%; object-fit: cover; }
 .cover-placeholder { font-size: 48px; }
 .card-title { font-size: 16px; color: var(--color-text); margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

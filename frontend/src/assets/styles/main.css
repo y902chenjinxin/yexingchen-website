@@ -1,23 +1,43 @@
 /* ========== CSS Variables ========== */
 :root {
-  --color-primary: #1A3A4A;
-  --color-secondary: #2D5A6B;
-  --color-accent: #4ECDC4;
-  --color-gold: #C9A962;
-  --color-text: #E8F4F0;
-  --color-text-secondary: #8BA5B5;
-  --color-bg: #0D1F27;
-  --color-cloud: rgba(255, 255, 255, 0.08);
-  --color-danger: #E85A5A;
-  --color-success: #4ECDC4;
+  /* 核心色系 */
+  --color-primary: #4A6FA5;
+  --color-secondary: #6B8DB5;
+  --color-accent: #7FB3D5;
 
+  /* 仙侠金 */
+  --color-gold: #C9A962;
+  --color-gold-light: rgba(201, 169, 110, 0.4);
+
+  /* 岛屿特色色 */
+  --color-music: #9B8DC9;      /* 优雅紫 */
+  --color-novel: #E8D5B7;      /* 温暖米 */
+  --color-video: #A78BC9;      /* 梦幻紫 */
+  --color-log: #8FBC8F;        /* 清新绿 */
+  --color-tool: #D4A574;        /* 活力橙 */
+
+  /* 文字色 */
+  --color-text: #2D3748;
+  --color-text-secondary: #6B7280;
+  --color-text-light: rgba(255, 255, 255, 0.9);
+
+  /* 背景色 */
+  --color-bg: #E8F4FC;
+  --color-bg-dark: #0D1F27;
+
+  /* 功能色 */
+  --color-danger: #DC6B6B;
+  --color-success: #68A978;
+
+  /* 圆角/阴影 */
+  --radius: 16px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --transition: all 0.3s ease;
+
+  /* 字体 */
   --font-serif: 'Noto Serif SC', 'Source Han Serif SC', serif;
   --font-sans: 'Noto Sans SC', 'Source Han Sans SC', sans-serif;
-  --font-inter: 'Inter', sans-serif;
-
-  --radius: 12px;
-  --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --transition: all 0.3s ease;
 }
 
 /* ========== Reset ========== */
@@ -58,8 +78,10 @@ body {
 
 /* ========== Animation ========== */
 @keyframes float-island {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-6px) rotate(2deg); }
+  50% { transform: translateY(-12px) rotate(0deg); }
+  75% { transform: translateY(-6px) rotate(-2deg); }
 }
 
 @keyframes cloud-drift {

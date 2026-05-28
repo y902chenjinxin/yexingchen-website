@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
 from app.database import get_db
 from app.schemas.common import *
 from app.services.auth_service import send_register_code, verify_code
@@ -88,6 +90,38 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
             "nickname": user.nickname,
             "role": user.role,
             "status": user.status,
-            "allowed_islands": user.allowed_islands
+            "allowed_islands": user.allowed_islands,
+            "is_super_admin": user.is_super_admin,
+            "created_at": str(user.created_at) if user.created_at else None
+        }
+    )
+
+
+class UserProfileUpdateRequest(BaseModel):
+    nickname: Optional[str] = None
+
+
+@router.put("/me", response_model=ResponseBase)
+async def update_me(
+    req: UserProfileUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if req.nickname is not None:
+        user.nickname = req.nickname.strip()[:100]  # 限制100字符
+
+    db.commit()
+
+    return ResponseBase(
+        msg="更新成功",
+        data={
+            "id": user.id,
+            "email": user.email,
+            "nickname": user.nickname,
+            "role": user.role
         }
     )

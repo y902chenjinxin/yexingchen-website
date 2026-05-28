@@ -14,12 +14,19 @@
         <span class="site-name font-serif">叶兴辰的个人网站</span>
       </div>
       <div class="top-bar-right">
-        <el-button
-          class="music-btn"
-          :icon="settingsStore.musicPlaying ? 'VideoPause' : 'VideoPlay'"
-          circle
-          @click="toggleMusic"
-        />
+        <el-dropdown trigger="click" @command="handleMusicSelect">
+        <el-button class="music-btn" circle>
+          <span class="music-icon">{{ settingsStore.musicPlaying ? '🎵' : '🎶' }}</span>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item v-for="bgm in availableBgmList" :key="bgm.id" :command="bgm.id" :disabled="settingsStore.currentBgmId === bgm.id">
+              <span>{{ bgm.name }}</span>
+              <span v-if="settingsStore.currentBgmId === bgm.id" class="current-bgm">✓</span>
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
         <el-dropdown trigger="click" @command="handleDropdownCommand">
           <div class="user-avatar-area">
             <span class="avatar-text">{{ avatarText }}</span>
@@ -71,38 +78,48 @@
     <!-- 主内容：浮空岛屿 -->
     <main class="islands-container">
       <div class="island music-island" @click="router.push('/island/music')">
-        <img src="@/assets/islands/music-island-xianxia.svg" class="island-image" alt="音乐岛" />
+        <div class="island-wrapper">
+          <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
+          <div class="island-glow"></div>
+        </div>
         <div class="island-name">音乐岛</div>
         <div class="island-subtitle">音律飘渺</div>
-        <div class="island-enter">点击进入</div>
       </div>
 
       <div class="island novel-island" @click="router.push('/island/novel')">
-        <img src="@/assets/islands/novel-island-xianxia.svg" class="island-image" alt="小说岛" />
+        <div class="island-wrapper">
+          <img src="@/assets/islands/novel-island.svg" class="island-image" alt="小说岛" />
+          <div class="island-glow"></div>
+        </div>
         <div class="island-name">小说岛</div>
         <div class="island-subtitle">书卷悠长</div>
-        <div class="island-enter">点击进入</div>
       </div>
 
       <div class="island video-island" @click="router.push('/island/video')">
-        <img src="@/assets/islands/video-island-xianxia.svg" class="island-image" alt="视频岛" />
+        <div class="island-wrapper">
+          <img src="@/assets/islands/video-island.svg" class="island-image" alt="视频岛" />
+          <div class="island-glow"></div>
+        </div>
         <div class="island-name">视频岛</div>
         <div class="island-subtitle">光影流转</div>
-        <div class="island-enter">点击进入</div>
       </div>
 
       <div class="island log-island" @click="router.push('/island/log')">
-        <img src="@/assets/islands/log-island-xianxia.svg" class="island-image" alt="日志岛" />
+        <div class="island-wrapper">
+          <img src="@/assets/islands/log-island.svg" class="island-image" alt="日志岛" />
+          <div class="island-glow"></div>
+        </div>
         <div class="island-name">日志岛</div>
         <div class="island-subtitle">岁月留痕</div>
-        <div class="island-enter">点击进入</div>
       </div>
 
       <div class="island tool-island" @click="router.push('/island/tool')">
-        <img src="@/assets/islands/tool-island-xianxia.svg" class="island-image" alt="工具岛" />
+        <div class="island-wrapper">
+          <img src="@/assets/islands/tool-island.svg" class="island-image" alt="工具岛" />
+          <div class="island-glow"></div>
+        </div>
         <div class="island-name">工具岛</div>
         <div class="island-subtitle">机关万千</div>
-        <div class="island-enter">点击进入</div>
       </div>
     </main>
 
@@ -174,6 +191,13 @@ const auth = useAuthStore()
 const settingsStore = useSettingsStore()
 const bgAudio = ref(null)
 
+// 音乐相关
+const availableBgmList = ref([
+  { id: 'garden_music', name: '🎵 庭院音乐' },
+  { id: 'pluck_lute', name: '🎸 古琴弹奏（青花瓷风）' },
+  { id: 'bamboo_flute', name: '🎶 笛子独奏（兰亭序风）' }
+])
+
 // 头像相关
 const showAvatarDialog = ref(false)
 const avatarOptions = [
@@ -219,10 +243,23 @@ function toggleMusic() {
   }
 }
 
+function handleMusicSelect(bgmId) {
+  settingsStore.currentBgmId = bgmId
+  const bgm = availableBgmList.value.find(b => b.id === bgmId)
+  if (bgm) {
+    settingsStore.bgMusicUrl = `/uploads/bgm/${bgmId}.wav`
+  }
+  settingsStore.toggleMusic()
+  if (bgAudio.value) {
+    bgAudio.value.src = settingsStore.bgMusicUrl
+    bgAudio.value.play().catch(() => {})
+  }
+}
+
 function handleDropdownCommand(command) {
   switch (command) {
     case 'profile':
-      ElMessage.info('个人中心功能开发中')
+      router.push('/profile')
       break
     case 'password':
       showPasswordDialog.value = true
@@ -376,94 +413,128 @@ function handleLogout() {
   gap: 8px;
 }
 
-/* 岛屿容器 */
+/* 岛屿容器 - 错落布局 */
 .islands-container {
   position: relative;
   z-index: 10;
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: 40px;
-  padding: 60px 40px 120px;
+  gap: 30px;
+  padding: 80px 40px 140px;
   flex-wrap: wrap;
   min-height: calc(100vh - 200px);
 }
 
-/* 岛屿卡片 */
+/* 岛屿卡片 - 2.5D立体效果 */
 .island {
-  width: 220px;
-  height: 260px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.9) 100%);
-  border: 2px solid rgba(255,255,255,0.8);
-  border-radius: var(--radius);
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  transition: transform 0.4s ease, filter 0.4s ease;
+  transform-style: preserve-3d;
+}
+
+.island-wrapper {
   position: relative;
-  animation: float-island 6s ease-in-out infinite;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05);
-  overflow: hidden;
+  width: 320px;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .island-image {
-  width: 180px;
-  height: 180px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  margin-bottom: 8px;
+  filter: drop-shadow(0 25px 35px rgba(0,0,0,0.35));
+  transition: transform 0.4s ease, filter 0.4s ease;
 }
 
-.island::before {
-  content: '';
+.island-glow {
   position: absolute;
-  bottom: -20px;
+  bottom: 0;
   left: 50%;
-  transform: translateX(-50%) scaleY(-0.5);
-  width: 80%;
-  height: 30px;
-  background: inherit;
-  border-radius: 50%;
-  filter: blur(8px);
-  opacity: 0.3;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 60px;
+  background: radial-gradient(ellipse, rgba(102, 126, 234, 0.3) 0%, transparent 70%);
+  filter: blur(10px);
+  opacity: 0;
+  transition: opacity 0.4s;
 }
-
-/* 各岛屿独立动画相位 */
-.music-island { animation-delay: 0s; }
-.novel-island { animation-delay: 1.2s; }
-.video-island { animation-delay: 2.4s; }
-.log-island { animation-delay: 3.6s; }
-.tool-island { animation-delay: 4.8s; }
-
-.island:hover {
-  transform: scale(1.05) translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-  border-color: var(--color-accent);
-}
-
 
 .island-name {
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 18px;
   color: #1a1a2e;
-  margin-bottom: 8px;
+  margin-top: 10px;
+  text-shadow: 0 2px 4px rgba(255,255,255,0.8);
 }
 
 .island-subtitle {
-  font-size: 13px;
-  color: #4a5568;
-  margin-bottom: 12px;
-}
-
-.island-enter {
   font-size: 12px;
-  color: #667eea;
-  opacity: 0;
-  transition: opacity 0.3s;
+  color: #4a5568;
+  margin-top: 4px;
+  opacity: 0.8;
 }
 
-.island:hover .island-enter {
+/* 各岛屿独立动画相位 - 公转效果 */
+.music-island { animation: orbit-music 12s linear infinite; transform-origin: center center; }
+.novel-island { animation: orbit-novel 15s linear infinite; transform-origin: center center; }
+.video-island { animation: orbit-video 18s linear infinite; transform-origin: center center; }
+.log-island { animation: orbit-log 14s linear infinite; transform-origin: center center; }
+.tool-island { animation: orbit-tool 16s linear infinite; transform-origin: center center; }
+
+@keyframes orbit-music {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(8px, -12px) rotate(2deg); }
+  50% { transform: translate(0, -20px) rotate(0deg); }
+  75% { transform: translate(-8px, -12px) rotate(-2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes orbit-novel {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(10px, -15px) rotate(2.5deg); }
+  50% { transform: translate(0, -22px) rotate(0deg); }
+  75% { transform: translate(-10px, -15px) rotate(-2.5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes orbit-video {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(6px, -10px) rotate(1.5deg); }
+  50% { transform: translate(0, -18px) rotate(0deg); }
+  75% { transform: translate(-6px, -10px) rotate(-1.5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes orbit-log {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(12px, -14px) rotate(3deg); }
+  50% { transform: translate(0, -24px) rotate(0deg); }
+  75% { transform: translate(-12px, -14px) rotate(-3deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes orbit-tool {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(9px, -13px) rotate(2deg); }
+  50% { transform: translate(0, -19px) rotate(0deg); }
+  75% { transform: translate(-9px, -13px) rotate(-2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.island:hover {
+  transform: translateY(-20px) scale(1.05);
+  z-index: 20;
+}
+
+.island:hover .island-image {
+  filter: drop-shadow(0 30px 40px rgba(0,0,0,0.4));
+}
+
+.island:hover .island-glow {
   opacity: 1;
 }
 

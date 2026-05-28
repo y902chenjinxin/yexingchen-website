@@ -1,21 +1,76 @@
 <template>
   <div class="login-page">
-    <!-- 动画层 -->
-    <div class="animation-overlay" :class="{ 'clouds-open': showClouds}">
-      <!-- 云雾左 -->
-      <div class="cloud cloud-left"></div>
-      <!-- 云雾右 -->
-      <div class="cloud cloud-right"></div>
+    <!-- 星辰夜空背景 -->
+    <div class="starry-bg">
+      <div class="star" v-for="i in 100" :key="i" :style="getStarStyle(i)"></div>
     </div>
 
-    <!-- 木门 -->
-    <div class="door-container" :class="{ 'doors-open': showDoors }">
-      <div class="door door-left"></div>
-      <div class="door door-right"></div>
-      <!-- 纯净白光效 -->
-      <div class="light-effect" v-if="showLight"></div>
-      <!-- 开门光芒绽放 -->
-      <div class="glow-burst" v-if="showGlow"></div>
+    <!-- 云雾层 -->
+    <div class="mist-layer">
+      <div class="mist mist-1"></div>
+      <div class="mist mist-2"></div>
+      <div class="mist mist-3"></div>
+    </div>
+
+    <!-- 冰晶琉璃门 -->
+    <div class="crystal-door-container" :class="{ 'doors-opening': doorsOpening, 'doors-open': doorsOpen }">
+      <!-- 左门 -->
+      <div class="crystal-door door-left" :class="{ 'door-closing': !doorsOpening && doorsOpen }">
+        <div class="door-surface">
+          <div class="ice-texture"></div>
+          <div class="light-flow light-flow-1"></div>
+          <div class="light-flow light-flow-2"></div>
+          <div class="light-flow light-flow-3"></div>
+        </div>
+        <div class="door-edge"></div>
+        <!-- 门上的符文装饰 -->
+        <div class="door-runes">
+          <div class="rune rune-1"></div>
+          <div class="rune rune-2"></div>
+          <div class="rune rune-3"></div>
+        </div>
+      </div>
+
+      <!-- 右门 -->
+      <div class="crystal-door door-right" :class="{ 'door-closing': !doorsOpening && doorsOpen }">
+        <div class="door-surface">
+          <div class="ice-texture"></div>
+          <div class="light-flow light-flow-1"></div>
+          <div class="light-flow light-flow-2"></div>
+          <div class="light-flow light-flow-3"></div>
+        </div>
+        <div class="door-edge"></div>
+        <div class="door-runes">
+          <div class="rune rune-1"></div>
+          <div class="rune rune-2"></div>
+          <div class="rune rune-3"></div>
+        </div>
+      </div>
+
+      <!-- 门缝寒气星光 -->
+      <div class="gap-mist" :class="{ 'mist-visible': showGapMist }">
+        <div class="mist-particle" v-for="i in 20" :key="i" :style="getMistParticleStyle(i)"></div>
+      </div>
+
+      <!-- 光环涟漪 -->
+      <div class="light-ring" :class="{ 'ring-visible': showLightRing }">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+      </div>
+
+      <!-- 粒子风 -->
+      <div class="particle-wind" :class="{ 'wind-active': showParticleWind }">
+        <div class="wind-particle" v-for="i in 50" :key="i" :style="getWindParticleStyle(i)"></div>
+      </div>
+    </div>
+
+    <!-- 画面震动效果 -->
+    <div class="shake-overlay" :class="{ 'shake-active': showShake }"></div>
+
+    <!-- 空间扭曲波纹 -->
+    <div class="distortion-wave" :class="{ 'wave-visible': showDistortion }">
+      <div class="wave-ring" v-for="i in 3" :key="i" :style="getWaveRingStyle(i)"></div>
     </div>
 
     <!-- 登录卡片 -->
@@ -91,6 +146,18 @@
         没有账号？注册申请
       </p>
     </div>
+
+    <!-- 备案信息 -->
+    <footer class="filing-footer">
+      <div class="filing-content">
+        <img src="/filing/beian-icon.png" alt="备案图标" class="filing-icon" />
+        <div class="filing-links">
+          <a href="https://beian.mps.gov.cn/#/query/webSearch?code=34010402704746" target="_blank" rel="noopener">皖公网安备34010402704746号</a>
+          <span class="filing-divider">|</span>
+          <a href="https://beian.miit.gov.cn/#/Integrated/index" target="_blank" rel="noopener">皖ICP备2026006516号</a>
+        </div>
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -111,19 +178,115 @@ const registerStep = ref(1)
 const loading = ref(false)
 
 // 动画状态
-const showLight = ref(false)
-const showClouds = ref(false)
-const showDoors = ref(false)
+const showGapMist = ref(false)
+const showLightRing = ref(false)
+const showParticleWind = ref(false)
+const showShake = ref(false)
+const showDistortion = ref(false)
+const doorsOpening = ref(false)
+const doorsOpen = ref(false)
 const showCard = ref(false)
-const showGlow = ref(false)
+
+// 光纹熄灭动画
+const lightFlowsOff = ref([false, false, false])
 
 onMounted(() => {
-  // 动画时序：延长到1.5s，光效延长
-  setTimeout(() => { showLight.value = true }, 300)
-  setTimeout(() => { showClouds.value = true }, 900)
-  setTimeout(() => { showDoors.value = true; showGlow.value = true }, 1500)
-  setTimeout(() => { showCard.value = true }, 2500)
+  // 动画时序（毫秒）
+  const TIMING = {
+    lightFlowOff1: 0,
+    lightFlowOff2: 200,
+    lightFlowOff3: 400,
+    gapMist: 600,        // 门缝寒气出现
+    doorStart: 800,      // 门开始打开
+    doorPause: 1900,      // 门45度停顿（延长到1.5s）
+    doorResume: 1950,     // 门继续开
+    doorComplete: 2300,  // 门全开（1.5s延长）
+    particleWind: 2350,  // 粒子风吹出
+    lightRing: 2400,     // 光环涟漪
+    shake: 2500,         // 画面震动
+    distortion: 2550,     // 扭曲波纹
+    cardShow: 2700       // 登录卡片出现（1.5s延长）
+  }
+
+  // 光纹逐圈熄灭
+  setTimeout(() => { lightFlowsOff.value[0] = true }, TIMING.lightFlowOff1)
+  setTimeout(() => { lightFlowsOff.value[1] = true }, TIMING.lightFlowOff2)
+  setTimeout(() => { lightFlowsOff.value[2] = true }, TIMING.lightFlowOff3)
+
+  // 门缝寒气
+  setTimeout(() => { showGapMist.value = true }, TIMING.gapMist)
+
+  // 门开始打开
+  setTimeout(() => { doorsOpening.value = true }, TIMING.doorStart)
+
+  // 门45度时停顿（模拟封印挣脱）
+  setTimeout(() => {
+    doorsOpening.value = false
+    setTimeout(() => { doorsOpening.value = true }, 50)
+  }, TIMING.doorPause)
+
+  // 门全开 + 粒子风 + 光环
+  setTimeout(() => {
+    doorsOpen.value = true
+    showParticleWind.value = true
+    showLightRing.value = true
+  }, TIMING.doorComplete)
+
+  // 震动 + 扭曲
+  setTimeout(() => { showShake.value = true }, TIMING.shake)
+  setTimeout(() => {
+    showShake.value = false
+    showDistortion.value = true
+  }, TIMING.shake + 200)
+
+  // 登录卡片
+  setTimeout(() => { showCard.value = true }, TIMING.cardShow)
 })
+
+function getStarStyle(i) {
+  const seed = i * 137.508
+  const x = (seed % 100)
+  const y = ((seed * 1.618) % 100)
+  const size = 0.5 + (seed % 2)
+  const duration = 3 + (seed % 5)
+  const delay = seed % 3
+  return {
+    left: `${x}%`,
+    top: `${y}%`,
+    width: `${size}px`,
+    height: `${size}px`,
+    animationDuration: `${duration}s`,
+    animationDelay: `${delay}s`
+  }
+}
+
+function getMistParticleStyle(i) {
+  const angle = (i / 20) * 360
+  const delay = i * 0.05
+  return {
+    '--angle': `${angle}deg`,
+    animationDelay: `${delay}s`
+  }
+}
+
+function getWindParticleStyle(i) {
+  const x = 40 + Math.random() * 20
+  const y = 30 + Math.random() * 40
+  const delay = Math.random() * 0.5
+  const duration = 0.5 + Math.random() * 0.5
+  return {
+    left: `${x}%`,
+    top: `${y}%`,
+    animationDelay: `${delay}s`,
+    animationDuration: `${duration}s`
+  }
+}
+
+function getWaveRingStyle(i) {
+  return {
+    animationDelay: `${i * 0.15}s`
+  }
+}
 
 async function handleLogin() {
   if (!loginForm.value.email || !loginForm.value.password) {
@@ -150,8 +313,8 @@ async function handleSendCode() {
   loading.value = true
   try {
     await registerApi(registerForm.value.email)
-    ElMessage.success('验证码已发送到邮箱')
     registerStep.value = 2
+    ElMessage.success('验证码已发送')
   } catch {
     // 错误已在api拦截器处理
   } finally {
@@ -160,12 +323,8 @@ async function handleSendCode() {
 }
 
 async function handleVerifyCode() {
-  if (!registerForm.value.code || registerForm.value.code.length !== 6) {
-    ElMessage.warning('请输入6位验证码')
-    return
-  }
-  if (!registerForm.value.password) {
-    ElMessage.warning('请设置密码')
+  if (!registerForm.value.code || !registerForm.value.password) {
+    ElMessage.warning('请填写验证码和密码')
     return
   }
   if (registerForm.value.password !== registerForm.value.confirmPassword) {
@@ -176,6 +335,7 @@ async function handleVerifyCode() {
   try {
     await verifyCodeApi(registerForm.value.email, registerForm.value.code, registerForm.value.password)
     registerStep.value = 3
+    ElMessage.success('注册成功')
   } catch {
     // 错误已在api拦截器处理
   } finally {
@@ -196,273 +356,544 @@ function resetRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0a0f14;
+  background: linear-gradient(180deg, #0a1218 0%, #1a2530 50%, #0d1a24 100%);
   position: relative;
   overflow: hidden;
 }
 
-/* 水墨山水背景层 */
-.login-page::before {
-  content: '';
+/* 星辰夜空背景 */
+.starry-bg {
   position: absolute;
   inset: 0;
-  background:
-    /* 远山剪影 */
-    radial-gradient(ellipse 80% 40% at 20% 70%, rgba(30, 50, 40, 0.6) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 35% at 80% 65%, rgba(25, 45, 35, 0.5) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 25% at 50% 80%, rgba(20, 40, 30, 0.4) 0%, transparent 60%),
-    /* 月光 */
-    radial-gradient(circle at 75% 15%, rgba(200, 210, 200, 0.08) 0%, transparent 40%),
-    /* 整体氛围 */
-    linear-gradient(180deg, #0d1215 0%, #151c1f 50%, #0a0f14 100%);
-  pointer-events: none;
+  overflow: hidden;
 }
 
-/* 墨韵层次 */
-.login-page::after {
-  content: '';
+.star {
+  position: absolute;
+  background: radial-gradient(circle, rgba(200, 220, 240, 0.9) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* 云雾层 */
+.mist-layer {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 100% 50% at 0% 100%, rgba(20, 35, 30, 0.4) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 40% at 100% 90%, rgba(25, 40, 35, 0.3) 0%, transparent 50%);
   pointer-events: none;
 }
 
-/* 云雾 */
-.animation-overlay {
+.mist {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.15;
 }
 
-.cloud {
+.mist-1 {
+  width: 600px;
+  height: 300px;
+  background: linear-gradient(135deg, #4a6a7a 0%, #2a4a5a 100%);
+  top: 20%;
+  left: -10%;
+  animation: mist-drift 20s ease-in-out infinite;
+}
+
+.mist-2 {
+  width: 500px;
+  height: 250px;
+  background: linear-gradient(225deg, #3a5a6a 0%, #1a3a4a 100%);
+  top: 60%;
+  right: -5%;
+  animation: mist-drift 25s ease-in-out infinite reverse;
+}
+
+.mist-3 {
+  width: 700px;
+  height: 200px;
+  background: linear-gradient(0deg, #5a7a8a 0%, #2a4a5a 100%);
+  bottom: 10%;
+  left: 20%;
+  animation: mist-drift 30s ease-in-out infinite 5s;
+}
+
+@keyframes mist-drift {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(30px) translateY(-20px); }
+}
+
+/* 冰晶琉璃门容器 */
+.crystal-door-container {
   position: absolute;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    rgba(200, 210, 200, 0.05) 0%,
-    rgba(200, 210, 200, 0.1) 50%,
-    rgba(200, 210, 200, 0.05) 100%
+  width: 500px;
+  height: 600px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* 冰晶门 */
+.crystal-door {
+  position: absolute;
+  width: 200px;
+  height: 500px;
+  background: linear-gradient(180deg,
+    rgba(20, 40, 60, 0.9) 0%,
+    rgba(30, 50, 70, 0.85) 30%,
+    rgba(40, 60, 80, 0.8) 100%
   );
-  transition: opacity 1000ms ease-out, transform 1000ms ease-out;
-}
-
-.cloud-left {
-  left: 0;
+  border: 2px solid rgba(100, 180, 220, 0.3);
+  border-radius: 8px 8px 0 0;
   transform-origin: left center;
-}
-
-.cloud-right {
-  right: 0;
-  transform-origin: right center;
-}
-
-.clouds-open .cloud-left {
-  transform: translateX(-100%);
-  opacity: 0;
-}
-
-.clouds-open .cloud-right {
-  transform: translateX(100%);
-  opacity: 0;
-}
-
-/* 木门 */
-.door-container {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.door {
-  position: absolute;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(180deg, #1a1512 0%, #0d0a08 100%);
-  border: 2px solid rgba(201, 169, 110, 0.3);
-  transition: transform 1200ms cubic-bezier(0.65, 0, 0.35, 1);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  box-shadow:
+    0 0 30px rgba(100, 180, 220, 0.2),
+    inset 0 0 50px rgba(100, 180, 220, 0.1);
 }
 
 .door-left {
-  left: 0;
-  border-right: 1px solid rgba(201, 169, 110, 0.2);
-  transform-origin: left center;
+  left: 50%;
+  transform: translateX(-50%) translateZ(0) rotateY(0deg);
 }
 
 .door-right {
-  right: 0;
-  border-left: 1px solid rgba(201, 169, 110, 0.2);
-  transform-origin: right center;
+  left: 50%;
+  transform: translateX(-50%) translateZ(0) rotateY(0deg);
 }
 
-/* 门框金线 */
-.door::before {
-  content: '';
+/* 门表面纹理 */
+.door-surface {
   position: absolute;
-  inset: 20px 10px;
-  border: 1px solid rgba(201, 169, 110, 0.15);
-  pointer-events: none;
+  inset: 0;
+  overflow: hidden;
 }
 
-.doors-open .door-left {
-  transform: scaleX(0);
-}
-
-.doors-open .door-right {
-  transform: scaleX(0);
-}
-
-/* 灵气光效 - 青绿色 */
-.light-effect {
+.ice-texture {
   position: absolute;
-  width: 20%;
-  height: 300%;
-  top: -100%;
-  left: -20%;
-  background: linear-gradient(90deg,
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      rgba(100, 180, 220, 0.05) 2px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      rgba(100, 180, 220, 0.03) 2px,
+      transparent 4px
+    );
+}
+
+/* 流淌的光纹 */
+.light-flow {
+  position: absolute;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg,
     transparent 0%,
-    rgba(127, 255, 212, 0.05) 20%,
-    rgba(127, 255, 212, 0.4) 45%,
-    rgba(127, 255, 212, 0.6) 50%,
-    rgba(127, 255, 212, 0.4) 55%,
-    rgba(127, 255, 212, 0.05) 80%,
+    rgba(100, 180, 255, 0.6) 20%,
+    rgba(150, 220, 255, 0.8) 50%,
+    rgba(100, 180, 255, 0.6) 80%,
     transparent 100%
   );
-  transform: rotate(-15deg);
-  animation: spirit-flow 2000ms ease-out forwards;
-  pointer-events: none;
-  filter: blur(3px);
+  animation: flow-down 3s linear infinite;
+  filter: blur(1px);
+  transition: opacity 0.5s ease;
 }
 
-/* 开门灵气绽放 */
-.glow-burst {
+.light-flow-1 { left: 20%; animation-delay: 0s; }
+.light-flow-2 { left: 50%; animation-delay: 1s; }
+.light-flow-3 { left: 80%; animation-delay: 2s; }
+
+.light-flow-1.off { opacity: 0; }
+.light-flow-2.off { opacity: 0; }
+.light-flow-3.off { opacity: 0; }
+
+@keyframes flow-down {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* 门边缘 */
+.door-edge {
   position: absolute;
-  width: 100%;
-  height: 100%;
   top: 0;
-  left: 0;
-  background: radial-gradient(ellipse at center, rgba(127, 255, 212, 0.3) 0%, rgba(127, 255, 212, 0.1) 30%, transparent 60%);
-  animation: spirit-burst 1000ms ease-out forwards;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg,
+    rgba(150, 220, 255, 0.8) 0%,
+    rgba(100, 180, 220, 0.5) 50%,
+    rgba(150, 220, 255, 0.8) 100%
+  );
+  box-shadow: 0 0 10px rgba(100, 180, 220, 0.5);
+}
+
+/* 符文装饰 */
+.door-runes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  padding: 40px 0;
+}
+
+.rune {
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(100, 180, 220, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: rune-glow 4s ease-in-out infinite;
+}
+
+.rune::before {
+  content: '☯';
+  font-size: 24px;
+  color: rgba(100, 180, 220, 0.5);
+}
+
+.rune-1 { animation-delay: 0s; }
+.rune-2 { animation-delay: 1.3s; }
+.rune-3 { animation-delay: 2.6s; }
+
+@keyframes rune-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(100, 180, 220, 0.2);
+    border-color: rgba(100, 180, 220, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(100, 180, 220, 0.5);
+    border-color: rgba(100, 180, 220, 0.6);
+  }
+}
+
+/* 门缝寒气 */
+.gap-mist {
+  position: absolute;
+  width: 60px;
+  height: 400px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
   pointer-events: none;
 }
 
-/* 登录卡片 - 磨砂玻璃+金边框 */
+.gap-mist.mist-visible {
+  opacity: 1;
+}
+
+.mist-particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, rgba(150, 220, 255, 0.8) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: mist-rise 2s ease-out infinite;
+  transform: rotate(var(--angle)) translateY(0);
+}
+
+@keyframes mist-rise {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(50px) scale(0.5);
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(-100px) scale(1.5);
+  }
+}
+
+/* 开门动画 */
+.crystal-door-container.doors-opening .door-left {
+  transform: translateX(-50%) translateZ(0) rotateY(-85deg);
+  transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.crystal-door-container.doors-opening .door-right {
+  transform: translateX(-50%) translateZ(0) rotateY(85deg);
+  transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.crystal-door-container.doors-open .door-left {
+  transform: translateX(-50%) translateZ(0) rotateY(-90deg);
+}
+
+.crystal-door-container.doors-open .door-right {
+  transform: translateX(-50%) translateZ(0) rotateY(90deg);
+}
+
+/* 粒子风 */
+.particle-wind {
+  position: absolute;
+  width: 300px;
+  height: 400px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.particle-wind.wind-active {
+  opacity: 1;
+}
+
+.wind-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, rgba(150, 220, 255, 0.8) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: wind-blow 0.8s ease-out forwards;
+}
+
+@keyframes wind-blow {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc((var(--x, 100) - 50) * 2px), -80px) scale(0);
+  }
+}
+
+/* 光环涟漪 */
+.light-ring {
+  position: absolute;
+  width: 200px;
+  height: 100px;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.light-ring.ring-visible {
+  opacity: 1;
+}
+
+.ring {
+  position: absolute;
+  border: 2px solid rgba(150, 220, 255, 0.5);
+  border-radius: 50%;
+  animation: ring-expand 1.5s ease-out forwards;
+}
+
+.ring-1 {
+  width: 100px;
+  height: 50px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+}
+
+.ring-2 {
+  width: 150px;
+  height: 75px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  animation-delay: 0.1s;
+}
+
+.ring-3 {
+  width: 200px;
+  height: 100px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  animation-delay: 0.2s;
+}
+
+@keyframes ring-expand {
+  0% {
+    transform: translateX(-50%) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0;
+  }
+}
+
+/* 画面震动 */
+.shake-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.shake-overlay.shake-active {
+  animation: screen-shake 0.15s ease-out;
+}
+
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 1px); }
+  50% { transform: translate(1px, -1px); }
+  75% { transform: translate(-1px, -0.5px); }
+}
+
+/* 空间扭曲波纹 */
+.distortion-wave {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.distortion-wave.wave-visible {
+  opacity: 1;
+}
+
+.wave-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(150, 220, 255, 0.3);
+  border-radius: 50%;
+  animation: wave-distort 1s ease-out forwards;
+}
+
+@keyframes wave-distort {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.8;
+    filter: blur(0px);
+  }
+  100% {
+    width: 150vw;
+    height: 150vh;
+    opacity: 0;
+    filter: blur(5px);
+  }
+}
+
+/* 登录卡片 */
 .login-card {
   position: relative;
-  z-index: 10;
-  width: 400px;
-  padding: 45px 50px;
-  background: rgba(20, 25, 22, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(201, 169, 110, 0.25);
-  border-radius: 4px;
+  z-index: 100;
+  width: 360px;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(201, 169, 110, 0.4);
+  border-radius: 16px;
   box-shadow:
-    0 0 60px rgba(0, 0, 0, 0.5),
-    0 0 30px rgba(127, 255, 212, 0.05),
-    inset 0 1px 0 rgba(201, 169, 110, 0.1);
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 40px rgba(201, 169, 110, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 600ms ease-out, transform 600ms ease-out;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
 }
 
-.login-card::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 20%;
-  right: 20%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(201, 169, 110, 0.5), transparent);
-}
-
-.card-visible {
+.login-card.card-visible {
   opacity: 1;
   transform: translateY(0);
 }
 
 .site-title {
-  font-size: 24px;
-  color: #e8f0e8;
+  font-size: 28px;
+  color: #2D3748;
   text-align: center;
-  margin-bottom: 6px;
-  font-weight: normal;
-  letter-spacing: 4px;
-  text-shadow: 0 0 30px rgba(127, 255, 212, 0.2);
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.5);
 }
 
 .site-subtitle {
+  font-size: 14px;
+  color: #6B7280;
   text-align: center;
-  color: rgba(201, 169, 110, 0.6);
-  font-size: 13px;
-  margin-bottom: 35px;
-  letter-spacing: 2px;
+  margin-bottom: 30px;
+  letter-spacing: 4px;
 }
 
 .login-form {
   margin-top: 20px;
 }
 
-/* 表单样式override */
-.login-form :deep(.el-input__wrapper) {
-  background: rgba(15, 20, 18, 0.8);
-  border: 1px solid rgba(201, 169, 110, 0.2);
-  box-shadow: none;
+:deep(.el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(201, 169, 110, 0.3) !important;
+  box-shadow: none !important;
 }
 
-.login-form :deep(.el-input__inner) {
-  color: #e8f0e8;
+:deep(.el-input__inner) {
+  color: #2D3748 !important;
 }
 
-.login-form :deep(.el-input__inner::placeholder) {
-  color: rgba(201, 169, 110, 0.4);
+:deep(.el-input__inner::placeholder) {
+  color: #9CA3AF !important;
 }
 
-.login-form :deep(.el-button--primary) {
-  background: linear-gradient(135deg, rgba(127, 255, 212, 0.2) 0%, rgba(127, 255, 212, 0.1) 100%);
-  border-color: rgba(127, 255, 212, 0.3);
-  color: #e8f0e8;
+:deep(.el-button--primary) {
+  background: linear-gradient(135deg, var(--color-gold) 0%, #B8956A 100%) !important;
+  border: 1px solid rgba(201, 169, 110, 0.5) !important;
+  box-shadow: 0 4px 15px rgba(201, 169, 110, 0.3) !important;
 }
 
-.login-form :deep(.el-button--primary:hover) {
-  background: linear-gradient(135deg, rgba(127, 255, 212, 0.3) 0%, rgba(127, 255, 212, 0.2) 100%);
-  border-color: rgba(127, 255, 212, 0.5);
+:deep(.el-button--primary:hover) {
+  background: linear-gradient(135deg, #D4B872 0%, #C9A962 100%) !important;
 }
 
-.register-link,
-.back-link {
+.register-link {
   text-align: center;
-  color: rgba(201, 169, 110, 0.6);
+  color: var(--color-text-secondary);
   font-size: 13px;
+  margin-top: 20px;
   cursor: pointer;
-  margin-top: 15px;
-  transition: color 0.3s;
+  transition: color 0.2s;
 }
 
-.register-link:hover,
-.back-link:hover {
-  color: rgba(201, 169, 110, 0.9);
+.register-link:hover {
+  color: var(--color-gold);
 }
 
+/* 注册流程 */
 .register-flow {
   margin-top: 20px;
 }
 
-.step-content {
-  margin-top: 15px;
-}
-
 .step-title {
-  color: rgba(201, 169, 110, 0.8);
-  font-size: 14px;
-  margin-bottom: 15px;
+  font-size: 16px;
+  color: var(--color-text);
   text-align: center;
+  margin-bottom: 20px;
 }
 
 .back-link {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 13px;
   margin-top: 20px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: rgba(150, 200, 220, 1);
 }
 
 .text-center {
@@ -470,50 +901,80 @@ function resetRegister() {
 }
 
 .text-secondary {
-  color: rgba(201, 169, 110, 0.5);
-  font-size: 13px;
+  color: rgba(150, 200, 220, 0.6);
+  font-size: 14px;
   margin-top: 10px;
 }
 
 .success-icon {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   margin: 0 auto 20px;
-  border: 1px solid rgba(127, 255, 212, 0.4);
+  background: linear-gradient(135deg, rgba(60, 120, 160, 0.5) 0%, rgba(40, 80, 120, 0.6) 100%);
+  border: 2px solid rgba(100, 180, 220, 0.4);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  color: rgba(127, 255, 212, 0.8);
+  font-size: 30px;
+  color: #c8e8f8;
 }
 
-/* 灵气流动动画 */
-@keyframes spirit-flow {
-  0% {
-    left: -30%;
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    left: 120%;
-    opacity: 0;
-  }
+/* 备案信息 */
+.filing-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(201, 169, 110, 0.2);
+  padding: 10px 20px;
 }
 
-@keyframes spirit-burst {
-  0% {
-    opacity: 0.8;
-    transform: scale(0.8);
+.filing-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.filing-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.filing-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.filing-links a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.filing-links a:hover {
+  color: var(--color-gold);
+}
+
+.filing-divider {
+  color: #ddd;
+}
+
+@media (max-width: 768px) {
+  .login-card {
+    width: 90%;
+    padding: 30px 20px;
   }
-  100% {
-    opacity: 0;
-    transform: scale(1.5);
+
+  .crystal-door-container {
+    transform: scale(0.7);
   }
 }
 </style>

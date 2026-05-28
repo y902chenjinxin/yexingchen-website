@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
 from app.database import get_db
 from app.schemas.common import *
 from app.utils.security import get_current_user, require_super_admin
@@ -110,6 +112,42 @@ async def update_user(
               detail=f"更新用户 {user.email} 信息")
 
     return ResponseBase(msg="更新成功")
+
+
+class UserRoleUpdateRequest(BaseModel):
+    role: str
+    is_super_admin: Optional[int] = None
+
+
+@router.put("/users/{user_id}/role", response_model=ResponseBase)
+async def update_user_role(
+    user_id: int,
+    req: UserRoleUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_super_admin)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    # 验证角色
+    if req.role not in ("user", "admin", "super_admin"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的角色")
+
+    # 不能修改自己的超级管理员权限
+    if user_id == current_user["user_id"] and req.is_super_admin is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能修改自己的超级管理员权限")
+
+    user.role = req.role
+    if req.is_super_admin is not None:
+        user.is_super_admin = req.is_super_admin
+
+    db.commit()
+
+    log_action(db, current_user["user_id"], "update_role", target_type="user", target_id=user_id,
+              detail=f"更新用户 {user.email} 角色为 {req.role}")
+
+    return ResponseBase(msg="角色更新成功")
 
 
 @router.delete("/users/{user_id}", response_model=ResponseBase)
