@@ -7,7 +7,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
 
   const isLoggedIn = computed(() => !!token.value)
-  const isSuperAdmin = computed(() => user.value?.role === 'super_admin')
+  const isSuperAdmin = computed(() => user.value?.is_super_admin === 1)
 
   async function loginAction(email, password) {
     const res = await loginApi(email, password)

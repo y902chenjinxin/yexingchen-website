@@ -203,9 +203,8 @@ onMounted(() => {
     doorComplete: 2300,  // 门全开（1.5s延长）
     particleWind: 2350,  // 粒子风吹出
     lightRing: 2400,     // 光环涟漪
-    shake: 2500,         // 画面震动
-    distortion: 2550,     // 扭曲波纹
-    cardShow: 2700       // 登录卡片出现（1.5s延长）
+    // 去掉震动效果
+    cardShow: 3300       // 登录卡片出现（延迟0.6s）
   }
 
   // 光纹逐圈熄灭
@@ -232,14 +231,7 @@ onMounted(() => {
     showLightRing.value = true
   }, TIMING.doorComplete)
 
-  // 震动 + 扭曲
-  setTimeout(() => { showShake.value = true }, TIMING.shake)
-  setTimeout(() => {
-    showShake.value = false
-    showDistortion.value = true
-  }, TIMING.shake + 200)
-
-  // 登录卡片
+  // 登录卡片（延迟显示）
   setTimeout(() => { showCard.value = true }, TIMING.cardShow)
 })
 
@@ -459,13 +451,15 @@ function resetRegister() {
 }
 
 .door-left {
-  left: 50%;
-  transform: translateX(-50%) translateZ(0) rotateY(0deg);
+  left: 0;
+  right: 50%;
+  transform: translateZ(0) rotateY(0deg);
 }
 
 .door-right {
   left: 50%;
-  transform: translateX(-50%) translateZ(0) rotateY(0deg);
+  right: 0;
+  transform: translateZ(0) rotateY(0deg);
 }
 
 /* 门表面纹理 */
@@ -622,23 +616,23 @@ function resetRegister() {
   }
 }
 
-/* 开门动画 */
+/* 开门动画 - 双门对称展开 */
 .crystal-door-container.doors-opening .door-left {
-  transform: translateX(-50%) translateZ(0) rotateY(-85deg);
+  transform: translateZ(0) rotateY(-85deg);
   transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .crystal-door-container.doors-opening .door-right {
-  transform: translateX(-50%) translateZ(0) rotateY(85deg);
+  transform: translateZ(0) rotateY(85deg);
   transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .crystal-door-container.doors-open .door-left {
-  transform: translateX(-50%) translateZ(0) rotateY(-90deg);
+  transform: translateZ(0) rotateY(-90deg);
 }
 
 .crystal-door-container.doors-open .door-right {
-  transform: translateX(-50%) translateZ(0) rotateY(90deg);
+  transform: translateZ(0) rotateY(90deg);
 }
 
 /* 粒子风 */
