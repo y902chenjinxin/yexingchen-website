@@ -324,10 +324,10 @@ function handleLogout() {
 .home-page {
   min-height: 100vh;
   background: linear-gradient(180deg,
-    #87CEEB 0%,
-    #B0E0E6 30%,
-    #E0F0FF 60%,
-    #F5F9FF 100%
+    #0D1F27 0%,
+    #1A3A5C 40%,
+    #2D5A7B 70%,
+    #1A3A5C 100%
   );
   position: relative;
   overflow: hidden;
