@@ -1,6 +1,7 @@
 import api from './index'
 
 export const getUserList = (params) => api.get('/admin/users', { params })
+export const addUser = (data) => api.post('/admin/users', data)
 export const approveUser = (id) => api.post(`/admin/users/${id}/approve`)
 export const rejectUser = (id) => api.post(`/admin/users/${id}/reject`)
 export const updateUser = (id, data) => api.put(`/admin/users/${id}`, data)
