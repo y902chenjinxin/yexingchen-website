@@ -81,6 +81,10 @@
             </template>
           </el-table-column>
         </el-table>
+        <div v-if="!loading && filteredUsers.length === 0" class="empty-placeholder">
+          <div class="empty-icon">👥</div>
+          <div class="empty-text">暂无用户</div>
+        </div>
       </div>
     </main>
 
@@ -240,6 +244,11 @@ async function handleAddUser() {
     ElMessage.warning('请填写邮箱和密码')
     return
   }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(addForm.value.email)) {
+    ElMessage.warning('请输入正确的邮箱格式')
+    return
+  }
   try {
     await addUser({ email: addForm.value.email, password: addForm.value.password })
     ElMessage.success('用户创建成功')
@@ -279,6 +288,9 @@ function formatTime(timeStr) {
 .section { background: rgba(26, 58, 74, 0.4); border: 1px solid rgba(78, 205, 196, 0.2); border-radius: var(--radius); padding: 25px; }
 .section-title { font-family: var(--font-serif); font-size: 18px; color: var(--color-text); margin-bottom: 20px; }
 .island-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.empty-placeholder { display: flex; flex-direction: column; align-items: center; padding: 40px 0; color: var(--color-text-secondary); }
+.empty-icon { font-size: 48px; margin-bottom: 10px; }
+.empty-text { font-size: 14px; }
 @media (max-width: 768px) {
   .admin-header { padding: 15px 20px; }
   .admin-content { padding: 20px; }

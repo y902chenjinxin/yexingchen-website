@@ -42,7 +42,7 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号已被拒绝，请联系管理员")
 
     # 生成token
-    token = create_access_token({"user_id": user.id, "role": user.role})
+    token = create_access_token({"user_id": user.id, "role": user.role, "is_super_admin": user.is_super_admin})
 
     # 更新最后登录时间
     from datetime import datetime

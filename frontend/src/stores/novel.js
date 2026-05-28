@@ -1,37 +1,12 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { useCrudStore } from '@/composables/useCrudStore'
 import { getNovelList, uploadNovel, updateNovel, deleteNovel } from '@/api/novel'
 
-export const useNovelStore = defineStore('novel', () => {
-  const list = ref([])
-  const total = ref(0)
-  const page = ref(1)
-  const size = ref(20)
-  const loading = ref(false)
-
-  async function fetchList(params = {}) {
-    loading.value = true
-    try {
-      const res = await getNovelList({ page: page.value, size: size.value, ...params })
-      list.value = res.data.list
-      total.value = res.data.total
-      return res
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function upload(data) {
-    return await uploadNovel(data)
-  }
-
-  async function update(id, data) {
-    return await updateNovel(id, data)
-  }
-
-  async function remove(id) {
-    return await deleteNovel(id)
-  }
-
-  return { list, total, page, size, loading, fetchList, upload, update, remove }
-})
+export const useNovelStore = defineStore('novel', () =>
+  useCrudStore('novel', {
+    getList: getNovelList,
+    upload: uploadNovel,
+    update: updateNovel,
+    delete: deleteNovel
+  })
+)
