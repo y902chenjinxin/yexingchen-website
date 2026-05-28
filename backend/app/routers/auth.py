@@ -33,7 +33,7 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
     user = db.query(User).filter(User.email == req.email).first()
 
     if not user or not verify_password(req.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账密输入错误，请重试")
 
     if user.status == "pending":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号待审批，请联系管理员")

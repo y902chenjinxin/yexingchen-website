@@ -10,24 +10,37 @@
       </div>
     </header>
 
-    <main class="tool-grid">
-      <div v-if="toolStore.loading" class="loading-placeholder">加载中...</div>
-      <div v-else-if="toolStore.list.length === 0" class="empty-placeholder">
+    <main class="content-table">
+      <el-table :data="toolStore.list" v-loading="toolStore.loading" stripe style="width: 100%">
+        <el-table-column prop="title" label="名称" min-width="150">
+          <template #default="{ row }">
+            <span class="tool-icon-cell">{{ row.icon || '⚙️' }}</span>
+            {{ row.title }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="url" label="线上地址" min-width="200">
+          <template #default="{ row }">
+            <a :href="row.url" target="_blank" class="file-link">{{ row.url }}</a>
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="file_size" label="大小" width="100">
+          <template #default="{ row }">
+            -
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="240" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" @click="openUrl(row.url)">打开</el-button>
+            <el-button size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div v-if="!toolStore.loading && toolStore.list.length === 0" class="empty-placeholder">
         <div class="empty-icon">⚙️</div>
         <div class="empty-text">暂无工具，点击添加</div>
-      </div>
-      <div v-else v-for="item in toolStore.list" :key="item.id" class="tool-card">
-        <div class="tool-icon">{{ item.icon || '⚙️' }}</div>
-        <div class="tool-info">
-          <div class="tool-title">{{ item.title }}</div>
-          <div class="tool-url">{{ formatUrl(item.url) }}</div>
-          <div class="tool-desc" v-if="item.description">{{ item.description }}</div>
-        </div>
-        <div class="tool-actions">
-          <el-button size="small" type="primary" @click="openUrl(item.url)">打开</el-button>
-          <el-button size="small" @click="handleEdit(item)">编辑</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(item.id)">删除</el-button>
-        </div>
       </div>
     </main>
 
@@ -119,6 +132,22 @@ function formatUrl(url) {
 .back-btn:hover { color: #B88B5A; }
 .island-title { font-family: var(--font-serif); font-size: 20px; color: var(--color-text); }
 .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding: 30px 40px; }
+.tool-icon-cell { margin-right: 8px; }
+
+.content-table {
+  padding: 30px 40px;
+}
+
+.content-table .file-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.content-table .file-link:hover {
+  text-decoration: underline;
+}
+
 .loading-placeholder, .empty-placeholder { grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--color-text-secondary); }
 .empty-icon { font-size: 60px; margin-bottom: 15px; }
 .tool-card { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(212, 165, 116, 0.3); border-radius: var(--radius); padding: 20px; display: flex; gap: 15px; transition: all 0.3s; }
@@ -131,8 +160,6 @@ function formatUrl(url) {
 .tool-actions { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
 @media (max-width: 768px) {
   .island-header { flex-direction: column; gap: 15px; padding: 15px 20px; }
-  .tool-grid { padding: 20px; grid-template-columns: 1fr; }
-  .tool-card { flex-direction: column; }
-  .tool-actions { flex-direction: row; }
+  .content-table { padding: 20px; }
 }
 </style>

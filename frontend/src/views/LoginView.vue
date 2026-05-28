@@ -84,7 +84,22 @@
           <el-input v-model="loginForm.email" placeholder="邮箱" size="large" clearable />
         </el-form-item>
         <el-form-item>
-          <el-input v-model="loginForm.password" type="password" placeholder="密码" size="large" show-password />
+          <el-input v-model="loginForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="密码" size="large">
+            <template #suffix>
+              <span class="password-toggle" @click="passwordVisible = !passwordVisible">
+                <!-- 闭眼 SVG -->
+                <svg v-if="!passwordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+                <!-- 睁眼 SVG -->
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </span>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" size="large" style="width: 100%" :loading="loading" native-type="submit">
@@ -93,8 +108,21 @@
         </el-form-item>
       </el-form>
 
+      <!-- 仙气飘飘加载特效 -->
+      <div v-if="loading && !isRegistering" class="fairy-loading">
+        <div class="fairy-bg"></div>
+        <div class="fairy-curtain curtain-1"></div>
+        <div class="fairy-curtain curtain-2"></div>
+        <div class="fairy-curtain curtain-3"></div>
+        <div class="fairy-glow"></div>
+        <div class="fairy-ring"></div>
+        <div class="fairy-particles">
+          <span v-for="i in 6" :key="i" class="fairy-particle" :style="getParticleStyle(i)"></span>
+        </div>
+      </div>
+
       <!-- 注册流程 -->
-      <div v-else class="register-flow">
+      <div v-if="isRegistering" class="register-flow">
         <!-- Step 1: 输入邮箱 -->
         <div v-if="registerStep === 1" class="step-content">
           <p class="step-title">输入注册邮箱</p>
@@ -119,10 +147,36 @@
               <el-input v-model="registerForm.code" placeholder="6位验证码" size="large" maxlength="6" clearable />
             </el-form-item>
             <el-form-item>
-              <el-input v-model="registerForm.password" type="password" placeholder="设置密码" size="large" show-password />
+              <el-input v-model="registerForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="设置密码" size="large">
+              <template #suffix>
+                <span class="password-toggle" @click="passwordVisible = !passwordVisible">
+                  <svg v-if="!passwordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </span>
+              </template>
+            </el-input>
             </el-form-item>
             <el-form-item>
-              <el-input v-model="registerForm.confirmPassword" type="password" placeholder="确认密码" size="large" show-password />
+              <el-input v-model="registerForm.confirmPassword" :type="confirmPasswordVisible ? 'text' : 'password'" placeholder="确认密码" size="large">
+              <template #suffix>
+                <span class="password-toggle" @click="confirmPasswordVisible = !confirmPasswordVisible">
+                  <svg v-if="!confirmPasswordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </span>
+              </template>
+            </el-input>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" size="large" style="width: 100%" :loading="loading" native-type="submit">
@@ -176,6 +230,8 @@ const registerForm = ref({ email: '', code: '', password: '', confirmPassword: '
 const isRegistering = ref(false)
 const registerStep = ref(1)
 const loading = ref(false)
+const passwordVisible = ref(false)
+const confirmPasswordVisible = ref(false) // 注册确认密码可见性 // 密码可见性切换
 
 // 动画状态
 const showGapMist = ref(false)
@@ -258,6 +314,17 @@ function getMistParticleStyle(i) {
   return {
     '--angle': `${angle}deg`,
     animationDelay: `${delay}s`
+  }
+}
+
+// 仙气飘飘加载特效粒子样式
+function getParticleStyle(i) {
+  const angle = (i / 6) * 360
+  return {
+    '--angle': `${angle}deg`,
+    left: '50%',
+    top: '50%',
+    transform: `rotate(${angle}deg) translateX(50px)`
   }
 }
 
@@ -442,8 +509,7 @@ function resetRegister() {
   );
   border: 2px solid rgba(100, 180, 220, 0.3);
   border-radius: 8px 8px 0 0;
-  transform-origin: left center;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   box-shadow:
     0 0 30px rgba(100, 180, 220, 0.2),
@@ -451,18 +517,35 @@ function resetRegister() {
 }
 
 .door-left {
-  left: 0;
-  right: 50%;
-  transform: translateZ(0) rotateY(0deg);
+  left: 50%;
+  margin-left: -200px;
+  transform: translateX(0);
+  transform-origin: right center;
 }
 
 .door-right {
   left: 50%;
-  right: 0;
-  transform: translateZ(0) rotateY(0deg);
+  margin-right: -200px;
+  transform: translateX(0);
+  transform-origin: left center;
 }
 
-/* 门表面纹理 */
+/* 开门动画 - 双门往两边水平滑开 */
+.crystal-door-container.doors-opening .door-left {
+  transform: translateX(-200px);
+}
+
+.crystal-door-container.doors-opening .door-right {
+  transform: translateX(200px);
+}
+
+.crystal-door-container.doors-open .door-left {
+  transform: translateX(-200px);
+}
+
+.crystal-door-container.doors-open .door-right {
+  transform: translateX(200px);
+}
 .door-surface {
   position: absolute;
   inset: 0;
@@ -614,25 +697,6 @@ function resetRegister() {
     opacity: 0;
     transform: rotate(var(--angle)) translateY(-100px) scale(1.5);
   }
-}
-
-/* 开门动画 - 双门对称展开 */
-.crystal-door-container.doors-opening .door-left {
-  transform: translateZ(0) rotateY(-85deg);
-  transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.crystal-door-container.doors-opening .door-right {
-  transform: translateZ(0) rotateY(85deg);
-  transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.crystal-door-container.doors-open .door-left {
-  transform: translateZ(0) rotateY(-90deg);
-}
-
-.crystal-door-container.doors-open .door-right {
-  transform: translateZ(0) rotateY(90deg);
 }
 
 /* 粒子风 */
@@ -828,6 +892,18 @@ function resetRegister() {
   margin-top: 20px;
 }
 
+.password-toggle {
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.password-toggle:hover {
+  color: var(--color-gold);
+}
+
 :deep(.el-input__wrapper) {
   background: rgba(255, 255, 255, 0.6) !important;
   border: 1px solid rgba(201, 169, 110, 0.3) !important;
@@ -838,9 +914,7 @@ function resetRegister() {
   color: #2D3748 !important;
 }
 
-:deep(.el-input__inner::placeholder) {
-  color: #9CA3AF !important;
-}
+/* placeholder 颜色已在 main.css 全局设置 */
 
 :deep(.el-button--primary) {
   background: linear-gradient(135deg, var(--color-gold) 0%, #B8956A 100%) !important;
@@ -969,6 +1043,143 @@ function resetRegister() {
 
   .crystal-door-container {
     transform: scale(0.7);
+  }
+}
+
+/* 仙气飘飘加载特效 */
+.fairy-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.fairy-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #E8D5F0 0%, #D0E8F0 100%);
+  opacity: 0.95;
+}
+
+.fairy-curtain {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  height: 100%;
+  width: 60%;
+  filter: blur(20px);
+  animation: curtain-drift 8s ease-in-out infinite;
+}
+
+.fairy-curtain.curtain-1 {
+  top: 0;
+  animation-delay: 0s;
+}
+
+.fairy-curtain.curtain-2 {
+  top: 20%;
+  animation-delay: -2.5s;
+  opacity: 0.7;
+}
+
+.fairy-curtain.curtain-3 {
+  top: 40%;
+  animation-delay: -5s;
+  opacity: 0.5;
+}
+
+@keyframes curtain-drift {
+  0% { left: -60%; transform: translateY(0); }
+  50% { transform: translateY(20px); }
+  100% { left: 140%; transform: translateY(0); }
+}
+
+.fairy-glow {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+.fairy-ring {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border: 2px solid rgba(255,255,255,0.6);
+  border-radius: 50%;
+  animation: ring-rotate 3s linear infinite;
+}
+
+.fairy-ring::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 15px 5px rgba(255,255,255,0.5);
+}
+
+@keyframes ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.fairy-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fairy-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: particle-orbit 6s ease-in-out infinite;
+}
+
+.fairy-particle:nth-child(1) { animation-delay: 0s; }
+.fairy-particle:nth-child(2) { animation-delay: -1s; }
+.fairy-particle:nth-child(3) { animation-delay: -2s; }
+.fairy-particle:nth-child(4) { animation-delay: -3s; }
+.fairy-particle:nth-child(5) { animation-delay: -4s; }
+.fairy-particle:nth-child(6) { animation-delay: -5s; }
+
+@keyframes particle-orbit {
+  0% {
+    transform: rotate(0deg) translateX(50px) rotate(0deg);
+    opacity: 0.3;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: rotate(180deg) translateX(80px) rotate(-180deg);
+    opacity: 0.3;
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: rotate(360deg) translateX(50px) rotate(-360deg);
+    opacity: 0.3;
   }
 }
 </style>
