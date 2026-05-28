@@ -358,10 +358,14 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     router.push('/home')
   } catch {
-    // 错误已在api拦截器处理
-  } finally {
-    loading.value = false
+    // 错误已在api拦截器处理，显示仙气飘飘特效
+    // 延迟关闭loading，让特效显示2秒
+    setTimeout(() => {
+      loading.value = false
+    }, 2000)
+    return
   }
+  loading.value = false
 }
 
 async function handleSendCode() {
