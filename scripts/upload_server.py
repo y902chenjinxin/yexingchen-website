@@ -4,7 +4,7 @@ import os
 hostname = '203.195.208.25'
 port = 22
 username = 'root'
-password = 'Chen@12345678'
+password = 'yxCHEN@12345678'
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

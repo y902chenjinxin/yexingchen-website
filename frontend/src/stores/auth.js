@@ -23,8 +23,10 @@ export const useAuthStore = defineStore('auth', () => {
       const res = await getMe()
       user.value = res.data
     } catch {
-      logoutAction()
-      throw new Error('获取用户信息失败')
+      // token无效，只清除本地状态，不调用logoutAPI（避免401错误）
+      token.value = ''
+      user.value = null
+      localStorage.removeItem('token')
     }
   }
 

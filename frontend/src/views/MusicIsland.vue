@@ -17,30 +17,36 @@
     </header>
 
     <!-- 音乐列表 -->
-    <main class="content-grid">
-      <div v-if="musicStore.loading" class="loading-placeholder">加载中...</div>
-      <div v-else-if="musicStore.list.length === 0" class="empty-placeholder">
+    <main class="content-table">
+      <el-table :data="musicStore.list" v-loading="musicStore.loading" stripe style="width: 100%">
+        <el-table-column prop="title" label="名称" min-width="150" />
+        <el-table-column prop="file_path" label="线上地址" min-width="200">
+          <template #default="{ row }">
+            <a :href="`/uploads${row.file_path}`" target="_blank" class="file-link">{{ row.file_path }}</a>
+          </template>
+        </el-table-column>
+        <el-table-column prop="category" label="标签" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.category" size="small" type="info">{{ row.category }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="file_size" label="大小" width="100">
+          <template #default="{ row }">
+            {{ formatSize(row.file_size) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="180" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="downloadFile(row.file_path)">下载</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <!-- 空状态 -->
+      <div v-if="!musicStore.loading && musicStore.list.length === 0" class="empty-placeholder">
         <div class="empty-icon">🎵</div>
         <div class="empty-text">暂无音乐，点击上传添加</div>
-      </div>
-      <div v-else v-for="item in musicStore.list" :key="item.id" class="content-card">
-        <div class="card-cover">
-          <div class="cover-placeholder">🎵</div>
-        </div>
-        <div class="card-info">
-          <div class="card-title">{{ item.title }}</div>
-          <div class="card-meta">
-            <el-tag v-if="item.category" size="small" type="info">{{ item.category }}</el-tag>
-            <span class="card-size">{{ formatSize(item.file_size) }}</span>
-          </div>
-          <div class="card-tags" v-if="item.tags">
-            <el-tag v-for="tag in item.tags.split(',').filter(t=>t)" :key="tag" size="small">{{ tag }}</el-tag>
-          </div>
-        </div>
-        <div class="card-actions">
-          <el-button size="small" @click="downloadFile(item.file_path)">下载</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(item.id)">删除</el-button>
-        </div>
       </div>
     </main>
 
@@ -214,11 +220,18 @@ function formatSize(bytes) {
   gap: 15px;
 }
 
-.content-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+.content-table {
   padding: 30px 40px;
+}
+
+.content-table .file-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.content-table .file-link:hover {
+  text-decoration: underline;
 }
 
 .loading-placeholder,
@@ -316,9 +329,8 @@ function formatSize(bytes) {
     flex-direction: column;
   }
 
-  .content-grid {
+  .content-table {
     padding: 20px;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 }
 </style>

@@ -79,15 +79,16 @@ docs/
 
 SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, videos, tools, operation_logs, global_settings. Created automatically on first run via SQLAlchemy `Base.metadata.create_all()`.
 
-## Current Status (v1.1 in progress)
+## Current Status (v1.5 已完成)
 
-- Login page visual redesign complete (purple gradient, white light effects)
-- Main page gradient sky background complete
-- Five island SVG illustrations complete
-- Test data generation script (`generate_test_data.py`) complete
-- Background music generation script (`generate_bg_music.py`) complete - 60-second procedural garden-style WAV
-
-Pending: PRD_v1.1 items marked as "待确认" (pending confirmation), particularly island image review.
+所有 v1.5 需求均已完成并部署：
+- 输入框 placeholder 淡蓝灰色 ✓
+- 登录错误提示"账密输入错误，请重试" ✓
+- 密码显隐图标（默认闭眼）✓
+- 登录加载仙气飘飘特效 ✓
+- 背景音乐（青花瓷、兰亭序）✓
+- 岛屿阵法模式（环形旋转叠加）✓
+- 5个岛屿改为数据列表 ✓
 
 ## Configuration
 

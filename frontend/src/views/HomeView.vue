@@ -14,6 +14,12 @@
         <span class="site-name font-serif">叶兴辰的个人网站</span>
       </div>
       <div class="top-bar-right">
+        <!-- 阵法模式切换 -->
+        <el-tooltip content="阵法模式" placement="bottom">
+          <el-button :class="['magic-btn', { active: magicMode }]" circle @click="toggleMagicMode">
+            <span class="magic-icon">✧</span>
+          </el-button>
+        </el-tooltip>
         <el-dropdown trigger="click" @command="handleMusicSelect">
         <el-button class="music-btn" circle>
           <span class="music-icon">{{ settingsStore.musicPlaying ? '🎵' : '🎶' }}</span>
@@ -76,7 +82,7 @@
     </header>
 
     <!-- 主内容：浮空岛屿 -->
-    <main class="islands-container">
+    <main class="islands-container" :class="{ 'magic-mode': magicMode }">
       <div class="island music-island" @click="router.push('/island/music')">
         <div class="island-wrapper">
           <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
@@ -190,12 +196,18 @@ const router = useRouter()
 const auth = useAuthStore()
 const settingsStore = useSettingsStore()
 const bgAudio = ref(null)
+const magicMode = ref(false) // 阵法模式
+
+// 阵法模式切换
+function toggleMagicMode() {
+  magicMode.value = !magicMode.value
+}
 
 // 音乐相关
 const availableBgmList = ref([
   { id: 'garden_music', name: '🎵 庭院音乐' },
-  { id: 'pluck_lute', name: '🎸 古琴弹奏（青花瓷风）' },
-  { id: 'bamboo_flute', name: '🎶 笛子独奏（兰亭序风）' }
+  { id: 'pluck_lute', name: '🎸 青花瓷' },
+  { id: 'bamboo_flute', name: '🎶 兰亭序' }
 ])
 
 // 头像相关
@@ -247,7 +259,7 @@ function handleMusicSelect(bgmId) {
   settingsStore.currentBgmId = bgmId
   const bgm = availableBgmList.value.find(b => b.id === bgmId)
   if (bgm) {
-    settingsStore.bgMusicUrl = `/uploads/bgm/${bgmId}.wav`
+    settingsStore.bgMusicUrl = `/uploads/bgm/${bgmId}.mp3`
   }
   settingsStore.toggleMusic()
   if (bgAudio.value) {
@@ -377,6 +389,21 @@ function handleLogout() {
   color: var(--color-accent);
 }
 
+.magic-btn {
+  background: rgba(201, 169, 110, 0.2);
+  border: 1px solid rgba(201, 169, 110, 0.4);
+  color: var(--color-gold);
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.magic-btn:hover,
+.magic-btn.active {
+  background: rgba(201, 169, 110, 0.4);
+  border-color: rgba(201, 169, 110, 0.6);
+  box-shadow: 0 0 15px rgba(201, 169, 110, 0.3);
+}
+
 .username {
   color: var(--color-text-secondary);
   font-size: 14px;
@@ -483,45 +510,80 @@ function handleLogout() {
 }
 
 /* 各岛屿独立动画相位 - 公转效果 */
-.music-island { animation: orbit-music 12s linear infinite; transform-origin: center center; }
-.novel-island { animation: orbit-novel 15s linear infinite; transform-origin: center center; }
-.video-island { animation: orbit-video 18s linear infinite; transform-origin: center center; }
-.log-island { animation: orbit-log 14s linear infinite; transform-origin: center center; }
-.tool-island { animation: orbit-tool 16s linear infinite; transform-origin: center center; }
+.music-island { animation: orbit-music 20s ease-in-out infinite; }
+.novel-island { animation: orbit-novel 25s ease-in-out infinite; }
+.video-island { animation: orbit-video 22s ease-in-out infinite; }
+.log-island { animation: orbit-log 18s ease-in-out infinite; }
+.tool-island { animation: orbit-tool 24s ease-in-out infinite; }
+
+/* 阵法模式 - 岛屿环形旋转叠加效果 */
+.magic-mode .music-island { animation: orbit-music 20s ease-in-out infinite, circular-magic 30s linear infinite; }
+.magic-mode .novel-island { animation: orbit-novel 25s ease-in-out infinite, circular-magic 30s linear infinite 6s; }
+.magic-mode .video-island { animation: orbit-video 22s ease-in-out infinite, circular-magic 30s linear infinite 12s; }
+.magic-mode .log-island { animation: orbit-log 18s ease-in-out infinite, circular-magic 30s linear infinite 18s; }
+.magic-mode .tool-island { animation: orbit-tool 24s ease-in-out infinite, circular-magic 30s linear infinite 24s; }
+
+@keyframes circular-magic {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(80px, -40px) rotate(90deg); }
+  50% { transform: translate(0, -80px) rotate(180deg); }
+  75% { transform: translate(-80px, -40px) rotate(270deg); }
+  100% { transform: translate(0, 0) rotate(360deg); }
+}
 
 @keyframes orbit-music {
   0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(8px, -12px) rotate(2deg); }
-  50% { transform: translate(0, -20px) rotate(0deg); }
-  75% { transform: translate(-8px, -12px) rotate(-2deg); }
+  12.5% { transform: translate(25px, -40px) rotate(3deg); }
+  25% { transform: translate(45px, -55px) rotate(5deg); }
+  37.5% { transform: translate(25px, -40px) rotate(3deg); }
+  50% { transform: translate(0, -15px) rotate(0deg); }
+  62.5% { transform: translate(-25px, -40px) rotate(-3deg); }
+  75% { transform: translate(-45px, -55px) rotate(-5deg); }
+  87.5% { transform: translate(-25px, -40px) rotate(-3deg); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 @keyframes orbit-novel {
   0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(10px, -15px) rotate(2.5deg); }
-  50% { transform: translate(0, -22px) rotate(0deg); }
-  75% { transform: translate(-10px, -15px) rotate(-2.5deg); }
+  12.5% { transform: translate(30px, -50px) rotate(3.5deg); }
+  25% { transform: translate(55px, -70px) rotate(6deg); }
+  37.5% { transform: translate(30px, -50px) rotate(3.5deg); }
+  50% { transform: translate(0, -20px) rotate(0deg); }
+  62.5% { transform: translate(-30px, -50px) rotate(-3.5deg); }
+  75% { transform: translate(-55px, -70px) rotate(-6deg); }
+  87.5% { transform: translate(-30px, -50px) rotate(-3.5deg); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 @keyframes orbit-video {
   0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(6px, -10px) rotate(1.5deg); }
-  50% { transform: translate(0, -18px) rotate(0deg); }
-  75% { transform: translate(-6px, -10px) rotate(-1.5deg); }
+  12.5% { transform: translate(20px, -35px) rotate(2.5deg); }
+  25% { transform: translate(40px, -50px) rotate(4.5deg); }
+  37.5% { transform: translate(20px, -35px) rotate(2.5deg); }
+  50% { transform: translate(0, -12px) rotate(0deg); }
+  62.5% { transform: translate(-20px, -35px) rotate(-2.5deg); }
+  75% { transform: translate(-40px, -50px) rotate(-4.5deg); }
+  87.5% { transform: translate(-20px, -35px) rotate(-2.5deg); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 @keyframes orbit-log {
   0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(12px, -14px) rotate(3deg); }
-  50% { transform: translate(0, -24px) rotate(0deg); }
-  75% { transform: translate(-12px, -14px) rotate(-3deg); }
+  12.5% { transform: translate(35px, -55px) rotate(4deg); }
+  25% { transform: translate(60px, -75px) rotate(7deg); }
+  37.5% { transform: translate(35px, -55px) rotate(4deg); }
+  50% { transform: translate(0, -22px) rotate(0deg); }
+  62.5% { transform: translate(-35px, -55px) rotate(-4deg); }
+  75% { transform: translate(-60px, -75px) rotate(-7deg); }
+  87.5% { transform: translate(-35px, -55px) rotate(-4deg); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 @keyframes orbit-tool {
   0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(9px, -13px) rotate(2deg); }
-  50% { transform: translate(0, -19px) rotate(0deg); }
-  75% { transform: translate(-9px, -13px) rotate(-2deg); }
+  12.5% { transform: translate(22px, -38px) rotate(2.8deg); }
+  25% { transform: translate(42px, -52px) rotate(5deg); }
+  37.5% { transform: translate(22px, -38px) rotate(2.8deg); }
+  50% { transform: translate(0, -14px) rotate(0deg); }
+  62.5% { transform: translate(-22px, -38px) rotate(-2.8deg); }
+  75% { transform: translate(-42px, -52px) rotate(-5deg); }
+  87.5% { transform: translate(-22px, -38px) rotate(-2.8deg); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 

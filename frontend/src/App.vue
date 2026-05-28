@@ -22,19 +22,21 @@ const auth = useAuthStore()
 const showInitialLoading = ref(true)
 
 onMounted(async () => {
-  // 检查token是否过期
-  if (auth.isLoggedIn) {
+  // 检查token是否有效
+  if (auth.token) {
     try {
       await auth.fetchUser()
     } catch {
-      auth.logoutAction()
+      // token无效，只清除本地状态，不显示错误（首次加载时不需要报错）
+      auth.token = ''
+      auth.user = null
+      localStorage.removeItem('token')
     }
   }
 
-  // 如果已登录且在登录页，自动跳转到首页触发加载动画
+  // 如果已登录且在登录页，自动跳转到首页
   if (auth.isLoggedIn && route.path === '/login') {
-    // 等待加载动画完成后跳转到首页
-    // LoadingView 会在动画完成后触发 loaded 事件
+    router.push('/home')
   }
 })
 
@@ -42,9 +44,6 @@ onMounted(async () => {
 function onInitialLoadingComplete() {
   showInitialLoading.value = false
 }
-
-// 当路由跳转到首页时也显示加载动画
-// 这部分由 router.beforeEach 处理
 </script>
 
 <style>

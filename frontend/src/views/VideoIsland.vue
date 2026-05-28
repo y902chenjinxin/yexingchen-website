@@ -13,34 +13,36 @@
       </div>
     </header>
 
-    <main class="content-grid">
-      <div v-if="videoStore.loading" class="loading-placeholder">加载中...</div>
-      <div v-else-if="videoStore.list.length === 0" class="empty-placeholder">
+    <main class="content-table">
+      <el-table :data="videoStore.list" v-loading="videoStore.loading" stripe style="width: 100%">
+        <el-table-column prop="title" label="名称" min-width="150" />
+        <el-table-column prop="cos_url" label="线上地址" min-width="200">
+          <template #default="{ row }">
+            <a v-if="row.cos_url" :href="row.cos_url" target="_blank" class="file-link">{{ row.cos_url }}</a>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="category" label="标签" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.category" size="small" type="info">{{ row.category }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="file_size" label="大小" width="100">
+          <template #default="{ row }">
+            {{ formatSize(row.file_size) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="180" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="copyUrl(row.cos_url)">复制链接</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div v-if="!videoStore.loading && videoStore.list.length === 0" class="empty-placeholder">
         <div class="empty-icon">🎬</div>
         <div class="empty-text">暂无视频，点击上传添加</div>
-      </div>
-      <div v-else v-for="item in videoStore.list" :key="item.id" class="content-card">
-        <div class="card-cover">
-          <img v-if="item.cover_path" :src="item.cover_path" class="cover-img" />
-          <div v-else class="cover-placeholder">🎬</div>
-        </div>
-        <div class="card-info">
-          <div class="card-title">{{ item.title }}</div>
-          <div class="card-meta">
-            <el-tag v-if="item.category" size="small" type="info">{{ item.category }}</el-tag>
-            <span class="card-size">{{ formatSize(item.file_size) }}</span>
-          </div>
-          <div class="card-tags" v-if="item.tags">
-            <el-tag v-for="tag in item.tags.split(',').filter(t=>t)" :key="tag" size="small">{{ tag }}</el-tag>
-          </div>
-          <div class="card-cos" v-if="item.cos_url">
-            <el-link :href="item.cos_url" target="_blank" type="primary" :underline="false" style="font-size: 12px">查看视频链接</el-link>
-          </div>
-        </div>
-        <div class="card-actions">
-          <el-button size="small" @click="copyUrl(item.cos_url)">复制链接</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(item.id)">删除</el-button>
-        </div>
       </div>
     </main>
 
@@ -167,7 +169,20 @@ function formatSize(bytes) {
 .back-btn:hover { color: #8B6BA9; }
 .island-title { font-family: var(--font-serif); font-size: 20px; color: var(--color-text); }
 .header-right { display: flex; gap: 15px; }
-.content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 30px 40px; }
+.content-table {
+  padding: 30px 40px;
+}
+
+.content-table .file-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.content-table .file-link:hover {
+  text-decoration: underline;
+}
+
 .loading-placeholder, .empty-placeholder { grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--color-text-secondary); }
 .empty-icon { font-size: 60px; margin-bottom: 15px; }
 .content-card { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(167, 139, 201, 0.3); border-radius: var(--radius); padding: 15px; transition: all 0.3s; }
@@ -185,6 +200,6 @@ function formatSize(bytes) {
 @media (max-width: 768px) {
   .island-header { flex-direction: column; gap: 15px; padding: 15px 20px; }
   .header-right { width: 100%; flex-direction: column; }
-  .content-grid { padding: 20px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .content-table { padding: 20px; }
 }
 </style>

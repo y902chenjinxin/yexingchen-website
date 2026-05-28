@@ -138,6 +138,10 @@ body {
   color: #1a1a2e !important;
 }
 
+.el-input__inner::placeholder {
+  color: #8B9DAF !important;
+}
+
 .el-input__wrapper:hover {
   border-color: var(--color-accent) !important;
 }
