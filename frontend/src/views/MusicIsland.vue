@@ -180,7 +180,7 @@ function formatSize(bytes) {
 <style scoped>
 .island-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #F5F0FF 0%, #EDE8F7 100%);
+  background: linear-gradient(180deg, #1A1A2E 0%, #141B2D 100%);
   padding-bottom: 40px;
 }
 
@@ -189,8 +189,8 @@ function formatSize(bytes) {
   justify-content: space-between;
   align-items: center;
   padding: 20px 40px;
-  background: rgba(155, 141, 201, 0.15);
-  border-bottom: 1px solid rgba(155, 141, 201, 0.3);
+  background: rgba(26, 58, 74, 0.6);
+  border-bottom: 1px solid rgba(78, 205, 196, 0.2);
 }
 
 .header-left {
@@ -200,19 +200,19 @@ function formatSize(bytes) {
 }
 
 .back-btn {
-  color: var(--color-music);
+  color: var(--color-accent);
   cursor: pointer;
   font-size: 14px;
 }
 
 .back-btn:hover {
-  color: #7A6BA9;
+  color: #fff;
 }
 
 .island-title {
   font-family: var(--font-serif);
   font-size: 20px;
-  color: var(--color-text);
+  color: #E8F4FC;
 }
 
 .header-right {

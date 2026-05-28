@@ -157,12 +157,12 @@ function formatSize(bytes) {
 </script>
 
 <style scoped>
-.island-page { min-height: 100vh; background: linear-gradient(180deg, #FDF8F0 0%, #F7EDE0 100%); padding-bottom: 40px; }
-.island-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(232, 213, 183, 0.3); border-bottom: 1px solid rgba(232, 213, 183, 0.5); }
+.island-page { min-height: 100vh; background: linear-gradient(180deg, #1A1A2E 0%, #141B2D 100%); padding-bottom: 40px; }
+.island-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(26, 58, 74, 0.6); border-bottom: 1px solid rgba(78, 205, 196, 0.2); }
 .header-left { display: flex; align-items: center; gap: 20px; }
-.back-btn { color: #B8956A; cursor: pointer; font-size: 14px; }
-.back-btn:hover { color: #A67C52; }
-.island-title { font-family: var(--font-serif); font-size: 20px; color: var(--color-text); }
+.back-btn { color: var(--color-accent); cursor: pointer; font-size: 14px; }
+.back-btn:hover { color: #fff; }
+.island-title { font-family: var(--font-serif); font-size: 20px; color: #E8F4FC; }
 .header-right { display: flex; gap: 15px; }
 .content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 30px 40px; }
 .content-table {

@@ -125,12 +125,12 @@ function formatUrl(url) {
 </script>
 
 <style scoped>
-.island-page { min-height: 100vh; background: linear-gradient(180deg, #FDF5F0 0%, #F5EDE5 100%); padding-bottom: 40px; }
-.island-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(212, 165, 116, 0.2); border-bottom: 1px solid rgba(212, 165, 116, 0.3); }
+.island-page { min-height: 100vh; background: linear-gradient(180deg, #1A1A2E 0%, #141B2D 100%); padding-bottom: 40px; }
+.island-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(26, 58, 74, 0.6); border-bottom: 1px solid rgba(78, 205, 196, 0.2); }
 .header-left { display: flex; align-items: center; gap: 20px; }
-.back-btn { color: var(--color-tool); cursor: pointer; font-size: 14px; }
-.back-btn:hover { color: #B88B5A; }
-.island-title { font-family: var(--font-serif); font-size: 20px; color: var(--color-text); }
+.back-btn { color: var(--color-accent); cursor: pointer; font-size: 14px; }
+.back-btn:hover { color: #fff; }
+.island-title { font-family: var(--font-serif); font-size: 20px; color: #E8F4FC; }
 .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding: 30px 40px; }
 .tool-icon-cell { margin-right: 8px; }
 
