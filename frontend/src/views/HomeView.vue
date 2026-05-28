@@ -83,6 +83,20 @@
 
     <!-- 主内容：浮空岛屿 -->
     <main class="islands-container" :class="{ 'magic-mode': magicMode }">
+      <!-- 灵气连线层 -->
+      <svg v-if="magicMode" class="magic-links" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <line x1="15%" y1="75%" x2="50%" y2="25%" class="magic-line" />
+        <line x1="50%" y1="25%" x2="85%" y2="55%" class="magic-line" />
+        <line x1="85%" y1="55%" x2="75%" y2="85%" class="magic-line" />
+        <line x1="75%" y1="85%" x2="25%" y2="80%" class="magic-line" />
+        <line x1="25%" y1="80%" x2="15%" y2="75%" class="magic-line" />
+        <circle cx="15%" cy="75%" r="1" class="magic-node" />
+        <circle cx="50%" cy="25%" r="1" class="magic-node" />
+        <circle cx="85%" cy="55%" r="1" class="magic-node" />
+        <circle cx="75%" cy="85%" r="1" class="magic-node" />
+        <circle cx="25%" cy="80%" r="1" class="magic-node" />
+      </svg>
+
       <div class="island music-island" @click="router.push('/island/music')">
         <div class="island-wrapper">
           <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
@@ -457,6 +471,24 @@ function handleLogout() {
   min-height: calc(100vh - 200px);
 }
 
+/* 阵法模式背景灵气光晕 */
+.magic-mode .islands-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 300px 200px at 15% 70%, rgba(78, 205, 196, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 250px 180px at 85% 50%, rgba(201, 169, 110, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 200px 150px at 50% 20%, rgba(155, 141, 201, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  animation: magic-aura 6s ease-in-out infinite;
+}
+
+@keyframes magic-aura {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 /* 岛屿卡片 - 2.5D立体效果 */
 .island {
   position: relative;
@@ -508,9 +540,77 @@ function handleLogout() {
 
 .island-subtitle {
   font-size: 12px;
-  color: #4a5568;
+  color: rgba(255,255,255,0.6);
   margin-top: 4px;
-  opacity: 0.8;
+}
+
+/* 岛屿底部灵气光环 */
+.island::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 40px;
+  background: radial-gradient(ellipse, rgba(78, 205, 196, 0.2) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(8px);
+  animation: pulse-glow 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: translateX(-50%) scale(0.9); }
+  50% { opacity: 0.7; transform: translateX(-50%) scale(1.1); }
+}
+
+.music-island::after { background: radial-gradient(ellipse, rgba(155, 141, 201, 0.3) 0%, transparent 70%); }
+.novel-island::after { background: radial-gradient(ellipse, rgba(232, 213, 183, 0.25) 0%, transparent 70%); }
+.video-island::after { background: radial-gradient(ellipse, rgba(167, 139, 201, 0.3) 0%, transparent 70%); }
+.log-island::after { background: radial-gradient(ellipse, rgba(143, 188, 143, 0.25) 0%, transparent 70%); }
+.tool-island::after { background: radial-gradient(ellipse, rgba(212, 165, 116, 0.3) 0%, transparent 70%); }
+
+.island:hover::after {
+  opacity: 0.9;
+  transform: translateX(-50%) scale(1.3);
+  animation: none;
+  filter: blur(4px) brightness(1.5);
+}
+
+/* 灵气连线 */
+.magic-links {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.magic-mode .magic-links {
+  opacity: 1;
+}
+
+.magic-line {
+  stroke: rgba(78, 205, 196, 0.25);
+  stroke-width: 0.5;
+  stroke-dasharray: 3, 6;
+  animation: flow-line 3s linear infinite;
+}
+
+.magic-node {
+  fill: rgba(78, 205, 196, 0.4);
+  animation: node-pulse 2s ease-in-out infinite;
+}
+
+@keyframes flow-line {
+  to { stroke-dashoffset: -18; }
+}
+
+@keyframes node-pulse {
+  0%, 100% { opacity: 0.4; r: 1; }
+  50% { opacity: 0.8; r: 1.5; }
 }
 
 /* 各岛屿独立动画相位 - 公转效果 */
