@@ -7,8 +7,39 @@ from app.schemas.common import *
 from app.utils.security import get_current_user, require_super_admin
 from app.models.user import User
 from app.services.log_service import log_action
+from app.schemas.common import UserCreateRequest
+
+from app.utils.security import get_password_hash
 
 router = APIRouter(prefix="/api/admin", tags=["管理员"])
+
+
+@router.post("/users", response_model=ResponseBase)
+async def create_user(
+    req: UserCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_super_admin)
+):
+    # 检查邮箱是否已存在
+    existing = db.query(User).filter(User.email == req.email).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该邮箱已注册")
+
+    user = User(
+        email=req.email,
+        password_hash=get_password_hash(req.password),
+        role=req.role,
+        status=req.status,
+        allowed_islands=req.allowed_islands
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    log_action(db, current_user["user_id"], "create", target_type="user", target_id=user.id,
+                detail=f"新增用户 {user.email}")
+
+    return ResponseBase(msg="用户创建成功")
 
 
 @router.get("/users", response_model=ResponseBase)

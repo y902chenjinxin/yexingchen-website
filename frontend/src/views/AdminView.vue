@@ -5,13 +5,21 @@
         <span class="back-btn" @click="router.push('/home')">← 返回主页</span>
         <span class="admin-title">🔧 管理后台</span>
       </div>
+      <div class="header-right">
+        <el-input v-model="searchQuery" placeholder="搜索邮箱" clearable style="width: 200px" @clear="fetchUsers" @keyup.enter="fetchUsers">
+          <template #append>
+            <el-button :icon="Search" @click="fetchUsers" />
+          </template>
+        </el-input>
+        <el-button type="primary" @click="showAddDialog = true">新增用户</el-button>
+      </div>
     </header>
 
     <main class="admin-content">
       <!-- 用户管理 -->
       <div class="section">
         <div class="section-title">用户管理</div>
-        <el-table :data="users" stripe style="width: 100%" v-loading="loading">
+        <el-table :data="filteredUsers" stripe style="width: 100%" v-loading="loading">
           <el-table-column prop="email" label="邮箱" min-width="200" />
           <el-table-column prop="role" label="角色" width="120">
             <template #default="{ row }">
@@ -45,12 +53,30 @@
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
               <template v-if="row.status === 'pending'">
-                <el-button size="small" type="success" @click="handleApprove(row.id)">通过</el-button>
-                <el-button size="small" type="danger" @click="handleReject(row.id)">拒绝</el-button>
+                <el-dropdown trigger="click" @command="(cmd) => handleCommand(row.id, cmd)">
+                  <el-button size="small">
+                    操作 <el-icon class="el-icon--right"><CaretBottom /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="approve">审核通过</el-dropdown-item>
+                      <el-dropdown-item command="reject">审核不通过</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
               <template v-else>
-                <el-button size="small" @click="handleEditUser(row)">编辑</el-button>
-                <el-button size="small" type="danger" @click="handleDeleteUser(row.id)">删除</el-button>
+                <el-dropdown trigger="click" @command="(cmd) => handleCommand(row.id, cmd)">
+                  <el-button size="small">
+                    编辑 <el-icon class="el-icon--right"><CaretBottom /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="edit">修改</el-dropdown-item>
+                      <el-dropdown-item command="delete" style="color: #F56C6C;">删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </template>
           </el-table-column>
@@ -89,23 +115,50 @@
         <el-button type="primary" @click="handleSaveEdit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 新增用户弹窗 -->
+    <el-dialog v-model="showAddDialog" title="新增用户" width="400px">
+      <el-form :model="addForm" label-width="80px">
+        <el-form-item label="邮箱">
+          <el-input v-model="addForm.email" placeholder="请输入邮箱" clearable />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input v-model="addForm.password" type="password" placeholder="请输入密码" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleAddUser">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { Search, CaretBottom } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserList, approveUser, rejectUser, updateUser, deleteUser } from '@/api/admin'
+import { getUserList, addUser, approveUser, rejectUser, updateUser, deleteUser } from '@/api/admin'
 
 const router = useRouter()
 const users = ref([])
 const loading = ref(false)
+const searchQuery = ref('')
 const showEditDialog = ref(false)
+const showAddDialog = ref(false)
 const editUserId = ref(null)
+const addForm = ref({ email: '', password: '' })
 const editForm = ref({ role: 'normal', status: 'approved', islands: [] })
 
 const allIslands = ['music', 'novel', 'video', 'diary', 'tools']
+
+// 搜索过滤
+const filteredUsers = computed(() => {
+  if (!searchQuery.value) return users.value
+  const q = searchQuery.value.toLowerCase()
+  return users.value.filter(u => u.email.toLowerCase().includes(q))
+})
 
 onMounted(() => { fetchUsers() })
 
@@ -116,6 +169,20 @@ async function fetchUsers() {
     users.value = res.data.list
   } catch { /* 错误已由api拦截器处理 */ }
   finally { loading.value = false }
+}
+
+// 下拉菜单命令处理
+async function handleCommand(id, command) {
+  if (command === 'approve') {
+    await handleApprove(id)
+  } else if (command === 'reject') {
+    await handleReject(id)
+  } else if (command === 'edit') {
+    const user = users.value.find(u => u.id === id)
+    if (user) handleEditUser(user)
+  } else if (command === 'delete') {
+    await handleDeleteUser(id)
+  }
 }
 
 async function handleApprove(id) {
@@ -166,6 +233,20 @@ async function handleDeleteUser(id) {
     ElMessage.success('删除成功')
     fetchUsers()
   } catch { /* 用户取消 */ }
+}
+
+async function handleAddUser() {
+  if (!addForm.value.email || !addForm.value.password) {
+    ElMessage.warning('请填写邮箱和密码')
+    return
+  }
+  try {
+    await addUser({ email: addForm.value.email, password: addForm.value.password })
+    ElMessage.success('用户创建成功')
+    showAddDialog.value = false
+    addForm.value = { email: '', password: '' }
+    fetchUsers()
+  } catch { /* 错误已由api拦截器处理 */ }
 }
 
 function getStatusType(status) {

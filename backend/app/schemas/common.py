@@ -51,6 +51,14 @@ class LoginResponse(BaseModel):
 
 
 # ========== 用户管理 ==========
+class UserCreateRequest(BaseModel):
+    email: EmailStr
+    password: str
+    role: Optional[str] = "normal"
+    status: Optional[str] = "approved"
+    allowed_islands: Optional[str] = "music,novel,video,diary,tools"
+
+
 class UserUpdateRequest(BaseModel):
     role: Optional[str] = None
     status: Optional[str] = None
