@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import os
+import math
 from app.database import get_db
 from app.schemas.common import *
 from app.utils.security import get_current_user, require_super_admin
@@ -19,6 +22,45 @@ async def get_bg_music(
     return ResponseBase(data={
         "bg_music": setting.value if setting else "/music/default-bg.mp3"
     })
+
+
+@router.get("/bg_music/stream/{bgm_id}")
+async def stream_bgm(bgm_id: str):
+    """
+    流式播放音乐，自动检测文件真实格式（WAV vs MP3）
+    无需认证，因为音频文件是公开的
+    """
+    bgm_path = os.path.join(os.path.dirname(__file__), "..", "..", "uploads", "bgm", f"{bgm_id}.mp3")
+
+    if not os.path.exists(bgm_path):
+        raise HTTPException(status_code=404, detail="音乐文件不存在")
+
+    # 检测文件真实格式
+    with open(bgm_path, 'rb') as f:
+        header = f.read(12)
+
+    is_wav = header[0:4] == b'RIFF' and header[8:12] == b'WAVE'
+    content_type = "audio/wav" if is_wav else "audio/mpeg"
+
+    file_size = os.path.getsize(bgm_path)
+
+    async def iterfile():
+        with open(bgm_path, 'rb') as f:
+            while True:
+                chunk = f.read(81920)
+                if not chunk:
+                    break
+                yield chunk
+
+    return StreamingResponse(
+        iterfile(),
+        media_type=content_type,
+        headers={
+            "Content-Length": str(file_size),
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "no-cache"
+        }
+    )
 
 
 @router.put("/bg_music", response_model=ResponseBase)

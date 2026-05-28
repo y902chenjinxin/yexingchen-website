@@ -259,12 +259,16 @@ function handleMusicSelect(bgmId) {
   settingsStore.currentBgmId = bgmId
   const bgm = availableBgmList.value.find(b => b.id === bgmId)
   if (bgm) {
-    settingsStore.bgMusicUrl = `/uploads/bgm/${bgmId}.mp3`
+    settingsStore.bgMusicUrl = `/api/settings/bg_music/stream/${bgmId}`
   }
-  settingsStore.toggleMusic()
+  // 确保音乐播放状态为开启
+  settingsStore.musicPlaying = true
   if (bgAudio.value) {
     bgAudio.value.src = settingsStore.bgMusicUrl
-    bgAudio.value.play().catch(() => {})
+    bgAudio.value.load()
+    setTimeout(() => {
+      bgAudio.value?.play().catch(() => {})
+    }, 200)
   }
 }
 
