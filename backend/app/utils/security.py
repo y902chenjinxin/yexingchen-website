@@ -47,12 +47,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     payload = decode_token(token)
     user_id = payload.get("user_id")
     role = payload.get("role")
+    is_super_admin = payload.get("is_super_admin")
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的token",
         )
-    return {"user_id": user_id, "role": role}
+    return {"user_id": user_id, "role": role, "is_super_admin": is_super_admin}
 
 
 async def get_current_active_user(current_user: dict = Depends(get_current_user)) -> dict:
@@ -64,11 +65,15 @@ def require_super_admin(
     db: Session = Depends(get_db)
 ):
     """检查是否为超级管理员，支持 role='admin' 或 is_super_admin=1"""
-    # 先检查 token 中的 role
+    # 优先检查 token 中的 is_super_admin
+    if current_user.get("is_super_admin") == 1:
+        return current_user
+
+    # 检查 token 中的 role
     if current_user.get("role") in ("admin", "super_admin"):
         return current_user
 
-    # 检查数据库中的 is_super_admin 字段
+    # 最后检查数据库（兼容旧token）
     from app.models.user import User
     user = db.query(User).filter(User.id == current_user["user_id"]).first()
     if user and user.is_super_admin == 1:
