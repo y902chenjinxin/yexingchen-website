@@ -64,7 +64,8 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
                 "nickname": user.nickname,
                 "role": user.role,
                 "status": user.status,
-                "allowed_islands": user.allowed_islands
+                "allowed_islands": user.allowed_islands,
+                "is_super_admin": user.is_super_admin
             }
         }
     )
