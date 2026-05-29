@@ -68,6 +68,10 @@
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
+
+  /* ========== 仙气/灵气特效色 ========== */
+  --color-qi-primary: #5DE0D8;  /* 仙气飘飘主色 */
+  --island-glow-color: rgba(78, 205, 196, 0.3);  /* 岛屿光晕颜色 */
 }
 
 /* ========== 深色主题（如需） ========== */

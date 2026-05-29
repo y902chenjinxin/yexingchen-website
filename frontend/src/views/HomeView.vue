@@ -305,8 +305,16 @@ function handleDropdownCommand(command) {
 }
 
 function confirmAvatar() {
-  showAvatarDialog.value = false
-  ElMessage.success('头像已更新')
+  // 保存头像选择
+  auth.updateMe({ avatar_id: selectedAvatar.value })
+    .then(() => {
+      auth.fetchUser()
+      ElMessage.success('头像已更新')
+      showAvatarDialog.value = false
+    })
+    .catch(() => {
+      ElMessage.error('头像更新失败')
+    })
 }
 
 function confirmPassword() {
@@ -322,9 +330,20 @@ function confirmPassword() {
     ElMessage.warning('两次密码不一致')
     return
   }
-  // TODO: 调用修改密码API
-  ElMessage.success('密码修改成功')
-  showPasswordDialog.value = false
+  if (passwordForm.value.newPassword.length < 8) {
+    ElMessage.warning('新密码长度至少8位')
+    return
+  }
+  // 调用修改密码API
+  auth.changePassword(passwordForm.value.oldPassword, passwordForm.value.newPassword)
+    .then(() => {
+      ElMessage.success('密码修改成功')
+      showPasswordDialog.value = false
+      passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
+    })
+    .catch((err) => {
+      ElMessage.error(err.message || '密码修改失败')
+    })
 }
 
 function handleLogout() {

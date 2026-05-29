@@ -19,12 +19,14 @@ app = FastAPI(
     redoc_url="/redoc" if os.environ.get("ENV") != "production" else None,
 )
 
-# CORS
+# CORS - 严格配置，禁止通配符
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "https://yexingchen.cn").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
