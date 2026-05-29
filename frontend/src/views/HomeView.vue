@@ -8,6 +8,13 @@
       <div class="cloud cloud-4"></div>
     </div>
 
+    <!-- 阵法符文层 -->
+    <div class="array-symbol-layer">
+      <div class="array-symbol array-symbol-1"></div>
+      <div class="array-symbol array-symbol-2"></div>
+      <div class="array-symbol array-symbol-3"></div>
+    </div>
+
     <!-- 顶栏 -->
     <header class="top-bar">
       <div class="top-bar-left">
@@ -246,6 +253,16 @@ function toggleMagicMode() {
   magicMode.value = !magicMode.value
 }
 
+// 十二时辰动态背景更新
+function updateAtmosphereTheme() {
+  const hour = new Date().getHours()
+  const themeIndex = hour % 12
+  const root = document.documentElement
+  root.style.setProperty('--color-bg-current', `var(--color-bg-theme-${themeIndex})`)
+  root.style.setProperty('--color-glow-current', `var(--color-glow-theme-${themeIndex})`)
+  root.style.setProperty('--color-cloud-current', `var(--color-cloud-theme-${themeIndex})`)
+}
+
 // 音乐相关
 const availableBgmList = ref([
   { id: 'garden_music', name: '🎵 庭院音乐' },
@@ -274,6 +291,10 @@ const passwordForm = ref({
 })
 
 onMounted(async () => {
+  // 更新十二时辰动态背景
+  updateAtmosphereTheme()
+  setInterval(updateAtmosphereTheme, 60000)
+
   await settingsStore.fetchBgMusic()
   setTimeout(() => {
     bgAudio.value?.play().catch(() => {})
@@ -392,29 +413,88 @@ function getDecoParticleStyle(i) {
 <style scoped>
 .home-page {
   min-height: 100vh;
-  background: var(--color-bg-dark);
+  background: var(--color-bg-current);
   position: relative;
   overflow: hidden;
+  transition: background 1s ease;
 }
 
-/* 云海背景 */
+/* 云海背景 - 使用十二时辰变量 */
 .cloud-sea {
-  position: absolute;
+  position: fixed;
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 1;
 }
 
 .cloud {
   position: absolute;
-  background: radial-gradient(ellipse at center, rgba(201, 169, 110, 0.08) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, var(--color-cloud-current) 0%, transparent 70%);
   border-radius: 50%;
+  transition: background 1s ease;
 }
 
 .cloud-1 { width: 400px; height: 200px; top: 20%; left: -5%; animation: cloud-drift 25s linear infinite; }
 .cloud-2 { width: 300px; height: 150px; top: 50%; left: 30%; animation: cloud-drift 30s linear infinite 5s; }
 .cloud-3 { width: 500px; height: 250px; top: 70%; left: 60%; animation: cloud-drift 20s linear infinite 10s; }
 .cloud-4 { width: 350px; height: 180px; top: 85%; left: -10%; animation: cloud-drift 28s linear infinite 3s; }
+
+@keyframes cloud-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(50px); }
+}
+
+/* 阵法符文层 */
+.array-symbol-layer {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.04;
+}
+
+.array-symbol {
+  position: absolute;
+  border: 1px solid var(--color-gold);
+  border-radius: 50%;
+  animation: array-rotate 240s linear infinite;
+}
+
+.array-symbol-1 {
+  width: 600px;
+  height: 600px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.array-symbol-2 {
+  width: 400px;
+  height: 400px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-direction: reverse;
+  animation-duration: 180s;
+  opacity: 0.6;
+}
+
+.array-symbol-3 {
+  width: 800px;
+  height: 800px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-duration: 300s;
+  opacity: 0.3;
+}
+
+@keyframes array-rotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
 
 /* 顶栏 */
 .top-bar {
@@ -610,16 +690,10 @@ function getDecoParticleStyle(i) {
   animation-play-state: paused;
 }
 
-/* 悬停时岛屿3D翻转 */
+/* 悬停时岛屿上浮+发光（移除翻转） */
 .island-pos:hover .island {
-  animation: self-rotate 1.5s ease-in-out forwards;
-  filter: drop-shadow(0 0 30px var(--color-gold));
-}
-
-@keyframes self-rotate {
-  0% { transform: rotateY(0deg) scale(1.1); }
-  50% { transform: rotateY(180deg) scale(1.15); }
-  100% { transform: rotateY(360deg) scale(1.1); }
+  filter: drop-shadow(0 0 30px var(--color-glow-current));
+  transform: translateY(-20px) scale(1.05);
 }
 
 /* 岛屿卡片 */

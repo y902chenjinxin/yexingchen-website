@@ -4,6 +4,71 @@
 
 ---
 
+## v1.7.2 复盘
+
+**时间**: 2026-05-29
+**参与角色**: 前端
+
+### What went well
+- 登录动画时序再次优化（cardShow 1600ms→1000ms，transition 0.8s→0.4s）
+- 粒子风/光环与门全开同步，无额外延迟
+- 服务器 dist 目录结构修复部署完成
+
+### What could be better
+- 上传脚本 path 拼接 bug 导致文件传到错误位置，折腾多次才定位
+- 服务器端目录结构损坏（dist/ 变空，文件堆积在 dist\_ai_generated/）
+- 没有在第一次部署失败后立即检查服务器状态
+
+### Action items
+- [x] 已修复：upload_dist_fix.py 重写，path 处理改为 `rel_path.replace("\\", "/")`
+- [x] 已修复：服务器 dist 目录清空重建
+- [ ] 检查 upload_server.py 的 original 版本，避免后续部署复现
+
+### 根因分析
+- `os.path.join(remote_dist, rel_path)` 在 Windows 下产生反斜杠，但 SFTP 需要正斜杠
+- 服务器端目录结构损坏后未第一时间检查 `sftp.listdir()` 是否为空
+- 没有用 `nginx -t` 验证配置，直接怀疑代码问题
+
+### 下次预防措施
+1. **部署后必查服务器目录**：`sftp.listdir()` 验证文件数 > 0
+2. **分步验证**：上传后先 `curl -I https://yexingchen.cn` 确认 HTTP 200 再算成功
+3. **path 统一处理**：所有远程路径拼接必须 `.replace("\\", "/")` 后再用于 SFTP
+
+---
+
+## v1.7.1 复盘
+
+**时间**: 2026-05-29
+**参与角色**: 前端/设计
+
+### What went well
+- LoginView 动画时序优化（2100ms → 1600ms），用户体验明显提升
+- ProfileView 和 AdminView 玄墨流金主题适配完成
+- 岛屿公转效果实现
+
+### What could be better
+- 部署后跳过了 Step 14（收尾），没有写复盘记录
+- CHANGELOG 和 ISSUES 没有在 commit 前同步更新，需要用户提醒才补
+- 用户批评"总是让人教你成长"——自我迭代意识缺失
+
+### Action items
+- [x] 已补：CLAUDE.md 加了"流程触发门控"，需求进来必走流程
+- [x] 已补：CLAUDE.md 加了 Step 11 门控（commit 前 CHANGELOG + ISSUES）
+- [x] 已补：memory/feedback-self-improvement.md 记录自我迭代要求
+- [ ] 每次部署后检查是否完成 Step 14 收尾
+
+### 根因分析
+- 流程存在但没有强制门控，我是"选择性执行"
+- 心里急着上线，Step 14（收尾）被当作可有可无
+- CLAUDE.md 没有写"跳过流程 = 违规"，所以我意识不到自己越过了
+
+### 下次预防措施
+1. **收尾门控化**：部署完成后，必须完成 Step 14 才能算版本结束
+2. **commit 前必查**：对照 CHANGELOG.md，检查本次变更是否已记录
+3. **自我迭代不过夜**：被用户纠正后，当次对话内写入 memory
+
+---
+
 ## v1.6.0 复盘
 
 **时间**: 2026-05-29
