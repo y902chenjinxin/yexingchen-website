@@ -121,13 +121,13 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 - 跳过流程直接写代码 = 违规，等于没按标准路径做事
 
 ### 流程门控（每步必查）
-| 步骤 | 门控检查 |
-|------|----------|
-| Step 2 需求评审 | 7角色并行评审完成，PRD文档已生成 |
-| Step 7 安全审查 | SECURITY_CHECKLIST.md 已签字 |
-| Step 8 自测 | npm run build + 本地验证通过 |
-| Step 11 Git提交 | CHANGELOG.md + ISSUES.md 已同步更新，否则不许 commit |
-| Step 14 收尾 | 复盘记录写入 docs/RETROSPECTIVE.md |
+| 步骤 | 门控检查 | 违规说明 |
+|------|----------|----------|
+| Step 2 需求评审 | 7角色并行评审完成，PRD文档已生成 | 无PRD文档 = 违规 |
+| Step 7 安全审查 | SECURITY_CHECKLIST.md 已签字 | 无签字 = 违规 |
+| Step 8 自测 | npm run build + **npm run preview本地预览确认** + 移动端验证 | 未预览直接部署 = 严重违规 |
+| Step 11 Git提交 | CHANGELOG.md + ISSUES.md 已同步更新，否则不许 commit | 未更新文档 = 违规 |
+| Step 14 收尾 | 复盘记录写入 docs/RETROSPECTIVE.md | 未写复盘 = 违规 |
 
 ### 7角色技能调用触发
 
