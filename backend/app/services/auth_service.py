@@ -7,8 +7,13 @@ from app.config import settings
 from app.services.email_service import send_verification_email
 
 
-def generate_code(length: int = 6) -> str:
-    return "".join(random.choices(string.digits, k=length))
+def generate_code(length: int = 4) -> str:
+    """生成混合字母数字验证码（防暴力破解）"""
+    # 使用大小写字母+数字，4位至少16万组合
+    chars = string.ascii_uppercase + string.digits
+    # 排除易混淆字符：0, O, I, 1, L
+    safe_chars = chars.replace('0', '').replace('O', '').replace('I', '').replace('1', '').replace('L', '')
+    return "".join(random.choices(safe_chars, k=length))
 
 
 def send_register_code(db: Session, email: str) -> tuple[bool, str]:

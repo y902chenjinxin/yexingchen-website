@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getBgMusic, updateBgMusic } from '@/api/settings'
+import { getBgMusic } from '@/api/settings'
 
 export const useSettingsStore = defineStore('settings', () => {
   const bgMusicUrl = ref('')
