@@ -90,6 +90,26 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 - 岛屿阵法模式（环形旋转叠加）✓
 - 5个岛屿改为数据列表 ✓
 
+## 强制要求
+
+### 文档同步
+- **每次 commit 前必须检查并更新 `docs/CHANGELOG.md` 和 `docs/ISSUES.md`**
+- 不得等用户提醒，代码改动和文档更新必须同步完成
+- 验证方式：检查 git log 的提交信息是否与 CHANGELOG.md 记录一致
+
+### Git 规范
+- 部署前必须先 commit，不是部署后
+- 每次部署必须打 Tag
+- 凭证不得硬编码，从环境变量读取
+
+### 部署流程
+1. 构建：`cd frontend && npm run build`
+2. 上传：`python upload_server.py`
+3. 重启：`python restart_pm2.py`
+4. 验证：`node test_site.cjs`
+
+---
+
 ## Configuration
 
 Backend environment variables (copy from `.env.example` or set directly):
