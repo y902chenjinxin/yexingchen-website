@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-## 完整开发流程（13步）
+## 完整开发流程（14步）
 
 **触发条件**：每次提出方案（包括用户主动提出或我方建议）时，自动触发全角色评审
 
@@ -25,8 +25,9 @@ metadata:
 4. **测试角色必须输出功能验证清单**（格式：[功能点]→[验证操作]→[预期结果]→[优先级]）
 5. **后端必须输出API路由设计+数据模型变更**
 6. **PM必须输出变更影响分析**（涉及子系统、回归测试模块）
-7. **同步更新项目记忆** — 记录需求状态（进行中/已完成）
-8. 列出待确认事项给用户
+7. **安全角色必须输出安全风险评估**
+8. **同步更新项目记忆** — 记录需求状态（进行中/已完成）
+9. 列出待确认事项给用户
 
 ## Step 3：用户确认
 - 用户确认评审结论后进入技术方案设计
@@ -35,6 +36,7 @@ metadata:
 - 后端输出：API路由设计 + 数据模型变更 + 时序图
 - 前端输出：Design Token变更说明 + 组件接口
 - 架构师确认技术风险
+- 安全方案（如涉及认证、敏感数据）
 
 ## Step 5：开发实施
 - 按优先级 P0→P1→P2 实施
@@ -45,11 +47,20 @@ metadata:
 - 所有变更通过PR合并 ✅ 已建立
 - PR必须包含：变更说明、测试结果、影响范围 ✅ PR模板已创建
 - 核心模块需2人review同意
-- **运行安全扫描**（npm audit）
 - **分支模型**：feature/xxx → master ✅ 已建立
 - **CI自动化**：GitHub Actions构建+lint验证 ✅ 已建立
 
-## Step 7：自测（自动化）
+## Step 7：安全及私密审查（强制）
+- **凭证扫描**：代码中不得硬编码密码/密钥，使用 `get_password()` 或环境变量
+- **依赖审计**：`npm audit --audit-level=high` 和 `pip audit`
+- **敏感信息检查**：Git history / diff 中不得包含真实凭证
+- **JWT安全验证**：secret key 必须从环境变量读取，不得有默认值
+- **文件上传安全**：路径穿越防护、内容类型检测
+- **XSS防护**：用户输入使用 `textContent` 而非 `innerHTML`
+- **登录限流**：验证限流中间件已正确集成
+- **输出**：`docs/SECURITY_CHECKLIST.md` 签字确认
+
+## Step 8：自测（自动化）
 - 本地构建 `npm run build`
 - 单元测试（前端Vitest + 后端pytest）
 - E2E测试（test_site.cjs改造为预部署验证脚本）
@@ -57,35 +68,35 @@ metadata:
 - **移动端viewport测试**（375px/768px/1024px）
 - **我必须先自测验证**，确认功能正常后才通知用户体验
 
-## Step 8：预部署验证（Staging）
+## Step 9：预部署验证（Staging）
 - 部署到staging环境（/var/www/yexingchen/staging/）
 - 完整回归测试（对照Step2输出的功能验证清单）
 - 数据库migration（如有变更）
 - **我必须先自测验证**，确认功能正常后才通知用户体验
 
-## Step 9：用户验收
+## Step 10：用户验收
 - 用户在staging环境体验
 - OK后进入部署
 
-## Step 10：Git提交+Tag
+## Step 11：Git提交+Tag
 - **部署前必须先git提交**，不是部署后
 - 采用Conventional Commits格式：`feat:`/`fix:`/`docs:`/`refactor:`/`test:`
 - 提交信息关联Issue（如有）
 - **每次部署打Tag**：与PRD文档版本严格对齐（如`v1.6.0`）
 - 提交信息记录本次变更内容
 
-## Step 11：部署生产
+## Step 12：部署生产
 - 部署前先备份远程dist：`/var/www/yexingchen/dist.bak.{date}`
 - 上传到服务器 `/var/www/yexingchen/dist/`
 - nginx重载
 - 健康检查验证 `/api/health`
 - 验证测试
 
-## Step 12：回滚方案
+## Step 13：回滚方案
 - 记录回滚命令到 `docs/ROLLBACK.md`
 - 回滚后验证
 
-## Step 13：收尾
+## Step 14：收尾
 - 更新项目记忆（需求完成状态）
 - 更新CHANGELOG.md（变更内容、时间、负责人）
 - 更新PRD文档（补充开发过程中的变更）
@@ -97,9 +108,10 @@ metadata:
 
 1. **凭证不得硬编码**：密码必须从环境变量或.netrc读取，禁止写入代码 ✅ 已修复
 2. **登录限流**：同一IP 5分钟内密码错误5次则封禁 ✅ 已修复（15分钟）
-3. **JWT安全**：token使用httpOnly Cookie，敏感操作验证
+3. **JWT安全**：secret key 必须从环境变量读取，生产环境不得有默认值
 4. **文件上传**：内容类型检测 + UUID存储 + 路径穿越防护
 5. **数据库变更**：必须走migration脚本，禁止直接create_all
+6. **安全审查前不得合入master**：Step 7 安全审查未通过，禁止合并PR
 
 ---
 
