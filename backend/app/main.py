@@ -35,30 +35,16 @@ uploads_dir = os.path.join(os.path.dirname(__file__), "..", "uploads")
 if os.path.exists(uploads_dir):
     app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
-# 注册路由 - API v1版本前缀
-API_V1_PREFIX = "/api/v1"
-
-app.include_router(auth.router, prefix=API_V1_PREFIX)
-app.include_router(admin.router, prefix=API_V1_PREFIX)
-app.include_router(music.router, prefix=API_V1_PREFIX)
-app.include_router(novel.router, prefix=API_V1_PREFIX)
-app.include_router(video.router, prefix=API_V1_PREFIX)
-app.include_router(tool.router, prefix=API_V1_PREFIX)
-app.include_router(log.router, prefix=API_V1_PREFIX)
-app.include_router(search.router, prefix=API_V1_PREFIX)
-app.include_router(settings_router.router, prefix=API_V1_PREFIX)
-
-# 兼容旧路径（未来版本移除）
-LEGACY_PREFIX = "/api"
-app.include_router(auth.router, prefix=LEGACY_PREFIX, tags=["legacy"])
-app.include_router(admin.router, prefix=LEGACY_PREFIX, tags=["legacy"])
-app.include_router(music.router, prefix=LEGACY_PREFIX, tags=["legacy"])
-app.include_router(novel.router, prefix=LEGACY_PREFIX, tags=["legacy"])
-app.include_router(video.router, prefix=LEGACY_PREFIX, tags=["legacy"])
-app.include_router(tool.router, prefix=LEGACY_PREFIX, tags=["legacy"])
-app.include_router(log.router, prefix=LEGACY_PREFIX, tags=["legacy"])
-app.include_router(search.router, prefix=LEGACY_PREFIX, tags=["legacy"])
-app.include_router(settings_router.router, prefix=LEGACY_PREFIX, tags=["legacy"])
+# 注册路由
+app.include_router(auth.router)
+app.include_router(admin.router)
+app.include_router(music.router)
+app.include_router(novel.router)
+app.include_router(video.router)
+app.include_router(tool.router)
+app.include_router(log.router)
+app.include_router(search.router)
+app.include_router(settings_router.router)
 
 
 @app.get("/")
