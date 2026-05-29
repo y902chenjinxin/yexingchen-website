@@ -1,40 +1,64 @@
 /**
- * Design Tokens - 统一颜色/字体/间距变量
- * 所有UI样式应使用此文件中的变量，禁止硬编码颜色值
+ * Design Tokens - 玄墨流金 仙侠风格
+ * 统一颜色/字体/间距变量，禁止硬编码颜色值
  */
 
 :root {
-  /* ========== 核心色系 ========== */
-  --color-primary: #4A6FA5;
-  --color-secondary: #6B8DB5;
-  --color-accent: #7FB3D5;
+  /* ========== 玄墨底色 ========== */
+  --color-bg-dark: #0D0F14;       /* 深墨色主背景 */
+  --color-bg: #12141A;            /* 页面背景 */
+  --color-bg-elevated: #1A1D24;   /* 提升层级背景 */
+  --color-bg-glass: rgba(18, 20, 26, 0.85); /* 玻璃背景 */
 
-  /* ========== 仙侠金 ========== */
-  --color-gold: #C9A962;
-  --color-gold-light: rgba(201, 169, 110, 0.4);
-  --color-gold-gradient: linear-gradient(135deg, #C9A96E 0%, #F0E6C8 50%, #C9A96E 100%);
+  /* ========== 古铜金系 ========== */
+  --color-gold: #C9A86C;           /* 古铜金主色 */
+  --color-gold-light: rgba(201, 168, 108, 0.4);
+  --color-gold-dark: #8B7355;      /* 暗金 */
+  --color-gold-gradient: linear-gradient(135deg, #8B7355 0%, #C9A86C 40%, #E8D4A8 50%, #C9A86C 60%, #8B7355 100%);
+  --color-gold-glow: 0 0 30px rgba(201, 169, 98, 0.3);
 
-  /* ========== 岛屿特色色 ========== */
-  --color-music: #9B8DC9;
-  --color-novel: #E8D5B7;
-  --color-video: #A78BC9;
-  --color-log: #8FBC8F;
-  --color-tool: #D4A574;
+  /* ========== 翡翠点缀 ========== */
+  --color-jade: #4A7C59;           /* 翡翠绿 */
+  --color-jade-light: #6B9B7A;
+  --color-jade-dark: #2D4D38;
+
+  /* ========== 紫霄色 ========== */
+  --color-purple: #8B7AAE;         /* 紫霄 */
+  --color-purple-light: #A899C8;
+  --color-purple-dark: #6B5A8C;
+
+  /* ========== 岛屿特色色（调整） ========== */
+  --color-music: #9B8DC9;          /* 保留紫调 */
+  --color-novel: #D4C4A8;          /* 暖纸色 */
+  --color-video: #A87C9C;          /* 紫薇色 */
+  --color-log: #7A9B7C;            /* 苔绿 */
+  --color-tool: #C49A6C;           /* 琥珀色 */
 
   /* ========== 文字色 ========== */
-  --color-text: #2D3748;
-  --color-text-secondary: #6B7280;
-  --color-text-light: rgba(255, 255, 255, 0.9);
-
-  /* ========== 背景色 ========== */
-  --color-bg: #E8F4FC;
-  --color-bg-dark: #0D1F27;
-  --color-bg-glass: rgba(26, 58, 74, 0.85);
+  --color-text: #E8E4DC;           /* 月白/暖白 */
+  --color-text-secondary: #9A968E; /* 灰茶色 */
+  --color-text-muted: #6A665E;    /* 淡墨 */
+  --color-text-light: rgba(232, 228, 220, 0.9);
 
   /* ========== 功能色 ========== */
-  --color-danger: #DC6B6B;
-  --color-success: #68A978;
-  --color-warning: #E8A838;
+  --color-danger: #C96B6B;
+  --color-success: #6A9B7A;
+  --color-warning: #C9A86C;
+
+  /* ========== 仙气/灵气特效色 ========== */
+  --color-qi-primary: #4A7C59;    /* 灵气主色（非薄荷感翡翠绿） */
+  --color-qi-glow: rgba(74, 124, 89, 0.4);
+  --island-glow-color: rgba(201, 168, 108, 0.2);
+
+  /* ========== 主色调（从蓝灰改为沉稳） ========== */
+  --color-primary: #4A5D6B;       /* 墨蓝 */
+  --color-secondary: #6A7B8B;     /* 灰蓝 */
+  --color-accent: #8B9BAB;         /* 淡灰蓝 */
+
+  /* ========== 核心色系 ========== */
+  --color-primary: #4A5D6B;
+  --color-secondary: #6A7B8B;
+  --color-accent: #8B9BAB;
 
   /* ========== 间距 ========== */
   --space-xs: 4px;
@@ -48,10 +72,20 @@
   --radius-sm: 8px;
   --radius: 16px;
   --radius-lg: 24px;
-  --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  --shadow-glow: 0 0 20px var(--color-gold-light);
+
+  /* 多层阴影深度 */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-glow: 0 0 40px var(--color-qi-glow);
+
+  /* 金色辉光 */
+  --shadow-gold: 0 0 20px rgba(201, 169, 98, 0.25), 0 0 60px rgba(201, 169, 98, 0.1);
+  --shadow-jade: 0 0 20px rgba(74, 124, 89, 0.3);
+
   --transition: all 0.3s ease;
+  --transition-slow: all 0.5s ease;
 
   /* ========== 字体 ========== */
   --font-serif: 'Noto Serif SC', 'Source Han Serif SC', serif;
@@ -68,14 +102,54 @@
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
-
-  /* ========== 仙气/灵气特效色 ========== */
-  --color-qi-primary: #5DE0D8;  /* 仙气飘飘主色 */
-  --island-glow-color: rgba(78, 205, 196, 0.3);  /* 岛屿光晕颜色 */
 }
 
-/* ========== 深色主题（如需） ========== */
+/* ========== 暗色主题 ========== */
 [data-theme="dark"] {
-  --color-bg: var(--color-bg-dark);
-  --color-text: var(--color-text-light);
+  --color-bg: var(--color-bg);
+  --color-text: var(--color-text);
+}
+
+/* ========== Grain Texture Overlay ========== */
+.grain-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* ========== Premium Gold Text Effect ========== */
+.text-gold-premium {
+  background: linear-gradient(135deg, #8B7355 0%, #C9A86C 40%, #E8D4A8 50%, #C9A86C 60%, #8B7355 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 0 20px rgba(201, 169, 98, 0.3));
+}
+
+/* ========== Jade Glow Effect ========== */
+.text-jade {
+  color: var(--color-jade);
+  text-shadow: var(--shadow-jade);
+}
+
+/* ========== Glass Effect ========== */
+.glass {
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(201, 169, 98, 0.1);
+}
+
+/* ========== Deep Shadow Card ========== */
+.card-deep {
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(201, 169, 98, 0.08);
 }
