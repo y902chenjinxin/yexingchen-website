@@ -845,6 +845,14 @@ function handleLogout() {
   backdrop-filter: blur(8px);
   border-top: 1px solid rgba(102, 126, 234, 0.2);
   padding: 10px 20px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 移动端适配 - 避免与系统导航栏重叠 */
+@media (max-width: 768px) {
+  .filing-footer {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 10px));
+  }
 }
 
 .filing-content {
