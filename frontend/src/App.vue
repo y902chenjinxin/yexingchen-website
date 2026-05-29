@@ -1,10 +1,13 @@
 <template>
   <div id="app">
+    <!-- Skip Link键盘导航 -->
+    <a href="#main-content" class="skip-link">跳转到内容</a>
+
     <!-- 全局初始加载动画 -->
     <LoadingView v-if="showInitialLoading" @loaded="onInitialLoadingComplete" />
 
     <!-- 路由视图 -->
-    <router-view v-if="!showInitialLoading" />
+    <router-view v-if="!showInitialLoading" id="main-content" />
   </div>
 </template>
 
@@ -50,5 +53,22 @@ function onInitialLoadingComplete() {
 #app {
   min-height: 100vh;
   background: var(--color-bg);
+}
+
+/* Skip Link键盘导航 - 可访问性 */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: var(--color-bg);
+  padding: 8px 16px;
+  border-radius: 4px;
+  z-index: 9999;
+  transition: top 0.2s;
+}
+.skip-link:focus {
+  top: 10px;
 }
 </style>

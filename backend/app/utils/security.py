@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
+from app.schemas.errors import ErrCode, raise_error
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 security = HTTPBearer()
@@ -37,7 +38,7 @@ def decode_token(token: str) -> dict:
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的token或token已过期",
+            detail={"code": ErrCode.AUTH_INVALID_TOKEN[0], "msg": ErrCode.AUTH_INVALID_TOKEN[1]},
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -51,24 +52,15 @@ async def get_current_user(
     payload = decode_token(token)
     user_id = payload.get("user_id")
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的token",
-        )
+        raise_error(ErrCode.AUTH_INVALID_TOKEN)
 
     # 从数据库校验用户状态（防止JWT payload伪造）
     from app.models.user import User
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户不存在",
-        )
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
     if user.status != "approved":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="账号状态异常",
-        )
+        raise_error(ErrCode.AUTH_USER_STATUS_INVALID)
 
     return {
         "user_id": user.id,
@@ -88,7 +80,4 @@ def require_super_admin(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user.get("role") in ("admin", "super_admin"):
         return current_user
 
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="需要超级管理员权限",
-    )
+    raise_error(ErrCode.AUTH_PERMISSION_DENIED)
