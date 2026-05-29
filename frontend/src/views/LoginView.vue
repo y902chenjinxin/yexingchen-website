@@ -249,19 +249,19 @@ const lightFlowsOff = ref([false, false, false])
 
 onMounted(() => {
   // 动画时序（毫秒）- 优化版：压缩总时长
+  // 动画时序（毫秒）- v1.7.2优化版：卡片提前出现，节奏更紧凑
   const TIMING = {
     lightFlowOff1: 0,
     lightFlowOff2: 150,
     lightFlowOff3: 300,
     gapMist: 450,        // 门缝寒气出现
     doorStart: 600,      // 门开始打开
-    doorPause: 1300,     // 门45度停顿（缩短到0.8s）
+    doorPause: 1300,     // 门45度停顿
     doorResume: 1350,    // 门继续开
-    doorComplete: 1600, // 门全开（0.8s延长改为0.5s）
-    particleWind: 1650, // 粒子风吹出
-    lightRing: 1700,    // 光环涟漪
-    // 去掉震动效果
-    cardShow: 1600       // 登录卡片出现（优化后总2.1s）
+    doorComplete: 1600,  // 门全开
+    particleWind: 1600,  // 粒子风吹出（与门全开同步）
+    lightRing: 1600,     // 光环涟漪（与门全开同步）
+    cardShow: 1000       // 登录卡片出现（优化：门开过程中逐渐显现）
   }
 
   // 光纹逐圈熄灭
@@ -870,7 +870,7 @@ function resetRegister() {
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   opacity: 0;
   transform: translateY(30px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
 /* 金色顶边高光 */
