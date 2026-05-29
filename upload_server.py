@@ -54,9 +54,9 @@ def upload_to_server():
     print(f"上传 {local_dist}/* 到 {remote_dist}/...")
     for root, dirs, files in os.walk(local_dist):
         # 创建远程目录
-        rel_path = os.path.relpath(root, local_dist)
+        rel_path = os.path.relpath(root, local_dist).replace("\\", "/")
         if rel_path != '.':
-            remote_path = os.path.join(remote_dist, rel_path)
+            remote_path = remote_dist + "/" + rel_path
             try:
                 sftp.mkdir(remote_path, 0o755)
             except:
@@ -65,9 +65,9 @@ def upload_to_server():
         for file in files:
             local_file = os.path.join(root, file)
             if rel_path == '.':
-                remote_file = os.path.join(remote_dist, file)
+                remote_file = remote_dist + "/" + file
             else:
-                remote_file = os.path.join(remote_dist, rel_path, file)
+                remote_file = remote_path + "/" + file
             print(f"  上传 {local_file} -> {remote_file}")
             sftp.put(local_file, remote_file)
 

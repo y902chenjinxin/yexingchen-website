@@ -60,6 +60,63 @@ metadata:
 - **登录限流**：验证限流中间件已正确集成
 - **输出**：`docs/SECURITY_CHECKLIST.md` 签字确认
 
+## Step 2：需求评审（PM 技能专项）
+- **PM必须输出"变更影响分析"**：影响子系统列表、需回归测试的模块、需同步更新的文档（CHANGELOG/ISSUES/PRD）、干系人通知清单
+- 评审完成后必须更新 `docs/ISSUES.md` 状态为"评审中"，不得跳过
+- **需求评审前置检查**：
+  - 需求是否关联产品目标？
+  - 需求是否已划分优先级(P0/P1/P2)？
+  - 需求是否已填写"为什么做"（背景和价值）？
+  - 若上述任一缺失，需求打回补充，不得进入评审阶段
+
+**PM必须输出的内容**：
+- PRD文档（如 `docs/PRD_v1.7_SCHEME_REVIEW.md`）
+- 变更影响分析
+- 功能验证清单（格式：[功能点]→[验证操作]→[预期结果]→[优先级]）
+- 产品验收标准（每个功能点的验收条件、成功指标、监控指标）
+
+**UI角色必须参与**：Design Token合规、岛屿颜色映射、玄墨流金禁止项检查
+
+---
+
+## Step 4：技术方案设计
+- 后端输出：API路由设计 + 数据模型变更 + Pydantic Schema草稿 + 错误码清单
+- 前端输出：Design Token变更说明 + 组件接口
+- **架构师确认技术风险**
+  - 输出《跨模块影响分析》：本变更影响哪几个模块，哪些接口需要同步修改
+  - 若变更涉及跨模块，更新 CLAUDE.md 的 Cross-Module Dependencies 矩阵
+  - 若涉及新架构决策，同步记录到 CLAUDE.md 的 ADR 表
+- 安全方案（如涉及认证、敏感数据）
+- **架构门控检查**：是否触及架构门控场景（新增子系统/跨模块数据流/存储结构/外部服务）
+
+---
+
+## Step 7：安全及私密审查（强制）
+- **凭证扫描**：代码中不得硬编码密码/密钥，使用 `get_password()` 或环境变量
+- **依赖审计**：
+  ```bash
+  cd frontend && npm audit --audit-level=high
+  cd backend && pip audit  # 或 safety check
+  ```
+- **敏感信息检查**：Git history / diff 中不得包含真实凭证
+- **JWT安全验证**：secret key 必须从环境变量读取，不得有默认值
+- **文件上传安全**：路径穿越防护、内容类型检测
+- **XSS防护**：用户输入使用 `textContent` 而非 `innerHTML`
+- **登录限流**：验证限流中间件已正确集成
+- **架构安全检查**（新增）：
+  - 新API是否有未受保护的端点
+  - 权限模型变更是否覆盖所有边界情况
+  - 数据流是否经过新外部服务（如COS），是否存在凭证泄露风险
+- **后端专项检查**：
+  - [ ] 所有API路由使用router.prefix检查无重复前缀
+  - [ ] Pydantic Schema的Field()无白名单放大（le约束存在）
+  - [ ] get_password()用于所有密码场景，无明文存储
+  - [ ] 限流中间件在敏感路由正确挂载（注册/登录/修改密码）
+  - [ ] Alembic migration存在且可回滚
+- **输出**：`docs/SECURITY_CHECKLIST.md` 签字确认
+
+---
+
 ## Step 8：自测（自动化）
 - 本地构建 `npm run build`
 - 单元测试（前端Vitest + 后端pytest）
@@ -67,6 +124,74 @@ metadata:
 - 本地启动前后端联调验证 `npm run dev`
 - **移动端viewport测试**（375px/768px/1024px）
 - **我必须先自测验证**，确认功能正常后才通知用户体验
+
+**前端自测增强项**：
+- [ ] `grep -n '#\|rgb(' **/*.vue` 无硬编码hex/rgb（CSS变量门控）
+- [ ] `wc -l frontend/src/views/*.vue` 确认无新增超500行组件
+- [ ] `npm run lint` 通过
+- [ ] 动画seed模式验证：控制台执行 `requestAnimationFrame` 连续10帧，观察是否有random跳动
+- [ ] 移动端(375px)交互验证：点击、输入、提交等核心流程
+
+**后端自测标准**：
+- pytest覆盖率：新功能不得低于70%，核心模块（auth、admin）不低于85%
+- 数据库测试：migration后执行 AlembicCurrentRevision + Downgrade 测试
+- API一致性测试：OpenAPI schema与实际返回对比
+- 限流测试：针对注册/登录接口的压力测试
+
+**E2E失败处理**：
+- 截图保存到 `docs/screenshots/fail-{date}-{step}.png`，log写入 `docs/TEST_FAILURES.md`
+- 不得跳过失败项继续部署，必须修复后重新测试
+- CI中任何job失败，E2E job不执行
+
+---
+
+## Step 12：部署生产
+- 部署前先备份远程dist：`/var/www/yexingchen/dist.bak.{date}`
+- 上传到服务器 `/var/www/yexingchen/dist/`
+- nginx重载
+- 健康检查验证 `/api/health`
+- 验证测试
+
+**部署前健康检查清单**：
+- [ ] 磁盘空间检查: `df -h /var/www` (需保留>1GB)
+- [ ] PM2进程状态: `pm2 status` 确认进程running
+- [ ] 数据库备份: `ssh root@203.195.208.25 "cp /var/www/yexingchen/backend/yexingchen.db /var/www/yexingchen/backend/yexingchen.db.bak.$(date +%Y%m%d%H%M%S)"`
+- [ ] uvicorn日志无ERROR级别报错
+- [ ] nginx配置语法: `nginx -t`
+
+---
+
+## Step 13：回滚方案
+- 记录回滚命令到 `docs/ROLLBACK.md`
+- 回滚后验证
+
+**分层回滚策略**：
+| 故障场景 | 回滚范围 | 优先级 |
+|---------|---------|--------|
+| 前端静态资源白屏 | 仅dist回滚 | P0 |
+| API 5xx错误 | backend回滚+PM2 restart | P0 |
+| 数据库migration失败 | db回滚+暂停migration | P0 |
+| 登录/认证异常 | 检查JWT secret是否变更 | P1 |
+
+**后端独立回滚命令**：
+```bash
+# 后端单一回滚(不动前端)
+ssh root@203.195.208.25 "cp /var/www/yexingchen/backend/yexingchen.db.bak.{timestamp} /var/www/yexingchen/backend/yexingchen.db && pm2 restart yexingchen-backend"
+```
+
+---
+
+## Step 14：收尾
+- 更新项目记忆（需求完成状态）
+- 更新CHANGELOG.md（变更内容、时间、负责人）
+- 更新PRD文档（补充开发过程中的变更）
+- 复盘记录（根因+下次预防措施）写入 `docs/RETROSPECTIVE.md`
+
+**PM复盘内容**（技术复盘之外的独立环节）：
+- 产品目标达成分析（vs 原定KPI）
+- 用户反馈总结
+- 下次产品迭代机会
+写入 `docs/RETROSPECTIVE.md` 的PM节，不只是技术节。
 
 ## Step 9：预部署验证（Staging）
 - 部署到staging环境（/var/www/yexingchen/staging/）
