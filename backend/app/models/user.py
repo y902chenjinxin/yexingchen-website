@@ -11,9 +11,10 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     nickname = Column(String(100), default="")
+    avatar_id = Column(Integer, default=1)  # 1-8对应8个预设头像
     role = Column(String(20), nullable=False, default="user")
-    is_super_admin = Column(Integer, default=0)  # 1=超级管理员, 0=普通用户
-    is_test_user = Column(Integer, default=0)  # 1=测试用户, 0=真实用户
+    is_super_admin = Column(Integer, default=0)
+    is_test_user = Column(Integer, default=0)
     status = Column(String(20), nullable=False, default="pending")
     allowed_islands = Column(String(500), default="music,novel,video,diary,tools")
     last_login_at = Column(DateTime, nullable=True)

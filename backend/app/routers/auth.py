@@ -6,7 +6,7 @@ from app.database import get_db
 from app.schemas.common import *
 from app.services.auth_service import send_register_code, verify_code
 from app.utils.security import verify_password, create_access_token, get_current_user
-from app.utils.rate_limit import login_limiter
+from app.utils.rate_limit import login_limiter, register_limiter
 from app.models.user import User
 from app.services.log_service import log_action
 
@@ -14,7 +14,17 @@ router = APIRouter(prefix="/api/auth", tags=["认证"])
 
 
 @router.post("/register", response_model=ResponseBase)
-async def register(req: RegisterRequest, db: Session = Depends(get_db)):
+async def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
+    client_ip = request.client.host if request.client else ""
+
+    # 检查注册限流
+    rate_check = register_limiter.check_and_record(db, client_ip, req.email)
+    if not rate_check["allowed"]:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"注册过于频繁，请{rate_check['retry_after']}分钟后重试"
+        )
+
     success, msg = send_register_code(db, req.email)
     if not success:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
@@ -114,6 +124,7 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
 
 class UserProfileUpdateRequest(BaseModel):
     nickname: Optional[str] = None
+    avatar_id: Optional[int] = None
 
 
 @router.put("/me", response_model=ResponseBase)
@@ -127,7 +138,10 @@ async def update_me(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
     if req.nickname is not None:
-        user.nickname = req.nickname.strip()[:100]  # 限制100字符
+        user.nickname = req.nickname.strip()[:100]
+
+    if req.avatar_id is not None:
+        user.avatar_id = req.avatar_id
 
     db.commit()
 
@@ -137,6 +151,45 @@ async def update_me(
             "id": user.id,
             "email": user.email,
             "nickname": user.nickname,
-            "role": user.role
+            "role": user.role,
+            "avatar_id": user.avatar_id
         }
     )
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+@router.post("/change-password", response_model=ResponseBase)
+async def change_password(
+    req: PasswordChangeRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    # 验证旧密码
+    if not verify_password(req.old_password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="原密码错误")
+
+    # 验证新密码复杂度
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="新密码长度至少8位")
+    if not any(c.isupper() for c in req.new_password) or not any(c.islower() for c in req.new_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="新密码需包含大小写字母")
+    if not any(c.isdigit() for c in req.new_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="新密码需包含数字")
+
+    # 更新密码
+    from app.utils.security import get_password_hash
+    user.password_hash = get_password_hash(req.new_password)
+    db.commit()
+
+    client_ip = current_user.get("_client_ip", "")
+    log_action(db, user.id, "password_change", detail="用户修改密码", ip_address=client_ip)
+
+    return ResponseBase(msg="密码修改成功")
