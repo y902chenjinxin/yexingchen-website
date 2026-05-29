@@ -16,19 +16,19 @@ body {
   overflow-x: hidden;
 }
 
-/* ========== Scrollbar ========== */
+/* ========== Scrollbar - 深色风格 ========== */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-primary);
+  background: var(--color-bg-dark);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-secondary);
+  background: var(--color-gold-dark);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent);
+  background: var(--color-gold);
 }
 
 /* ========== Common Utilities ========== */
