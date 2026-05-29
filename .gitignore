@@ -38,3 +38,21 @@ config.toml
 # Uploads
 uploads/
 岛屿.png
+
+# Claude memory (personal, not project)
+memory/
+
+# AI generated (do not commit)
+_ai_generated/
+frontend/public/_ai_generated/
+frontend/public/img/
+frontend/scripts/
+scripts/generate-*.js
+scripts/generate_*.py
+scripts/remove_bg.py
+restart_pm2.py
+
+# Documentation archive (if needed)
+# docs/3D_ISLAND_REVIEW.md
+# docs/GLB_MODEL_STATUS.md
+# docs/PRD_v1.4.md
