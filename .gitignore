@@ -39,8 +39,8 @@ config.toml
 uploads/
 岛屿.png
 
-# Claude memory (personal, not project)
-memory/
+# Claude (tool-specific directories, do not commit)
+.claude/
 
 # AI generated (do not commit)
 _ai_generated/
