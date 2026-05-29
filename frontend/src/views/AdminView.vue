@@ -279,18 +279,88 @@ function formatTime(timeStr) {
 
 <style scoped>
 .admin-page { min-height: 100vh; background: var(--color-bg); padding-bottom: 40px; }
-.admin-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(26, 58, 74, 0.8); border-bottom: 1px solid rgba(78, 205, 196, 0.2); }
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 40px;
+  background: var(--color-bg-glass);
+  border-bottom: 1px solid rgba(201, 169, 110, 0.15);
+}
 .header-left { display: flex; align-items: center; gap: 20px; }
-.back-btn { color: var(--color-accent); cursor: pointer; font-size: 14px; }
-.back-btn:hover { color: var(--color-text); }
+.back-btn { color: var(--color-gold); cursor: pointer; font-size: 14px; }
+.back-btn:hover { color: var(--color-gold-light); }
 .admin-title { font-family: var(--font-serif); font-size: 20px; color: var(--color-text); }
 .admin-content { padding: 30px 40px; }
-.section { background: rgba(26, 58, 74, 0.4); border: 1px solid rgba(78, 205, 196, 0.2); border-radius: var(--radius); padding: 25px; }
+.section {
+  background: var(--color-bg-elevated);
+  border: 1px solid rgba(201, 169, 110, 0.1);
+  border-radius: var(--radius);
+  padding: 25px;
+}
 .section-title { font-family: var(--font-serif); font-size: 18px; color: var(--color-text); margin-bottom: 20px; }
 .island-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .empty-placeholder { display: flex; flex-direction: column; align-items: center; padding: 40px 0; color: var(--color-text-secondary); }
 .empty-icon { font-size: 48px; margin-bottom: 10px; }
 .empty-text { font-size: 14px; }
+
+/* Element Plus 深色主题覆盖 */
+:deep(.el-table) {
+  --el-table-bg-color: var(--color-bg-elevated);
+  --el-table-tr-bg-color: var(--color-bg-elevated);
+  --el-table-header-bg-color: rgba(201, 169, 110, 0.08);
+  --el-table-header-text-color: var(--color-text);
+  --el-table-text-color: var(--color-text);
+  --el-table-border-color: rgba(201, 169, 110, 0.1);
+  --el-table-row-hover-bg-color: rgba(201, 169, 110, 0.05);
+}
+:deep(.el-table th.el-table__cell) {
+  background: rgba(201, 169, 110, 0.08) !important;
+  font-weight: 600;
+}
+:deep(.el-dialog) {
+  --el-dialog-bg-color: var(--color-bg-elevated);
+  border: 1px solid rgba(201, 169, 110, 0.15);
+  border-radius: var(--radius);
+}
+:deep(.el-dialog__title) {
+  color: var(--color-text);
+  font-family: var(--font-serif);
+}
+:deep(.el-form-item__label) {
+  color: var(--color-text-secondary);
+}
+:deep(.el-input__wrapper) {
+  background: var(--color-bg) !important;
+  border: 1px solid rgba(201, 169, 110, 0.2);
+  box-shadow: none !important;
+}
+:deep(.el-input__inner) {
+  color: var(--color-text) !important;
+}
+:deep(.el-select .el-input__wrapper) {
+  background: var(--color-bg) !important;
+}
+:deep(.el-dropdown-menu) {
+  background: var(--color-bg-elevated);
+  border: 1px solid rgba(201, 169, 110, 0.15);
+}
+:deep(.el-dropdown-menu__item) {
+  color: var(--color-text);
+}
+:deep(.el-dropdown-menu__item:not(.is-disabled):hover) {
+  background: rgba(201, 169, 110, 0.1);
+  color: var(--color-gold);
+}
+:deep(.el-checkbox__label) {
+  color: var(--color-text);
+}
+:deep(.el-tag) {
+  --el-tag-bg-color: rgba(201, 169, 110, 0.1);
+  --el-tag-border-color: rgba(201, 169, 110, 0.2);
+  --el-tag-text-color: var(--color-gold);
+}
+
 @media (max-width: 768px) {
   .admin-header { padding: 15px 20px; }
   .admin-content { padding: 20px; }

@@ -248,20 +248,20 @@ const showCard = ref(false)
 const lightFlowsOff = ref([false, false, false])
 
 onMounted(() => {
-  // 动画时序（毫秒）
+  // 动画时序（毫秒）- 优化版：压缩总时长
   const TIMING = {
     lightFlowOff1: 0,
-    lightFlowOff2: 200,
-    lightFlowOff3: 400,
-    gapMist: 600,        // 门缝寒气出现
-    doorStart: 800,      // 门开始打开
-    doorPause: 1900,      // 门45度停顿（延长到1.5s）
-    doorResume: 1950,     // 门继续开
-    doorComplete: 2300,  // 门全开（1.5s延长）
-    particleWind: 2350,  // 粒子风吹出
-    lightRing: 2400,     // 光环涟漪
+    lightFlowOff2: 150,
+    lightFlowOff3: 300,
+    gapMist: 450,        // 门缝寒气出现
+    doorStart: 600,      // 门开始打开
+    doorPause: 1300,     // 门45度停顿（缩短到0.8s）
+    doorResume: 1350,    // 门继续开
+    doorComplete: 1600, // 门全开（0.8s延长改为0.5s）
+    particleWind: 1650, // 粒子风吹出
+    lightRing: 1700,    // 光环涟漪
     // 去掉震动效果
-    cardShow: 3300       // 登录卡片出现（延迟0.6s）
+    cardShow: 2100       // 登录卡片出现（优化后总2.1s）
   }
 
   // 光纹逐圈熄灭
