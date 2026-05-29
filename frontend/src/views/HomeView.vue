@@ -391,8 +391,10 @@ function handleLogout() {
 
 .site-name {
   font-size: 20px;
-  color: #1a1a2e;
-  text-shadow: 0 1px 3px rgba(255,255,255,0.5);
+  background: linear-gradient(135deg, #C9A96E 0%, #F0E6C8 50%, #C9A96E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(201, 169, 110, 0.3));
 }
 
 .top-bar-right {
@@ -540,7 +542,7 @@ function handleLogout() {
 
 .island-subtitle {
   font-size: 12px;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.75);
   margin-top: 4px;
 }
 
@@ -697,11 +699,31 @@ function handleLogout() {
 }
 
 .island:hover .island-image {
-  filter: drop-shadow(0 30px 40px rgba(0,0,0,0.4));
+  filter: drop-shadow(0 30px 40px rgba(0,0,0,0.4)) brightness(1.1);
 }
 
 .island:hover .island-glow {
   opacity: 1;
+}
+
+/* P2: 岛屿hover光效增强 - 多层box-shadow */
+.island:hover .island-wrapper {
+  filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px var(--island-glow-color, rgba(78, 205, 196, 0.3)));
+}
+
+.music-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(155, 141, 201, 0.4)); }
+.novel-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(232, 213, 183, 0.4)); }
+.video-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(167, 139, 201, 0.4)); }
+.log-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(143, 188, 143, 0.4)); }
+.tool-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(212, 165, 116, 0.4)); }
+
+/* P2: 微倾侧动效 - 替代原伪3D方案，-8°微倾侧+scale */
+.island-wrapper {
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.island:hover .island-wrapper {
+  transform: rotate(-8deg) scale(1.02);
 }
 
 /* 底部切换 */
@@ -893,6 +915,40 @@ function handleLogout() {
 
   .island-name {
     font-size: 18px;
+  }
+
+  /* 移动端阵法模式简化：禁用环形位移，保留上下浮动 */
+  .magic-mode .islands-container::before {
+    display: none;
+  }
+
+  .magic-mode .magic-links {
+    display: none;
+  }
+
+  .magic-mode .island {
+    animation-duration: 20s !important;
+  }
+}
+
+/* 平板端 (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .islands-container {
+    gap: 30px;
+    padding: 50px 30px 120px;
+  }
+
+  .island {
+    width: 180px;
+    height: 200px;
+  }
+
+  .island-icon {
+    font-size: 40px;
+  }
+
+  .island-name {
+    font-size: 20px;
   }
 }
 </style>

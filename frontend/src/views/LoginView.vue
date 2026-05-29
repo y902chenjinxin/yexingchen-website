@@ -79,21 +79,21 @@
       <p class="site-subtitle">神农遗风，云上洞天</p>
 
       <!-- 登录表单 -->
-      <el-form v-if="!isRegistering" class="login-form" :model="loginForm" @submit.prevent="handleLogin">
+      <el-form v-if="!isRegistering" class="login-form" :model="loginForm" @submit.prevent="handleLogin" aria-label="登录表单">
         <el-form-item>
-          <el-input v-model="loginForm.email" placeholder="邮箱" size="large" clearable />
+          <el-input v-model="loginForm.email" placeholder="邮箱" size="large" clearable aria-label="邮箱" />
         </el-form-item>
         <el-form-item>
-          <el-input v-model="loginForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="密码" size="large">
+          <el-input v-model="loginForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="密码" size="large" aria-label="密码">
             <template #suffix>
-              <span class="password-toggle" @click="passwordVisible = !passwordVisible">
+              <span class="password-toggle" @click="passwordVisible = !passwordVisible" role="button" :aria-label="passwordVisible ? '隐藏密码' : '显示密码'" tabindex="0" @keydown.enter="passwordVisible = !passwordVisible" @keydown.space.prevent="passwordVisible = !passwordVisible">
                 <!-- 闭眼 SVG -->
-                <svg v-if="!passwordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg v-if="!passwordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                   <line x1="1" y1="1" x2="23" y2="23"></line>
                 </svg>
                 <!-- 睁眼 SVG -->
-                <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
@@ -102,7 +102,7 @@
           </el-input>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="large" style="width: 100%" :loading="loading" native-type="submit">
+          <el-button type="primary" size="large" style="width: 100%" :loading="loading" native-type="submit" aria-label="登录按钮">
             登 录
           </el-button>
         </el-form-item>
@@ -858,17 +858,29 @@ function resetRegister() {
   z-index: 100;
   width: 360px;
   padding: 40px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(201, 169, 110, 0.4);
+  background: rgba(26, 58, 74, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(201, 169, 110, 0.3);
   border-radius: 16px;
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.3),
-    0 0 40px rgba(201, 169, 110, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 60px rgba(78, 205, 196, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   opacity: 0;
   transform: translateY(30px);
   transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+/* 金色顶边高光 */
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+  border-radius: 0 0 4px 4px;
 }
 
 .login-card.card-visible {
@@ -878,15 +890,17 @@ function resetRegister() {
 
 .site-title {
   font-size: 28px;
-  color: #2D3748;
   text-align: center;
   margin-bottom: 8px;
-  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, #C9A96E 0%, #F0E6C8 50%, #C9A96E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(201, 169, 110, 0.3));
 }
 
 .site-subtitle {
   font-size: 14px;
-  color: #6B7280;
+  color: var(--color-text-secondary);
   text-align: center;
   margin-bottom: 30px;
   letter-spacing: 4px;
@@ -909,25 +923,23 @@ function resetRegister() {
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.6) !important;
-  border: 1px solid rgba(201, 169, 110, 0.3) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(78, 205, 196, 0.3) !important;
   box-shadow: none !important;
 }
 
 :deep(.el-input__inner) {
-  color: #2D3748 !important;
+  color: #1a1a2e !important;
 }
 
-/* placeholder 颜色已在 main.css 全局设置 */
-
 :deep(.el-button--primary) {
-  background: linear-gradient(135deg, var(--color-gold) 0%, #B8956A 100%) !important;
-  border: 1px solid rgba(201, 169, 110, 0.5) !important;
-  box-shadow: 0 4px 15px rgba(201, 169, 110, 0.3) !important;
+  background: linear-gradient(135deg, var(--color-qi-primary) 0%, #3DB8B0 100%) !important;
+  border: 1px solid rgba(78, 205, 196, 0.4) !important;
+  box-shadow: 0 4px 15px rgba(78, 205, 196, 0.2) !important;
 }
 
 :deep(.el-button--primary:hover) {
-  background: linear-gradient(135deg, #D4B872 0%, #C9A962 100%) !important;
+  background: linear-gradient(135deg, #5DE0D8 0%, var(--color-qi-primary) 100%) !important;
 }
 
 .register-link {
@@ -950,14 +962,14 @@ function resetRegister() {
 
 .step-title {
   font-size: 16px;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   text-align: center;
   margin-bottom: 20px;
 }
 
 .back-link {
   text-align: center;
-  color: var(--color-text-secondary);
+  color: rgba(232, 244, 252, 0.5);
   font-size: 13px;
   margin-top: 20px;
   cursor: pointer;
@@ -965,7 +977,7 @@ function resetRegister() {
 }
 
 .back-link:hover {
-  color: rgba(150, 200, 220, 1);
+  color: var(--color-qi-primary);
 }
 
 .text-center {
@@ -973,7 +985,7 @@ function resetRegister() {
 }
 
 .text-secondary {
-  color: rgba(150, 200, 220, 0.6);
+  color: rgba(232, 244, 252, 0.6);
   font-size: 14px;
   margin-top: 10px;
 }
@@ -982,14 +994,14 @@ function resetRegister() {
   width: 60px;
   height: 60px;
   margin: 0 auto 20px;
-  background: linear-gradient(135deg, rgba(60, 120, 160, 0.5) 0%, rgba(40, 80, 120, 0.6) 100%);
-  border: 2px solid rgba(100, 180, 220, 0.4);
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.3) 0%, rgba(26, 58, 74, 0.6) 100%);
+  border: 2px solid rgba(78, 205, 196, 0.4);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 30px;
-  color: #c8e8f8;
+  color: var(--color-qi-primary);
 }
 
 /* 备案信息 */
@@ -999,9 +1011,9 @@ function resetRegister() {
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(13, 31, 39, 0.9);
   backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(201, 169, 110, 0.2);
+  border-top: 1px solid rgba(78, 205, 196, 0.15);
   padding: 10px 20px;
 }
 
@@ -1026,13 +1038,13 @@ function resetRegister() {
 }
 
 .filing-links a {
-  color: var(--color-text-secondary);
+  color: rgba(232, 244, 252, 0.5);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .filing-links a:hover {
-  color: var(--color-gold);
+  color: var(--color-qi-primary);
 }
 
 .filing-divider {

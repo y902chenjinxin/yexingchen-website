@@ -6,6 +6,7 @@ import os
 from app.database import engine, Base
 from app.routers import auth, admin, music, novel, video, tool, log, search, settings as settings_router
 from app.config import settings
+from app.models.login_attempt import LoginAttempt  # 登录限流模型
 
 # 创建表
 Base.metadata.create_all(bind=engine)
