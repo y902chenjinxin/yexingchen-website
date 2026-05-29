@@ -422,8 +422,7 @@ function getDecoParticleStyle(i) {
 /* 云海背景 - 使用十二时辰变量 */
 .cloud-sea {
   position: fixed;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   pointer-events: none;
   z-index: 1;
 }
@@ -433,6 +432,7 @@ function getDecoParticleStyle(i) {
   background: radial-gradient(ellipse at center, var(--color-cloud-current) 0%, transparent 70%);
   border-radius: 50%;
   transition: background 1s ease;
+  opacity: 0.6;
 }
 
 .cloud-1 { width: 400px; height: 200px; top: 20%; left: -5%; animation: cloud-drift 25s linear infinite; }
@@ -448,11 +448,10 @@ function getDecoParticleStyle(i) {
 /* 阵法符文层 */
 .array-symbol-layer {
   position: fixed;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   pointer-events: none;
   z-index: 2;
-  opacity: 0.04;
+  opacity: 0.08;
 }
 
 .array-symbol {
