@@ -261,7 +261,7 @@ onMounted(() => {
     particleWind: 1650, // 粒子风吹出
     lightRing: 1700,    // 光环涟漪
     // 去掉震动效果
-    cardShow: 2100       // 登录卡片出现（优化后总2.1s）
+    cardShow: 1600       // 登录卡片出现（优化后总2.1s）
   }
 
   // 光纹逐圈熄灭
