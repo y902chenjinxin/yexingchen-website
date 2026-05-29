@@ -2,6 +2,7 @@
 """重新上传前端构建文件到服务器"""
 import os
 import paramiko
+from datetime import datetime
 
 def get_password():
     password = os.environ.get('SERVER_PASSWORD')
@@ -12,7 +13,8 @@ def get_password():
 def upload_to_server():
     local_dist = "frontend/dist"
     remote_dist = "/var/www/yexingchen/dist"
-    remote_backup = "/var/www/yexingchen/dist.bak"
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    remote_backup = f"/var/www/yexingchen/dist.bak.{timestamp}"
 
     host = "203.195.208.25"
     port = 22
@@ -24,13 +26,13 @@ def upload_to_server():
     transport.connect(username=username, password=password)
     sftp = paramiko.SFTPClient.from_transport(transport)
 
-    # 先重命名旧目录为备份
+    # 重命名旧目录为备份
     print(f"备份旧目录 {remote_dist} -> {remote_backup}...")
     try:
         sftp.rename(remote_dist, remote_backup)
         print("备份完成")
     except Exception as e:
-        print(f"备份出错(可能不存在): {e}")
+        print(f"备份出错: {e}")
 
     # 创建新dist目录
     print(f"创建新目录 {remote_dist}...")
