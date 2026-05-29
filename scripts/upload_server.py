@@ -1,46 +1,32 @@
-import paramiko
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""上传后端代码到服务器"""
 import os
+import paramiko
+import io
+import sys
 
-hostname = '203.195.208.25'
-port = 22
-username = 'root'
-password = 'yxCHEN@12345678'
+def get_password():
+    password = os.environ.get('SERVER_PASSWORD')
+    if password:
+        return password
+    netrc_path = os.path.expanduser("~/.netrc")
+    if os.path.exists(netrc_path):
+        with open(netrc_path) as f:
+            for line in f:
+                if '203.195.208.25' in line:
+                    parts = line.strip().split()
+                    for i, part in enumerate(parts):
+                        if part == 'password' and i + 1 < len(parts):
+                            return parts[i + 1]
+    raise ValueError("未找到服务器密码，请设置 SERVER_PASSWORD 环境变量或配置 ~/.netrc")
 
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect(hostname, port, username, password)
-sftp = client.open_sftp()
+def sync_to_server():
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-# Clean dist
-stdin, stdout, stderr = client.exec_command('rm -rf /var/www/yexingchen/dist && mkdir -p /var/www/yexingchen/dist/assets')
-print(stdout.read().decode('utf-8', errors='replace'))
+    host = "203.195.208.25"
+    port = 22
+    username = "root"
+    password = get_password()
 
-base_local = 'D:/software/Claude Code/个人网站设计/frontend/dist'
-base_remote = '/var/www/yexingchen/dist'
-
-uploaded = 0
-for root, dirs, files in os.walk(base_local):
-    rel_path = os.path.relpath(root, base_local)
-    if rel_path == '.':
-        remote_dir = base_remote
-    else:
-        remote_dir = base_remote + '/' + rel_path.replace('\\', '/')
-
-    try:
-        sftp.stat(remote_dir)
-    except:
-        sftp.mkdir(remote_dir)
-
-    for file in files:
-        local_file = os.path.join(root, file)
-        remote_file = remote_dir + '/' + file.replace('\\', '/')
-        sftp.put(local_file, remote_file)
-        uploaded += 1
-
-print(f'Uploaded {uploaded} files')
-files = sftp.listdir('/var/www/yexingchen/dist/assets')
-print(f'Assets count: {len(files)}')
-
-sftp.close()
-client.close()
-print('Done')
+    print(f"正在连接 {host}...")

@@ -1,6 +1,13 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
+import re
+
+def validate_email(email: str) -> str:
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if re.match(pattern, email):
+        return email
+    raise ValueError(f'Invalid email: {email}')
 
 
 # ========== 通用 ==========
@@ -19,18 +26,33 @@ class PageResponse(BaseModel):
 
 # ========== 注册/登录 ==========
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    email: str
+
+    @field_validator('email')
+    @classmethod
+    def email_check(cls, v):
+        return validate_email(v)
 
 
 class VerifyRequest(BaseModel):
-    email: EmailStr
+    email: str
     code: str
     password: str
 
+    @field_validator('email')
+    @classmethod
+    def email_check(cls, v):
+        return validate_email(v)
+
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
+
+    @field_validator('email')
+    @classmethod
+    def email_check(cls, v):
+        return validate_email(v)
 
 
 class UserInfo(BaseModel):
@@ -52,11 +74,16 @@ class LoginResponse(BaseModel):
 
 # ========== 用户管理 ==========
 class UserCreateRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     role: Optional[str] = "normal"
     status: Optional[str] = "approved"
     allowed_islands: Optional[str] = "music,novel,video,diary,tools"
+
+    @field_validator('email')
+    @classmethod
+    def email_check(cls, v):
+        return validate_email(v)
 
 
 class UserUpdateRequest(BaseModel):

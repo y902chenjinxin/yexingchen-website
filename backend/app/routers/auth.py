@@ -6,6 +6,7 @@ from app.database import get_db
 from app.schemas.common import *
 from app.services.auth_service import send_register_code, verify_code
 from app.utils.security import verify_password, create_access_token, get_current_user
+from app.utils.rate_limit import login_limiter
 from app.models.user import User
 from app.services.log_service import log_action
 
@@ -30,9 +31,20 @@ async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=ResponseBase)
 async def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    client_ip = request.client.host if request.client else ""
+
+    # 检查IP是否被封禁
+    rate_check = login_limiter.check_and_record(db, client_ip, False, req.email)
+    if not rate_check["allowed"]:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"登录过于频繁，请{rate_check['retry_after']}分钟后重试"
+        )
+
     user = db.query(User).filter(User.email == req.email).first()
 
     if not user or not verify_password(req.password, user.password_hash):
+        login_limiter.check_and_record(db, client_ip, False, req.email)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账密输入错误，请重试")
 
     if user.status == "pending":
@@ -40,6 +52,9 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
 
     if user.status == "rejected":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号已被拒绝，请联系管理员")
+
+    # 成功登录，清除失败记录
+    login_limiter.check_and_record(db, client_ip, True)
 
     # 生成token
     token = create_access_token({"user_id": user.id, "role": user.role, "is_super_admin": user.is_super_admin})
@@ -49,7 +64,6 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
     user.last_login_at = datetime.now()
 
     # 记录日志
-    client_ip = request.client.host if request.client else ""
     log_action(db, user.id, "login", detail=f"用户 {user.email} 登录", ip_address=client_ip)
 
     db.commit()

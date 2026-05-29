@@ -1,0 +1,77 @@
+/**
+ * Design Tokens - 统一颜色/字体/间距变量
+ * 所有UI样式应使用此文件中的变量，禁止硬编码颜色值
+ */
+
+:root {
+  /* ========== 核心色系 ========== */
+  --color-primary: #4A6FA5;
+  --color-secondary: #6B8DB5;
+  --color-accent: #7FB3D5;
+
+  /* ========== 仙侠金 ========== */
+  --color-gold: #C9A962;
+  --color-gold-light: rgba(201, 169, 110, 0.4);
+  --color-gold-gradient: linear-gradient(135deg, #C9A96E 0%, #F0E6C8 50%, #C9A96E 100%);
+
+  /* ========== 岛屿特色色 ========== */
+  --color-music: #9B8DC9;
+  --color-novel: #E8D5B7;
+  --color-video: #A78BC9;
+  --color-log: #8FBC8F;
+  --color-tool: #D4A574;
+
+  /* ========== 文字色 ========== */
+  --color-text: #2D3748;
+  --color-text-secondary: #6B7280;
+  --color-text-light: rgba(255, 255, 255, 0.9);
+
+  /* ========== 背景色 ========== */
+  --color-bg: #E8F4FC;
+  --color-bg-dark: #0D1F27;
+  --color-bg-glass: rgba(26, 58, 74, 0.85);
+
+  /* ========== 功能色 ========== */
+  --color-danger: #DC6B6B;
+  --color-success: #68A978;
+  --color-warning: #E8A838;
+
+  /* ========== 间距 ========== */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* ========== 圆角/阴影 ========== */
+  --radius-sm: 8px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --shadow-glow: 0 0 20px var(--color-gold-light);
+  --transition: all 0.3s ease;
+
+  /* ========== 字体 ========== */
+  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-sans: 'Noto Sans SC', 'Source Han Sans SC', sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+
+  /* ========== 响应式断点 ========== */
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+/* ========== 深色主题（如需） ========== */
+[data-theme="dark"] {
+  --color-bg: var(--color-bg-dark);
+  --color-text: var(--color-text-light);
+}
