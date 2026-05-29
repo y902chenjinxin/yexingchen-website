@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as loginApi, getMe, logout as logoutApi, updateMe as updateMeApi } from '@/api/auth'
+import { isTokenValid } from '@/utils/token'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
   const user = ref(null)
 
-  const isLoggedIn = computed(() => !!token.value)
+  const isLoggedIn = computed(() => !!token.value && isTokenValid(token.value))
   const isSuperAdmin = computed(() => user.value?.is_super_admin === 1)
 
   async function loginAction(email, password) {
@@ -18,7 +19,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchUser() {
-    if (!token.value) return
+    if (!token.value || !isTokenValid(token.value)) {
+      token.value = ''
+      user.value = null
+      localStorage.removeItem('token')
+      return
+    }
     try {
       const res = await getMe()
       user.value = res.data

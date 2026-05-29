@@ -6,6 +6,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { random, randFloat } from '@/utils/random'
 
 const emit = defineEmits(['loaded'])
 const canvasRef = ref(null)
@@ -42,12 +43,12 @@ class Particle {
     this.x = x
     this.y = y
     this.type = type
-    this.vx = (Math.random() - 0.5) * 0.5
-    this.vy = (Math.random() - 0.5) * 0.5
+    this.vx = (random() - 0.5) * 0.5
+    this.vy = (random() - 0.5) * 0.5
     this.life = 1
-    this.decay = 0.01 + Math.random() * 0.02
-    this.size = 1 + Math.random() * 2
-    this.alpha = 0.3 + Math.random() * 0.5
+    this.decay = 0.01 + random() * 0.02
+    this.size = 1 + random() * 2
+    this.alpha = 0.3 + random() * 0.5
   }
 
   update() {
@@ -68,12 +69,12 @@ class Particle {
 
 class Star {
   constructor(canvas) {
-    this.x = Math.random() * canvas.width
-    this.y = Math.random() * canvas.height
-    this.size = 0.5 + Math.random() * 1.5
-    this.twinkle = Math.random() * Math.PI * 2
-    this.twinkleSpeed = 0.02 + Math.random() * 0.03
-    this.baseAlpha = 0.3 + Math.random() * 0.5
+    this.x = random() * canvas.width
+    this.y = random() * canvas.height
+    this.size = 0.5 + random() * 1.5
+    this.twinkle = random() * Math.PI * 2
+    this.twinkleSpeed = 0.02 + random() * 0.03
+    this.baseAlpha = 0.3 + random() * 0.5
   }
 
   update() {

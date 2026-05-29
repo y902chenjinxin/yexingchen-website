@@ -31,10 +31,10 @@ class Settings(BaseSettings):
     MAX_VIDEO_SIZE: int = 500 * 1024 * 1024
     MAX_COVER_SIZE: int = 5 * 1024 * 1024
 
-    # 验证码
-    VERIFY_CODE_EXPIRE_MINUTES: int = 3
-    VERIFY_CODE_MAX_ATTEMPTS: int = 3
-    VERIFY_CODE_WINDOW_MINUTES: int = 10
+    # 验证码（混合字母数字，4位约16万组合）
+    VERIFY_CODE_EXPIRE_MINUTES: int = 5
+    VERIFY_CODE_MAX_ATTEMPTS: int = 5
+    VERIFY_CODE_WINDOW_MINUTES: int = 15
 
     class Config:
         env_file = ".env"

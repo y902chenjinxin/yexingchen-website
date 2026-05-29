@@ -42,41 +42,50 @@ def decode_token(token: str) -> dict:
         )
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> dict:
+    """验证Token并从数据库校验用户状态，防止伪造权限"""
     token = credentials.credentials
     payload = decode_token(token)
     user_id = payload.get("user_id")
-    role = payload.get("role")
-    is_super_admin = payload.get("is_super_admin")
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的token",
         )
-    return {"user_id": user_id, "role": role, "is_super_admin": is_super_admin}
+
+    # 从数据库校验用户状态（防止JWT payload伪造）
+    from app.models.user import User
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户不存在",
+        )
+    if user.status != "approved":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="账号状态异常",
+        )
+
+    return {
+        "user_id": user.id,
+        "role": user.role,
+        "is_super_admin": user.is_super_admin
+    }
 
 
 async def get_current_active_user(current_user: dict = Depends(get_current_user)) -> dict:
     return current_user
 
 
-def require_super_admin(
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """检查是否为超级管理员，支持 role='admin' 或 is_super_admin=1"""
-    # 优先检查 token 中的 is_super_admin
+def require_super_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """检查是否为超级管理员"""
     if current_user.get("is_super_admin") == 1:
         return current_user
-
-    # 检查 token 中的 role
     if current_user.get("role") in ("admin", "super_admin"):
-        return current_user
-
-    # 最后检查数据库（兼容旧token）
-    from app.models.user import User
-    user = db.query(User).filter(User.id == current_user["user_id"]).first()
-    if user and user.is_super_admin == 1:
         return current_user
 
     raise HTTPException(

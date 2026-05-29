@@ -221,6 +221,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { register as registerApi, verifyCode as verifyCodeApi } from '@/api/auth'
+import { randFloat } from '@/utils/random'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -329,10 +330,11 @@ function getParticleStyle(i) {
 }
 
 function getWindParticleStyle(i) {
-  const x = 40 + Math.random() * 20
-  const y = 30 + Math.random() * 40
-  const delay = Math.random() * 0.5
-  const duration = 0.5 + Math.random() * 0.5
+  // 使用伪随机数生成器，保证每次页面刷新粒子位置一致
+  const x = 40 + randFloat(0, 20)
+  const y = 30 + randFloat(0, 40)
+  const delay = randFloat(0, 0.5)
+  const duration = 0.5 + randFloat(0, 0.5)
   return {
     left: `${x}%`,
     top: `${y}%`,
