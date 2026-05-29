@@ -81,7 +81,15 @@
       </div>
     </header>
 
-    <!-- 主内容：浮空岛屿 -->
+    <!-- 顶部装饰区域 -->
+    <div class="top-decoration">
+      <div class="deco-line"></div>
+      <div class="deco-particles">
+        <span v-for="i in 12" :key="i" class="deco-particle" :style="getDecoParticleStyle(i)"></span>
+      </div>
+    </div>
+
+    <!-- 主内容：浮空岛屿 - 行星公转布局 -->
     <main class="islands-container" :class="{ 'magic-mode': magicMode }">
       <!-- 灵气连线层 -->
       <svg v-if="magicMode" class="magic-links" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -97,49 +105,70 @@
         <circle cx="25%" cy="80%" r="1" class="magic-node" />
       </svg>
 
-      <div class="island music-island" @click="router.push('/island/music')">
-        <div class="island-wrapper">
-          <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
-          <div class="island-glow"></div>
-        </div>
-        <div class="island-name">音乐岛</div>
-        <div class="island-subtitle">音律飘渺</div>
-      </div>
+      <!-- 岛屿公转系统 - 5个岛屿均匀绕中心旋转 -->
+      <div class="solar-system">
+        <!-- 旋转容器 -->
+        <div class="orbit-group">
+          <!-- 音乐岛 - 0度 -->
+          <div class="island-pos" @click="router.push('/island/music')">
+            <div class="island">
+              <div class="island-wrapper">
+                <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
+                <div class="island-glow"></div>
+              </div>
+              <div class="island-name">音乐岛</div>
+              <div class="island-subtitle">音律飘渺</div>
+            </div>
+          </div>
 
-      <div class="island novel-island" @click="router.push('/island/novel')">
-        <div class="island-wrapper">
-          <img src="@/assets/islands/novel-island.svg" class="island-image" alt="小说岛" />
-          <div class="island-glow"></div>
-        </div>
-        <div class="island-name">小说岛</div>
-        <div class="island-subtitle">书卷悠长</div>
-      </div>
+          <!-- 小说岛 - 72度 -->
+          <div class="island-pos" @click="router.push('/island/novel')">
+            <div class="island">
+              <div class="island-wrapper">
+                <img src="@/assets/islands/novel-island.svg" class="island-image" alt="小说岛" />
+                <div class="island-glow"></div>
+              </div>
+              <div class="island-name">小说岛</div>
+              <div class="island-subtitle">书卷悠长</div>
+            </div>
+          </div>
 
-      <div class="island video-island" @click="router.push('/island/video')">
-        <div class="island-wrapper">
-          <img src="@/assets/islands/video-island.svg" class="island-image" alt="视频岛" />
-          <div class="island-glow"></div>
-        </div>
-        <div class="island-name">视频岛</div>
-        <div class="island-subtitle">光影流转</div>
-      </div>
+          <!-- 视频岛 - 144度 -->
+          <div class="island-pos" @click="router.push('/island/video')">
+            <div class="island">
+              <div class="island-wrapper">
+                <img src="@/assets/islands/video-island.svg" class="island-image" alt="视频岛" />
+                <div class="island-glow"></div>
+              </div>
+              <div class="island-name">视频岛</div>
+              <div class="island-subtitle">光影流转</div>
+            </div>
+          </div>
 
-      <div class="island log-island" @click="router.push('/island/log')">
-        <div class="island-wrapper">
-          <img src="@/assets/islands/log-island.svg" class="island-image" alt="日志岛" />
-          <div class="island-glow"></div>
-        </div>
-        <div class="island-name">日志岛</div>
-        <div class="island-subtitle">岁月留痕</div>
-      </div>
+          <!-- 日志岛 - 216度 -->
+          <div class="island-pos" @click="router.push('/island/log')">
+            <div class="island">
+              <div class="island-wrapper">
+                <img src="@/assets/islands/log-island.svg" class="island-image" alt="日志岛" />
+                <div class="island-glow"></div>
+              </div>
+              <div class="island-name">日志岛</div>
+              <div class="island-subtitle">岁月留痕</div>
+            </div>
+          </div>
 
-      <div class="island tool-island" @click="router.push('/island/tool')">
-        <div class="island-wrapper">
-          <img src="@/assets/islands/tool-island.svg" class="island-image" alt="工具岛" />
-          <div class="island-glow"></div>
+          <!-- 工具岛 - 288度 -->
+          <div class="island-pos" @click="router.push('/island/tool')">
+            <div class="island">
+              <div class="island-wrapper">
+                <img src="@/assets/islands/tool-island.svg" class="island-image" alt="工具岛" />
+                <div class="island-glow"></div>
+              </div>
+              <div class="island-name">工具岛</div>
+              <div class="island-subtitle">机关万千</div>
+            </div>
+          </div>
         </div>
-        <div class="island-name">工具岛</div>
-        <div class="island-subtitle">机关万千</div>
       </div>
     </main>
 
@@ -351,32 +380,21 @@ function handleLogout() {
   router.push('/login')
   ElMessage.success('已退出账号')
 }
+
+function getDecoParticleStyle(i) {
+  const delay = i * 0.3
+  return {
+    animationDelay: `${delay}s`
+  }
+}
 </script>
 
 <style scoped>
 .home-page {
   min-height: 100vh;
-  background: linear-gradient(180deg,
-    #0D1F27 0%,
-    #1A3A5C 40%,
-    #2D5A7B 70%,
-    #1A3A5C 100%
-  );
+  background: var(--color-bg-dark);
   position: relative;
   overflow: hidden;
-}
-
-/* 天空云朵装饰 */
-.cloud-sea::before {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background:
-    radial-gradient(ellipse 300px 120px at 10% 85%, rgba(255,255,255,0.8) 0%, transparent 70%),
-    radial-gradient(ellipse 400px 150px at 80% 90%, rgba(255,255,255,0.7) 0%, transparent 70%),
-    radial-gradient(ellipse 250px 100px at 50% 95%, rgba(255,255,255,0.6) 0%, transparent 70%);
-  pointer-events: none;
 }
 
 /* 云海背景 */
@@ -389,7 +407,7 @@ function handleLogout() {
 
 .cloud {
   position: absolute;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(201, 169, 110, 0.08) 0%, transparent 70%);
   border-radius: 50%;
 }
 
@@ -423,7 +441,7 @@ function handleLogout() {
 }
 
 .music-btn {
-  background: rgba(78, 205, 196, 0.2);
+  background: var(--color-jade);
   border: 1px solid rgba(78, 205, 196, 0.4);
   color: var(--color-accent);
 }
@@ -469,7 +487,52 @@ function handleLogout() {
 
 .dropdown-arrow {
   font-size: 12px;
-  color: #667eea;
+  color: var(--color-gold);
+}
+
+/* 顶部装饰区域 */
+.top-decoration {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 20px;
+}
+
+.deco-line {
+  width: 200px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+  border-radius: 2px;
+  box-shadow: 0 0 20px rgba(201, 169, 110, 0.3);
+}
+
+.deco-particles {
+  display: flex;
+  gap: 30px;
+  margin-top: 15px;
+}
+
+.deco-particle {
+  width: 4px;
+  height: 4px;
+  background: var(--color-gold);
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: float-particle 4s ease-in-out infinite;
+  box-shadow: 0 0 6px var(--color-gold);
+}
+
+.deco-particle:nth-child(odd) {
+  animation-duration: 5s;
+  background: var(--color-jade);
+  box-shadow: 0 0 6px var(--color-jade);
+}
+
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(-8px); opacity: 1; }
 }
 
 /* 下拉菜单图标 */
@@ -479,17 +542,105 @@ function handleLogout() {
   gap: 8px;
 }
 
-/* 岛屿容器 - 错落布局 */
+/* 岛屿容器 */
 .islands-container {
   position: relative;
   z-index: 10;
   display: flex;
   justify-content: center;
-  align-items: flex-end;
-  gap: 30px;
+  align-items: center;
   padding: 80px 40px 140px;
-  flex-wrap: wrap;
   min-height: calc(100vh - 200px);
+}
+
+/* 公转系统 */
+.solar-system {
+  position: relative;
+  width: 800px;
+  height: 800px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 旋转组 - 整体旋转 */
+.orbit-group {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: orbit-around 30s linear infinite;
+}
+
+@keyframes orbit-around {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 岛屿位置 - 均匀分布在圆环上 */
+.island-pos {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+}
+
+/* 音乐岛 - 0度 (顶部) */
+.island-pos:nth-child(1) {
+  transform: translate(-50%, -50%) rotate(0deg) translateY(-300px);
+}
+/* 小说岛 - 72度 */
+.island-pos:nth-child(2) {
+  transform: translate(-50%, -50%) rotate(72deg) translateY(-300px);
+}
+/* 视频岛 - 144度 */
+.island-pos:nth-child(3) {
+  transform: translate(-50%, -50%) rotate(144deg) translateY(-300px);
+}
+/* 日志岛 - 216度 */
+.island-pos:nth-child(4) {
+  transform: translate(-50%, -50%) rotate(216deg) translateY(-300px);
+}
+/* 工具岛 - 288度 */
+.island-pos:nth-child(5) {
+  transform: translate(-50%, -50%) rotate(288deg) translateY(-300px);
+}
+
+/* 悬停时公转暂停 */
+.orbit-group:hover {
+  animation-play-state: paused;
+}
+
+/* 悬停时岛屿3D翻转 */
+.island-pos:hover .island {
+  animation: self-rotate 1.5s ease-in-out forwards;
+  filter: drop-shadow(0 0 30px var(--color-gold));
+}
+
+@keyframes self-rotate {
+  0% { transform: rotateY(0deg) scale(1.1); }
+  50% { transform: rotateY(180deg) scale(1.15); }
+  100% { transform: rotateY(360deg) scale(1.1); }
+}
+
+/* 岛屿卡片 */
+.island {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.4s ease, filter 0.4s ease;
+  transform-style: preserve-3d;
+}
+
+/* 岛屿卡片 - 2.5D立体效果 */
+.island {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.4s ease, filter 0.4s ease;
+  transform-style: preserve-3d;
 }
 
 /* 阵法模式背景灵气光晕 */
@@ -545,7 +696,7 @@ function handleLogout() {
   transform: translateX(-50%);
   width: 200px;
   height: 60px;
-  background: radial-gradient(ellipse, rgba(102, 126, 234, 0.3) 0%, transparent 70%);
+  background: radial-gradient(ellipse, var(--color-purple) 0%, transparent 70%);
   filter: blur(10px);
   opacity: 0;
   transition: opacity 0.4s;
@@ -554,14 +705,14 @@ function handleLogout() {
 .island-name {
   font-family: var(--font-serif);
   font-size: 18px;
-  color: #1a1a2e;
+  color: var(--color-text);
   margin-top: 10px;
-  text-shadow: 0 2px 4px rgba(255,255,255,0.8);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 .island-subtitle {
   font-size: 12px;
-  color: rgba(255,255,255,0.75);
+  color: var(--color-text-secondary);
   margin-top: 4px;
 }
 
@@ -574,7 +725,7 @@ function handleLogout() {
   transform: translateX(-50%);
   width: 120px;
   height: 40px;
-  background: radial-gradient(ellipse, rgba(78, 205, 196, 0.2) 0%, transparent 70%);
+  background: radial-gradient(ellipse, var(--color-jade) 0%, transparent 70%);
   border-radius: 50%;
   filter: blur(8px);
   animation: pulse-glow 3s ease-in-out infinite;
@@ -634,19 +785,8 @@ function handleLogout() {
   50% { opacity: 0.8; r: 1.5; }
 }
 
-/* 各岛屿独立动画相位 - 公转效果 */
-.music-island { animation: orbit-music 20s ease-in-out infinite; }
-.novel-island { animation: orbit-novel 25s ease-in-out infinite; }
-.video-island { animation: orbit-video 22s ease-in-out infinite; }
-.log-island { animation: orbit-log 18s ease-in-out infinite; }
-.tool-island { animation: orbit-tool 24s ease-in-out infinite; }
-
 /* 阵法模式 - 岛屿环形旋转叠加效果 */
-.magic-mode .music-island { animation: orbit-music 20s ease-in-out infinite, circular-magic 30s linear infinite; }
-.magic-mode .novel-island { animation: orbit-novel 25s ease-in-out infinite, circular-magic 30s linear infinite 6s; }
-.magic-mode .video-island { animation: orbit-video 22s ease-in-out infinite, circular-magic 30s linear infinite 12s; }
-.magic-mode .log-island { animation: orbit-log 18s ease-in-out infinite, circular-magic 30s linear infinite 18s; }
-.magic-mode .tool-island { animation: orbit-tool 24s ease-in-out infinite, circular-magic 30s linear infinite 24s; }
+.magic-mode .orbit-group { animation: orbit-around 25s linear infinite, circular-magic 30s linear infinite; }
 
 @keyframes circular-magic {
   0% { transform: translate(0, 0) rotate(0deg); }
@@ -656,61 +796,6 @@ function handleLogout() {
   100% { transform: translate(0, 0) rotate(360deg); }
 }
 
-@keyframes orbit-music {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  12.5% { transform: translate(25px, -40px) rotate(3deg); }
-  25% { transform: translate(45px, -55px) rotate(5deg); }
-  37.5% { transform: translate(25px, -40px) rotate(3deg); }
-  50% { transform: translate(0, -15px) rotate(0deg); }
-  62.5% { transform: translate(-25px, -40px) rotate(-3deg); }
-  75% { transform: translate(-45px, -55px) rotate(-5deg); }
-  87.5% { transform: translate(-25px, -40px) rotate(-3deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
-}
-@keyframes orbit-novel {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  12.5% { transform: translate(30px, -50px) rotate(3.5deg); }
-  25% { transform: translate(55px, -70px) rotate(6deg); }
-  37.5% { transform: translate(30px, -50px) rotate(3.5deg); }
-  50% { transform: translate(0, -20px) rotate(0deg); }
-  62.5% { transform: translate(-30px, -50px) rotate(-3.5deg); }
-  75% { transform: translate(-55px, -70px) rotate(-6deg); }
-  87.5% { transform: translate(-30px, -50px) rotate(-3.5deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
-}
-@keyframes orbit-video {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  12.5% { transform: translate(20px, -35px) rotate(2.5deg); }
-  25% { transform: translate(40px, -50px) rotate(4.5deg); }
-  37.5% { transform: translate(20px, -35px) rotate(2.5deg); }
-  50% { transform: translate(0, -12px) rotate(0deg); }
-  62.5% { transform: translate(-20px, -35px) rotate(-2.5deg); }
-  75% { transform: translate(-40px, -50px) rotate(-4.5deg); }
-  87.5% { transform: translate(-20px, -35px) rotate(-2.5deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
-}
-@keyframes orbit-log {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  12.5% { transform: translate(35px, -55px) rotate(4deg); }
-  25% { transform: translate(60px, -75px) rotate(7deg); }
-  37.5% { transform: translate(35px, -55px) rotate(4deg); }
-  50% { transform: translate(0, -22px) rotate(0deg); }
-  62.5% { transform: translate(-35px, -55px) rotate(-4deg); }
-  75% { transform: translate(-60px, -75px) rotate(-7deg); }
-  87.5% { transform: translate(-35px, -55px) rotate(-4deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
-}
-@keyframes orbit-tool {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  12.5% { transform: translate(22px, -38px) rotate(2.8deg); }
-  25% { transform: translate(42px, -52px) rotate(5deg); }
-  37.5% { transform: translate(22px, -38px) rotate(2.8deg); }
-  50% { transform: translate(0, -14px) rotate(0deg); }
-  62.5% { transform: translate(-22px, -38px) rotate(-2.8deg); }
-  75% { transform: translate(-42px, -52px) rotate(-5deg); }
-  87.5% { transform: translate(-22px, -38px) rotate(-2.8deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
-}
 
 .island:hover {
   transform: translateY(-20px) scale(1.05);
@@ -730,19 +815,9 @@ function handleLogout() {
   filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px var(--island-glow-color, rgba(78, 205, 196, 0.3)));
 }
 
-.music-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(155, 141, 201, 0.4)); }
-.novel-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(232, 213, 183, 0.4)); }
-.video-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(167, 139, 201, 0.4)); }
-.log-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(143, 188, 143, 0.4)); }
-.tool-island:hover .island-wrapper { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(212, 165, 116, 0.4)); }
-
-/* P2: 微倾侧动效 - 替代原伪3D方案，-8°微倾侧+scale */
-.island-wrapper {
-  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
+/* 岛屿hover效果 */
 .island:hover .island-wrapper {
-  transform: rotate(-8deg) scale(1.02);
+  filter: drop-shadow(0 20px 30px rgba(0,0,0,0.4)) drop-shadow(0 0 30px var(--color-gold));
 }
 
 /* 底部切换 */
@@ -753,7 +828,7 @@ function handleLogout() {
   transform: translateX(-50%);
   z-index: 100;
   background: rgba(255, 255, 255, 0.95);
-  border: 2px solid rgba(102, 126, 234, 0.3);
+  border: 2px solid var(--color-gold);
   border-radius: 20px;
   padding: 8px 20px;
   cursor: pointer;
@@ -762,12 +837,12 @@ function handleLogout() {
 }
 
 .bottom-switcher:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  border-color: var(--color-gold);
+  box-shadow: 0 4px 20px var(--color-gold);
 }
 
 .switcher-hint {
-  color: #667eea;
+  color: var(--color-gold);
   font-size: 14px;
   font-weight: 500;
 }
@@ -788,7 +863,7 @@ function handleLogout() {
   width: 100%;
   max-width: 400px;
   background: rgba(255, 255, 255, 0.98);
-  border: 2px solid rgba(102, 126, 234, 0.3);
+  border: 2px solid var(--color-gold);
   border-bottom: none;
   border-radius: var(--radius) var(--radius) 0 0;
   padding: 20px 30px;
@@ -876,7 +951,7 @@ function handleLogout() {
 }
 
 .filing-links a {
-  color: #667eea;
+  color: var(--color-gold);
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -916,9 +991,9 @@ function handleLogout() {
 }
 
 .avatar-option.selected {
-  border-color: #667eea;
+  border-color: var(--color-gold);
   background: rgba(102, 126, 234, 0.2);
-  box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 0 15px var(--color-gold);
 }
 
 .avatar-emoji {

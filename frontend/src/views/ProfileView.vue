@@ -238,7 +238,7 @@ async function savePassword() {
 <style scoped>
 .profile-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 30%, #E0F0FF 60%, #F5F9FF 100%);
+  background: var(--color-bg);
   padding: 40px;
 }
 
@@ -249,7 +249,7 @@ async function savePassword() {
 
 .page-title {
   font-size: 32px;
-  color: #1a1a2e;
+  color: var(--color-text);
   text-align: center;
 }
 
@@ -262,21 +262,22 @@ async function savePassword() {
 }
 
 .info-card, .avatar-card {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius);
   padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(201, 169, 108, 0.1);
 }
 
 .card-header {
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+  border-bottom: 1px solid rgba(201, 169, 108, 0.2);
 }
 
 .card-header h2 {
   font-size: 18px;
-  color: #1a1a2e;
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -289,7 +290,7 @@ async function savePassword() {
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+  border-bottom: 1px solid rgba(201, 169, 108, 0.1);
 }
 
 .info-item:last-child {
@@ -297,12 +298,12 @@ async function savePassword() {
 }
 
 .info-label {
-  color: #4a5568;
+  color: var(--color-text-secondary);
   font-size: 14px;
 }
 
 .info-value {
-  color: #1a1a2e;
+  color: var(--color-text);
   font-size: 14px;
 }
 
@@ -313,18 +314,18 @@ async function savePassword() {
 }
 
 .role-tag.super_admin {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
+  background: rgba(201, 169, 110, 0.2);
+  color: var(--color-gold);
 }
 
 .role-tag.admin {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
+  background: rgba(139, 122, 174, 0.2);
+  color: var(--color-purple-light);
 }
 
 .role-tag.user {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
+  background: rgba(154, 150, 142, 0.2);
+  color: var(--color-text-secondary);
 }
 
 .card-footer {
@@ -355,8 +356,8 @@ async function savePassword() {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: rgba(102, 126, 234, 0.1);
-  border: 2px solid rgba(102, 126, 234, 0.2);
+  background: rgba(201, 169, 108, 0.1);
+  border: 2px solid rgba(201, 169, 108, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -365,13 +366,13 @@ async function savePassword() {
 }
 
 .avatar-option:hover {
-  border-color: rgba(102, 126, 234, 0.5);
+  border-color: rgba(201, 169, 108, 0.5);
 }
 
 .avatar-option.selected {
-  border-color: #667eea;
-  background: rgba(102, 126, 234, 0.2);
-  box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+  border-color: var(--color-gold);
+  background: rgba(201, 169, 110, 0.2);
+  box-shadow: 0 0 15px rgba(201, 169, 110, 0.3);
 }
 
 .avatar-option .avatar-emoji {
@@ -386,7 +387,7 @@ async function savePassword() {
 }
 
 .back-btn {
-  color: var(--color-accent);
+  color: var(--color-gold);
   cursor: pointer;
   font-size: 14px;
   align-self: flex-start;
@@ -394,6 +395,6 @@ async function savePassword() {
 }
 
 .back-btn:hover {
-  color: #5a67d8;
+  color: var(--color-gold-light);
 }
 </style>
