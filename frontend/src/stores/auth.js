@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, getMe, logout as logoutApi, updateMe as updateMeApi } from '@/api/auth'
+import { login as loginApi, getMe, logout as logoutApi, updateMe as updateMeApi, changePassword as changePasswordApi } from '@/api/auth'
 import { isTokenValid } from '@/utils/token'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -39,6 +39,10 @@ export const useAuthStore = defineStore('auth', () => {
     return await updateMeApi(data)
   }
 
+  async function changePassword(oldPassword, newPassword) {
+    return await changePasswordApi(oldPassword, newPassword)
+  }
+
   function logoutAction() {
     try {
       logoutApi()
@@ -50,5 +54,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
   }
 
-  return { token, user, isLoggedIn, isSuperAdmin, loginAction, fetchUser, logoutAction, updateMe }
+  return { token, user, isLoggedIn, isSuperAdmin, loginAction, fetchUser, logoutAction, updateMe, changePassword }
 })
