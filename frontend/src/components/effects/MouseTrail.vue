@@ -17,6 +17,12 @@ let lastTime = 0
 const MAX_PARTICLES = 30
 const PARTICLE_LIFETIME = 1200 // 1.2s
 
+// 获取翡翠绿颜色值（Canvas不支持CSS变量，需要直接解析）
+function getQiGreenColor() {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue('--color-qi-green').trim() || '#7FFFCC'
+}
+
 // 粒子类
 class TrailParticle {
   constructor(x, y) {
@@ -43,8 +49,9 @@ class TrailParticle {
   draw(ctx) {
     ctx.save()
     ctx.globalAlpha = this.opacity
-    ctx.fillStyle = 'var(--color-qi-green)'
-    ctx.shadowColor = 'var(--color-qi-green)'
+    const qiGreen = getQiGreenColor()
+    ctx.fillStyle = qiGreen
+    ctx.shadowColor = qiGreen
     ctx.shadowBlur = 12
     ctx.beginPath()
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
