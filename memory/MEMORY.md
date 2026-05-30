@@ -57,11 +57,12 @@
 8. **回滚方案**：每次部署后记录到docs/ROLLBACK.md
 
 ## 项目状态
-- [project-3d-island-pause](memory/project-3d-island-pause.md) — 3D浮空岛项目暂停，滚回v1.5.3
-- [project-v160](memory/project-v160.md) — v1.6.0版本已完成
-- [project-v170](memory/project-v170.md) — v1.7.0~v1.7.2 玄墨流金设计系统上线
-- [project-v180](memory/project-v180.md) — v1.8.0 已部署完成
-- [project-v2x](memory/project-v2x.md) — v2.x 分阶段开发规划（v2.1-v2.4）
+- [project-v200](memory/project-v200.md) — **v2.0-v2.2 当前版本**，包含全部功能
+- [project-v2x](memory/project-v2x.md) — v2.x 分阶段规划（v2.1-v2.4）
+- [project-3d-island-pause](memory/project-3d-island-pause.md) — 3D浮空岛项目暂停（已归档）
+- [project-v170](memory/project-v170.md) — v1.7.0-v1.7.2 玄墨流金（已归档）
+- [project-v160](memory/project-v160.md) — v1.6.0（已归档）
+- [project-v180](memory/project-v180.md) — v1.8.0（已归档，并入v2.0）
 
 ---
 
@@ -72,14 +73,18 @@
 # 1. 构建
 cd frontend && npm run build
 
-# 2. 上传到服务器
+# 2. 自测（本地preview + 自动化浏览器验证）
+python self_test.py
+python self_test.py record Step 8
+
+# 3. 上传到服务器
 python upload_server.py
 
-# 3. 重启后端
+# 4. 重启后端
 python restart_pm2.py
 
-# 4. 验证测试
-node test_site.cjs
+# 5. 验证生产环境
+node browser_verify.js --production --all
 ```
 
 ### 服务器 Python 路径
