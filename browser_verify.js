@@ -5,11 +5,11 @@
  *
  * 使用方式：
  *   node browser_verify.js                    # 测试所有功能
- *   node browser_verify.js login              # 只测试登录
- *   node browser_verify.js mouse              # 只测试鼠标轨迹
+ *   node browser_verify.js mouse             # 只测试鼠标轨迹
  *   node browser_verify.js islands            # 只测试岛屿
  *   node browser_verify.js mobile             # 只测试移动端
- *   node browser_verify.js login,mouse,islands  # 测试指定多项
+ *   node browser_verify.js new-feature       # 测试新功能（自动先登录）
+ *   node browser_verify.js login,mouse        # 先登录再测试鼠标
  *
  * 退出码：0 = 成功, 1 = 失败
  */
@@ -140,7 +140,7 @@ async function verify() {
   await send('Page.enable');
 
   // ============================================
-  // 验证 1: 登录流程
+  // 登录流程（仅显式指定login或测试全部时执行）
   // ============================================
   if (testAll || tests.has('login')) {
     console.log('[1] Testing login flow...');
@@ -176,8 +176,8 @@ async function verify() {
 
     const afterLoginURL = await send('Runtime.evaluate', { expression: 'window.location.href' });
     check('Login successful, redirected to home', afterLoginURL.result.result.value.includes('/home'));
-  } else if (!tests.has('login') && (tests.has('mouse') || tests.has('islands') || tests.has('home'))) {
-    // 确保已登录并处于首页
+  } else {
+    // 其他测试：确保已登录并处于首页
     await send('Page.navigate', { url: 'https://yexingchen.cn/home' });
     await new Promise(r => setTimeout(r, 2000));
   }
