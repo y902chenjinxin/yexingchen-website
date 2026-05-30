@@ -23,6 +23,25 @@ curl -s https://yexingchen.cn -I | head -5
 
 ---
 
+## v2.1.0 回滚方案
+
+**部署时间**: 2026-05-30
+**部署内容**: v2.1 初窥门径（鼠标轨迹/修为印章/hover特效/顶栏优化）
+**回滚命令**:
+
+```bash
+# 1. 回滚dist目录
+ssh root@203.195.208.25 "mv /var/www/yexingchen/dist /var/www/yexingchen/dist.v2.1.0.new && mv /var/www/yexingchen/dist.bak.20260529 /var/www/yexingchen/dist"
+
+# 2. 重启nginx
+ssh root@203.195.208.25 "nginx -s reload"
+
+# 3. 验证
+curl -s https://yexingchen.cn -I | head -5
+```
+
+---
+
 ## 回滚原则
 
 1. **先备份再部署**：每次 `npm run build` 前先备份远程 dist

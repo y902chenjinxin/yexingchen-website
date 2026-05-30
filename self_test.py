@@ -14,26 +14,26 @@ def print_section(title):
 
 def check_build():
     """检查 npm run build 是否通过"""
-    print_section("Step 1: 检查 Build")
+    print_section("Step 1: Check Build")
 
     dist_path = "frontend/dist"
     if os.path.exists(dist_path):
-        print("✅ frontend/dist 目录存在")
+        print("[OK] frontend/dist exists")
         # 检查关键文件
         key_files = ['index.html', 'assets/index-BnpgWBVb.js']
         for f in key_files:
             if os.path.exists(os.path.join(dist_path, f.replace('/', os.sep))):
-                print(f"   ✅ {f}")
+                print(f"   [OK] {f}")
             else:
-                print(f"   ❌ 缺少 {f}")
+                print(f"   [MISS] {f}")
         return True
     else:
-        print("❌ frontend/dist 不存在，请先运行: cd frontend && npm run build")
+        print("[FAIL] frontend/dist not found. Run: cd frontend && npm run build")
         return False
 
 def check_css_vars():
     """检查是否有硬编码颜色"""
-    print_section("Step 2: CSS 变量门控检查")
+    print_section("Step 2: CSS Variables Check")
 
     vue_files = []
     for root, dirs, files in os.walk('frontend/src'):
@@ -62,42 +62,42 @@ def check_css_vars():
             pass
 
     if issues:
-        print(f"❌ 发现 {len(issues)} 处硬编码颜色：")
+        print(f"[FAIL] Found {len(issues)} hardcoded colors:")
         for issue in issues[:10]:
             print(f"   {issue}")
         if len(issues) > 10:
-            print(f"   ... 还有 {len(issues) - 10} 处")
+            print(f"   ... and {len(issues) - 10} more")
         return False
     else:
-        print("✅ 无硬编码颜色，所有颜色使用 CSS 变量")
+        print("[OK] No hardcoded colors, all use CSS variables")
         return True
 
 def check_hover_effects():
     """检查 hover 特效 HTML 元素是否存在"""
-    print_section("Step 3: 岛屿 Hover 特效检查")
+    print_section("Step 3: Island Hover Effects Check")
 
     home_view = "frontend/src/views/HomeView.vue"
     if not os.path.exists(home_view):
-        print(f"❌ {home_view} 不存在")
+        print(f"[FAIL] {home_view} not found")
         return False
 
     with open(home_view, 'r', encoding='utf-8') as f:
         content = f.read()
 
     required_elements = [
-        ('music-island-hover', '音乐岛音符特效'),
-        ('novel-island-hover', '小说岛书页特效'),
-        ('video-island-hover', '视频岛光圈特效'),
-        ('log-island-hover', '日志岛墨滴特效'),
-        ('tool-island-hover', '工具岛齿轮特效'),
+        ('music-island-hover', 'Music island hover'),
+        ('novel-island-hover', 'Novel island hover'),
+        ('video-island-hover', 'Video island hover'),
+        ('log-island-hover', 'Log island hover'),
+        ('tool-island-hover', 'Tool island hover'),
     ]
 
     all_found = True
     for class_name, desc in required_elements:
         if class_name in content:
-            print(f"   ✅ {desc} ({class_name})")
+            print(f"   [OK] {desc} ({class_name})")
         else:
-            print(f"   ❌ 缺少 {desc} ({class_name})")
+            print(f"   [MISS] {desc} ({class_name})")
             all_found = False
 
     return all_found
@@ -122,8 +122,8 @@ def update_checklist_section(section_name, items_checked, items_total, details="
 def run_all_checks():
     """运行所有自测检查"""
     print("\n" + "="*60)
-    print("  🔍 自测验证辅助工具")
-    print("  运行此脚本后可填充 DEPLOY_CHECKLIST.md")
+    print("  [Test] Self-Test Helper")
+    print("  Run this before filling DEPLOY_CHECKLIST.md")
     print("="*60)
 
     results = {
@@ -133,26 +133,26 @@ def run_all_checks():
     }
 
     print("\n" + "="*60)
-    print("  📊 自测结果汇总")
+    print("  [Results] Summary")
     print("="*60)
 
     all_passed = all(results.values())
 
     for name, passed in results.items():
-        status = "✅" if passed else "❌"
+        status = "[OK]" if passed else "[FAIL]"
         print(f"   {status} {name}")
 
     print()
 
     if all_passed:
-        print("✅ 所有检查通过！")
-        print("   请在 DEPLOY_CHECKLIST.md 中：")
-        print("   1. 填写实际的自测描述（描述你实际看到的效")
-        print("   2. 将 ☐ 改为 [x]")
-        print("   3. 然后运行: python upload_server.py")
+        print("[OK] All checks passed!")
+        print("   Please in DEPLOY_CHECKLIST.md:")
+        print("   1. Fill in actual test description (what you actually saw)")
+        print("   2. Change [ ] to [x]")
+        print("   3. Then run: python upload_server.py")
     else:
-        print("❌ 部分检查未通过，请修复后再继续")
-        print("   修复后重新运行此脚本验证")
+        print("[FAIL] Some checks failed. Please fix before continuing.")
+        print("   Run this script again after fixing.")
 
     return all_passed
 

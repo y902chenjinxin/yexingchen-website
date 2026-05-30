@@ -13,6 +13,7 @@
   /* ========== 古铜金系 ========== */
   --color-gold: #C9A86C;           /* 古铜金主色 */
   --color-gold-light: rgba(201, 168, 108, 0.4);
+  --color-gold-bright: #F0E6C8;    /* 亮金色 */
   --color-gold-dark: #8B7355;      /* 暗金 */
   --color-gold-gradient: linear-gradient(135deg, #8B7355 0%, #C9A86C 40%, #E8D4A8 50%, #C9A86C 60%, #8B7355 100%);
   --color-gold-glow: 0 0 30px rgba(201, 169, 98, 0.3);
@@ -36,6 +37,7 @@
 
   /* ========== 文字色 ========== */
   --color-text: #E8E4DC;           /* 月白/暖白 */
+  --color-text-dark: #1a1a2e;     /* 深色文字（用于浅色背景如面板） */
   --color-text-secondary: #9A968E; /* 灰茶色 */
   --color-text-muted: #6A665E;    /* 淡墨 */
   --color-text-light: rgba(232, 228, 220, 0.9);
@@ -47,8 +49,17 @@
 
   /* ========== 仙气/灵气特效色 ========== */
   --color-qi-primary: #4A7C59;    /* 灵气主色（非薄荷感翡翠绿） */
+  --color-qi-green: #7FFFCC;       /* 翡翠绿（鼠标轨迹） */
   --color-qi-glow: rgba(74, 124, 89, 0.4);
   --island-glow-color: rgba(201, 168, 108, 0.2);
+
+  /* ========== 每日运势颜色 ========== */
+  --color-fortune-jade: #7FFFCC;      /* 翡翠绿 */
+  --color-fortune-gold: #C9A86C;       /* 古铜金 */
+  --color-fortune-purple: #8B7AAE;    /* 紫霄色 */
+  --color-fortune-jade-dark: #4A7C59; /* 墨绿 */
+  --color-fortune-rose: #A87C9C;       /* 紫薇色 */
+  --color-fortune-paper: #E8DCC8;     /* 暖纸色 */
 
   /* ========== 主色调（从蓝灰改为沉稳） ========== */
   --color-primary: #4A5D6B;       /* 墨蓝 */
@@ -199,4 +210,237 @@
   background: var(--color-bg-elevated);
   box-shadow: var(--shadow-lg);
   border: 1px solid rgba(201, 169, 98, 0.08);
+}
+
+/* ========== v2.0 天人合一 扩展变量 ========== */
+
+/* ========== 【景】五层背景变量 ========== */
+:root {
+  /* 层透明度 */
+  --layer-1-opacity: 0.3;    /* 天穹 */
+  --layer-2-opacity: 0.5;     /* 远山 */
+  --layer-3-opacity: 0.7;     /* 灵气 */
+  --layer-4-opacity: 0.9;     /* 云海 */
+  --layer-5-opacity: 0.4;     /* 薄雾 */
+
+  /* 层移动速度 */
+  --layer-1-speed: 0;
+  --layer-2-speed: 0.5s;
+  --layer-3-speed: 1s;
+  --layer-4-speed: 2s;
+  --layer-5-speed: 3s;
+
+  /* 呼吸节奏（4-7-8调息）*/
+  --breath-in: 4s;
+  --breath-hold: 7s;
+  --breath-out: 8s;
+  --breath-total: 19s;
+
+  /* 丁达尔光柱 */
+  --god-ray-color: rgba(201, 169, 98, 0.4);
+  --god-ray-count: 4;
+  --god-ray-particle-opacity: 0.5;
+  --god-ray-animation-duration: 8s;
+
+  /* 入场动画进度 */
+  --entrance-progress: 0;
+}
+
+/* ========== 【光】shader效果变量 ========== */
+:root {
+  /* Bloom辉光 */
+  --bloom-intensity: 0.6;
+  --bloom-threshold: 0.8;
+  --bloom-radius: 20px;
+
+  /* 色差 */
+  --chromatic-offset: 2px;
+  --chromatic-red: rgba(255, 0, 0, 0.5);
+  --chromatic-blue: rgba(0, 255, 255, 0.5);
+
+  /* 玉石光感 */
+  --jade-glow-intensity: 0.3;
+  --jade-breathe-duration: 6s;
+
+  /* 景深 */
+  --dof-near-blur: 0px;
+  --dof-far-blur: 8px;
+  --dof-focus-distance: 50%;
+
+  /* 岛屿呼吸强度（音频驱动）*/
+  --island-breathe: 1;
+  --particle-density: 0.5;
+}
+
+/* ========== 【转场】砚台变量 ========== */
+:root {
+  /* 墨韵转场 */
+  --ink-transition-easing: cubic-bezier(0.65, 0, 0.35, 1);
+  --ink-duration: 0.8s;
+  --ink-color: var(--color-ink-deep);
+  --ink-corner-size: 100px;
+
+  /* 入场动画时序 */
+  --entrance-phase-1: 0s;
+  --entrance-phase-2: 1s;
+  --entrance-phase-3: 2s;
+  --entrance-phase-4: 3s;
+  --entrance-phase-5: 5s;
+}
+
+/* ========== 【感】交互变量 ========== */
+:root {
+  /* 鼠标灵气轨迹 */
+  --cursor-trail-color: rgba(201, 169, 98, 0.6);
+  --cursor-trail-lifetime: 1200ms;
+  --cursor-trail-max-particles: 30;
+
+  /* 岛屿hover效果 */
+  --island-hover-scale: 1.05;
+  --island-hover-translate: -20px;
+  --island-hover-glow: 30px;
+  --island-hover-duration: 0.4s;
+
+  /* 灵气共鸣波纹 */
+  --ripple-color: var(--color-gold);
+  --ripple-duration: 0.6s;
+  --ripple-max-scale: 3;
+
+  /* 手势反馈 */
+  --gesture-feedback-duration: 0.3s;
+
+  /* 各岛专属色（用于灵物组合）*/
+  --island-music-glow: rgba(155, 141, 201, 0.5);
+  --island-novel-glow: rgba(212, 196, 168, 0.5);
+  --island-video-glow: rgba(168, 124, 156, 0.5);
+  --island-log-glow: rgba(122, 155, 124, 0.5);
+  --island-tool-glow: rgba(196, 154, 108, 0.5);
+}
+
+/* ========== 【包】包容性变量 ========== */
+:root {
+  /* 性能降级阈值 */
+  --perf-high-tier: 8;
+  --perf-mid-tier: 4;
+  --perf-low-tier: 2;
+
+  /* 无障碍 */
+  --focus-outline: 2px solid var(--color-gold);
+  --focus-outline-offset: 2px;
+
+  /* 高对比模式 */
+  --high-contrast-bg: #FFFFFF;
+  --high-contrast-text: #000000;
+  --high-contrast-accent: var(--color-gold);
+}
+
+/* ========== 【光】shader效果 ========== */
+.glow {
+  filter: blur(8px);
+  opacity: 0.6;
+}
+
+/* Bloom辉光效果 */
+.bloom-effect {
+  filter: blur(var(--bloom-radius, 20px));
+  opacity: var(--bloom-intensity, 0.6);
+}
+
+/* Chromatic色差效果 */
+.chromatic-text {
+  text-shadow:
+    var(--chromatic-offset, 2px) 0 rgba(201, 169, 98, 0.3),
+    calc(var(--chromatic-offset, 2px) * -1) 0 rgba(155, 141, 201, 0.3);
+}
+
+/* DOF景深效果 */
+.dof-background {
+  filter: blur(4px);
+}
+
+.dof-midground {
+  filter: blur(2px);
+}
+
+.dof-foreground {
+  filter: blur(0px);
+}
+
+/* 飞白效果 */
+.fei-bai-text {
+  background: linear-gradient(
+    90deg,
+    var(--color-text) 0%,
+    var(--color-text) 45%,
+    transparent 45%,
+    transparent 55%,
+    var(--color-text) 55%,
+    var(--color-text) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ========== 【转场】砚台转场增强 ========== */
+:root {
+  /* 墨韵转场 - 时序改进 */
+  --ink-transition: cubic-bezier(0.65, 0, 0.35, 1);
+  --ink-duration: 0.8s;
+
+  /* 四角墨色凝聚 */
+  --ink-corner-delay: 0s;
+  --ink-corner-duration: 0.3s;
+
+  /* 汇聚为线 */
+  --ink-line-delay: 0.3s;
+  --ink-line-duration: 0.2s;
+
+  /* 横向展开 */
+  --ink-expand-delay: 0.5s;
+  --ink-expand-duration: 0.3s;
+}
+
+/* 墨韵转场动画关键帧 */
+@keyframes ink-corner-expand {
+  0% {
+    clip-path: polygon(0 0, 0 0, 0 0, 0 0);
+  }
+  100% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+}
+
+@keyframes ink-line-shrink {
+  0% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  100% {
+    clip-path: polygon(0 50%, 100% 50%, 100% 50%, 0 50%);
+  }
+}
+
+@keyframes ink-expand-spread {
+  0% {
+    clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
+  }
+  100% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+}
+
+/* ========== 【节气】天象系统 ========== */
+:root {
+  /* 节气特效强度 */
+  --solar-term-intensity: 1;
+  --solar-term-spring: 0.8;
+  --solar-term-summer: 1.2;
+  --solar-term-autumn: 1.0;
+  --solar-term-winter: 0.9;
+
+  /* 流星概率 */
+  --meteor-probability: 0.02;
+
+  /* 随机事件冷却 */
+  --random-event-cooldown: 30000;
 }
