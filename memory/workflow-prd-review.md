@@ -118,26 +118,45 @@ metadata:
 ---
 
 ## Step 8：自测（强制浏览器验证）
-- 本地构建 `npm run build`
-- **自动化浏览器验证**（强制门控）：
-  ```
-  node browser_verify.js
-  ```
-  连接用户 Chrome 浏览器，自动执行：
-  - 登录网站
-  - 模拟鼠标移动触发粒子
-  - 验证 Canvas 渲染和颜色正确
-  - **不通过则阻塞部署**
-- 移动端viewport测试（375px/768px/1024px）
-- **记录构建证据**：
-  ```
-  python self_test.py record Step 8
-  ```
+
+**两阶段测试架构**：
+
+| 阶段 | 测试环境 | 调用方式 | 失败处理 |
+|------|----------|----------|----------|
+| 自测阶段 | localhost:4173 (本地preview) | `python self_test.py` → `browser_verify.js --local` | 直接修复，不影响他人 |
+| 部署后验证 | yexingchen.cn (生产环境) | `python upload_server.py` → `browser_verify.js` | 阻塞部署，需回滚 |
+
+**自测流程**：
+1. 本地构建：`cd frontend && npm run build`
+2. 启动本地preview：`npm run preview` (后台运行)
+3. 执行自动化验证：`python self_test.py`
+   - 浏览器验证（本地）：`node browser_verify.js --local --all`
+   - CSS变量检查：`grep -n '#\|rgb(' **/*.vue` 无硬编码hex/rgb
+   - 组件行数检查：`wc -l frontend/src/views/*.vue` 无新增超500行组件
+4. **记录构建证据**：`python self_test.py record Step 8`
+
+**浏览器验证模块化**：
+```javascript
+// browser_verify.js 根据 git 改动自动判断测试范围
+const testModules = {
+  login: { name: '登录流程', files: ['LoginView.vue'], run() {...} },
+  mouse: { name: '鼠标轨迹', files: ['MouseTrail.vue'], run() {...} },
+  islands: { name: '岛屿系统', files: ['HomeView.vue'], run() {...} },
+  // 新增功能只需添加模块...
+};
+```
+
+**参数说明**：
+- `node browser_verify.js` - 自动检测git改动，只测试相关模块
+- `node browser_verify.js --all` - 强制测试全部模块
+- `node browser_verify.js --local` - 测试本地 preview
+- `node browser_verify.js --production` - 测试生产环境（默认）
+- `node browser_verify.js --both` - 本地 + 生产都测
 
 **强制验证机制**：
 - `browser_verify.js` 通过 CDP 连接用户 Chrome 验证效果
-- `self_test.py` 包含浏览器验证步骤，不通过则报告失败
-- `upload_server.py` 部署前再次验证，失败则拒绝
+- `self_test.py` 不通过则阻塞，无法进入部署
+- `upload_server.py` 部署后自动验证生产环境，不通过则拒绝上传
 
 **前端自测增强项**：
 - [ ] `grep -n '#\|rgb(' **/*.vue` 无硬编码hex/rgb（CSS变量门控）
@@ -243,6 +262,28 @@ ssh root@203.195.208.25 "cp /var/www/yexingchen/backend/yexingchen.db.bak.{times
 
 ---
 
+## 测试模块扩展（browser_verify.js）
+
+当新增功能需要浏览器验证时，在 `browser_verify.js` 的 `testModules` 中注册：
+
+```javascript
+const testModules = {
+  // 现有模块...
+  newFeature: {
+    name: '新功能名称',
+    files: ['NewFeature.vue', '相关文件'],  // git 改动匹配
+    async run(baseUrl) {
+      console.log('\n[N] Testing new feature...');
+      // 测试逻辑
+    }
+  }
+};
+```
+
+注册后，当 `git diff` 涉及指定文件时，自动包含该测试。
+
+---
+
 ## 安全红线（任何人不得绕过）
 
 1. **凭证不得硬编码**：密码必须从环境变量或.netrc读取，禁止写入代码 ✅ 已修复
@@ -260,13 +301,17 @@ ssh root@203.195.208.25 "cp /var/www/yexingchen/backend/yexingchen.db.bak.{times
 # 1. 构建
 cd frontend && npm run build
 
-# 2. 上传到服务器
+# 2. 自测（本地preview）
+python self_test.py
+python self_test.py record Step 8
+
+# 3. 上传到服务器（自动验证生产环境）
 python upload_server.py
 
-# 3. 重启后端
+# 4. 重启后端
 python restart_pm2.py
 
-# 4. 验证测试
+# 5. 验证生产环境
 node test_site.cjs
 ```
 
