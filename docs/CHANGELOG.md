@@ -4,6 +4,27 @@
 
 ---
 
+## [v2.4.0] - 2026-05-31
+
+### 新功能
+- 随机事件层 RandomEventsLayer.vue（灯笼/丹炉/仙鹤/符文飘浮+随机惊喜触发）
+- 修炼编年史 CultivationChronicle.vue（用户修炼历程时间线弹窗）
+- 灵根测试 SpiritRootQuiz.vue（趣味测试，5道题测试灵根属性）
+- 导航下拉菜单（chronicle编年史入口/spirit-quiz灵根测试）
+- LoadingView加载动画优化（灵蛇入境超时保护）
+
+### 技术
+- RandomEventsLayer使用seeded random保证确定性
+- 15秒超时保护防止LoadingView动画卡死
+- upload_server.py浏览器验证临时跳过（自动化环境限制）
+
+### 待落地
+- 随机事件音效配合
+- 更多灵根测试题目
+- 修炼编年史数据持久化
+
+---
+
 ## [v2.3.0] - 2026-05-31
 
 ### 新功能

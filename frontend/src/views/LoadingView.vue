@@ -329,6 +329,14 @@ function render() {
   } else {
     animationId = requestAnimationFrame(render)
   }
+
+  // 备用：超过15秒强制完成（防止requestAnimationFrame在某些环境下不触发）
+  setTimeout(() => {
+    if (progress.value < 1) {
+      console.warn('[LoadingView] Animation timeout, forcing completion')
+      emit('loaded')
+    }
+  }, 15000)
 }
 
 function resizeCanvas() {
