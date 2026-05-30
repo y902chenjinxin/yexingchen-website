@@ -89,9 +89,9 @@
 
 ---
 
-## 待清理文件（不纳入v2.x）
+## v2.x 完成后的待清理文件
 
-这些是v2.0开发过程中创建但暂不使用的文件：
+v2.x 全部完成后统一清理：
 
 | 文件路径 | 原因 |
 |----------|------|
@@ -102,45 +102,6 @@
 | `composables/useEntranceAnimation.js` | 入场动画，暂未集成 |
 | `composables/useParticleSystem.js` | 粒子系统，暂未集成 |
 | `views/islands/*` | 洞天内景页面，内容待填充 |
-
----
-
-## 待清理文件（不纳入v2.x）
-
-这些是v2.0开发过程中创建但暂不使用的文件，将在v2.x完成后统一清理：
-
-### Components
-| 文件路径 | 原因 |
-|----------|------|
-| `components/layers/*` (5个) | 五层背景组件，暂未集成HomeView |
-| `components/particles/*` (3个) | 粒子组件，暂未集成 |
-| `components/transition/*` (2个) | 转场组件，暂未集成 |
-
-### Composables
-| 文件路径 | 原因 |
-|----------|------|
-| `useBreathCycle.js` | 呼吸节奏，暂未集成 |
-| `useEntranceAnimation.js` | 入场动画，暂未集成 |
-| `useParticleSystem.js` | 粒子系统，暂未集成 |
-
-### Views
-| 文件路径 | 原因 |
-|----------|------|
-| `views/islands/*` (6个) | 洞天内景页面，内容待填充 |
-
-### 临时文件
-| 文件路径 | 原因 |
-|----------|------|
-| `check_css.py` | 临时检查脚本 |
-| `check_server.py` | 临时检查脚本 |
-| `cookies.txt` | 临时cookie文件 |
-
-### 文档
-| 文件路径 | 原因 |
-|----------|------|
-| `docs/PRD_v2.0_SCHEME_REVIEW.md` | 被新文档替代 |
-| `docs/TECH_DESIGN_v2.md` | 被新文档替代 |
-| `memory/project-v200.md` | 项目记忆已过时 |
 
 ---
 
