@@ -4,6 +4,20 @@
 
 ---
 
+## [v2.1.0] - 2026-05-30
+
+### 新功能
+- 鼠标轨迹 MouseTrail.vue（Canvas淡金色粒子，1.2s生命周期）
+- 修为印章 CultivationProgress.vue（右下角显示今日修为，localStorage持久化）
+- 岛屿hover特效（5种岛屿专属动效：音符/书卷/光圈/墨滴/齿轮）
+- 顶栏优化（音律玉佩/身份令牌/法诀玉简玉石质感样式）
+
+### 技术
+- 集成 components/effects/ 到 HomeView.vue
+- 引入 hover-effects.css 岛屿特效
+
+---
+
 ## [v1.8.0] - 2026-05-29
 
 ### 动效优化
