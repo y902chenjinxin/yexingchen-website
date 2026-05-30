@@ -170,6 +170,26 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 - 每次 commit 前 → 运行 `npm run lint` + `npm run build`
 - 部署前 → 必须执行完整 E2E + API 健康检查
 
+### 部署强制门控（必须遵守）
+
+**部署前必须完成 DEPLOY_CHECKLIST.md 中的所有检查项**
+
+| 文件 | 作用 |
+|------|------|
+| `DEPLOY_CHECKLIST.md` | 部署前检查清单，完成所有 ☐ 变为 [x] 后方可部署 |
+| `upload_server.py` | **门控脚本**：检测到未完成的检查项会拒绝执行上传 |
+| `self_test.py` | 自测辅助工具：帮助系统性验证所有检查项 |
+
+**门控逻辑**：
+1. `python self_test.py` → 运行自测检查（可选但推荐）
+2. 手动填写 DEPLOY_CHECKLIST.md（填入实际验证结果）
+3. `python upload_server.py` → 检测到未完成的项则退出，拒绝部署
+4. 直到所有项都 [x] 才能继续上传
+
+**违规后果**：
+- upload_server.py 检测到未完成项会直接退出，不执行上传
+- 每次部署记录会保存在 DEPLOY_CHECKLIST.md 的"检查结果记录"区
+
 ### 后端变更检查清单
 - [ ] 新接口是否需要认证？若是，加 `Depends(get_current_user)`
 - [ ] 管理接口是否需要超级管理员？若是，加 `Depends(require_super_admin)`
