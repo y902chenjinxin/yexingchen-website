@@ -66,26 +66,32 @@ def check_marker_exists(markers, step_name):
             return os.path.exists('.git')
         return True  # 无标志的步骤默认通过
 
+    # 获取脚本所在目录的绝对路径
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    docs_dir = os.path.join(script_dir, 'docs')
+
     for marker in markers:
-        if marker.endswith('.md'):
-            # 模糊匹配 PRD 文件
-            if 'PRD_v' in marker:
-                # 查找任何 docs/PRD_v*.md
-                for f in os.listdir('docs'):
+        # 模糊匹配 PRD 文件（不检查 .md 后缀）
+        if 'PRD_v' in marker:
+            # 查找任何 docs/PRD_v*.md
+            try:
+                for f in os.listdir(docs_dir):
                     if f.startswith('PRD_v') and f.endswith('.md'):
                         return True
-            elif marker == 'SECURITY_CHECKLIST.md':
-                return os.path.exists(marker)
-            elif marker == 'DEPLOY_CHECKLIST.md':
-                return os.path.exists(marker)
-            elif marker == 'docs/ROLLBACK.md':
-                return os.path.exists(marker)
-            elif marker == 'docs/RETROSPECTIVE.md':
-                return os.path.exists(marker)
-            else:
-                return os.path.exists(marker)
+            except:
+                pass
+        elif marker == 'SECURITY_CHECKLIST.md':
+            return os.path.exists(marker)
+        elif marker == 'DEPLOY_CHECKLIST.md':
+            return os.path.exists(marker)
+        elif marker == 'docs/ROLLBACK.md':
+            return os.path.exists(os.path.join(script_dir, marker))
+        elif marker == 'docs/RETROSPECTIVE.md':
+            return os.path.exists(os.path.join(script_dir, marker))
         elif marker == '.git':
             return os.path.exists('.git')
+        elif marker.endswith('.md') and os.path.exists(marker):
+            return True
 
     return False
 

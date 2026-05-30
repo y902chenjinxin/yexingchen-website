@@ -102,16 +102,19 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 
 **任何跨模块变更必须先输出依赖分析再开发**
 
-## Current Status (v1.5 已完成)
+## Current Status (v2.2 已完成)
 
-所有 v1.5 需求均已完成并部署：
-- 输入框 placeholder 淡蓝灰色 ✓
-- 登录错误提示"账密输入错误，请重试" ✓
-- 密码显隐图标（默认闭眼）✓
-- 登录加载仙气飘飘特效 ✓
-- 背景音乐（青花瓷、兰亭序）✓
-- 岛屿阵法模式（环形旋转叠加）✓
-- 5个岛屿改为数据列表 ✓
+**当前版本**: v2.2.0 - 包含以下功能：
+- 玄墨流金设计系统（玄墨/流金双色板）
+- 5个岛屿：音乐岛/小说岛/视频岛/日志岛/工具岛
+- 鼠标灵气轨迹（翡翠绿粒子）
+- 装饰层：灯笼/丹炉/仙鹤/符文飘浮
+- 每日运势印章
+- 天象系统（昼夜/星辰/云霞）
+- 修为印章
+- 岛屿阵法模式（环形旋转）
+
+**版本计划**: v2.3（键盘导航/手势控制/声效）待开发
 
 ## 强制要求
 
@@ -125,15 +128,14 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 |------|----------|----------|
 | Step 2 需求评审 | 7角色并行评审完成，PRD文档已生成 | 无PRD文档 = 违规 |
 | Step 7 安全审查 | SECURITY_CHECKLIST.md 已签字 | 无签字 = 违规 |
-| Step 8 自测 | npm run build + **npm run preview本地预览确认** + **必须执行 `python self_test.py record Step 8` 记录证据** + 移动端验证 | 未预览直接部署 = 严重违规；未记录 = 部署时会被 upload_server.py 拦截 |
-| Step 11 Git提交 | CHANGELOG.md + ISSUES.md 已同步更新，否则不许 commit | 未更新文档 = 违规 |
+| Step 8 自测 | `npm run build` + `python self_test.py`（本地浏览器验证） + `python self_test.py record Step 8` | 未自测直接部署 = 严重违规；未记录 = upload_server.py 拦截 |
+| Step 11 Git提交 | CHANGELOG.md + ISSUES.md 已同步更新 | 未更新文档 = 违规 |
 | Step 14 收尾 | 复盘记录写入 docs/RETROSPECTIVE.md | 未写复盘 = 违规 |
 
-**Step 8 强制记录机制**：
-1. `python self_test.py record Step 8` 会记录 dist/index.html 的 SHA256 hash
-2. `upload_server.py` 在部署前会比较当前 hash 与记录的 hash
-3. 如果 dist 被修改过（重新 build），但没有重新 record，部署会被拦截
-4. 这确保了"视觉验证过的构建"不会被偷偷替换
+**Step 8 两阶段测试架构**：
+1. 自测阶段：`python self_test.py` → `browser_verify.js --local` 测试 localhost:4173
+2. 部署后验证：`upload_server.py` → `browser_verify.js` 测试 yexingchen.cn
+3. 自动检测 git 改动，只测试相关功能模块
 
 ### 7角色技能调用触发
 
@@ -163,10 +165,10 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 - CSS变量：`frontend/src/assets/styles/variables.css`
 
 ### 测试强制要求
-- **Step 8 门控**：`npm run build` + `node test_site.cjs` 必须通过
-- E2E 覆盖率清单：登录流程(正确+错密码+空账号)、登出、5岛屿数据加载、管理后台、岛屿动画、音乐播放、/api/health、移动端(375px/768px/1024px)、错误提示、网络异常降级
-- 涉及 auth/islands/API 的改动 → 追加专项 E2E 验证
-- 移动端测试(375px)必须手动验证
+- **Step 8 门控**：`npm run build` + `python self_test.py` + `node browser_verify.js --local --all`
+- E2E 覆盖率：登录流程、登出、5岛屿导航、装饰层、每日运势、天象系统、CSS变量、移动端(375px)
+- 浏览器自动化：`browser_verify.js` 根据 git 改动自动检测测试范围
+- 移动端测试(375px)由 browser_verify.js 自动验证
 
 **测试触发规则（强制）**：
 - 代码涉及 auth/login/JWT → 必须运行 `node test_site.cjs` + 登录边界测试
@@ -294,9 +296,10 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 
 ### 部署流程
 1. 构建：`cd frontend && npm run build`
-2. 上传：`python upload_server.py`
-3. 重启：`python restart_pm2.py`
-4. 验证：`node test_site.cjs`
+2. 自测：`python self_test.py && python self_test.py record Step 8`
+3. 上传：`python upload_server.py`
+4. 重启：`python restart_pm2.py`
+5. 验证：`node browser_verify.js --production --all`
 
 ---
 
