@@ -231,6 +231,12 @@
         <el-button type="primary" @click="confirmPassword">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- v2.1 鼠标轨迹特效 -->
+    <MouseTrail />
+
+    <!-- v2.1 修为印章 -->
+    <CultivationProgress />
   </div>
 </template>
 
@@ -241,6 +247,8 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { CaretBottom, User, Lock, Avatar, Tools, SwitchButton } from '@element-plus/icons-vue'
+import MouseTrail from '@/components/effects/MouseTrail.vue'
+import CultivationProgress from '@/components/effects/CultivationProgress.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -411,6 +419,8 @@ function getDecoParticleStyle(i) {
 </script>
 
 <style scoped>
+@import './hover-effects.css';
+
 .home-page {
   min-height: 100vh;
   background: var(--color-bg-current);

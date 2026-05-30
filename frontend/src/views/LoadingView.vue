@@ -144,9 +144,9 @@ function updateSnake() {
     snakeParticles[i].y = snakeParticles[i - 1].y
   }
 
-  // 蛇头跟随路径 - 加快速度以在0.4s内完成
+  // 蛇头跟随路径 - 加快速度以在0.8s内完成
   if (currentPathProgress < 1) {
-    currentPathProgress += 0.04
+    currentPathProgress += 0.015
     const head = getPointOnPath(currentPathProgress)
     if (snakeParticles.length > 0) {
       snakeParticles[0].x = head.x
