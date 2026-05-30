@@ -139,7 +139,7 @@ def check_browser_verification():
     import sys
 
     result = subprocess.run(
-        [sys.executable, 'browser_verify.js', '--local'],
+        ['node', 'browser_verify.js', '--local'],
         capture_output=True,
         text=True,
         timeout=120

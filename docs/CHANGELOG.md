@@ -4,6 +4,26 @@
 
 ---
 
+## [v2.3.0] - 2026-05-31
+
+### 新功能
+- 键盘导航 useKeyboardNavigation.js（Tab遍历岛屿，1-5数字快捷键，Enter进入，Escape取消，?帮助）
+- 手势控制 useGestureControl.js（移动端捏合缩放/长按详情/上滑返回/双击进入）
+- 岛屿声效 useIslandSound.js（Web Audio API，各岛屿hover专属音效）
+- 键盘帮助层 KeyboardHelp.vue（?键呼出，展示快捷键说明）
+
+### 技术
+- 三大composable集成到HomeView.vue
+- HomeView.vue添加tabindex="0"支持键盘焦点
+- 音效开关按钮集成到顶栏
+- browser_verify.js自动测试覆盖键盘/声效
+
+### 待落地
+- 音效文件（public/sounds/目录下需放置mp3文件）
+- 手势控制在真机移动端测试
+
+---
+
 ## [v2.1.0] - 2026-05-30
 
 ### 新功能

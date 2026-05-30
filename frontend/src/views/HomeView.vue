@@ -1,5 +1,5 @@
 <template>
-  <div class="home-page">
+  <div class="home-page" tabindex="0">
     <!-- 背景云海 -->
     <div class="cloud-sea">
       <div class="cloud cloud-1"></div>
@@ -40,6 +40,12 @@
           </el-dropdown-menu>
         </template>
       </el-dropdown>
+        <!-- v2.3 音效开关 -->
+        <el-tooltip content="音效" placement="bottom">
+          <el-button class="sound-btn" circle @click="toggleSound">
+            <span>{{ isMuted ? '🔇' : '🔊' }}</span>
+          </el-button>
+        </el-tooltip>
         <el-dropdown trigger="click" @command="handleDropdownCommand">
           <div class="user-avatar-area">
             <span class="avatar-text">{{ avatarText }}</span>
@@ -270,11 +276,14 @@
 
     <!-- v2.2 每日运势 -->
     <DailyFortune />
+
+    <!-- v2.3 键盘帮助层 -->
+    <KeyboardHelp :isHelpVisible="isHelpVisible" @close="isHelpVisible = false" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -284,7 +293,11 @@ import MouseTrail from '@/components/effects/MouseTrail.vue'
 import CultivationProgress from '@/components/effects/CultivationProgress.vue'
 import DecorationsLayer from '@/components/effects/DecorationsLayer.vue'
 import DailyFortune from '@/components/effects/DailyFortune.vue'
+import KeyboardHelp from '@/components/KeyboardHelp.vue'
 import { useCelestialSystem } from '@/composables/useCelestialSystem'
+import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation'
+import { useGestureControl } from '@/composables/useGestureControl'
+import { useIslandSound } from '@/composables/useIslandSound'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -294,6 +307,15 @@ const magicMode = ref(false) // 阵法模式
 
 // v2.2 天象系统
 const { shichenName, solarTermName, solarTermIntensity } = useCelestialSystem()
+
+// v2.3 键盘导航
+const { setup: setupKeyboardNav, cleanup: cleanupKeyboardNav, isHelpVisible } = useKeyboardNavigation()
+
+// v2.3 手势控制
+const { setup: setupGestures, cleanup: cleanupGestures } = useGestureControl()
+
+// v2.3 音效系统
+const { setup: setupSounds, cleanup: cleanupSounds, toggleSound, isMuted } = useIslandSound()
 
 // 阵法模式切换
 function toggleMagicMode() {
@@ -346,6 +368,11 @@ onMounted(async () => {
   setTimeout(() => {
     bgAudio.value?.play().catch(() => {})
   }, 500)
+
+  // v2.3 初始化交互系统
+  setupKeyboardNav()
+  setupGestures()
+  setupSounds()
 })
 
 watch(() => settingsStore.bgMusicUrl, (url) => {
@@ -455,6 +482,13 @@ function getDecoParticleStyle(i) {
     animationDelay: `${delay}s`
   }
 }
+
+// v2.3 清理交互系统
+onUnmounted(() => {
+  cleanupKeyboardNav()
+  cleanupGestures()
+  cleanupSounds()
+})
 </script>
 
 <style scoped>

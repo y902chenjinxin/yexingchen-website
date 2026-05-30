@@ -22,7 +22,7 @@ let msgId = 0;
 let failures = [];
 
 // URLs
-const LOCAL_URL = 'http://localhost:4173';
+const LOCAL_URL = 'http://localhost:4174';
 const PROD_URL = 'https://yexingchen.cn';
 
 // ============================================
@@ -205,14 +205,23 @@ const testModules = {
 
   celestial: {
     name: '天象系统',
-    files: ['SkyLayer.vue', 'CelestialSystem.vue'],
+    files: ['useCelestialSystem.js'],
     async run(baseUrl) {
       console.log('\n[8] Testing celestial system...');
 
-      const celestial = await send('Runtime.evaluate', {
-        expression: 'document.querySelector(".sky-layer, .stars-container, .star") !== null'
+      // 检查 useCelestialSystem 是否正确设置 CSS 变量
+      const celestialVars = await send('Runtime.evaluate', {
+        expression: `(() => {
+          const styles = getComputedStyle(document.documentElement);
+          const bgCurrent = styles.getPropertyValue('--color-bg-current').trim();
+          const glowCurrent = styles.getPropertyValue('--color-glow-current').trim();
+          return JSON.stringify({ bgCurrent, glowCurrent });
+        })()`
       });
-      check('Celestial/stars system exists', celestial.result.result.value);
+
+      const celestialResult = JSON.parse(celestialVars.result.result.value);
+      check('--color-bg-current is set', celestialResult.bgCurrent.length > 0);
+      check('--color-glow-current is set', celestialResult.glowCurrent.length > 0);
     }
   },
 
@@ -287,13 +296,8 @@ const testModules = {
       // 检查是否有岛屿被聚焦
       const islandFocused = await send('Runtime.evaluate', {
         expression: `(() => {
-          const islands = document.querySelectorAll('.island, .island-pos');
-          for (const island of islands) {
-            if (document.activeElement === island || island.classList.contains('island-focused')) {
-              return 'island focused';
-            }
-          }
-          return 'no focus';
+          const focused = document.querySelector('.island-focused');
+          return focused ? 'island focused: ' + focused.className : 'no focus';
         })()`
       });
       check('Island can be focused with Tab', islandFocused.result.result.value.includes('focused'));
@@ -489,7 +493,7 @@ async function runTests(baseUrl, testsToRun, phaseLabel) {
   console.log(`${'='*60}`);
 
   await send('Page.navigate', { url: baseUrl + '/home' });
-  await new Promise(r => setTimeout(r, 2000));
+  await new Promise(r => setTimeout(r, 4000));
 
   for (const testKey of testsToRun) {
     const mod = testModules[testKey];

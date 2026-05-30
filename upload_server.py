@@ -270,10 +270,12 @@ def check_browser_verification():
 
     # 运行浏览器验证脚本（部署后验证生产环境）
     result = subprocess.run(
-        [sys.executable, 'browser_verify.js'],
+        ['node', 'browser_verify.js'],
         capture_output=True,
         text=True,
-        timeout=60
+        encoding='utf-8',
+        errors='replace',
+        timeout=120
     )
 
     if result.returncode == 0:
@@ -319,11 +321,19 @@ def upload_to_server():
     print(f"Clearing remote directory {remote_dist}...")
     try:
         sftp.stat(remote_dist)
+        # 先删除所有文件（不包括目录）
         for item in sftp.listdir(remote_dist):
             filepath = os.path.join(remote_dist, item)
             try:
-                sftp.remove(filepath)
-            except:
+                sftp.remove(filepath)  # 删除文件
+            except IOError:
+                pass  # 跳过目录，稍后处理
+        # 再删除所有子目录
+        for item in sftp.listdir(remote_dist):
+            filepath = os.path.join(remote_dist, item)
+            try:
+                sftp.rmdir(filepath)  # 删除空目录
+            except IOError:
                 pass
     except FileNotFoundError:
         sftp.mkdir(remote_dist, 0o755)
@@ -352,6 +362,21 @@ def upload_to_server():
 
     print("\n" + "="*60)
     print("[OK] Upload completed!")
+    print("="*60 + "\n")
+
+    # Restart PM2 to serve new files
+    print("[Step 3/3] Restarting PM2...")
+    transport = paramiko.Transport((host, port))
+    transport.connect(username=username, password=password)
+    ssh = paramiko.SSHClient().from_transport(transport)
+    stdin, stdout, stderr = ssh.exec_command("pm2 restart yexingchen-backend")
+    print(stdout.read().decode())
+    print(stderr.read().decode())
+    ssh.close()
+    transport.close()
+
+    print("\n" + "="*60)
+    print("[OK] PM2 restarted!")
     print("="*60 + "\n")
 
 if __name__ == "__main__":

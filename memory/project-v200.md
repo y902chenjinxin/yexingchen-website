@@ -7,9 +7,9 @@ metadata:
 
 ## v2.x 开发状态
 
-**当前版本**: v2.3.0 (开发中)
+**当前版本**: v2.3.0 (开发完成)
 **时间**: 2026-05-31
-**状态**: v2.3 键盘导航/手势控制/声效 开发中
+**状态**: v2.3 键盘导航/手势控制/声效 已完成，待发布
 
 ### 版本计划
 
@@ -17,16 +17,22 @@ metadata:
 |------|------|------|
 | v2.1 | 鼠标轨迹/修为印章/hover特效/顶栏优化 | ✅ 完成 |
 | v2.2 | 装饰层/每日运势/天象系统 | ✅ 完成 |
-| v2.3 | 键盘导航/手势控制/岛屿声效 | 🔄 开发中 |
+| v2.3 | 键盘导航/手势控制/岛屿声效 | ✅ 开发完成 |
 | v2.4 | 世界观叙事/砚台转场/光影shader | 待开发 |
 
-### v2.3 待开发
-1. useKeyboardNavigation.js - Tab遍历岛屿，方向键移动，?显示帮助
-2. useGestureControl.js - 移动端捏合/长按/上滑
-3. useIslandSound.js + HomeView.vue - 岛屿hover专属音效
+### v2.3 已完成
+1. useKeyboardNavigation.js - Tab遍历岛屿，数字键1-5快捷，Enter进入，Escape取消，?帮助
+2. useGestureControl.js - 移动端捏合/长按/上滑/双击
+3. useIslandSound.js + KeyboardHelp.vue + 音效按钮 - 岛屿hover专属音效
+4. HomeView.vue 集成 - 三大composable + 键盘帮助层
+
+### v2.3 测试
+- browser_verify.js --local 全部通过 ✅
+- 自测完成，待发布
 
 ### 下一步
-v2.3 开发：键盘导航 + 手势控制 + 岛屿声效
+- Git commit + Tag v2.3.0
+- 部署生产环境
 
 ---
 
