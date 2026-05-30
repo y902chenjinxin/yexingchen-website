@@ -68,18 +68,20 @@ def check_workflow_complete():
         print(f"{'='*60}\n")
         return False
 
-    # Step 8 完成后，必须验证 dist 未被修改
+    # Step 8 完成后，必须验证 dist 未被修改，且 build 来自当前 commit
     if os.path.exists('.workflow_completion_log.json'):
         try:
             import json
             with open('.workflow_completion_log.json', 'r') as f:
                 log = json.load(f)
             if 'Step 8' in log and 'dist_hash' in log['Step 8']:
+                # 检查 dist hash 是否匹配
                 current_hash = hashlib.sha256()
                 with open('frontend/dist/index.html', 'rb') as hf:
                     current_hash.update(hf.read())
                 current_hash = current_hash.hexdigest()[:16]
                 recorded_hash = log['Step 8']['dist_hash']
+
                 if current_hash != recorded_hash:
                     print(f"\n{'='*60}")
                     print(f"[BLOCKED] Build output modified after Step 8 verification")
@@ -89,6 +91,25 @@ def check_workflow_complete():
                     print(f"\n  Run 'npm run build' again to regenerate, then re-verify Step 8.")
                     print(f"{'='*60}\n")
                     return False
+
+                # 检查 dist 是否在 record 之后被重新 build 过（基于 git commit 时间戳）
+                # 如果 dist 的修改时间早于 git commit 时间，说明 dist 不是从当前代码构建的
+                import subprocess
+                result = subprocess.run(['git', 'log', '-1', '--format=%ct', 'HEAD'],
+                                      capture_output=True, text=True)
+                if result.returncode == 0:
+                    git_timestamp = int(result.stdout.strip())
+                    dist_mtime = int(os.path.getmtime('frontend/dist/index.html'))
+                    if dist_mtime < git_timestamp:
+                        print(f"\n{'='*60}")
+                        print(f"[BLOCKED] dist/ was built BEFORE current commit")
+                        print(f"{'='*60}\n")
+                        print(f"  Git commit time: {git_timestamp}")
+                        print(f"  dist build time:  {dist_mtime}")
+                        print(f"\n  Your code has changed since last build.")
+                        print(f"  Run 'cd frontend && npm run build' to rebuild from current code.")
+                        print(f"{'='*60}\n")
+                        return False
         except:
             pass
 
@@ -228,24 +249,54 @@ def get_password():
                             return parts[i + 1]
     raise ValueError("SERVER_PASSWORD not set. Set it via environment variable.")
 
+def check_browser_verification():
+    """通过用户浏览器验证网站效果 - 强制门控"""
+    import subprocess
+    import sys
+
+    print("\n" + "="*60)
+    print("[Browser] Running automated verification")
+    print("="*60)
+
+    # 检查 Chrome 是否以调试模式启动
+    try:
+        import urllib.request
+        urllib.request.urlopen('http://localhost:9222/json', timeout=2)
+    except:
+        print("[ERROR] Chrome not running with --remote-debugging-port=9222")
+        print("        Please start Chrome: chrome.exe --remote-debugging-port=9222")
+        print("        Then run this script again.")
+        return False
+
+    # 运行浏览器验证脚本
+    result = subprocess.run(
+        [sys.executable, 'browser_verify.js'],
+        capture_output=True,
+        text=True,
+        timeout=60
+    )
+
+    if result.returncode == 0:
+        print("[OK] Browser verification passed")
+        return True
+    else:
+        print("[FAIL] Browser verification failed")
+        print("       Output:", result.stdout)
+        print("       Error:", result.stderr)
+        return False
+
 def upload_to_server():
     # 在部署前检查工作流关键步骤是否完成
     if not check_workflow_complete():
         print("[TIP] Run 'python workflow_progress.py Step 8' to see how to complete missing steps")
         sys.exit(1)
 
-    print("\n" + "="*60)
-    print("[Step 1/2] Running deployment checks")
-    print("="*60)
-
-    # Human checklist review - the workflow_progress gate handles automated blocking
-    print("[OK] Workflow prerequisite check passed")
-
-    # 获取自测描述用于日志
-    desc = get_self_test_description()
-    if desc:
-        print(f"\n[Test Record]:")
-        print(f"   {desc[:100]}..." if len(desc) > 100 else f"   {desc}")
+    # 强制浏览器验证 - 必须通过才能部署
+    if not check_browser_verification():
+        print("\n[BLOCKED] Browser verification failed")
+        print("          Fix the issues above, then run this script again.")
+        print("          Make sure Chrome is running with --remote-debugging-port=9222")
+        sys.exit(1)
 
     print("\n" + "="*60)
     print("[Step 2/2] Uploading files to server")

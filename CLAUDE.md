@@ -191,16 +191,18 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 1. `python workflow_progress.py Step 2` → 检查是否可以开始 Step 2（需要 Step 1 先完成）
 2. `python workflow_progress.py check` → 查看所有步骤完成状态
 3. `cd frontend && npm run build` → 构建
-4. `npm run preview` → 本地预览验证视觉效果（必须亲眼确认）
-5. `python self_test.py record Step 8` → **记录构建证据hash，不可跳过**
-6. 手动填写 DEPLOY_CHECKLIST.md（填入实际验证结果）
-7. `python upload_server.py` → 检测到未执行 record 则拒绝部署
+4. `python self_test.py` → **自动化浏览器验证（必须通过）**
+   - 连接用户 Chrome 浏览器（需开启 --remote-debugging-port=9222）
+   - 登录网站，模拟鼠标移动
+   - 分析 Canvas 像素验证鼠标轨迹效果
+   - **不通过则阻塞，无法部署**
+5. `python self_test.py record Step 8` → 记录构建证据hash
+6. `python upload_server.py` → 浏览器验证 + hash检查，不通过则拒绝部署
 
 **违规后果**：
-- upload_server.py 检测到未完成项会直接退出，不执行上传
-- workflow_progress.py 检测到前置步骤未完成会阻塞当前步骤
-- **未执行 `self_test.py record Step 8` 则 upload_server.py 会拦截部署**
-- 每次部署记录会保存在 DEPLOY_CHECKLIST.md 的"检查结果记录"区
+- self_test.py 浏览器验证失败则阻塞，无法进行下一步
+- upload_server.py 检测到浏览器验证未通过则拒绝部署
+- 未执行 `self_test.py record Step 8` 则 upload_server.py 会拦截部署
 
 ### 后端变更检查清单
 - [ ] 新接口是否需要认证？若是，加 `Depends(get_current_user)`

@@ -117,23 +117,27 @@ metadata:
 
 ---
 
-## Step 8：自测（强制记录）
+## Step 8：自测（强制浏览器验证）
 - 本地构建 `npm run build`
-- **必须执行 `npm run preview` 肉眼验证视觉效果**
+- **自动化浏览器验证**（强制门控）：
+  ```
+  node browser_verify.js
+  ```
+  连接用户 Chrome 浏览器，自动执行：
+  - 登录网站
+  - 模拟鼠标移动触发粒子
+  - 验证 Canvas 渲染和颜色正确
+  - **不通过则阻塞部署**
 - 移动端viewport测试（375px/768px/1024px）
-- **记录构建证据**（不可跳过）：
+- **记录构建证据**：
   ```
   python self_test.py record Step 8
   ```
-  这会保存 dist/index.html 的 SHA256 hash，用于防止验证过的build被替换
-- E2E测试：`node test_site.cjs`
-- **我必须先自测验证**，确认功能正常后才通知用户体验
 
-**强制记录机制**：
-- `self_test.py record Step 8` 会将 dist/index.html 的 hash 写入 `.workflow_completion_log.json`
-- `upload_server.py` 部署前会比较当前 hash 与记录的 hash
-- 如果 dist 被修改（重新build）但未重新 record，部署会被拦截
-- 这确保"视觉验证过的构建"不会被偷偷替换
+**强制验证机制**：
+- `browser_verify.js` 通过 CDP 连接用户 Chrome 验证效果
+- `self_test.py` 包含浏览器验证步骤，不通过则报告失败
+- `upload_server.py` 部署前再次验证，失败则拒绝
 
 **前端自测增强项**：
 - [ ] `grep -n '#\|rgb(' **/*.vue` 无硬编码hex/rgb（CSS变量门控）
