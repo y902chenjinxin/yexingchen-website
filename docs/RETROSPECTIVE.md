@@ -4,6 +4,41 @@
 
 ---
 
+## v2.3.0 复盘
+
+**时间**: 2026-05-31
+**参与角色**: 前端、QA
+**版本**: v2.3.0「融会贯通」
+**功能**: 键盘导航 + 手势控制 + 音效集成
+
+### What went well
+- 键盘导航（Tab遍历岛屿，数字键1-5快捷，?帮助面板）功能正常
+- 本地 browser_verify.js 测试全部通过（12/12）
+- upload_server.py 自动重启PM2功能修复
+- self_test.py 和 upload_server.py 中 node 调用路径修复
+
+### What could be better
+- **生产环境部署后部分测试flaky**：装饰层/每日运势检测不稳定（SPA路由+时序问题）
+- **上传脚本目录清理逻辑bug**：未删除子目录导致index.html未更新
+- **测试依赖浏览器时序**：需要等待Vue组件完全挂载
+
+### Action items
+- [x] 修复 upload_server.py 目录清理逻辑（先删文件再删目录）
+- [x] self_test.py 和 upload_server.py 改用 'node' 而非 sys.executable
+- [x] 更新 DEPLOY_CHECKLIST.md 添加PM2重启步骤
+- [ ] 测试脚本增加更多等待时间或改用更可靠的检测方式
+
+### 根因分析
+1. 目录清理失败：SFTP的remove()只能删文件不能删目录，但代码没有区分处理
+2. index.html未更新：因为目录里有旧index.html，新上传的index.html因为同名被跳过（实际上SFTP的put是覆盖，但目录没清空导致路径混乱）
+
+### 下次预防措施
+1. 部署前先 `rm -rf` 远程目录再重建
+2. 测试脚本增加重试机制或更长等待时间
+3. 每次部署后手动刷新浏览器验证关键功能
+
+---
+
 ## v1.8.0 复盘
 
 **时间**: 2026-05-29

@@ -42,6 +42,36 @@ curl -s https://yexingchen.cn -I | head -5
 
 ---
 
+## v2.3.0 回滚方案
+
+**部署时间**: 2026-05-31
+**部署内容**: v2.3 融会贯通（键盘导航/手势控制/音效集成）
+**功能**: Tab遍历岛屿、1-5数字键快捷、?帮助面板、手势缩放、hover音效
+**回滚命令**:
+
+```bash
+# 1. 删除当前dist并重建
+ssh root@203.195.208.25 "rm -rf /var/www/yexingchen/dist && mkdir -p /var/www/yexingchen/dist"
+
+# 2. 上传旧版本文件（需要先构建旧版本）
+# 假设 dist.v2.2.0 是之前的备份
+
+# 3. 重启PM2
+ssh root@203.195.208.25 "pm2 restart app"
+
+# 4. 验证
+curl -s https://yexingchen.cn -I | head -5
+```
+
+**关键文件**:
+- HomeView.vue（键盘/手势集成）
+- useKeyboardNavigation.js
+- useGestureControl.js
+- useIslandSound.js
+- KeyboardHelp.vue
+
+---
+
 ## 回滚原则
 
 1. **先备份再部署**：每次 `npm run build` 前先备份远程 dist

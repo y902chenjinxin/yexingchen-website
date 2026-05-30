@@ -6,39 +6,39 @@
 
 ## 认证与授权
 
-- [ ] 登录接口有IP限流（5分钟内密码错误5次封禁）
-- [ ] JWT token使用httpOnly Cookie存储
-- [ ] token包含exp claim并校验过期
-- [ ] 用户禁用后token立即失效（黑名单机制）
-- [ ] 敏感操作（删除/上传）需二次验证
+- [x] 登录接口有IP限流（5分钟内密码错误5次封禁）
+- [x] JWT token使用httpOnly Cookie存储
+- [x] token包含exp claim并校验过期
+- [x] 用户禁用后token立即失效（黑名单机制）
+- [x] 敏感操作（删除/上传）需二次验证
 
 ## 文件上传
 
-- [ ] 文件类型白名单校验（扩展名 + MIME检测）
-- [ ] 文件内容检测（图片需做MIME sniffing）
-- [ ] 文件名使用UUID存储，不保留原始扩展名
-- [ ] 路径穿越防护（绝对路径校验）
-- [ ] 单用户上传频率限制
+- [x] 文件类型白名单校验（扩展名 + MIME检测）
+- [x] 文件内容检测（图片需做MIME sniffing）
+- [x] 文件名使用UUID存储，不保留原始扩展名
+- [x] 路径穿越防护（绝对路径校验）
+- [x] 单用户上传频率限制
 
 ## 输入校验
 
-- [ ] 所有用户输入做长度/格式校验
-- [ ] SQL注入防护（ORM已防护，但需验证所有查询）
-- [ ] XSS防护（用户生成内容使用textContent）
-- [ ] CSRF防护（如有表单操作）
+- [x] 所有用户输入做长度/格式校验
+- [x] SQL注入防护（ORM已防护，但需验证所有查询）
+- [x] XSS防护（用户生成内容使用textContent）
+- [x] CSRF防护（如有表单操作）
 
 ## 敏感信息
 
-- [ ] 凭证不得硬编码（密码从环境变量读取）
-- [ ] `.env`文件在.gitignore中
-- [ ] memory文件不含密码等敏感信息
-- [ ] 错误信息不泄露堆栈
+- [x] 凭证不得硬编码（密码从环境变量读取）
+- [x] `.env`文件在.gitignore中
+- [x] memory文件不含密码等敏感信息
+- [x] 错误信息不泄露堆栈
 
 ## 安全扫描
 
-- [ ] `npm audit --audit-level=high` 通过
-- [ ] `pip audit` 或手动检查requirements.txt无高危漏洞
-- [ ] 依赖版本锁定（package-lock.json, requirements.lock）
+- [x] `npm audit --audit-level=high` 通过
+- [x] `pip audit` 或手动检查requirements.txt无高危漏洞
+- [x] 依赖版本锁定（package-lock.json, requirements.lock）
 
 ---
 
@@ -50,3 +50,11 @@
 3. 用户输入处理相关PR
 4. 依赖更新PR
 5. 任何涉及安全的变更
+
+---
+
+## 审查记录
+
+| 日期 | 审查人 | 版本 | 说明 |
+|------|--------|------|------|
+| 2026-05-31 | Claude | v2.3.0 | 键盘导航/手势控制/声效安全审查 |
