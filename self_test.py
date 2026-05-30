@@ -120,6 +120,43 @@ def check_hover_effects():
 
     return all_found
 
+def check_browser_verification():
+    """通过用户浏览器验证网站效果"""
+    print_section("Step 4: Browser Verification (Automated)")
+
+    # 检查 Chrome 是否以调试模式启动
+    try:
+        import urllib.request
+        urllib.request.urlopen('http://localhost:9222/json', timeout=2)
+    except:
+        print("[FAIL] Chrome not running with --remote-debugging-port=9222")
+        print("       Start Chrome: chrome.exe --remote-debugging-port=9222")
+        print("       Then run: python self_test.py")
+        return False
+
+    # 运行浏览器验证脚本
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, 'browser_verify.js'],
+        capture_output=True,
+        text=True,
+        timeout=60
+    )
+
+    if result.returncode == 0:
+        print("[OK] Browser verification passed")
+        print("     MouseTrail canvas rendering with correct 翡翠绿 color")
+        return True
+    else:
+        print("[FAIL] Browser verification failed")
+        if result.stdout:
+            print("       Output:", result.stdout.strip())
+        if result.stderr:
+            print("       Error:", result.stderr.strip())
+        return False
+
 def record_step_completion(step_name):
     """记录步骤完成并保存证据hash"""
     if step_name == 'Step 8':
@@ -185,6 +222,7 @@ def run_all_checks():
         'build': check_build(),
         'css_vars': check_css_vars(),
         'hover_effects': check_hover_effects(),
+        'browser_verify': check_browser_verification(),
     }
 
     # 检查 dist 是否被修改
@@ -222,6 +260,7 @@ def run_all_checks():
     return all_passed
 
 if __name__ == "__main__":
+    import sys
     if len(sys.argv) >= 2 and sys.argv[1] == 'record':
         if len(sys.argv) < 3:
             print("Usage: python self_test.py record <Step>")
