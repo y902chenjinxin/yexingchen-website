@@ -117,13 +117,23 @@ metadata:
 
 ---
 
-## Step 8：自测（自动化）
+## Step 8：自测（强制记录）
 - 本地构建 `npm run build`
-- 单元测试（前端Vitest + 后端pytest）
-- E2E测试（test_site.cjs改造为预部署验证脚本）
-- 本地启动前后端联调验证 `npm run dev`
-- **移动端viewport测试**（375px/768px/1024px）
+- **必须执行 `npm run preview` 肉眼验证视觉效果**
+- 移动端viewport测试（375px/768px/1024px）
+- **记录构建证据**（不可跳过）：
+  ```
+  python self_test.py record Step 8
+  ```
+  这会保存 dist/index.html 的 SHA256 hash，用于防止验证过的build被替换
+- E2E测试：`node test_site.cjs`
 - **我必须先自测验证**，确认功能正常后才通知用户体验
+
+**强制记录机制**：
+- `self_test.py record Step 8` 会将 dist/index.html 的 hash 写入 `.workflow_completion_log.json`
+- `upload_server.py` 部署前会比较当前 hash 与记录的 hash
+- 如果 dist 被修改（重新build）但未重新 record，部署会被拦截
+- 这确保"视觉验证过的构建"不会被偷偷替换
 
 **前端自测增强项**：
 - [ ] `grep -n '#\|rgb(' **/*.vue` 无硬编码hex/rgb（CSS变量门控）

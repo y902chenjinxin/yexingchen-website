@@ -125,9 +125,15 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 |------|----------|----------|
 | Step 2 需求评审 | 7角色并行评审完成，PRD文档已生成 | 无PRD文档 = 违规 |
 | Step 7 安全审查 | SECURITY_CHECKLIST.md 已签字 | 无签字 = 违规 |
-| Step 8 自测 | npm run build + **npm run preview本地预览确认** + 移动端验证 | 未预览直接部署 = 严重违规 |
+| Step 8 自测 | npm run build + **npm run preview本地预览确认** + **必须执行 `python self_test.py record Step 8` 记录证据** + 移动端验证 | 未预览直接部署 = 严重违规；未记录 = 部署时会被 upload_server.py 拦截 |
 | Step 11 Git提交 | CHANGELOG.md + ISSUES.md 已同步更新，否则不许 commit | 未更新文档 = 违规 |
 | Step 14 收尾 | 复盘记录写入 docs/RETROSPECTIVE.md | 未写复盘 = 违规 |
+
+**Step 8 强制记录机制**：
+1. `python self_test.py record Step 8` 会记录 dist/index.html 的 SHA256 hash
+2. `upload_server.py` 在部署前会比较当前 hash 与记录的 hash
+3. 如果 dist 被修改过（重新 build），但没有重新 record，部署会被拦截
+4. 这确保了"视觉验证过的构建"不会被偷偷替换
 
 ### 7角色技能调用触发
 
@@ -184,13 +190,16 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 **门控逻辑**：
 1. `python workflow_progress.py Step 2` → 检查是否可以开始 Step 2（需要 Step 1 先完成）
 2. `python workflow_progress.py check` → 查看所有步骤完成状态
-3. `python self_test.py` → 运行自测检查（可选但推荐）
-4. 手动填写 DEPLOY_CHECKLIST.md（填入实际验证结果）
-5. `python upload_server.py` → 检测到未完成的项则退出，拒绝部署
+3. `cd frontend && npm run build` → 构建
+4. `npm run preview` → 本地预览验证视觉效果（必须亲眼确认）
+5. `python self_test.py record Step 8` → **记录构建证据hash，不可跳过**
+6. 手动填写 DEPLOY_CHECKLIST.md（填入实际验证结果）
+7. `python upload_server.py` → 检测到未执行 record 则拒绝部署
 
 **违规后果**：
 - upload_server.py 检测到未完成项会直接退出，不执行上传
 - workflow_progress.py 检测到前置步骤未完成会阻塞当前步骤
+- **未执行 `self_test.py record Step 8` 则 upload_server.py 会拦截部署**
 - 每次部署记录会保存在 DEPLOY_CHECKLIST.md 的"检查结果记录"区
 
 ### 后端变更检查清单

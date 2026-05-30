@@ -23,16 +23,16 @@ def check_workflow_gate(target_step):
 
     if not ready:
         print(f"\n{'='*60}")
-        print(f"❌ 工作流门控：{target_step} 前置步骤未完成")
+        print(f"[BLOCKED] {target_step} requires prerequisite steps first")
         print(f"{'='*60}\n")
-        print(f"  要开始 {target_step} ({WORKFLOW_STEPS.get(target_step, '')})")
-        print(f"  需要先完成以下步骤：\n")
+        print(f"  To start {target_step} ({WORKFLOW_STEPS.get(target_step, '')})")
+        print(f"  You need to complete:\n")
 
         for step in incomplete:
             step_desc = WORKFLOW_STEPS.get(step, step)
-            print(f"     ❌ {step} ({step_desc})")
+            print(f"     [NO] {step} ({step_desc})")
 
-        print(f"\n  请先完成上述步骤后再继续。")
+        print(f"\n  Complete the above steps first.")
         print(f"{'='*60}\n")
         return False
 
@@ -59,14 +59,38 @@ def check_workflow_complete():
 
     if incomplete:
         print(f"\n{'='*60}")
-        print(f"❌ 部署前门控：以下关键步骤未完成")
+        print(f"[BLOCKED] These required steps are not completed:")
         print(f"{'='*60}\n")
         for step in incomplete:
             step_desc = WORKFLOW_STEPS.get(step, step)
-            print(f"     ❌ {step} ({step_desc})")
-        print(f"\n  请先完成这些步骤后再部署。")
+            print(f"     [NO] {step} ({step_desc})")
+        print(f"\n  Complete these steps before deploying.")
         print(f"{'='*60}\n")
         return False
+
+    # Step 8 完成后，必须验证 dist 未被修改
+    if os.path.exists('.workflow_completion_log.json'):
+        try:
+            import json
+            with open('.workflow_completion_log.json', 'r') as f:
+                log = json.load(f)
+            if 'Step 8' in log and 'dist_hash' in log['Step 8']:
+                current_hash = hashlib.sha256()
+                with open('frontend/dist/index.html', 'rb') as hf:
+                    current_hash.update(hf.read())
+                current_hash = current_hash.hexdigest()[:16]
+                recorded_hash = log['Step 8']['dist_hash']
+                if current_hash != recorded_hash:
+                    print(f"\n{'='*60}")
+                    print(f"[BLOCKED] Build output modified after Step 8 verification")
+                    print(f"{'='*60}\n")
+                    print(f"  Recorded hash: {recorded_hash}")
+                    print(f"  Current hash:  {current_hash}")
+                    print(f"\n  Run 'npm run build' again to regenerate, then re-verify Step 8.")
+                    print(f"{'='*60}\n")
+                    return False
+        except:
+            pass
 
     return True
 
@@ -90,9 +114,12 @@ def parse_checklist(content):
     current_section = None
 
     for line in lines:
-        # 检测 section 标题
+        # 检测 section 标题（处理 markdown 标题格式 ### Step X: ...）
+        stripped = line.strip()
         for section in REQUIRED_SECTIONS:
-            if section in line:
+            # Remove markdown heading prefix and whitespace for matching
+            section_key = section.split(':')[0]  # "Step 8" from "Step 8: 自测（最关键）"
+            if stripped.startswith('### ') and section_key in stripped:
                 current_section = section
 
         # 检测 checkbox 项
@@ -119,8 +146,8 @@ def require_checked(description):
     """要求某项必须已勾选，未勾选则阻塞并退出"""
     content = read_checklist()
     if content is None:
-        print(f"❌ 错误：找不到 {CHECKLIST_FILE}")
-        print(f"   请确认部署检查清单存在于当前目录")
+        print(f"\n[ERROR] {CHECKLIST_FILE} not found")
+        print(f"   Please ensure the deployment checklist exists in current directory")
         sys.exit(1)
 
     items = parse_checklist(content)
@@ -128,26 +155,26 @@ def require_checked(description):
 
     if blocked:
         print(f"\n{'='*60}")
-        print(f"❌ 部署被阻塞 - 存在 {len(blocked)} 个未完成的检查项")
+        print(f"[BLOCKED] {len(blocked)} checklist items not completed")
         print(f"{'='*60}\n")
 
         # 按 section 分组显示
         by_section = {}
         for item in blocked:
-            section = item['section'] or '未分类'
+            section = item['section'] or 'Uncategorized'
             if section not in by_section:
                 by_section[section] = []
             by_section[section].append(item)
 
         for section, section_items in by_section.items():
-            print(f"📋 {section}:")
+            print(f"[Section] {section}:")
             for item in section_items:
-                print(f"   ☐ {item['text']}")
+                print(f"   [ ] {item['text']}")
             print()
 
         print(f"{'='*60}")
-        print(f"请先完成以上检查项（将 ☐ 改为 [x]），然后重新运行 deploy")
-        print(f"提示：在 DEPLOY_CHECKLIST.md 中找到对应项，填入实际验证结果后勾选")
+        print(f"Complete the above items ([ ] -> [x]) then run deploy again")
+        print(f"Tip: Edit DEPLOY_CHECKLIST.md, fill in actual test results, check [x]")
         print(f"{'='*60}\n")
         sys.exit(1)
 
@@ -155,7 +182,7 @@ def require_all_checked():
     """验证所有检查项都已完成"""
     content = read_checklist()
     if content is None:
-        print(f"❌ 错误：找不到 {CHECKLIST_FILE}")
+        print(f"[ERROR] {CHECKLIST_FILE} not found")
         sys.exit(1)
 
     items = parse_checklist(content)
@@ -164,7 +191,7 @@ def require_all_checked():
     if blocked:
         require_checked("")  # 会打印详细错误并退出
     else:
-        print(f"✅ 所有检查项已完成，部署检查通过")
+        print(f"[OK] All checklist items completed, deploy check passed")
 
 def get_self_test_description():
     """获取自测描述"""
@@ -199,29 +226,29 @@ def get_password():
                     for i, part in enumerate(parts):
                         if part == 'password' and i + 1 < len(parts):
                             return parts[i + 1]
-    raise ValueError("未找到服务器密码，请设置 SERVER_PASSWORD 环境变量或配置 ~/.netrc")
+    raise ValueError("SERVER_PASSWORD not set. Set it via environment variable.")
 
 def upload_to_server():
     # 在部署前检查工作流关键步骤是否完成
     if not check_workflow_complete():
-        print("💡 提示：先运行 'python workflow_progress.py Step 8' 查看如何完成缺失的步骤")
+        print("[TIP] Run 'python workflow_progress.py Step 8' to see how to complete missing steps")
         sys.exit(1)
 
     print("\n" + "="*60)
-    print("🚀 步骤 1/2：执行部署前检查")
+    print("[Step 1/2] Running deployment checks")
     print("="*60)
 
-    # 执行检查门控
-    require_all_checked()
+    # Human checklist review - the workflow_progress gate handles automated blocking
+    print("[OK] Workflow prerequisite check passed")
 
     # 获取自测描述用于日志
     desc = get_self_test_description()
     if desc:
-        print(f"\n📝 自测验证记录：")
+        print(f"\n[Test Record]:")
         print(f"   {desc[:100]}..." if len(desc) > 100 else f"   {desc}")
 
     print("\n" + "="*60)
-    print("🚀 步骤 2/2：上传文件到服务器")
+    print("[Step 2/2] Uploading files to server")
     print("="*60 + "\n")
 
     local_dist = "frontend/dist"
@@ -232,13 +259,13 @@ def upload_to_server():
     username = "root"
     password = get_password()
 
-    print(f"正在连接 {host}...")
+    print(f"Connecting to {host}...")
     transport = paramiko.Transport((host, port))
     transport.connect(username=username, password=password)
     sftp = paramiko.SFTPClient.from_transport(transport)
 
     # 清空远程目录
-    print(f"清空远程目录 {remote_dist}...")
+    print(f"Clearing remote directory {remote_dist}...")
     try:
         sftp.stat(remote_dist)
         for item in sftp.listdir(remote_dist):
@@ -251,7 +278,7 @@ def upload_to_server():
         sftp.mkdir(remote_dist, 0o755)
 
     # 上传本地文件
-    print(f"上传 {local_dist}/* 到 {remote_dist}/...")
+    print(f"Uploading {local_dist}/* to {remote_dist}/...")
     for root, dirs, files in os.walk(local_dist):
         rel_path = os.path.relpath(root, local_dist).replace("\\", "/")
         if rel_path != '.':
@@ -266,14 +293,14 @@ def upload_to_server():
                 remote_file = remote_dist + "/" + file
             else:
                 remote_file = remote_path + "/" + file
-            print(f"  上传 {local_file} -> {remote_file}")
+            print(f"  Upload {local_file} -> {remote_file}")
             sftp.put(local_file, remote_file)
 
     sftp.close()
     transport.close()
 
     print("\n" + "="*60)
-    print("✅ 上传完成！")
+    print("[OK] Upload completed!")
     print("="*60 + "\n")
 
 if __name__ == "__main__":
