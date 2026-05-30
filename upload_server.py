@@ -5,6 +5,71 @@ import re
 import sys
 
 CHECKLIST_FILE = "DEPLOY_CHECKLIST.md"
+WORKFLOW_CHECK = "workflow_progress.py"
+
+def check_workflow_gate(target_step):
+    """在开始某步骤前检查前置步骤是否完成"""
+    if not os.path.exists(WORKFLOW_CHECK):
+        return True  # 如果工作流脚本不存在，跳过检查
+
+    # 导入工作流检查模块
+    sys.path.insert(0, '.')
+    try:
+        from workflow_progress import check_prerequisites, WORKFLOW_STEPS
+    except ImportError:
+        return True
+
+    ready, incomplete = check_prerequisites(target_step)
+
+    if not ready:
+        print(f"\n{'='*60}")
+        print(f"❌ 工作流门控：{target_step} 前置步骤未完成")
+        print(f"{'='*60}\n")
+        print(f"  要开始 {target_step} ({WORKFLOW_STEPS.get(target_step, '')})")
+        print(f"  需要先完成以下步骤：\n")
+
+        for step in incomplete:
+            step_desc = WORKFLOW_STEPS.get(step, step)
+            print(f"     ❌ {step} ({step_desc})")
+
+        print(f"\n  请先完成上述步骤后再继续。")
+        print(f"{'='*60}\n")
+        return False
+
+    return True
+
+def check_workflow_complete():
+    """在提交或部署前确保关键步骤都已完成"""
+    if not os.path.exists(WORKFLOW_CHECK):
+        return True
+
+    sys.path.insert(0, '.')
+    try:
+        from workflow_progress import check_step_completed, WORKFLOW_STEPS
+    except ImportError:
+        return True
+
+    # 部署前必须完成的步骤
+    required_for_deploy = ['Step 2', 'Step 5', 'Step 7', 'Step 8', 'Step 11']
+
+    incomplete = []
+    for step in required_for_deploy:
+        if not check_step_completed(step):
+            incomplete.append(step)
+
+    if incomplete:
+        print(f"\n{'='*60}")
+        print(f"❌ 部署前门控：以下关键步骤未完成")
+        print(f"{'='*60}\n")
+        for step in incomplete:
+            step_desc = WORKFLOW_STEPS.get(step, step)
+            print(f"     ❌ {step} ({step_desc})")
+        print(f"\n  请先完成这些步骤后再部署。")
+        print(f"{'='*60}\n")
+        return False
+
+    return True
+
 REQUIRED_SECTIONS = [
     "Step 8: 自测（最关键）",
     "Step 11: Git 提交",
@@ -137,6 +202,11 @@ def get_password():
     raise ValueError("未找到服务器密码，请设置 SERVER_PASSWORD 环境变量或配置 ~/.netrc")
 
 def upload_to_server():
+    # 在部署前检查工作流关键步骤是否完成
+    if not check_workflow_complete():
+        print("💡 提示：先运行 'python workflow_progress.py Step 8' 查看如何完成缺失的步骤")
+        sys.exit(1)
+
     print("\n" + "="*60)
     print("🚀 步骤 1/2：执行部署前检查")
     print("="*60)
