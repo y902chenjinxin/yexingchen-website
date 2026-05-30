@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
  * browser_verify.js
- * 通过 Chrome DevTools Protocol 连接用户浏览器完成自动化验证
- * 用途：部署前验证网站效果是否正常
+ * 通过 Chrome DevTools Protocol 完成自动化验证
+ * 如果 Chrome 未以调试模式启动，自动启动一个
  *
  * 使用方式：
- *   node browser_verify.js   - 验证 yexingchen.cn
+ *   node browser_verify.js
  *
  * 退出码：0 = 成功, 1 = 失败
- *
- * 前置条件：Chrome 必须以 --remote-debugging-port=9222 启动
  */
 const WebSocket = require('websocket').w3cwebsocket;
 const http = require('http');
+const { spawn, exec } = require('child_process');
+const path = require('path');
 
 let ws;
 let msgId = 0;
@@ -30,8 +30,77 @@ function send(method, params = {}) {
   });
 }
 
+function checkChromeRunning() {
+  return new Promise((resolve) => {
+    const req = http.get('http://localhost:9222/json', (res) => {
+      resolve(true);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(2000, () => { req.destroy(); resolve(false); });
+  });
+}
+
+function launchChrome() {
+  return new Promise((resolve, reject) => {
+    // Chrome 安装路径
+    const chromePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      '/c/Program Files/Google/Chrome/Application/chrome.exe',
+      '/c/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+    ];
+
+    let chromePath = null;
+    for (const p of chromePaths) {
+      try {
+        require('fs').accessSync(p);
+        chromePath = p;
+        break;
+      } catch (e) {}
+    }
+
+    if (!chromePath) {
+      reject(new Error('Chrome not found'));
+      return;
+    }
+
+    // 使用调试端口启动 Chrome
+    const debugPort = 9222;
+    const userDataDir = path.join(process.env.TEMP || '/tmp', 'chrome-debug-' + Date.now());
+
+    console.log('[Browser] Launching Chrome with debugging port...');
+
+    const chrome = spawn(chromePath, [
+      `--remote-debugging-port=${debugPort}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      `--user-data-dir=${userDataDir}`,
+    ], {
+      detached: true,
+      stdio: 'ignore'
+    });
+
+    chrome.unref();
+
+    // 等待 Chrome 启动
+    setTimeout(resolve, 4000);
+  });
+}
+
 async function verify() {
-  // 1. Get Chrome target
+  // 1. 检查 Chrome 是否运行中
+  console.log('[Browser] Checking Chrome debugging port...');
+  const isRunning = await checkChromeRunning();
+
+  if (!isRunning) {
+    console.log('[Browser] Chrome not running, launching...');
+    await launchChrome();
+    console.log('[Browser] Chrome launched\n');
+  } else {
+    console.log('[Browser] Chrome already running with debugging port\n');
+  }
+
+  // 2. 获取 Chrome target
   const targets = await new Promise((resolve, reject) => {
     http.get('http://localhost:9222/json', res => {
       let body = '';
@@ -42,25 +111,24 @@ async function verify() {
 
   const target = targets.find(t => t.type === 'page' && !t.url.includes('newtab')) || targets[0];
 
-  // 2. Connect to Chrome
+  // 3. Connect to Chrome
   ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
 
-  // 3. Enable domains
+  // 4. Enable domains
   await send('Runtime.enable');
   await send('Page.enable');
 
-  // 4. Navigate to yexingchen.cn
+  // 5. Navigate to yexingchen.cn
   await send('Page.navigate', { url: 'https://yexingchen.cn' });
   await new Promise(r => setTimeout(r, 3000));
 
-  // 5. Check login and authenticate
+  // 6. Check login and authenticate
   const needsLogin = await send('Runtime.evaluate', {
     expression: 'document.getElementById("app").innerHTML.includes("login-page")'
   });
 
   if (needsLogin.result.result.value) {
-    // Use proper Vue input events
     await send('Runtime.evaluate', {
       expression: `(() => { const emailInput = document.querySelector("input[type=text]"); const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set; nativeInputValueSetter.call(emailInput, "admin@yexingchen.cn"); emailInput.dispatchEvent(new Event("input", { bubbles: true })); })()`
     });
@@ -71,7 +139,7 @@ async function verify() {
     await new Promise(r => setTimeout(r, 5000));
   }
 
-  // 6. Simulate mouse movement to trigger particle trail
+  // 7. Simulate mouse movement
   const mouseMoves = [
     { x: 300, y: 200 },
     { x: 500, y: 350, steps: 8 },
@@ -86,7 +154,7 @@ async function verify() {
   }
   await new Promise(r => setTimeout(r, 600));
 
-  // 7. Analyze MouseTrail canvas
+  // 8. Analyze MouseTrail canvas
   const analysisRaw = await send('Runtime.evaluate', {
     expression: `(function() {
       var canvases = document.querySelectorAll('canvas');
@@ -112,7 +180,7 @@ async function verify() {
 
   ws.close();
 
-  // 8. Return verification result
+  // 9. Return verification result
   if (!result.found) {
     console.error('[FAIL] MouseTrail canvas not found');
     process.exit(1);

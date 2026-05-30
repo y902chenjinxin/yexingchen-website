@@ -191,9 +191,10 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 1. `python workflow_progress.py Step 2` → 检查是否可以开始 Step 2（需要 Step 1 先完成）
 2. `python workflow_progress.py check` → 查看所有步骤完成状态
 3. `cd frontend && npm run build` → 构建
-4. `python self_test.py` → **自动化浏览器验证（必须通过）**
-   - 连接用户 Chrome 浏览器（需开启 --remote-debugging-port=9222）
-   - 登录网站，模拟鼠标移动
+4. `node browser_verify.js` → **自动化浏览器验证**
+   - 自动检测 Chrome 是否开启调试端口
+   - 如果未开启，自动启动 Chrome（无需用户手动操作）
+   - 连接浏览器，登录网站，模拟鼠标移动
    - 分析 Canvas 像素验证鼠标轨迹效果
    - **不通过则阻塞，无法部署**
 5. `python self_test.py record Step 8` → 记录构建证据hash
