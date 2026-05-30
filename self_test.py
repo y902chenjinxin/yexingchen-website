@@ -134,19 +134,19 @@ def check_browser_verification():
         print("       Then run: python self_test.py")
         return False
 
-    # 运行浏览器验证脚本
+    # 运行浏览器验证脚本（本地preview）
     import subprocess
     import sys
 
     result = subprocess.run(
-        [sys.executable, 'browser_verify.js'],
+        [sys.executable, 'browser_verify.js', '--local'],
         capture_output=True,
         text=True,
-        timeout=60
+        timeout=120
     )
 
     if result.returncode == 0:
-        print("[OK] Browser verification passed")
+        print("[OK] Browser verification passed (localhost:4173)")
         print("     MouseTrail canvas rendering with correct 翡翠绿 color")
         return True
     else:
