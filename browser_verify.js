@@ -265,6 +265,80 @@ const testModules = {
         mobile: false
       });
     }
+  },
+
+  keyboard: {
+    name: '键盘导航',
+    files: ['useKeyboardNavigation.js'],
+    async run(baseUrl) {
+      console.log('\n[11] Testing keyboard navigation...');
+
+      // 测试Tab键遍历岛屿
+      await send('Runtime.evaluate', {
+        expression: `(() => {
+          // 模拟Tab键按下
+          const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
+          document.dispatchEvent(tabEvent);
+          return 'Tab pressed';
+        })()`
+      });
+      await new Promise(r => setTimeout(r, 300));
+
+      // 检查是否有岛屿被聚焦
+      const islandFocused = await send('Runtime.evaluate', {
+        expression: `(() => {
+          const islands = document.querySelectorAll('.island, .island-pos');
+          for (const island of islands) {
+            if (document.activeElement === island || island.classList.contains('island-focused')) {
+              return 'island focused';
+            }
+          }
+          return 'no focus';
+        })()`
+      });
+      check('Island can be focused with Tab', islandFocused.result.result.value.includes('focused'));
+
+      // 检查键盘帮助层（按?键）
+      await send('Runtime.evaluate', {
+        expression: `(() => {
+          const helpEvent = new KeyboardEvent('keydown', { key: '?', bubbles: true });
+          document.dispatchEvent(helpEvent);
+          return '? pressed';
+        })()`
+      });
+      await new Promise(r => setTimeout(r, 300));
+
+      const helpShown = await send('Runtime.evaluate', {
+        expression: `document.querySelector(".keyboard-help, .help-overlay, [class*='help']") !== null`
+      });
+      check('Keyboard help shown with ?', helpShown.result.result.value);
+    }
+  },
+
+  sound: {
+    name: '音效系统',
+    files: ['useIslandSound.js'],
+    async run(baseUrl) {
+      console.log('\n[12] Testing sound system...');
+
+      // 检查声音相关元素是否存在
+      const soundExists = await send('Runtime.evaluate', {
+        expression: `document.querySelector(".sound-toggle, .audio-control, [class*='sound']") !== null || document.querySelector("audio") !== null`
+      });
+      check('Sound toggle or audio element exists', soundExists.result.result.value);
+
+      // 检查音效文件是否加载（通过preload属性）
+      const soundPreload = await send('Runtime.evaluate', {
+        expression: `(() => {
+          const audios = document.querySelectorAll('audio');
+          for (const audio of audios) {
+            if (audio.preload !== 'none') return 'preloaded';
+          }
+          return 'not found';
+        })()`
+      });
+      check('Audio files preloaded', soundPreload.result.result.value === 'preloaded');
+    }
   }
 };
 
