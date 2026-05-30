@@ -84,6 +84,14 @@
                 <el-icon><Tools /></el-icon>
                 <span>管理后台</span>
               </el-dropdown-item>
+              <el-dropdown-item command="chronicle">
+                <el-icon><Calendar /></el-icon>
+                <span>修炼编年史</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="spirit-quiz">
+                <el-icon><Star /></el-icon>
+                <span>灵根测试</span>
+              </el-dropdown-item>
               <el-dropdown-item command="logout" divided>
                 <el-icon><SwitchButton /></el-icon>
                 <span>退出账号</span>
@@ -279,6 +287,15 @@
 
     <!-- v2.3 键盘帮助层 -->
     <KeyboardHelp :isHelpVisible="isHelpVisible" @close="isHelpVisible = false" />
+
+    <!-- v2.4 随机事件层 -->
+    <RandomEventsLayer :activeEvent="activeEvent" />
+
+    <!-- v2.4 编年史弹窗 -->
+    <CultivationChronicle :visible="showChronicleDialog" @close="showChronicleDialog = false" />
+
+    <!-- v2.4 灵根测试弹窗 -->
+    <SpiritRootQuiz :visible="showSpiritQuizDialog" @close="showSpiritQuizDialog = false" />
   </div>
 </template>
 
@@ -288,13 +305,17 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
-import { CaretBottom, User, Lock, Avatar, Tools, SwitchButton } from '@element-plus/icons-vue'
+import { CaretBottom, User, Lock, Avatar, Tools, SwitchButton, Calendar, Star } from '@element-plus/icons-vue'
 import MouseTrail from '@/components/effects/MouseTrail.vue'
 import CultivationProgress from '@/components/effects/CultivationProgress.vue'
 import DecorationsLayer from '@/components/effects/DecorationsLayer.vue'
 import DailyFortune from '@/components/effects/DailyFortune.vue'
 import KeyboardHelp from '@/components/KeyboardHelp.vue'
+import RandomEventsLayer from '@/components/effects/RandomEventsLayer.vue'
+import CultivationChronicle from '@/components/common/CultivationChronicle.vue'
+import SpiritRootQuiz from '@/components/common/SpiritRootQuiz.vue'
 import { useCelestialSystem } from '@/composables/useCelestialSystem'
+import { useRandomEvents } from '@/composables/useRandomEvents'
 import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation'
 import { useGestureControl } from '@/composables/useGestureControl'
 import { useIslandSound } from '@/composables/useIslandSound'
@@ -359,6 +380,13 @@ const passwordForm = ref({
   confirmPassword: ''
 })
 
+// v2.4 编年史/灵根测试
+const showChronicleDialog = ref(false)
+const showSpiritQuizDialog = ref(false)
+
+// v2.4 随机事件
+const { activeEvent } = useRandomEvents()
+
 onMounted(async () => {
   // 更新十二时辰动态背景
   updateAtmosphereTheme()
@@ -421,6 +449,12 @@ function handleDropdownCommand(command) {
       break
     case 'avatar':
       showAvatarDialog.value = true
+      break
+    case 'chronicle':
+      showChronicleDialog.value = true
+      break
+    case 'spirit-quiz':
+      showSpiritQuizDialog.value = true
       break
     case 'logout':
       handleLogout()
