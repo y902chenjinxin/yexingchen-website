@@ -268,7 +268,7 @@ def check_browser_verification():
         print("        Then run this script again.")
         return False
 
-    # 运行浏览器验证脚本
+    # 运行浏览器验证脚本（部署后验证生产环境）
     result = subprocess.run(
         [sys.executable, 'browser_verify.js'],
         capture_output=True,
@@ -277,7 +277,7 @@ def check_browser_verification():
     )
 
     if result.returncode == 0:
-        print("[OK] Browser verification passed")
+        print("[OK] Browser verification passed (production)")
         return True
     else:
         print("[FAIL] Browser verification failed")

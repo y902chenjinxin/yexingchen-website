@@ -6,7 +6,9 @@
  * 使用方式：
  *   node browser_verify.js                    # 自动检测改动并测试
  *   node browser_verify.js --all             # 强制测试全部
- *   node browser_verify.js --changed         # 只测试改动的（默认）
+ *   node browser_verify.js --local           # 测试本地 preview (localhost:4173)
+ *   node browser_verify.js --production      # 测试生产环境 (yexingchen.cn)
+ *   node browser_verify.js --both            # 本地+生产都测
  *
  * 退出码：0 = 成功, 1 = 失败
  */
@@ -19,6 +21,10 @@ let ws;
 let msgId = 0;
 let failures = [];
 
+// URLs
+const LOCAL_URL = 'http://localhost:4173';
+const PROD_URL = 'https://yexingchen.cn';
+
 // ============================================
 // 测试函数定义（独立模块）
 // ============================================
@@ -27,7 +33,7 @@ const testModules = {
   login: {
     name: '登录流程',
     files: ['LoginView.vue'],
-    async run() {
+    async run(baseUrl) {
       console.log('[1] Testing login flow...');
 
       // 检查是否已登录，已登录则跳过
@@ -39,7 +45,7 @@ const testModules = {
         return;
       }
 
-      await send('Page.navigate', { url: 'https://yexingchen.cn' });
+      await send('Page.navigate', { url: baseUrl });
       await new Promise(r => setTimeout(r, 3000));
 
       const loginPageLoaded = await send('Runtime.evaluate', {
@@ -76,7 +82,7 @@ const testModules = {
   mouse: {
     name: '鼠标轨迹',
     files: ['MouseTrail.vue'],
-    async run() {
+    async run(baseUrl) {
       console.log('\n[3] Testing mouse trail effect...');
 
       const mouseMoves = [
@@ -121,7 +127,7 @@ const testModules = {
   islands: {
     name: '岛屿系统',
     files: ['HomeView.vue', 'IslandDetail.vue'],
-    async run() {
+    async run(baseUrl) {
       console.log('\n[2] Checking home page elements...');
 
       const homeViewLoaded = await send('Runtime.evaluate', {
@@ -174,7 +180,7 @@ const testModules = {
   decorations: {
     name: '装饰层',
     files: ['DecorationsLayer.vue'],
-    async run() {
+    async run(baseUrl) {
       console.log('\n[6] Testing decoration layer...');
 
       const decorations = await send('Runtime.evaluate', {
@@ -187,7 +193,7 @@ const testModules = {
   fortune: {
     name: '每日运势',
     files: ['DailyFortune.vue'],
-    async run() {
+    async run(baseUrl) {
       console.log('\n[7] Testing daily fortune seal...');
 
       const fortune = await send('Runtime.evaluate', {
@@ -200,7 +206,7 @@ const testModules = {
   celestial: {
     name: '天象系统',
     files: ['SkyLayer.vue', 'CelestialSystem.vue'],
-    async run() {
+    async run(baseUrl) {
       console.log('\n[8] Testing celestial system...');
 
       const celestial = await send('Runtime.evaluate', {
@@ -213,7 +219,7 @@ const testModules = {
   css: {
     name: 'CSS变量',
     files: ['variables.css', '*.css'],
-    async run() {
+    async run(baseUrl) {
       console.log('\n[9] Checking CSS variables...');
 
       const cssVars = await send('Runtime.evaluate', {
@@ -236,7 +242,7 @@ const testModules = {
   mobile: {
     name: '移动端适配',
     files: ['*.vue', '*.css'],
-    async run() {
+    async run(baseUrl) {
       console.log('\n[10] Testing mobile viewport...');
 
       await send('Emulation.setDeviceMetricsOverride', {
@@ -382,15 +388,61 @@ function matchTests(changedFiles) {
 }
 
 // ============================================
+// 连接浏览器
+// ============================================
+
+async function connectBrowser() {
+  const targets = await new Promise((resolve, reject) => {
+    http.get('http://localhost:9222/json', res => {
+      let body = ''; res.on('data', chunk => body += chunk); res.on('end', () => resolve(JSON.parse(body)));
+    }).on('error', reject);
+  });
+
+  const target = targets.find(t => t.type === 'page' && !t.url.includes('newtab')) || targets[0];
+  ws = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
+  await send('Runtime.enable');
+  await send('Page.enable');
+}
+
+// ============================================
+// 执行单个测试阶段
+// ============================================
+
+async function runTests(baseUrl, testsToRun, phaseLabel) {
+  console.log(`\n${'='*60}`);
+  console.log(`  [${phaseLabel}] Testing: ${baseUrl}`);
+  console.log(`${'='*60}`);
+
+  await send('Page.navigate', { url: baseUrl + '/home' });
+  await new Promise(r => setTimeout(r, 2000));
+
+  for (const testKey of testsToRun) {
+    const mod = testModules[testKey];
+    if (mod && mod.run) {
+      try {
+        await mod.run(baseUrl);
+      } catch (e) {
+        console.log(`   [ERROR] ${mod.name}: ${e.message}`);
+        failures.push(`${mod.name} - ${e.message}`);
+      }
+    }
+  }
+}
+
+// ============================================
 // 主流程
 // ============================================
 
 async function verify() {
   const args = process.argv.slice(2);
   const forceAll = args.includes('--all');
+  const runLocal = args.includes('--local');
+  const runProduction = args.includes('--production');
+  const runBoth = args.includes('--both');
 
   console.log('============================================================');
-  console.log('  [Verify] Browser Verification - yexingchen.cn');
+  console.log('  [Verify] Browser Verification');
   console.log('============================================================\n');
 
   // 检测代码变动
@@ -403,7 +455,7 @@ async function verify() {
   console.log('[Test] Will run:', [...testsToRun].map(k => testModules[k]?.name || k).join(', '));
   console.log('');
 
-  // 1. 确保 Chrome 运行中
+  // 确保 Chrome 运行中
   const isRunning = await checkChromeRunning();
   if (!isRunning) {
     await launchChrome();
@@ -412,37 +464,25 @@ async function verify() {
     console.log('[Browser] Chrome already running\n');
   }
 
-  // 2. 连接 Chrome
-  const targets = await new Promise((resolve, reject) => {
-    http.get('http://localhost:9222/json', res => {
-      let body = ''; res.on('data', chunk => body += chunk); res.on('end', () => resolve(JSON.parse(body)));
-    }).on('error', reject);
-  });
+  // 连接浏览器
+  await connectBrowser();
 
-  const target = targets.find(t => t.type === 'page' && !t.url.includes('newtab')) || targets[0];
-  ws = new WebSocket(target.webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
-  await send('Runtime.enable');
-  await send('Page.enable');
-
-  // 3. 确保已登录
-  await send('Page.navigate', { url: 'https://yexingchen.cn/home' });
-  await new Promise(r => setTimeout(r, 2000));
-
-  // 4. 执行测试
-  for (const testKey of testsToRun) {
-    const mod = testModules[testKey];
-    if (mod && mod.run) {
-      try {
-        await mod.run();
-      } catch (e) {
-        console.log(`   [ERROR] ${mod.name}: ${e.message}`);
-        failures.push(`${mod.name} - ${e.message}`);
-      }
-    }
+  // 执行测试
+  if (runBoth) {
+    // 本地 + 生产都测
+    await runTests(LOCAL_URL, testsToRun, 'LOCAL');
+    ws.close();
+    await new Promise(r => setTimeout(r, 1000));
+    await connectBrowser();
+    await runTests(PROD_URL, testsToRun, 'PRODUCTION');
+  } else if (runLocal) {
+    await runTests(LOCAL_URL, testsToRun, 'LOCAL');
+  } else {
+    // 默认测生产
+    await runTests(PROD_URL, testsToRun, 'PRODUCTION');
   }
 
-  // 5. 汇总结果
+  // 汇总结果
   console.log('\n============================================================');
   console.log('  [Result] Verification Summary');
   console.log('============================================================');
