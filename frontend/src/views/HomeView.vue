@@ -122,6 +122,11 @@
               <div class="island-wrapper">
                 <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
                 <div class="island-glow"></div>
+                <div class="music-island-hover">
+                  <span class="music-note">♪</span>
+                  <span class="music-note">♫</span>
+                  <span class="music-note">♪</span>
+                </div>
               </div>
               <div class="island-name">音乐岛</div>
               <div class="island-subtitle">音律飘渺</div>
@@ -134,6 +139,12 @@
               <div class="island-wrapper">
                 <img src="@/assets/islands/novel-island.svg" class="island-image" alt="小说岛" />
                 <div class="island-glow"></div>
+                <div class="novel-island-hover">
+                  <div class="book-page"></div>
+                  <div class="ink-particle"></div>
+                  <div class="ink-particle"></div>
+                  <div class="ink-particle"></div>
+                </div>
               </div>
               <div class="island-name">小说岛</div>
               <div class="island-subtitle">书卷悠长</div>
@@ -146,6 +157,10 @@
               <div class="island-wrapper">
                 <img src="@/assets/islands/video-island.svg" class="island-image" alt="视频岛" />
                 <div class="island-glow"></div>
+                <div class="video-island-hover">
+                  <div class="aperture"></div>
+                  <div class="film-ribbon"></div>
+                </div>
               </div>
               <div class="island-name">视频岛</div>
               <div class="island-subtitle">光影流转</div>
@@ -158,6 +173,10 @@
               <div class="island-wrapper">
                 <img src="@/assets/islands/log-island.svg" class="island-image" alt="日志岛" />
                 <div class="island-glow"></div>
+                <div class="log-island-hover">
+                  <div class="ink-drop"></div>
+                  <div class="paper-float"></div>
+                </div>
               </div>
               <div class="island-name">日志岛</div>
               <div class="island-subtitle">岁月留痕</div>
@@ -170,6 +189,14 @@
               <div class="island-wrapper">
                 <img src="@/assets/islands/tool-island.svg" class="island-image" alt="工具岛" />
                 <div class="island-glow"></div>
+                <div class="tool-island-hover">
+                  <div class="gear"></div>
+                  <div class="gear"></div>
+                  <div class="gear"></div>
+                  <div class="tool-part"></div>
+                  <div class="tool-part"></div>
+                  <div class="tool-part"></div>
+                </div>
               </div>
               <div class="island-name">工具岛</div>
               <div class="island-subtitle">机关万千</div>
@@ -237,6 +264,12 @@
 
     <!-- v2.1 修为印章 -->
     <CultivationProgress />
+
+    <!-- v2.2 装饰层（灯笼/丹炉/仙鹤/符文飘浮） -->
+    <DecorationsLayer :shichen="shichenName" />
+
+    <!-- v2.2 每日运势 -->
+    <DailyFortune />
   </div>
 </template>
 
@@ -249,12 +282,18 @@ import { useSettingsStore } from '@/stores/settings'
 import { CaretBottom, User, Lock, Avatar, Tools, SwitchButton } from '@element-plus/icons-vue'
 import MouseTrail from '@/components/effects/MouseTrail.vue'
 import CultivationProgress from '@/components/effects/CultivationProgress.vue'
+import DecorationsLayer from '@/components/effects/DecorationsLayer.vue'
+import DailyFortune from '@/components/effects/DailyFortune.vue'
+import { useCelestialSystem } from '@/composables/useCelestialSystem'
 
 const router = useRouter()
 const auth = useAuthStore()
 const settingsStore = useSettingsStore()
 const bgAudio = ref(null)
 const magicMode = ref(false) // 阵法模式
+
+// v2.2 天象系统
+const { shichenName, solarTermName, solarTermIntensity } = useCelestialSystem()
 
 // 阵法模式切换
 function toggleMagicMode() {
@@ -517,7 +556,7 @@ function getDecoParticleStyle(i) {
 
 .site-name {
   font-size: 20px;
-  background: linear-gradient(135deg, #C9A96E 0%, #F0E6C8 50%, #C9A96E 100%);
+  background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-bright) 50%, var(--color-gold) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 8px rgba(201, 169, 110, 0.3));
@@ -955,7 +994,7 @@ function getDecoParticleStyle(i) {
 
 .panel-title {
   text-align: center;
-  color: #1a1a2e;
+  color: var(--color-text-dark);
   font-family: var(--font-serif);
   font-size: 18px;
   margin-bottom: 20px;
@@ -968,7 +1007,7 @@ function getDecoParticleStyle(i) {
   padding: 12px 15px;
   border-radius: 8px;
   cursor: pointer;
-  color: #1a1a2e;
+  color: var(--color-text-dark);
   transition: background 0.2s;
 }
 

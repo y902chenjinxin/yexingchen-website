@@ -48,6 +48,37 @@ const routes = [
     component: () => import('@/views/ToolIsland.vue'),
     meta: { requiresAuth: true, island: 'tool' }
   },
+  // v2.0 岛屿内景
+  {
+    path: '/island/music/inner',
+    name: 'MusicIslandInner',
+    component: () => import('@/views/islands/MusicIslandInner.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/island/novel/inner',
+    name: 'NovelIslandInner',
+    component: () => import('@/views/islands/NovelIslandInner.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/island/video/inner',
+    name: 'VideoIslandInner',
+    component: () => import('@/views/islands/VideoIslandInner.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/island/log/inner',
+    name: 'LogIslandInner',
+    component: () => import('@/views/islands/LogIslandInner.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/island/tool/inner',
+    name: 'ToolIslandInner',
+    component: () => import('@/views/islands/ToolIslandInner.vue'),
+    meta: { requiresAuth: true }
+  },
   {
     path: '/admin',
     name: 'Admin',

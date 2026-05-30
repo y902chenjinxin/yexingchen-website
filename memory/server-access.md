@@ -22,10 +22,14 @@ metadata:
 
 **原则**：凭证不得硬编码，必须从环境变量读取
 
+**SERVER_PASSWORD**: `yxCHEN@12345678`
+
 凭证存储位置（3选1）：
 1. **推荐** `.env` 文件（加入 `.gitignore`）
 2. 环境变量 `export SERVER_PASSWORD=xxx`
 3. `~/.netrc` 文件
+
+**本次使用**：写入环境变量供脚本使用
 
 ## 连接测试
 
