@@ -189,7 +189,13 @@
     </main>
 
     <!-- 全局背景音乐 -->
-    <audio ref="bgAudio" :src="settingsStore.bgMusicUrl" loop preload="auto" autoplay />
+    <audio
+      ref="bgAudio"
+      :src="settingsStore.bgMusicUrl || '/api/settings/bg_music/stream/bamboo_flute'"
+      loop
+      preload="auto"
+      autoplay
+    />
 
     <!-- 备案信息 -->
     <footer class="filing-footer">
