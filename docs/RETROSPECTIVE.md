@@ -4,6 +4,43 @@
 
 ---
 
+## v2.4.1 复盘
+
+**时间**: 2026-05-31
+**参与角色**: 前端
+**版本**: v2.4.1
+**功能**: 阵法模式移除 + 音效修复 + 帮助入口
+
+### What went well
+- 阵法模式按钮移除，UI更简洁
+- 音效系统修复：useIslandSound.js重构，toggleSound切换静音
+- 5个岛屿hover音效文件生成
+- 键盘帮助移至下拉菜单
+
+### What could be better
+- **浏览器验证自动化一直失败**：LoadingView动画在CDP环境不完成，15秒超时保护不生效
+- **SSH连接偶发断开**：paramiko读取SSH banner失败
+- **用户反馈后才知问题**：音效按钮无反馈、阵法模式无感知价值
+
+### Action items
+- [x] 音效按钮toggleSound功能修复
+- [x] 音效文件生成（guqin/page-turn/camera/ink/gear.mp3）
+- [x] 键盘帮助移至下拉菜单
+- [x] 移除阵法模式按钮
+- [ ] 音效实际效果需用户验证（自动播放限制）
+
+### 根因分析
+1. 音效无反应：useIslandSound.js没有导出toggleSound，只有enable/disable
+2. 阵法模式用户无感：没有清晰的价值说明，且与岛屿系统无联动
+3. 浏览器验证失败：LoadingView的requestAnimationFrame在CDP headless模式不触发
+
+### 下次预防措施
+1. 新功能需要明确价值说明和成功标准
+2. Composables需要完整导出所有状态（toggleSound等）
+3. 自动化验证失败时降级为人工验收清单
+
+---
+
 ## v2.3.0 复盘
 
 **时间**: 2026-05-31
