@@ -7,7 +7,7 @@
 import { ref, onUnmounted } from 'vue'
 
 export function useIslandSound() {
-  const isEnabled = ref(true)
+  const isMuted = ref(false)  // 静音状态
   const currentIsland = ref(null)
 
   // 音频元素
@@ -40,7 +40,7 @@ export function useIslandSound() {
 
   // 播放hover音效
   const playHoverSound = (islandType) => {
-    if (!isEnabled.value) return
+    if (isMuted.value) return
 
     // 停止之前的hover音效
     if (hoverSound) {
@@ -114,13 +114,22 @@ export function useIslandSound() {
     })
   }
 
+  // 切换静音状态
+  const toggleSound = () => {
+    isMuted.value = !isMuted.value
+    if (isMuted.value) {
+      stopHoverSound()
+      stopAllAmbient()
+    }
+  }
+
   // 启用/禁用
   const enable = () => {
-    isEnabled.value = true
+    isMuted.value = false
   }
 
   const disable = () => {
-    isEnabled.value = false
+    isMuted.value = true
     stopHoverSound()
     stopAllAmbient()
   }
@@ -131,7 +140,7 @@ export function useIslandSound() {
   })
 
   return {
-    isEnabled,
+    isMuted,
     currentIsland,
     playHoverSound,
     stopHoverSound,
@@ -139,6 +148,7 @@ export function useIslandSound() {
     stopAllAmbient,
     setVolume,
     enable,
-    disable
+    disable,
+    toggleSound
   }
 }

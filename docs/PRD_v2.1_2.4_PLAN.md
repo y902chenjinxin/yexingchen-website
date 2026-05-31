@@ -77,13 +77,13 @@
 | 功能 | 文件 | 描述 |
 |------|------|------|
 | 随机事件 | `useRandomEvents.js` + `RandomEventsLayer.vue` | 流星雨/灵气爆发/仙鹤群飞等（30分钟冷却） |
-| 修炼编年史 | `CultivationChronicle.vue` | 连点logo 7次或长按触发，展示项目发展史 |
+| 修炼编年史 | `CultivationChronicle.vue` | 导航下拉选择，展示项目发展史 |
 | 灵根测试 | `SpiritRootQuiz.vue` | 5道问答测灵根类型 |
 | 转场动画 | `EntranceOverlay.vue` | 砚台墨染过渡效果 |
 
 **验收标准**：
 - [ ] 随机出现惊喜事件（流星等）
-- [ ] 连点logo 7次显示编年史
+- [ ] 导航下拉菜单点击"编年史"显示
 - [ ] 长按触发灵根测试
 - [ ] 页面切换有墨染过渡
 
