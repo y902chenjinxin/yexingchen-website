@@ -36,7 +36,7 @@
     <!-- 顶栏 -->
     <header class="top-bar">
       <div class="top-bar-left">
-        <span class="site-name font-serif">叶兴辰的个人网站</span>
+        <!-- 水墨意境，左上角不留文字 -->
       </div>
       <div class="top-bar-right">
         <!-- 音乐+音效合一下拉 -->

@@ -1,74 +1,83 @@
 /**
- * Design Tokens - 仙居山林 自然有机
+ * Design Tokens - 水墨国风 · 返璞归真
  * 统一颜色/字体/间距变量，禁止硬编码颜色值
+ * v2.11 重构：从"仙居山林"改为水墨国风风格
  */
 
 :root {
-  /* ========== 自然大地色系 ========== */
-  --color-bg-dark: #E8DCC7;       /* 沙色主背景 */
-  --color-bg: #F5EFE3;            /* 米白页面背景 */
-  --color-bg-elevated: #FDFBF7;   /* 提升层级暖白 */
-  --color-bg-glass: rgba(245, 239, 227, 0.92); /* 玻璃背景 */
+  /* ========== 墨色系 - 主背景 ========== */
+  --ink-black: #1a1a1a;           /* 焦墨 - 最深 */
+  --ink-dark: #2d2d2d;           /* 浓墨 */
+  --ink-medium: #3d3d3d;          /* 宿墨 */
+  --ink-light: #4a4a4a;          /* 淡墨 */
 
-  /* ========== 大地色系 ========== */
-  --color-sage: #8B9D83;          /* 鼠尾草绿 */
-  --color-clay: #B08B6E;          /* 陶土棕 */
-  --color-terracotta: #C66B3D;    /* 赭石红 */
-  --color-ochre: #C08E3A;         /* 赓石黄 */
-  --color-moss: #606C38;          /* 苔藓绿 */
-  --color-sand: #E8DCC7;          /* 沙色 */
-  --color-oat: #D4B895;            /* 燕麦色 */
+  /* ========== 黛青系 - 远山/烟雨 ========== */
+  --dai-green: #3d4f4f;           /* 黛青 */
+  --dai-blue: #4a5f5f;            /* 石青 */
+  --mist-gray: #5a6f6f;           /* 烟灰蓝 */
 
-  /* ========== 暖金琥珀系 ========== */
-  --color-gold: #b8860b;           /* 暗金色 */
-  --color-gold-light: rgba(184, 134, 11, 0.4);
-  --color-gold-bright: #daa520;    /* 金色 */
-  --color-gold-dark: #8b6914;      /* 深金 */
-  --color-amber: #c49a6c;         /* 琥珀色 */
-  --color-amber-light: rgba(196, 154, 108, 0.5);
+  /* ========== 赭石系 - 点缀/印章 ========== */
+  --ochre: #8b6b4a;              /* 赭石 */
+  --ochre-light: #a08060;         /* 淡赭 */
+  --vermilion: #b54a3a;           /* 朱砂（用于印章）*/
 
-  /* ========== 翡翠点缀 ========== */
-  --color-jade: #5a7a5a;          /* 青竹绿 */
-  --color-jade-light: #7a9a7a;
-  --color-jade-dark: #3a5a3a;
+  /* ========== 藤黄系 - 点睛 ========== */
+  --rattan-yellow: #c4a35a;       /* 藤黄 */
+  --gold-pale: #d4b878;           /* 密金（少用）*/
 
-  /* ========== 岛屿特色色（自然系） ========== */
-  --color-music: #9d8ec4;          /* 薰衣草紫 */
-  --color-novel: #c4a882;          /* 羊皮纸色 */
-  --color-video: #a47c7c;         /* 砖红 */
-  --color-log: #7a9b7c;           /* 苔绿 */
-  --color-tool: #a89070;          /* 铜绿 */
+  /* ========== 宣纸系 - 文字/卡片底 ========== */
+  --paper-white: #f5f2eb;         /* 宣纸白 */
+  --paper-cream: #e8e4dc;          /* 玉版纸 */
+  --paper-aged: #d8d4c8;          /* 复古纸 */
+
+  /* ========== 雾气系 - 云雾/留白 ========== */
+  --mist-light: rgba(200, 200, 200, 0.08);
+  --mist-medium: rgba(180, 180, 180, 0.12);
+  --mist-heavy: rgba(160, 160, 160, 0.15);
+
+  /* ========== 岛屿特色色（黛青系） ========== */
+  --color-music: #7a8a9a;          /* 灰蓝 */
+  --color-novel: #9a8a7a;         /* 灰褐 */
+  --color-video: #8a7a7a;         /* 灰红 */
+  --color-log: #7a8a7a;           /* 灰绿 */
+  --color-tool: #8a8070;          /* 灰赭 */
 
   /* ========== 文字色 ========== */
-  --color-text: #3a3530;           /* 深棕（暖灰）*/
-  --color-text-dark: #f5efe3;     /* 浅色文字 */
-  --color-text-secondary: #6a5a4e; /* 暖灰棕 */
-  --color-text-muted: #9a8a7e;    /* 淡灰 */
-  --color-text-light: rgba(58, 53, 48, 0.9);
+  --color-text: #d8d4c8;          /* 淡墨书 */
+  --color-text-dark: #1a1a1a;     /* 深色文字 */
+  --color-text-secondary: #9a9590; /* 淡墨 */
+  --color-text-muted: #6a6560;    /* 枯墨 */
+  --color-text-light: rgba(216, 212, 200, 0.9);
 
   /* ========== 功能色 ========== */
-  --color-danger: #b86b6b;
-  --color-success: #7a9b7c;
-  --color-warning: #c49a6c;
+  --color-danger: #b54a3a;         /* 朱砂红 */
+  --color-success: #5a6f5a;       /* 松绿 */
+  --color-warning: #a08060;       /* 淡赭 */
 
-  /* ========== 灵气特效色 ========== */
-  --color-qi-primary: #8B9D83;     /* 鼠尾草绿 */
-  --color-qi-green: #606C38;       /* 苔藓绿 */
-  --color-qi-glow: rgba(139, 157, 131, 0.4);
-  --island-glow-color: rgba(184, 134, 11, 0.25);
+  /* ========== 灵气特效色 - 淡雅 ========== */
+  --color-qi-primary: #3d4f4f;     /* 黛青 */
+  --color-qi-green: #2d4a3e;       /* 松绿 */
+  --color-qi-glow: rgba(61, 79, 79, 0.4);
+  --island-glow-color: rgba(61, 79, 79, 0.2);
 
   /* ========== 每日运势颜色 ========== */
-  --color-fortune-jade: #8B9D83;      /* 鼠尾草绿 */
-  --color-fortune-gold: #C08E3A;       /* 赓石黄 */
-  --color-fortune-purple: #9d8ec4;    /* 薰衣草紫 */
-  --color-fortune-jade-dark: #606C38; /* 苔藓绿 */
-  --color-fortune-rose: #a47c7c;       /* 砖红 */
-  --color-fortune-paper: #D4B895;     /* 燕麦色 */
+  --color-fortune-jade: #3d4f4f;      /* 黛青 */
+  --color-fortune-gold: #8b6b4a;      /* 赭石 */
+  --color-fortune-purple: #5a5a6a;    /* 灰紫 */
+  --color-fortune-jade-dark: #2d4a3e; /* 松绿 */
+  --color-fortune-rose: #7a5a5a;      /* 灰红 */
+  --color-fortune-paper: #d8d4c8;     /* 淡墨纸 */
 
   /* ========== 主色调 ========== */
-  --color-primary: #7a9b7c;       /* 苔绿 */
-  --color-secondary: #a89070;     /* 铜绿 */
-  --color-accent: #b8860b;         /* 暗金 */
+  --color-primary: #3d4f4f;       /* 黛青 */
+  --color-secondary: #5a5f5f;     /* 灰青 */
+  --color-accent: #8b6b4a;         /* 赭石 */
+
+  /* ========== 背景色 - 深墨 ========== */
+  --color-bg-dark: #1a1a1a;        /* 焦墨 */
+  --color-bg: #2d2d2d;            /* 浓墨 */
+  --color-bg-elevated: #3d3d3d;    /* 宿墨 */
+  --color-bg-glass: rgba(45, 45, 45, 0.85); /* 玻璃背景 */
 
   /* ========== 间距 ========== */
   --space-xs: 4px;
@@ -79,23 +88,23 @@
   --space-2xl: 48px;
 
   /* ========== 圆角/阴影 ========== */
-  --radius-sm: 12px;
-  --radius: 16px;
-  --radius-lg: 24px;
+  --radius-sm: 4px;               /* 水墨用小圆角 */
+  --radius: 8px;
+  --radius-lg: 16px;
 
-  /* 多层阴影深度 */
+  /* 阴影 - 淡雅 */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --shadow-glass: 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --shadow-glass: 0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --shadow-glow: 0 0 40px var(--color-qi-glow);
 
-  /* 金色辉光 */
-  --shadow-gold: 0 0 20px rgba(184, 134, 11, 0.2), 0 0 40px rgba(184, 134, 11, 0.1);
-  --shadow-jade: 0 0 15px rgba(90, 122, 90, 0.25);
+  /* 淡墨光晕 - 替代金色辉光 */
+  --shadow-ink: 0 0 20px rgba(61, 79, 79, 0.3), 0 0 40px rgba(61, 79, 79, 0.15);
+  --shadow-jade: 0 0 15px rgba(61, 79, 79, 0.2);
 
-  --transition: all 0.3s ease;
-  --transition-slow: all 0.5s ease;
+  --transition: all 0.4s ease;
+  --transition-slow: all 0.8s ease;
 
   /* ========== 字体 ========== */
   --font-serif: 'Noto Serif SC', 'Source Han Serif SC', serif;
@@ -113,52 +122,10 @@
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
 
-  /* ========== 十二时辰动态背景（自然系） ========== */
-  --color-bg-theme-0: #2a2520;   /* 子时 深夜墨褐 */
-  --color-bg-theme-1: #352f28;   /* 丑时 黎明前棕 */
-  --color-bg-theme-2: #4a3f32;   /* 寅时 破晓褐 */
-  --color-bg-theme-3: #F5EFE3;   /* 卯时 晨曦米白 */
-  --color-bg-theme-4: #FAF8F5;   /* 辰时 上午暖白 */
-  --color-bg-theme-5: #F8F5EF;   /* 巳时 午前象牙 */
-  --color-bg-theme-6: #F0EBE3;   /* 午时 正午暖白 */
-  --color-bg-theme-7: #E8E0D5;   /* 未时 午后淡杏 */
-  --color-bg-theme-8: #d4c8b8;   /* 申时 傍晚淡褐 */
-  --color-bg-theme-9: #c8b8a5;   /* 酉时 黄昏暖灰 */
-  --color-bg-theme-10: #3a3028;  /* 戌时 夜初深褐 */
-  --color-bg-theme-11: #282218;   /* 亥时 深夜墨褐 */
-
-  /* ========== 十二时辰岛屿光晕（自然系） ========== */
-  --color-glow-theme-0: rgba(139, 122, 106, 0.4);   /* 子时 暗金 */
-  --color-glow-theme-1: rgba(176, 140, 110, 0.4);  /* 丑时 陶土 */
-  --color-glow-theme-2: rgba(192, 142, 58, 0.5);   /* 寅时 赓石 */
-  --color-glow-theme-3: rgba(201, 169, 98, 0.6);  /* 卯时 金色 */
-  --color-glow-theme-4: rgba(208, 174, 120, 0.6);  /* 辰时 暖金 */
-  --color-glow-theme-5: rgba(212, 183, 132, 0.65); /* 巳时 明金 */
-  --color-glow-theme-6: rgba(198, 107, 61, 0.55);   /* 午时 赭石 */
-  --color-glow-theme-7: rgba(176, 140, 112, 0.5);  /* 未时 棕褐 */
-  --color-glow-theme-8: rgba(160, 130, 100, 0.45);  /* 申时 暗棕 */
-  --color-glow-theme-9: rgba(144, 120, 96, 0.4);  /* 酉时 灰褐 */
-  --color-glow-theme-10: rgba(96, 93, 88, 0.35); /* 戌时 深墨 */
-  --color-glow-theme-11: rgba(80, 75, 65, 0.3);   /* 亥时 墨褐 */
-
-  /* ========== 十二时辰云雾（自然系） ========== */
-  --color-cloud-theme-0: rgba(139, 122, 106, 0.2);
-  --color-cloud-theme-1: rgba(176, 140, 110, 0.18);
-  --color-cloud-theme-2: rgba(192, 142, 58, 0.25);
-  --color-cloud-theme-3: rgba(245, 239, 227, 0.6);
-  --color-cloud-theme-4: rgba(250, 248, 245, 0.75);
-  --color-cloud-theme-5: rgba(248, 245, 239, 0.7);
-  --color-cloud-theme-6: rgba(240, 235, 227, 0.65);
-  --color-cloud-theme-7: rgba(232, 224, 213, 0.55);
-  --color-cloud-theme-8: rgba(212, 200, 184, 0.45);
-  --color-cloud-theme-9: rgba(200, 184, 165, 0.4);
-  --color-cloud-theme-10: rgba(120, 105, 95, 0.25);
-  --color-cloud-theme-11: rgba(80, 72, 60, 0.2);
-
   /* ========== 运行时切换变量 ========== */
-  --color-bg-current: var(--color-bg-theme-0);
-  --color-glow-current: var(--color-glow-theme-0);
-  --color-cloud-current: var(--color-cloud-theme-0);
+  --color-bg-current: var(--ink-black);
+  --color-glow-current: var(--dai-green);
+  --color-cloud-current: var(--mist-medium);
 }
 
 /* ========== v2.6 水墨国风配色（深靛蓝/松烟墨） ========== */
