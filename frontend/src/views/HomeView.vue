@@ -39,24 +39,11 @@
         <span class="site-name font-serif">叶兴辰的个人网站</span>
       </div>
       <div class="top-bar-right">
-        <el-dropdown trigger="click" @command="handleMusicSelect">
-        <el-button class="music-btn" circle>
-          <span class="music-icon">{{ settingsStore.musicPlaying ? '🎵' : '🎶' }}</span>
-        </el-button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item v-for="bgm in availableBgmList" :key="bgm.id" :command="bgm.id" :disabled="settingsStore.currentBgmId === bgm.id">
-              <span>{{ bgm.name }}</span>
-              <span v-if="settingsStore.currentBgmId === bgm.id" class="current-bgm">✓</span>
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-        <!-- v2.3 音效开关 -->
-        <el-tooltip content="音效" placement="bottom">
-          <el-button class="sound-btn" circle @click="toggleSound">
-            <span>{{ isMuted ? '🔇' : '🔊' }}</span>
-          </el-button>
+        <!-- 音乐+音效合一按钮 -->
+        <el-tooltip content="点击切换开/关，左右滑动调音量" placement="bottom">
+          <div class="audio-control" @click="toggleAudio" @mousedown="startVolumeDrag" @touchstart="startVolumeDrag">
+            <span class="audio-icon">{{ audioIcon }}</span>
+          </div>
         </el-tooltip>
         <el-dropdown trigger="click" @command="handleDropdownCommand">
           <div class="user-avatar-area">
@@ -340,12 +327,70 @@ function updateAtmosphereTheme() {
   root.style.setProperty('--color-cloud-current', `var(--color-cloud-theme-${themeIndex})`)
 }
 
-// 音乐相关
+// 音乐相关 - 仅保留兰亭序
 const availableBgmList = ref([
-  { id: 'garden_music', name: '🎵 庭院音乐' },
-  { id: 'pluck_lute', name: '🎸 青花瓷' },
   { id: 'bamboo_flute', name: '🎶 兰亭序' }
 ])
+
+// 音乐+音效合一控制
+const audioEnabled = ref(true)
+const audioVolume = ref(0.3)
+const isDraggingVolume = ref(false)
+const dragStartX = ref(0)
+const dragStartVolume = ref(0)
+
+const audioIcon = computed(() => {
+  if (!audioEnabled.value) return '🔇'
+  if (audioVolume.value < 0.3) return '🔈'
+  if (audioVolume.value < 0.7) return '🔉'
+  return '🔊'
+})
+
+function toggleAudio() {
+  audioEnabled.value = !audioEnabled.value
+  if (audioEnabled.value) {
+    toggleSound() // 启用音效
+  } else {
+    toggleSound() // 禁用音效
+    settingsStore.toggleMusic() // 禁用音乐
+  }
+}
+
+function startVolumeDrag(e) {
+  isDraggingVolume.value = true
+  dragStartX.value = e.clientX || e.touches?.[0]?.clientX
+  dragStartVolume.value = audioVolume.value
+  document.addEventListener('mousemove', handleVolumeDrag)
+  document.addEventListener('mouseup', stopVolumeDrag)
+  document.addEventListener('touchmove', handleVolumeDrag)
+  document.addEventListener('touchend', stopVolumeDrag)
+}
+
+function handleVolumeDrag(e) {
+  if (!isDraggingVolume.value) return
+  const clientX = e.clientX || e.touches?.[0]?.clientX
+  const deltaX = clientX - dragStartX.value
+  const deltaVolume = deltaX / 200 // 200px对应完整音量范围
+  audioVolume.value = Math.max(0, Math.min(1, dragStartVolume.value + deltaVolume))
+  setAudioVolume(audioVolume.value)
+}
+
+function stopVolumeDrag() {
+  isDraggingVolume.value = false
+  document.removeEventListener('mousemove', handleVolumeDrag)
+  document.removeEventListener('mouseup', stopVolumeDrag)
+  document.removeEventListener('touchmove', handleVolumeDrag)
+  document.removeEventListener('touchend', stopVolumeDrag)
+}
+
+function setAudioVolume(vol) {
+  if (bgAudio.value) {
+    bgAudio.value.volume = vol
+  }
+  // 设置音效音量
+  const soundVol = vol * 0.3
+  // 通过修改 DOM 样式或调用相关方法设置
+}
 
 // 头像相关
 const showAvatarDialog = ref(false)
@@ -373,11 +418,11 @@ const showSpiritQuizDialog = ref(false)
 
 // v2.6 玉简3D轮播数据
 const jadeCards = ref([
-  { id: 'music', rune: '音', label: '音乐岛', path: '/island/music', class: 'music-card' },
-  { id: 'novel', rune: '書', label: '小说岛', path: '/island/novel', class: 'novel-card' },
-  { id: 'video', rune: '影', label: '视频岛', path: '/island/video', class: 'video-card' },
-  { id: 'log', rune: '墨', label: '日志岛', path: '/island/log', class: 'log-card' },
-  { id: 'tool', rune: '器', label: '工具岛', path: '/island/tool', class: 'tool-card' }
+  { id: 'music', rune: '音', label: '宫商流转', path: '/island/music', class: 'music-card' },
+  { id: 'novel', rune: '書', label: '卷帙浩繁', path: '/island/novel', class: 'novel-card' },
+  { id: 'video', rune: '影', label: '光影交织', path: '/island/video', class: 'video-card' },
+  { id: 'log', rune: '墨', label: '翰墨丹青', path: '/island/log', class: 'log-card' },
+  { id: 'tool', rune: '器', label: '机关百变', path: '/island/tool', class: 'tool-card' }
 ])
 const activeCard = ref(-1)
 const carouselRef = ref(null)
@@ -979,6 +1024,32 @@ onUnmounted(() => {
   background: var(--color-jade);
   border: 1px solid rgba(78, 205, 196, 0.4);
   color: var(--color-accent);
+}
+
+/* 音乐+音效合一控制按钮 */
+.audio-control {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-jade);
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.audio-control:hover {
+  background: rgba(78, 205, 196, 0.3);
+  border-color: rgba(78, 205, 196, 0.6);
+  box-shadow: 0 0 15px rgba(78, 205, 196, 0.3);
+}
+
+.audio-icon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .magic-btn {
