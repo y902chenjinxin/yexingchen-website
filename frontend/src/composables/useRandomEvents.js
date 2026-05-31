@@ -20,37 +20,71 @@ const EVENT_CONFIG = {
   [EVENT_TYPES.METEOR_SHOWER]: {
     name: '流星雨',
     duration: 3000,
-    probability: 0.15
+    probability: 0.15,
+    sound: 'guqin'
   },
   [EVENT_TYPES.QI_BURST]: {
     name: '灵气爆发',
     duration: 2000,
-    probability: 0.2
+    probability: 0.2,
+    sound: 'guqin'
   },
   [EVENT_TYPES.CRANE_SWARM]: {
     name: '仙鹤群飞',
     duration: 6000,
-    probability: 0.1
+    probability: 0.1,
+    sound: 'camera'
   },
   [EVENT_TYPES.AUSPICIOUS_CLOUDS]: {
     name: '祥云降临',
     duration: 5000,
-    probability: 0.18
+    probability: 0.18,
+    sound: 'guqin'
   },
   [EVENT_TYPES.DISTANT_THUNDER]: {
     name: '天雷隐现',
     duration: 4000,
-    probability: 0.12
+    probability: 0.12,
+    sound: 'camera'
   }
 }
 
 // cooldown时间（30分钟）
 const COOLDOWN_MS = 30 * 60 * 1000
 
+// 音效冷却时间（3秒）
+const SOUND_COOLDOWN_MS = 3000
+
 // seeded random
 function seededRandom(seed) {
   const x = Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1
   return x
+}
+
+// 音效播放
+let audioPool = {}
+let lastSoundTime = 0
+
+function playEventSound(soundType) {
+  if (prefersReducedMotion()) return
+
+  const now = Date.now()
+  if (now - lastSoundTime < SOUND_COOLDOWN_MS) return
+  lastSoundTime = now
+
+  try {
+    if (!audioPool[soundType]) {
+      audioPool[soundType] = new Audio()
+    }
+    const audio = audioPool[soundType]
+    audio.src = `/sounds/${soundType}.mp3`
+    audio.volume = 0.3
+    audio.play().catch(() => {})
+  } catch {}
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 export function useRandomEvents() {
@@ -126,6 +160,11 @@ export function useRandomEvents() {
     eventTimeout = setTimeout(() => {
       activeEvent.value = null
     }, config.duration)
+
+    // 播放对应音效
+    if (config.sound) {
+      playEventSound(config.sound)
+    }
   }
 
   // 检查是否应该触发新事件

@@ -41,11 +41,15 @@
       <div class="top-bar-right">
         <!-- 音乐+音效合一下拉 -->
         <el-dropdown trigger="click" ref="audioDropdownRef" @command="handleDropdownCommand" placement="bottom-end">
-          <div class="audio-control" :class="{ 'audio-off': !audioEnabled }" @click="handleAudioToggle">
+          <div class="audio-control" :class="{ 'audio-off': !audioEnabled }">
             <span class="audio-icon">{{ audioIcon }}</span>
           </div>
           <template #dropdown>
             <div class="audio-dropdown-panel" @click.stop>
+              <div class="audio-panel-header">
+                <span class="audio-panel-title">音频控制</span>
+                <span class="audio-panel-close" @click="audioDropdownRef?.handleClose">✕</span>
+              </div>
               <div class="audio-row">
                 <span class="audio-label">🎵 背景音乐</span>
                 <div class="audio-slider-wrap" @mousedown="startMusicDrag">
@@ -255,6 +259,9 @@
     <!-- v2.4 随机事件层 -->
     <RandomEventsLayer :activeEvent="activeEvent" />
 
+    <!-- v2.10 云雾漂移层 -->
+    <MistLayer />
+
     <!-- v2.4 编年史弹窗 -->
     <CultivationChronicle :visible="showChronicleDialog" @close="showChronicleDialog = false" />
 
@@ -278,6 +285,7 @@ import KeyboardHelp from '@/components/KeyboardHelp.vue'
 import RandomEventsLayer from '@/components/effects/RandomEventsLayer.vue'
 import CultivationChronicle from '@/components/common/CultivationChronicle.vue'
 import SpiritRootQuiz from '@/components/common/SpiritRootQuiz.vue'
+import MistLayer from '@/components/effects/MistLayer.vue'
 import { useCelestialSystem } from '@/composables/useCelestialSystem'
 import { useRandomEvents } from '@/composables/useRandomEvents'
 import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation'
@@ -1136,6 +1144,32 @@ onUnmounted(() => {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(78, 205, 196, 0.3);
   border-radius: 8px;
+}
+
+.audio-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(78, 205, 196, 0.2);
+}
+
+.audio-panel-title {
+  font-size: 13px;
+  color: rgba(78, 205, 196, 0.9);
+  font-family: var(--font-serif);
+}
+
+.audio-panel-close {
+  cursor: pointer;
+  color: rgba(200, 200, 200, 0.6);
+  font-size: 12px;
+  transition: color 0.2s;
+}
+
+.audio-panel-close:hover {
+  color: rgba(200, 200, 200, 1);
 }
 
 .audio-row {

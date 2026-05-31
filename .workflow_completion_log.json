@@ -1,8 +1,7 @@
 {
   "Step 8": {
-    "timestamp": "2026-05-31T16:40:00.000000",
-    "dist_hash": "d744f0cb08ad2d4649f51f4022369996996e66449a6f9452966af2883f7f48dc",
-    "dist_exists": true,
-    "note": "v2.9.0 \u529f\u80fd\u7cbe\u7b80+\u7389\u7b80\u6807\u7b7e"
+    "timestamp": "2026-05-31T17:18:02.672388",
+    "dist_hash": "d3c04d30b3f169168ed4e1c21bee24b45d0d32e9b53de13125238b6220205453",
+    "dist_exists": true
   }
 }
