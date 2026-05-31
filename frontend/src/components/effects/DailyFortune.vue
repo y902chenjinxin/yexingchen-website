@@ -150,17 +150,20 @@ onMounted(() => {
   right: 30px;
   z-index: 100;
   width: 160px;
-  background: var(--color-bg-glass);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--color-gold);
+  background: rgba(243, 237, 224, 0.18);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
   border-radius: 8px;
   padding: 12px;
   cursor: default;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .daily-fortune:hover {
   transform: scale(1.02);
+  background: rgba(243, 237, 224, 0.25);
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.15);
 }
 
 .fortune-header {
@@ -169,7 +172,7 @@ onMounted(() => {
   gap: 6px;
   margin-bottom: 8px;
   padding-bottom: 6px;
-  border-bottom: 1px solid rgba(201, 169, 98, 0.3);
+  border-bottom: 1px solid rgba(201, 169, 98, 0.25);
 }
 
 .fortune-icon {
@@ -179,7 +182,7 @@ onMounted(() => {
 .fortune-title {
   font-family: var(--font-serif);
   font-size: 14px;
-  color: var(--color-gold);
+  color: rgba(180, 140, 60, 0.9);
 }
 
 .fortune-content {
@@ -191,12 +194,12 @@ onMounted(() => {
 .fortune-solar-term {
   font-family: var(--font-serif);
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: rgba(120, 100, 80, 0.8);
 }
 
 .fortune-tip {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: rgba(100, 80, 60, 0.75);
   line-height: 1.4;
 }
 
@@ -208,7 +211,7 @@ onMounted(() => {
 }
 
 .lucky-label {
-  color: var(--color-text-muted);
+  color: rgba(100, 80, 60, 0.6);
 }
 
 .lucky-color {
