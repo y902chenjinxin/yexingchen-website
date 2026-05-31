@@ -11,25 +11,25 @@ export function useKeyboardNavigation() {
   const currentIndex = ref(-1)
   const isHelpVisible = ref(false)
 
-  // 岛屿路由映射
-  const routes = [
-    '/island/music',
-    '/island/novel',
-    '/island/video',
-    '/island/log',
-    '/island/tool'
-  ]
-
-  // 获取所有岛屿元素
-  function getIslandElements() {
-    return document.querySelectorAll('.island-pos')
+  // 玉简路由映射
+  const routes = {
+    music: '/island/music',
+    novel: '/island/novel',
+    video: '/island/video',
+    log: '/island/log',
+    tool: '/island/tool'
   }
 
-  // 设置岛屿聚焦状态
+  // 获取所有玉简元素
+  function getIslandElements() {
+    return document.querySelectorAll('.jade-card')
+  }
+
+  // 设置玉简聚焦状态
   function setIslandFocus(index) {
     // 移除之前的聚焦
     islands.value.forEach((el, i) => {
-      if (el) el.classList.remove('island-focused')
+      if (el) el.classList.remove('jade-focused')
     })
 
     // 添加新的聚焦
@@ -37,12 +37,21 @@ export function useKeyboardNavigation() {
       currentIndex.value = index
       const el = islands.value[index]
       if (el) {
-        el.classList.add('island-focused')
+        el.classList.add('jade-focused')
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
     } else {
       currentIndex.value = -1
     }
+  }
+
+  // 获取当前聚焦的玉简类型
+  function getCurrentIslandType() {
+    if (currentIndex.value >= 0 && currentIndex.value < islands.value.length) {
+      const el = islands.value[currentIndex.value]
+      return el?.dataset.type || null
+    }
+    return null
   }
 
   // 数字快捷键
@@ -77,7 +86,10 @@ export function useKeyboardNavigation() {
 
       case 'Enter':
         if (currentIndex.value >= 0) {
-          router.push(routes[currentIndex.value])
+          const type = getCurrentIslandType()
+          if (type && routes[type]) {
+            router.push(routes[type])
+          }
         }
         break
 
@@ -86,7 +98,7 @@ export function useKeyboardNavigation() {
           isHelpVisible.value = false
         } else if (currentIndex.value >= 0) {
           currentIndex.value = -1
-          islands.value.forEach(el => el?.classList.remove('island-focused'))
+          islands.value.forEach(el => el?.classList.remove('jade-focused'))
         }
         break
 
