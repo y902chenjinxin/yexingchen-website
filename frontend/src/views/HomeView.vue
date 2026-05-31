@@ -195,6 +195,7 @@
       loop
       preload="auto"
       autoplay
+      muted
     />
 
     <!-- 备案信息 -->
@@ -612,8 +613,12 @@ onMounted(async () => {
   setInterval(updateAtmosphereTheme, 60000)
 
   await settingsStore.fetchBgMusic()
+  setMusicVolume(musicVolume.value)
   setTimeout(() => {
-    bgAudio.value?.play().catch(() => {})
+    if (bgAudio.value) {
+      bgAudio.value.muted = false
+      bgAudio.value.play().catch(() => {})
+    }
   }, 500)
 
   // v2.3 初始化交互系统
