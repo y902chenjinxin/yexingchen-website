@@ -1,18 +1,14 @@
 # MEMORY.md
 
 ## 项目经验
-- [project-lessons](memory/project-lessons.md) — 本次遇到的问题和解决记录，下次部署时必读（包含沟通要求）
-
-## 人设
-- [personality-completeness](memory/personality-completeness.md) — 完成度边际成本为零，全部做完做得彻底
+- [project-lessons](memory/project-lessons.md) — 问题记录与解决，下次部署必读
 
 ## 服务器访问
-- [server-access](memory/server-access.md) — 服务器 IP、密码、部署路径
+- [server-access](memory/server-access.md) — 服务器IP、密码、部署路径
 
 ## 设计系统
-- [design-inkwash](docs/DESIGN_INKWASH.md) — 水墨国风完整规范（素雅/留白/禅意）
-- [design-xuanmo](docs/DESIGN_XUANMO.md) — 玄墨流金完整规范（已归档，当前风格过于卡通化）
-- [variables.css](frontend/src/assets/styles/variables.css) — 所有CSS变量，禁止硬编码
+- [design-inkwash](docs/DESIGN_INKWASH.md) — 水墨国风规范
+- [variables.css](frontend/src/assets/styles/variables.css) — CSS变量，禁止硬编码
 
 ## 技能索引
 
@@ -20,10 +16,6 @@
 | 技能名 | 用途 |
 |--------|------|
 | `prd-development` | PRD文档生成 |
-| `positioning-statement` | 定位声明 |
-| `press-release` | 发布稿（Working Backwards）|
-| `prioritization-advisor` | 优先级排序 |
-| `product-strategy-session` | 产品策略会话 |
 
 ### 前端技能库
 | 技能名 | 用途 |
@@ -35,34 +27,35 @@
 | 技能名 | 用途 |
 |--------|------|
 | `/improve-codebase-architecture` | 架构决策/重构 |
-| `qa-only` | 测试/E2E |
 
-## Feedback
-- [feedback-login-expired-error](memory/feedback-login-expired-error.md) — 首次加载时不显示"登录已过期"错误
-- [feedback-documentation](memory/feedback-documentation.md) — 每次改动必须同步更新CHANGELOG和ISSUES
-- [feedback-self-improvement](memory/feedback-self-improvement.md) — 用户批评"总是让人教你成长"，学会主动自我总结写入记忆
-- [feedback-prd-missing](memory/feedback-prd-missing.md) — 用户批评"每次都要我提醒你写PRD"，Step 2 必须生成PRD文档
-- [feedback-self-testing-incomplete](memory/feedback-self-testing-incomplete.md) — 自测只做build通过，没实际验证功能和视觉
+## Feedback（经验教训）
+- [feedback-prd-missing](memory/feedback-prd-missing.md) — Step 2必须生成PRD文档
+- [feedback-self-improvement](memory/feedback-self-improvement.md) — 主动自我总结
+- [feedback-self-testing-incomplete](memory/feedback-self-testing-incomplete.md) — 自测必须实际验证功能
 
 ## 工作流程
-- [workflow-prd-review](memory/workflow-prd-review.md) — **完整13步流程**：需求管理→评审→技术方案→开发→CodeReview→自测→Staging验证→用户验收→Git提交+Tag→部署生产→回滚方案→收尾
+- [workflow-prd-review](memory/workflow-prd-review.md) — 完整13步流程
 
 ### 核心要点
-1. **更新项目记忆**：需求评审时记录需求状态为"进行中"，完成后更新为"已完成"
-2. **自测自动化**：每次代码修改后，我必须先在本地localhost测试验证，OK后再通知用户体验
-3. **Git提交时机**：部署前必须先git提交，不是部署后，**每次部署打Tag**
-4. **PRD文档**：评审时先生成，后续开发过程中的需求变更在git提交前补充完善
-5. **测试环境**：本地localhost预览 + staging环境验证，无需上传到服务器test目录
-6. **Code Review**：所有变更通过PR合并，核心模块需2人review
-7. **安全红线**：凭证不得硬编码、登录限流、JWT安全、文件上传安全、数据库migration
-8. **回滚方案**：每次部署后记录到docs/ROLLBACK.md
+1. 部署前必须先git提交+打Tag
+2. 自测必须实际浏览器验证，不能只build
+3. 每次部署后更新ROLLBACK.md
+4. 凭证不得硬编码
 
-## 项目状态
-- [project-v200](memory/project-v200.md) — **v2.10 完成**，功能收尾与体验优化
-- [project-3d-island-pause](memory/project-3d-island-pause.md) — 3D浮空岛项目暂停（已归档）
-- [project-v170](memory/project-v170.md) — v1.7.0-v1.7.2 玄墨流金（已归档）
-- [project-v160](memory/project-v160.md) — v1.6.0（已归档）
-- [project-v180](memory/project-v180.md) — v1.8.0（已归档，并入v2.0）
+---
+
+## 当前版本状态
+
+**v2.12.0** (2026-05-31) - 玉简交互简化
+- 移除粒子/光晕/浮动动画，保留玉石纹理
+- 修复.carousel-track拦截点击问题
+
+## 历史版本（已归档）
+- [project-v200](memory/archive/project-v200.md) — v2.0-v2.10
+- [project-v180](memory/archive/project-v180.md) — v1.8.0
+- [project-v170](memory/archive/project-v170.md) — v1.7.0-v1.7.2
+- [project-v160](memory/archive/project-v160.md) — v1.6.0
+- [project-3d-island-pause](memory/archive/project-3d-island-pause.md) — 3D浮空岛暂停
 
 ---
 
@@ -73,22 +66,22 @@
 # 1. 构建
 cd frontend && npm run build
 
-# 2. 自测（本地preview + 自动化浏览器验证）
+# 2. 自测
 python self_test.py
-python self_test.py record Step 8
 
-# 3. 上传到服务器
-python upload_server.py
+# 3. 上传+重启
+export SERVER_PASSWORD='yxCHEN@12345678' && python upload_server.py
 
-# 4. 重启后端
-python restart_pm2.py
+# 4. nginx reload（必须）
+ssh root@203.195.208.25 "nginx -s reload"
 
-# 5. 验证生产环境
-node browser_verify.js --production --all
+# 5. 验证
+node browser_verify.js --production
 ```
 
-### 服务器 Python 路径
-`/var/www/yexingchen/backend/venv/bin/python`
-
-### 数据库
-`/var/www/yexingchen/backend/yexingchen.db`
+### 服务器信息
+- IP: 203.195.208.25
+- 前端: /var/www/yexingchen/dist
+- 后端: /var/www/yexingchen/backend
+- 数据库: /var/www/yexingchen/backend/yexingchen.db
+- Python: /var/www/yexingchen/backend/venv/bin/python

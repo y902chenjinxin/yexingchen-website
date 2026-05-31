@@ -1,0 +1,175 @@
+一、效果说明
+中心固定光柱（主轴，Y 轴不动）；
+所有玉简卡片绕中心轴 水平圆周顺时针旋转（Y 坐标始终不变，仅 X/Z 轴运动）；
+利用 perspective 透视实现近大远小、前后遮挡3D 视差；
+无限循环匀速转动，可自由调整数量、转速、大小、样式；
+纯前端实现，无框架依赖，兼容主流浏览器。
+二、完整代码（直接复制使用）
+html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>玉简环绕光柱 - 仙侠首页</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      /* 页面背景：仙侠深色底，贴合你的风格 */
+      background: #0a1020;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* 3D透视容器 - 核心视差近大远小 */
+    .wrap {
+      perspective: 1000px; /* 透视距离，值越小立体感越强 */
+      perspective-origin: center center;
+    }
+
+    /* 旋转舞台：Y轴固定，整体水平环绕旋转 */
+    .stage {
+      position: relative;
+      width: 400px;
+      height: 200px;
+      transform-style: preserve-3d; /* 开启3D空间 */
+      animation: rotateLoop 20s linear infinite; /* 20秒一圈，匀速顺时针 */
+    }
+
+    /* 中心光柱（固定主轴，不参与旋转） */
+    .light-pillar {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 180px;
+      background: linear-gradient(to bottom, #e8d880, #f9f0b0, #e8d880);
+      border-radius: 10px;
+      box-shadow: 0 0 20px #f9f0b0, 0 0 40px rgba(249, 240, 176, 0.6);
+      z-index: 10;
+    }
+
+    /* 单个玉简样式 */
+    .jade-slip {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 120px;
+      height: 80px;
+      /* 玉简外观：古风玉石质感 */
+      background: linear-gradient(135deg, #87a8b8, #b2c8d8, #87a8b8);
+      border: 2px solid #d4c290;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(212, 194, 144, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #222;
+      font-size: 16px;
+      font-family: "楷体", "宋体", serif;
+      transform-style: preserve-3d;
+      /* 初始3D位置，JS动态分配 */
+    }
+
+    /* 整体顺时针循环旋转动画 */
+    @keyframes rotateLoop {
+      from {
+        transform: rotateY(0deg);
+      }
+      to {
+        transform: rotateY(360deg);
+      }
+    }
+
+    /* 悬浮暂停：鼠标悬停玉简，停止旋转（可选交互） */
+    .stage:hover {
+      animation-play-state: paused;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- 3D舞台 -->
+    <div class="stage" id="stage">
+      <!-- 中心光柱 -->
+      <div class="light-pillar"></div>
+      <!-- 玉简由 JS 动态生成 -->
+    </div>
+  </div>
+
+  <script>
+    // 配置项：可根据需求自由修改
+    const config = {
+      slipNum: 8,        // 玉简数量
+      radius: 220,       // 环绕半径（玉简离中心光柱的距离）
+      slipW: 120,        // 玉简宽度
+      slipH: 80          // 玉简高度
+    };
+
+    const stage = document.getElementById('stage');
+    const { slipNum, radius, slipW, slipH } = config;
+
+    // 计算每个玉简的角度并定位（Y轴始终不变，仅X/Z环绕）
+    for (let i = 0; i < slipNum; i++) {
+      const angle = (360 / slipNum) * i; // 均分圆周角度
+      const slip = document.createElement('div');
+      slip.className = 'jade-slip';
+      slip.innerText = `玉简 ${i + 1}`;
+
+      // 3D坐标计算：绕Y轴水平圆周运动，Y固定 = 居中
+      const rad = angle * Math.PI / 180;
+      const x = radius * Math.sin(rad);
+      const z = radius * Math.cos(rad);
+
+      // 定位 + 角度偏转，保证玉简始终面向外侧
+      slip.style.transform = `
+        translate3d(calc(-50% + ${x}px), -50%, ${z}px)
+        rotateY(${angle}deg)
+      `;
+
+      stage.appendChild(slip);
+    }
+  </script>
+</body>
+</html>
+三、核心原理（对应你的需求）
+Y 轴固定不变所有玉简、光柱的垂直位置 top:50% + translateY(-50%) 居中，全程 Y 坐标不变化，只在水平平面（X-Z 平面）做圆周运动。
+顺时针环绕旋转舞台整体执行 rotateY(0deg) → rotateY(360deg) 动画，CSS rotateY 就是水平左右旋转，默认顺时针循环。
+近大远小视差外层容器设置 perspective 透视 + transform-style: preserve-3d 开启浏览器 3D 渲染：
+靠近镜头（Z 轴靠前）的玉简：视觉变大、清晰；
+远离镜头（Z 轴靠后）的玉简：视觉缩小、被遮挡；
+完美实现你要的视差近大远小。
+循环往复动画设置 linear infinite，匀速无限循环。
+四、自定义调整（重点，适配你的网站）
+打开代码，修改 config 和 CSS 即可按需调整：
+1. 调整转动速度
+找到 CSS 里的 animation: rotateLoop 20s linear infinite;
+20s = 转一圈耗时：数值越大越慢，越小越快
+例：15s 更快，30s 更舒缓（仙侠建议慢一点：20~30s）
+2. 调整玉简数量
+JS 中 slipNum: 8，改成 6 / 10 / 12 都可以。
+3. 调整环绕半径（离光柱远近）
+JS 中 radius: 220：
+数值变大：玉简离中心光柱更远；
+数值变小：玉简聚拢在光柱周围。
+4. 改玉简 / 光柱样式（仙侠风格美化）
+光柱：修改 .light-pillar 里的 background、box-shadow 改颜色 / 发光（金色、青蓝色都适配仙侠）；
+玉简：修改 .jade-slip 的渐变、边框、文字、尺寸，替换成你网站的配色。
+5. 关闭「鼠标悬停暂停」
+如果不需要鼠标停在玉简上就静止，删除 CSS 这段即可：
+css
+.stage:hover {
+  animation-play-state: paused;
+}
+五、嵌入到你现有首页的方法
+将上面代码里的 CSS 样式 复制到你首页的 <style> 标签中；
+将 <div class="wrap"> ... </div> 结构放到你首页需要展示的位置；
+将底部 <script> 脚本复制到页面底部（</body> 之前）；
+根据你页面布局，调整 .stage 的 width/height、透视 perspective、环绕半径，适配页面大小。
