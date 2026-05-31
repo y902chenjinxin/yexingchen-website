@@ -92,7 +92,7 @@ def check_css_vars():
 
 def check_hover_effects():
     """检查 hover 特效 HTML 元素是否存在"""
-    print_section("Step 3: Island Hover Effects Check")
+    print_section("Step 3: Jade Card Hover Effects Check")
 
     home_view = "frontend/src/views/HomeView.vue"
     if not os.path.exists(home_view):
@@ -103,11 +103,14 @@ def check_hover_effects():
         content = f.read()
 
     required_elements = [
-        ('music-island-hover', 'Music island hover'),
-        ('novel-island-hover', 'Novel island hover'),
-        ('video-island-hover', 'Video island hover'),
-        ('log-island-hover', 'Log island hover'),
-        ('tool-island-hover', 'Tool island hover'),
+        ('jade-card', 'Jade card component'),
+        ('carousel-track', 'Carousel track'),
+        ('music-card', 'Music jade card'),
+        ('novel-card', 'Novel jade card'),
+        ('video-card', 'Video jade card'),
+        ('log-card', 'Log jade card'),
+        ('tool-card', 'Tool jade card'),
+        ('particle-orbit', 'Particle orbit animation'),
     ]
 
     all_found = True

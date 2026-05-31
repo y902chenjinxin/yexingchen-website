@@ -1,17 +1,20 @@
 /**
  * useGestureControl.js
  * 手势控制 composable
- * 移动端特有的交互：捏合、长按、滑动
+ * 移动端玉简轮播手势：左右滑动、双击进入、长按操作
  */
 
 import { ref, onMounted, onUnmounted } from 'vue'
 
 export function useGestureControl(options = {}) {
   const {
-    onPinch = () => {},
-    onLongPress = () => {},
+    onSwipeLeft = () => {},
+    onSwipeRight = () => {},
     onSwipeUp = () => {},
-    onDoubleTap = () => {}
+    onDoubleTap = () => {},
+    onLongPress = () => {},
+    onPinch = () => {},
+    targetSelector = '.jade-carousel'
   } = options
 
   const isEnabled = ref(true)
@@ -21,6 +24,8 @@ export function useGestureControl(options = {}) {
   let initialScale = 1
   let longPressTimer = null
   let lastTapTime = 0
+  let touchStartX = 0
+  let touchStartY = 0
 
   // 计算两点之间的距离
   const getDistance = (touches) => {
@@ -37,6 +42,14 @@ export function useGestureControl(options = {}) {
     }
   }
 
+  // 检查是否在目标区域内
+  const isInTargetArea = (x, y) => {
+    const target = document.querySelector(targetSelector)
+    if (!target) return false
+    const rect = target.getBoundingClientRect()
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+  }
+
   // 触摸开始
   const handleTouchStart = (e) => {
     if (!isEnabled.value) return
@@ -48,16 +61,24 @@ export function useGestureControl(options = {}) {
     }
 
     if (e.touches.length === 1) {
-      // 单指长按
+      const touch = e.touches[0]
+      touchStartX = touch.clientX
+      touchStartY = touch.clientY
+
+      // 单指长按（500ms）
       longPressTimer = setTimeout(() => {
-        onLongPress(e)
+        if (isInTargetArea(touchStartX, touchStartY)) {
+          onLongPress({ x: touchStartX, y: touchStartY })
+        }
         longPressTimer = null
       }, 500)
 
       // 双击检测
       const now = Date.now()
       if (now - lastTapTime < 300) {
-        onDoubleTap(e)
+        if (isInTargetArea(touchStartX, touchStartY)) {
+          onDoubleTap({ x: touchStartX, y: touchStartY })
+        }
         lastTapTime = 0
       } else {
         lastTapTime = now
@@ -83,11 +104,11 @@ export function useGestureControl(options = {}) {
       initialDistance = currentDistance
     }
 
-    // 取消长按（如果有移动）
+    // 取消长按（如果有移动超过10px）
     if (longPressTimer && e.touches.length === 1) {
       const touch = e.touches[0]
-      const movement = Math.abs(touch.clientX - e.changedTouches[0].clientX) +
-                       Math.abs(touch.clientY - e.touches[0].clientY)
+      const movement = Math.abs(touch.clientX - touchStartX) +
+                       Math.abs(touch.clientY - touchStartY)
 
       if (movement > 10) {
         clearTimeout(longPressTimer)
@@ -106,18 +127,24 @@ export function useGestureControl(options = {}) {
       longPressTimer = null
     }
 
-    // 检测上滑
+    // 单指手势检测
     if (e.changedTouches.length === 1) {
       const touch = e.changedTouches[0]
-      const startY = touch.clientY
+      const deltaX = touch.clientX - touchStartX
+      const deltaY = touch.clientY - touchStartY
 
-      // 延迟检测上滑
-      setTimeout(() => {
-        const endY = touch.clientY
-        if (startY - endY > 100) { // 上滑超过100px
-          onSwipeUp(e)
+      // 水平滑动超过50px且水平距离大于垂直距离
+      if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (deltaX < 0) {
+          onSwipeLeft()
+        } else {
+          onSwipeRight()
         }
-      }, 100)
+      }
+      // 垂直上滑超过100px
+      else if (deltaY < -100 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        onSwipeUp()
+      }
     }
   }
 

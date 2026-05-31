@@ -4,6 +4,21 @@
 
 ---
 
+## [v2.8.0] - 2026-05-31
+
+### 玉简交互增强
+- **键盘导航**：Tab遍历玉简，1-5数字快捷键，Enter进入对应岛屿，Escape取消聚焦
+- **聚焦态**：键盘聚焦时显示金色呼吸光晕（jade-focused类）
+- **触控手势**：左右滑动切换玉简，双击进入岛屿，长按触发
+- **音效系统**：hover玉简触发翡翠静音切换（useIslandSound已适配玉简）
+
+### Composables适配
+- useKeyboardNavigation：.island-pos → .jade-card，路由映射重构
+- useGestureControl：新增左右滑动/双击/长按手势支持
+- useIslandSound：islandType参数改为card.id
+
+---
+
 ## [v2.7.0] - 2026-05-31
 
 ### 玉简卡片系统重构

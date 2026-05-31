@@ -295,8 +295,32 @@ const { shichenName, solarTermName, solarTermIntensity } = useCelestialSystem()
 // v2.3 键盘导航
 const { setup: setupKeyboardNav, cleanup: cleanupKeyboardNav, isHelpVisible } = useKeyboardNavigation()
 
-// v2.3 手势控制
-const { setup: setupGestures, cleanup: cleanupGestures } = useGestureControl()
+// v2.3 手势控制 - 玉简轮播手势
+const { setup: setupGestures, cleanup: cleanupGestures } = useGestureControl({
+  onSwipeLeft: () => {
+    // 左滑：下一张玉简
+    if (currentIndex.value < jadeCards.value.length - 1) {
+      currentIndex.value++
+    } else {
+      currentIndex.value = 0
+    }
+  },
+  onSwipeRight: () => {
+    // 右滑：上一张玉简
+    if (currentIndex.value > 0) {
+      currentIndex.value--
+    } else {
+      currentIndex.value = jadeCards.value.length - 1
+    }
+  },
+  onDoubleTap: () => {
+    // 双击：进入当前玉简岛屿
+    const card = jadeCards.value[currentIndex.value]
+    if (card) {
+      router.push(card.path)
+    }
+  }
+})
 
 // v2.3 音效系统
 const { setup: setupSounds, cleanup: cleanupSounds, toggleSound, isMuted, playHoverSound, stopHoverSound } = useIslandSound()
@@ -1482,6 +1506,34 @@ onUnmounted(() => {
 .jade-card:nth-child(3) { animation-delay: 0.35s; transform-origin: center center; }
 .jade-card:nth-child(4) { animation-delay: 0.15s; transform-origin: left center; }
 .jade-card:nth-child(5) { animation-delay: 0s; transform-origin: left center; }
+
+/* 键盘导航聚焦态 */
+.jade-focused {
+  outline: 2px solid rgba(212, 175, 55, 0.6) !important;
+  outline-offset: 4px;
+  box-shadow:
+    0 0 20px rgba(212, 175, 55, 0.4),
+    0 0 40px rgba(212, 175, 55, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.4) !important;
+  animation: jade-focus-pulse 1.5s ease-in-out infinite !important;
+}
+
+@keyframes jade-focus-pulse {
+  0%, 100% {
+    outline-color: rgba(212, 175, 55, 0.4);
+    box-shadow:
+      0 0 15px rgba(212, 175, 55, 0.3),
+      0 0 30px rgba(212, 175, 55, 0.15),
+      0 12px 30px rgba(0, 0, 0, 0.4) !important;
+  }
+  50% {
+    outline-color: rgba(212, 175, 55, 0.8);
+    box-shadow:
+      0 0 25px rgba(212, 175, 55, 0.5),
+      0 0 50px rgba(212, 175, 55, 0.25),
+      0 12px 30px rgba(0, 0, 0, 0.4) !important;
+  }
+}
 @keyframes jade-enter {
   0% {
     opacity: 0;
