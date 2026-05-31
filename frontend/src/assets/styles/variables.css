@@ -4,24 +4,24 @@
  */
 
 :root {
-  /* ========== 玄墨底色 ========== */
-  --color-bg-dark: #0D0F14;       /* 深墨色主背景 */
-  --color-bg: #12141A;            /* 页面背景 */
-  --color-bg-elevated: #1A1D24;   /* 提升层级背景 */
-  --color-bg-glass: rgba(18, 20, 26, 0.85); /* 玻璃背景 */
+  /* ========== 阳光仙山底色 ========== */
+  --color-bg-dark: #f5f0e8;       /* 暖白主背景 */
+  --color-bg: #faf8f5;            /* 页面背景象牙白 */
+  --color-bg-elevated: #ffffff;   /* 提升层级纯白 */
+  --color-bg-glass: rgba(255, 255, 255, 0.92); /* 玻璃背景 */
 
-  /* ========== 古铜金系 ========== */
-  --color-gold: #C9A86C;           /* 古铜金主色 */
-  --color-gold-light: rgba(201, 168, 108, 0.4);
-  --color-gold-bright: #F0E6C8;    /* 亮金色 */
-  --color-gold-dark: #8B7355;      /* 暗金 */
-  --color-gold-gradient: linear-gradient(135deg, #8B7355 0%, #C9A86C 40%, #E8D4A8 50%, #C9A86C 60%, #8B7355 100%);
-  --color-gold-glow: 0 0 30px rgba(201, 169, 98, 0.3);
+  /* ========== 暖金色系 ========== */
+  --color-gold: #c49a6c;           /* 暖金色 */
+  --color-gold-light: rgba(196, 154, 108, 0.5);
+  --color-gold-bright: #8b6914;    /* 深金色（用于文字） */
+  --color-gold-dark: #9b7a4c;      /* 暗金 */
+  --color-gold-gradient: linear-gradient(135deg, #9b7a4c 0%, #c49a6c 40%, #e8d4a8 50%, #c49a6c 60%, #9b7a4c 100%);
+  --color-gold-glow: 0 0 30px rgba(196, 154, 108, 0.4);
 
   /* ========== 翡翠点缀 ========== */
-  --color-jade: #4A7C59;           /* 翡翠绿 */
-  --color-jade-light: #6B9B7A;
-  --color-jade-dark: #2D4D38;
+  --color-jade: #5a8f6a;          /* 清新翡翠绿 */
+  --color-jade-light: #7aaf8a;
+  --color-jade-dark: #3a6f4a;
 
   /* ========== 紫霄色 ========== */
   --color-purple: #8B7AAE;         /* 紫霄 */
@@ -35,23 +35,23 @@
   --color-log: #7A9B7C;            /* 苔绿 */
   --color-tool: #C49A6C;           /* 琥珀色 */
 
-  /* ========== 文字色 ========== */
-  --color-text: #E8E4DC;           /* 月白/暖白 */
-  --color-text-dark: #1a1a2e;     /* 深色文字（用于浅色背景如面板） */
-  --color-text-secondary: #9A968E; /* 灰茶色 */
-  --color-text-muted: #6A665E;    /* 淡墨 */
-  --color-text-light: rgba(232, 228, 220, 0.9);
+  /* ========== 文字色（明亮系） ========== */
+  --color-text: #3a3530;           /* 深棕（暖灰）*/
+  --color-text-dark: #f5f0e8;     /* 浅色文字（用于深色背景如面板） */
+  --color-text-secondary: #6a655e; /* 暖灰 */
+  --color-text-muted: #9a958e;    /* 淡灰 */
+  --color-text-light: rgba(58, 53, 48, 0.9);
 
-  /* ========== 功能色 ========== */
-  --color-danger: #C96B6B;
-  --color-success: #6A9B7A;
-  --color-warning: #C9A86C;
+  /* ========== 功能色（明亮系） ========== */
+  --color-danger: #b86b6b;
+  --color-success: #5a8f6a;
+  --color-warning: #c49a6c;
 
-  /* ========== 仙气/灵气特效色 ========== */
-  --color-qi-primary: #4A7C59;    /* 灵气主色（非薄荷感翡翠绿） */
-  --color-qi-green: #7FFFCC;       /* 翡翠绿（鼠标轨迹） */
-  --color-qi-glow: rgba(74, 124, 89, 0.4);
-  --island-glow-color: rgba(201, 168, 108, 0.2);
+  /* ========== 仙气/灵气特效色（明亮系） ========== */
+  --color-qi-primary: #5a8f6a;    /* 清新翡翠 */
+  --color-qi-green: #3a7f5a;       /* 深翡翠（鼠标轨迹） */
+  --color-qi-glow: rgba(90, 143, 106, 0.4);
+  --island-glow-color: rgba(196, 154, 108, 0.3);
 
   /* ========== 每日运势颜色 ========== */
   --color-fortune-jade: #7FFFCC;      /* 翡翠绿 */
@@ -114,47 +114,47 @@
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
 
-  /* ========== 十二时辰动态背景 ========== */
-  --color-bg-theme-0: #0A0C12;   /* 子时 深夜墨 */
-  --color-bg-theme-1: #0C0E16;   /* 丑时 黎明前墨 */
-  --color-bg-theme-2: #100E10;   /* 寅时 破晓墨褐 */
-  --color-bg-theme-3: #12100A;   /* 卯时 晨曦墨棕 */
-  --color-bg-theme-4: #0D0F14;   /* 辰时 上午玄墨 */
-  --color-bg-theme-5: #12141A;   /* 巳时 午前墨色 */
-  --color-bg-theme-6: #0E1018;   /* 午时 午后墨紫 */
-  --color-bg-theme-7: #100C14;   /* 未时 下午灰紫 */
-  --color-bg-theme-8: #0C1018;   /* 申时 傍晚藏蓝 */
-  --color-bg-theme-9: #0A0E14;   /* 酉时 黄昏墨蓝 */
-  --color-bg-theme-10: #0C0E18;  /* 戌时 夜初蓝墨 */
-  --color-bg-theme-11: #080A10;   /* 亥时 深夜夜墨 */
+  /* ========== 十二时辰动态背景（明亮系-阳光仙山） ========== */
+  --color-bg-theme-0: #1a1520;   /* 子时 深夜靛蓝 */
+  --color-bg-theme-1: #1e1828;   /* 丑时 黎明前紫 */
+  --color-bg-theme-2: #2d2535;   /* 寅时 破晓淡紫 */
+  --color-bg-theme-3: #f5f0e8;   /* 卯时 晨曦暖白 */
+  --color-bg-theme-4: #faf8f5;   /* 辰时 上午米白 */
+  --color-bg-theme-5: #f8f5f0;   /* 巳时 午前象牙白 */
+  --color-bg-theme-6: #f0ebe5;   /* 午时 正午暖白 */
+  --color-bg-theme-7: #e8e0d8;   /* 未时 午后淡杏 */
+  --color-bg-theme-8: #d4c8c0;   /* 申时 傍晚淡褐 */
+  --color-bg-theme-9: #c8b8a8;   /* 酉时 黄昏暖灰 */
+  --color-bg-theme-10: #2a2030;  /* 戌时 夜初深紫 */
+  --color-bg-theme-11: #18141f;   /* 亥时 深夜墨紫 */
 
-  /* ========== 十二时辰岛屿光晕 ========== */
-  --color-glow-theme-0: rgba(201,169,98,0.35);   /* 子时 月华金 */
-  --color-glow-theme-1: rgba(74,124,89,0.3);     /* 丑时 翠青幽光 */
-  --color-glow-theme-2: rgba(232,180,100,0.4);   /* 寅时 破晓金 */
-  --color-glow-theme-3: rgba(232,180,100,0.5);   /* 卯时 旭日金 */
-  --color-glow-theme-4: rgba(201,169,98,0.4);    /* 辰时 瑞气金 */
-  --color-glow-theme-5: rgba(201,169,98,0.5);    /* 巳时 正阳金 */
-  --color-glow-theme-6: rgba(139,122,174,0.4);   /* 午时 紫霄淡辉 */
-  --color-glow-theme-7: rgba(168,124,156,0.4);  /* 未时 紫薇幽光 */
-  --color-glow-theme-8: rgba(74,90,139,0.35);   /* 申时 暮光蓝 */
-  --color-glow-theme-9: rgba(201,140,108,0.4);  /* 酉时 黄昏橙 */
-  --color-glow-theme-10: rgba(139,122,174,0.35); /* 戌时 夜初紫 */
-  --color-glow-theme-11: rgba(201,168,108,0.25); /* 亥时 深夜金 */
+  /* ========== 十二时辰岛屿光晕（明亮系） ========== */
+  --color-glow-theme-0: rgba(139,122,174,0.4);   /* 子时 紫霄淡辉 */
+  --color-glow-theme-1: rgba(168,124,156,0.4);  /* 丑时 紫薇幽光 */
+  --color-glow-theme-2: rgba(201,140,108,0.5);   /* 寅时 破晓橙 */
+  --color-glow-theme-3: rgba(255,200,120,0.7);  /* 卯时 旭日金 */
+  --color-glow-theme-4: rgba(255,210,140,0.6);  /* 辰时 瑞气金 */
+  --color-glow-theme-5: rgba(255,220,160,0.65); /* 巳时 正阳金 */
+  --color-glow-theme-6: rgba(255,180,100,0.6);   /* 午时 午后橙 */
+  --color-glow-theme-7: rgba(200,170,140,0.5);  /* 未时 午后暖褐 */
+  --color-glow-theme-8: rgba(180,150,120,0.4);  /* 申时 暮光褐 */
+  --color-glow-theme-9: rgba(160,140,120,0.4);  /* 酉时 黄昏灰褐 */
+  --color-glow-theme-10: rgba(139,100,174,0.35); /* 戌时 夜初紫 */
+  --color-glow-theme-11: rgba(100,80,140,0.3);   /* 亥时 深夜靛蓝 */
 
-  /* ========== 十二时辰云雾 ========== */
-  --color-cloud-theme-0: rgba(201,169,98,0.08);
-  --color-cloud-theme-1: rgba(74,124,89,0.06);
-  --color-cloud-theme-2: rgba(232,180,100,0.1);
-  --color-cloud-theme-3: rgba(232,180,100,0.15);
-  --color-cloud-theme-4: rgba(201,169,98,0.1);
-  --color-cloud-theme-5: rgba(232,200,140,0.12);
-  --color-cloud-theme-6: rgba(139,122,174,0.08);
-  --color-cloud-theme-7: rgba(168,124,156,0.08);
-  --color-cloud-theme-8: rgba(74,90,139,0.08);
-  --color-cloud-theme-9: rgba(201,140,108,0.1);
-  --color-cloud-theme-10: rgba(139,122,174,0.08);
-  --color-cloud-theme-11: rgba(201,168,108,0.06);
+  /* ========== 十二时辰云雾（明亮系） ========== */
+  --color-cloud-theme-0: rgba(139,122,174,0.15);
+  --color-cloud-theme-1: rgba(168,124,156,0.12);
+  --color-cloud-theme-2: rgba(255,200,150,0.2);
+  --color-cloud-theme-3: rgba(255,255,250,0.5);
+  --color-cloud-theme-4: rgba(255,255,255,0.7);
+  --color-cloud-theme-5: rgba(255,255,250,0.65);
+  --color-cloud-theme-6: rgba(255,250,240,0.6);
+  --color-cloud-theme-7: rgba(240,230,220,0.5);
+  --color-cloud-theme-8: rgba(220,200,180,0.4);
+  --color-cloud-theme-9: rgba(200,180,160,0.35);
+  --color-cloud-theme-10: rgba(160,130,180,0.2);
+  --color-cloud-theme-11: rgba(100,80,140,0.15);
 
   /* ========== 运行时切换变量 ========== */
   --color-bg-current: var(--color-bg-theme-0);
@@ -177,18 +177,18 @@
   height: 100%;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.03;
+  opacity: 0.015;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
 /* ========== Premium Gold Text Effect ========== */
 .text-gold-premium {
-  background: linear-gradient(135deg, #8B7355 0%, #C9A86C 40%, #E8D4A8 50%, #C9A86C 60%, #8B7355 100%);
+  background: linear-gradient(135deg, #9b7a4c 0%, #c49a6c 40%, #e8d4a8 50%, #c49a6c 60%, #9b7a4c 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-shadow: none;
-  filter: drop-shadow(0 0 20px rgba(201, 169, 98, 0.3));
+  filter: drop-shadow(0 2px 4px rgba(154, 122, 76, 0.3));
 }
 
 /* ========== Jade Glow Effect ========== */
