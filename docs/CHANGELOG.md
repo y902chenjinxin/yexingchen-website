@@ -4,6 +4,27 @@
 
 ---
 
+## [v2.12.0] - 2026-05-31
+
+### Bug Fix
+- **玉简点击修复**：`.carousel-track` 添加 `pointer-events: none`，修复 novel/log/tool 卡片点击无反应问题
+
+### 玉简交互简化
+- **移除粒子轨道动画**：删除 `.card-particles` 3个粒子椭圆轨道动画
+- **移除光晕呼吸动画**：删除 `glow-breathe` / `card-glow-magic` / `card-glow-breathe`
+- **移除浮动魔法动画**：删除 `card-float-magic` / `card-hover-sway`
+- **移除入场动画**：删除 `jade-enter` 玉简淡入动画
+- **移除自动轮播**：删除 `startAutoScroll()` / `stopAutoScroll()`
+- **简化悬停效果**：hover时仅简单上浮，无旋转/缩放/动画
+- **保留玉石纹理**：`.card-texture` radial-gradient冰裂纹理保留
+- **简化键盘聚焦**：`.jade-focused` 去除呼吸脉冲动画
+
+### 性能优化
+- 减少持续动画，降低GPU占用
+- 悬停交互更轻量响应更快
+
+---
+
 ## [v2.11.0] - 2026-05-31
 
 ### 水墨国风重构
