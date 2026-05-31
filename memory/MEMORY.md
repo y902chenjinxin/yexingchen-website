@@ -57,8 +57,7 @@
 8. **回滚方案**：每次部署后记录到docs/ROLLBACK.md
 
 ## 项目状态
-- [project-v200](memory/project-v200.md) — **v2.3 开发完成**，键盘导航/手势控制/声效
-- [project-v2x](memory/project-v2x.md) — v2.x 分阶段规划（v2.1-v2.4）
+- [project-v200](memory/project-v200.md) — **v2.10 完成**，功能收尾与体验优化
 - [project-3d-island-pause](memory/project-3d-island-pause.md) — 3D浮空岛项目暂停（已归档）
 - [project-v170](memory/project-v170.md) — v1.7.0-v1.7.2 玄墨流金（已归档）
 - [project-v160](memory/project-v160.md) — v1.6.0（已归档）
