@@ -39,12 +39,34 @@
         <span class="site-name font-serif">叶兴辰的个人网站</span>
       </div>
       <div class="top-bar-right">
-        <!-- 音乐+音效合一按钮 -->
-        <el-tooltip content="点击切换开/关，左右滑动调音量" placement="bottom">
-          <div class="audio-control" @click="toggleAudio" @mousedown="startVolumeDrag" @touchstart="startVolumeDrag">
+        <!-- 音乐+音效合一下拉 -->
+        <el-dropdown trigger="click" ref="audioDropdownRef" @command="handleDropdownCommand" placement="bottom-end">
+          <div class="audio-control" :class="{ 'audio-off': !audioEnabled }" @click="handleAudioToggle">
             <span class="audio-icon">{{ audioIcon }}</span>
           </div>
-        </el-tooltip>
+          <template #dropdown>
+            <div class="audio-dropdown-panel" @click.stop>
+              <div class="audio-row">
+                <span class="audio-label">🎵 背景音乐</span>
+                <div class="audio-slider-wrap" @mousedown="startMusicDrag">
+                  <div class="audio-slider-track">
+                    <div class="audio-slider-fill" :style="{ width: (musicVolume * 100) + '%' }"></div>
+                    <div class="audio-slider-thumb" :style="{ left: (musicVolume * 100) + '%' }"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="audio-row">
+                <span class="audio-label">🔊 音效</span>
+                <div class="audio-slider-wrap" @mousedown="startSoundDrag">
+                  <div class="audio-slider-track">
+                    <div class="audio-slider-fill" :style="{ width: (soundVolume * 100) + '%' }"></div>
+                    <div class="audio-slider-thumb" :style="{ left: (soundVolume * 100) + '%' }"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </el-dropdown>
         <el-dropdown trigger="click" @command="handleDropdownCommand">
           <div class="user-avatar-area">
             <span class="avatar-text">{{ avatarText }}</span>
@@ -163,7 +185,7 @@
     </main>
 
     <!-- 全局背景音乐 -->
-    <audio ref="bgAudio" :src="settingsStore.bgMusicUrl" loop preload="auto" />
+    <audio ref="bgAudio" :src="settingsStore.bgMusicUrl" loop preload="auto" autoplay />
 
     <!-- 备案信息 -->
     <footer class="filing-footer">
@@ -334,62 +356,111 @@ const availableBgmList = ref([
 
 // 音乐+音效合一控制
 const audioEnabled = ref(true)
-const audioVolume = ref(0.3)
-const isDraggingVolume = ref(false)
+const musicVolume = ref(0.3)
+const soundVolume = ref(0.3)
+const isDraggingMusic = ref(false)
+const isDraggingSound = ref(false)
 const dragStartX = ref(0)
-const dragStartVolume = ref(0)
+const audioDropdownRef = ref(null)
 
 const audioIcon = computed(() => {
   if (!audioEnabled.value) return '🔇'
-  if (audioVolume.value < 0.3) return '🔈'
-  if (audioVolume.value < 0.7) return '🔉'
+  if (musicVolume.value < 0.3) return '🔈'
+  if (musicVolume.value < 0.7) return '🔉'
   return '🔊'
 })
 
-function toggleAudio() {
+function handleAudioToggle() {
   audioEnabled.value = !audioEnabled.value
   if (audioEnabled.value) {
-    toggleSound() // 启用音效
+    // 启用音乐
+    if (!settingsStore.musicPlaying && bgAudio.value) {
+      settingsStore.toggleMusic()
+    }
+    if (bgAudio.value) {
+      bgAudio.value.play().catch(() => {})
+    }
   } else {
-    toggleSound() // 禁用音效
-    settingsStore.toggleMusic() // 禁用音乐
+    // 禁用音乐
+    if (settingsStore.musicPlaying && bgAudio.value) {
+      settingsStore.toggleMusic()
+      bgAudio.value.pause()
+    }
+    // 同时禁用音效
+    if (!isMuted.value) {
+      toggleSound()
+    }
   }
 }
 
-function startVolumeDrag(e) {
-  isDraggingVolume.value = true
-  dragStartX.value = e.clientX || e.touches?.[0]?.clientX
-  dragStartVolume.value = audioVolume.value
-  document.addEventListener('mousemove', handleVolumeDrag)
-  document.addEventListener('mouseup', stopVolumeDrag)
-  document.addEventListener('touchmove', handleVolumeDrag)
-  document.addEventListener('touchend', stopVolumeDrag)
+function startMusicDrag(e) {
+  isDraggingMusic.value = true
+  dragStartX.value = e.clientX
+  const track = e.currentTarget.querySelector('.audio-slider-track')
+  const rect = track.getBoundingClientRect()
+  const initialVolume = (e.clientX - rect.left) / rect.width
+  musicVolume.value = Math.max(0, Math.min(1, initialVolume))
+  setMusicVolume(musicVolume.value)
+  document.addEventListener('mousemove', handleMusicDrag)
+  document.addEventListener('mouseup', stopMusicDrag)
 }
 
-function handleVolumeDrag(e) {
-  if (!isDraggingVolume.value) return
-  const clientX = e.clientX || e.touches?.[0]?.clientX
-  const deltaX = clientX - dragStartX.value
-  const deltaVolume = deltaX / 200 // 200px对应完整音量范围
-  audioVolume.value = Math.max(0, Math.min(1, dragStartVolume.value + deltaVolume))
-  setAudioVolume(audioVolume.value)
+function handleMusicDrag(e) {
+  if (!isDraggingMusic.value) return
+  const track = document.querySelector('.audio-slider-wrap:first-of-type .audio-slider-track')
+  if (!track) return
+  const rect = track.getBoundingClientRect()
+  const volume = (e.clientX - rect.left) / rect.width
+  musicVolume.value = Math.max(0, Math.min(1, volume))
+  setMusicVolume(musicVolume.value)
 }
 
-function stopVolumeDrag() {
-  isDraggingVolume.value = false
-  document.removeEventListener('mousemove', handleVolumeDrag)
-  document.removeEventListener('mouseup', stopVolumeDrag)
-  document.removeEventListener('touchmove', handleVolumeDrag)
-  document.removeEventListener('touchend', stopVolumeDrag)
+function stopMusicDrag() {
+  isDraggingMusic.value = false
+  document.removeEventListener('mousemove', handleMusicDrag)
+  document.removeEventListener('mouseup', stopMusicDrag)
 }
 
-function setAudioVolume(vol) {
+function startSoundDrag(e) {
+  isDraggingSound.value = true
+  const track = e.currentTarget.querySelector('.audio-slider-track')
+  const rect = track.getBoundingClientRect()
+  const initialVolume = (e.clientX - rect.left) / rect.width
+  soundVolume.value = Math.max(0, Math.min(1, initialVolume))
+  setSoundVolume(soundVolume.value)
+  document.addEventListener('mousemove', handleSoundDrag)
+  document.addEventListener('mouseup', stopSoundDrag)
+}
+
+function handleSoundDrag(e) {
+  if (!isDraggingSound.value) return
+  const track = document.querySelector('.audio-slider-wrap:last-of-type .audio-slider-track')
+  if (!track) return
+  const rect = track.getBoundingClientRect()
+  const volume = (e.clientX - rect.left) / rect.width
+  soundVolume.value = Math.max(0, Math.min(1, volume))
+  setSoundVolume(soundVolume.value)
+}
+
+function stopSoundDrag() {
+  isDraggingSound.value = false
+  document.removeEventListener('mousemove', handleSoundDrag)
+  document.removeEventListener('mouseup', stopSoundDrag)
+}
+
+function setMusicVolume(vol) {
   if (bgAudio.value) {
     bgAudio.value.volume = vol
   }
-  // 设置音效音量
-  const soundVol = vol * 0.3
-  // 通过修改 DOM 样式或调用相关方法设置
+}
+
+function setSoundVolume(vol) {
+  // 音效音量通过修改 localStorage 或直接设置 Audio 对象
+  try {
+    localStorage.setItem('sound_volume', vol.toString())
+  } catch (e) {
+    console.warn('Failed to save sound volume:', e)
+  }
 }
 
 // 头像相关
@@ -1047,9 +1118,85 @@ onUnmounted(() => {
   box-shadow: 0 0 15px rgba(78, 205, 196, 0.3);
 }
 
+.audio-control.audio-off {
+  background: rgba(100, 100, 100, 0.2);
+  border-color: rgba(150, 150, 150, 0.4);
+}
+
 .audio-icon {
   font-size: 16px;
   line-height: 1;
+}
+
+/* 音乐+音效下拉面板 */
+.audio-dropdown-panel {
+  padding: 12px 16px;
+  min-width: 220px;
+  background: rgba(30, 35, 45, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+  border-radius: 8px;
+}
+
+.audio-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.audio-row:not(:last-child) {
+  border-bottom: 1px solid rgba(78, 205, 196, 0.15);
+}
+
+.audio-label {
+  font-size: 13px;
+  color: rgba(200, 200, 200, 0.9);
+  min-width: 80px;
+  font-family: var(--font-serif);
+}
+
+.audio-slider-wrap {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.audio-slider-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: rgba(78, 205, 196, 0.2);
+  border-radius: 2px;
+}
+
+.audio-slider-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(78, 205, 196, 0.5), rgba(78, 205, 196, 0.8));
+  border-radius: 2px;
+  transition: width 0.1s;
+}
+
+.audio-slider-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: var(--color-jade);
+  border: 2px solid rgba(78, 205, 196, 0.8);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(78, 205, 196, 0.5);
+  transition: left 0.1s;
+}
+
+.audio-slider-wrap:hover .audio-slider-thumb {
+  box-shadow: 0 0 12px rgba(78, 205, 196, 0.7);
 }
 
 .magic-btn {
