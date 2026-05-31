@@ -4,6 +4,20 @@
 
 ---
 
+## [v2.4.1] - 2026-05-31
+
+### 优化
+- 移除阵法模式按钮（用户反馈无实际作用）
+- 音效按钮功能修复：hover岛屿触发音效（翡翠静音切换）
+- 键盘帮助移至导航下拉菜单
+- 生成5个岛屿hover音效文件（guqin/page-turn/camera/ink/gear）
+
+### 技术
+- useIslandSound.js 重构：toggleSound/isMuted/playHoverSound/stopHoverSound
+- 音效文件：frontend/public/sounds/*.mp3
+
+---
+
 ## [v2.4.0] - 2026-05-31
 
 ### 新功能

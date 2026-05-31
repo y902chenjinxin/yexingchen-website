@@ -21,12 +21,6 @@
         <span class="site-name font-serif">叶兴辰的个人网站</span>
       </div>
       <div class="top-bar-right">
-        <!-- 阵法模式切换 -->
-        <el-tooltip content="阵法模式" placement="bottom">
-          <el-button :class="['magic-btn', { active: magicMode }]" circle @click="toggleMagicMode">
-            <span class="magic-icon">✧</span>
-          </el-button>
-        </el-tooltip>
         <el-dropdown trigger="click" @command="handleMusicSelect">
         <el-button class="music-btn" circle>
           <span class="music-icon">{{ settingsStore.musicPlaying ? '🎵' : '🎶' }}</span>
@@ -92,6 +86,10 @@
                 <el-icon><Star /></el-icon>
                 <span>灵根测试</span>
               </el-dropdown-item>
+              <el-dropdown-item command="help">
+                <el-icon><QuestionFilled /></el-icon>
+                <span>键盘帮助</span>
+              </el-dropdown-item>
               <el-dropdown-item command="logout" divided>
                 <el-icon><SwitchButton /></el-icon>
                 <span>退出账号</span>
@@ -131,7 +129,7 @@
         <!-- 旋转容器 -->
         <div class="orbit-group">
           <!-- 音乐岛 - 0度 -->
-          <div class="island-pos" @click="router.push('/island/music')">
+          <div class="island-pos" @click="router.push('/island/music')" @mouseenter="playHoverSound('music')" @mouseleave="stopHoverSound">
             <div class="island">
               <div class="island-wrapper">
                 <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
@@ -148,7 +146,7 @@
           </div>
 
           <!-- 小说岛 - 72度 -->
-          <div class="island-pos" @click="router.push('/island/novel')">
+          <div class="island-pos" @click="router.push('/island/novel')" @mouseenter="playHoverSound('novel')" @mouseleave="stopHoverSound">
             <div class="island">
               <div class="island-wrapper">
                 <img src="@/assets/islands/novel-island.svg" class="island-image" alt="小说岛" />
@@ -166,7 +164,7 @@
           </div>
 
           <!-- 视频岛 - 144度 -->
-          <div class="island-pos" @click="router.push('/island/video')">
+          <div class="island-pos" @click="router.push('/island/video')" @mouseenter="playHoverSound('video')" @mouseleave="stopHoverSound">
             <div class="island">
               <div class="island-wrapper">
                 <img src="@/assets/islands/video-island.svg" class="island-image" alt="视频岛" />
@@ -182,7 +180,7 @@
           </div>
 
           <!-- 日志岛 - 216度 -->
-          <div class="island-pos" @click="router.push('/island/log')">
+          <div class="island-pos" @click="router.push('/island/log')" @mouseenter="playHoverSound('log')" @mouseleave="stopHoverSound">
             <div class="island">
               <div class="island-wrapper">
                 <img src="@/assets/islands/log-island.svg" class="island-image" alt="日志岛" />
@@ -198,7 +196,7 @@
           </div>
 
           <!-- 工具岛 - 288度 -->
-          <div class="island-pos" @click="router.push('/island/tool')">
+          <div class="island-pos" @click="router.push('/island/tool')" @mouseenter="playHoverSound('tool')" @mouseleave="stopHoverSound">
             <div class="island">
               <div class="island-wrapper">
                 <img src="@/assets/islands/tool-island.svg" class="island-image" alt="工具岛" />
@@ -305,7 +303,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
-import { CaretBottom, User, Lock, Avatar, Tools, SwitchButton, Calendar, Star } from '@element-plus/icons-vue'
+import { CaretBottom, User, Lock, Avatar, Tools, SwitchButton, Calendar, Star, QuestionFilled } from '@element-plus/icons-vue'
 import MouseTrail from '@/components/effects/MouseTrail.vue'
 import CultivationProgress from '@/components/effects/CultivationProgress.vue'
 import DecorationsLayer from '@/components/effects/DecorationsLayer.vue'
@@ -336,7 +334,7 @@ const { setup: setupKeyboardNav, cleanup: cleanupKeyboardNav, isHelpVisible } = 
 const { setup: setupGestures, cleanup: cleanupGestures } = useGestureControl()
 
 // v2.3 音效系统
-const { setup: setupSounds, cleanup: cleanupSounds, toggleSound, isMuted } = useIslandSound()
+const { setup: setupSounds, cleanup: cleanupSounds, toggleSound, isMuted, playHoverSound, stopHoverSound } = useIslandSound()
 
 // 阵法模式切换
 function toggleMagicMode() {
@@ -400,7 +398,6 @@ onMounted(async () => {
   // v2.3 初始化交互系统
   setupKeyboardNav()
   setupGestures()
-  setupSounds()
 })
 
 watch(() => settingsStore.bgMusicUrl, (url) => {
@@ -455,6 +452,9 @@ function handleDropdownCommand(command) {
       break
     case 'spirit-quiz':
       showSpiritQuizDialog.value = true
+      break
+    case 'help':
+      isHelpVisible.value = true
       break
     case 'logout':
       handleLogout()
