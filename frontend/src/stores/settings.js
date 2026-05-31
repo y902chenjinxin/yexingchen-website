@@ -4,8 +4,8 @@ import { getBgMusic } from '@/api/settings'
 
 export const useSettingsStore = defineStore('settings', () => {
   const bgMusicUrl = ref('')
-  const currentBgmId = ref('')
-  const musicPlaying = ref(false)
+  const currentBgmId = ref('bamboo_flute') // 默认兰亭序
+  const musicPlaying = ref(true) // 默认开启自动播放
 
   async function fetchBgMusic() {
     try {
@@ -20,7 +20,9 @@ export const useSettingsStore = defineStore('settings', () => {
       }
       bgMusicUrl.value = url
     } catch {
-      bgMusicUrl.value = '/music/default-bg.mp3'
+      // 默认使用兰亭序
+      currentBgmId.value = 'bamboo_flute'
+      bgMusicUrl.value = '/api/settings/bg_music/stream/bamboo_flute'
     }
   }
 
