@@ -98,6 +98,30 @@ curl -s https://yexingchen.cn -I | head -5
 
 ---
 
+## v2.11.0 回滚方案
+
+**部署时间**: 2026-05-31
+**部署内容**: v2.11.0 水墨国风重构
+**功能**: 配色重构/首页标题去除/水墨设计规范
+**回滚命令**:
+
+```bash
+# 1. 回滚dist目录
+ssh root@203.195.208.25 "mv /var/www/yexingchen/dist /var/www/yexingchen/dist.v2.11.0 && mv /var/www/yexingchen/dist.bak.20260531_v210 /var/www/yexingchen/dist"
+
+# 2. 重启PM2
+ssh root@203.195.208.25 "pm2 restart yexingchen-backend"
+
+# 3. 验证
+curl -s https://yexingchen.cn -I | head -5
+```
+
+**关键文件**:
+- variables.css（水墨国风配色）
+- HomeView.vue（标题移除）
+
+---
+
 ## v2.10.0 回滚方案
 
 **部署时间**: 2026-05-31
