@@ -1,11 +1,24 @@
 <template>
   <div class="home-page" tabindex="0">
-    <!-- 背景云海 -->
-    <div class="cloud-sea">
-      <div class="cloud cloud-1"></div>
-      <div class="cloud cloud-2"></div>
-      <div class="cloud cloud-3"></div>
-      <div class="cloud cloud-4"></div>
+    <!-- 五层背景纵深 -->
+    <div class="parallax-layers">
+      <!-- Layer 1: 天穹深处 - 深墨色+微弱星点 -->
+      <div class="layer layer-1"><div class="star-field"></div></div>
+      <!-- Layer 2: 远山如黛 - 淡墨山脉剪影 -->
+      <div class="layer layer-2"><div class="mountain-range"></div></div>
+      <!-- Layer 3: 灵气涌动 - 半透明渐变呼吸 -->
+      <div class="layer layer-3"><div class="qi-flow"></div></div>
+      <!-- Layer 4: 中景云海 - 清晰云层 -->
+      <div class="layer layer-4">
+        <div class="cloud-bank cloud-1"></div>
+        <div class="cloud-bank cloud-2"></div>
+        <div class="cloud-bank cloud-3"></div>
+      </div>
+      <!-- Layer 5: 近景薄雾 -->
+      <div class="layer layer-5">
+        <div class="mist-wisp wisp-1"></div>
+        <div class="mist-wisp wisp-2"></div>
+      </div>
     </div>
 
     <!-- 阵法符文层 -->
@@ -537,29 +550,190 @@ onUnmounted(() => {
 }
 
 /* 云海背景 - 使用十二时辰变量 */
-.cloud-sea {
+/* ===== 五层背景纵深 ===== */
+.parallax-layers {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 1;
+  overflow: hidden;
 }
 
-.cloud {
+.layer {
   position: absolute;
-  background: radial-gradient(ellipse at center, var(--color-cloud-current) 0%, transparent 70%);
+  inset: 0;
+  will-change: transform;
+}
+
+/* Layer 1: 天穹深处 - 深墨色+微弱星点 */
+.layer-1 {
+  opacity: var(--layer-1-opacity, 0.4);
+  z-index: 1;
+}
+
+.star-field {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 20%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 60%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 10%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 50%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.3) 0%, transparent 100%);
+  background-size: 200px 200px;
+  animation: star-twinkle 8s ease-in-out infinite;
+}
+
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+
+/* Layer 2: 远山如黛 - 淡墨山脉剪影 */
+.layer-2 {
+  opacity: var(--layer-2-opacity, 0.6);
+  z-index: 2;
+}
+
+.mountain-range {
+  position: absolute;
+  bottom: 0;
+  left: -10%;
+  right: -10%;
+  height: 45%;
+  background: linear-gradient(
+    to top,
+    rgba(30, 35, 45, 0.5) 0%,
+    rgba(25, 30, 40, 0.25) 50%,
+    transparent 100%
+  );
+  clip-path: polygon(
+    0% 100%, 3% 65%, 10% 80%, 18% 50%, 28% 70%, 38% 40%,
+    48% 60%, 58% 35%, 68% 55%, 78% 45%, 88% 65%, 95% 55%, 100% 70%, 100% 100%
+  );
+  animation: mountain-drift 150s ease-in-out infinite;
+}
+
+@keyframes mountain-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(20px); }
+}
+
+/* Layer 3: 灵气涌动 - 半透明渐变呼吸 */
+.layer-3 {
+  opacity: var(--layer-3-opacity, 0.8);
+  z-index: 3;
+}
+
+.qi-flow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 100%, var(--color-qi-glow, rgba(74, 124, 89, 0.3)) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(74, 122, 89, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 70% 70%, rgba(139, 122, 174, 0.1) 0%, transparent 50%);
+  animation: qi-breathe 19s ease-in-out infinite;
+}
+
+@keyframes qi-breathe {
+  0%, 100% { opacity: 0.4; transform: scaleY(1); }
+  21% { opacity: 0.7; transform: scaleY(1.08); }
+  58% { opacity: 0.8; transform: scaleY(1.12); }
+}
+
+/* Layer 4: 中景云海 - 清晰云层 */
+.layer-4 {
+  opacity: var(--layer-4-opacity, 1);
+  z-index: 4;
+}
+
+.cloud-bank {
+  position: absolute;
+  background: radial-gradient(ellipse at center, var(--color-cloud-current, rgba(200, 210, 220, 0.4)) 0%, transparent 70%);
   border-radius: 50%;
   transition: background 1s ease;
-  opacity: 0.6;
 }
 
-.cloud-1 { width: 400px; height: 200px; top: 20%; left: -5%; animation: cloud-drift 25s linear infinite; }
-.cloud-2 { width: 300px; height: 150px; top: 50%; left: 30%; animation: cloud-drift 30s linear infinite 5s; }
-.cloud-3 { width: 500px; height: 250px; top: 70%; left: 60%; animation: cloud-drift 20s linear infinite 10s; }
-.cloud-4 { width: 350px; height: 180px; top: 85%; left: -10%; animation: cloud-drift 28s linear infinite 3s; }
+.cloud-bank.cloud-1 {
+  width: 500px; height: 250px;
+  top: 38%; left: -10%;
+  animation: cloud-sea-drift 60s ease-in-out infinite;
+}
+.cloud-bank.cloud-2 {
+  width: 400px; height: 200px;
+  top: 55%; left: 25%;
+  animation: cloud-sea-drift 60s ease-in-out infinite 8s;
+}
+.cloud-bank.cloud-3 {
+  width: 600px; height: 300px;
+  top: 72%; left: 50%;
+  animation: cloud-sea-drift 60s ease-in-out infinite 16s;
+}
 
-@keyframes cloud-drift {
-  from { transform: translateX(0); }
-  to { transform: translateX(50px); }
+@keyframes cloud-sea-drift {
+  0% { transform: translateX(0) translateY(0); }
+  25% { transform: translateX(30px) translateY(-8px); }
+  50% { transform: translateX(60px) translateY(0); }
+  75% { transform: translateX(30px) translateY(8px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+/* Layer 5: 近景薄雾 */
+.layer-5 {
+  opacity: var(--layer-5-opacity, 0.5);
+  z-index: 5;
+}
+
+.mist-wisp {
+  position: absolute;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(232, 228, 220, 0.1) 20%,
+    rgba(232, 228, 220, 0.15) 50%,
+    rgba(232, 228, 220, 0.1) 80%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  filter: blur(15px);
+}
+
+.mist-wisp.wisp-1 {
+  width: 90%; height: 100px;
+  top: 82%; left: -5%;
+  animation: mist-drift 40s ease-in-out infinite;
+}
+.mist-wisp.wisp-2 {
+  width: 70%; height: 80px;
+  top: 90%; left: 25%;
+  animation: mist-drift 40s ease-in-out infinite 12s;
+}
+
+@keyframes mist-drift {
+  0% { transform: translateX(0); opacity: 0.3; }
+  50% { transform: translateX(50px); opacity: 0.5; }
+  100% { transform: translateX(0); opacity: 0.3; }
+}
+
+/* 移动端简化 */
+@media (max-width: 768px) {
+  .layer-1 { display: none; }
+  .layer-5 .mist-wisp.wisp-1 { display: none; }
+  .cloud-bank.cloud-3 { display: none; }
+  .mountain-range { height: 30%; }
+}
+
+/* 减少动效模式 */
+@media (prefers-reduced-motion: reduce) {
+  .star-field, .mountain-range, .qi-flow, .cloud-bank, .mist-wisp {
+    animation: none;
+  }
+  .layer-1, .layer-2, .layer-3, .layer-4, .layer-5 {
+    opacity: 0.3;
+  }
 }
 
 /* 阵法符文层 */
@@ -567,7 +741,7 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 6;
   opacity: 0.08;
 }
 

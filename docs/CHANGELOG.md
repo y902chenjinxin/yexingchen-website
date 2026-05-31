@@ -4,6 +4,21 @@
 
 ---
 
+## [v2.5.0] - 2026-05-31
+
+### 新功能
+- 五层背景纵深（天穹星星/远山/灵气呼吸/云海/薄雾）
+- 真正的视差效果，不同层移动速度不同
+- 移动端简化（隐藏星星层和部分云层）
+- prefers-reduced-motion 降级支持
+
+### 技术
+- `.cloud-sea` 替换为 `.parallax-layers` 5层结构
+- 新CSS动画：star-twinkle/mountain-drift/qi-breathe/cloud-sea-drift/mist-drift
+- Layer z-index: 1-5，阵法符文层改为z-index:6
+
+---
+
 ## [v2.4.1] - 2026-05-31
 
 ### 优化
