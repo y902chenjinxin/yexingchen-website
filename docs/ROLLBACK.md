@@ -98,6 +98,31 @@ curl -s https://yexingchen.cn -I | head -5
 
 ---
 
+## v2.10.0 回滚方案
+
+**部署时间**: 2026-05-31
+**部署内容**: v2.10.0 功能收尾与体验优化
+**功能**: 随机事件音效配合/修炼编年史持久化/首页云雾漂移效果
+**回滚命令**:
+
+```bash
+# 1. 回滚dist目录
+ssh root@203.195.208.25 "mv /var/www/yexingchen/dist /var/www/yexingchen/dist.v2.10.0 && mv /var/www/yexingchen/dist.bak.20260531_v29 /var/www/yexingchen/dist"
+
+# 2. 重启PM2
+ssh root@203.195.208.25 "pm2 restart yexingchen-backend"
+
+# 3. 验证
+curl -s https://yexingchen.cn -I | head -5
+```
+
+**关键文件**:
+- useRandomEvents.js（音效配置）
+- MistLayer.vue（云雾漂移）
+- cultivation.js（修炼记录持久化）
+
+---
+
 ## 回滚原则
 
 1. **先备份再部署**：每次 `npm run build` 前先备份远程 dist
