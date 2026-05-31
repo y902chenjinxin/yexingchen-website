@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+  <defs>
+    <!-- 水墨国风渐变 -->
+    <linearGradient id="inkBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a2528"/>
+      <stop offset="100%" stop-color="#0d1a1c"/>
+    </linearGradient>
+    <linearGradient id="rockGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a4a4d"/>
+      <stop offset="100%" stop-color="#1a2a2c"/>
+    </linearGradient>
+    <linearGradient id="grassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a5a4a"/>
+      <stop offset="100%" stop-color="#2a4a3a"/>
+    </linearGradient>
+    <linearGradient id="pavilionGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4a5a5a"/>
+      <stop offset="100%" stop-color="#2a3a3c"/>
+    </linearGradient>
+    <linearGradient id="roofGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#3a5a5a"/>
+      <stop offset="100%" stop-color="#4a6a6c"/>
+    </linearGradient>
+    <linearGradient id="bambooGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2a4a3a"/>
+      <stop offset="100%" stop-color="#3a5a4a"/>
+    </linearGradient>
+
+    <!-- 水墨模糊滤镜 -->
+    <filter id="inkBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
+    </filter>
+    <filter id="cloudFilter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8"/>
+    </filter>
+    <filter id="shadowBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+    </filter>
+    <filter id="glowSoft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 云雾渐变 -->
+    <radialGradient id="mistGrad1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(180, 200, 205, 0.35)"/>
+      <stop offset="60%" stop-color="rgba(150, 175, 180, 0.2)"/>
+      <stop offset="100%" stop-color="rgba(100, 130, 140, 0)"/>
+    </radialGradient>
+    <radialGradient id="mistGrad2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(160, 185, 190, 0.3)"/>
+      <stop offset="100%" stop-color="rgba(120, 150, 160, 0)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 透明背景 -->
+  <rect width="400" height="280" fill="none"/>
+
+  <!-- 远山剪影（淡化） -->
+  <path d="M-10,180 Q30,150 80,165 Q120,145 160,160 Q200,140 240,155 Q280,135 320,150 Q360,140 410,160 L410,280 L-10,280 Z"
+        fill="rgba(40, 55, 58, 0.4)" filter="url(#inkBlur)"/>
+
+  <!-- 岩石底座 - 水墨晕染风格 -->
+  <g filter="url(#shadowBlur)">
+    <path d="M55,245 L85,160 L315,160 L345,245 L330,260 L70,260 Z" fill="url(#rockGrad)" opacity="0.9"/>
+    <!-- 岩石纹理 - 淡墨线条 -->
+    <path d="M125,175 L133,200 M185,170 L180,200 M255,175 L262,205"
+          stroke="rgba(20, 35, 38, 0.6)" stroke-width="1.5" fill="none"/>
+    <!-- 岩石阴影面 -->
+    <path d="M85,160 L72,180 L70,260 L98,260 L100,168 Z" fill="rgba(15, 25, 28, 0.5)"/>
+    <path d="M315,160 L328,180 L330,260 L302,260 L300,168 Z" fill="rgba(15, 25, 28, 0.5)"/>
+  </g>
+
+  <!-- 草地 - 苔藓感 -->
+  <path d="M70,160 Q80,150 200,142 Q320,150 330,160 L330,154 Q320,142 200,134 Q80,142 70,154 Z"
+        fill="url(#grassGrad)" opacity="0.85"/>
+
+  <!-- 古琴亭 - 水墨淡雅 -->
+  <g transform="translate(155,68)">
+    <!-- 柱子 -->
+    <rect x="12" y="32" width="6" height="50" fill="#4a5558" opacity="0.9"/>
+    <rect x="68" y="32" width="6" height="50" fill="#4a5558" opacity="0.9"/>
+    <!-- 横梁 -->
+    <rect x="10" y="28" width="66" height="5" fill="#3a4548" opacity="0.9"/>
+    <!-- 飞檐 - 水墨晕染 -->
+    <path d="M-5,28 Q10,20 37,-5 Q65,20 85,28 Q65,24 37,2 Q10,24 -5,28 Z"
+          fill="url(#roofGrad)" opacity="0.95"/>
+    <!-- 飞檐边缘线条 -->
+    <path d="M-8,28 Q8,22 37,0 Q67,22 88,28" stroke="#5a6a6c" stroke-width="1" fill="none"/>
+    <!-- 琴座 -->
+    <rect x="16" y="70" width="54" height="3" fill="#4a5558" rx="1"/>
+    <!-- 古琴 - 淡墨 -->
+    <ellipse cx="38" cy="54" rx="20" ry="6" fill="rgba(50, 60, 65, 0.9)"/>
+    <ellipse cx="38" cy="53" rx="18" ry="5" fill="rgba(60, 70, 75, 0.8)"/>
+    <!-- 琴弦 -->
+    <line x1="22" y1="52" x2="54" y2="52" stroke="rgba(180, 195, 200, 0.4)" stroke-width="0.4"/>
+    <line x1="24" y1="54" x2="52" y2="54" stroke="rgba(180, 195, 200, 0.3)" stroke-width="0.3"/>
+  </g>
+
+  <!-- 竹林 - 水墨淡雅 -->
+  <g transform="translate(42,105)" opacity="0.85">
+    <path d="M18,65 Q22,40 16,10" stroke="url(#bambooGrad)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <path d="M32,65 Q36,48 32,20" stroke="url(#bambooGrad)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <path d="M46,65 Q50,52 46,30" stroke="url(#bambooGrad)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <!-- 竹叶 - 淡墨点染 -->
+    <ellipse cx="12" cy="8" rx="7" ry="2.5" fill="#3a5a4a" opacity="0.7" transform="rotate(-30,12,8)"/>
+    <ellipse cx="26" cy="4" rx="6" ry="2" fill="#2a4a3a" opacity="0.7" transform="rotate(25,26,4)"/>
+    <ellipse cx="40" cy="16" rx="7" ry="2.5" fill="#3a5a4a" opacity="0.7" transform="rotate(-20,40,16)"/>
+  </g>
+
+  <g transform="translate(308,108)" opacity="0.8">
+    <path d="M14,60 Q18,38 12,12" stroke="url(#bambooGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M28,60 Q32,45 28,22" stroke="url(#bambooGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="8" cy="10" rx="6" ry="2" fill="#3a5a4a" opacity="0.65" transform="rotate(28,8,10)"/>
+    <ellipse cx="22" cy="6" rx="5" ry="2" fill="#2a4a3a" opacity="0.65" transform="rotate(-22,22,6)"/>
+  </g>
+
+  <!-- 音符 - 水墨光点 -->
+  <g opacity="0.5" filter="url(#glowSoft)">
+    <text x="335" y="82" font-size="14" fill="#8aaab0">♪</text>
+    <text x="48" y="75" font-size="10" fill="#8aaab0">♫</text>
+  </g>
+
+  <!-- 云雾托起 - 多层有机云 -->
+  <ellipse cx="80" cy="262" rx="70" ry="20" fill="url(#mistGrad1)" filter="url(#cloudFilter)">
+    <animate attributeName="cx" values="80;70;80" dur="8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1"/>
+    <animate attributeName="opacity" values="0.8;1;0.8" dur="8s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="200" cy="268" rx="90" ry="25" fill="url(#mistGrad2)" filter="url(#cloudFilter)">
+    <animate attributeName="cx" values="200;188;200" dur="10s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1"/>
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="10s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="320" cy="260" rx="60" ry="18" fill="url(#mistGrad1)" filter="url(#cloudFilter)">
+    <animate attributeName="cx" values="320;330;320" dur="7s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1"/>
+    <animate attributeName="opacity" values="0.75;1;0.75" dur="7s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- 岛屿阴影 - 悬浮感 -->
+  <ellipse cx="200" cy="258" rx="130" ry="12" fill="rgba(10, 20, 25, 0.4)" filter="url(#inkBlur)">
+    <animate attributeName="ry" values="12;8;12" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1"/>
+    <animate attributeName="opacity" values="0.4;0.6;0.4" dur="5s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- 灵气光点 -->
+  <circle cx="120" cy="125" r="1.5" fill="rgba(180, 210, 220, 0.5)" filter="url(#glowSoft)">
+    <animate attributeName="cy" values="125;118;125" dur="4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.3;0.7;0.3" dur="4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="285" cy="108" r="1" fill="rgba(180, 210, 220, 0.4)" filter="url(#glowSoft)">
+    <animate attributeName="cy" values="108;102;108" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.25;0.6;0.25" dur="5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="200" cy="95" r="1.2" fill="rgba(160, 200, 210, 0.45)" filter="url(#glowSoft)">
+    <animate attributeName="cy" values="95;88;95" dur="4.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.3;0.65;0.3" dur="4.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>

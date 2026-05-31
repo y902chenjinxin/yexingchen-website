@@ -1,0 +1,44 @@
+我想要实现类似《魔卡少女樱》里库洛牌阶梯式悬浮展示的效果：
+布局： 卡片沿 X 轴和 Y 轴做阶梯式错落排列，中间的玉简最高、最大、最靠前，向两侧依次降低、缩小、向后退，形成明显的前后景深和层次感。
+透视： 开启 3D 透视，卡片带有轻微的倾斜角度，就像扇形展开的卡牌，有魔法阵那种 “向外张开” 的弧度。
+动效： 中间选中的玉简会微微上浮、放大，带有柔和的光晕和轻微的摆动动画；其他卡片会自动轮播，像小樱翻牌一样，从边缘滑到中间，自动循环。
+交互： 鼠标 hover 到任意玉简时，它会高亮、上浮、放大，其他卡片会自动向两侧避让，突出当前选中的卡片。
+风格： 整体要像悬浮在云雾里的上古玉简，玉色柔光 + 淡金篆纹，配合低饱和的水墨仙山背景，突出卡牌本身的魔法感和修仙氛围感。
+🎨 前端实现的关键要点（直接能写进代码里）
+1. 阶梯布局 & 3D 透视
+css
+/* 容器开启3D透视 */
+.jade-container {
+  perspective: 1500px; /* 控制透视强度，越大越平缓 */
+  perspective-origin: 50% 40%; /* 让透视中心偏上，更有仰视感 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+/* 给不同位置的玉简设置阶梯式变换 */
+.jade-item:nth-child(1) { transform: translateX(-120px) translateY(20px) translateZ(-80px) scale(0.8); }
+.jade-item:nth-child(2) { transform: translateX(-60px) translateY(10px) translateZ(-40px) scale(0.9); }
+.jade-item:nth-child(3) { transform: translateY(-20px) translateZ(0) scale(1); /* 中间核心卡片 */ }
+.jade-item:nth-child(4) { transform: translateX(60px) translateY(10px) translateZ(-40px) scale(0.9); }
+.jade-item:nth-child(5) { transform: translateX(120px) translateY(20px) translateZ(-80px) scale(0.8); }
+2. 魔法小樱式轮播动效
+每 3 秒自动将右侧的玉简滑到中间位置，中间的滑到左侧，循环往复
+轮播时配合transform的过渡动画，带有轻微的 Z 轴位移和旋转，就像卡牌在扇形轨道上移动
+鼠标悬停时暂停轮播，离开后继续
+3. 核心卡片高亮效果
+css
+.jade-item.active {
+  transform: translateY(-30px) translateZ(100px) scale(1.1);
+  filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.6)) brightness(1.1);
+  animation: float 3s ease-in-out infinite, glow 4s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(-30px) translateZ(100px) scale(1.1) rotateY(0deg); }
+  50% { transform: translateY(-35px) translateZ(100px) scale(1.1) rotateY(3deg); }
+}
+✨ 给 AI 绘图用的玉简素材提示词（和小樱卡牌质感匹配）
+plaintext
+上古灵玉玉简，长条形扁平造型，边角圆润，温润羊脂白玉质感，边缘鎏金描边，表面刻有淡金色篆体道纹，带有柔光折射和玉石天然纹理。悬浮在云雾缭绕的水墨仙山背景前，光影柔和，画面干净，无水印，无多余元素，4K高清，适合做前端UI卡片素材，整体风格空灵古雅，和魔卡少女樱的库洛牌质感类似，有魔法卡牌的高级感。

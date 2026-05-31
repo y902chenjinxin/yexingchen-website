@@ -161,6 +161,42 @@
   --color-cloud-current: var(--color-cloud-theme-0);
 }
 
+/* ========== v2.6 水墨国风配色（深靛蓝/松烟墨） ========== */
+:root {
+  /* 背景色 - 深靛蓝/松烟墨 */
+  --bg-deep: #0a0e14;           /* 松烟墨 - 主背景 */
+  --bg-indigo: #0d1520;          /* 深靛蓝 */
+  --bg-night: #111827;           /* 夜晚蓝 */
+
+  /* 点缀色 - 石青/松绿/赭石 */
+  --color-stone-cyan: #3a6b6b;      /* 石青 - 主点缀 */
+  --color-pine-green: #2d4a3e;      /* 松绿 */
+  --color-ochre: #8b6b4a;           /* 赭石黄 */
+  --color-cream: #d4c9b8;           /* 米白/宣纸色 */
+
+  /* 灵气色 - 淡雅 */
+  --qi-cyan: rgba(58, 107, 107, 0.4);
+  --qi-green: rgba(45, 74, 62, 0.35);
+  --qi-gold: rgba(139, 107, 74, 0.3);
+  --qi-cream: rgba(212, 201, 184, 0.25);
+
+  /* 星光 - 暗淡柔和 */
+  --star-dim: rgba(180, 170, 150, 0.25);
+  --star-mid: rgba(200, 190, 170, 0.4);
+  --star-bright: rgba(220, 210, 190, 0.55);
+
+  /* 水墨山色 - 灰蓝系 */
+  --mountain-far: rgba(70, 90, 100, 0.15);
+  --mountain-mid: rgba(60, 80, 85, 0.25);
+  --mountain-near: rgba(50, 70, 72, 0.4);
+  --mountain-closest: rgba(45, 65, 68, 0.5);
+
+  /* 云雾色 */
+  --cloud-mist: rgba(200, 210, 215, 0.12);
+  --cloud-highlight: rgba(220, 225, 228, 0.18);
+  --cloud-shadow: rgba(80, 95, 100, 0.1);
+}
+
 /* ========== Grain Texture Overlay ========== */
 .grain-overlay {
   position: fixed;

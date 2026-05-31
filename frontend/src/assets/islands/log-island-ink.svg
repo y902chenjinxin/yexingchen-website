@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+  <defs>
+    <linearGradient id="rockGradL" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a4548"/>
+      <stop offset="100%" stop-color="#1a2528"/>
+    </linearGradient>
+    <linearGradient id="grassGradL" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a5040"/>
+      <stop offset="100%" stop-color="#2a4030"/>
+    </linearGradient>
+    <linearGradient id="woodGradL" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4a4030"/>
+      <stop offset="100%" stop-color="#2a2820"/>
+    </linearGradient>
+    <linearGradient id="roofGradL" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#3a5040"/>
+      <stop offset="100%" stop-color="#4a6050"/>
+    </linearGradient>
+
+    <filter id="inkBlurL" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
+    </filter>
+    <filter id="cloudFilterL" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8"/>
+    </filter>
+    <filter id="shadowBlurL" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5"/>
+    </filter>
+    <filter id="glowSoftL" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <radialGradient id="mistGradL1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(180, 200, 205, 0.35)"/>
+      <stop offset="60%" stop-color="rgba(150, 175, 180, 0.2)"/>
+      <stop offset="100%" stop-color="rgba(100, 130, 140, 0)"/>
+    </radialGradient>
+    <radialGradient id="mistGradL2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(160, 185, 190, 0.3)"/>
+      <stop offset="100%" stop-color="rgba(120, 150, 160, 0)"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="400" height="280" fill="none"/>
+
+  <!-- 远山 -->
+  <path d="M-10,180 Q40,152 90,170 Q140,145 190,162 Q240,140 290,158 Q340,142 410,160 L410,280 L-10,280 Z"
+        fill="rgba(35, 50, 48, 0.36)" filter="url(#inkBlurL)"/>
+
+  <!-- 岩石底座 -->
+  <g filter="url(#shadowBlurL)">
+    <path d="M58,248 L88,160 L312,160 L342,248 L328,262 L72,262 Z" fill="url(#rockGradL)" opacity="0.9"/>
+    <path d="M88,160 L75,180 L72,262 L102,262 L104,168 Z" fill="rgba(15, 22, 25, 0.5)"/>
+    <path d="M312,160 L325,180 L328,262 L298,262 L296,168 Z" fill="rgba(15, 22, 25, 0.5)"/>
+    <path d="M135,178 L142,205 M205,176 L210,208 M265,180 L272,210"
+          stroke="rgba(20, 30, 32, 0.5)" stroke-width="1.2" fill="none"/>
+  </g>
+
+  <!-- 草地 -->
+  <path d="M72,160 Q85,150 200,142 Q315,150 328,160 L328,154 Q315,142 200,134 Q85,142 72,154 Z"
+        fill="url(#grassGradL)" opacity="0.85"/>
+
+  <!-- 书写亭 -->
+  <g transform="translate(155,75)">
+    <rect x="16" y="42" width="6" height="38" fill="#4a4030" opacity="0.9"/>
+    <rect x="64" y="42" width="6" height="38" fill="#4a4030" opacity="0.9"/>
+    <rect x="13" y="38" width="60" height="5" fill="#3a3028" opacity="0.9"/>
+    <!-- 飞檐 -->
+    <path d="M-5,38 Q12,28 42,18 Q72,28 85,38 Q72,32 42,24 Q12,32 -5,38 Z"
+          fill="url(#roofGradL)" opacity="0.95"/>
+    <path d="M-8,38 Q10,30 42,20 Q74,30 88,38" stroke="#5a7060" stroke-width="1" fill="none"/>
+    <!-- 书案 -->
+    <rect x="18" y="45" width="50" height="28" fill="rgba(42, 38, 32, 0.9)" rx="1"/>
+    <!-- 纸卷 -->
+    <rect x="24" y="50" width="38" height="20" fill="rgba(220, 210, 190, 0.25)" rx="1"/>
+    <!-- 墨迹 -->
+    <path d="M30,55 Q35,60 40,55 Q45,62 50,56 Q52,60 52,55"
+          stroke="rgba(30, 30, 35, 0.6)" stroke-width="1.5" fill="none"/>
+    <path d="M32,62 Q38,68 44,62 Q48,65 50,60"
+          stroke="rgba(30, 30, 35, 0.4)" stroke-width="1" fill="none"/>
+    <!-- 毛笔 -->
+    <rect x="70" y="48" width="4" height="22" fill="#3a3028" rx="1" transform="rotate(-15,72,59)"/>
+    <path d="M68,70 L72,75 L74,70 Z" fill="#2a2018"/>
+  </g>
+
+  <!-- 竹简 -->
+  <g transform="translate(42,108)" opacity="0.85">
+    <rect x="8" y="15" width="50" height="8" fill="rgba(200, 190, 170, 0.5)" rx="1"/>
+    <rect x="10" y="26" width="48" height="8" fill="rgba(200, 190, 170, 0.45)" rx="1"/>
+    <rect x="12" y="37" width="46" height="8" fill="rgba(200, 190, 170, 0.4)" rx="1"/>
+    <rect x="14" y="48" width="44" height="8" fill="rgba(200, 190, 170, 0.35)" rx="1"/>
+    <!-- 竹简纹理 -->
+    <line x1="10" y1="19" x2="56" y2="19" stroke="rgba(120, 110, 100, 0.3)" stroke-width="0.5"/>
+    <line x1="12" y1="30" x2="56" y2="30" stroke="rgba(120, 110, 100, 0.3)" stroke-width="0.5"/>
+    <line x1="14" y1="41" x2="56" y2="41" stroke="rgba(120, 110, 100, 0.3)" stroke-width="0.5"/>
+  </g>
+
+  <!-- 砚台/印章 -->
+  <g transform="translate(308,120)" opacity="0.8">
+    <ellipse cx="25" cy="45" rx="22" ry="8" fill="#3a3530" opacity="0.85"/>
+    <ellipse cx="25" cy="43" rx="18" ry="6" fill="#4a4540" opacity="0.8"/>
+    <rect x="15" y="25" width="20" height="20" fill="#3a3530" opacity="0.85" rx="2"/>
+    <text x="19" y="39" font-size="10" fill="rgba(180, 80, 80, 0.6)">記</text>
+  </g>
+
+  <!-- 墨迹符号 -->
+  <g opacity="0.4" filter="url(#glowSoftL)">
+    <text x="340" y="88" font-size="12" fill="#9aba9a">墨</text>
+    <text x="45" y="82" font-size="10" fill="#9aba9a">硯</text>
+  </g>
+
+  <!-- 云雾托起 -->
+  <ellipse cx="78" cy="264" rx="70" ry="21" fill="url(#mistGradL1)" filter="url(#cloudFilterL)">
+    <animate attributeName="cx" values="78;68;78" dur="8s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="200" cy="270" rx="88" ry="25" fill="url(#mistGradL2)" filter="url(#cloudFilterL)">
+    <animate attributeName="cx" values="200;188;200" dur="10.5s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="322" cy="260" rx="60" ry="18" fill="url(#mistGradL1)" filter="url(#cloudFilterL)">
+    <animate attributeName="cx" values="322;332;322" dur="7.5s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- 悬浮阴影 -->
+  <ellipse cx="200" cy="260" rx="132" ry="11" fill="rgba(10, 18, 22, 0.4)" filter="url(#inkBlurL)">
+    <animate attributeName="ry" values="11;7;11" dur="5.2s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- 灵气光点 -->
+  <circle cx="140" cy="115" r="1.2" fill="rgba(170, 200, 180, 0.42)" filter="url(#glowSoftL)">
+    <animate attributeName="cy" values="115;108;115" dur="4.8s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="260" cy="108" r="1" fill="rgba(170, 200, 180, 0.38)" filter="url(#glowSoftL)">
+    <animate attributeName="cy" values="108;102;108" dur="5.2s" repeatCount="indefinite"/>
+  </circle>
+</svg>
