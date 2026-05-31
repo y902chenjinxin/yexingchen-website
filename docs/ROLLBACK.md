@@ -4,6 +4,29 @@
 
 ---
 
+## v2.12.0 回滚方案
+
+**部署时间**: 2026-05-31
+**部署内容**: 玉简交互简化（移除粒子/光晕/浮动动画，保留玉石纹理）
+**回滚命令**:
+
+```bash
+# 1. 回滚dist目录
+ssh root@203.195.208.25 "mv /var/www/yexingchen/dist /var/www/yexingchen/dist.v2.12.0 && mv /var/www/yexingchen/dist.bak.20260531_v29 /var/www/yexingchen/dist"
+
+# 2. 重启PM2
+ssh root@203.195.208.25 "pm2 restart app"
+
+# 3. 验证
+curl -s https://yexingchen.cn -I | head -5
+```
+
+**关键文件**:
+- HomeView.vue（移除动画样式，保留card-texture）
+- useKeyboardNavigation.js（.jade-ring-slip 选择器）
+
+---
+
 ## v1.6.0 回滚方案
 
 **部署时间**: 2026-05-29

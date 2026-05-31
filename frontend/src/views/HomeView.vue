@@ -164,26 +164,16 @@
             class="jade-card"
             :class="[card.class, { 'is-active': activeCard === index }]"
             :style="getCardStyle(index)"
-            @click="router.push(card.path)"
-            @mouseenter="activeCard = index; playHoverSound(card.id)"
-            @mouseleave="activeCard = -1; stopHoverSound"
+            @click="onCardClick(card.path)"
+            @mouseenter="onMouseEnter(index, card.id)"
+            @mouseleave="onMouseLeave"
           >
-            <div class="card-glow"></div>
             <div class="card-inner">
               <div class="card-texture"></div>
               <div class="card-runes">{{ card.rune }}</div>
               <div class="card-label">{{ card.label }}</div>
             </div>
-            <div class="card-particles">
-              <span class="particle"></span><span class="particle"></span><span class="particle"></span>
-            </div>
           </div>
-        </div>
-        <!-- 鼠标手势提示 -->
-        <div class="carousel-hint">
-          <span class="hint-arrow left">◀</span>
-          <span class="hint-text">左右滑动切换</span>
-          <span class="hint-arrow right">▶</span>
         </div>
       </div>
     </main>
@@ -520,28 +510,23 @@ const currentIndex = ref(2) // 中间位置
 const carouselStyle = computed(() => ({
   transform: `translateX(${-currentIndex.value * 180}px)`
 }))
-let autoScrollTimer = null
-
-// 自动轮播 - 每3秒右侧玉简滑到中间（小樱翻牌式）
-function startAutoScroll() {
-  autoScrollTimer = setInterval(() => {
-    // 循环：0→1→2→3→4→0
-    if (currentIndex.value < jadeCards.value.length - 1) {
-      currentIndex.value++
-    } else {
-      currentIndex.value = 0
-    }
-  }, 3000)
+// 玉简点击处理
+function onCardClick(path) {
+  router.push(path)
 }
 
-function stopAutoScroll() {
-  if (autoScrollTimer) {
-    clearInterval(autoScrollTimer)
-    autoScrollTimer = null
-  }
+// 玉简mouseenter处理
+function onMouseEnter(index, cardId) {
+  activeCard.value = index
+  playHoverSound(cardId)
 }
 
-// 计算卡片3D透视样式 - 魔卡少女樱扇形阶梯布局
+// 玉简mouseleave处理
+function onMouseLeave() {
+  activeCard.value = -1
+  stopHoverSound()
+}
+
 function getCardStyle(index) {
   const offset = index - currentIndex.value
   const absOffset = Math.abs(offset)
@@ -627,15 +612,6 @@ onMounted(async () => {
 
   // v2.6 轮播手势监听
   document.addEventListener('keydown', handleKeyDown)
-
-  // v2.6 自动轮播
-  startAutoScroll()
-  // 鼠标悬停时暂停自动轮播
-  const carouselEl = document.querySelector('.jade-carousel')
-  if (carouselEl) {
-    carouselEl.addEventListener('mouseenter', stopAutoScroll)
-    carouselEl.addEventListener('mouseleave', startAutoScroll)
-  }
 })
 
 watch(() => settingsStore.bgMusicUrl, (url) => {
@@ -760,7 +736,6 @@ onUnmounted(() => {
   cleanupKeyboardNav()
   cleanupGestures()
   cleanupSounds()
-  stopAutoScroll()
 })
 </script>
 
@@ -1435,6 +1410,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 20px;
   transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
 }
 
 /* 轮播卡片 - 羊脂玉质感 + 鎏金渐变边框 */
@@ -1451,6 +1427,8 @@ onUnmounted(() => {
     0 2px 6px rgba(0,0,0,0.2),
     inset 0 1px 2px rgba(255,255,255,0.7);
   border-radius: 12px;
+  z-index: 1;
+  pointer-events: auto;
 }
 /* 鎏金渐变描边 */
 .jade-card::before {
@@ -1467,95 +1445,18 @@ onUnmounted(() => {
 
 .jade-card.is-active {
   box-shadow:
-    0 15px 35px rgba(0,0,0,0.45),
-    0 0 25px rgba(212, 178, 70, 0.5),
-    0 0 50px rgba(212, 178, 70, 0.2),
-    inset 0 1px 2px rgba(255,255,255,0.8);
-  animation: card-float-magic 3s ease-in-out infinite, card-glow-magic 3.5s ease-in-out infinite;
-}
-
-/* video卡片使用专属呼吸动画 */
-.video-card.is-active {
-  animation: card-float-magic 3s ease-in-out infinite, card-glow-breathe 4s ease-in-out infinite;
-}
-
-@keyframes card-float-magic {
-  0%, 100% { transform: translateY(-30px) translateZ(60px) scale(1.1) rotateY(0deg) rotateZ(0deg); }
-  25% { transform: translateY(-32px) translateZ(60px) scale(1.1) rotateY(2deg) rotateZ(1deg); }
-  50% { transform: translateY(-38px) translateZ(60px) scale(1.1) rotateY(0deg) rotateZ(0deg); }
-  75% { transform: translateY(-32px) translateZ(60px) scale(1.1) rotateY(-2deg) rotateZ(-1deg); }
-}
-
-/* 核心玉简呼吸光晕 - "影"玉简专属 */
-.video-card.is-active .card-glow {
-  animation: card-glow-breathe 4s ease-in-out infinite;
-}
-.video-card.is-active::after {
-  animation: card-inner-glow 4s ease-in-out infinite;
-}
-@keyframes card-glow-breathe {
-  0%, 100% {
-    opacity: 0.6;
-    transform: scale(1);
-    background: radial-gradient(ellipse, rgba(212, 178, 70, 0.3) 0%, transparent 60%);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-    background: radial-gradient(ellipse, rgba(212, 178, 70, 0.5) 0%, transparent 65%);
-  }
-}
-@keyframes card-inner-glow {
-  0%, 100% { box-shadow: inset 3px 3px 8px rgba(255, 255, 255, 0.5); }
-  50% { box-shadow: inset 5px 5px 12px rgba(255, 255, 255, 0.7); }
-}
-
-/* 通用光晕动画（用于非video卡片） */
-@keyframes card-glow-magic {
-  0%, 100% { filter: brightness(1) drop-shadow(0 0 25px rgba(212, 178, 70, 0.5)); }
-  50% { filter: brightness(1.15) drop-shadow(0 0 35px rgba(212, 178, 70, 0.7)); }
-}
-
-/* 悬停效果 - 被灵气吹动的轻微摇摆 */
-.jade-card:hover {
-  transform: translateY(-10px) scale(1.06) rotateY(3deg);
-  box-shadow:
     0 12px 30px rgba(0,0,0,0.4),
-    0 0 15px rgba(220, 190, 110, 0.35);
-  animation: card-hover-sway 2s ease-in-out infinite;
-}
-.jade-card.is-active:hover {
-  transform: translateY(-12px) scale(1.1) rotateY(0deg);
-}
-@keyframes card-hover-sway {
-  0%, 100% { transform: translateY(-10px) scale(1.06) rotateY(3deg); }
-  50% { transform: translateY(-12px) scale(1.06) rotateY(-1deg); }
+    0 0 15px rgba(139, 107, 74, 0.2);
 }
 
-/* 轮播手势提示 */
-.carousel-hint {
-  position: absolute;
-  bottom: 10%;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  opacity: 0.5;
-  font-size: 14px;
-  color: rgba(200, 200, 180, 0.6);
-  pointer-events: none;
+/* hover效果 - 简单上浮 */
+.jade-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.35);
 }
-.hint-arrow {
-  font-size: 12px;
-  animation: hint-pulse 2s ease-in-out infinite;
-}
-.hint-arrow.left { animation-delay: 0s; }
-.hint-arrow.right { animation-delay: 1s; }
-@keyframes hint-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
+
+/* 轮播手势提示 - 已禁用 */
+.carousel-hint { display: none; }
 
 /* 卡片主体 - 羊脂白玉质感 + 鎏金描边 */
 .card-inner {
@@ -1653,95 +1554,20 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-/* 卡片光晕 - 淡金色 */
-.card-glow {
-  position: absolute;
-  inset: -15px;
-  border-radius: 30px;
-  background: radial-gradient(ellipse, rgba(212, 175, 55, 0.2) 0%, transparent 60%);
-  opacity: 0.5;
-  transition: all 0.5s ease;
-  pointer-events: none;
-  z-index: -1;
-  animation: glow-breathe 4s ease-in-out infinite;
-}
-.jade-card.is-active .card-glow {
-  opacity: 1;
-  background: radial-gradient(ellipse, rgba(212, 178, 70, 0.4) 0%, transparent 65%);
-  inset: -20px;
-}
-@keyframes glow-breathe {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.08); }
-}
+/* 卡片光晕 - 已禁用 */
+/* .card-glow { display: none; } */
 
 /* 周围灵气粒子 - 扇形布局轨道 + 魔法阵包裹感 */
 .card-particles {
-  position: absolute;
-  inset: -40px;
-  pointer-events: none;
+  display: none; /* 已禁用 */
 }
-.card-particles .particle {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 175, 55, 0.9) 0%, rgba(180, 200, 190, 0.6) 100%);
-  box-shadow: 0 0 8px rgba(212, 175, 55, 0.6), 0 0 15px rgba(180, 200, 190, 0.3);
-  animation: particle-orbit 8s linear infinite;
-  transform-origin: center center;
+/* hover时简单上浮效果 */
+.jade-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.35);
 }
-/* 淡青粒子 - 椭圆内侧轨道 */
-.card-particles .particle:nth-child(1) {
-  top: 50%;
-  left: 50%;
-  animation-delay: 0s;
-  background: radial-gradient(circle, rgba(180, 200, 190, 0.9) 0%, rgba(212, 175, 55, 0.5) 100%);
-  box-shadow: 0 0 10px rgba(180, 200, 190, 0.7), 0 0 20px rgba(212, 175, 55, 0.3);
-}
-/* 淡金粒子 - 椭圆外侧轨道 */
-.card-particles .particle:nth-child(2) {
-  top: 50%;
-  left: 50%;
-  animation-delay: -2.6s;
-}
-/* 第二圈淡青 - 倾斜椭圆轨道 */
-.card-particles .particle:nth-child(3) {
-  top: 50%;
-  left: 50%;
-  animation-delay: -5.3s;
-  background: radial-gradient(circle, rgba(212, 175, 55, 0.8) 0%, rgba(180, 200, 190, 0.4) 100%);
-  box-shadow: 0 0 6px rgba(212, 175, 55, 0.5), 0 0 12px rgba(180, 200, 190, 0.25);
-}
-/* 核心卡片粒子 - 更大更亮 */
-.jade-card.is-active .particle {
-  width: 5px;
-  height: 5px;
-  animation-duration: 4s;
-}
-.jade-card.is-active .particle:nth-child(1) { box-shadow: 0 0 15px rgba(180, 200, 190, 0.9), 0 0 30px rgba(212, 175, 55, 0.5); }
-.jade-card.is-active .particle:nth-child(2) { box-shadow: 0 0 15px rgba(212, 175, 55, 0.9), 0 0 30px rgba(180, 200, 190, 0.5); }
-.jade-card.is-active .particle:nth-child(3) { box-shadow: 0 0 12px rgba(212, 175, 55, 0.7), 0 0 25px rgba(180, 200, 190, 0.4); }
-/* hover时粒子向玉简汇聚 */
-.jade-card:hover .particle {
-  animation-direction: reverse;
-  animation-duration: 3s;
-}
-/* 点击时粒子散开 */
-.jade-card:active .particle {
-  animation: particle-burst 0.5s ease-out forwards;
-}
-/* 扇形轨道 - 椭圆轨迹模拟魔法阵 */
-@keyframes particle-orbit {
-  0% { transform: rotate(0deg) translateX(35px) translateY(-15px) scale(1); opacity: 0.7; }
-  25% { transform: rotate(90deg) translateX(20px) translateY(-30px) scale(1.15); opacity: 1; }
-  50% { transform: rotate(180deg) translateX(-35px) translateY(-15px) scale(1); opacity: 0.7; }
-  75% { transform: rotate(270deg) translateX(-20px) translateY(-30px) scale(1.15); opacity: 1; }
-  100% { transform: rotate(360deg) translateX(35px) translateY(-15px) scale(1); opacity: 0.7; }
-}
-@keyframes particle-burst {
-  0% { transform: rotate(0deg) translateX(35px) scale(1); opacity: 1; }
-  100% { transform: rotate(180deg) translateX(80px) scale(0); opacity: 0; }
+.jade-card.is-active:hover {
+  transform: translateY(-10px);
 }
 
 /* 各卡片微调颜色 - 统一羊脂白玉质感 */
@@ -1758,64 +1584,17 @@ onUnmounted(() => {
 .log-card .card-inner { background: linear-gradient(145deg, #f0ece0 0%, #e5ddd0 50%, #ece6d8 100%); }
 .tool-card .card-inner { background: linear-gradient(145deg, #f0f2f5 0%, #e2e8ed 50%, #e8ecf2 100%); }
 
-/* 玉简入场动画 - 从两侧向中间依次淡入，呼应扇形布局 */
-.jade-card {
-  opacity: 0;
-  animation: jade-enter 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-/* 扇形布局顺序：左右对称向中间聚拢 */
-.jade-card:nth-child(1) { animation-delay: 0s; transform-origin: right center; }
-.jade-card:nth-child(2) { animation-delay: 0.15s; transform-origin: right center; }
-.jade-card:nth-child(3) { animation-delay: 0.35s; transform-origin: center center; }
-.jade-card:nth-child(4) { animation-delay: 0.15s; transform-origin: left center; }
-.jade-card:nth-child(5) { animation-delay: 0s; transform-origin: left center; }
+/* 玉简入场动画 - 直接显示，无入场动画 */
+/* 各卡片微调颜色 - 统一羊脂白玉质感 */
 
 /* 键盘导航聚焦态 */
 .jade-focused {
-  outline: 2px solid rgba(212, 175, 55, 0.6) !important;
+  outline: 2px solid rgba(139, 107, 74, 0.6) !important;
   outline-offset: 4px;
-  box-shadow:
-    0 0 20px rgba(212, 175, 55, 0.4),
-    0 0 40px rgba(212, 175, 55, 0.2),
-    0 12px 30px rgba(0, 0, 0, 0.4) !important;
-  animation: jade-focus-pulse 1.5s ease-in-out infinite !important;
-}
-
-@keyframes jade-focus-pulse {
-  0%, 100% {
-    outline-color: rgba(212, 175, 55, 0.4);
-    box-shadow:
-      0 0 15px rgba(212, 175, 55, 0.3),
-      0 0 30px rgba(212, 175, 55, 0.15),
-      0 12px 30px rgba(0, 0, 0, 0.4) !important;
-  }
-  50% {
-    outline-color: rgba(212, 175, 55, 0.8);
-    box-shadow:
-      0 0 25px rgba(212, 175, 55, 0.5),
-      0 0 50px rgba(212, 175, 55, 0.25),
-      0 12px 30px rgba(0, 0, 0, 0.4) !important;
-  }
-}
-@keyframes jade-enter {
-  0% {
-    opacity: 0;
-    transform: translateY(50px) scale(0.85) rotateY(15deg);
-    filter: blur(6px);
-  }
-  50% {
-    opacity: 0.6;
-    filter: blur(2px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1) rotateY(0deg);
-    filter: blur(0);
-  }
+  box-shadow: 0 0 15px rgba(139, 107, 74, 0.3) !important;
 }
 
 /* 岛屿相关的旧样式保持兼容（选择性隐藏） */
-.island { display: none; }
 .island-pos { display: none; }
 .island-glow { display: none; }
 .island-wrapper { display: none; }
