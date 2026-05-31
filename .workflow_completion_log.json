@@ -1,7 +1,8 @@
 {
   "Step 8": {
-    "timestamp": "2026-05-31T13:00:00.000000",
-    "dist_hash": "237cd44a5cd87512",
-    "dist_exists": true
+    "timestamp": "2026-05-31T14:00:00.000000",
+    "dist_hash": "989963fbe8d09a4b",
+    "dist_exists": true,
+    "note": "v2.5 五层背景纵深"
   }
 }
