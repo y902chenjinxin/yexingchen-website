@@ -1,25 +1,30 @@
 <template>
   <div class="home-page" tabindex="0">
-    <!-- 五层背景纵深 -->
-    <div class="parallax-layers">
-      <!-- Layer 1: 天穹深处 - 深墨色+微弱星点 -->
-      <div class="layer layer-1"><div class="star-field"></div></div>
-      <!-- Layer 2: 远山如黛 - 淡墨山脉剪影 -->
-      <div class="layer layer-2"><div class="mountain-range"></div></div>
-      <!-- Layer 3: 灵气涌动 - 半透明渐变呼吸 -->
-      <div class="layer layer-3"><div class="qi-flow"></div></div>
-      <!-- Layer 4: 中景云海 - 清晰云层 -->
-      <div class="layer layer-4">
-        <div class="cloud-bank cloud-1"></div>
-        <div class="cloud-bank cloud-2"></div>
-        <div class="cloud-bank cloud-3"></div>
-      </div>
-      <!-- Layer 5: 近景薄雾 -->
-      <div class="layer layer-5">
-        <div class="mist-wisp wisp-1"></div>
-        <div class="mist-wisp wisp-2"></div>
+    <!-- 水墨国风全屏背景 -->
+    <div class="ink-bg-layer">
+      <img src="@/assets/backgrounds/doubao.png" class="ink-bg-image" alt="背景"/>
+      <div class="fog-overlay"></div>
+    </div>
+
+    <!-- 五层背景纵深 - Canvas 重构版 -->
+    <!-- Layer 1: 星空（保留CSS） -->
+    <div class="layer layer-1"><div class="star-field"></div></div>
+    <!-- Layer 2: 山脉（保留CSS） -->
+    <div class="layer layer-2">
+      <div class="mountain-range">
+        <div class="mountain-layer mountain-layer-3"></div>
+        <div class="mountain-layer mountain-layer-2"></div>
+        <div class="mountain-layer mountain-layer-1"></div>
       </div>
     </div>
+    <!-- Layer 3: 灵气粒子（Canvas） -->
+    <ParticleLayer :breath-value="breathValue" :particle-count="60" />
+    <!-- Layer 4: 云海（Canvas） -->
+    <CloudLayer :breath-value="breathValue" :cloud-count="3" />
+    <!-- Layer 5: 丁达尔光柱（Canvas） -->
+    <GodRayLayer :breath-value="breathValue" :ray-count="4" :particle-count="15" />
+    <!-- 纸张纹理叠加 -->
+    <GrainOverlay />
 
     <!-- 阵法符文层 -->
     <div class="array-symbol-layer">
@@ -137,96 +142,35 @@
         <circle cx="25%" cy="80%" r="1" class="magic-node" />
       </svg>
 
-      <!-- 岛屿公转系统 - 5个岛屿均匀绕中心旋转 -->
-      <div class="solar-system">
-        <!-- 旋转容器 -->
-        <div class="orbit-group">
-          <!-- 音乐岛 - 0度 -->
-          <div class="island-pos" @click="router.push('/island/music')" @mouseenter="playHoverSound('music')" @mouseleave="stopHoverSound">
-            <div class="island">
-              <div class="island-wrapper">
-                <img src="@/assets/islands/music-island.svg" class="island-image" alt="音乐岛" />
-                <div class="island-glow"></div>
-                <div class="music-island-hover">
-                  <span class="music-note">♪</span>
-                  <span class="music-note">♫</span>
-                  <span class="music-note">♪</span>
-                </div>
-              </div>
-              <div class="island-name">音乐岛</div>
-              <div class="island-subtitle">音律飘渺</div>
+      <!-- 玉简3D透视轮播 - 近大远小 -->
+      <div class="jade-carousel" ref="carouselRef">
+        <div class="carousel-track" :style="carouselStyle">
+          <div
+            v-for="(card, index) in jadeCards"
+            :key="card.id"
+            class="jade-card"
+            :class="[card.class, { 'is-active': activeCard === index }]"
+            :style="getCardStyle(index)"
+            @click="router.push(card.path)"
+            @mouseenter="activeCard = index; playHoverSound(card.id)"
+            @mouseleave="activeCard = -1; stopHoverSound"
+          >
+            <div class="card-glow"></div>
+            <div class="card-inner">
+              <div class="card-texture"></div>
+              <div class="card-runes">{{ card.rune }}</div>
+              <div class="card-label">{{ card.label }}</div>
+            </div>
+            <div class="card-particles">
+              <span class="particle"></span><span class="particle"></span><span class="particle"></span>
             </div>
           </div>
-
-          <!-- 小说岛 - 72度 -->
-          <div class="island-pos" @click="router.push('/island/novel')" @mouseenter="playHoverSound('novel')" @mouseleave="stopHoverSound">
-            <div class="island">
-              <div class="island-wrapper">
-                <img src="@/assets/islands/novel-island.svg" class="island-image" alt="小说岛" />
-                <div class="island-glow"></div>
-                <div class="novel-island-hover">
-                  <div class="book-page"></div>
-                  <div class="ink-particle"></div>
-                  <div class="ink-particle"></div>
-                  <div class="ink-particle"></div>
-                </div>
-              </div>
-              <div class="island-name">小说岛</div>
-              <div class="island-subtitle">书卷悠长</div>
-            </div>
-          </div>
-
-          <!-- 视频岛 - 144度 -->
-          <div class="island-pos" @click="router.push('/island/video')" @mouseenter="playHoverSound('video')" @mouseleave="stopHoverSound">
-            <div class="island">
-              <div class="island-wrapper">
-                <img src="@/assets/islands/video-island.svg" class="island-image" alt="视频岛" />
-                <div class="island-glow"></div>
-                <div class="video-island-hover">
-                  <div class="aperture"></div>
-                  <div class="film-ribbon"></div>
-                </div>
-              </div>
-              <div class="island-name">视频岛</div>
-              <div class="island-subtitle">光影流转</div>
-            </div>
-          </div>
-
-          <!-- 日志岛 - 216度 -->
-          <div class="island-pos" @click="router.push('/island/log')" @mouseenter="playHoverSound('log')" @mouseleave="stopHoverSound">
-            <div class="island">
-              <div class="island-wrapper">
-                <img src="@/assets/islands/log-island.svg" class="island-image" alt="日志岛" />
-                <div class="island-glow"></div>
-                <div class="log-island-hover">
-                  <div class="ink-drop"></div>
-                  <div class="paper-float"></div>
-                </div>
-              </div>
-              <div class="island-name">日志岛</div>
-              <div class="island-subtitle">岁月留痕</div>
-            </div>
-          </div>
-
-          <!-- 工具岛 - 288度 -->
-          <div class="island-pos" @click="router.push('/island/tool')" @mouseenter="playHoverSound('tool')" @mouseleave="stopHoverSound">
-            <div class="island">
-              <div class="island-wrapper">
-                <img src="@/assets/islands/tool-island.svg" class="island-image" alt="工具岛" />
-                <div class="island-glow"></div>
-                <div class="tool-island-hover">
-                  <div class="gear"></div>
-                  <div class="gear"></div>
-                  <div class="gear"></div>
-                  <div class="tool-part"></div>
-                  <div class="tool-part"></div>
-                  <div class="tool-part"></div>
-                </div>
-              </div>
-              <div class="island-name">工具岛</div>
-              <div class="island-subtitle">机关万千</div>
-            </div>
-          </div>
+        </div>
+        <!-- 鼠标手势提示 -->
+        <div class="carousel-hint">
+          <span class="hint-arrow left">◀</span>
+          <span class="hint-text">左右滑动切换</span>
+          <span class="hint-arrow right">▶</span>
         </div>
       </div>
     </main>
@@ -330,12 +274,20 @@ import { useRandomEvents } from '@/composables/useRandomEvents'
 import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation'
 import { useGestureControl } from '@/composables/useGestureControl'
 import { useIslandSound } from '@/composables/useIslandSound'
+import { useBreathCycle } from '@/composables/useBreathCycle'
+import GodRayLayer from '@/components/background/GodRayLayer.vue'
+import ParticleLayer from '@/components/background/ParticleLayer.vue'
+import CloudLayer from '@/components/background/CloudLayer.vue'
+import GrainOverlay from '@/components/background/GrainOverlay.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 const settingsStore = useSettingsStore()
 const bgAudio = ref(null)
 const magicMode = ref(false) // 阵法模式
+
+// v2.6 呼吸系统 - 控制所有 Canvas 背景动画
+const { breathValue } = useBreathCycle()
 
 // v2.2 天象系统
 const { shichenName, solarTermName, solarTermIntensity } = useCelestialSystem()
@@ -395,8 +347,110 @@ const passwordForm = ref({
 const showChronicleDialog = ref(false)
 const showSpiritQuizDialog = ref(false)
 
-// v2.4 随机事件
-const { activeEvent } = useRandomEvents()
+// v2.6 玉简3D轮播数据
+const jadeCards = ref([
+  { id: 'music', rune: '音', label: '音乐岛', path: '/island/music', class: 'music-card' },
+  { id: 'novel', rune: '書', label: '小说岛', path: '/island/novel', class: 'novel-card' },
+  { id: 'video', rune: '影', label: '视频岛', path: '/island/video', class: 'video-card' },
+  { id: 'log', rune: '墨', label: '日志岛', path: '/island/log', class: 'log-card' },
+  { id: 'tool', rune: '器', label: '工具岛', path: '/island/tool', class: 'tool-card' }
+])
+const activeCard = ref(-1)
+const carouselRef = ref(null)
+let startX = 0
+let isDragging = false
+
+// 轮播相关
+const currentIndex = ref(2) // 中间位置
+const carouselStyle = computed(() => ({
+  transform: `translateX(${-currentIndex.value * 180}px)`
+}))
+let autoScrollTimer = null
+
+// 自动轮播 - 每3秒右侧玉简滑到中间（小樱翻牌式）
+function startAutoScroll() {
+  autoScrollTimer = setInterval(() => {
+    // 循环：0→1→2→3→4→0
+    if (currentIndex.value < jadeCards.value.length - 1) {
+      currentIndex.value++
+    } else {
+      currentIndex.value = 0
+    }
+  }, 3000)
+}
+
+function stopAutoScroll() {
+  if (autoScrollTimer) {
+    clearInterval(autoScrollTimer)
+    autoScrollTimer = null
+  }
+}
+
+// 计算卡片3D透视样式 - 魔卡少女樱扇形阶梯布局
+function getCardStyle(index) {
+  const offset = index - currentIndex.value
+  const absOffset = Math.abs(offset)
+
+  // 扇形展开：中间最大最前，两侧递减小
+  const scale = absOffset === 0 ? 1.1 : Math.max(0.75, 1 - absOffset * 0.15)
+  const translateZ = absOffset === 0 ? 60 : -absOffset * 40
+  // 阶梯：translateY 中间最高，两侧低；translateX 扇形展开
+  const translateY = absOffset === 0 ? -30 : (offset > 0 ? absOffset * 15 : -absOffset * 10)
+  const translateX = offset * 80 // 扇形横向展开
+  const rotateZ = offset * 5 // 轻微扇形旋转
+  const opacity = absOffset === 0 ? 1 : Math.max(0.5, 1 - absOffset * 0.25)
+  const zIndex = 5 - absOffset
+
+  return {
+    transform: `translateX(${translateX}px) translateY(${translateY}px) translateZ(${translateZ}px) scale(${scale}) rotateZ(${rotateZ}deg)`,
+    opacity: opacity,
+    zIndex: zIndex
+  }
+}
+
+// 鼠标拖动切换
+function handleMouseDown(e) {
+  startX = e.clientX
+  isDragging = true
+}
+
+function handleMouseUp(e) {
+  if (!isDragging) return
+  isDragging = false
+  const diff = e.clientX - startX
+  if (Math.abs(diff) > 50) {
+    if (diff > 0 && currentIndex.value > 0) {
+      currentIndex.value--
+    } else if (diff < 0 && currentIndex.value < jadeCards.value.length - 1) {
+      currentIndex.value++
+    }
+  }
+}
+
+// 触摸切换
+function handleTouchStart(e) {
+  startX = e.touches[0].clientX
+}
+
+function handleTouchEnd(e) {
+  const diff = e.changedTouches[0].clientX - startX
+  if (Math.abs(diff) > 50) {
+    if (diff > 0 && currentIndex.value > 0) {
+      currentIndex.value--
+    } else if (diff < 0 && currentIndex.value < jadeCards.value.length - 1) {
+      currentIndex.value++
+    }
+  }
+}
+
+// 键盘切换
+function handleKeyDown(e) {
+  if (e.key === 'ArrowLeft' && currentIndex.value > 0) {
+    currentIndex.value--
+  } else if (e.key === 'ArrowRight' && currentIndex.value < jadeCards.value.length - 1) {
+    currentIndex.value++
+  }
+}
 
 onMounted(async () => {
   // 更新十二时辰动态背景
@@ -411,6 +465,18 @@ onMounted(async () => {
   // v2.3 初始化交互系统
   setupKeyboardNav()
   setupGestures()
+
+  // v2.6 轮播手势监听
+  document.addEventListener('keydown', handleKeyDown)
+
+  // v2.6 自动轮播
+  startAutoScroll()
+  // 鼠标悬停时暂停自动轮播
+  const carouselEl = document.querySelector('.jade-carousel')
+  if (carouselEl) {
+    carouselEl.addEventListener('mouseenter', stopAutoScroll)
+    carouselEl.addEventListener('mouseleave', startAutoScroll)
+  }
 })
 
 watch(() => settingsStore.bgMusicUrl, (url) => {
@@ -535,6 +601,7 @@ onUnmounted(() => {
   cleanupKeyboardNav()
   cleanupGestures()
   cleanupSounds()
+  stopAutoScroll()
 })
 </script>
 
@@ -549,13 +616,79 @@ onUnmounted(() => {
   transition: background 1s ease;
 }
 
-/* 云海背景 - 使用十二时辰变量 */
-/* ===== 五层背景纵深 ===== */
+/* 水墨国风全屏背景层 */
+.ink-bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+/* 动态雾层叠加 - 多层飘动 */
+.ink-bg-layer::before {
+  content: "";
+  position: absolute;
+  left: -15%;
+  top: -15%;
+  width: 130%;
+  height: 130%;
+  background:
+    radial-gradient(ellipse at 30% 70%, rgba(200, 210, 220, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(180, 200, 210, 0.08) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 85%, rgba(220, 230, 240, 0.06) 0%, transparent 55%);
+  animation: fog-drift 20s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+/* 第二层雾 - 反向飘动增加层次感 */
+.ink-bg-layer::after {
+  content: "";
+  position: absolute;
+  left: -20%;
+  top: -20%;
+  width: 140%;
+  height: 140%;
+  background:
+    radial-gradient(ellipse at 60% 40%, rgba(200, 220, 230, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(180, 200, 210, 0.05) 0%, transparent 40%);
+  animation: fog-drift-reverse 25s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes fog-drift {
+  0% { transform: translate(-8%, -5%) rotate(0deg); }
+  50% { transform: translate(-3%, -8%) rotate(2deg); }
+  100% { transform: translate(8%, 5%) rotate(0deg); }
+}
+@keyframes fog-drift-reverse {
+  0% { transform: translate(10%, 8%) rotate(0deg); }
+  50% { transform: translate(5%, 3%) rotate(-2deg); }
+  100% { transform: translate(-10%, -8%) rotate(0deg); }
+}
+/* 半透明深色蒙版 - 弱化背景突出玉简 */
+.fog-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 20, 35, 0.28);
+  pointer-events: none;
+  animation: fog-overlay-breathe 8s ease-in-out infinite;
+}
+@keyframes fog-overlay-breathe {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+.ink-bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  /* 背景水墨化色调，与岛屿一致 */
+  filter: brightness(0.48) saturate(0.4) contrast(1.1) sepia(0.4) blur(1px);
+}
+
+/* ===== 五层背景纵深 - 水墨国风 ===== */
 .parallax-layers {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
   overflow: hidden;
 }
 
@@ -565,9 +698,9 @@ onUnmounted(() => {
   will-change: transform;
 }
 
-/* Layer 1: 天穹深处 - 深墨色+微弱星点 */
+/* Layer 1: 星空 - 星尘弥散感 */
 .layer-1 {
-  opacity: var(--layer-1-opacity, 0.4);
+  opacity: var(--layer-1-opacity, 0.6);
   z-index: 1;
 }
 
@@ -575,153 +708,163 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(1px 1px at 20% 30%, rgba(139, 122, 106, 0.5) 0%, transparent 100%),
-    radial-gradient(1px 1px at 40% 70%, rgba(192, 142, 58, 0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 60% 20%, rgba(176, 140, 110, 0.45) 0%, transparent 100%),
-    radial-gradient(1px 1px at 80% 60%, rgba(160, 130, 100, 0.35) 0%, transparent 100%),
-    radial-gradient(1px 1px at 10% 80%, rgba(139, 157, 131, 0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 90% 10%, rgba(184, 134, 11, 0.35) 0%, transparent 100%);
-  background-size: 200px 200px;
-  animation: star-twinkle 8s ease-in-out infinite;
+    /* 大星 - 暗淡柔和 */
+    radial-gradient(2.5px 2.5px at 12% 22%, rgba(200, 190, 170, 0.4) 0%, transparent 100%),
+    radial-gradient(2px 2px at 68% 12%, rgba(190, 185, 165, 0.35) 0%, transparent 100%),
+    radial-gradient(2.2px 2.2px at 85% 38%, rgba(195, 188, 168, 0.38) 0%, transparent 100%),
+    radial-gradient(2px 2px at 92% 75%, rgba(185, 180, 160, 0.32) 0%, transparent 100%),
+    /* 中星 */
+    radial-gradient(1.5px 1.5px at 22% 52%, rgba(180, 172, 155, 0.3) 0%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 42% 15%, rgba(188, 180, 162, 0.28) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 55% 68%, rgba(182, 175, 158, 0.32) 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 78% 62%, rgba(178, 172, 155, 0.28) 0%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 8% 78%, rgba(185, 178, 160, 0.26) 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 32% 85%, rgba(180, 175, 158, 0.24) 0%, transparent 100%),
+    /* 小星 - 星尘感 */
+    radial-gradient(1px 1px at 18% 35%, rgba(175, 170, 155, 0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 8%, rgba(180, 175, 160, 0.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 48% 42%, rgba(178, 173, 158, 0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 62% 28%, rgba(182, 177, 162, 0.24) 0%, transparent 100%),
+    radial-gradient(1px 1px at 72% 88%, rgba(176, 171, 156, 0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 55%, rgba(180, 175, 160, 0.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 62%, rgba(178, 173, 158, 0.18) 0%, transparent 100%),
+    radial-gradient(1px 1px at 28% 45%, rgba(182, 177, 162, 0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 65% 95%, rgba(176, 171, 156, 0.18) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 18%, rgba(180, 175, 160, 0.2) 0%, transparent 100%);
+  background-size: 280px 280px;
+  animation: star-twinkle 18s ease-in-out infinite;
 }
 
 @keyframes star-twinkle {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.75; }
+  0%, 100% { opacity: 0.5; }
+  25% { opacity: 0.7; }
+  50% { opacity: 0.55; }
+  75% { opacity: 0.75; }
 }
 
-/* Layer 2: 远山如黛 - 淡墨山脉剪影 */
+/* Layer 2: 远山 - 水墨晕染风格 */
 .layer-2 {
-  opacity: var(--layer-2-opacity, 0.6);
+  opacity: var(--layer-2-opacity, 0.7);
   z-index: 2;
 }
 
 .mountain-range {
   position: absolute;
   bottom: 0;
+  left: -8%;
+  right: -8%;
+  height: 55%;
+}
+
+.mountain-layer {
+  position: absolute;
+  bottom: 0;
   left: -10%;
   right: -10%;
-  height: 45%;
-  background: linear-gradient(
-    to top,
-    rgba(139, 122, 106, 0.25) 0%,
-    rgba(160, 140, 120, 0.12) 50%,
-    transparent 100%
-  );
+  height: 100%;
+  /* 边缘模糊 - 水墨晕染效果 */
+  filter: blur(2px);
+}
+
+/* 最远山 - 极淡 */
+.mountain-layer-3 {
+  opacity: 0.12;
+  background: linear-gradient(to top, rgba(70, 90, 100, 0.6) 0%, rgba(80, 100, 110, 0.25) 50%, transparent 100%);
   clip-path: polygon(
-    0% 100%, 3% 65%, 10% 80%, 18% 50%, 28% 70%, 38% 40%,
-    48% 60%, 58% 35%, 68% 55%, 78% 45%, 88% 65%, 95% 55%, 100% 70%, 100% 100%
+    0% 100%, 4% 72%, 10% 80%, 18% 58%, 28% 72%, 38% 50%,
+    48% 65%, 58% 48%, 68% 60%, 78% 52%, 88% 62%, 95% 55%, 100% 65%, 100% 100%
   );
-  animation: mountain-drift 150s ease-in-out infinite;
+  animation: mountain-drift-slow 250s ease-in-out infinite;
+}
+
+/* 中间山 */
+.mountain-layer-2 {
+  opacity: 0.2;
+  background: linear-gradient(to top, rgba(60, 80, 85, 0.7) 0%, rgba(70, 90, 95, 0.3) 50%, transparent 100%);
+  clip-path: polygon(
+    0% 100%, 3% 70%, 9% 78%, 16% 55%, 26% 68%, 36% 45%,
+    46% 60%, 56% 42%, 66% 55%, 76% 48%, 86% 58%, 93% 50%, 100% 60%, 100% 100%
+  );
+  animation: mountain-drift 180s ease-in-out infinite;
+}
+
+/* 近山 */
+.mountain-layer-1 {
+  opacity: 0.28;
+  background: linear-gradient(to top, rgba(50, 70, 72, 0.8) 0%, rgba(60, 80, 82, 0.35) 50%, transparent 100%);
+  clip-path: polygon(
+    0% 100%, 5% 68%, 12% 75%, 20% 52%, 30% 65%, 40% 42%,
+    50% 55%, 60% 40%, 70% 52%, 80% 45%, 90% 55%, 96% 48%, 100% 58%, 100% 100%
+  );
+  animation: mountain-drift-fast 140s ease-in-out infinite;
+}
+
+/* 最近山 */
+.mountain-layer-0 {
+  opacity: 0.35;
+  background: linear-gradient(to top, rgba(45, 65, 68, 0.9) 0%, rgba(55, 75, 78, 0.4) 50%, transparent 100%);
+  clip-path: polygon(
+    0% 100%, 4% 65%, 10% 72%, 18% 48%, 28% 60%, 38% 38%,
+    48% 50%, 58% 35%, 68% 48%, 78% 42%, 88% 52%, 95% 45%, 100% 55%, 100% 100%
+  );
+  animation: mountain-drift-faster 100s ease-in-out infinite;
+}
+
+@keyframes mountain-drift-slow {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(12px) translateY(3px); }
 }
 
 @keyframes mountain-drift {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(20px); }
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(20px) translateY(5px); }
 }
 
-/* Layer 3: 灵气涌动 - 半透明渐变呼吸 */
-.layer-3 {
-  opacity: var(--layer-3-opacity, 0.8);
-  z-index: 3;
+@keyframes mountain-drift-fast {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(28px) translateY(7px); }
 }
 
-.qi-flow {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(139, 157, 131, 0.2) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(176, 140, 110, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 70% 70%, rgba(192, 142, 58, 0.12) 0%, transparent 50%);
-  animation: qi-breathe 19s ease-in-out infinite;
-}
-
-@keyframes qi-breathe {
-  0%, 100% { opacity: 0.35; transform: scaleY(1); }
-  21% { opacity: 0.6; transform: scaleY(1.06); }
-  58% { opacity: 0.7; transform: scaleY(1.1); }
-}
-
-/* Layer 4: 中景云海 - 清晰云层 */
-.layer-4 {
-  opacity: var(--layer-4-opacity, 1);
-  z-index: 4;
-}
-
-.cloud-bank {
-  position: absolute;
-  background: radial-gradient(ellipse at center, var(--color-cloud-current, rgba(212, 200, 184, 0.55)) 0%, transparent 70%);
-  border-radius: 50%;
-  transition: background 1s ease;
-}
-
-.cloud-bank.cloud-1 {
-  width: 500px; height: 250px;
-  top: 38%; left: -10%;
-  animation: cloud-sea-drift 60s ease-in-out infinite;
-}
-.cloud-bank.cloud-2 {
-  width: 400px; height: 200px;
-  top: 55%; left: 25%;
-  animation: cloud-sea-drift 60s ease-in-out infinite 8s;
-}
-.cloud-bank.cloud-3 {
-  width: 600px; height: 300px;
-  top: 72%; left: 50%;
-  animation: cloud-sea-drift 60s ease-in-out infinite 16s;
-}
-
-@keyframes cloud-sea-drift {
-  0% { transform: translateX(0) translateY(0); }
-  25% { transform: translateX(30px) translateY(-8px); }
-  50% { transform: translateX(60px) translateY(0); }
-  75% { transform: translateX(30px) translateY(8px); }
-  100% { transform: translateX(0) translateY(0); }
-}
-
-/* Layer 5: 近景薄雾 */
-.layer-5 {
-  opacity: var(--layer-5-opacity, 0.5);
-  z-index: 5;
-}
-
-.mist-wisp {
-  position: absolute;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 250, 245, 0.25) 20%,
-    rgba(255, 250, 245, 0.3) 50%,
-    rgba(255, 250, 245, 0.25) 80%,
-    transparent 100%
-  );
-  border-radius: 50%;
-  filter: blur(15px);
-}
-
-.mist-wisp.wisp-1 {
-  width: 90%; height: 100px;
-  top: 82%; left: -5%;
-  animation: mist-drift 40s ease-in-out infinite;
-}
-.mist-wisp.wisp-2 {
-  width: 70%; height: 80px;
-  top: 90%; left: 25%;
-  animation: mist-drift 40s ease-in-out infinite 12s;
-}
-
-@keyframes mist-drift {
-  0% { transform: translateX(0); opacity: 0.3; }
-  50% { transform: translateX(50px); opacity: 0.5; }
-  100% { transform: translateX(0); opacity: 0.3; }
+@keyframes mountain-drift-faster {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(35px) translateY(10px); }
 }
 
 /* 移动端简化 */
 @media (max-width: 768px) {
   .layer-1 { display: none; }
-  .layer-5 .mist-wisp.wisp-1 { display: none; }
-  .cloud-bank.cloud-3 { display: none; }
-  .mountain-range { height: 30%; }
+  .mountain-layer-3 { display: none; }
+  .mountain-layer-2 { opacity: 0.15; }
+  .mountain-layer-1 { opacity: 0.2; }
+  .mountain-layer-0 { opacity: 0.25; }
+}
+
+/* 减少动效模式 */
+@media (prefers-reduced-motion: reduce) {
+  .star-field, .mountain-range, .mountain-layer {
+    animation: none;
+  }
+  .layer-1, .layer-2 {
+    opacity: 0.3;
+  }
+}
+
+/* 阵法符文层 */
+.array-symbol-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0.08;
+}
+
+/* 移动端简化 */
+@media (max-width: 768px) {
+  .layer-1 { display: none; }
+  .mountain-layer-3 { display: none; }
+  .mountain-layer-2 { opacity: 0.15; }
+  .mountain-layer-1 { opacity: 0.2; }
+  .mountain-layer-0 { opacity: 0.25; }
 }
 
 /* 减少动效模式 */
@@ -936,7 +1079,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   height: 100%;
-  animation: orbit-around 30s linear infinite;
+  animation: orbit-around 60s linear infinite;
 }
 
 @keyframes orbit-around {
@@ -978,32 +1121,392 @@ onUnmounted(() => {
   animation-play-state: paused;
 }
 
-/* 悬停时岛屿上浮+发光（移除翻转） */
-.island-pos:hover .island {
-  filter: drop-shadow(0 0 30px var(--color-glow-current));
-  transform: translateY(-20px) scale(1.05);
+/* ===================================
+   玉简3D透视轮播样式
+   =================================== */
+
+/* 轮播容器 */
+.jade-carousel {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 400px;
+  perspective: 1500px;
+  perspective-origin: 50% 40%;
+  overflow: hidden;
 }
 
-/* 岛屿卡片 */
-.island {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  transition: transform 0.4s ease, filter 0.4s ease;
+.carousel-track {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   transform-style: preserve-3d;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* 岛屿卡片 - 2.5D立体效果 */
-.island {
+/* 轮播卡片 - 羊脂玉质感 + 鎏金渐变边框 */
+.jade-card {
   position: relative;
+  width: 130px;
+  height: 170px;
+  cursor: pointer;
+  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d;
+  /* 基础悬浮阴影 */
+  box-shadow:
+    0 6px 18px rgba(0,0,0,0.35),
+    0 2px 6px rgba(0,0,0,0.2),
+    inset 0 1px 2px rgba(255,255,255,0.7);
+  border-radius: 12px;
+}
+/* 鎏金渐变描边 */
+.jade-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  background: linear-gradient(145deg, rgba(212,175,55,0.3), rgba(232,210,140,0.5), rgba(212,175,55,0.3)) border-box;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.jade-card.is-active {
+  box-shadow:
+    0 15px 35px rgba(0,0,0,0.45),
+    0 0 25px rgba(212, 178, 70, 0.5),
+    0 0 50px rgba(212, 178, 70, 0.2),
+    inset 0 1px 2px rgba(255,255,255,0.8);
+  animation: card-float-magic 3s ease-in-out infinite, card-glow-magic 3.5s ease-in-out infinite;
+}
+
+/* video卡片使用专属呼吸动画 */
+.video-card.is-active {
+  animation: card-float-magic 3s ease-in-out infinite, card-glow-breathe 4s ease-in-out infinite;
+}
+
+@keyframes card-float-magic {
+  0%, 100% { transform: translateY(-30px) translateZ(60px) scale(1.1) rotateY(0deg) rotateZ(0deg); }
+  25% { transform: translateY(-32px) translateZ(60px) scale(1.1) rotateY(2deg) rotateZ(1deg); }
+  50% { transform: translateY(-38px) translateZ(60px) scale(1.1) rotateY(0deg) rotateZ(0deg); }
+  75% { transform: translateY(-32px) translateZ(60px) scale(1.1) rotateY(-2deg) rotateZ(-1deg); }
+}
+
+/* 核心玉简呼吸光晕 - "影"玉简专属 */
+.video-card.is-active .card-glow {
+  animation: card-glow-breathe 4s ease-in-out infinite;
+}
+.video-card.is-active::after {
+  animation: card-inner-glow 4s ease-in-out infinite;
+}
+@keyframes card-glow-breathe {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+    background: radial-gradient(ellipse, rgba(212, 178, 70, 0.3) 0%, transparent 60%);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+    background: radial-gradient(ellipse, rgba(212, 178, 70, 0.5) 0%, transparent 65%);
+  }
+}
+@keyframes card-inner-glow {
+  0%, 100% { box-shadow: inset 3px 3px 8px rgba(255, 255, 255, 0.5); }
+  50% { box-shadow: inset 5px 5px 12px rgba(255, 255, 255, 0.7); }
+}
+
+/* 通用光晕动画（用于非video卡片） */
+@keyframes card-glow-magic {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 25px rgba(212, 178, 70, 0.5)); }
+  50% { filter: brightness(1.15) drop-shadow(0 0 35px rgba(212, 178, 70, 0.7)); }
+}
+
+/* 悬停效果 - 被灵气吹动的轻微摇摆 */
+.jade-card:hover {
+  transform: translateY(-10px) scale(1.06) rotateY(3deg);
+  box-shadow:
+    0 12px 30px rgba(0,0,0,0.4),
+    0 0 15px rgba(220, 190, 110, 0.35);
+  animation: card-hover-sway 2s ease-in-out infinite;
+}
+.jade-card.is-active:hover {
+  transform: translateY(-12px) scale(1.1) rotateY(0deg);
+}
+@keyframes card-hover-sway {
+  0%, 100% { transform: translateY(-10px) scale(1.06) rotateY(3deg); }
+  50% { transform: translateY(-12px) scale(1.06) rotateY(-1deg); }
+}
+
+/* 轮播手势提示 */
+.carousel-hint {
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  opacity: 0.5;
+  font-size: 14px;
+  color: rgba(200, 200, 180, 0.6);
+  pointer-events: none;
+}
+.hint-arrow {
+  font-size: 12px;
+  animation: hint-pulse 2s ease-in-out infinite;
+}
+.hint-arrow.left { animation-delay: 0s; }
+.hint-arrow.right { animation-delay: 1s; }
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* 卡片主体 - 羊脂白玉质感 + 鎏金描边 */
+.card-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  /* 玉石渐变底色 */
+  background: linear-gradient(145deg, #f3ede0 0%, #e6d9c3 50%, #f0e7d6 100%);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: pointer;
-  transition: transform 0.4s ease, filter 0.4s ease;
-  transform-style: preserve-3d;
+  justify-content: center;
+  padding: 16px;
 }
+/* 玉石暗纹（伪元素模拟肌理） */
+.card-inner::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 8px;
+  background: rgba(210, 185, 130, 0.08);
+  pointer-events: none;
+}
+
+/* 卡片篆纹边框 - hover时亮起 */
+.jade-card::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 8px;
+  opacity: 0.3;
+  transition: all 0.4s;
+  pointer-events: none;
+}
+.jade-card:hover::after {
+  border-color: rgba(212, 175, 55, 0.6);
+  opacity: 1;
+  box-shadow: inset 0 0 12px rgba(212, 175, 55, 0.15);
+}
+.jade-card.is-active::after {
+  border-color: rgba(212, 175, 55, 0.7);
+  opacity: 1;
+  box-shadow: inset 0 0 15px rgba(212, 175, 55, 0.2);
+}
+
+/* 玉石纹理 - 冰裂纹理感 */
+.card-texture {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 45% 20% at 30% 20%, rgba(255,255,255,0.4) 0%, transparent 50%),
+    radial-gradient(ellipse 30% 40% at 70% 70%, rgba(180,165,140,0.2) 0%, transparent 45%);
+  pointer-events: none;
+}
+
+/* 道纹文字 - 思源宋体 + 鎏金描边 */
+.card-runes {
+  font-family: 'Noto Serif SC', 'Source Han Serif CN', 'SimSun', serif;
+  font-size: 44px;
+  color: #4a3f2e;
+  letter-spacing: 0.2em;
+  position: relative;
+  z-index: 1;
+  /* 鎏金描边效果 */
+  -webkit-text-stroke: 0.5px rgba(180, 140, 60, 0.4);
+  text-shadow:
+    0 0 6px rgba(210, 180, 100, 0.4),
+    1px 1px 0 rgba(255, 255, 255, 0.9),
+    -0.5px -0.5px 0 rgba(180, 140, 60, 0.2);
+  transition: all 0.4s ease;
+}
+.jade-card:hover .card-runes,
+.jade-card.is-active .card-runes {
+  color: #3a2f1e;
+  -webkit-text-stroke: 0.5px rgba(212, 175, 55, 0.7);
+  text-shadow:
+    0 0 12px rgba(210, 180, 100, 0.6),
+    1px 1px 0 rgba(255, 255, 255, 0.95),
+    -0.5px -0.5px 0 rgba(180, 140, 60, 0.3);
+  filter: brightness(1.15);
+  transform: scale(1.05);
+}
+
+/* 标签文字 - 古风统一 */
+.card-label {
+  font-family: 'Noto Serif SC', 'Source Han Serif CN', 'SimSun', serif;
+  font-size: 13px;
+  color: #4a3f2e;
+  margin-top: 18px;
+  letter-spacing: 0.25em;
+  text-shadow: 0 0 3px rgba(210, 180, 100, 0.25);
+  position: relative;
+  z-index: 1;
+}
+
+/* 卡片光晕 - 淡金色 */
+.card-glow {
+  position: absolute;
+  inset: -15px;
+  border-radius: 30px;
+  background: radial-gradient(ellipse, rgba(212, 175, 55, 0.2) 0%, transparent 60%);
+  opacity: 0.5;
+  transition: all 0.5s ease;
+  pointer-events: none;
+  z-index: -1;
+  animation: glow-breathe 4s ease-in-out infinite;
+}
+.jade-card.is-active .card-glow {
+  opacity: 1;
+  background: radial-gradient(ellipse, rgba(212, 178, 70, 0.4) 0%, transparent 65%);
+  inset: -20px;
+}
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
+
+/* 周围灵气粒子 - 扇形布局轨道 + 魔法阵包裹感 */
+.card-particles {
+  position: absolute;
+  inset: -40px;
+  pointer-events: none;
+}
+.card-particles .particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.9) 0%, rgba(180, 200, 190, 0.6) 100%);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.6), 0 0 15px rgba(180, 200, 190, 0.3);
+  animation: particle-orbit 8s linear infinite;
+  transform-origin: center center;
+}
+/* 淡青粒子 - 椭圆内侧轨道 */
+.card-particles .particle:nth-child(1) {
+  top: 50%;
+  left: 50%;
+  animation-delay: 0s;
+  background: radial-gradient(circle, rgba(180, 200, 190, 0.9) 0%, rgba(212, 175, 55, 0.5) 100%);
+  box-shadow: 0 0 10px rgba(180, 200, 190, 0.7), 0 0 20px rgba(212, 175, 55, 0.3);
+}
+/* 淡金粒子 - 椭圆外侧轨道 */
+.card-particles .particle:nth-child(2) {
+  top: 50%;
+  left: 50%;
+  animation-delay: -2.6s;
+}
+/* 第二圈淡青 - 倾斜椭圆轨道 */
+.card-particles .particle:nth-child(3) {
+  top: 50%;
+  left: 50%;
+  animation-delay: -5.3s;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.8) 0%, rgba(180, 200, 190, 0.4) 100%);
+  box-shadow: 0 0 6px rgba(212, 175, 55, 0.5), 0 0 12px rgba(180, 200, 190, 0.25);
+}
+/* 核心卡片粒子 - 更大更亮 */
+.jade-card.is-active .particle {
+  width: 5px;
+  height: 5px;
+  animation-duration: 4s;
+}
+.jade-card.is-active .particle:nth-child(1) { box-shadow: 0 0 15px rgba(180, 200, 190, 0.9), 0 0 30px rgba(212, 175, 55, 0.5); }
+.jade-card.is-active .particle:nth-child(2) { box-shadow: 0 0 15px rgba(212, 175, 55, 0.9), 0 0 30px rgba(180, 200, 190, 0.5); }
+.jade-card.is-active .particle:nth-child(3) { box-shadow: 0 0 12px rgba(212, 175, 55, 0.7), 0 0 25px rgba(180, 200, 190, 0.4); }
+/* hover时粒子向玉简汇聚 */
+.jade-card:hover .particle {
+  animation-direction: reverse;
+  animation-duration: 3s;
+}
+/* 点击时粒子散开 */
+.jade-card:active .particle {
+  animation: particle-burst 0.5s ease-out forwards;
+}
+/* 扇形轨道 - 椭圆轨迹模拟魔法阵 */
+@keyframes particle-orbit {
+  0% { transform: rotate(0deg) translateX(35px) translateY(-15px) scale(1); opacity: 0.7; }
+  25% { transform: rotate(90deg) translateX(20px) translateY(-30px) scale(1.15); opacity: 1; }
+  50% { transform: rotate(180deg) translateX(-35px) translateY(-15px) scale(1); opacity: 0.7; }
+  75% { transform: rotate(270deg) translateX(-20px) translateY(-30px) scale(1.15); opacity: 1; }
+  100% { transform: rotate(360deg) translateX(35px) translateY(-15px) scale(1); opacity: 0.7; }
+}
+@keyframes particle-burst {
+  0% { transform: rotate(0deg) translateX(35px) scale(1); opacity: 1; }
+  100% { transform: rotate(180deg) translateX(80px) scale(0); opacity: 0; }
+}
+
+/* 各卡片微调颜色 - 统一羊脂白玉质感 */
+.music-card .card-inner { background: linear-gradient(145deg, #f5f0e6 0%, #e8ded0 50%, #f0e8dc 100%); }
+.novel-card .card-inner { background: linear-gradient(145deg, #f0ede5 0%, #e5dcd0 50%, #ece4d8 100%); }
+/* 视频玉简 - 斜向高光模拟光线照射 */
+.video-card .card-inner {
+  background: linear-gradient(145deg, #f2f0e8 0%, #e6e2d8 50%, #ece8dc 100%);
+  box-shadow:
+    inset 3px 3px 8px rgba(255, 255, 255, 0.5),
+    inset -2px -2px 6px rgba(180, 170, 155, 0.15),
+    inset 25px 25px 30px rgba(255, 255, 255, 0.08);
+}
+.log-card .card-inner { background: linear-gradient(145deg, #f0ece0 0%, #e5ddd0 50%, #ece6d8 100%); }
+.tool-card .card-inner { background: linear-gradient(145deg, #f0f2f5 0%, #e2e8ed 50%, #e8ecf2 100%); }
+
+/* 玉简入场动画 - 从两侧向中间依次淡入，呼应扇形布局 */
+.jade-card {
+  opacity: 0;
+  animation: jade-enter 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+/* 扇形布局顺序：左右对称向中间聚拢 */
+.jade-card:nth-child(1) { animation-delay: 0s; transform-origin: right center; }
+.jade-card:nth-child(2) { animation-delay: 0.15s; transform-origin: right center; }
+.jade-card:nth-child(3) { animation-delay: 0.35s; transform-origin: center center; }
+.jade-card:nth-child(4) { animation-delay: 0.15s; transform-origin: left center; }
+.jade-card:nth-child(5) { animation-delay: 0s; transform-origin: left center; }
+@keyframes jade-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(50px) scale(0.85) rotateY(15deg);
+    filter: blur(6px);
+  }
+  50% {
+    opacity: 0.6;
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateY(0deg);
+    filter: blur(0);
+  }
+}
+
+/* 岛屿相关的旧样式保持兼容（选择性隐藏） */
+.island { display: none; }
+.island-pos { display: none; }
+.island-glow { display: none; }
+.island-wrapper { display: none; }
+.island-image { display: none; }
+.island-name { display: none; }
+.island-subtitle { display: none; }
 
 /* 阵法模式背景灵气光晕 */
 .magic-mode .islands-container::before {
@@ -1036,62 +1539,68 @@ onUnmounted(() => {
 
 .island-wrapper {
   position: relative;
-  width: 320px;
-  height: 240px;
+  width: 360px;
+  height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 岛屿底部云雾 - 与背景融合 */
+}
+.island-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 90px;
+  background: radial-gradient(ellipse, rgba(25,38,48,0.7) 0%, rgba(20,30,40,0.4) 40%, transparent 75%);
+  filter: blur(18px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .island-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 25px 35px rgba(0,0,0,0.35));
-  transition: transform 0.4s ease, filter 0.4s ease;
+  position: relative;
+  z-index: 1;
+  /* 岛屿保持清晰只调色温，不过度模糊 */
+  filter: drop-shadow(0 12px 35px rgba(0,0,0,0.6))
+          drop-shadow(0 2px 8px rgba(0,0,0,0.3))
+          grayscale(0.15) sepia(0.25) brightness(0.8) saturate(0.7) contrast(0.95);
+  transition: transform 0.5s ease, filter 0.5s ease;
+}
+
+.island-wrapper::before {
+  display: none;
 }
 
 .island-glow {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 200px;
-  height: 60px;
-  background: radial-gradient(ellipse, var(--color-purple) 0%, transparent 70%);
-  filter: blur(10px);
-  opacity: 0;
-  transition: opacity 0.4s;
+  display: none;
 }
 
 .island-name {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: 20px;
   color: var(--color-text);
-  margin-top: 10px;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  margin-top: 12px;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+  letter-spacing: 0.1em;
 }
 
 .island-subtitle {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-secondary);
   margin-top: 4px;
+  letter-spacing: 0.15em;
+  opacity: 0.8;
 }
 
-/* 岛屿底部灵气光环 */
+/* 岛屿底部灵气光环 - 已禁用，岛屿与背景融合 */
 .island::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120px;
-  height: 40px;
-  background: radial-gradient(ellipse, var(--color-jade) 0%, transparent 70%);
-  border-radius: 50%;
-  filter: blur(8px);
-  animation: pulse-glow 3s ease-in-out infinite;
-  pointer-events: none;
+  display: none;
 }
 
 @keyframes pulse-glow {
@@ -1099,17 +1608,8 @@ onUnmounted(() => {
   50% { opacity: 0.7; transform: translateX(-50%) scale(1.1); }
 }
 
-.music-island::after { background: radial-gradient(ellipse, rgba(155, 141, 201, 0.3) 0%, transparent 70%); }
-.novel-island::after { background: radial-gradient(ellipse, rgba(232, 213, 183, 0.25) 0%, transparent 70%); }
-.video-island::after { background: radial-gradient(ellipse, rgba(167, 139, 201, 0.3) 0%, transparent 70%); }
-.log-island::after { background: radial-gradient(ellipse, rgba(143, 188, 143, 0.25) 0%, transparent 70%); }
-.tool-island::after { background: radial-gradient(ellipse, rgba(212, 165, 116, 0.3) 0%, transparent 70%); }
-
 .island:hover::after {
-  opacity: 0.9;
-  transform: translateX(-50%) scale(1.3);
-  animation: none;
-  filter: blur(4px) brightness(1.5);
+  display: none;
 }
 
 /* 灵气连线 */
@@ -1165,7 +1665,9 @@ onUnmounted(() => {
 }
 
 .island:hover .island-image {
-  filter: drop-shadow(0 30px 40px rgba(0,0,0,0.4)) brightness(1.1);
+  filter: drop-shadow(0 15px 40px rgba(0,0,0,0.65))
+          drop-shadow(0 2px 8px rgba(0,0,0,0.3))
+          grayscale(0.15) sepia(0.25) brightness(0.95) saturate(0.7) contrast(0.95);
 }
 
 .island:hover .island-glow {
@@ -1271,24 +1773,25 @@ onUnmounted(() => {
   margin: 15px 0;
 }
 
-/* 备案信息 */
+/* 备案信息 - 玉色半透明 + 鎏金边框 */
 .filing-footer {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(102, 126, 234, 0.2);
-  padding: 10px 20px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(243, 237, 224, 0.15);
+  backdrop-filter: blur(4px);
+  border-top: 1px solid rgba(212, 175, 55, 0.25);
+  padding: 8px 20px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
-/* 移动端适配 - 避免与系统导航栏重叠 */
+/* 移动端适配 */
 @media (max-width: 768px) {
   .filing-footer {
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 10px));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 10px));
+    background: rgba(243, 237, 224, 0.1);
   }
 }
 
@@ -1300,16 +1803,32 @@ onUnmounted(() => {
 }
 
 .filing-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
+  opacity: 0.7;
 }
 
 .filing-links {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 11px;
+}
+.filing-links a {
+  color: rgba(180, 150, 80, 0.7);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: color 0.3s;
+}
+.filing-links a:hover {
+  color: rgba(212, 175, 55, 0.9);
+}
+.filing-links span {
+  color: rgba(180, 150, 80, 0.5);
+}
+.filing-divider {
+  color: rgba(180, 150, 80, 0.4);
 }
 
 .filing-links a {
