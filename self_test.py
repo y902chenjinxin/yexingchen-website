@@ -21,7 +21,7 @@ def get_file_hash(filepath):
     h = hashlib.sha256()
     with open(filepath, 'rb') as f:
         h.update(f.read())
-    return h.hexdigest()[:16]
+    return h.hexdigest()
 
 def check_build():
     """检查 npm run build 是否通过"""
