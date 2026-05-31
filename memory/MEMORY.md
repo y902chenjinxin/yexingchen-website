@@ -10,7 +10,8 @@
 - [server-access](memory/server-access.md) — 服务器 IP、密码、部署路径
 
 ## 设计系统
-- [design-xuanmo](docs/DESIGN_XUANMO.md) — 玄墨流金完整规范（色板/阴影/字体/纹理）
+- [design-inkwash](docs/DESIGN_INKWASH.md) — 水墨国风完整规范（素雅/留白/禅意）
+- [design-xuanmo](docs/DESIGN_XUANMO.md) — 玄墨流金完整规范（已归档，当前风格过于卡通化）
 - [variables.css](frontend/src/assets/styles/variables.css) — 所有CSS变量，禁止硬编码
 
 ## 技能索引
