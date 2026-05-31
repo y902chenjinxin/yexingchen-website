@@ -72,6 +72,32 @@ curl -s https://yexingchen.cn -I | head -5
 
 ---
 
+## v2.8.0 回滚方案
+
+**部署时间**: 2026-05-31
+**部署内容**: v2.8.0 玉简交互增强
+**功能**: Tab遍历玉简、1-5数字键、Enter进入、左右滑动切换、双击进入、金色聚焦态
+**回滚命令**:
+
+```bash
+# 1. 回滚dist目录
+ssh root@203.195.208.25 "mv /var/www/yexingchen/dist /var/www/yexingchen/dist.v2.8.0 && mv /var/www/yexingchen/dist.bak.20260531 /var/www/yexingchen/dist"
+
+# 2. 重启PM2
+ssh root@203.195.208.25 "pm2 restart yexingchen-backend"
+
+# 3. 验证
+curl -s https://yexingchen.cn -I | head -5
+```
+
+**关键文件**:
+- HomeView.vue（jade-focused 键盘聚焦态）
+- useKeyboardNavigation.js（.jade-card 选择器）
+- useGestureControl.js（左右滑动/双击）
+- self_test.py（hover检查更新）
+
+---
+
 ## 回滚原则
 
 1. **先备份再部署**：每次 `npm run build` 前先备份远程 dist
