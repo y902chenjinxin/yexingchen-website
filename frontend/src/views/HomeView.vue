@@ -575,14 +575,12 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
-    radial-gradient(1px 1px at 60% 20%, rgba(255,255,255,0.35) 0%, transparent 100%),
-    radial-gradient(1px 1px at 80% 60%, rgba(255,255,255,0.25) 0%, transparent 100%),
-    radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
-    radial-gradient(1px 1px at 90% 10%, rgba(255,255,255,0.2) 0%, transparent 100%),
-    radial-gradient(1px 1px at 30% 50%, rgba(255,255,255,0.25) 0%, transparent 100%),
-    radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.3) 0%, transparent 100%);
+    radial-gradient(1px 1px at 20% 30%, rgba(139,122,174,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 70%, rgba(168,124,156,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 20%, rgba(196,154,108,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 60%, rgba(139,100,174,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 80%, rgba(180,150,120,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 10%, rgba(160,140,120,0.4) 0%, transparent 100%);
   background-size: 200px 200px;
   animation: star-twinkle 8s ease-in-out infinite;
 }
@@ -606,8 +604,8 @@ onUnmounted(() => {
   height: 45%;
   background: linear-gradient(
     to top,
-    rgba(30, 35, 45, 0.5) 0%,
-    rgba(25, 30, 40, 0.25) 50%,
+    rgba(180, 160, 140, 0.3) 0%,
+    rgba(200, 180, 160, 0.15) 50%,
     transparent 100%
   );
   clip-path: polygon(
@@ -632,9 +630,9 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 50% 100%, var(--color-qi-glow, rgba(74, 124, 89, 0.3)) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(74, 122, 89, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 70% 70%, rgba(139, 122, 174, 0.1) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(90, 143, 106, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(122, 175, 138, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 70% 70%, rgba(196, 154, 108, 0.15) 0%, transparent 50%);
   animation: qi-breathe 19s ease-in-out infinite;
 }
 
@@ -652,7 +650,7 @@ onUnmounted(() => {
 
 .cloud-bank {
   position: absolute;
-  background: radial-gradient(ellipse at center, var(--color-cloud-current, rgba(200, 210, 220, 0.4)) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, var(--color-cloud-current, rgba(255, 255, 255, 0.7)) 0%, transparent 70%);
   border-radius: 50%;
   transition: background 1s ease;
 }
@@ -692,9 +690,9 @@ onUnmounted(() => {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(232, 228, 220, 0.1) 20%,
-    rgba(232, 228, 220, 0.15) 50%,
-    rgba(232, 228, 220, 0.1) 80%,
+    rgba(255, 250, 245, 0.25) 20%,
+    rgba(255, 250, 245, 0.3) 50%,
+    rgba(255, 250, 245, 0.25) 80%,
     transparent 100%
   );
   border-radius: 50%;
