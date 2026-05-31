@@ -575,19 +575,19 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(1px 1px at 20% 30%, rgba(139,122,174,0.6) 0%, transparent 100%),
-    radial-gradient(1px 1px at 40% 70%, rgba(168,124,156,0.5) 0%, transparent 100%),
-    radial-gradient(1px 1px at 60% 20%, rgba(196,154,108,0.5) 0%, transparent 100%),
-    radial-gradient(1px 1px at 80% 60%, rgba(139,100,174,0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 10% 80%, rgba(180,150,120,0.5) 0%, transparent 100%),
-    radial-gradient(1px 1px at 90% 10%, rgba(160,140,120,0.4) 0%, transparent 100%);
+    radial-gradient(1px 1px at 20% 30%, rgba(139, 122, 106, 0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 70%, rgba(192, 142, 58, 0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 20%, rgba(176, 140, 110, 0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 60%, rgba(160, 130, 100, 0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 80%, rgba(139, 157, 131, 0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 10%, rgba(184, 134, 11, 0.35) 0%, transparent 100%);
   background-size: 200px 200px;
   animation: star-twinkle 8s ease-in-out infinite;
 }
 
 @keyframes star-twinkle {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.9; }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.75; }
 }
 
 /* Layer 2: 远山如黛 - 淡墨山脉剪影 */
@@ -604,8 +604,8 @@ onUnmounted(() => {
   height: 45%;
   background: linear-gradient(
     to top,
-    rgba(180, 160, 140, 0.3) 0%,
-    rgba(200, 180, 160, 0.15) 50%,
+    rgba(139, 122, 106, 0.25) 0%,
+    rgba(160, 140, 120, 0.12) 50%,
     transparent 100%
   );
   clip-path: polygon(
@@ -630,16 +630,16 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(90, 143, 106, 0.25) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(122, 175, 138, 0.2) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 70% 70%, rgba(196, 154, 108, 0.15) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(139, 157, 131, 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(176, 140, 110, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 70% 70%, rgba(192, 142, 58, 0.12) 0%, transparent 50%);
   animation: qi-breathe 19s ease-in-out infinite;
 }
 
 @keyframes qi-breathe {
-  0%, 100% { opacity: 0.4; transform: scaleY(1); }
-  21% { opacity: 0.7; transform: scaleY(1.08); }
-  58% { opacity: 0.8; transform: scaleY(1.12); }
+  0%, 100% { opacity: 0.35; transform: scaleY(1); }
+  21% { opacity: 0.6; transform: scaleY(1.06); }
+  58% { opacity: 0.7; transform: scaleY(1.1); }
 }
 
 /* Layer 4: 中景云海 - 清晰云层 */
@@ -650,7 +650,7 @@ onUnmounted(() => {
 
 .cloud-bank {
   position: absolute;
-  background: radial-gradient(ellipse at center, var(--color-cloud-current, rgba(255, 255, 255, 0.7)) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, var(--color-cloud-current, rgba(212, 200, 184, 0.55)) 0%, transparent 70%);
   border-radius: 50%;
   transition: background 1s ease;
 }
