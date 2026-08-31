@@ -2,14 +2,24 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+import logging
 
 from app.database import engine, Base
 from app.routers import auth, admin, music, novel, video, tool, log, search, settings as settings_router
 from app.config import settings
 from app.models.login_attempt import LoginAttempt  # 登录限流模型
+from app.services import schema_guard
 
-# 创建表
-Base.metadata.create_all(bind=engine)
+logger = logging.getLogger(__name__)
+
+# 启动时表初始化与 schema 校验：
+# - 生产环境：禁止 Base.metadata.create_all()（避免干扰 Alembic），改为校验 schema 与 head 一致
+# - 非生产环境：保留 Base.metadata.create_all()（向后兼容开发与现有测试）
+if schema_guard.is_production_env():
+    schema_guard.assert_production_schema_ok(engine)
+    logger.info("Production schema validated against Alembic head")
+else:
+    Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="叶兴辰的个人网站 API",
