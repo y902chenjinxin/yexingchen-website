@@ -1,0 +1,11 @@
+# 后端开发与测试依赖
+# 仅在开发或 CI 环境安装：pip install -r requirements-dev.txt
+# 包含运行依赖（requirements.txt）+ 测试框架与 FastAPI 测试客户端所需依赖。
+
+-r requirements.txt
+
+# 测试框架
+pytest>=8.0.0,<9.0.0
+
+# FastAPI/Starlette TestClient 基于 httpx
+httpx>=0.27.0,<0.30.0

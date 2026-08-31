@@ -2,6 +2,7 @@
  * Auth Store 单元测试
  */
 import { describe, it, expect, beforeEach } from 'vitest'
+import { ref, computed } from 'vue'
 
 // Mock axios
 const mockPost = vi.fn()

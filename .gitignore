@@ -56,3 +56,7 @@ restart_pm2.py
 # docs/3D_ISLAND_REVIEW.md
 # docs/GLB_MODEL_STATUS.md
 # docs/PRD_v1.4.md
+# Backup files
+*.bak
+*.bak-*
+*~\n

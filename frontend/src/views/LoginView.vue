@@ -217,7 +217,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { register as registerApi, verifyCode as verifyCodeApi } from '@/api/auth'
@@ -226,6 +226,7 @@ import { randFloat } from '@/utils/random'
 const router = useRouter()
 const auth = useAuthStore()
 
+const route = useRoute()
 const loginForm = ref({ email: '', password: '' })
 const registerForm = ref({ email: '', code: '', password: '', confirmPassword: '' })
 const isRegistering = ref(false)
@@ -358,7 +359,9 @@ async function handleLogin() {
   try {
     await auth.loginAction(loginForm.value.email, loginForm.value.password)
     ElMessage.success('登录成功')
-    router.push('/home')
+    // 登录后默认进入工作台
+    const next = (route.query.next && String(route.query.next)) || '/workbench'
+    router.push(next)
   } catch {
     // 错误已在api拦截器处理，显示仙气飘飘特效
     // 延迟关闭loading，让特效显示2秒
