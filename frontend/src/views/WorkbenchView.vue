@@ -195,14 +195,15 @@ onMounted(load)
 
 <style scoped>
 .workbench-page {
+  font-family: var(--font-serif);
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px 16px 80px;
-  color: #2a2a2a;
+  color: var(--color-text-dark);
 }
 .wb-header { margin-bottom: 16px; }
 .wb-title { font-size: 28px; margin: 0 0 4px; font-weight: 600; }
-.wb-subtitle { color: #6b6b6b; margin: 0; font-size: 14px; }
+.wb-subtitle { color: var(--color-text-muted); margin: 0; font-size: 14px; }
 .wb-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -213,15 +214,15 @@ onMounted(load)
   display: flex;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 10px;
-  background: #f6f4ee;
+  border-radius: var(--radius-sm);
+  background: var(--paper-white);
   color: inherit;
   text-decoration: none;
-  border: 1px solid #e9e5d8;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  border: 1px solid var(--paper-cream);
+  transition: var(--transition);
 }
-.wb-action:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.wb-action.primary { background: linear-gradient(135deg, #b58a3f, #8e6a2c); color: #fff; border-color: transparent; }
+.wb-action:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.wb-action.primary { background: linear-gradient(135deg, var(--rattan-yellow), var(--ochre)); color: var(--paper-white); border-color: transparent; }
 .wb-action-icon { font-size: 24px; }
 .wb-action-text { display: flex; flex-direction: column; }
 .wb-action-text small { opacity: 0.8; font-size: 12px; }
@@ -232,8 +233,8 @@ onMounted(load)
   gap: 16px;
 }
 .wb-card {
-  background: #fff;
-  border: 1px solid #ececec;
+  background: var(--paper-white);
+  border: 1px solid var(--paper-aged);
   border-radius: 10px;
   padding: 14px 16px;
 }
@@ -244,31 +245,31 @@ onMounted(load)
   margin-bottom: 8px;
 }
 .wb-card-header h2 { font-size: 15px; margin: 0; font-weight: 600; }
-.wb-card-link { font-size: 12px; color: #8e6a2c; text-decoration: none; }
+.wb-card-link { font-size: 12px; color: var(--ochre); text-decoration: none; }
 .wb-list { list-style: none; margin: 0; padding: 0; }
 .wb-list li {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   padding: 8px 0;
-  border-top: 1px dashed #eee;
+  border-top: 1px dashed var(--paper-aged);
   font-size: 14px;
 }
 .wb-list li:first-child { border-top: 0; }
-.wb-list li small { color: #999; font-size: 12px; }
-.wb-list.danger li a { color: #c0392b; }
-.wb-empty { color: #999; font-size: 13px; margin: 4px 0; }
+.wb-list li small { color: var(--color-text-muted); font-size: 12px; }
+.wb-list.danger li a { color: var(--color-danger); }
+.wb-empty { color: var(--color-text-muted); font-size: 13px; margin: 4px 0; }
 .wb-categories { display: flex; flex-wrap: wrap; gap: 8px; }
 .wb-chip {
-  background: #f6f4ee;
-  border: 1px solid #e9e5d8;
-  border-radius: 16px;
+  background: var(--paper-white);
+  border: 1px solid var(--paper-cream);
+  border-radius: var(--radius-sm);
   padding: 4px 12px;
   font-size: 13px;
   text-decoration: none;
   color: inherit;
 }
-.wb-chip.tag { background: #fff; }
+.wb-chip.tag { background: var(--paper-white); }
 
 @media (max-width: 600px) {
   .wb-title { font-size: 22px; }
