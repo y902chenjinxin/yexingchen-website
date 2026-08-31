@@ -109,12 +109,12 @@ onMounted(reload)
 .trash-page { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
 .trash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .trash-header h1 { font-size: 22px; margin: 0; }
-.trash-hint { color: #999; font-size: 13px; margin: 0 0 16px; }
-.trash-section { background: #fff; border: 1px solid #ececec; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
-.trash-section h2 { font-size: 14px; margin: 0 0 8px; color: #666; }
+.trash-hint { color: var(--color-text-muted); font-size: 13px; margin: 0 0 16px; }
+.trash-section { background: var(--paper-white); border: 1px solid var(--paper-aged); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 12px; }
+.trash-section h2 { font-size: 14px; margin: 0 0 8px; color: var(--color-text-muted); }
 .trash-section ul { list-style: none; margin: 0; padding: 0; }
-.trash-section li { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px dashed #eee; font-size: 14px; }
+.trash-section li { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--paper-aged); font-size: 14px; }
 .trash-section li:first-child { border-top: 0; }
-.trash-section li small { color: #999; font-size: 12px; flex: 1; }
-.trash-empty { color: #999; text-align: center; padding: 40px 0; }
+.trash-section li small { color: var(--color-text-muted); font-size: 12px; flex: 1; }
+.trash-empty { color: var(--color-text-muted); text-align: center; padding: 40px 0; }
 </style>
