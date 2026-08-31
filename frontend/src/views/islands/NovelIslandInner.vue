@@ -21,13 +21,13 @@
         <div v-if="novelStore.loading" class="loading-state">
           <span class="loading-text">洞天正在打开书卷...</span>
         </div>
-        <div v-else-if="!novelStore.items || novelStore.items.length === 0" class="empty-state">
+        <div v-else-if="!novelStore.list || novelStore.list.length === 0" class="empty-state">
           <span class="empty-icon">📖</span>
           <span class="empty-text">暂无典籍收录，静待书卷成册</span>
         </div>
         <div v-else class="novel-items">
           <div
-            v-for="(item, index) in novelStore.items"
+            v-for="(item, index) in novelStore.list"
             :key="item.id"
             class="novel-item"
             :style="getItemStyle(index)"

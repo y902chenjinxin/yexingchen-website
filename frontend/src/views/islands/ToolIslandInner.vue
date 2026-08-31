@@ -21,13 +21,13 @@
         <div v-if="toolStore.loading" class="loading-state">
           <span class="loading-text">洞天正在解锁机关...</span>
         </div>
-        <div v-else-if="!toolStore.items || toolStore.items.length === 0" class="empty-state">
+        <div v-else-if="!toolStore.list || toolStore.list.length === 0" class="empty-state">
           <span class="empty-icon">⚙️</span>
           <span class="empty-text">暂无机关启用，静待天机显现</span>
         </div>
         <div v-else class="tool-items">
           <div
-            v-for="(item, index) in toolStore.items"
+            v-for="(item, index) in toolStore.list"
             :key="item.id"
             class="tool-item"
             :style="getItemStyle(index)"

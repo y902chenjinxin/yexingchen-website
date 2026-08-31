@@ -25,13 +25,13 @@
         <div v-if="logStore.loading" class="loading-state">
           <span class="loading-text">洞天正在铺开竹简...</span>
         </div>
-        <div v-else-if="!logStore.items || logStore.items.length === 0" class="empty-state">
+        <div v-else-if="!logStore.list || logStore.list.length === 0" class="empty-state">
           <span class="empty-icon">📝</span>
           <span class="empty-text">暂无墨迹记录，静待心路成文</span>
         </div>
         <div v-else class="log-items">
           <div
-            v-for="(item, index) in logStore.items"
+            v-for="(item, index) in logStore.list"
             :key="item.id"
             class="log-item"
             :style="getItemStyle(index)"

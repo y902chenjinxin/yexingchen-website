@@ -21,13 +21,13 @@
         <div v-if="videoStore.loading" class="loading-state">
           <span class="loading-text">洞天正在加载光影...</span>
         </div>
-        <div v-else-if="!videoStore.items || videoStore.items.length === 0" class="empty-state">
+        <div v-else-if="!videoStore.list || videoStore.list.length === 0" class="empty-state">
           <span class="empty-icon">🎬</span>
           <span class="empty-text">暂无影像收录，静待光影凝固</span>
         </div>
         <div v-else class="video-items">
           <div
-            v-for="(item, index) in videoStore.items"
+            v-for="(item, index) in videoStore.list"
             :key="item.id"
             class="video-item"
             :style="getItemStyle(index)"

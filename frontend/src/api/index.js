@@ -44,7 +44,10 @@ api.interceptors.response.use(
         ElMessage.error(detail)
       }
     } else {
-      ElMessage.error('网络错误，请检查连接')
+      // 请求被主动取消（页面跳转、组件卸载、AbortController）不算错误，不弹提示
+      if (error.code !== 'ERR_CANCELED' && error.name !== 'CanceledError') {
+        ElMessage.error('网络错误，请检查连接')
+      }
     }
     return Promise.reject(error)
   }

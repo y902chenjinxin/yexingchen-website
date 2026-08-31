@@ -32,13 +32,13 @@
         <div v-if="musicStore.loading" class="loading-state">
           <span class="loading-text">洞天正在加载天籁之音...</span>
         </div>
-        <div v-else-if="!musicStore.items || musicStore.items.length === 0" class="empty-state">
+        <div v-else-if="!musicStore.list || musicStore.list.length === 0" class="empty-state">
           <span class="empty-icon">🎵</span>
           <span class="empty-text">暂无音乐收录，静待仙音降临</span>
         </div>
         <div v-else class="music-items">
           <div
-            v-for="(item, index) in musicStore.items"
+            v-for="(item, index) in musicStore.list"
             :key="item.id"
             class="music-item"
             :style="getItemStyle(index)"
