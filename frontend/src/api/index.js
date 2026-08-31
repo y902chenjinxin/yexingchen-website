@@ -30,6 +30,7 @@ api.interceptors.response.use(
     if (error.response) {
       const status = error.response.status
       const detail = error.response.data?.detail || '请求失败'
+      const message = typeof detail === 'string' ? detail : detail?.msg || '请求失败'
 
       if (status === 401) {
         localStorage.removeItem('token')
@@ -41,7 +42,7 @@ api.interceptors.response.use(
       } else if (status === 404) {
         ElMessage.error('资源不存在')
       } else {
-        ElMessage.error(detail)
+        ElMessage.error(message)
       }
     } else {
       // 请求被主动取消（页面跳转、组件卸载、AbortController）不算错误，不弹提示

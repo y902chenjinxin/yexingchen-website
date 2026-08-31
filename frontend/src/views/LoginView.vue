@@ -330,7 +330,7 @@ function getParticleStyle(i) {
   }
 }
 
-function getWindParticleStyle(i) {
+function getWindParticleStyle() {
   // 使用伪随机数生成器，保证每次页面刷新粒子位置一致
   const x = 40 + randFloat(0, 20)
   const y = 30 + randFloat(0, 40)

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
 from app.schemas.common import *
+from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user
 from app.models.user import Video
 from app.services.log_service import log_action
@@ -73,7 +74,7 @@ async def upload_video(
             file, "videos", ALLOWED_VIDEO_EXTENSIONS, settings.MAX_VIDEO_SIZE
         )
     except ValueError as e:
-        raise_error(ErrCode.INTERNAL_ERROR, str(e))
+        raise_error(ErrCode.INVALID_PARAM, str(e))
 
     cover_path = ""
     if cover:

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from app.database import get_db
 from app.schemas.common import *
+from app.schemas.errors import ErrCode, raise_error
 from app.services.auth_service import send_register_code, verify_code
 from app.utils.security import verify_password, create_access_token, get_current_user
 from app.utils.rate_limit import login_limiter, register_limiter

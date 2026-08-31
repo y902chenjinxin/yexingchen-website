@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
+from fastapi import APIRouter, Depends, UploadFile, File, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import os
 import math
 from app.database import get_db
 from app.schemas.common import *
+from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user, require_super_admin
 from app.models.user import GlobalSetting
 from app.utils.file_utils import save_upload_file, ALLOWED_MUSIC_EXTENSIONS
