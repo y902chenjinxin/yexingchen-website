@@ -73,7 +73,7 @@ async def upload_video(
             file, "videos", ALLOWED_VIDEO_EXTENSIONS, settings.MAX_VIDEO_SIZE
         )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise_error(ErrCode.INTERNAL_ERROR, str(e))
 
     cover_path = ""
     if cover:
@@ -113,7 +113,7 @@ async def update_video(
 ):
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="视频不存在")
+        raise_error(ErrCode.VIDEO_NOT_FOUND)
 
     if req.title is not None:
         video.title = req.title
@@ -140,7 +140,7 @@ async def delete_video(
 ):
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="视频不存在")
+        raise_error(ErrCode.VIDEO_NOT_FOUND)
 
     delete_file(video.file_path)
     if video.cover_path:

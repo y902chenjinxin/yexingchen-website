@@ -74,7 +74,7 @@ async def upload_novel(
             file, "novels", ALLOWED_NOVEL_EXTENSIONS, settings.MAX_NOVEL_SIZE
         )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise_error(ErrCode.INTERNAL_ERROR, str(e))
 
     cover_path = ""
     if cover:
@@ -114,7 +114,7 @@ async def update_novel(
 ):
     novel = db.query(Novel).filter(Novel.id == novel_id).first()
     if not novel:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="小说不存在")
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
 
     if req.title is not None:
         novel.title = req.title
@@ -141,7 +141,7 @@ async def delete_novel(
 ):
     novel = db.query(Novel).filter(Novel.id == novel_id).first()
     if not novel:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="小说不存在")
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
 
     delete_file(novel.file_path)
     if novel.cover_path:

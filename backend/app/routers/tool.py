@@ -64,7 +64,7 @@ async def update_tool(
 ):
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
     if not tool:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工具不存在")
+        raise_error(ErrCode.TOOL_NOT_FOUND)
 
     if req.title is not None:
         tool.title = req.title
@@ -91,7 +91,7 @@ async def delete_tool(
 ):
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
     if not tool:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工具不存在")
+        raise_error(ErrCode.TOOL_NOT_FOUND)
 
     log_action(db, current_user["user_id"], "delete", "tool", tool_id,
                detail=f"删除工具：{tool.title}")

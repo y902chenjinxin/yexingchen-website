@@ -33,7 +33,7 @@ async def stream_bgm(bgm_id: str):
     bgm_path = os.path.join(os.path.dirname(__file__), "..", "..", "uploads", "bgm", f"{bgm_id}.mp3")
 
     if not os.path.exists(bgm_path):
-        raise HTTPException(status_code=404, detail="音乐文件不存在")
+        raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐文件不存在")
 
     # 检测文件真实格式
     with open(bgm_path, 'rb') as f:
@@ -74,7 +74,7 @@ async def update_bg_music(
             file, "music", ALLOWED_MUSIC_EXTENSIONS, settings.MAX_MUSIC_SIZE
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise_error(ErrCode.INVALID_PARAM, str(e))
 
     setting = db.query(GlobalSetting).filter(GlobalSetting.key == "bg_music").first()
     if setting:

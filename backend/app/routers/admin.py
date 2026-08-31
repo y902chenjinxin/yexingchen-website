@@ -23,7 +23,7 @@ async def create_user(
     # 检查邮箱是否已存在
     existing = db.query(User).filter(User.email == req.email).first()
     if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该邮箱已注册")
+        raise_error(ErrCode.REG_EMAIL_EXISTS)
 
     user = User(
         email=req.email,
@@ -83,7 +83,7 @@ async def approve_user(
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
     user.status = "approved"
     db.commit()
@@ -102,7 +102,7 @@ async def reject_user(
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
     user.status = "rejected"
     db.commit()
@@ -122,16 +122,16 @@ async def update_user(
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
     if req.role is not None:
         if req.role not in ("normal", "super_admin"):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的角色")
+            raise_error(ErrCode.INVALID_PARAM, "无效的角色")
         user.role = req.role
 
     if req.status is not None:
         if req.status not in ("pending", "approved", "rejected"):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的状态")
+            raise_error(ErrCode.INVALID_PARAM, "无效的状态")
         user.status = req.status
 
     if req.allowed_islands is not None:
@@ -159,15 +159,15 @@ async def update_user_role(
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
     # 验证角色
     if req.role not in ("user", "admin", "super_admin"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的角色")
+        raise_error(ErrCode.INVALID_PARAM, "无效的角色")
 
     # 不能修改自己的超级管理员权限
     if user_id == current_user["user_id"] and req.is_super_admin is not None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能修改自己的超级管理员权限")
+        raise_error(ErrCode.AUTH_PERMISSION_DENIED, "不能修改自己的超级管理员权限")
 
     user.role = req.role
     if req.is_super_admin is not None:
@@ -188,11 +188,11 @@ async def delete_user(
     current_user: dict = Depends(require_super_admin)
 ):
     if user_id == current_user["user_id"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能删除自己")
+        raise_error(ErrCode.AUTH_PERMISSION_DENIED, "不能删除自己")
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
     log_action(db, current_user["user_id"], "delete", target_type="user", target_id=user_id,
               detail=f"删除用户 {user.email}")

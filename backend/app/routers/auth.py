@@ -20,14 +20,11 @@ async def register(req: RegisterRequest, request: Request, db: Session = Depends
     # 检查注册限流
     rate_check = register_limiter.check_and_record(db, client_ip, req.email)
     if not rate_check["allowed"]:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"注册过于频繁，请{rate_check['retry_after']}分钟后重试"
-        )
+        raise_error(ErrCode.AUTH_RATE_LIMITED, f"注册过于频繁，请{rate_check['retry_after']}分钟后重试")
 
     success, msg = send_register_code(db, req.email)
     if not success:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+        raise_error(ErrCode.INVALID_PARAM, msg)
     return ResponseBase(msg=msg)
 
 
@@ -35,7 +32,7 @@ async def register(req: RegisterRequest, request: Request, db: Session = Depends
 async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
     success, msg = verify_code(db, req.email, req.code, req.password)
     if not success:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+        raise_error(ErrCode.INVALID_PARAM, msg)
     return ResponseBase(msg=msg)
 
 
@@ -46,22 +43,19 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
     # 检查IP是否被封禁
     rate_check = login_limiter.check_and_record(db, client_ip, False, req.email)
     if not rate_check["allowed"]:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"登录过于频繁，请{rate_check['retry_after']}分钟后重试"
-        )
+        raise_error(ErrCode.AUTH_RATE_LIMITED, f"登录过于频繁，请{rate_check['retry_after']}分钟后重试")
 
     user = db.query(User).filter(User.email == req.email).first()
 
     if not user or not verify_password(req.password, user.password_hash):
         login_limiter.check_and_record(db, client_ip, False, req.email)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账密输入错误，请重试")
+        raise_error(ErrCode.AUTH_INVALID_CREDENTIALS, "账密输入错误，请重试")
 
     if user.status == "pending":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号待审批，请联系管理员")
+        raise_error(ErrCode.AUTH_USER_STATUS_INVALID, "账号待审批，请联系管理员")
 
     if user.status == "rejected":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号已被拒绝，请联系管理员")
+        raise_error(ErrCode.AUTH_USER_STATUS_INVALID, "账号已被拒绝，请联系管理员")
 
     # 成功登录，清除失败记录
     login_limiter.check_and_record(db, client_ip, True)
@@ -106,7 +100,7 @@ async def logout(request: Request, current_user: dict = Depends(get_current_user
 async def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == current_user["user_id"]).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
     return ResponseBase(
         data={
@@ -135,7 +129,7 @@ async def update_me(
 ):
     user = db.query(User).filter(User.id == current_user["user_id"]).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
     if req.nickname is not None:
         user.nickname = req.nickname.strip()[:100]
@@ -170,19 +164,19 @@ async def change_password(
 ):
     user = db.query(User).filter(User.id == current_user["user_id"]).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
     # 验证旧密码
     if not verify_password(req.old_password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="原密码错误")
+        raise_error(ErrCode.AUTH_INVALID_CREDENTIALS, "原密码错误")
 
     # 验证新密码复杂度
     if len(req.new_password) < 8:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="新密码长度至少8位")
+        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码长度至少8位")
     if not any(c.isupper() for c in req.new_password) or not any(c.islower() for c in req.new_password):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="新密码需包含大小写字母")
+        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需包含大小写字母")
     if not any(c.isdigit() for c in req.new_password):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="新密码需包含数字")
+        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需包含数字")
 
     # 更新密码
     from app.utils.security import get_password_hash

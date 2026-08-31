@@ -73,7 +73,7 @@ async def upload_music(
             file, "music", ALLOWED_MUSIC_EXTENSIONS, settings.MAX_MUSIC_SIZE
         )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise_error(ErrCode.INTERNAL_ERROR, str(e))
 
     music = Music(
         title=title,
@@ -102,7 +102,7 @@ async def update_music(
 ):
     music = db.query(Music).filter(Music.id == music_id).first()
     if not music:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="音乐不存在")
+        raise_error(ErrCode.MUSIC_NOT_FOUND)
 
     if req.title is not None:
         music.title = req.title
@@ -127,7 +127,7 @@ async def delete_music(
 ):
     music = db.query(Music).filter(Music.id == music_id).first()
     if not music:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="音乐不存在")
+        raise_error(ErrCode.MUSIC_NOT_FOUND)
 
     delete_file(music.file_path)
 
