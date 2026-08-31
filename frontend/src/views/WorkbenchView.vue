@@ -7,28 +7,28 @@
 
     <section class="wb-actions">
       <router-link to="/notes/new" class="wb-action primary">
-        <span class="wb-action-icon">✎</span>
+        <el-icon class="wb-action-icon"><Edit /></el-icon>
         <span class="wb-action-text">
           <strong>快速记录</strong>
           <small>新建一条草稿笔记，自动保存</small>
         </span>
       </router-link>
       <router-link to="/assistant" class="wb-action">
-        <span class="wb-action-icon">⚘</span>
+        <el-icon class="wb-action-icon"><ChatDotRound /></el-icon>
         <span class="wb-action-text">
           <strong>AI 助手</strong>
           <small>整理、摘要、生成任务</small>
         </span>
       </router-link>
       <router-link to="/assets" class="wb-action">
-        <span class="wb-action-icon">▣</span>
+        <el-icon class="wb-action-icon"><FolderOpened /></el-icon>
         <span class="wb-action-text">
           <strong>内容资产</strong>
           <small>网页、图片、PDF</small>
         </span>
       </router-link>
       <router-link to="/tasks" class="wb-action">
-        <span class="wb-action-icon">✓</span>
+        <el-icon class="wb-action-icon"><Check /></el-icon>
         <span class="wb-action-text">
           <strong>任务</strong>
           <small>今日待办与跟进</small>
@@ -112,11 +112,11 @@
           <h2>分类入口</h2>
         </header>
         <div class="wb-categories">
-          <router-link to="/notes" class="wb-chip">📝 笔记</router-link>
-          <router-link to="/assets?type=link" class="wb-chip">🔗 网页</router-link>
-          <router-link to="/assets?type=image" class="wb-chip">🖼 图片</router-link>
-          <router-link to="/assets?type=pdf" class="wb-chip">📄 PDF</router-link>
-          <router-link to="/tasks" class="wb-chip">✓ 任务</router-link>
+          <router-link to="/notes" class="wb-chip"><el-icon class="wb-chip-icon"><Document /></el-icon>笔记</router-link>
+          <router-link to="/assets?type=link" class="wb-chip"><el-icon class="wb-chip-icon"><Link /></el-icon>网页</router-link>
+          <router-link to="/assets?type=image" class="wb-chip"><el-icon class="wb-chip-icon"><Picture /></el-icon>图片</router-link>
+          <router-link to="/assets?type=pdf" class="wb-chip"><el-icon class="wb-chip-icon"><Document /></el-icon>PDF</router-link>
+          <router-link to="/tasks" class="wb-chip"><el-icon class="wb-chip-icon"><Check /></el-icon>任务</router-link>
         </div>
       </section>
 
@@ -125,12 +125,12 @@
           <h2>旧模块</h2>
         </header>
         <div class="wb-categories">
-          <router-link to="/home" class="wb-chip">🏝 浮空岛首页</router-link>
-          <router-link to="/island/music" class="wb-chip">🎵 音乐</router-link>
-          <router-link to="/island/novel" class="wb-chip">📖 小说</router-link>
-          <router-link to="/island/video" class="wb-chip">🎬 视频</router-link>
-          <router-link to="/island/log" class="wb-chip">📝 日志</router-link>
-          <router-link to="/island/tool" class="wb-chip">⚙️ 工具</router-link>
+          <router-link to="/home" class="wb-chip"><el-icon class="wb-chip-icon"><Compass /></el-icon>浮空岛首页</router-link>
+          <router-link to="/island/music" class="wb-chip"><el-icon class="wb-chip-icon"><Headset /></el-icon>音乐</router-link>
+          <router-link to="/island/novel" class="wb-chip"><el-icon class="wb-chip-icon"><Reading /></el-icon>小说</router-link>
+          <router-link to="/island/video" class="wb-chip"><el-icon class="wb-chip-icon"><VideoCamera /></el-icon>视频</router-link>
+          <router-link to="/island/log" class="wb-chip"><el-icon class="wb-chip-icon"><Document /></el-icon>日志</router-link>
+          <router-link to="/island/tool" class="wb-chip"><el-icon class="wb-chip-icon"><Tools /></el-icon>工具</router-link>
         </div>
       </section>
 
@@ -154,6 +154,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { Edit, FolderOpened, Check, Document, Link, Picture, Headset, VideoCamera, Reading, Tools, Compass } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { workbenchApi } from '@/api/workbench'
 import { useWorkbenchStore } from '@/stores/workbench'
@@ -275,5 +276,18 @@ onMounted(load)
   .wb-title { font-size: 22px; }
   .wb-actions { grid-template-columns: 1fr; }
   .wb-grid { grid-template-columns: 1fr; }
+}
+
+.wb-chip-icon {
+  margin-right: 4px;
+  font-size: 14px;
+  vertical-align: -0.15em;
+}
+.wb-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
 }
 </style>

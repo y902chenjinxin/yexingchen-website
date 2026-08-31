@@ -71,8 +71,8 @@
         <li v-for="a in assets" :key="a.id">
           <span class="asset-thumb">
             <img v-if="a.type === 'image'" :src="a.previewUrl" :alt="a.title" @load="a.objectUrl && URL.revokeObjectURL(a.objectUrl)" />
-            <span v-else-if="a.type === 'pdf'" class="pdf-chip">📄 {{ a.title }}</span>
-            <span v-else>🔗 {{ a.title }}</span>
+            <span v-else-if="a.type === 'pdf'" class="pdf-chip"><el-icon class="inline-icon"><Document /></el-icon> {{ a.title }}</span>
+            <span v-else><el-icon class="inline-icon"><Link /></el-icon> {{ a.title }}</span>
           </span>
           <span class="asset-title">{{ a.title }}</span>
           <span class="asset-size">{{ humanSize(a.file_size) }}</span>
@@ -154,6 +154,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
 import { classifyPaste, pickAcceptedFromDrop, summarizeIgnored } from '@/utils/paste-drop'
 import {
+import { Document, Link } from '@element-plus/icons-vue'
   hydrateNoteImages,
   imagePlaceholderHtml,
   pdfPlaceholderHtml,

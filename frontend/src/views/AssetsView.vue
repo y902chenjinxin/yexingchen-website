@@ -36,7 +36,7 @@
           />
           <span v-else-if="a.type === 'pdf' && !a.objectUrl" class="asset-loading">PDF 加载失败</span>
           <a v-else-if="a.type === 'link'" :href="a.url" target="_blank" rel="noopener noreferrer" class="asset-link-card">
-            🔗 {{ a.url }}
+            <el-icon class="inline-icon"><Link /></el-icon> {{ a.url }}
           </a>
         </div>
         <div class="asset-info">
@@ -101,6 +101,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
+import { Link } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const items = ref([])
