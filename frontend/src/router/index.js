@@ -20,6 +20,54 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/workbench',
+    name: 'Workbench',
+    component: () => import('@/views/WorkbenchView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/notes',
+    name: 'Notes',
+    component: () => import('@/views/NotesView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/notes/new',
+    name: 'NoteNew',
+    component: () => import('@/views/NoteEditorView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/notes/:id',
+    name: 'NoteEditor',
+    component: () => import('@/views/NoteEditorView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/tasks',
+    name: 'Tasks',
+    component: () => import('@/views/TasksView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/assets',
+    name: 'Assets',
+    component: () => import('@/views/AssetsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/assistant',
+    name: 'Assistant',
+    component: () => import('@/views/AssistantView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/trash',
+    name: 'Trash',
+    component: () => import('@/views/TrashView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/island/music',
     name: 'MusicIsland',
     component: () => import('@/views/MusicIsland.vue'),
