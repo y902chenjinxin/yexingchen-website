@@ -39,7 +39,7 @@ onMounted(async () => {
 
   // 如果已登录且在登录页，自动跳转到首页
   if (auth.isLoggedIn && route.path === '/login') {
-    router.push('/home')
+    router.push('/workbench')
   }
 })
 
