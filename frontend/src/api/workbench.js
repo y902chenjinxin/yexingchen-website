@@ -127,8 +127,15 @@ export const workbenchApi = {
 
   // AI
   ai: {
-    preview: (data) => api.post('/workbench/ai/preview', data),
-    // invoke 强制要求 conversation_id
+    // === Provider 配置（用户级，明文存储 Key） ===
+    providersList: () => api.get('/workbench/ai/providers'),
+    providerCreate: (data) => api.post('/workbench/ai/providers', data),
+    providerUpdate: (id, data) => api.put('/workbench/ai/providers/' + id, data),
+    providerDelete: (id) => api.delete('/workbench/ai/providers/' + id),
+    providerTest: (id) => api.post('/workbench/ai/providers/' + id + '/test'),
+    // === 对话/调用 ===
+        preview: (data) => api.post('/workbench/ai/preview', data),
+    // invoke 强制要求 conversation_id；data.provider_id 可选指定 provider
     invoke: (data) => api.post('/workbench/ai/invoke', data),
     // AI 结果应用：summary / organize / suggest_tags / suggest_task
     apply: (data) => api.post('/workbench/ai/apply', data),

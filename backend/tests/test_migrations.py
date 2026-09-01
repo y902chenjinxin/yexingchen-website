@@ -56,6 +56,7 @@ EXPECTED_TABLES = {
     "xuanhuang_task_links",
     "xuanhuang_tasks",
     "xuanhuang_ai_conversation_links",
+    "user_ai_providers",
 }
 
 

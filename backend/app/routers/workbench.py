@@ -196,6 +196,7 @@ class AiInvokeIn(BaseModel):
     note_id: Optional[int] = None
     content: Optional[str] = None
     conversation_id: int  # 必填，强制校验归属
+    provider_id: Optional[int] = None  # 指定 provider；不传则用默认；都没则 fake
 
 
 class AiApplyIn(BaseModel):
@@ -1339,7 +1340,30 @@ def ai_invoke(
 
     preview = preview_input_scope(content, payload.ability)
     cleaned_content = sanitize_text(content)
-    resp = _ability_dispatch(payload.ability, cleaned_content)
+
+    # 选 provider：payload.provider_id → 默认 → 都没有则 FakeProvider
+    user_cfg = _resolve_user_provider(db, uid, payload.provider_id)
+    if user_cfg:
+        active_provider = _build_http_provider_from_config(user_cfg)
+        provider_name = f"{user_cfg.provider_key}:{user_cfg.display_name}"
+        model_name = user_cfg.model_name
+    else:
+        active_provider = FakeProvider()
+        provider_name = "fake"
+        model_name = "fake-1"
+
+    req = AiRequest(
+        ability=payload.ability,
+        content=cleaned_content,
+    )
+    resp = active_provider.invoke(req)
+    # AiResponse 兼容
+    class _Resp:
+        def __init__(self, ability, text, data, provider, model, raw):
+            self.ability, self.text, self.data = ability, text, data
+            self.provider, self.model = provider, model
+            self._raw_provider = raw
+    resp = _Resp(payload.ability, resp.text, resp.data, provider_name, model_name, active_provider)
 
     # 入库
     scope_text = json.dumps(preview, ensure_ascii=False)
@@ -1364,8 +1388,8 @@ def ai_invoke(
     db.commit()
     db.refresh(assistant_msg)
 
-    # 标注是 fake 还是真 AI
-    provider = resp.provider
+    # 标注 provider 信息（已在上面计算过 provider_name）
+    provider = provider_name
     is_fake = isinstance(getattr(resp, "_raw_provider", None), FakeProvider) or provider == "fake"
 
     return ok({
@@ -1373,7 +1397,7 @@ def ai_invoke(
         "text": resp.text,
         "data": resp.data,
         "provider": provider,
-        "model": resp.model,
+        "model": model_name,
         "is_fake": is_fake,
         "conversation_id": conv.id,
         "assistant_message_id": assistant_msg.id,
@@ -1689,4 +1713,237 @@ def ai_unlink(
 # ============================================================
 # 注册到 main
 # ============================================================
+
+# ============================================================
+# AI Provider 配置（用户级，明文存储 Key 按用户授权）
+# ============================================================
+import json as _json
+import urllib.error as _urllib_error
+import urllib.request as _urllib_request
+from app.models.ai_provider import UserAiProvider
+from app.schemas.ai_provider import (
+    AiProviderCreateIn,
+    AiProviderOut,
+    AiProviderTestResult,
+    AiProviderUpdateIn,
+)
+
+
+def _mask_api_key(key: str) -> str:
+    """前后各 4 位，中间 ***。"""
+    if not key or len(key) < 8:
+        return "***"
+    return key[:4] + "***" + key[-4:]
+
+
+def _to_provider_out(p: UserAiProvider) -> AiProviderOut:
+    return AiProviderOut(
+        id=p.id,
+        provider_key=p.provider_key,
+        display_name=p.display_name,
+        api_key_masked=_mask_api_key(p.api_key),
+        base_url=p.base_url,
+        model_name=p.model_name,
+        enabled=p.enabled,
+        is_default=p.is_default,
+        created_at=p.created_at,
+        updated_at=p.updated_at,
+    )
+
+
+def _build_http_provider_from_config(cfg: UserAiProvider) -> HttpProvider:
+    """从 DB 配置构造 HttpProvider。base_url 缺省用 OpenAI 官方。"""
+    base_url = cfg.base_url or "https://api.openai.com/v1"
+    return HttpProvider(
+        base_url=base_url,
+        model=cfg.model_name,
+        api_key=cfg.api_key,
+        timeout=30,
+    )
+
+
+def _resolve_user_provider(
+    db: Session, user_id: int, provider_id: Optional[int]
+) -> Optional[UserAiProvider]:
+    """根据 provider_id 解析 user provider；不传则用默认；都没则 None（用 FakeProvider）。"""
+    if provider_id:
+        cfg = (
+            db.query(UserAiProvider)
+            .filter(
+                UserAiProvider.id == provider_id,
+                UserAiProvider.user_id == user_id,
+                UserAiProvider.enabled == True,  # noqa: E712
+            )
+            .first()
+        )
+        return cfg
+    return (
+        db.query(UserAiProvider)
+        .filter(
+            UserAiProvider.user_id == user_id,
+            UserAiProvider.enabled == True,  # noqa: E712
+            UserAiProvider.is_default == True,  # noqa: E712
+        )
+        .first()
+    )
+
+
+@router.get("/ai/providers", response_model=List[AiProviderOut])
+def ai_providers_list(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """列出当前用户的所有 AI Provider 配置（Key 已脱敏）。"""
+    rows = (
+        db.query(UserAiProvider)
+        .filter(UserAiProvider.user_id == current_user["user_id"])
+        .order_by(UserAiProvider.is_default.desc(), UserAiProvider.id.asc())
+        .all()
+    )
+    return [_to_provider_out(r) for r in rows]
+
+
+@router.post("/ai/providers", response_model=AiProviderOut, status_code=201)
+def ai_providers_create(
+    payload: AiProviderCreateIn,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """创建 AI Provider 配置。
+
+    - 若 is_default=True，将同用户的其他 default 置 False（单选默认）。
+    """
+    uid = current_user["user_id"]
+    if payload.is_default:
+        db.query(UserAiProvider).filter(
+            UserAiProvider.user_id == uid, UserAiProvider.is_default == True  # noqa
+        ).update({"is_default": False})
+    row = UserAiProvider(
+        user_id=uid,
+        provider_key=payload.provider_key,
+        display_name=payload.display_name,
+        api_key=payload.api_key,
+        base_url=payload.base_url,
+        model_name=payload.model_name,
+        enabled=payload.enabled,
+        is_default=payload.is_default,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _to_provider_out(row)
+
+
+@router.put("/ai/providers/{provider_id}", response_model=AiProviderOut)
+def ai_providers_update(
+    provider_id: int,
+    payload: AiProviderUpdateIn,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """更新 provider 配置。is_default=True 时其他 default 改 False。"""
+    uid = current_user["user_id"]
+    row = (
+        db.query(UserAiProvider)
+        .filter(UserAiProvider.id == provider_id, UserAiProvider.user_id == uid)
+        .first()
+    )
+    if not row:
+        raise_http(404, "AI Provider 配置不存在", 404)
+    data = payload.model_dump(exclude_unset=True)
+    if data.get("is_default") and not row.is_default:
+        db.query(UserAiProvider).filter(
+            UserAiProvider.user_id == uid, UserAiProvider.is_default == True  # noqa
+        ).update({"is_default": False})
+    for k, v in data.items():
+        setattr(row, k, v)
+    db.commit()
+    db.refresh(row)
+    return _to_provider_out(row)
+
+
+@router.delete("/ai/providers/{provider_id}", status_code=204)
+def ai_providers_delete(
+    provider_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    uid = current_user["user_id"]
+    row = (
+        db.query(UserAiProvider)
+        .filter(UserAiProvider.id == provider_id, UserAiProvider.user_id == uid)
+        .first()
+    )
+    if not row:
+        raise_http(404, "AI Provider 配置不存在", 404)
+    db.delete(row)
+    db.commit()
+    return None
+
+
+@router.post("/ai/providers/{provider_id}/test", response_model=AiProviderTestResult)
+def ai_providers_test(
+    provider_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """测试连接：用配置的 api_key 发一个最小 chat 请求验证有效。
+
+    失败也返回 200，body.ok=False；只有"配置不存在"才 404。
+    """
+    uid = current_user["user_id"]
+    cfg = (
+        db.query(UserAiProvider)
+        .filter(UserAiProvider.id == provider_id, UserAiProvider.user_id == uid)
+        .first()
+    )
+    if not cfg:
+        raise_http(404, "AI Provider 配置不存在", 404)
+
+    base_url = (cfg.base_url or "https://api.openai.com/v1").rstrip("/")
+    url = f"{base_url}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {cfg.api_key}",
+        "Content-Type": "application/json",
+    }
+    payload_body = {
+        "model": cfg.model_name,
+        "messages": [{"role": "user", "content": "ping"}],
+        "max_tokens": 1,
+    }
+    body_bytes = _json.dumps(payload_body).encode("utf-8")
+    req = _urllib_request.Request(url, data=body_bytes, headers=headers, method="POST")
+    try:
+        with _urllib_request.urlopen(req, timeout=15) as resp:
+            status = resp.getcode()
+            snippet = resp.read(200).decode("utf-8", errors="replace")
+        if status == 200:
+            return AiProviderTestResult(
+                ok=True,
+                message=f"连接成功（HTTP {status}）",
+                provider_key=cfg.provider_key,
+                model_name=cfg.model_name,
+            )
+        return AiProviderTestResult(
+            ok=False,
+            message=f"HTTP {status}：{snippet}",
+            provider_key=cfg.provider_key,
+            model_name=cfg.model_name,
+        )
+    except _urllib_error.HTTPError as e:
+        snippet = e.read(200).decode("utf-8", errors="replace") if hasattr(e, "read") else ""
+        return AiProviderTestResult(
+            ok=False,
+            message=f"HTTP {e.code}：{snippet}",
+            provider_key=cfg.provider_key,
+            model_name=cfg.model_name,
+        )
+    except Exception as exc:
+        return AiProviderTestResult(
+            ok=False,
+            message=f"请求失败：{type(exc).__name__}: {str(exc)[:200]}",
+            provider_key=cfg.provider_key,
+            model_name=cfg.model_name,
+        )
+
 __all__ = ["router"]

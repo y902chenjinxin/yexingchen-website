@@ -2,7 +2,27 @@
   <div class="assistant-page">
     <header class="assistant-header">
       <h1>AI 助手</h1>
-      <div>
+      <div class="header-actions">
+        <el-select
+          v-model="currentProviderId"
+          placeholder="选择 Provider"
+          style="width: 220px"
+          @change="onProviderChange"
+        >
+          <el-option
+            v-for="p in providers"
+            :key="p.id"
+            :value="p.id"
+            :label="p.display_name + ' · ' + p.model_name"
+          >
+            <span style="float:left">{{ p.display_name }}</span>
+            <span style="float:right;font-size:12px;color:#999;margin-left:8px">
+              {{ p.provider_key }} · {{ p.is_default ? '默认' : '' }}
+            </span>
+          </el-option>
+          <el-option v-if="!providers.length" :value="null" disabled label="（未配置 Provider，AI 使用 fake）" />
+        </el-select>
+        <el-button @click="openProviders">配置 AI</el-button>
         <el-button @click="showCreate = true">新建对话</el-button>
       </div>
     </header>
@@ -135,6 +155,80 @@
         <el-button type="primary" @click="create">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- AI Provider 配置弹窗 -->
+    <el-dialog v-model="showProviders" title="配置 AI Provider" width="640px" :close-on-click-modal="false">
+      <p class="modal-tip">
+        支持 OpenAI 兼容协议（GPT / DeepSeek / 通义 / Qwen / GLM / 月之暗面 等）。
+        Key 按你的授权明文存储，访问 AI 时直接调用。
+      </p>
+
+      <div v-if="!providers.length && !showAddProvider" class="empty-providers">
+        <p>还没配置 AI Provider。</p>
+        <el-button type="primary" @click="openAddProvider">添加第一个 Provider</el-button>
+      </div>
+
+      <div v-else class="provider-list">
+        <div v-for="p in providers" :key="p.id" class="provider-item">
+          <div class="provider-info">
+            <div class="provider-name">{{ p.display_name }}</div>
+            <div class="provider-meta">
+              {{ p.provider_key }} · {{ p.model_name }}
+              <span v-if="p.base_url"> · {{ p.base_url }}</span>
+              <span v-if="p.is_default" class="badge">默认</span>
+              <span v-if="!p.enabled" class="badge-off">已停用</span>
+            </div>
+            <div class="provider-key">Key: {{ p.api_key_masked }}</div>
+          </div>
+          <div class="provider-actions">
+            <el-button size="small" :loading="testingId === p.id" @click="testProvider(p.id)">测试</el-button>
+            <el-button size="small" @click="editProvider(p)">编辑</el-button>
+            <el-button v-if="!p.is_default" size="small" @click="setDefault(p.id)">设为默认</el-button>
+            <el-button size="small" type="danger" @click="delProvider(p)">删除</el-button>
+          </div>
+        </div>
+        <el-button @click="openAddProvider" style="margin-top: 12px;">
+          {{ providers.length ? '+ 添加新 Provider' : '添加 Provider' }}
+        </el-button>
+      </div>
+
+      <div v-if="showAddProvider" class="add-provider-form">
+        <h4>{{ editingProviderId ? '编辑 Provider' : '添加 Provider' }}</h4>
+        <el-form :model="newProvider" label-width="100px" label-position="left">
+          <el-form-item label="显示名称">
+            <el-input v-model="newProvider.display_name" placeholder="我的 GPT-4" />
+          </el-form-item>
+          <el-form-item label="提供商类型">
+            <el-select v-model="newProvider.provider_key">
+              <el-option label="OpenAI 兼容" value="openai" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="API Key">
+            <el-input v-model="newProvider.api_key" type="password" show-password placeholder="sk-..." />
+          </el-form-item>
+          <el-form-item label="Base URL（可选）">
+            <el-input v-model="newProvider.base_url" placeholder="https://api.openai.com/v1" />
+          </el-form-item>
+          <el-form-item label="模型名称">
+            <el-input v-model="newProvider.model_name" placeholder="gpt-4o-mini" />
+          </el-form-item>
+          <el-form-item>
+            <el-checkbox v-model="newProvider.is_default">设为默认</el-checkbox>
+            <el-checkbox v-model="newProvider.enabled" style="margin-left: 16px;">启用</el-checkbox>
+          </el-form-item>
+          <div class="form-actions">
+            <el-button @click="cancelProviderForm">取消</el-button>
+            <el-button @click="saveProvider" type="primary" :loading="savingProvider">
+              {{ editingProviderId ? '保存' : '添加' }}
+            </el-button>
+          </div>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <el-button @click="showProviders = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -145,6 +239,24 @@ import { workbenchApi } from '@/api/workbench'
 import NoteSelect from '@/components/common/NoteSelect.vue'
 
 const conversations = ref([])
+
+// === AI Provider 配置 ===
+const providers = ref([])
+const currentProviderId = ref(null)
+const showProviders = ref(false)
+const showAddProvider = ref(false)
+const editingProviderId = ref(null)
+const testingId = ref(null)
+const savingProvider = ref(false)
+const newProvider = ref({
+  provider_key: 'openai',
+  display_name: '',
+  api_key: '',
+  base_url: '',
+  model_name: 'gpt-4o-mini',
+  is_default: false,
+  enabled: true,
+})
 const activeId = ref(null)
 const messages = ref([])
 const draft = ref('')
@@ -328,6 +440,136 @@ async function create() {
   open(res.data.id)
 }
 
+
+// === AI Provider 配置 ===
+async function loadProviders() {
+  try {
+    const r = await workbenchApi.ai.providersList()
+    providers.value = r.data || []
+    // 恢复当前选中的 provider（如果还存在），否则选默认或第一个
+    if (!providers.value.find(p => p.id === currentProviderId.value)) {
+      const def = providers.value.find(p => p.is_default && p.enabled)
+      currentProviderId.value = def ? def.id : (providers.value[0]?.id ?? null)
+    }
+  } catch (e) {
+    providers.value = []
+    currentProviderId.value = null
+  }
+}
+
+function openProviders() {
+  showProviders.value = true
+  loadProviders()
+}
+
+function resetProviderForm() {
+  newProvider.value = {
+    provider_key: 'openai',
+    display_name: '',
+    api_key: '',
+    base_url: '',
+    model_name: 'gpt-4o-mini',
+    is_default: false,
+    enabled: true,
+  }
+  editingProviderId.value = null
+  showAddProvider.value = false
+}
+
+function openAddProvider() {
+  resetProviderForm()
+  showAddProvider.value = true
+}
+
+function editProvider(p) {
+  editingProviderId.value = p.id
+  newProvider.value = {
+    provider_key: p.provider_key,
+    display_name: p.display_name,
+    api_key: '',  // 编辑时不回填 Key（安全）
+    base_url: p.base_url || '',
+    model_name: p.model_name,
+    is_default: p.is_default,
+    enabled: p.enabled,
+  }
+  showAddProvider.value = true
+}
+
+function cancelProviderForm() {
+  resetProviderForm()
+}
+
+async function saveProvider() {
+  if (!newProvider.value.display_name || !newProvider.value.api_key) {
+    ElMessage.warning('请填写显示名称和 API Key')
+    return
+  }
+  savingProvider.value = true
+  try {
+    const payload = { ...newProvider.value }
+    if (editingProviderId.value) {
+      // 编辑：如果 api_key 为空字符串表示未改，不传
+      if (!payload.api_key) delete payload.api_key
+      await workbenchApi.ai.providerUpdate(editingProviderId.value, payload)
+      ElMessage.success('已保存')
+    } else {
+      await workbenchApi.ai.providerCreate(payload)
+      ElMessage.success('已添加')
+    }
+    resetProviderForm()
+    await loadProviders()
+  } catch (e) {
+    // 错误已由 axios 拦截器处理
+  } finally {
+    savingProvider.value = false
+  }
+}
+
+async function testProvider(id) {
+  testingId.value = id
+  try {
+    const r = await workbenchApi.ai.providerTest(id)
+    const msg = r.data || r
+    if (msg.ok) {
+      ElMessage.success(msg.message || '连接成功')
+    } else {
+      ElMessage.error(msg.message || '连接失败')
+    }
+  } catch (e) {
+    // 拦截器已显示
+  } finally {
+    testingId.value = null
+  }
+}
+
+async function setDefault(id) {
+  try {
+    await workbenchApi.ai.providerUpdate(id, { is_default: true })
+    ElMessage.success('已设为默认')
+    await loadProviders()
+  } catch (e) {}
+}
+
+async function delProvider(p) {
+  try {
+    await ElMessageBox.confirm(`确认删除「${p.display_name}」?`, '删除 Provider', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    await workbenchApi.ai.providerDelete(p.id)
+    ElMessage.success('已删除')
+    if (currentProviderId.value === p.id) currentProviderId.value = null
+    await loadProviders()
+  } catch (e) {
+    // 用户取消或失败
+  }
+}
+
+function onProviderChange(id) {
+  currentProviderId.value = id
+}
+
 async function del(id) {
   try {
     await ElMessageBox.confirm('删除该对话？原始笔记/资产/任务不会被删除。', '提示', { type: 'warning' })
@@ -380,6 +622,7 @@ async function confirmInvoke() {
       ability: pendingAbility.value,
       content: text,
       conversation_id: activeId.value,
+      provider_id: currentProviderId.value || null,
     })
     const d = res.data || {}
     lastInvoke.value = {
@@ -471,7 +714,7 @@ function roleLabel(r) { return ({ user: '我', assistant: 'AI', system: '系统'
 
 watch(activeId, () => { messages.value = [] })
 
-onMounted(loadConversations)
+onMounted(() => { loadConversations(); loadProviders(); })
 </script>
 
 <style scoped>
@@ -523,4 +766,24 @@ onMounted(loadConversations)
 @media (max-width: 700px) {
   .assistant-body { grid-template-columns: 1fr; }
 }
+
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.modal-tip { color: #999; font-size: 12px; margin: 0 0 16px 0; line-height: 1.6; }
+.empty-providers { padding: 40px 0; text-align: center; color: #999; }
+.provider-list { max-height: 400px; overflow-y: auto; }
+.provider-item {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 12px; border: 1px solid var(--paper-cream); border-radius: 4px;
+  margin-bottom: 8px; gap: 12px;
+}
+.provider-info { flex: 1; min-width: 0; }
+.provider-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.provider-meta { font-size: 12px; color: var(--color-text-muted); margin-bottom: 4px; }
+.provider-key { font-size: 12px; color: #999; font-family: monospace; }
+.provider-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 2px 6px; background: var(--rattan-yellow); color: #fff; border-radius: 3px; font-size: 11px; margin-left: 6px; }
+.badge-off { display: inline-block; padding: 2px 6px; background: #999; color: #fff; border-radius: 3px; font-size: 11px; margin-left: 6px; }
+.add-provider-form { padding: 16px; border-top: 1px dashed var(--paper-cream); margin-top: 12px; }
+.add-provider-form h4 { margin: 0 0 12px 0; }
+.form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 </style>
