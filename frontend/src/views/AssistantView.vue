@@ -57,6 +57,47 @@
               <div v-if="m.provider" class="msg-meta">
                 provider: {{ m.provider }} {{ m.is_fake ? '(fake/离线)' : '(真实)' }}
               </div>
+              <!-- 结构化结果内联应用（不用弹窗） -->
+              <div v-if="inlineApply && inlineApply.msgId === m.id" class="inline-apply">
+                <template v-if="inlineApply.applied">
+                  <span class="inline-applied">✓ 已应用</span>
+                </template>
+                <template v-else>
+                  <details :open="inlineApplyOpen" class="inline-apply-box">
+                    <summary>{{ inlineApplySummary }}</summary>
+                    <div v-if="inlineApply.ability === 'suggest_task'" class="inline-apply-body">
+                      <p class="inline-apply-tip">将把 AI 建议创建为一条任务草稿。</p>
+                      <div class="inline-apply-actions">
+                        <el-button size="small" @click="hideInlineApply">放弃</el-button>
+                        <el-button size="small" type="primary" :loading="applying" @click="confirmApplyInline">确认创建任务</el-button>
+                      </div>
+                    </div>
+                    <div v-else class="inline-apply-body">
+                      <p class="inline-apply-tip">选择要将结果写入的目标笔记：</p>
+                      <div class="apply-target-row">
+                        <NoteSelect
+                          v-model="applyTargetNoteId"
+                          :items="applyTargetNotes"
+                          :loading="notesLoading"
+                          :has-more="applyTargetNotes.length < applyTargetTotal"
+                          placeholder="输入关键词搜索笔记…"
+                          empty-text="暂无笔记可选，点右侧「新建草稿」"
+                          style="flex: 1; min-width: 200px"
+                          @search="loadApplyTargetNotes({ reset: true, keyword: $event })"
+                          @load-more="loadApplyTargetNotes()"
+                        />
+                        <el-button size="small" @click="loadApplyTargetNotes({ reset: true })" :disabled="notesLoading">刷新</el-button>
+                        <el-button size="small" type="primary" plain @click="createApplyTargetNote" :disabled="notesLoading">新建草稿</el-button>
+                      </div>
+                      <p v-if="applyTargetError" class="ai-apply-error">{{ applyTargetError }}</p>
+                      <div class="inline-apply-actions">
+                        <el-button size="small" @click="hideInlineApply">放弃</el-button>
+                        <el-button size="small" type="primary" :disabled="!applyTargetNoteId || applying" :loading="applying" @click="confirmApplyInline">{{ applyButtonLabel }}</el-button>
+                      </div>
+                    </div>
+                  </details>
+                </template>
+              </div>
             </div>
             <div v-if="!messages.length" class="empty">开始新对话吧</div>
           </div>
@@ -65,10 +106,11 @@
               v-model="draft"
               type="textarea"
               :rows="3"
-              placeholder="输入要发送给 AI 的内容（不含密钥）"
+              placeholder="输入要发送给 AI 的内容，回车发送（Shift+回车换行）"
+              @keydown.enter.exact.prevent="send"
             />
             <div class="composer-actions">
-              <el-button type="primary" :disabled="!draft.trim() || sending" @click="openPreview">
+              <el-button type="primary" :disabled="!draft.trim() || sending" @click="send" :loading="sending">
                 发送
               </el-button>
             </div>
@@ -77,76 +119,6 @@
         <p v-else class="placeholder">在左侧选择或新建一个对话。</p>
       </main>
     </div>
-
-    <!-- 发送预览确认（preview → 用户确认 → invoke） -->
-    <el-dialog v-model="previewDialog" title="发送确认" width="560px" :close-on-click-modal="false">
-      <p>将发送以下内容到 AI（已脱敏）：</p>
-      <pre class="ai-scope">{{ previewText }}</pre>
-      <p v-if="previewMeta" class="ai-meta">
-        字符数：{{ previewMeta.char_count || '—' }}{{ previewMeta.has_more ? '（已截断）' : '' }}
-      </p>
-      <p v-if="invoking" class="ai-status">正在调用 AI…</p>
-      <template #footer>
-        <el-button @click="cancelPreview" :disabled="invoking">取消</el-button>
-        <el-button type="primary" :disabled="invoking" @click="confirmInvoke">确认发送</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 调用结果确认（invoke 结果 → 用户确认后 apply） -->
-    <el-dialog
-      v-model="resultDialog"
-      title="AI 调用结果"
-      width="640px"
-      :close-on-click-modal="false"
-    >
-      <div v-if="lastInvoke" class="ai-result-meta">
-        <span>能力：{{ lastInvoke.ability }}</span>
-        <span>provider：{{ lastInvoke.provider }} {{ lastInvoke.is_fake ? '(fake/离线)' : '(真实)' }}</span>
-      </div>
-      <h4>文本回复</h4>
-      <pre class="ai-result">{{ lastInvoke ? lastInvoke.text : '' }}</pre>
-      <details v-if="lastInvoke && lastInvoke.data" class="ai-result-data">
-        <summary>查看结构化结果（用于 apply）</summary>
-        <pre>{{ JSON.stringify(lastInvoke.data, null, 2) }}</pre>
-      </details>
-      <p class="ai-apply-note">
-        {{ applyHint }}
-      </p>
-
-      <!-- 目标笔记选择器（对 note 类能力需要选择/新建笔记作为 apply 目标） -->
-      <div v-if="lastInvoke && lastInvoke.ability !== 'suggest_task'" class="apply-target">
-        <h4>应用到笔记</h4>
-        <div class="apply-target-row">
-          <NoteSelect
-            v-model="applyTargetNoteId"
-            :items="applyTargetNotes"
-            :loading="notesLoading"
-            :has-more="applyTargetNotes.length < applyTargetTotal"
-            placeholder="输入关键词搜索笔记，或从下拉中选择"
-            empty-text="暂无笔记可选，点右侧「新建草稿」"
-            style="flex: 1; min-width: 240px"
-            @search="searchApplyTargetNotes"
-            @load-more="onApplyTargetPageChange"
-          />
-          <el-button @click="loadApplyTargetNotes({ reset: true })" :disabled="notesLoading">刷新</el-button>
-          <el-button type="primary" plain @click="createApplyTargetNote" :disabled="notesLoading">新建草稿</el-button>
-        </div>
-        <p class="apply-target-tip">
-          {{ applyTargetMetaText }}
-        </p>
-        <p v-if="applyTargetError" class="ai-apply-error">{{ applyTargetError }}</p>
-      </div>
-
-      <template #footer>
-        <el-button @click="discardResult">丢弃</el-button>
-        <el-button
-          v-if="canApply(lastInvoke)"
-          type="primary"
-          :disabled="applying || !canConfirmApply"
-          @click="confirmApply"
-        >{{ applyButtonLabel }}</el-button>
-      </template>
-    </el-dialog>
 
     <el-dialog v-model="showCreate" title="新建对话" width="420px">
       <el-input v-model="newTitle" placeholder="对话标题（可选）" />
@@ -265,16 +237,20 @@ const showCreate = ref(false)
 const newTitle = ref('')
 
 // AI 流程状态
-const previewDialog = ref(false)
-const previewText = ref('')
-const previewMeta = ref(null)
 const sending = ref(false)
 const pendingAbility = ref('summarize')
 
-const invoking = ref(false)
 const lastInvoke = ref(null)  // { ability, text, data, provider, is_fake, conversation_id, ... }
-const resultDialog = ref(false)
 const applying = ref(false)
+
+// 内联应用（不弹窗，挂在对应消息气泡下）
+const inlineApply = ref(null)  // { msgId, ability, applied }
+const inlineApplyOpen = ref(true)
+const inlineApplySummary = computed(() => {
+  if (!inlineApply.value || !lastInvoke.value) return ''
+  if (lastInvoke.value.ability === 'suggest_task') return '将 AI 建议创建为任务草稿'
+  return '选择目标笔记并写入结果'
+})
 
 // 目标笔记选择器（apply 到 note 时使用）
 // - applyTargetNotes：当前可见的候选笔记（受 page/size + keyword 影响）
@@ -292,29 +268,7 @@ const notesLoading = ref(false)
 const applyTargetError = ref('')
 let applyTargetSeq = 0  // 防过期响应
 
-// 哪些 ability 可以应用 + 提示
-function canApply(inv) {
-  if (!inv) return false
-  return ['summarize', 'organize', 'suggest_tags', 'suggest_task'].includes(inv.ability)
-}
-const applyHint = computed(() => {
-  const inv = lastInvoke.value
-  if (!inv) return ''
-  if (!canApply(inv)) return '该能力暂不支持应用。'
-  if (inv.ability === 'suggest_task') return '将创建一条任务草稿，可到 /tasks 确认。'
-  if (inv.ability === 'summarize') return '请选择目标笔记，摘要将写入其 summary 字段。'
-  if (inv.ability === 'organize') return '请选择目标笔记，结果将覆盖其 title/content/summary。'
-  if (inv.ability === 'suggest_tags') return '请选择目标笔记，结果将覆盖其标签。'
-  return ''
-})
-
-const canConfirmApply = computed(() => {
-  const inv = lastInvoke.value
-  if (!inv) return false
-  if (inv.ability === 'suggest_task') return true
-  return !!applyTargetNoteId.value
-})
-
+// 应用按钮文案
 const applyButtonLabel = computed(() => {
   const inv = lastInvoke.value
   if (!inv) return '确认写入'
@@ -369,28 +323,6 @@ async function loadApplyTargetNotes({ reset = false, keyword = undefined } = {})
     if (seq === applyTargetSeq) notesLoading.value = false
   }
 }
-
-/** 远程搜索：输入框变化时触发 */
-function searchApplyTargetNotes(query) {
-  loadApplyTargetNotes({ reset: true, keyword: query || '' })
-}
-
-/** 滚动到底：触发加载下一页（仅在还有更多时） */
-function onApplyTargetPageChange() {
-  if (applyTargetNotes.value.length >= applyTargetTotal.value) return
-  applyTargetPage.value += 1
-  loadApplyTargetNotes()
-}
-
-const applyTargetMetaText = computed(() => {
-  const loaded = applyTargetNotes.value.length
-  const total = applyTargetTotal.value
-  const kw = applyTargetKeyword.value
-  if (kw) {
-    return `已加载 ${loaded} / 共匹配 ${total} 条（关键词：${kw}）`
-  }
-  return `已加载 ${loaded} / 共 ${total} 条`
-})
 
 /** 新建草稿笔记作为应用目标，并自动选上 */
 async function createApplyTargetNote() {
@@ -583,41 +515,11 @@ async function del(id) {
   loadConversations()
 }
 
-// 1. 用户点击"发送" → ai.preview → 显示预览
-async function openPreview() {
+// 发送：直接调用 invoke（不再弹预览确认），结果在气泡内联呈现
+async function send() {
   const text = draft.value.trim()
   if (!text || !activeId.value) return
   sending.value = true
-  pendingAbility.value = 'summarize'
-  try {
-    const res = await workbenchApi.ai.preview({
-      ability: pendingAbility.value,
-      content: text,
-      conversation_id: activeId.value,
-    })
-    const d = res.data || {}
-    previewText.value = d.preview || text
-    previewMeta.value = { char_count: d.char_count, has_more: !!d.has_more }
-    previewDialog.value = true
-  } catch (e) {
-    ElMessage.error('预览失败：' + (e?.response?.data?.msg || e.message))
-  } finally {
-    sending.value = false
-  }
-}
-
-// 用户在预览阶段取消：不调用 invoke，仅关闭对话框
-function cancelPreview() {
-  previewDialog.value = false
-  previewText.value = ''
-  previewMeta.value = null
-}
-
-// 2. 用户确认 → ai.invoke(ability, content, conversation_id)
-async function confirmInvoke() {
-  const text = draft.value.trim()
-  if (!text || !activeId.value) return
-  invoking.value = true
   try {
     const res = await workbenchApi.ai.invoke({
       ability: pendingAbility.value,
@@ -626,6 +528,7 @@ async function confirmInvoke() {
       provider_id: currentProviderId.value || null,
     })
     const d = res.data || {}
+    draft.value = ''
     lastInvoke.value = {
       ability: d.ability,
       text: d.text || '',
@@ -634,28 +537,39 @@ async function confirmInvoke() {
       is_fake: !!d.is_fake,
       conversation_id: d.conversation_id || activeId.value,
     }
-    previewDialog.value = false
-    resultDialog.value = true
-    draft.value = ''
+    // 刷新消息列表（user/assistant 两条已落库）
+    await open(activeId.value)
+    // 定位本次 assistant 回复，激活其内联应用面板
+    const asst = [...messages.value].reverse().find((m) => m.role === 'assistant')
+    inlineApply.value = {
+      msgId: asst ? asst.id : null,
+      ability: lastInvoke.value.ability,
+      applied: false,
+    }
+    inlineApplyOpen.value = true
     // note 类能力需要候选笔记列表
     if (lastInvoke.value.ability !== 'suggest_task') {
       applyTargetNoteId.value = null
       applyTargetKeyword.value = ''
       loadApplyTargetNotes({ reset: true })
     }
-    // 刷新消息列表（user/assistant 两条已落库）
-    await open(activeId.value)
   } catch (e) {
     ElMessage.error('调用失败：' + (e?.response?.data?.msg || e.message))
   } finally {
-    invoking.value = false
+    sending.value = false
   }
 }
 
-// 3. 用户确认应用结果 → ai.apply（按 ability 选择目标）
-async function confirmApply() {
+// 关闭内联应用面板
+function hideInlineApply() {
+  inlineApply.value = null
+  applyTargetNoteId.value = null
+}
+
+// 在气泡内联确认应用结果 → ai.apply
+async function confirmApplyInline() {
   const inv = lastInvoke.value
-  if (!inv) return
+  if (!inv || !inlineApply.value) return
   applying.value = true
   try {
     let payload = inv.data || {}
@@ -664,7 +578,6 @@ async function confirmApply() {
       targetType = 'task'
       targetId = null
     } else {
-      // note 类（summarize / suggest_tags / organize）必须有 target 笔记
       const noteId = applyTargetNoteId.value
       if (!noteId) {
         ElMessage.warning('请先选择或新建目标笔记')
@@ -695,20 +608,13 @@ async function confirmApply() {
     } else {
       ElMessage.success('应用完成')
     }
-    resultDialog.value = false
-    lastInvoke.value = null
+    inlineApply.value.applied = true
     applyTargetNoteId.value = null
   } catch (e) {
     ElMessage.error('应用失败：' + (e?.response?.data?.msg || e.message))
   } finally {
     applying.value = false
   }
-}
-
-function discardResult() {
-  resultDialog.value = false
-  lastInvoke.value = null
-  applyTargetNoteId.value = null
 }
 
 function roleLabel(r) { return ({ user: '我', assistant: 'AI', system: '系统' })[r] || r }
@@ -748,22 +654,24 @@ onMounted(() => { loadConversations(); loadProviders(); })
 }
 .msg-scope { margin-top: 4px; font-size: 11px; color: var(--xiu-text-3); }
 .msg-scope pre { background: rgba(0,0,0,.2); padding: 4px; border-radius: 5px; max-height: 120px; overflow: auto; color: var(--xiu-text-2); }
+.inline-apply { margin-top: 8px; }
+.inline-applied {
+  display: inline-block; padding: 4px 10px; font-size: 12px; color: var(--xiu-primary-bright);
+  background: rgba(61, 184, 176, .14); border: 1px solid rgba(61, 184, 176, .3); border-radius: 6px;
+}
+.inline-apply-box { border: 1px solid var(--xiu-line); border-radius: 8px; background: var(--xiu-card); padding: 4px 8px 8px; }
+.inline-apply-box summary {
+  cursor: pointer; font-size: 12px; color: var(--xiu-gold); padding: 4px 2px; user-select: none;
+}
+.inline-apply-body { padding: 6px 2px 2px; }
+.inline-apply-tip { font-size: 12px; color: var(--xiu-text-2); margin: 0 0 8px; }
+.inline-apply-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.apply-target-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .composer { padding: 12px; border-top: 1px solid var(--xiu-line); }
 .composer-actions { margin-top: 6px; text-align: right; }
 .placeholder { color: var(--xiu-text-3); padding: 40px; text-align: center; }
 .empty { color: var(--xiu-text-3); text-align: center; padding: 12px; }
-.ai-scope { background: rgba(0,0,0,.2); padding: 8px; border-radius: 8px; font-size: 12px; max-height: 200px; overflow: auto; white-space: pre-wrap; word-break: break-word; color: var(--xiu-text-2); border: 1px solid var(--xiu-line); }
-.ai-meta, .ai-status, .ai-apply-note { font-size: 12px; color: var(--xiu-text-2); margin: 6px 0 0; }
-.ai-result { background: rgba(61, 184, 176, .08); border: 1px solid rgba(61, 184, 176, .15); padding: 8px; border-radius: 8px; font-size: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-word; color: var(--xiu-text); }
-.ai-result-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--xiu-text-2); margin-bottom: 8px; }
-.ai-result-data { margin-top: 8px; font-size: 11px; color: var(--xiu-text-3); }
-.ai-result-data pre { background: rgba(0,0,0,.2); padding: 4px; border-radius: 5px; max-height: 120px; overflow: auto; color: var(--xiu-text-2); }
-.apply-target { margin-top: 12px; padding: 10px; background: rgba(201, 169, 110, .08); border: 1px solid rgba(201, 169, 110, .2); border-radius: 8px; }
-.apply-target h4 { margin: 0 0 6px; font-size: 13px; color: var(--xiu-gold); }
-.apply-target-row { display: flex; gap: 8px; align-items: center; }
-.apply-target-row .el-select { flex: 1; min-width: 200px; }
 .ai-apply-error { color: var(--xiu-danger); font-size: 12px; margin: 6px 0 0; }
-.apply-target-tip { color: var(--xiu-text-3); font-size: 11px; margin: 6px 0 0; }
 @media (max-width: 700px) {
   .assistant-body { grid-template-columns: 1fr; }
 }
