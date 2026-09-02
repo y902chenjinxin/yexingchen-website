@@ -555,20 +555,16 @@ function startPagePipette() {
   overlay.style.cssText =
     'position:fixed;inset:0;z-index:2147483000;cursor:none;background:transparent;'
 
-  // 针管图标（随光标移动）
+  // 针管图标（随光标移动，使用产品同学提供的取色器造型；深色图叠白色光晕保证暗底可见）
   const pip = document.createElement('div')
   pip.className = PICKER_CLS + '-pip'
   pip.innerHTML =
-    '<svg width="34" height="34" viewBox="0 0 34 34" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">' +
-    '<g transform="rotate(45 17 17)">' +
-    '<rect x="12.5" y="3" width="9" height="20" rx="4.5" fill="#fff" stroke="#333" stroke-width="1.4"/>' +
-    '<circle cx="17" cy="3" r="5" fill="#fff" stroke="#333" stroke-width="1.4"/>' +
-    '<rect x="15" y="20" width="4" height="5" fill="#333"/>' +
-    '</g>' +
-    '<circle cx="17" cy="17" r="15" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1"/>' +
+    '<svg width="40" height="40" viewBox="0 0 1024 1024" ' +
+    'style="filter:drop-shadow(0 0 1.5px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.35));">' +
+    '<path d="M988.16 92.16L926.72 30.72c-40.96-40.96-102.4-40.96-143.36 0l-143.36 143.36L573.44 102.4 440.32 240.64l56.32 56.32-389.12 394.24c-25.6 25.6-40.96 61.44-40.96 92.16l-20.48 20.48c-46.08 51.2-46.08 128 0 179.2 20.48 25.6 51.2 40.96 81.92 40.96s66.56-15.36 87.04-35.84l20.48-20.48c35.84 0 66.56-15.36 92.16-40.96l389.12-394.24 56.32 56.32 138.24-138.24-66.56-71.68 143.36-143.36c40.96-40.96 40.96-102.4 0-143.36m-716.8 768c-10.24 10.24-25.6 15.36-35.84 15.36-10.24 0-15.36 0-25.6-5.12L153.6 921.6c-5.12 5.12-15.36 10.24-25.6 10.24s-20.48-5.12-25.6-10.24c-15.36-15.36-15.36-35.84 0-51.2l56.32-51.2c-10.24-20.48-5.12-46.08 10.24-61.44l389.12-394.24 102.4 102.4-389.12 394.24z m0 0" fill="#2c2c2c"/>' +
     '</svg>'
   pip.style.cssText =
-    'position:absolute;left:0;top:0;pointer-events:none;transform:translate(6px,4px);will-change:left,top;'
+    'position:absolute;left:0;top:0;pointer-events:none;transform:translate(-26px,-18px);will-change:left,top;'
 
   // 色块 + HEX 标签
   const chip = document.createElement('div')
