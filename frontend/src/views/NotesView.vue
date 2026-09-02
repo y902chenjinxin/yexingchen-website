@@ -100,8 +100,10 @@ async function createNew() {
 
 async function remove(n) {
   try {
-    await ElMessageBox.confirm(`确认删除笔记「${n.title || '（无标题）'}」？将进入回收站。`, '提示', {
+    await ElMessageBox.confirm(`确认删除笔记「${n.title || '（无标题）'}」？删除后进入回收站，可在回收站中恢复。`, '删除确认', {
       type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
     })
   } catch { return }
   await workbenchApi.notes.delete(n.id)

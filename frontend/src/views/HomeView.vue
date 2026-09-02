@@ -78,6 +78,10 @@
           </div>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item command="workbench" @click="router.push('/workbench')">
+                <el-icon><Grid /></el-icon>
+                <span>返回工作台</span>
+              </el-dropdown-item>
               <el-dropdown-item command="profile">
                 <el-icon><User /></el-icon>
                 <span>个人中心</span>
@@ -273,7 +277,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
-import { CaretBottom, User, Lock, Avatar, Tools, SwitchButton, Calendar, Star, QuestionFilled } from '@element-plus/icons-vue'
+import { CaretBottom, User, Lock, Avatar, Tools, SwitchButton, Calendar, Star, QuestionFilled, Grid } from '@element-plus/icons-vue'
 import MouseTrail from '@/components/effects/MouseTrail.vue'
 import CultivationProgress from '@/components/effects/CultivationProgress.vue'
 import DecorationsLayer from '@/components/effects/DecorationsLayer.vue'

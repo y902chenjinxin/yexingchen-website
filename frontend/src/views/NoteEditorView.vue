@@ -7,6 +7,7 @@
     @drop.prevent="onDrop"
   >
     <header class="ne-header">
+      <BackButton fallback="/notes" style="margin-right: 8px;" />
       <input
         v-model="title"
         class="ne-title-input"
@@ -32,7 +33,7 @@
       </div>
     </header>
 
-    <div class="ne-toolbar">
+    <div class="ne-toolbar" @mousedown="onToolbarMousedown">
       <button type="button" title="标题" @click="exec('formatBlock', 'H2')">H</button>
       <button type="button" title="加粗" @click="exec('bold')"><b>B</b></button>
       <button type="button" title="斜体" @click="exec('italic')"><i>I</i></button>
@@ -62,7 +63,7 @@
       spellcheck="false"
       @input="scheduleSave"
       @paste="onPaste"
-      @click="onContentClick"
+      @mousedown="onContentClick"
     ></div>
 
     <div v-if="assets.length" class="ne-assets">
@@ -265,8 +266,19 @@ async function loadNote() {
     return
   }
   noteId.value = parseInt(id, 10)
-  const res = await workbenchApi.notes.get(noteId.value)
-  const d = res.data
+  let d
+  try {
+    const res = await workbenchApi.notes.get(noteId.value)
+    d = res.data
+  } catch (e) {
+    // 笔记不存在（已被删除/回收）：清理状态并回列表，避免停在报错页
+    noteId.value = null
+    title.value = ''
+    status.value = 'draft'
+    router.replace('/notes')
+    ElMessage.warning('笔记不存在或已删除，已返回列表')
+    return
+  }
   title.value = d.title || ''
   status.value = d.status || 'draft'
   if (editorEl.value) {
@@ -318,17 +330,57 @@ async function markDraft() {
 }
 
 async function remove() {
-  if (!noteId.value) { router.push('/notes'); return }
+  if (!noteId.value) { router.replace('/notes'); return }
   try {
-    await ElMessageBox.confirm('确认删除？将进入回收站。', '提示', { type: 'warning' })
+    await ElMessageBox.confirm('确认删除该笔记？删除后进入回收站，可在回收站中恢复。', '删除确认', {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
+    })
   } catch { return }
   await workbenchApi.notes.delete(noteId.value)
-  router.push('/notes')
+  ElMessage.success('已删除')
+  // 用 replace 而非 push：避免历史栈残留 /notes/:id，回退时再请求已删除 id 报错
+  router.replace('/notes')
 }
 
 function exec(command, value = null) {
+  // 点击工具栏按钮后浏览器会转移焦点、清空正文选区，导致 formatBlock/bold 等失效。
+  // 手动把焦点和选区还原到 contenteditable 后再执行命令。
+  if (editorEl.value) {
+    editorEl.value.focus()
+    restoreSelection()
+  }
   document.execCommand(command, false, value)
   scheduleSave()
+}
+
+// 记住/恢复正文选区：解决工具栏按钮抢焦点后 formatBlock 失效
+let savedRange = null
+
+/** 工具栏 mousedown：仅对格式化按钮阻止默认（防失焦），放行 color/file 控件 */
+function onToolbarMousedown(e) {
+  const t = e.target
+  if (!t || t.tagName === 'INPUT' || t.tagName === 'LABEL') return
+  e.preventDefault()
+  if (editorEl.value) {
+    savedRange = saveSelection(editorEl.value)
+  }
+}
+
+function saveSelection(container) {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return null
+  const range = sel.getRangeAt(0)
+  if (container.contains(range.commonAncestorContainer)) return range.cloneRange()
+  return null
+}
+
+function restoreSelection() {
+  if (!savedRange || !editorEl.value) return
+  const sel = window.getSelection()
+  sel.removeAllRanges()
+  sel.addRange(savedRange)
 }
 
 function insertLink() {
@@ -473,8 +525,9 @@ async function onDrop(e) {
   scheduleSave()
 }
 
-// 编辑区内点击占位 PDF 链接 → 走 fetchBlob 触发浏览器下载（避免裸 URL 缺鉴权）
+// 编辑区内点击：同步更新 savedRange（工具栏操作使用最新选区）；并处理占位 PDF 下载
 async function onContentClick(e) {
+  if (editorEl.value) savedRange = saveSelection(editorEl.value)
   const a = e.target?.closest?.('a.xuanhuang-asset-link')
   if (!a) return
   e.preventDefault()

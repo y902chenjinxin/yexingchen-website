@@ -9,9 +9,9 @@
     <!-- 内容区 -->
     <div class="inner-content">
       <header class="inner-header">
-        <button class="back-btn" @click="$emit('back')">
+        <button class="back-btn" @click="goBack">
           <span class="back-icon">←</span>
-          <span class="back-text">返回仙府</span>
+          <span class="back-text">返回工作台</span>
         </button>
         <h1 class="island-title">{{ title }}</h1>
         <p class="island-subtitle">{{ subtitle }}</p>
@@ -34,7 +34,10 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useParticleSystem } from '@/composables/useParticleSystem'
+
+const router = useRouter()
 
 const props = defineProps({
   type: {
@@ -51,7 +54,9 @@ const props = defineProps({
   }
 })
 
-defineEmits(['back'])
+function goBack() {
+  router.push('/workbench')
+}
 
 const particleCanvas = ref(null)
 let particleSystem = null

@@ -3,7 +3,7 @@
     <!-- 顶栏 -->
     <header class="island-header">
       <div class="header-left">
-        <span class="back-btn" @click="router.push('/home')">← 返回</span>
+        <span class="back-btn" @click="router.push('/workbench')">← 返回工作台</span>
         <span class="island-title">🎵 音乐岛</span>
       </div>
       <div class="header-right">
