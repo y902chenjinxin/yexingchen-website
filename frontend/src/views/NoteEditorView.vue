@@ -939,7 +939,7 @@ async function confirmAiInvoke() {
       note_id: noteId.value,
       conversation_id: aiConversationId.value,
     })
-    aiResult.value = res.data.text + '\n\n' + JSON.stringify(res.data.data || {}, null, 2)
+    aiResult.value = res.data.text || '（AI 未返回可展示的文本）'
     aiResultPayload.value = res.data.data || {}
   } catch (e) {
     ElMessage.error('调用失败：' + (e?.response?.data?.msg || e.message))
