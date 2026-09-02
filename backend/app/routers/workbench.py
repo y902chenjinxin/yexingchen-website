@@ -1790,19 +1790,20 @@ def _resolve_user_provider(
     )
 
 
-@router.get("/ai/providers", response_model=List[AiProviderOut])
+@router.get("/ai/providers")
 def ai_providers_list(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     """列出当前用户的所有 AI Provider 配置（Key 已脱敏）。"""
+
     rows = (
         db.query(UserAiProvider)
         .filter(UserAiProvider.user_id == current_user["user_id"])
         .order_by(UserAiProvider.is_default.desc(), UserAiProvider.id.asc())
         .all()
     )
-    return [_to_provider_out(r) for r in rows]
+    return ok([_to_provider_out(r).model_dump() for r in rows])
 
 
 @router.post("/ai/providers", response_model=AiProviderOut, status_code=201)
