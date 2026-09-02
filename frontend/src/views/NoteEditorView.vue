@@ -38,7 +38,51 @@
       <button type="button" title="加粗" @click="exec('bold')"><b>B</b></button>
       <button type="button" title="斜体" @click="exec('italic')"><i>I</i></button>
       <button type="button" title="下划线" @click="exec('underline')"><u>U</u></button>
-      <input type="color" title="文字颜色" @input="exec('foreColor', $event.target.value)" />
+      <div class="ne-color-wrap">
+        <button type="button" class="ne-color-btn" :class="{ active: colorPanelOpen }" title="文字颜色" @mousedown.stop.prevent="toggleColorPanel">A</button>
+        <div
+          v-if="colorPanelOpen"
+          class="ne-color-panel"
+          @mousedown.stop
+          @click.prevent
+        >
+          <div class="ne-color-presets">
+            <span
+              v-for="c in paletteColors"
+              :key="c"
+              class="ne-color-swatch"
+              :style="{ background: c }"
+              :title="c"
+              @click="applyColor(c)"
+            />
+          </div>
+          <div class="ne-color-actions">
+            <input
+              ref="colorPickerRef"
+              type="color"
+              title="自由取色"
+              @input="exec('foreColor', $event.target.value)"
+            />
+            <button type="button" title="吸色器（从屏幕取色）" :disabled="!eyeDropperSupported" @click="pickColor">
+              吸色
+            </button>
+            <input
+              v-model="hexColor"
+              class="ne-hex-input"
+              placeholder="#RRGGBB"
+              maxlength="7"
+              @keydown.enter.prevent="applyHex"
+            />
+            <button type="button" title="应用HEX颜色" @click="applyHex">应用</button>
+            <span class="ne-color-rgb">
+              <input v-model.number="rgb.r" type="number" min="0" max="255" placeholder="R" />
+              <input v-model.number="rgb.g" type="number" min="0" max="255" placeholder="G" />
+              <input v-model.number="rgb.b" type="number" min="0" max="255" placeholder="B" />
+            </span>
+            <button type="button" title="应用RGB颜色" @click="applyRgb">RGB</button>
+          </div>
+        </div>
+      </div>
       <button type="button" @click="exec('insertUnorderedList')">• 列表</button>
       <button type="button" @click="exec('insertOrderedList')">1. 列表</button>
       <button type="button" @click="exec('formatBlock', 'BLOCKQUOTE')">引用</button>
@@ -346,17 +390,116 @@ async function remove() {
 
 function exec(command, value = null) {
   // 点击工具栏按钮后浏览器会转移焦点、清空正文选区，导致 formatBlock/bold 等失效。
-  // 手动把焦点和选区还原到 contenteditable 后再执行命令。
+  // 优先使用编辑器实时选区；仅在实时选区不可用时回退到面板打开时保存的 savedRange。
   if (editorEl.value) {
-    editorEl.value.focus()
-    restoreSelection()
+    const live = liveSelection(editorEl.value)
+    if (live) {
+      const sel = window.getSelection()
+      sel.removeAllRanges()
+      sel.addRange(live)
+    } else {
+      restoreSelection()
+    }
   }
   document.execCommand(command, false, value)
   scheduleSave()
 }
 
+/** 返回编辑器当前实时选区；若选区为空/不在编辑器内则返回 null */
+function liveSelection(container) {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return null
+  const range = sel.getRangeAt(0)
+  if (range.collapsed) return null
+  if (container.contains(range.commonAncestorContainer)) return range.cloneRange()
+  return null
+}
+
 // 记住/恢复正文选区：解决工具栏按钮抢焦点后 formatBlock 失效
 let savedRange = null
+
+// ===== 文字颜色面板 =====
+const colorPanelOpen = ref(false)
+const colorBtnRef = ref(null)
+const colorPickerRef = ref(null)
+const hexColor = ref('')
+const rgb = ref({ r: 120, g: 120, b: 120 })
+const eyeDropperSupported = ref(typeof window !== 'undefined' && !!window.EyeDropper)
+
+const paletteColors = [
+  '#ffffff', '#e8e8e8', '#c0c0c0', '#888888',
+  '#000000', '#ff0000', '#ff6b35', '#ffb300',
+  '#f2e37f', '#8bc34a', '#00b894', '#00bcd4',
+  '#4a90d9', '#7b68ee', '#9c27b0', '#e91e63',
+  // 修仙主题加成色
+  '#5ce0d8', '#3db8b0', '#c9a96e', '#d4af37',
+  '#e08a7a', '#b06ab3', '#e5d5b8', '#5b7fb0',
+]
+
+function toggleColorPanel() {
+  colorPanelOpen.value = !colorPanelOpen.value
+  if (colorPanelOpen.value) {
+    savedRange = saveSelection(editorEl.value)
+  }
+}
+
+/** 应用颜色到当前选区（复用 exec 的选区恢复） */
+function applyColor(color) {
+  exec('foreColor', color)
+}
+
+/** 吸色：优先使用原生 EyeDropper，否则提示 */
+async function pickColor() {
+  if (!window.EyeDropper) {
+    ElMessage.info('当前浏览器不支持吸色，请使用自由取色器')
+    return
+  }
+  const dropper = new window.EyeDropper()
+  try {
+    const result = await dropper.open()
+    const color = result.sRGBHex // 形如 "#rrggbb"
+    hexColor.value = color
+    exec('foreColor', color)
+  } catch (e) {
+    // 用户取消或浏览器拒绝，静默忽略
+  }
+}
+
+/** 应用 HEX 颜色（支持 #RGB / #RRGGBB） */
+function applyHex() {
+  const v = (hexColor.value || '').trim().replace(/^#/, '')
+  let hex = v
+  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('')
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+    ElMessage.warning('请输入有效的HEX颜色，如 #5ce0d8')
+    return
+  }
+  const color = '#' + hex.toLowerCase()
+  exec('foreColor', color)
+}
+
+function clamp255(n) {
+  const v = Number(n)
+  return Number.isFinite(v) ? Math.max(0, Math.min(255, Math.round(v))) : 0
+}
+
+/** 应用 RGB 颜色 */
+function applyRgb() {
+  const r = clamp255(rgb.value.r)
+  const g = clamp255(rgb.value.g)
+  const b = clamp255(rgb.value.b)
+  const color = `rgb(${r}, ${g}, ${b})`
+  exec('foreColor', color)
+}
+
+// 点击面板外部区域关闭
+function onDocPointer(e) {
+  const panel = document.querySelector('.ne-color-panel')
+  const btn = document.querySelector('.ne-color-btn')
+  if (panel && panel.contains(e.target)) return
+  if (btn && btn.contains(e.target)) return
+  colorPanelOpen.value = false
+}
 
 /** 工具栏 mousedown：仅对格式化按钮阻止默认（防失焦），放行 color/file 控件 */
 function onToolbarMousedown(e) {
@@ -377,10 +520,13 @@ function saveSelection(container) {
 }
 
 function restoreSelection() {
-  if (!savedRange || !editorEl.value) return
+  if (!savedRange || !editorEl.value) return false
+  // 先确保编辑器获得焦点，否则对非激活元素 addRange 会被浏览器忽略
+  editorEl.value.focus()
   const sel = window.getSelection()
   sel.removeAllRanges()
   sel.addRange(savedRange)
+  return true
 }
 
 function insertLink() {
@@ -705,9 +851,19 @@ onBeforeUnmount(() => {
   // 释放附件缩略图 object URL
   for (const url of objectUrls.values()) URL.revokeObjectURL(url)
   objectUrls.clear()
+  document.removeEventListener('pointerdown', onDocPointer)
+  document.removeEventListener('keydown', onDocKeydown)
 })
 
-onMounted(loadNote)
+function onDocKeydown(e) {
+  if (e.key === 'Escape') colorPanelOpen.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onDocPointer)
+  document.addEventListener('keydown', onDocKeydown)
+  loadNote()
+})
 watch(() => route.params.id, loadNote)
 </script>
 
@@ -721,10 +877,44 @@ watch(() => route.params.id, loadNote)
 .state.saving { color: var(--xiu-primary-bright); }
 .state.saved { color: var(--xiu-primary); }
 .state.error { color: var(--xiu-danger); }
-.ne-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: var(--xiu-card-strong); border: 1px solid var(--xiu-line); border-radius: 10px; margin-bottom: 8px; backdrop-filter: blur(12px); }
+.ne-toolbar { position: relative; z-index: 30; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: var(--xiu-card-strong); border: 1px solid var(--xiu-line); border-radius: 10px; margin-bottom: 8px; backdrop-filter: blur(12px); }
 .ne-toolbar button, .ne-toolbar input { padding: 4px 8px; background: rgba(255,255,255,.04); border: 1px solid var(--xiu-line); border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--xiu-text-2); transition: var(--transition); }
 .ne-toolbar button:hover { color: var(--xiu-gold-bright); border-color: rgba(201, 169, 110, .4); background: rgba(201, 169, 110, .1); }
 .ne-toolbar input[type=color] { padding: 0; width: 28px; height: 28px; }
+
+/* ==== 文字颜色面板 ==== */
+.ne-color-wrap { position: relative; display: inline-flex; align-items: center; }
+.ne-color-btn.active { color: var(--xiu-gold-bright); border-color: rgba(201, 169, 110, .6); background: rgba(201, 169, 110, .15); }
+.ne-color-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  min-width: 268px;
+  padding: 10px;
+  background: var(--xiu-card-strong);
+  border: 1px solid var(--xiu-line);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.45);
+  backdrop-filter: blur(12px);
+}
+.ne-color-presets { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 10px; }
+.ne-color-swatch {
+  width: 24px; height: 24px; border-radius: 5px;
+  border: 1px solid rgba(255,255,255,.14);
+  cursor: pointer; transition: transform .15s, box-shadow .15s;
+}
+.ne-color-swatch:hover { transform: scale(1.15); box-shadow: 0 0 0 2px var(--xiu-gold); }
+.ne-color-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ne-color-actions button {
+  padding: 3px 8px; background: rgba(255,255,255,.05); border: 1px solid var(--xiu-line);
+  border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--xiu-text-2); transition: var(--transition);
+}
+.ne-color-actions button:hover:not(:disabled) { color: var(--xiu-gold-bright); border-color: rgba(201,169,110,.4); background: rgba(201,169,110,.1); }
+.ne-color-actions button:disabled { opacity: .4; cursor: not-allowed; }
+.ne-color-panel .ne-hex-input { width: 92px; padding: 3px 6px; background: rgba(0,0,0,.25); border: 1px solid var(--xiu-line); border-radius: 6px; color: var(--xiu-text); font-family: Consolas, monospace; font-size: 12px; }
+.ne-color-panel .ne-color-rgb { display: inline-flex; gap: 3px; }
+.ne-color-panel .ne-color-rgb input { width: 40px; padding: 3px 4px; background: rgba(0,0,0,.25); border: 1px solid var(--xiu-line); border-radius: 6px; color: var(--xiu-text); font-size: 12px; }
 .ne-upload-btn { padding: 4px 8px; background: rgba(255,255,255,.04); border: 1px solid var(--xiu-line); border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--xiu-text-2); transition: var(--transition); }
 .ne-upload-btn:hover { color: var(--xiu-gold-bright); border-color: rgba(201, 169, 110, .4); background: rgba(201, 169, 110, .1); }
 .ne-content { min-height: 320px; padding: 14px; border: 1px solid var(--xiu-line); border-radius: 10px; outline: none; line-height: 1.7; background: var(--xiu-card); color: var(--xiu-text); word-break: break-word; backdrop-filter: blur(10px); }

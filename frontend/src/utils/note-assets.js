@@ -28,6 +28,7 @@ const ALLOWED_TAGS = new Set([
   'ul', 'ol', 'li',
   'blockquote', 'pre', 'code',
   'hr', 'sub', 'sup',
+  'font', // execCommand('foreColor') 在部分浏览器产出 <font color>
   'img',
 ])
 
@@ -35,7 +36,34 @@ const ALLOWED_TAGS = new Set([
 const ALLOWED_ATTRS = {
   a: new Set(['href', 'title', 'target', 'rel', 'class', 'data-asset-id', 'data-asset-title']),
   img: new Set(['alt', 'class', 'data-asset-id', 'data-asset-title']),
+  font: new Set(['color']), // 文字颜色
   '*': new Set([]), // 默认无属性
+}
+
+/**
+ * style 属性不再整体丢弃，但只放行纯色声明，防止 CSS 注入。
+ * 仅允许 color / background-color，值须为安全的纯色（hex/rgb/hsl/命名色/transparent/currentColor）。
+ */
+const ALLOWED_INLINE_STYLE_PROPS = new Set(['color', 'background-color'])
+const PURE_COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?\([0-9\s.,%]+\)|hsla?\([0-9\s.,%deg]+\)|[a-z]+|transparent|currentColor)$/i
+const UNSAFE_CSS_RE = /url\(|expression|javascript:|var\(|progid:|data:/i
+
+function safeInlineStyle(cssText) {
+  if (!cssText) return ''
+  const out = []
+  for (const decl of String(cssText).split(';')) {
+    const idx = decl.indexOf(':')
+    if (idx === -1) continue
+    const prop = decl.slice(0, idx).trim().toLowerCase()
+    let value = decl.slice(idx + 1).trim()
+    // 剥掉可能的 !important 与多余声明
+    value = value.split('!important')[0].trim()
+    if (!ALLOWED_INLINE_STYLE_PROPS.has(prop)) continue
+    if (UNSAFE_CSS_RE.test(value)) continue
+    if (!PURE_COLOR_RE.test(value)) continue
+    out.push(`${prop}: ${value}`)
+  }
+  return out.join('; ')
 }
 
 /** 全局允许的属性（与具体标签白名单并集） */
@@ -166,8 +194,18 @@ function cleanNode(node, doc) {
     const name = a.name.toLowerCase()
     // 任何 on* 事件属性一律剥离（onclick / onerror / onload / onfocus 等）
     if (name.startsWith('on')) continue
-    // style 属性不允许（避免 CSS 注入）
-    if (name === 'style') continue
+    // style 只保留安全的纯色声明（color / background-color），防止 CSS 注入
+    if (name === 'style') {
+      const safe = safeInlineStyle(a.value)
+      if (safe) el.setAttribute('style', safe)
+      continue
+    }
+    // color 属性（<font color>）只放行安全的纯色值
+    if (name === 'color') {
+      const v = a.value.trim()
+      if (!UNSAFE_CSS_RE.test(v) && PURE_COLOR_RE.test(v)) el.setAttribute('color', v)
+      continue
+    }
     // formaction / srcdoc / xlink:href / data: href 等可执行属性
     if (name === 'formaction' || name === 'srcdoc' || name === 'xlink:href') continue
     if (!allowed.has(name)) continue

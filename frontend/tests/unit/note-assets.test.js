@@ -272,6 +272,28 @@ describe('sanitizeNoteHtml XSS regression', () => {
     expect(out).not.toMatch(/style=/i)
   })
 
+  it('preserves <font color> from foreColor command (persistence)', () => {
+    const out = sanitizeNoteHtml(`<font color="#5ce0d8">青</font>`)
+    expect(out).toContain('<font color="#5ce0d8">')
+  })
+
+  it('preserves safe inline color style and strips unsafe declarations', () => {
+    expect(sanitizeNoteHtml(`<span style="color: rgb(92, 224, 216)">x</span>`)).toContain('color: rgb(92, 224, 216)')
+    // background-color 也被允许
+    expect(sanitizeNoteHtml(`<span style="background-color: #1a2b3c">x</span>`)).toContain('background-color: #1a2b3c')
+    // 非纯色声明剥离（url/var 等）
+    expect(sanitizeNoteHtml(`<span style="background-image:url(http://evil/x.png)">x</span>`)).not.toContain('background-image')
+    expect(sanitizeNoteHtml(`<span style="background:url(javascript:alert(1))">x</span>`)).not.toContain('url(')
+    // 非允许属性（如 width / position）被剥离，仅保留颜色（输出被规范化为 "color: #ff0000"）
+    expect(sanitizeNoteHtml(`<span style="color:#ff0000; width:999px">x</span>`)).toContain('color: #ff0000')
+    expect(sanitizeNoteHtml(`<span style="color:#ff0000; width:999px">x</span>`)).not.toContain('width')
+  })
+
+  it('rejects unsafe <font color> values', () => {
+    expect(sanitizeNoteHtml(`<font color="javascript:alert(1)">x</font>`)).not.toContain('color=')
+    expect(sanitizeNoteHtml(`<font color="url(http://evil)">x</font>`)).not.toContain('color=')
+  })
+
   it('preserves data-asset-id for image and PDF placeholders', () => {
     const raw = imagePlaceholderHtml(33, 'pic.png') + pdfPlaceholderHtml(34, 'doc.pdf')
     const out = sanitizeNoteHtml(raw)
