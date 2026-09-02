@@ -655,6 +655,9 @@ function handleMusicSelect(bgmId) {
 
 function handleDropdownCommand(command) {
   switch (command) {
+    case 'workbench':
+      router.push('/workbench')
+      break
     case 'profile':
       router.push('/profile')
       break
