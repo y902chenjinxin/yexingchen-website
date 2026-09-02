@@ -63,7 +63,7 @@
               title="自由取色"
               @input="exec('foreColor', $event.target.value)"
             />
-            <button type="button" title="吸色（从屏幕取色）" :disabled="!displayCaptureSupported && !nativeEyeDropperSupported" @click="pickColor">
+            <button type="button" title="吸色（针管光标，在页面内点击取色）" @click="pickColor">
               吸色
             </button>
             <input
@@ -420,18 +420,9 @@ let savedRange = null
 
 // ===== 文字颜色面板 =====
 const colorPanelOpen = ref(false)
-const colorBtnRef = ref(null)
 const colorPickerRef = ref(null)
 const hexColor = ref('')
 const rgb = ref({ r: 120, g: 120, b: 120 })
-// 吸色能力：优先自定义屏幕取色（平滑放大镜，规避原生 EyeDropper 的马赛克放大窗），
-// 其次原生 EyeDropper 兜底；两者都不支持则禁用按钮。
-const displayCaptureSupported = ref(
-  typeof navigator !== 'undefined' &&
-    !!navigator.mediaDevices &&
-    typeof navigator.mediaDevices.getDisplayMedia === 'function',
-)
-const nativeEyeDropperSupported = ref(typeof window !== 'undefined' && !!window.EyeDropper)
 
 const paletteColors = [
   '#ffffff', '#e8e8e8', '#c0c0c0', '#888888',
@@ -455,171 +446,176 @@ function applyColor(color) {
   exec('foreColor', color)
 }
 
-/** 吸色：优先自定义屏幕取色（平滑放大镜），否则原生 EyeDropper 兜底 */
+/** 吸色：页内平滑吸管 —— 自绘针管光标，悬停/点击从页面内取色，无弹窗、无马赛克 */
 function pickColor() {
-  if (displayCaptureSupported.value) {
-    pickViaScreen()
-    return
-  }
-  if (nativeEyeDropperSupported.value) {
-    pickViaNativeDropper()
-    return
-  }
-  ElMessage.info('当前浏览器不支持吸色，请使用自由取色器')
+  startPagePipette()
 }
 
-/** 原生 EyeDropper 兜底（会在部分系统呈现马赛克放大窗，仅作降级） */
-async function pickViaNativeDropper() {
-  if (!window.EyeDropper) return
-  const dropper = new window.EyeDropper()
+// ==== 页内吸色管实现 ====
+// 采样策略（避免跨源原图污染 canvas、不申请屏幕共享权限）：
+//   1. 若光标落在 <img> 上：尝试取该像素真色（blob/同源图可读，跨源失败则跳过）
+//   2. 否则取最上层不透明元素的背景色
+//   3. 再退一层取文字色
+let pipetteCleanup = null
+
+const PICKER_CLS = 'sol-page-picker'
+
+function rgbToHex(r, g, b) {
+  return '#' + ((1 << 24) | ((r << 16) & 0xffffff) | (g << 8) | b).toString(16).slice(1)
+}
+
+function cssColorToHex(cssColor) {
+  if (!cssColor) return null
+  const s = cssColor.trim()
+  if (/^#[0-9a-f]{3,8}$/i.test(s)) {
+    const body = s.slice(1)
+    const norm = body.length === 3 ? body.split('').map((c) => c + c).join('') : body
+    return '#' + norm.slice(0, 6).toLowerCase()
+  }
+  if (/^rgb/i.test(s)) {
+    const m = s.match(/rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/)
+    if (m) return rgbToHex(Math.round(+m[1]), Math.round(+m[2]), Math.round(+m[3]))
+  }
+  // 命名色 / 其它：用探针画布转为 hex
   try {
-    const result = await dropper.open()
-    const color = result.sRGBHex // 形如 "#rrggbb"
-    hexColor.value = color
-    exec('foreColor', color)
-  } catch (e) {
-    // 用户取消或浏览器拒绝，静默忽略
+    const probe = document.createElement('canvas')
+    probe.width = probe.height = 1
+    const ctx = probe.getContext('2d')
+    if (ctx) {
+      ctx.fillStyle = s
+      ctx.fillRect(0, 0, 1, 1)
+      const d = ctx.getImageData(0, 0, 1, 1).data
+      return rgbToHex(d[0], d[1], d[2])
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+// 是否是不透明（实心）背景
+function isOpaqueColor(c) {
+  if (!c) return false
+  if (c === 'rgba(0, 0, 0, 0)' || c === 'transparent') return false
+  const m = c.match(/rgba?\(([^)]*)\)/)
+  if (m && m[1].split(',').length >= 4 && /0(?:\.0+)?$/.test(m[1].split(',')[3].trim())) return false
+  return true
+}
+
+// 若点在 <img> 上，尝试读取该图像素真色（跨源图会抛错 → 返回 null 走样式色）
+function pixelFromImage(img, clientX, clientY) {
+  try {
+    const r = img.getBoundingClientRect()
+    if (!r.width || !r.height) return null
+    if (clientX < r.left || clientX > r.right || clientY < r.top || clientY > r.bottom) return null
+    const w = img.naturalWidth || 0
+    const h = img.naturalHeight || 0
+    if (!w || !h) return null
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    const ctx = c.getContext('2d')
+    ctx.drawImage(img, 0, 0, w, h)
+    const px = Math.max(0, Math.min(w - 1, Math.round(((clientX - r.left) / r.width) * w)))
+    const py = Math.max(0, Math.min(h - 1, Math.round(((clientY - r.top) / r.height) * h)))
+    const d = ctx.getImageData(px, py, 1, 1).data
+    return rgbToHex(d[0], d[1], d[2])
+  } catch {
+    return null
   }
 }
 
-// ==== 自定义屏幕吸色：圆滑放大镜按像素取样，规避原生 EyeDropper 马赛克 ====
-let pickerCleanup = null
-
-function pickViaScreen() {
-  if (pickerCleanup) return // 已有取色器在运行
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    ElMessage.info('当前浏览器不支持屏幕取色，请使用自由取色器')
-    return
+function colorAt(clientX, clientY) {
+  const all = document.elementsFromPoint(clientX, clientY) || []
+  // 排除取色遮罩自身及其子元素
+  const els = all.filter((el) => !el.classList || !el.classList.contains(PICKER_CLS))
+  for (const el of els) {
+    if (el.tagName === 'IMG') {
+      const c = pixelFromImage(el, clientX, clientY)
+      if (c) return c
+    }
   }
-  navigator.mediaDevices
-    .getDisplayMedia({ video: { displaySurface: 'monitor' }, audio: false })
-    .then((stream) => {
-      const track = stream.getVideoTracks()[0]
-      if (!track) {
-        stream.getTracks().forEach((t) => t.stop())
-        ElMessage.info('未能获取屏幕画面，请使用自由取色器')
-        return
-      }
-      const s = track.getSettings()
-      const srcW = s.width || window.screen.width
-      const srcH = s.height || window.screen.height
-      startScreenPicker(stream, track, srcW, srcH)
-    })
-    .catch(() => {
-      // 用户取消屏幕共享授权，静默返回
-    })
+  for (const el of els) {
+    const bg = getComputedStyle(el).backgroundColor
+    if (isOpaqueColor(bg)) {
+      const c = cssColorToHex(bg)
+      if (c) return c
+    }
+  }
+  for (const el of els) {
+    const c = cssColorToHex(getComputedStyle(el).color)
+    if (c) return c
+  }
+  return '#ffffff'
 }
 
-function startScreenPicker(stream, track, srcW, srcH) {
-  if (pickerCleanup) pickerCleanup()
-  const ZOOM = 8 // 放大倍率
+function startPagePipette() {
+  if (pipetteCleanup) pipetteCleanup()
 
   const overlay = document.createElement('div')
-  overlay.className = 'sc-picker'
+  overlay.className = PICKER_CLS
   overlay.style.cssText =
-    'position:fixed;inset:0;z-index:2147483000;background:#000;cursor:none;'
+    'position:fixed;inset:0;z-index:2147483000;cursor:none;background:transparent;'
 
-  // 屏幕捕获画面，按原始宽高比居中放大镜映射，避免拉伸失真
-  const video = document.createElement('video')
-  video.autoplay = true
-  video.muted = true
-  video.playsInline = true
-  video.srcObject = stream
-  video.style.cssText = 'position:absolute;display:block;'
-  const vw = () => overlay.clientWidth
-  const vh = () => overlay.clientHeight
-  const layoutVideo = () => {
-    const scale = Math.min(vw() / srcW, vh() / srcH)
-    const dw = srcW * scale
-    const dh = srcH * scale
-    video.style.width = `${dw}px`
-    video.style.height = `${dh}px`
-    video.style.left = `${(vw() - dw) / 2}px`
-    video.style.top = `${(vh() - dh) / 2}px`
-  }
-  layoutVideo()
-  video.addEventListener('loadedmetadata', layoutVideo)
+  // 针管图标（随光标移动）
+  const pip = document.createElement('div')
+  pip.className = PICKER_CLS + '-pip'
+  pip.innerHTML =
+    '<svg width="34" height="34" viewBox="0 0 34 34" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">' +
+    '<g transform="rotate(45 17 17)">' +
+    '<rect x="12.5" y="3" width="9" height="20" rx="4.5" fill="#fff" stroke="#333" stroke-width="1.4"/>' +
+    '<circle cx="17" cy="3" r="5" fill="#fff" stroke="#333" stroke-width="1.4"/>' +
+    '<rect x="15" y="20" width="4" height="5" fill="#333"/>' +
+    '</g>' +
+    '<circle cx="17" cy="17" r="15" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1"/>' +
+    '</svg>'
+  pip.style.cssText =
+    'position:absolute;left:0;top:0;pointer-events:none;transform:translate(6px,4px);will-change:left,top;'
 
-  // 圆滑放大镜
-  const mag = document.createElement('div')
-  mag.style.cssText =
-    'position:absolute;left:50%;top:50%;z-index:2;width:132px;height:132px;border-radius:50%;' +
-    'border:2px solid rgba(255,255,255,.9);box-shadow:0 8px 32px rgba(0,0,0,.55);' +
-    'overflow:hidden;pointer-events:none;transform:translate(-50%,-50%);'
-  const cv = document.createElement('canvas')
-  cv.width = 132
-  cv.height = 132
-  cv.style.cssText = 'width:100%;height:100%;image-rendering:auto;'
-  const cross = document.createElement('div')
-  cross.style.cssText =
-    'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24px;height:24px;pointer-events:none;'
-  cross.innerHTML =
-    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none">' +
-    '<path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>' +
-    '<circle cx="12" cy="12" r="2" fill="#fff"/></svg>'
+  // 色块 + HEX 标签
+  const chip = document.createElement('div')
+  chip.style.cssText =
+    'position:absolute;left:0;top:0;pointer-events:none;width:22px;height:22px;border-radius:5px;' +
+    'border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);transform:translate(26px,2px);will-change:left,top;'
   const hexLabel = document.createElement('div')
-  hexLabel.textContent = '#000000'
   hexLabel.style.cssText =
-    'position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);white-space:nowrap;' +
-    'background:rgba(0,0,0,.65);color:#fff;font:12px Consolas,monospace;padding:2px 8px;border-radius:6px;'
-  mag.append(cv, cross, hexLabel)
+    'position:absolute;left:0;top:0;pointer-events:none;white-space:nowrap;background:rgba(0,0,0,.68);' +
+    'color:#fff;font:12px Consolas,monospace;letter-spacing:.02em;padding:2px 8px;border-radius:6px;' +
+    'transform:translate(24px,30px);will-change:left,top;'
 
   const hint = document.createElement('div')
-  hint.textContent = '移动放大镜，点击取样 · Esc 取消'
+  hint.textContent = '移动针管取色，点击处即取该处颜色 · Esc / 右键取消'
   hint.style.cssText =
-    'position:absolute;left:50%;top:14px;transform:translateX(-50%);' +
-    'background:rgba(0,0,0,.6);color:#fff;font-size:13px;padding:6px 14px;border-radius:20px;white-space:nowrap;'
+    'position:fixed;left:50%;top:14px;transform:translateX(-50%);white-space:nowrap;' +
+    'background:rgba(0,0,0,.62);color:#fff;font-size:13px;padding:6px 14px;border-radius:20px;'
 
-  overlay.append(video, mag, hint)
+  overlay.append(pip, chip, hexLabel, hint)
   document.body.appendChild(overlay)
 
-  // 1:1 精确取样画布
-  const probe = document.createElement('canvas')
-  probe.width = 1
-  probe.height = 1
-  const probeCtx = probe.getContext('2d')
-  const magCtx = cv.getContext('2d')
+  let curX = innerWidth / 2
+  let curY = innerHeight / 2
+  let currentColor = '#ffffff'
 
-  // 视口坐标 -> 捕获画面像素坐标
-  const toSrc = (clientX, clientY) => {
-    const scale = Math.min(vw() / srcW, vh() / srcH)
-    const dw = srcW * scale
-    const dh = srcH * scale
-    const ox = (vw() - dw) / 2
-    const oy = (vh() - dh) / 2
-    const sx = ((clientX - ox) / dw) * srcW
-    const sy = ((clientY - oy) / dh) * srcH
-    return { sx, sy }
-  }
-
-  const sample = (clientX, clientY) => {
-    const { sx, sy } = toSrc(clientX, clientY)
-    // 放大镜平滑缩放，避免块状马赛克
-    magCtx.imageSmoothingEnabled = true
-    magCtx.clearRect(0, 0, cv.width, cv.height)
-    const half = cv.width / ZOOM / 2
-    magCtx.drawImage(video, sx - half, sy - half, half * 2, half * 2, 0, 0, cv.width, cv.height)
-    // 精确读中心像素（用 1:1 探针）
-    probeCtx.clearRect(0, 0, 1, 1)
-    probeCtx.drawImage(video, sx - 0.5, sy - 0.5, 1, 1, 0, 0, 1, 1)
-    const d = probeCtx.getImageData(0, 0, 1, 1).data
-    const color =
-      '#' +
-      ((1 << 24) | (d[0] << 16) | (d[1] << 8) | d[2]).toString(16).slice(1)
-    hexLabel.textContent = color
-    return color
+  const paint = () => {
+    pip.style.left = `${curX}px`
+    pip.style.top = `${curY}px`
+    chip.style.left = `${curX}px`
+    chip.style.top = `${curY}px`
+    chip.style.backgroundColor = currentColor
+    hexLabel.style.left = `${curX}px`
+    hexLabel.style.top = `${curY}px`
+    hexLabel.textContent = currentColor
   }
 
   const onMove = (e) => {
-    mag.style.left = `${e.clientX}px`
-    mag.style.top = `${e.clientY}px`
-    sample(e.clientX, e.clientY)
+    curX = e.clientX
+    curY = e.clientY
+    currentColor = colorAt(curX, curY)
+    paint()
   }
   const onDown = (e) => {
     if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
-    const color = sample(e.clientX, e.clientY)
+    const color = colorAt(e.clientX, e.clientY)
     cleanup()
     hexColor.value = color
     exec('foreColor', color)
@@ -627,27 +623,26 @@ function startScreenPicker(stream, track, srcW, srcH) {
   const onKey = (e) => {
     if (e.key === 'Escape') cleanup()
   }
+  const onCtx = (e) => {
+    e.preventDefault()
+    cleanup()
+  }
   const cleanup = () => {
-    if (!pickerCleanup) return
-    track.stop()
-    window.removeEventListener('resize', layoutVideo)
+    if (!pipetteCleanup) return
     document.removeEventListener('mousemove', onMove)
     overlay.removeEventListener('mousedown', onDown)
     document.removeEventListener('keydown', onKey)
+    overlay.removeEventListener('contextmenu', onCtx)
     overlay.remove()
-    pickerCleanup = null
+    pipetteCleanup = null
   }
-  pickerCleanup = cleanup
+  pipetteCleanup = cleanup
 
-  window.addEventListener('resize', layoutVideo)
   document.addEventListener('mousemove', onMove)
   overlay.addEventListener('mousedown', onDown)
   document.addEventListener('keydown', onKey)
-  requestAnimationFrame(() => {
-    mag.style.left = `${innerWidth / 2}px`
-    mag.style.top = `${innerHeight / 2}px`
-    sample(innerWidth / 2, innerHeight / 2)
-  })
+  overlay.addEventListener('contextmenu', onCtx)
+  paint()
 }
 
 /** 应用 HEX 颜色（支持 #RGB / #RRGGBB） */
@@ -1031,8 +1026,8 @@ async function confirmLink() {
 
 onBeforeUnmount(() => {
   if (saveTimer) clearTimeout(saveTimer)
-  // 若聚焦屏幕取色器进行中，先关闭（停流、移除遮罩、解绑监听）
-  if (pickerCleanup) pickerCleanup()
+  // 若页内吸色管进行中，先关闭（移除遮罩、解绑监听）
+  if (pipetteCleanup) pipetteCleanup()
   // 释放正文里 hydrate 出来的 object URL
   revokeAllNoteImages(editorEl.value)
   // 释放附件缩略图 object URL
