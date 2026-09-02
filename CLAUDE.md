@@ -60,11 +60,19 @@ frontend/src/
 └── router/index.js       # Vue Router with auth guards
 
 docs/
-├── README.md             # Project documentation
-├── PRD.md                # Product Requirements Document v1.0
-├── PRD_v1.1.md           # Product Requirements Document v1.1 (in progress)
-├── TECH_DESIGN_v1.md     # Technical Design Document
-└── UI_DESIGN_v1.md       # UI Design Document
+├── README.md                   # 项目说明
+├── PRD_v2.12.md                # 当前有效的 PRD（2.10 / 2.11 为历史版本）
+├── DESIGN_INKWASH.md           # 唯一有效的设计规范（水墨国风 v2.11）
+├── DESIGN_XUANMO.md            # 已废弃的历史设计规范（勿参考）
+├── CHANGELOG.md                # 版本变更记录
+├── RETROSPECTIVE.md            # 复盘记录
+├── ISSUES.md                   # 已知问题记录
+├── ROLLBACK.md                 # 回滚手册
+├── BRANCH_STRATEGY.md          # 分支策略
+└── archive/                    # 历史归档
+    ├── PRD历史/                # 早期 PRD v1.x ~ v2.x
+    ├── TECH_DESIGN历史/        # 早期技术设计
+    └── 设计文档/               # 早期 UI/设计文档
 ```
 
 ### Key Design Patterns
@@ -98,7 +106,7 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 | auth模块变更 | router、views/islands、stores |
 | bg_music变更 | HomeView.vue、settings store、global_settings表 |
 | video上传变更 | COS service、video router、video store |
-| 新增岛屿类型 | HomeView.vue、router、stores、DESIGN.md |
+| 新增岛屿类型 | HomeView.vue、router、stores、DESIGN_INKWASH.md |
 
 **任何跨模块变更必须先输出依赖分析再开发**
 
@@ -297,9 +305,8 @@ SQLite at `backend/app.db`. Tables: users, verification_codes, music, novels, vi
 ### 部署流程
 1. 构建：`cd frontend && npm run build`
 2. 自测：`python self_test.py && python self_test.py record Step 8`
-3. 上传：`python upload_server.py`
-4. 重启：`python restart_pm2.py`
-5. 验证：`node browser_verify.js --production --all`
+3. 上传：`python upload_server.py`（上传完成后自动执行 `pm2 restart yexingchen-backend`，无需单独重启脚本）
+4. 验证：`node browser_verify.js --production --all`
 
 ---
 
