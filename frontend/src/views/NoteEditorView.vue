@@ -63,7 +63,7 @@
               title="自由取色"
               @input="exec('foreColor', $event.target.value)"
             />
-            <button type="button" title="吸色器（从屏幕取色）" :disabled="!eyeDropperSupported" @click="pickColor">
+            <button type="button" title="吸色（从屏幕取色）" :disabled="!displayCaptureSupported && !nativeEyeDropperSupported" @click="pickColor">
               吸色
             </button>
             <input
@@ -424,7 +424,14 @@ const colorBtnRef = ref(null)
 const colorPickerRef = ref(null)
 const hexColor = ref('')
 const rgb = ref({ r: 120, g: 120, b: 120 })
-const eyeDropperSupported = ref(typeof window !== 'undefined' && !!window.EyeDropper)
+// 吸色能力：优先自定义屏幕取色（平滑放大镜，规避原生 EyeDropper 的马赛克放大窗），
+// 其次原生 EyeDropper 兜底；两者都不支持则禁用按钮。
+const displayCaptureSupported = ref(
+  typeof navigator !== 'undefined' &&
+    !!navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getDisplayMedia === 'function',
+)
+const nativeEyeDropperSupported = ref(typeof window !== 'undefined' && !!window.EyeDropper)
 
 const paletteColors = [
   '#ffffff', '#e8e8e8', '#c0c0c0', '#888888',
@@ -448,12 +455,22 @@ function applyColor(color) {
   exec('foreColor', color)
 }
 
-/** 吸色：优先使用原生 EyeDropper，否则提示 */
-async function pickColor() {
-  if (!window.EyeDropper) {
-    ElMessage.info('当前浏览器不支持吸色，请使用自由取色器')
+/** 吸色：优先自定义屏幕取色（平滑放大镜），否则原生 EyeDropper 兜底 */
+function pickColor() {
+  if (displayCaptureSupported.value) {
+    pickViaScreen()
     return
   }
+  if (nativeEyeDropperSupported.value) {
+    pickViaNativeDropper()
+    return
+  }
+  ElMessage.info('当前浏览器不支持吸色，请使用自由取色器')
+}
+
+/** 原生 EyeDropper 兜底（会在部分系统呈现马赛克放大窗，仅作降级） */
+async function pickViaNativeDropper() {
+  if (!window.EyeDropper) return
   const dropper = new window.EyeDropper()
   try {
     const result = await dropper.open()
@@ -463,6 +480,174 @@ async function pickColor() {
   } catch (e) {
     // 用户取消或浏览器拒绝，静默忽略
   }
+}
+
+// ==== 自定义屏幕吸色：圆滑放大镜按像素取样，规避原生 EyeDropper 马赛克 ====
+let pickerCleanup = null
+
+function pickViaScreen() {
+  if (pickerCleanup) return // 已有取色器在运行
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    ElMessage.info('当前浏览器不支持屏幕取色，请使用自由取色器')
+    return
+  }
+  navigator.mediaDevices
+    .getDisplayMedia({ video: { displaySurface: 'monitor' }, audio: false })
+    .then((stream) => {
+      const track = stream.getVideoTracks()[0]
+      if (!track) {
+        stream.getTracks().forEach((t) => t.stop())
+        ElMessage.info('未能获取屏幕画面，请使用自由取色器')
+        return
+      }
+      const s = track.getSettings()
+      const srcW = s.width || window.screen.width
+      const srcH = s.height || window.screen.height
+      startScreenPicker(stream, track, srcW, srcH)
+    })
+    .catch(() => {
+      // 用户取消屏幕共享授权，静默返回
+    })
+}
+
+function startScreenPicker(stream, track, srcW, srcH) {
+  if (pickerCleanup) pickerCleanup()
+  const ZOOM = 8 // 放大倍率
+
+  const overlay = document.createElement('div')
+  overlay.className = 'sc-picker'
+  overlay.style.cssText =
+    'position:fixed;inset:0;z-index:2147483000;background:#000;cursor:none;'
+
+  // 屏幕捕获画面，按原始宽高比居中放大镜映射，避免拉伸失真
+  const video = document.createElement('video')
+  video.autoplay = true
+  video.muted = true
+  video.playsInline = true
+  video.srcObject = stream
+  video.style.cssText = 'position:absolute;display:block;'
+  const vw = () => overlay.clientWidth
+  const vh = () => overlay.clientHeight
+  const layoutVideo = () => {
+    const scale = Math.min(vw() / srcW, vh() / srcH)
+    const dw = srcW * scale
+    const dh = srcH * scale
+    video.style.width = `${dw}px`
+    video.style.height = `${dh}px`
+    video.style.left = `${(vw() - dw) / 2}px`
+    video.style.top = `${(vh() - dh) / 2}px`
+  }
+  layoutVideo()
+  video.addEventListener('loadedmetadata', layoutVideo)
+
+  // 圆滑放大镜
+  const mag = document.createElement('div')
+  mag.style.cssText =
+    'position:absolute;left:50%;top:50%;z-index:2;width:132px;height:132px;border-radius:50%;' +
+    'border:2px solid rgba(255,255,255,.9);box-shadow:0 8px 32px rgba(0,0,0,.55);' +
+    'overflow:hidden;pointer-events:none;transform:translate(-50%,-50%);'
+  const cv = document.createElement('canvas')
+  cv.width = 132
+  cv.height = 132
+  cv.style.cssText = 'width:100%;height:100%;image-rendering:auto;'
+  const cross = document.createElement('div')
+  cross.style.cssText =
+    'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24px;height:24px;pointer-events:none;'
+  cross.innerHTML =
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none">' +
+    '<path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>' +
+    '<circle cx="12" cy="12" r="2" fill="#fff"/></svg>'
+  const hexLabel = document.createElement('div')
+  hexLabel.textContent = '#000000'
+  hexLabel.style.cssText =
+    'position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);white-space:nowrap;' +
+    'background:rgba(0,0,0,.65);color:#fff;font:12px Consolas,monospace;padding:2px 8px;border-radius:6px;'
+  mag.append(cv, cross, hexLabel)
+
+  const hint = document.createElement('div')
+  hint.textContent = '移动放大镜，点击取样 · Esc 取消'
+  hint.style.cssText =
+    'position:absolute;left:50%;top:14px;transform:translateX(-50%);' +
+    'background:rgba(0,0,0,.6);color:#fff;font-size:13px;padding:6px 14px;border-radius:20px;white-space:nowrap;'
+
+  overlay.append(video, mag, hint)
+  document.body.appendChild(overlay)
+
+  // 1:1 精确取样画布
+  const probe = document.createElement('canvas')
+  probe.width = 1
+  probe.height = 1
+  const probeCtx = probe.getContext('2d')
+  const magCtx = cv.getContext('2d')
+
+  // 视口坐标 -> 捕获画面像素坐标
+  const toSrc = (clientX, clientY) => {
+    const scale = Math.min(vw() / srcW, vh() / srcH)
+    const dw = srcW * scale
+    const dh = srcH * scale
+    const ox = (vw() - dw) / 2
+    const oy = (vh() - dh) / 2
+    const sx = ((clientX - ox) / dw) * srcW
+    const sy = ((clientY - oy) / dh) * srcH
+    return { sx, sy }
+  }
+
+  const sample = (clientX, clientY) => {
+    const { sx, sy } = toSrc(clientX, clientY)
+    // 放大镜平滑缩放，避免块状马赛克
+    magCtx.imageSmoothingEnabled = true
+    magCtx.clearRect(0, 0, cv.width, cv.height)
+    const half = cv.width / ZOOM / 2
+    magCtx.drawImage(video, sx - half, sy - half, half * 2, half * 2, 0, 0, cv.width, cv.height)
+    // 精确读中心像素（用 1:1 探针）
+    probeCtx.clearRect(0, 0, 1, 1)
+    probeCtx.drawImage(video, sx - 0.5, sy - 0.5, 1, 1, 0, 0, 1, 1)
+    const d = probeCtx.getImageData(0, 0, 1, 1).data
+    const color =
+      '#' +
+      ((1 << 24) | (d[0] << 16) | (d[1] << 8) | d[2]).toString(16).slice(1)
+    hexLabel.textContent = color
+    return color
+  }
+
+  const onMove = (e) => {
+    mag.style.left = `${e.clientX}px`
+    mag.style.top = `${e.clientY}px`
+    sample(e.clientX, e.clientY)
+  }
+  const onDown = (e) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    const color = sample(e.clientX, e.clientY)
+    cleanup()
+    hexColor.value = color
+    exec('foreColor', color)
+  }
+  const onKey = (e) => {
+    if (e.key === 'Escape') cleanup()
+  }
+  const cleanup = () => {
+    if (!pickerCleanup) return
+    track.stop()
+    window.removeEventListener('resize', layoutVideo)
+    document.removeEventListener('mousemove', onMove)
+    overlay.removeEventListener('mousedown', onDown)
+    document.removeEventListener('keydown', onKey)
+    overlay.remove()
+    pickerCleanup = null
+  }
+  pickerCleanup = cleanup
+
+  window.addEventListener('resize', layoutVideo)
+  document.addEventListener('mousemove', onMove)
+  overlay.addEventListener('mousedown', onDown)
+  document.addEventListener('keydown', onKey)
+  requestAnimationFrame(() => {
+    mag.style.left = `${innerWidth / 2}px`
+    mag.style.top = `${innerHeight / 2}px`
+    sample(innerWidth / 2, innerHeight / 2)
+  })
 }
 
 /** 应用 HEX 颜色（支持 #RGB / #RRGGBB） */
@@ -846,6 +1031,8 @@ async function confirmLink() {
 
 onBeforeUnmount(() => {
   if (saveTimer) clearTimeout(saveTimer)
+  // 若聚焦屏幕取色器进行中，先关闭（停流、移除遮罩、解绑监听）
+  if (pickerCleanup) pickerCleanup()
   // 释放正文里 hydrate 出来的 object URL
   revokeAllNoteImages(editorEl.value)
   // 释放附件缩略图 object URL
