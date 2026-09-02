@@ -177,14 +177,14 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
-/* ========== Premium Gold Text Effect ========== */
+/* ========== Premium Gold Text Effect（修仙风·登录页流金） ========== */
 .text-gold-premium {
-  background: linear-gradient(135deg, #8b6914 0%, #daa520 40%, #f5d778 50%, #daa520 60%, #8b6914 100%);
+  background: linear-gradient(135deg, #c9a96e 0%, #f0e6c8 45%, #c9a96e 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-shadow: none;
-  filter: drop-shadow(0 2px 4px rgba(139, 105, 20, 0.3));
+  filter: drop-shadow(0 2px 6px rgba(201, 169, 110, 0.25));
 }
 
 /* ========== Jade Glow Effect ========== */
@@ -376,4 +376,80 @@
 
   /* 随机事件冷却 */
   --random-event-cooldown: 30000;
+}
+
+/* =====================================================================
+ * 修仙风 Reinstate Overrides（2026-09-02 · 全站以「登录页修仙风」为锚）
+ * 说明：仅覆盖 core token 的值（不删变量名，保证首页/岛屿现有引用自动跟随）。
+ * 依据：docs/ai/design-review-2026-09-02-xiuxian-style-unify.md
+ * ===================================================================== */
+:root {
+  /* ---- 夜色天穹背景（登录页） ---- */
+  --color-bg-dark: #0a1218;
+  --color-bg: #15212c;                  /* 主背景：深青夜色 */
+  --color-bg-elevated: #1a2530;
+  --color-bg-glass: rgba(22, 38, 50, 0.85);
+  --bg-deep: #0a1218;
+  --bg-indigo: #15212c;
+  --bg-night: #1a2530;
+  --ink-black: #0a1218;
+  --ink-dark: #15212c;
+  --ink-medium: #1a2530;
+  --ink-light: #22303d;
+
+  /* ---- 文字：淡霜白阶梯（登录页） ---- */
+  --color-text: #eaf2f8;
+  --color-text-dark: #0a1218;           /* 用于浅底 === 深字，深底请用 --xiu-text */
+  --color-text-secondary: #9fb3c2;
+  --color-text-muted: #5a6b78;
+  --color-text-light: rgba(234, 242, 248, 0.92);
+
+  /* ---- 主强调：灵气青绿（登录页） ---- */
+  --color-primary: #3db8b0;
+  --color-secondary: #2a8f8b;
+  --color-qi-primary: #3db8b0;
+  --color-qi-green: #2f9c95;
+  --color-qi-glow: rgba(61, 184, 176, 0.35);
+  --island-glow-color: rgba(61, 184, 176, 0.2);
+  --color-success: #4fae9a;
+  --shadow-glow: 0 0 40px rgba(61, 184, 176, 0.35);
+  --shadow-ink: 0 0 20px rgba(93, 224, 216, 0.3), 0 0 40px rgba(61, 184, 176, 0.15);
+  --shadow-jade: 0 0 15px rgba(61, 184, 176, 0.25);
+
+  /* ---- 点睛：流金（登录页） ---- */
+  --color-accent: #c9a96e;
+  --color-gold: #c9a96e;                /* 修复此前未定义引用 */
+  --color-gold-dark: #8a6d3f;           /* 修复此前未定义引用 */
+  --color-gold-bright: #f0e6c8;         /* 新增 */
+  --color-jade: #5de0d8;                /* 修复此前未定义引用 */
+  --gold-pale: #f0e6c8;
+  --rattan-yellow: #c9a96e;
+  --ochre-light: #a08060;
+  --color-warning: #d4b878;
+  --color-ochre: #a08060;
+
+  /* ---- 琉璃雾色 ---- */
+  --mist-light: rgba(159, 179, 194, 0.1);
+  --mist-medium: rgba(159, 179, 194, 0.14);
+  --mist-heavy: rgba(159, 179, 194, 0.18);
+  --star-dim: rgba(159, 179, 194, 0.25);
+  --star-mid: rgba(190, 214, 230, 0.4);
+  --star-bright: rgba(210, 228, 242, 0.55);
+  --cloud-mist: rgba(170, 200, 215, 0.12);
+  --cloud-highlight: rgba(200, 220, 232, 0.18);
+
+  /* ---- 修仙风专属 token（工作台/通用组件使用，见概念稿） ---- */
+  --xiu-card: rgba(26, 58, 74, 0.72);
+  --xiu-card-strong: rgba(22, 46, 60, 0.88);
+  --xiu-line: rgba(201, 169, 110, 0.18);
+  --xiu-primary: #3db8b0;
+  --xiu-primary-bright: #5de0d8;
+  --xiu-gold: #c9a96e;
+  --xiu-gold-bright: #f0e6c8;
+  --xiu-text: #eaf2f8;
+  --xiu-text-2: #9fb3c2;
+  --xiu-text-3: #5a6b78;
+  --xiu-glow: rgba(61, 184, 176, 0.35);
+  --xiu-danger: #e08a7a;
+  --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
