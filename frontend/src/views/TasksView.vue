@@ -43,7 +43,7 @@
         </div>
       </li>
     </ul>
-    <p v-else class="tasks-empty">还没有任务。</p>
+    <p v-else class="tasks-empty">暂无任务，心静自闲。</p>
 
     <el-pagination
       v-model:current-page="page"
@@ -150,19 +150,21 @@ onMounted(reload)
 </script>
 
 <style scoped>
-.tasks-page { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
-.tasks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.tasks-header h1 { font-size: 22px; margin: 0; }
+.tasks-page { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; font-family: var(--font-serif); color: var(--xiu-text); }
+.tasks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.tasks-header h1 { font-size: 26px; margin: 0; letter-spacing: .08em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
 .tasks-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .tasks-list { list-style: none; margin: 0; padding: 0; }
-.tasks-item { background: var(--paper-white); border: 1px solid var(--paper-aged); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; flex-wrap: wrap; }
+.tasks-item { position: relative; background: var(--xiu-card); backdrop-filter: blur(12px); border: 1px solid var(--xiu-line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; display: flex; gap: 12px; flex-wrap: wrap; overflow: hidden; transition: var(--transition); }
+.tasks-item::before { content: ""; position: absolute; top: 0; left: 14%; right: 14%; height: 1px; background: linear-gradient(90deg, transparent, var(--xiu-gold), transparent); opacity: .5; }
+.tasks-item:hover { transform: translateY(-1px); border-color: rgba(201, 169, 110, .3); box-shadow: 0 14px 34px rgba(0,0,0,.3); }
 .tasks-main { flex: 1; min-width: 220px; }
 .tasks-main h3 { font-size: 15px; margin: 0 0 4px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .tasks-title { font-weight: 600; }
 .tasks-desc { color: var(--color-text-muted); font-size: 13px; margin: 4px 0; }
 .tasks-meta { display: flex; gap: 12px; color: var(--color-text-muted); font-size: 12px; }
 .tasks-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.tasks-empty { color: var(--color-text-muted); text-align: center; padding: 40px 0; }
+.tasks-empty { color: var(--xiu-text-3); text-align: center; padding: 40px 0; font-size: 14px; letter-spacing: .1em; }
 .tasks-pager { margin-top: 16px; text-align: right; }
 @media (max-width: 600px) {
   .tasks-item { flex-direction: column; }

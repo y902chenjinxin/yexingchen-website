@@ -36,7 +36,7 @@
         </div>
       </li>
     </ul>
-    <p v-else class="notes-empty">还没有笔记。点击右上角新建一条。</p>
+    <p v-else class="notes-empty">尚无笔记，点击上方「新建笔记」落笔成篇。</p>
 
     <el-pagination
       v-model:current-page="page"
@@ -126,25 +126,31 @@ onMounted(() => { reload(); loadTags() })
 </script>
 
 <style scoped>
-.notes-page { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
-.notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.notes-header h1 { font-size: 22px; margin: 0; }
+.notes-page { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; font-family: var(--font-serif); color: var(--xiu-text); }
+.notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.notes-header h1 { font-size: 26px; margin: 0; letter-spacing: .08em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
 .notes-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .notes-list { list-style: none; margin: 0; padding: 0; }
 .notes-item {
-  background: var(--paper-white);
-  border: 1px solid var(--paper-aged);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin-bottom: 8px;
+  position: relative;
+  background: var(--xiu-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--xiu-line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
   display: flex;
   gap: 12px;
+  overflow: hidden;
+  transition: var(--transition);
 }
+.notes-item::before { content: ""; position: absolute; top: 0; left: 14%; right: 14%; height: 1px; background: linear-gradient(90deg, transparent, var(--xiu-gold), transparent); opacity: .5; }
+.notes-item:hover { transform: translateY(-1px); border-color: rgba(201, 169, 110, .3); box-shadow: 0 14px 34px rgba(0,0,0,.3); }
 .notes-item-main { flex: 1; min-width: 0; }
 .notes-item-main h3 { font-size: 16px; margin: 0 0 4px; display: flex; gap: 8px; align-items: center; }
 .notes-snippet { color: var(--color-text-muted); font-size: 13px; margin: 4px 0; line-height: 1.4; word-break: break-word; }
 .notes-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.notes-tag { color: var(--ochre); font-size: 12px; }
+.notes-tag { color: var(--xiu-gold); font-size: 12px; }
 .notes-time { color: var(--color-text-muted); font-size: 12px; }
 .notes-empty { color: var(--color-text-muted); text-align: center; padding: 40px 0; }
 .notes-pager { margin-top: 16px; text-align: right; }

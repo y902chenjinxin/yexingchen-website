@@ -130,7 +130,7 @@ function formatUrl(url) {
 .header-left { display: flex; align-items: center; gap: 20px; }
 .back-btn { color: var(--color-accent); cursor: pointer; font-size: 14px; }
 .back-btn:hover { color: #fff; }
-.island-title { font-family: var(--font-serif); font-size: 20px; color: #E8F4FC; }
+.island-title { font-family: var(--font-serif); font-size: 22px; letter-spacing: .12em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
 .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding: 30px 40px; }
 .tool-icon-cell { margin-right: 8px; }
 

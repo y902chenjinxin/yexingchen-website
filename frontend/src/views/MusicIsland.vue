@@ -211,8 +211,12 @@ function formatSize(bytes) {
 
 .island-title {
   font-family: var(--font-serif);
-  font-size: 20px;
-  color: #E8F4FC;
+  font-size: 22px;
+  letter-spacing: .12em;
+  background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .header-right {

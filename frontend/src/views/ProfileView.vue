@@ -242,6 +242,7 @@ async function savePassword() {
   min-height: 100vh;
   background: var(--color-bg);
   padding: 40px;
+  font-family: var(--font-serif);
 }
 
 .page-header {
@@ -251,8 +252,13 @@ async function savePassword() {
 
 .page-title {
   font-size: 32px;
-  color: var(--color-text);
+  font-weight: 600;
+  letter-spacing: .1em;
   text-align: center;
+  background: linear-gradient(135deg, #c9a96e 0%, #f0e6c8 48%, #c9a96e 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(201,169,110,.18));
 }
 
 .profile-content {
@@ -264,12 +270,15 @@ async function savePassword() {
 }
 
 .info-card, .avatar-card {
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius);
+  position: relative;
+  background: var(--xiu-card);
+  backdrop-filter: blur(14px);
+  border-radius: 16px;
   padding: 24px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(201, 169, 108, 0.1);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .04);
+  border: 1px solid var(--xiu-line);
 }
+.info-card::before, .avatar-card::before { content: ""; position: absolute; top: 0; left: 18%; right: 18%; height: 1px; background: linear-gradient(90deg, transparent, var(--xiu-gold), transparent); opacity: .5; }
 
 .card-header {
   margin-bottom: 20px;

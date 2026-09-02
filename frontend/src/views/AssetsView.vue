@@ -62,7 +62,7 @@
         </div>
       </li>
     </ul>
-    <p v-else class="assets-empty">还没有内容资产。点击右上角添加。</p>
+    <p v-else class="assets-empty">尚无内容资产，点上方「添加」纳藏一事。</p>
 
     <el-pagination
       v-model:current-page="page"
@@ -273,24 +273,25 @@ onMounted(reload)
 </script>
 
 <style scoped>
-.assets-page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
-.assets-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.assets-header h1 { font-size: 22px; margin: 0; }
-.upload-btn { display: inline-block; padding: 8px 14px; background: var(--paper-white); border: 1px solid var(--rattan-yellow); border-radius: var(--radius-sm); cursor: pointer; margin-left: 8px; }
-.upload-btn:hover { background: var(--paper-white)8e6; }
+.assets-page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; font-family: var(--font-serif); color: var(--xiu-text); }
+.assets-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.assets-header h1 { font-size: 26px; margin: 0; letter-spacing: .08em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
+.upload-btn { display: inline-block; padding: 8px 14px; background: var(--xiu-card); border: 1px solid var(--xiu-line); border-radius: var(--radius-sm); cursor: pointer; margin-left: 8px; color: var(--xiu-text-2); transition: var(--transition); }
+.upload-btn:hover { border-color: rgba(93, 224, 216, .4); color: var(--xiu-primary-bright); }
 .assets-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .assets-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-.asset-card { background: var(--paper-white); border: 1px solid var(--paper-aged); border-radius: var(--radius-sm); overflow: hidden; display: flex; flex-direction: column; }
-.asset-preview { background: var(--paper-white); height: 160px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.asset-card { position: relative; background: var(--xiu-card); backdrop-filter: blur(12px); border: 1px solid var(--xiu-line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; transition: var(--transition); }
+.asset-card:hover { transform: translateY(-2px); border-color: rgba(201, 169, 110, .3); box-shadow: 0 16px 38px rgba(0,0,0,.35); }
+.asset-preview { background: rgba(10, 18, 24, .4); height: 160px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .asset-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .asset-pdf { width: 100%; height: 100%; border: 0; }
-.asset-link-card { color: var(--ochre); padding: 16px; text-align: center; word-break: break-all; font-size: 13px; }
+.asset-link-card { color: var(--xiu-gold); padding: 16px; text-align: center; word-break: break-all; font-size: 13px; }
 .asset-loading { color: var(--color-text-muted); font-size: 12px; }
 .asset-info { padding: 10px 12px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .asset-info h4 { font-size: 14px; margin: 0; }
 .asset-info p { font-size: 12px; color: var(--color-text-muted); margin: 0; }
 .asset-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.asset-tag { color: var(--ochre); font-size: 11px; }
+.asset-tag { color: var(--xiu-gold); font-size: 11px; }
 .asset-size { color: var(--color-text-muted); font-size: 11px; }
 .asset-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
 .link-btn {
@@ -302,6 +303,6 @@ onMounted(reload)
   padding: 0;
 }
 .link-btn:hover { text-decoration: underline; }
-.assets-empty { color: var(--color-text-muted); text-align: center; padding: 40px 0; }
+.assets-empty { color: var(--xiu-text-3); text-align: center; padding: 40px 0; font-size: 14px; letter-spacing: .1em; }
 .assets-pager { margin-top: 16px; text-align: right; }
 </style>

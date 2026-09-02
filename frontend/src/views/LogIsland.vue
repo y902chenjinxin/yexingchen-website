@@ -111,7 +111,7 @@ function formatTime(timeStr) {
 .header-left { display: flex; align-items: center; gap: 20px; }
 .back-btn { color: var(--color-accent); cursor: pointer; font-size: 14px; }
 .back-btn:hover { color: #fff; }
-.island-title { font-family: var(--font-serif); font-size: 20px; color: #E8F4FC; }
+.island-title { font-family: var(--font-serif); font-size: 22px; letter-spacing: .12em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
 .header-right { display: flex; gap: 15px; }
 .log-list { padding: 30px 40px; max-width: 900px; margin: 0 auto; }
 .loading-placeholder, .empty-placeholder { text-align: center; padding: 60px; color: rgba(255,255,255,0.6); }
