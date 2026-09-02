@@ -174,7 +174,10 @@ class HttpProvider(AiProvider):
             raise RuntimeError("缺少 httpx，无法使用 HttpProvider") from exc
 
         prompt = self._build_prompt(req)
-        url = f"{self.base_url}/v1/chat/completions"
+        base = self.base_url.rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3]
+        url = f"{base}/v1/chat/completions"
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],

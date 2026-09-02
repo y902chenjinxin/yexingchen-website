@@ -62,6 +62,7 @@ from app.services.storage_service import get_storage
 from app.services.ai_providers import (
     AiRequest,
     FakeProvider,
+    HttpProvider,
     organize_note,
     preview_input_scope,
     sanitize_payload,
@@ -1777,13 +1778,14 @@ def _resolve_user_provider(
             .first()
         )
         return cfg
+    # 未指定 provider_id：优先默认，否则取第一个启用的（有配置就不再退到 fake）
     return (
         db.query(UserAiProvider)
         .filter(
             UserAiProvider.user_id == user_id,
             UserAiProvider.enabled == True,  # noqa: E712
-            UserAiProvider.is_default == True,  # noqa: E712
         )
+        .order_by(UserAiProvider.is_default.desc(), UserAiProvider.id.asc())
         .first()
     )
 
@@ -1814,6 +1816,14 @@ def ai_providers_create(
     - 若 is_default=True，将同用户的其他 default 置 False（单选默认）。
     """
     uid = current_user["user_id"]
+    # 首个配置自动设为默认，避免"配了却不生效"的非默认幽灵
+    has_any = (
+        db.query(UserAiProvider)
+        .filter(UserAiProvider.user_id == uid)
+        .first()
+    )
+    if payload.is_default is False and has_any is None:
+        payload.is_default = True
     if payload.is_default:
         db.query(UserAiProvider).filter(
             UserAiProvider.user_id == uid, UserAiProvider.is_default == True  # noqa
@@ -1900,8 +1910,10 @@ def ai_providers_test(
     if not cfg:
         raise_http(404, "AI Provider 配置不存在", 404)
 
-    base_url = (cfg.base_url or "https://api.openai.com/v1").rstrip("/")
-    url = f"{base_url}/chat/completions"
+    base = (cfg.base_url or "https://api.openai.com").rstrip("/")
+    if base.endswith("/v1"):
+        base = base[:-3]
+    url = f"{base}/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {cfg.api_key}",
         "Content-Type": "application/json",
