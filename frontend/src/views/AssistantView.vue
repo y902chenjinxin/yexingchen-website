@@ -1,7 +1,7 @@
 <template>
   <div class="assistant-page">
     <header class="assistant-header">
-      <h1>AI 助手</h1>
+      <BackButton fallback="/workbench" style="margin-right: 12px;" /><h1>AI 助手</h1>
       <div class="header-actions">
         <el-select
           v-model="currentProviderId"
@@ -236,6 +236,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
+import BackButton from '@/components/BackButton.vue'
 import NoteSelect from '@/components/common/NoteSelect.vue'
 
 const conversations = ref([])

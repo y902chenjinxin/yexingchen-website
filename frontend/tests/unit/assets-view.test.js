@@ -44,7 +44,9 @@ const ElementPlusStub = {
 }
 
 vi.mock('vue-router', () => ({
+  routerKey: Symbol('routerKey'),
   useRoute: () => ({ query: {} }),
+  useRouter: () => ({ back: vi.fn(), push: vi.fn() }),
 }))
 vi.mock('element-plus', async () => {
   const actual = await vi.importActual('element-plus')

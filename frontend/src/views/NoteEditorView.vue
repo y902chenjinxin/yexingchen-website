@@ -152,6 +152,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
+import BackButton from '@/components/BackButton.vue'
 import { classifyPaste, pickAcceptedFromDrop, summarizeIgnored } from '@/utils/paste-drop'
 import { Document, Link } from '@element-plus/icons-vue'
 import {

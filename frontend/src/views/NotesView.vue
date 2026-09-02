@@ -1,7 +1,7 @@
 <template>
   <div class="notes-page">
     <header class="notes-header">
-      <h1>笔记</h1>
+      <BackButton fallback="/workbench" style="margin-right: 12px;" /><h1>笔记</h1>
       <el-button type="primary" @click="createNew">新建笔记</el-button>
     </header>
 
@@ -54,6 +54,7 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
+import BackButton from '@/components/BackButton.vue'
 
 const route = useRoute()
 const router = useRouter()

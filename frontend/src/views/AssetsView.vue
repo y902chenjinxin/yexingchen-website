@@ -1,7 +1,7 @@
 <template>
   <div class="assets-page">
     <header class="assets-header">
-      <h1>内容资产</h1>
+      <BackButton fallback="/workbench" style="margin-right: 12px;" /><h1>内容资产</h1>
       <div>
         <el-button @click="showLink = true">添加网页</el-button>
         <label class="upload-btn">
@@ -101,6 +101,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
+import BackButton from '@/components/BackButton.vue'
 import { Link } from '@element-plus/icons-vue'
 
 const route = useRoute()

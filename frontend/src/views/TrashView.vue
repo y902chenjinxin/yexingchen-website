@@ -1,7 +1,7 @@
 <template>
   <div class="trash-page">
     <header class="trash-header">
-      <h1>回收站</h1>
+      <BackButton fallback="/workbench" style="margin-right: 12px;" /><h1>回收站</h1>
       <div>
         <el-button type="danger" plain @click="cleanup">清理 30 天前内容</el-button>
       </div>
@@ -60,6 +60,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
+import BackButton from '@/components/BackButton.vue'
 
 const data = ref({ notes: [], assets: [], tasks: [], conversations: [] })
 

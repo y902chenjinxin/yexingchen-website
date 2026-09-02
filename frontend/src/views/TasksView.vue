@@ -1,7 +1,7 @@
 <template>
   <div class="tasks-page">
     <header class="tasks-header">
-      <h1>任务</h1>
+      <BackButton fallback="/workbench" style="margin-right: 12px;" /><h1>任务</h1>
       <el-button type="primary" @click="showCreate = true">新建任务</el-button>
     </header>
 
@@ -91,6 +91,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
+import BackButton from '@/components/BackButton.vue'
 
 const items = ref([])
 const total = ref(0)

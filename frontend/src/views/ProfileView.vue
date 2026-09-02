@@ -3,6 +3,7 @@
     <div class="page-header">
       <div class="header-with-back">
         <span class="back-btn" @click="router.push('/home')">← 返回主页</span>
+        <BackButton fallback="/workbench" style="margin-right: 12px;" />
         <h1 class="page-title font-serif">个人中心</h1>
       </div>
     </div>
@@ -102,6 +103,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import BackButton from '@/components/BackButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import { getMe, updateMe } from '@/api/auth'
 
