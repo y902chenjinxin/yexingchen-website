@@ -2,7 +2,7 @@
   <div class="profile-page">
     <div class="page-header">
       <div class="header-with-back">
-        <span class="back-btn" @click="router.push('/home')">← 返回主页</span>
+        <span class="back-btn" @click="router.push('/workbench')">← 返回工作台</span>
         <BackButton fallback="/workbench" style="margin-right: 12px;" />
         <h1 class="page-title font-serif">个人中心</h1>
       </div>

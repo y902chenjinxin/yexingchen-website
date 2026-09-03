@@ -14,12 +14,6 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
-    path: '/home',
-    name: 'Home',
-    component: () => import('@/views/HomeView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/workbench',
     name: 'Workbench',
     component: () => import('@/views/WorkbenchView.vue'),
@@ -139,6 +133,11 @@ const routes = [
     name: 'Profile',
     component: () => import('@/views/ProfileView.vue'),
     meta: { requiresAuth: true }
+  },
+  // 未匹配路径兜底：弃用 /home 等未知路由，统一回工作台（含未登录重定向）
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/workbench'
   }
 ]
 

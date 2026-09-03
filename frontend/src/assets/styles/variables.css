@@ -452,4 +452,28 @@
   --xiu-glow: rgba(61, 184, 176, 0.35);
   --xiu-danger: #e08a7a;
   --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.45);
+
+  /* ========== 冷峻东方 · 浅留白 token（工作台/顶栏/玉简/岛屿内页 v1） ========== */
+  /* 浅底 */
+  --lj-bg: #f6f4ee;                 /* 宣纸留白主底 */
+  --lj-bg-deep: #eeebe2;            /* 绢帛暗一度 */
+  --lj-paper: #fbfaf6;              /* 卡片/面板底 */
+  /* 墨黛主色 */
+  --lj-ink: #3a4350;                /* 黛青近墨，主文字 */
+  --lj-dai: #4a5f63;                /* 黛青，主强调 */
+  --lj-dai-deep: #3d4f52;
+  --lj-mist: #7f8d8d;               /* 灰绿次要 */
+  /* 点缀 */
+  --lj-ochre: #b0805a;              /* 赭石（少量）*/
+  --lj-vermilion: #b55a48;          /* 朱砂（印章点睛）*/
+  --lj-line: rgba(74,95,99,.16);    /* 淡墨细线 */
+  --lj-line-strong: rgba(74,95,99,.3);
+  /* 文字 */
+  --lj-text: #39434b;
+  --lj-text-2: #5f6b70;
+  --lj-text-3: #9aa3a5;
+  /* 毛玻璃 */
+  --lj-glass: rgba(251,250,246,.62);
+  --lj-glass-blur: saturate(180%) blur(20px);
+  --lj-shadow: 0 6px 24px rgba(58,67,80,.08), 0 1px 3px rgba(58,67,80,.05);
 }

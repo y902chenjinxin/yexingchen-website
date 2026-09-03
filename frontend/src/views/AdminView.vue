@@ -2,7 +2,7 @@
   <div class="admin-page">
     <header class="admin-header">
       <div class="header-left">
-        <span class="back-btn" @click="router.push('/home')">← 返回主页</span>
+        <span class="back-btn" @click="router.push('/workbench')">← 返回工作台</span>
         <span class="admin-title">🔧 管理后台</span>
       </div>
       <div class="header-right">

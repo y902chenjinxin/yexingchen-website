@@ -13,12 +13,12 @@ export async function routeGuard(to, from, next) {
   }
 
   if (to.meta.role === 'super_admin' && !auth.isSuperAdmin) {
-    next('/home')
+    next('/workbench')
     return
   }
 
   if (to.path === '/login' && auth.isLoggedIn) {
-    next('/home')
+    next('/workbench')
     return
   }
 

@@ -9,6 +9,9 @@
     <!-- 路由视图 -->
     <router-view v-if="!showInitialLoading" id="main-content" />
 
+    <!-- 登录后全站常驻：全局顶栏（悬浮，置于桌宠上层）-->
+    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn" />
+
     <!-- 登录后全站常驻桌宠 -->
     <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn" />
   </div>
@@ -20,6 +23,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import LoadingView from '@/views/LoadingView.vue'
 import WhaleCompanion from '@/components/effects/WhaleCompanion.vue'
+import GlobalTopBar from '@/components/GlobalTopBar.vue'
 
 const router = useRouter()
 const route = useRoute()
