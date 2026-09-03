@@ -61,67 +61,62 @@ const routes = [
     component: () => import('@/views/TrashView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内容模块（新版：去岛，浏览+管理合并一页）
   {
-    path: '/island/music',
-    name: 'MusicIsland',
-    component: () => import('@/views/MusicIsland.vue'),
-    meta: { requiresAuth: true, island: 'music' }
-  },
-  {
-    path: '/island/novel',
-    name: 'NovelIsland',
-    component: () => import('@/views/NovelIsland.vue'),
-    meta: { requiresAuth: true, island: 'novel' }
-  },
-  {
-    path: '/island/video',
-    name: 'VideoIsland',
-    component: () => import('@/views/VideoIsland.vue'),
-    meta: { requiresAuth: true, island: 'video' }
-  },
-  {
-    path: '/island/log',
-    name: 'LogIsland',
-    component: () => import('@/views/LogIsland.vue'),
-    meta: { requiresAuth: true, island: 'log' }
-  },
-  {
-    path: '/island/tool',
-    name: 'ToolIsland',
-    component: () => import('@/views/ToolIsland.vue'),
-    meta: { requiresAuth: true, island: 'tool' }
-  },
-  // v2.0 岛屿内景
-  {
-    path: '/island/music/inner',
-    name: 'MusicIslandInner',
-    component: () => import('@/views/islands/MusicIslandInner.vue'),
+    path: '/music',
+    name: 'Music',
+    component: () => import('@/views/MusicView.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/island/novel/inner',
-    name: 'NovelIslandInner',
-    component: () => import('@/views/islands/NovelIslandInner.vue'),
+    path: '/novel',
+    name: 'Novel',
+    component: () => import('@/views/NovelView.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/island/video/inner',
-    name: 'VideoIslandInner',
-    component: () => import('@/views/islands/VideoIslandInner.vue'),
+    path: '/video',
+    name: 'Video',
+    component: () => import('@/views/VideoView.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/island/log/inner',
-    name: 'LogIslandInner',
-    component: () => import('@/views/islands/LogIslandInner.vue'),
+    path: '/log',
+    name: 'Log',
+    component: () => import('@/views/LogView.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/island/tool/inner',
-    name: 'ToolIslandInner',
-    component: () => import('@/views/islands/ToolIslandInner.vue'),
+    path: '/tool',
+    name: 'Tool',
+    component: () => import('@/views/ToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置工具独立页
+  {
+    path: '/tool/watermark',
+    name: 'Watermark',
+    component: () => import('@/views/WatermarkView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 外部工具独立页（iframe 内嵌）
+  {
+    path: '/tool/:id',
+    name: 'ToolDetail',
+    component: () => import('@/views/ToolDetailView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 旧 /island/* 路由重定向（去岛）
+  { path: '/island/music', redirect: '/music' },
+  { path: '/island/novel', redirect: '/novel' },
+  { path: '/island/video', redirect: '/video' },
+  { path: '/island/log', redirect: '/log' },
+  { path: '/island/tool', redirect: '/tool' },
+  { path: '/island/music/inner', redirect: '/music' },
+  { path: '/island/novel/inner', redirect: '/novel' },
+  { path: '/island/video/inner', redirect: '/video' },
+  { path: '/island/log/inner', redirect: '/log' },
+  { path: '/island/tool/inner', redirect: '/tool' },
   {
     path: '/admin',
     name: 'Admin',

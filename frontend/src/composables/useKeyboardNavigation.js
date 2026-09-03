@@ -13,11 +13,11 @@ export function useKeyboardNavigation() {
 
   // 玉简路由映射
   const routes = {
-    music: '/island/music',
-    novel: '/island/novel',
-    video: '/island/video',
-    log: '/island/log',
-    tool: '/island/tool'
+    music: '/music',
+    novel: '/novel',
+    video: '/video',
+    log: '/log',
+    tool: '/tool'
   }
 
   // 获取所有玉简元素

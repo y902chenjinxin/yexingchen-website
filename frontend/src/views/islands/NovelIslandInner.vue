@@ -1,11 +1,5 @@
 <template>
-  <IslandInnerBase
-    type="novel"
-    title="小说岛 · 书卷悠长"
-    subtitle="卷卷在手，洞悉天机"
-    @back="$emit('back')"
-  >
-    <div class="novel-content">
+  <div class="novel-content">
       <!-- 书页翻飞装饰 -->
       <div class="page-flying">
         <div v-for="i in 4" :key="i" class="flying-page" :style="getPageStyle(i)"></div>
@@ -81,17 +75,13 @@
           <el-button type="primary" :loading="saving" @click="saveEdit">保存</el-button>
         </template>
       </el-dialog>
-    </div>
-  </IslandInnerBase>
+  </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import IslandInnerBase from './IslandInnerBase.vue'
 import { useNovelStore } from '@/stores/novel'
 import { ElMessage } from 'element-plus'
-
-defineEmits(['back'])
 
 const novelStore = useNovelStore()
 

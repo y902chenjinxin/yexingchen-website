@@ -1,11 +1,5 @@
 <template>
-  <IslandInnerBase
-    type="music"
-    title="音乐岛 · 音律飘渺"
-    subtitle="天籁之音，洗涤尘心"
-    @back="$emit('back')"
-  >
-    <div class="music-content">
+  <div class="music-content">
       <!-- 古琴虚影背景 -->
       <div class="guqin-bg">
         <svg viewBox="0 0 400 100" class="guqin-svg">
@@ -103,18 +97,14 @@
           <el-button type="primary" :loading="saving" @click="saveEdit">保存</el-button>
         </template>
       </el-dialog>
-    </div>
-  </IslandInnerBase>
+  </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import IslandInnerBase from './IslandInnerBase.vue'
 import { useMusicStore } from '@/stores/music'
 import { usePlayerStore } from '@/stores/player'
 import { ElMessage } from 'element-plus'
-
-defineEmits(['back'])
 
 const musicStore = useMusicStore()
 const player = usePlayerStore()

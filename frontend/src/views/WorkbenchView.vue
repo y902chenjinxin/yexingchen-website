@@ -116,10 +116,10 @@
             <router-link to="/assets?type=image" class="wb-chip"><el-icon class="wb-chip-icon"><Picture /></el-icon>图片</router-link>
             <router-link to="/assets?type=pdf" class="wb-chip"><el-icon class="wb-chip-icon"><Document /></el-icon>PDF</router-link>
             <router-link to="/tasks" class="wb-chip"><el-icon class="wb-chip-icon"><Check /></el-icon>任务</router-link>
-            <router-link to="/island/music" class="wb-chip"><el-icon class="wb-chip-icon"><Headset /></el-icon>音乐</router-link>
-            <router-link to="/island/novel" class="wb-chip"><el-icon class="wb-chip-icon"><Reading /></el-icon>小说</router-link>
-            <router-link to="/island/video" class="wb-chip"><el-icon class="wb-chip-icon"><VideoCamera /></el-icon>视频</router-link>
-            <router-link to="/island/tool" class="wb-chip"><el-icon class="wb-chip-icon"><Tools /></el-icon>工具</router-link>
+            <router-link to="/music" class="wb-chip"><el-icon class="wb-chip-icon"><Headset /></el-icon>音乐</router-link>
+            <router-link to="/novel" class="wb-chip"><el-icon class="wb-chip-icon"><Reading /></el-icon>小说</router-link>
+            <router-link to="/video" class="wb-chip"><el-icon class="wb-chip-icon"><VideoCamera /></el-icon>视频</router-link>
+            <router-link to="/tool" class="wb-chip"><el-icon class="wb-chip-icon"><Tools /></el-icon>工具</router-link>
           </div>
         </section>
 

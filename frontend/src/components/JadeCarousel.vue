@@ -66,11 +66,11 @@ const props = defineProps({
   cards: {
     type: Array,
     default: () => [
-      { key: 'music',  rune: '音', label: '宫商流转', path: '/island/music/inner',  color: '#4a5f63' },
-      { key: 'novel',  rune: '書', label: '卷帙浩繁', path: '/island/novel/inner',  color: '#b0805a' },
-      { key: 'video',  rune: '影', label: '光影交织', path: '/island/video/inner',  color: '#5b6b7a' },
-      { key: 'log',    rune: '墨', label: '翰墨丹青', path: '/island/log/inner',    color: '#4a6a56' },
-      { key: 'tool',   rune: '器', label: '机关百变', path: '/island/tool/inner',   color: '#6a7a6a' },
+      { key: 'music',  rune: '音', label: '宫商流转', path: '/music',  color: '#4a5f63' },
+      { key: 'novel',  rune: '書', label: '卷帙浩繁', path: '/novel',  color: '#b0805a' },
+      { key: 'video',  rune: '影', label: '光影交织', path: '/video',  color: '#5b6b7a' },
+      { key: 'log',    rune: '墨', label: '翰墨丹青', path: '/log',    color: '#4a6a56' },
+      { key: 'tool',   rune: '器', label: '机关百变', path: '/tool',   color: '#6a7a6a' },
       { key: 'notes',  rune: '記', label: '笔记云台', path: '/notes',               color: '#55706b' },
       { key: 'assets', rune: '藏', label: '内容资产', path: '/assets',              color: '#6b6a7a' },
       { key: 'tasks',  rune: '約', label: '任务镜台', path: '/tasks',               color: '#7a5a5a' }

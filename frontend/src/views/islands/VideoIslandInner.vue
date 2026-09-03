@@ -1,11 +1,5 @@
 <template>
-  <IslandInnerBase
-    type="video"
-    title="视频岛 · 光影流转"
-    subtitle="洞见万象，影像千秋"
-    @back="$emit('back')"
-  >
-    <div class="video-content">
+  <div class="video-content">
       <!-- 镜头光圈装饰 -->
       <div class="lens-aperture">
         <div class="aperture-ring" v-for="i in 4" :key="i"></div>
@@ -87,17 +81,13 @@
           <el-button type="primary" :loading="saving" @click="saveEdit">保存</el-button>
         </template>
       </el-dialog>
-    </div>
-  </IslandInnerBase>
+  </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import IslandInnerBase from './IslandInnerBase.vue'
 import { useVideoStore } from '@/stores/video'
 import { ElMessage } from 'element-plus'
-
-defineEmits(['back'])
 
 const videoStore = useVideoStore()
 

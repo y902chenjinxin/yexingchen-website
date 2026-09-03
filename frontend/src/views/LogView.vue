@@ -1,0 +1,144 @@
+<template>
+  <div class="island-page">
+    <header class="island-header">
+      <div class="header-left">
+        <span class="back-btn" @click="router.push('/workbench')">← 返回工作台</span>
+        <span class="island-title">📝 日志</span>
+      </div>
+      <div class="header-right">
+        <el-select v-model="filterType" placeholder="筛选类型" clearable style="width: 150px" @change="fetchData">
+          <el-option label="上传" value="upload" />
+          <el-option label="删除" value="delete" />
+          <el-option label="更新" value="update" />
+          <el-option label="登录" value="login" />
+          <el-option label="登出" value="logout" />
+          <el-option label="审批" value="approve" />
+        </el-select>
+      </div>
+    </header>
+
+    <main class="log-list">
+      <div v-if="loading" class="loading-placeholder">加载中...</div>
+      <div v-else-if="logs.length === 0" class="empty-placeholder">
+        <div class="empty-icon">📝</div>
+        <div class="empty-text">暂无操作日志</div>
+      </div>
+      <div v-else class="timeline">
+        <div v-for="log in logs" :key="log.id" class="timeline-item">
+          <div class="timeline-dot" :class="getActionClass(log.action)"></div>
+          <div class="timeline-content">
+            <div class="log-header">
+              <span class="log-user">{{ log.user_email }}</span>
+              <span class="log-action" :class="getActionClass(log.action)">{{ getActionText(log.action) }}</span>
+              <span v-if="log.target_type" class="log-target">【{{ log.target_type }}】</span>
+            </div>
+            <div class="log-detail" v-if="log.detail">{{ log.detail }}</div>
+            <div class="log-footer">
+              <span class="log-ip" v-if="log.ip_address">IP: {{ log.ip_address }}</span>
+              <span class="log-time">{{ formatTime(log.created_at) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="pagination-wrap" v-if="total > size">
+      <el-pagination v-model:current-page="page" :page-size="size" :total="total" layout="prev, pager, next" @current-change="fetchData" />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { getLogs } from '@/api/log'
+
+const router = useRouter()
+const logs = ref([])
+const total = ref(0)
+const page = ref(1)
+const size = ref(50)
+const loading = ref(false)
+const filterType = ref('')
+
+onMounted(() => { fetchData() })
+
+async function fetchData() {
+  loading.value = true
+  try {
+    const res = await getLogs({ page: page.value, size: size.value, target_type: filterType.value || undefined })
+    logs.value = res.data.list
+    total.value = res.data.total
+  } catch { /* 错误已由api拦截器处理 */ }
+  finally { loading.value = false }
+}
+
+function getActionClass(action) {
+  const map = {
+    upload: 'action-upload',
+    delete: 'action-delete',
+    update: 'action-update',
+    login: 'action-login',
+    logout: 'action-logout',
+    approve: 'action-approve',
+    reject: 'action-reject'
+  }
+  return map[action] || ''
+}
+
+function getActionText(action) {
+  const map = {
+    upload: '上传',
+    delete: '删除',
+    update: '更新',
+    login: '登录',
+    logout: '登出',
+    approve: '审批通过',
+    reject: '拒绝'
+  }
+  return map[action] || action
+}
+
+function formatTime(timeStr) {
+  const d = new Date(timeStr)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+}
+</script>
+
+<style scoped>
+.island-page { min-height: 100vh; background: linear-gradient(180deg, #1A1A2E 0%, #141B2D 100%); padding-bottom: 40px; }
+.island-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: rgba(26, 58, 74, 0.6); border-bottom: 1px solid rgba(78, 205, 196, 0.2); }
+.header-left { display: flex; align-items: center; gap: 20px; }
+.back-btn { color: var(--color-accent); cursor: pointer; font-size: 14px; }
+.back-btn:hover { color: #fff; }
+.island-title { font-family: var(--font-serif); font-size: 22px; letter-spacing: .12em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
+.header-right { display: flex; gap: 15px; }
+.log-list { padding: 30px 40px; max-width: 900px; margin: 0 auto; }
+.loading-placeholder, .empty-placeholder { text-align: center; padding: 60px; color: rgba(255,255,255,0.6); }
+.empty-icon { font-size: 60px; margin-bottom: 15px; }
+.timeline { position: relative; }
+.timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; background: rgba(78, 205, 196, 0.3); }
+.timeline-item { display: flex; gap: 20px; margin-bottom: 20px; padding-left: 40px; position: relative; }
+.timeline-dot { position: absolute; left: 8px; top: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--color-accent); border: 3px solid #1A1A2E; }
+.timeline-dot.action-upload { background: var(--color-accent); }
+.timeline-dot.action-delete { background: var(--color-danger); }
+.timeline-dot.action-update { background: var(--color-gold); }
+.timeline-dot.action-login, .timeline-dot.action-approve { background: #68A978; }
+.timeline-content { flex: 1; background: rgba(26, 58, 74, 0.6); border: 1px solid rgba(78, 205, 196, 0.2); border-radius: 8px; padding: 12px 15px; }
+.log-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 5px; }
+.log-user { color: #E8F4FC; font-size: 14px; font-weight: 500; }
+.log-action { font-size: 13px; padding: 2px 8px; border-radius: 4px; }
+.action-upload { background: rgba(78, 205, 196, 0.2); color: var(--color-accent); }
+.action-delete { background: rgba(220, 107, 107, 0.2); color: var(--color-danger); }
+.action-update { background: rgba(201, 169, 98, 0.2); color: var(--color-gold); }
+.action-login, .action-approve { background: rgba(104, 169, 120, 0.2); color: #68A978; }
+.action-logout, .action-reject { background: rgba(139, 115, 85, 0.2); color: #B8956A; }
+.log-target { color: rgba(255,255,255,0.6); font-size: 13px; }
+.log-detail { color: #E8F4FC; font-size: 13px; margin-bottom: 8px; }
+.log-footer { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.5); }
+.pagination-wrap { display: flex; justify-content: center; padding: 20px; }
+@media (max-width: 768px) {
+  .island-header { flex-direction: column; gap: 15px; padding: 15px 20px; }
+  .log-list { padding: 20px; }
+}
+</style>

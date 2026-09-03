@@ -15,6 +15,7 @@
         </button>
         <h1 class="island-title">{{ title }}</h1>
         <p class="island-subtitle">{{ subtitle }}</p>
+        <div v-if="$slots.toolbar" class="inner-toolbar"><slot name="toolbar" /></div>
       </header>
 
       <main class="inner-main">
@@ -228,6 +229,14 @@ onUnmounted(() => {
   font-size: 15px;
   color: var(--ls-text-2);
   letter-spacing: .06em;
+}
+
+.inner-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .inner-main {
