@@ -12,6 +12,7 @@
             <el-button :icon="Search" @click="fetchData" />
           </template>
         </el-input>
+        <el-button type="success" plain @click="router.push('/island/music/inner')">沉浸浏览</el-button>
         <el-button type="primary" @click="showUpload = true">上传音乐</el-button>
       </div>
     </header>
@@ -20,12 +21,8 @@
     <main class="content-table">
       <el-table :data="musicStore.list" v-loading="musicStore.loading" stripe style="width: 100%">
         <el-table-column prop="title" label="名称" min-width="150" />
-        <el-table-column prop="file_path" label="线上地址" min-width="200">
-          <template #default="{ row }">
-            <a :href="`/uploads${row.file_path}`" target="_blank" class="file-link">{{ row.file_path }}</a>
-          </template>
-        </el-table-column>
-        <el-table-column prop="category" label="标签" width="120">
+        <el-table-column prop="artist" label="作者" width="120" />
+        <el-table-column label="标签" width="120">
           <template #default="{ row }">
             <el-tag v-if="row.category" size="small" type="info">{{ row.category }}</el-tag>
           </template>
@@ -35,10 +32,16 @@
             {{ formatSize(row.file_size) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="downloadFile(row.file_path)">下载</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <template v-if="row.is_default">
+              <el-tag size="small" type="warning">系统内置</el-tag>
+            </template>
+            <template v-else>
+              <el-button size="small" @click="downloadFile(row.file_path)">下载</el-button>
+              <el-button size="small" type="primary" plain @click="handleEdit(row)">编辑</el-button>
+              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            </template>
           </template>
         </el-table-column>
       </el-table>
@@ -79,6 +82,9 @@
         <el-form-item label="标题">
           <el-input v-model="uploadForm.title" placeholder="音乐标题" />
         </el-form-item>
+        <el-form-item label="作者">
+          <el-input v-model="uploadForm.artist" placeholder="作者（可选）" />
+        </el-form-item>
         <el-form-item label="分类">
           <el-input v-model="uploadForm.category" placeholder="分类" />
         </el-form-item>
@@ -89,6 +95,28 @@
       <template #footer>
         <el-button @click="showUpload = false">取消</el-button>
         <el-button type="primary" :loading="uploading" @click="handleUpload">上传</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑音乐弹窗 -->
+    <el-dialog v-model="showEdit" title="编辑音乐" width="460px">
+      <el-form :model="editForm" label-width="80px">
+        <el-form-item label="标题" required>
+          <el-input v-model="editForm.title" placeholder="音乐标题" />
+        </el-form-item>
+        <el-form-item label="作者">
+          <el-input v-model="editForm.artist" placeholder="作者（可选）" />
+        </el-form-item>
+        <el-form-item label="分类">
+          <el-input v-model="editForm.category" placeholder="分类" />
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-input v-model="editForm.tags" placeholder="多个标签用逗号分隔" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEdit = false">取消</el-button>
+        <el-button type="primary" :loading="editing" @click="handleEditSubmit">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -108,8 +136,13 @@ const showUpload = ref(false)
 const uploading = ref(false)
 const uploadRef = ref(null)
 const uploadFileList = ref([])
-const uploadForm = ref({ title: '', category: '', tags: '' })
+const uploadForm = ref({ title: '', artist: '', category: '', tags: '' })
 const uploadFile = ref(null)
+
+const showEdit = ref(false)
+const editing = ref(false)
+const editId = ref(null)
+const editForm = ref({ title: '', artist: '', category: '', tags: '' })
 
 onMounted(() => {
   fetchData()
@@ -140,12 +173,13 @@ async function handleUpload() {
     const formData = new FormData()
     formData.append('file', uploadFile.value)
     formData.append('title', uploadForm.value.title)
+    formData.append('artist', uploadForm.value.artist || '')
     formData.append('category', uploadForm.value.category || '')
     formData.append('tags', uploadForm.value.tags || '')
     await musicStore.upload(formData)
     ElMessage.success('上传成功')
     showUpload.value = false
-    uploadForm.value = { title: '', category: '', tags: '' }
+    uploadForm.value = { title: '', artist: '', category: '', tags: '' }
     uploadFileList.value = []
     uploadFile.value = null
     fetchData()
@@ -156,10 +190,44 @@ async function handleUpload() {
   }
 }
 
-async function handleDelete(id) {
+function handleEdit(row) {
+  editId.value = row.id
+  editForm.value = {
+    title: row.title || '',
+    artist: row.artist || '',
+    category: row.category || '',
+    tags: row.tags || ''
+  }
+  showEdit.value = true
+}
+
+async function handleEditSubmit() {
+  if (!editForm.value.title) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+  editing.value = true
   try {
-    await ElMessageBox.confirm('确定删除这首音乐吗？', '提示', { type: 'warning' })
-    await musicStore.remove(id)
+    await musicStore.update(editId.value, {
+      title: editForm.value.title,
+      artist: editForm.value.artist || '',
+      category: editForm.value.category || '',
+      tags: editForm.value.tags || ''
+    })
+    ElMessage.success('保存成功')
+    showEdit.value = false
+    fetchData()
+  } catch {
+    // 错误已由api拦截器处理
+  } finally {
+    editing.value = false
+  }
+}
+
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm(`确定删除「${row.title}」吗？`, '提示', { type: 'warning' })
+    await musicStore.remove(row.id)
     ElMessage.success('删除成功')
     fetchData()
   } catch {

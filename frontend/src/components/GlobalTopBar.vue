@@ -60,27 +60,46 @@
         <el-icon><Search /></el-icon>
       </button>
 
-      <!-- 音频控制（弹层内联，不二次弹窗） -->
-      <el-dropdown trigger="click" ref="audioDropdownRef" @command="onCommand" placement="bottom-end">
-        <button class="tb-icon-btn" :title="audioEnabled ? '音频' : '静音'">
+      <!-- 音频控制（内联面板，不弹窗） -->
+      <el-dropdown trigger="click" placement="bottom-end" :show-arrow="false">
+        <button class="tb-icon-btn" :title="player.isPlaying ? '音频（播放中）' : '音频'">
           <el-icon><Headset /></el-icon>
-          <span class="tb-audio-dot" :class="{ off: !audioEnabled }"></span>
+          <span class="tb-audio-dot" :class="{ off: !player.isPlaying }"></span>
         </button>
         <template #dropdown>
           <div class="tb-audio-panel" @click.stop>
-            <div class="tb-panel-title">音频控制</div>
-            <div class="tb-audio-row">
-              <span class="tb-audio-label">背景音乐</span>
-              <div class="tb-knob" @mousedown.prevent="startDrag('music', $event)">
-                <div class="tb-knob-fill" :style="{ width: musicVolume * 100 + '%' }"></div>
-                <span class="tb-knob-thumb" :style="{ left: musicVolume * 100 + '%' }"></span>
+            <div class="tb-panel-title">音频面板</div>
+
+            <!-- 背景音乐选择 -->
+            <div class="tb-audio-seg">
+              <div class="tb-seg-head" @click="bgmListOpen = !bgmListOpen">
+                <span class="tb-audio-label">背景音乐</span>
+                <span class="tb-bgm-cur">{{ curBgmName }}</span>
+                <el-icon class="tb-seg-arrow" :class="{ open: bgmListOpen }"><CaretBottom /></el-icon>
               </div>
+              <transition name="fade-drop">
+                <div v-if="bgmListOpen" class="tb-bgm-list">
+                  <div
+                    v-for="it in player.musicLibrary"
+                    :key="it.id"
+                    class="tb-bgm-item"
+                    :class="{ active: String(it.id) === String(player.bgmChoiceId) }"
+                    @click="chooseBgm(it)"
+                  >
+                    <span class="tb-bgm-name">{{ it.title }}</span>
+                    <el-icon v-if="String(it.id) === String(player.bgmChoiceId)" class="tb-bgm-check"><Check /></el-icon>
+                  </div>
+                  <div v-if="!player.musicLibrary.length" class="tb-bgm-empty">音乐库为空</div>
+                </div>
+              </transition>
             </div>
+
+            <!-- 音量 -->
             <div class="tb-audio-row">
-              <span class="tb-audio-label">音效</span>
-              <div class="tb-knob" @mousedown.prevent="startDrag('sound', $event)">
-                <div class="tb-knob-fill" :style="{ width: soundVolume * 100 + '%' }"></div>
-                <span class="tb-knob-thumb" :style="{ left: soundVolume * 100 + '%' }"></span>
+              <span class="tb-audio-label">音量</span>
+              <div class="tb-knob" @mousedown.prevent="startVolDrag($event)">
+                <div class="tb-knob-fill" :style="{ width: player.volume * 100 + '%' }"></div>
+                <span class="tb-knob-thumb" :style="{ left: player.volume * 100 + '%' }"></span>
               </div>
             </div>
           </div>
@@ -117,22 +136,21 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
-  Grid, User, Lock, Avatar, Tools, SwitchButton, Search, Headset, Expand,
+  Grid, User, Lock, Avatar, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
   Document, FolderOpened, Check, PriceTag
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { useSettingsStore } from '@/stores/settings'
+import { usePlayerStore } from '@/stores/player'
 import { workbenchApi } from '@/api/workbench'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const settingsStore = useSettingsStore()
+const player = usePlayerStore()
 
 const topbarRef = ref(null)
 const collapsed = ref(false)
-const audioDropdownRef = ref(null)
 const searchWord = ref('')
 const searchFocus = ref(false)
 let suggestTimer = null
@@ -158,51 +176,34 @@ const avatarText = computed(() => {
 })
 const userName = computed(() => auth.user?.nickname || auth.user?.name || auth.user?.email || '道友')
 
-/* ---- 音频控制 ---- */
-const audioEnabled = ref(true)
-const musicVolume = ref(0.3)
-const soundVolume = ref(0.3)
-let audioNormalize = false
+/* ---- 音频控制（接 player store）---- */
+const bgmListOpen = ref(false)
 
-function setVol(kind, v) {
-  v = Math.max(0, Math.min(1, v))
-  if (kind === 'music') {
-    musicVolume.value = v
-    if (audioObj) audioObj.volume = v
-  } else {
-    soundVolume.value = v
-    localStorage.setItem('sound_volume', v.toString())
-  }
+const curBgmName = computed(() => {
+  const id = player.bgmChoiceId
+  const it = player.musicLibrary.find(x => String(x.id) === String(id))
+  return it ? it.title : '默认古筝'
+})
+
+function chooseBgm(item) {
+  player.setBackground(item, true)
+  bgmListOpen.value = false
 }
 
-function startDrag(kind, e) {
+function startVolDrag(e) {
   const track = e.currentTarget
   const apply = (ev) => {
     const r = track.getBoundingClientRect()
-    setVol(kind, (ev.clientX - r.left) / r.width)
+    player.setVolume(Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)))
   }
   apply(e)
   const move = (ev) => apply(ev)
   const up = () => {
     document.removeEventListener('mousemove', move)
     document.removeEventListener('mouseup', up)
-    audioNormalize = false
   }
   document.addEventListener('mousemove', move)
   document.addEventListener('mouseup', up)
-}
-
-let audioObj = null
-function initAudio() {
-  if (!audioObj && settingsStore.bgMusicUrl) {
-    audioObj = new Audio(settingsStore.bgMusicUrl)
-    audioObj.loop = true
-    audioObj.volume = musicVolume.value
-  }
-  if (audioObj && audioEnabled.value) {
-    audioObj.volume = musicVolume.value
-    audioObj.play().catch(() => {})
-  }
 }
 
 /* ---- 下拉命令 ---- */
@@ -303,8 +304,7 @@ function onScroll() {
 function expand() { collapsed.value = false }
 
 onMounted(async () => {
-  await settingsStore.fetchBgMusic()
-  initAudio()
+  await player.initBgm()
   checkMobile()
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', checkMobile)
@@ -430,6 +430,38 @@ onUnmounted(() => {
   background: #fff; border: 2px solid var(--lj-dai);
   transform: translate(-50%, -50%);
 }
+
+/* 背景音乐选择折叠区 */
+.tb-audio-seg { margin-bottom: 10px; }
+.tb-seg-head {
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 6px 4px; border-radius: 8px;
+}
+.tb-seg-head:hover { background: rgba(74, 95, 99, 0.06); }
+.tb-bgm-cur {
+  flex: 1; text-align: right; font-size: 12px; color: var(--lj-dai);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100px;
+}
+.tb-seg-arrow { font-size: 12px; color: var(--lj-text-2); transition: transform 0.2s; }
+.tb-seg-arrow.open { transform: rotate(180deg); }
+.tb-bgm-list {
+  max-height: 200px; overflow-y: auto; margin-top: 4px;
+  border-top: 1px solid var(--lj-line); padding: 6px 0;
+}
+.tb-bgm-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border-radius: 8px; cursor: pointer;
+}
+.tb-bgm-item:hover { background: rgba(74, 95, 99, 0.06); }
+.tb-bgm-item.active { background: rgba(112, 150, 170, 0.14); }
+.tb-bgm-name {
+  flex: 1; font-size: 13px; color: var(--lj-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tb-bgm-item.active .tb-bgm-name { color: var(--lj-dai); font-weight: 600; }
+.tb-bgm-check { font-size: 14px; color: var(--lj-dai); }
+.tb-bgm-empty { padding: 10px 8px; color: var(--lj-text-2); font-size: 12px; text-align: center; }
 
 .tb-user { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 8px; border-radius: 10px; }
 .tb-user:hover { background: rgba(74, 95, 99, 0.06); }

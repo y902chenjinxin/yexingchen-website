@@ -5,7 +5,7 @@ import os
 import logging
 
 from app.database import engine, Base
-from app.routers import auth, admin, music, novel, video, tool, log, search, settings as settings_router, workbench
+from app.routers import auth, admin, music, novel, video, tool, log, search, settings as settings_router, workbench, video_parse
 from app.config import settings
 from app.models.login_attempt import LoginAttempt  # 登录限流模型
 from app.services import schema_guard
@@ -56,6 +56,7 @@ app.include_router(log.router)
 app.include_router(search.router)
 app.include_router(settings_router.router)
 app.include_router(workbench.router)
+app.include_router(video_parse.router)
 
 
 @app.get("/")

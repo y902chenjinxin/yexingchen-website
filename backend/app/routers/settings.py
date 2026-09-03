@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, UploadFile, File, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import os
+import json
 import math
 from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user, require_super_admin
-from app.models.user import GlobalSetting
+from app.models.user import GlobalSetting, Music
 from app.utils.file_utils import save_upload_file, ALLOWED_MUSIC_EXTENSIONS
 from app.config import settings
 
@@ -87,3 +88,53 @@ async def update_bg_music(
     db.commit()
 
     return ResponseBase(msg="背景音乐更新成功", data={"bg_music": file_path})
+
+
+@router.get("/bgm_choice", response_model=ResponseBase)
+async def get_bgm_choice(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """读取当前用户选定的背景音乐（引用音乐库曲目 id 或 'default'），默认 default"""
+    setting = db.query(GlobalSetting).filter(GlobalSetting.key == f"bgm_user_{current_user['user_id']}").first()
+    bgm_id = "default"
+    if setting and setting.value:
+        try:
+            val = json.loads(setting.value)
+            bgm_id = val.get("bgm_music_id", "default")
+        except Exception:
+            bgm_id = "default"
+    return ResponseBase(data={"bgm_music_id": bgm_id})
+
+
+@router.put("/bgm_choice", response_model=ResponseBase)
+async def update_bgm_choice(
+    req: BgmChoiceUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """保存当前用户的背景音乐选择。bgm_music_id 为 'default' 或音乐库曲目 id。"""
+    uid = current_user["user_id"]
+    bgm_id = req.bgm_music_id
+
+    if bgm_id != "default":
+        try:
+            mid = int(bgm_id)
+        except (TypeError, ValueError):
+            raise_error(ErrCode.INVALID_PARAM, "bgm_music_id 不合法")
+        exists = db.query(Music).filter(Music.id == mid).first()
+        if not exists:
+            raise_error(ErrCode.MUSIC_NOT_FOUND, "所选音乐不存在")
+        bgm_id = mid
+
+    key = f"bgm_user_{uid}"
+    setting = db.query(GlobalSetting).filter(GlobalSetting.key == key).first()
+    payload = json.dumps({"bgm_music_id": bgm_id})
+    if setting:
+        setting.value = payload
+    else:
+        setting = GlobalSetting(key=key, value=payload, description=f"用户{uid}背景音乐选择")
+        db.add(setting)
+
+    db.commit()
+    return ResponseBase(msg="背景音乐已保存", data={"bgm_music_id": bgm_id})

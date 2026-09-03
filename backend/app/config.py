@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     MAX_VIDEO_SIZE: int = 500 * 1024 * 1024
     MAX_COVER_SIZE: int = 5 * 1024 * 1024
 
+    # 视频去水印解析服务（独立进程，同机 8070 端口）
+    PARSE_SERVICE_URL: str = "http://127.0.0.1:8070"
+
     # 验证码（混合字母数字，4位约16万组合）
     VERIFY_CODE_EXPIRE_MINUTES: int = 5
     VERIFY_CODE_MAX_ATTEMPTS: int = 5

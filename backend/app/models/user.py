@@ -45,6 +45,7 @@ class Music(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(255), nullable=False)
+    artist = Column(String(255), default="")
     file_path = Column(String(500), nullable=False)
     original_filename = Column(String(255), default="")
     duration = Column(Integer, default=0)
@@ -52,6 +53,7 @@ class Music(Base):
     tags = Column(String(500), default="")
     uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     is_test_data = Column(Integer, default=0)  # 1=测试数据, 0=真实数据
+    is_default = Column(Integer, default=0)     # 1=系统内置默认曲, 0=用户上传
     file_size = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

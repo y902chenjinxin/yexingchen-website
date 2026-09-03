@@ -13,6 +13,8 @@ class ErrCode:
     # 通用
     SUCCESS = (0, "操作成功")
     INVALID_PARAM = (10001, "参数错误")
+    PARSE_FAILED = (10005, "解析失败或链接无效")
+    PARSE_RATE_LIMITED = (10006, "解析过于频繁，请稍后重试")
     UNAUTHORIZED = (10101, "未授权")
     FORBIDDEN = (10103, "禁止访问")
     NOT_FOUND = (10203, "资源不存在")
@@ -69,6 +71,8 @@ class ErrCode:
 _HTTP_STATUS_BY_CODE = {
     ErrCode.SUCCESS[0]: status.HTTP_200_OK,
     ErrCode.INVALID_PARAM[0]: status.HTTP_400_BAD_REQUEST,
+    ErrCode.PARSE_FAILED[0]: status.HTTP_400_BAD_REQUEST,
+    ErrCode.PARSE_RATE_LIMITED[0]: status.HTTP_429_TOO_MANY_REQUESTS,
     ErrCode.UNAUTHORIZED[0]: status.HTTP_401_UNAUTHORIZED,
     ErrCode.FORBIDDEN[0]: status.HTTP_403_FORBIDDEN,
     ErrCode.NOT_FOUND[0]: status.HTTP_404_NOT_FOUND,

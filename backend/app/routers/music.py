@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.database import get_db
+import os
+from app.database import get_db, SessionLocal
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user
@@ -11,6 +13,57 @@ from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_MUSIC_EX
 from app.config import settings
 
 router = APIRouter(prefix="/api/music", tags=["音乐岛"])
+
+
+async def _stream_file(file_path: str):
+    """按物理文件路径流式播放音频（自动识别 WAV/MP3/FLAC）"""
+    full = file_path if os.path.isabs(file_path) else os.path.join(os.path.dirname(__file__), "..", "..", file_path)
+    if not os.path.exists(full):
+        raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐文件不存在")
+    with open(full, 'rb') as f:
+        header = f.read(16)
+    if header[0:4] == b'RIFF' and header[8:12] == b'WAVE':
+        content_type = "audio/wav"
+    elif header[0:4] == b'fLaC':
+        content_type = "audio/flac"
+    else:
+        content_type = "audio/mpeg"
+    ext = header[0:4]
+    file_size = os.path.getsize(full)
+
+    async def iterfile():
+        with open(full, 'rb') as f:
+            while True:
+                chunk = f.read(81920)
+                if not chunk:
+                    break
+                yield chunk
+
+    return StreamingResponse(
+        iterfile(),
+        media_type=content_type,
+        headers={
+            "Content-Length": str(file_size),
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "no-cache"
+        }
+    )
+
+
+@router.get("/{music_id}/stream")
+async def stream_music(music_id: str):
+    """流式播放音乐（'default'=系统内置古筝，否则按音乐库 id 查 file_path）"""
+    if music_id == "default":
+        return await _stream_file(os.path.join(
+            os.path.dirname(__file__), "..", "..", "uploads", "bgm", "bamboo_flute.mp3"))
+    db = SessionLocal()
+    try:
+        m = db.query(Music).filter(Music.id == int(music_id)).first()
+    finally:
+        db.close()
+    if not m or not m.file_path:
+        raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐文件不存在")
+    return await _stream_file(m.file_path)
 
 
 @router.get("", response_model=ResponseBase)
@@ -38,22 +91,41 @@ async def list_music(
     total = query.count()
     items = query.order_by(Music.created_at.desc()).offset((page - 1) * size).limit(size).all()
 
+    # 系统默认古筝曲：始终作为列表首条展示（只读保护，不可删改）
+    default_entry = {
+        "id": "default",
+        "title": "玄黄古筝 · 默认背景",
+        "artist": "系统",
+        "file_path": "/api/settings/bg_music/stream/bamboo_flute",
+        "original_filename": "default-bg.mp3",
+        "duration": 0,
+        "category": "系统",
+        "tags": "默认,古筝",
+        "uploader_id": 0,
+        "file_size": 0,
+        "is_default": True,
+        "created_at": ""
+    }
+    list_items = [default_entry] + [
+        {
+            "id": m.id,
+            "title": m.title,
+            "artist": m.artist or "",
+            "file_path": m.file_path,
+            "original_filename": m.original_filename,
+            "duration": m.duration,
+            "category": m.category,
+            "tags": m.tags,
+            "uploader_id": m.uploader_id,
+            "file_size": m.file_size,
+            "is_default": False,
+            "created_at": str(m.created_at)
+        }
+        for m in items
+    ]
+
     return ResponseBase(data={
-        "list": [
-            {
-                "id": m.id,
-                "title": m.title,
-                "file_path": m.file_path,
-                "original_filename": m.original_filename,
-                "duration": m.duration,
-                "category": m.category,
-                "tags": m.tags,
-                "uploader_id": m.uploader_id,
-                "file_size": m.file_size,
-                "created_at": str(m.created_at)
-            }
-            for m in items
-        ],
+        "list": list_items,
         "total": total,
         "page": page,
         "size": size
@@ -64,6 +136,7 @@ async def list_music(
 async def upload_music(
     file: UploadFile = File(...),
     title: str = Form(...),
+    artist: str = Form(""),
     category: str = Form(""),
     tags: str = Form(""),
     db: Session = Depends(get_db),
@@ -78,6 +151,7 @@ async def upload_music(
 
     music = Music(
         title=title,
+        artist=artist,
         file_path=file_path,
         original_filename=file.filename or "",
         category=category,
@@ -107,6 +181,8 @@ async def update_music(
 
     if req.title is not None:
         music.title = req.title
+    if req.artist is not None:
+        music.artist = req.artist
     if req.category is not None:
         music.category = req.category
     if req.tags is not None:

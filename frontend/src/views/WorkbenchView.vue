@@ -119,6 +119,7 @@
             <router-link to="/island/music" class="wb-chip"><el-icon class="wb-chip-icon"><Headset /></el-icon>音乐</router-link>
             <router-link to="/island/novel" class="wb-chip"><el-icon class="wb-chip-icon"><Reading /></el-icon>小说</router-link>
             <router-link to="/island/video" class="wb-chip"><el-icon class="wb-chip-icon"><VideoCamera /></el-icon>视频</router-link>
+            <router-link to="/island/tool" class="wb-chip"><el-icon class="wb-chip-icon"><Tools /></el-icon>工具</router-link>
           </div>
         </section>
 
@@ -143,7 +144,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Edit, FolderOpened, Check, Document, Link, Picture, Headset, VideoCamera, Reading, ChatDotRound } from '@element-plus/icons-vue'
+import { Edit, FolderOpened, Check, Document, Link, Picture, Headset, VideoCamera, Reading, ChatDotRound, Tools } from '@element-plus/icons-vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { workbenchApi } from '@/api/workbench'
 import JadeCarousel from '@/components/JadeCarousel.vue'

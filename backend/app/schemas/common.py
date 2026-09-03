@@ -101,8 +101,13 @@ class MusicCreate(BaseModel):
 
 class MusicUpdate(BaseModel):
     title: Optional[str] = None
+    artist: Optional[str] = None
     category: Optional[str] = None
     tags: Optional[str] = None
+
+
+class BgmChoiceUpdate(BaseModel):
+    bgm_music_id: str
 
 
 class MusicItem(BaseModel):

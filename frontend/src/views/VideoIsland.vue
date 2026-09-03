@@ -9,6 +9,7 @@
         <el-input v-model="searchQuery" placeholder="搜索视频" clearable @clear="fetchData" @keyup.enter="fetchData" style="width: 200px">
           <template #append><el-button :icon="Search" @click="fetchData" /></template>
         </el-input>
+        <el-button type="success" plain @click="router.push('/island/video/inner')">沉浸浏览</el-button>
         <el-button type="primary" @click="showUpload = true">上传视频</el-button>
       </div>
     </header>
@@ -32,9 +33,10 @@
             {{ formatSize(row.file_size) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="copyUrl(row.cos_url)">复制链接</el-button>
+            <el-button size="small" type="primary" plain @click="handleEdit(row)">编辑</el-button>
             <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
@@ -72,6 +74,20 @@
         <el-button type="primary" :loading="uploading" @click="handleUpload">上传</el-button>
       </template>
     </el-dialog>
+
+    <!-- 编辑弹窗 -->
+    <el-dialog v-model="showEdit" title="编辑视频" width="460px">
+      <el-form :model="editForm" label-width="56px">
+        <el-form-item label="标题"><el-input v-model="editForm.title" placeholder="视频标题" /></el-form-item>
+        <el-form-item label="COS链接"><el-input v-model="editForm.cos_url" placeholder="腾讯COS链接（可选）" /></el-form-item>
+        <el-form-item label="分类"><el-input v-model="editForm.category" placeholder="分类" /></el-form-item>
+        <el-form-item label="标签"><el-input v-model="editForm.tags" placeholder="多个标签用逗号分隔" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEdit = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="saveEdit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -94,8 +110,32 @@ const coverFileList = ref([])
 const uploadFile = ref(null)
 const coverFile = ref(null)
 const uploadForm = ref({ title: '', cos_url: '', category: '', tags: '' })
+const showEdit = ref(false)
+const saving = ref(false)
+const editForm = ref({ id: null, title: '', cos_url: '', category: '', tags: '' })
 
 onMounted(() => { fetchData() })
+
+function handleEdit(row) {
+  editForm.value = { id: row.id, title: row.title || '', cos_url: row.cos_url || '', category: row.category || '', tags: row.tags || '' }
+  showEdit.value = true
+}
+
+async function saveEdit() {
+  saving.value = true
+  try {
+    await videoStore.update(editForm.value.id, {
+      title: editForm.value.title,
+      cos_url: editForm.value.cos_url,
+      category: editForm.value.category,
+      tags: editForm.value.tags
+    })
+    ElMessage.success('保存成功')
+    showEdit.value = false
+    fetchData()
+  } catch { /* 错误已由api拦截器处理 */ }
+  finally { saving.value = false }
+}
 
 async function fetchData() {
   await videoStore.fetchList({ q: searchQuery.value })

@@ -16,6 +16,14 @@
         <div v-for="i in 6" :key="i" class="film-frame" :style="getFrameStyle(i)"></div>
       </div>
 
+      <!-- 播放器 -->
+      <transition name="player-fade">
+        <div v-if="playerUrl" class="video-player-wrap">
+          <button class="player-close" @click="closePlayer">✕</button>
+          <video :src="playerUrl" controls autoplay playsinline class="video-player"></video>
+        </div>
+      </transition>
+
       <!-- 视频列表 -->
       <div class="video-list-area">
         <div v-if="videoStore.loading" class="loading-state">
@@ -30,14 +38,27 @@
             v-for="(item, index) in videoStore.list"
             :key="item.id"
             class="video-item"
+            :class="{ active: isActive(item) }"
             :style="getItemStyle(index)"
+            @click="playVideo(item)"
           >
             <div class="video-thumbnail">
               <span class="play-icon">▶</span>
             </div>
             <div class="video-info">
               <span class="video-title">{{ item.title || '无题' }}</span>
-              <span class="video-duration">{{ item.duration || '00:00' }}</span>
+              <span class="video-meta">{{ item.category || '未分类' }}</span>
+            </div>
+            <div class="video-ops" @click.stop>
+              <el-dropdown trigger="click" @command="(cmd) => onOp(cmd, item)">
+                <button class="ops-btn" title="操作">⋯</button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                    <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </div>
         </div>
@@ -47,22 +68,106 @@
       <div class="floating-apertures">
         <div v-for="i in 6" :key="i" class="aperture" :style="getApertureStyle(i)"></div>
       </div>
+
+      <!-- 编辑弹窗 -->
+      <el-dialog v-model="showEdit" title="编辑视频" width="440px" append-to-body>
+        <el-form label-width="56px">
+          <el-form-item label="标题">
+            <el-input v-model="editForm.title" placeholder="视频标题" />
+          </el-form-item>
+          <el-form-item label="分类">
+            <el-input v-model="editForm.category" placeholder="分类" />
+          </el-form-item>
+          <el-form-item label="标签">
+            <el-input v-model="editForm.tags" placeholder="标签，用逗号分隔" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="showEdit = false">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="saveEdit">保存</el-button>
+        </template>
+      </el-dialog>
     </div>
   </IslandInnerBase>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import IslandInnerBase from './IslandInnerBase.vue'
 import { useVideoStore } from '@/stores/video'
+import { ElMessage } from 'element-plus'
 
 defineEmits(['back'])
 
 const videoStore = useVideoStore()
 
+const playerUrl = ref('')
+const currentId = ref(null)
+const showEdit = ref(false)
+const saving = ref(false)
+const editForm = ref({ id: null, title: '', category: '', tags: '' })
+
 onMounted(async () => {
   await videoStore.fetchList()
 })
+
+const isActive = (item) => String(currentId.value) === String(item.id)
+
+function resolveStream(item) {
+  const u = item.cos_url || ''
+  if (u.startsWith('http://') || u.startsWith('https://')) return u
+  return `/api/videos/${item.id}/stream`
+}
+
+function playVideo(item) {
+  if (isActive(item)) { closePlayer(); return }
+  closePlayer()
+  playerUrl.value = resolveStream(item)
+  currentId.value = item.id
+}
+
+function closePlayer() {
+  playerUrl.value = ''
+  currentId.value = null
+}
+
+function onOp(cmd, item) {
+  if (cmd === 'edit') {
+    editForm.value = { id: item.id, title: item.title || '', category: item.category || '', tags: item.tags || '' }
+    showEdit.value = true
+  } else if (cmd === 'delete') {
+    doDelete(item)
+  }
+}
+
+async function doDelete(item) {
+  try {
+    await videoStore.remove(item.id)
+    ElMessage.success('已删除')
+    if (isActive(item)) closePlayer()
+    videoStore.fetchList()
+  } catch (e) {
+    ElMessage.error('删除失败')
+  }
+}
+
+async function saveEdit() {
+  saving.value = true
+  try {
+    await videoStore.update(editForm.value.id, {
+      title: editForm.value.title,
+      category: editForm.value.category,
+      tags: editForm.value.tags
+    })
+    ElMessage.success('已保存')
+    showEdit.value = false
+    videoStore.fetchList()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
+  }
+}
 
 const seededRandom = (seed) => {
   const x = Math.sin(seed * 12.9898) * 43758.5453
@@ -216,6 +321,7 @@ const getItemStyle = (index) => {
 
 .video-item {
   display: flex;
+  align-items: center;
   gap: 20px;
   padding: 16px;
   background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(255,255,255,0) 55%), var(--ls-glass);
@@ -233,6 +339,11 @@ const getItemStyle = (index) => {
   background: var(--ls-paper-2);
   border-color: var(--ls-line-strong);
   transform: translateX(8px);
+}
+
+.video-item.active {
+  border-color: var(--island-video, #8a6a86);
+  box-shadow: 0 0 0 1px var(--island-video, #8a6a86), var(--ls-shadow);
 }
 
 @keyframes slide-in {
@@ -270,8 +381,10 @@ const getItemStyle = (index) => {
 .video-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .video-title {
@@ -280,9 +393,74 @@ const getItemStyle = (index) => {
   font-size: 16px;
 }
 
-.video-duration {
+.video-meta {
   color: var(--ls-text-2);
   font-size: 13px;
+}
+
+.video-ops {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.ops-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ls-line-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ls-text-2);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.ops-btn:hover {
+  background: var(--ls-paper-2);
+  color: var(--ls-text);
+}
+
+.video-player-wrap {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--ls-line-strong);
+  box-shadow: var(--ls-shadow);
+  background: #000;
+}
+
+.video-player {
+  width: 100%;
+  max-height: 320px;
+  display: block;
+}
+
+.player-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.4);
+  background: rgba(0,0,0,.5);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.player-fade-enter-active,
+.player-fade-leave-active {
+  transition: all 0.35s ease;
+}
+
+.player-fade-enter-from,
+.player-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
 }
 
 .floating-apertures {

@@ -40,6 +40,17 @@
               <span class="novel-author">{{ item.author || '佚名' }}</span>
               <span class="novel-chapter">第{{ item.chapter || 1 }}章</span>
             </div>
+            <div class="novel-ops" @click.stop>
+              <el-dropdown trigger="click" @command="(cmd) => onOp(cmd, item)">
+                <button class="ops-btn" title="操作">⋯</button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                    <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </div>
         </div>
       </div>
@@ -48,18 +59,45 @@
       <div class="floating-ink">
         <span v-for="i in 8" :key="i" class="ink-drop" :style="getInkDropStyle(i)">●</span>
       </div>
+
+      <!-- 编辑弹窗 -->
+      <el-dialog v-model="showEdit" title="编辑小说" width="440px" append-to-body>
+        <el-form label-width="56px">
+          <el-form-item label="标题">
+            <el-input v-model="editForm.title" placeholder="书名" />
+          </el-form-item>
+          <el-form-item label="作者">
+            <el-input v-model="editForm.author" placeholder="作者" />
+          </el-form-item>
+          <el-form-item label="分类">
+            <el-input v-model="editForm.category" placeholder="分类" />
+          </el-form-item>
+          <el-form-item label="标签">
+            <el-input v-model="editForm.tags" placeholder="标签，用逗号分隔" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="showEdit = false">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="saveEdit">保存</el-button>
+        </template>
+      </el-dialog>
     </div>
   </IslandInnerBase>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import IslandInnerBase from './IslandInnerBase.vue'
 import { useNovelStore } from '@/stores/novel'
+import { ElMessage } from 'element-plus'
 
 defineEmits(['back'])
 
 const novelStore = useNovelStore()
+
+const showEdit = ref(false)
+const saving = ref(false)
+const editForm = ref({ id: null, title: '', author: '', category: '', tags: '' })
 
 onMounted(async () => {
   await novelStore.fetchList()
@@ -116,6 +154,50 @@ const getItemStyle = (index) => {
 
   return {
     animationDelay: `${random * 0.3}s`
+  }
+}
+
+function onOp(cmd, item) {
+  if (cmd === 'edit') {
+    editForm.value = {
+      id: item.id,
+      title: item.title || '',
+      author: item.author || '',
+      category: item.category || '',
+      tags: item.tags || ''
+    }
+    showEdit.value = true
+  } else if (cmd === 'delete') {
+    doDelete(item)
+  }
+}
+
+async function doDelete(item) {
+  try {
+    await novelStore.remove(item.id)
+    ElMessage.success('已删除')
+    novelStore.fetchList()
+  } catch (e) {
+    ElMessage.error('删除失败')
+  }
+}
+
+async function saveEdit() {
+  saving.value = true
+  try {
+    await novelStore.update(editForm.value.id, {
+      title: editForm.value.title,
+      author: editForm.value.author,
+      category: editForm.value.category,
+      tags: editForm.value.tags
+    })
+    ElMessage.success('已保存')
+    showEdit.value = false
+    await novelStore.fetchList()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
   }
 }
 </script>
@@ -294,6 +376,31 @@ const getItemStyle = (index) => {
 .novel-chapter {
   color: var(--ls-text-2);
   font-size: 13px;
+}
+
+.novel-ops {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+}
+
+.ops-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ls-line-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ls-text-2);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.ops-btn:hover {
+  background: var(--ls-paper-2);
+  color: var(--ls-text);
 }
 
 .floating-ink {

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
+import os, mimetypes
 from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
@@ -58,6 +60,25 @@ async def list_videos(
     })
 
 
+@router.get("/{video_id}/stream")
+async def stream_video(
+    video_id: int,
+    db: Session = Depends(get_db)
+):
+    """流式播放视频（cos_url 为完整URL时直连，本地路径则经后端 FileResponse 转发并支持 Range）"""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video or not video.cos_url:
+        raise_error(ErrCode.VIDEO_NOT_FOUND, "视频不存在")
+    if video.cos_url.startswith(("http://", "https://")):
+        return RedirectResponse(video.cos_url)
+    full = video.cos_url if os.path.isabs(video.cos_url) else os.path.join(
+        os.path.dirname(__file__), "..", "..", video.cos_url)
+    if not os.path.exists(full):
+        raise_error(ErrCode.VIDEO_NOT_FOUND, "视频文件不存在")
+    media = mimetypes.guess_type(full)[0] or "video/mp4"
+    return FileResponse(full, media_type=media)
+
+
 @router.post("", response_model=ResponseBase)
 async def upload_video(
     file: UploadFile = File(...),
@@ -87,7 +108,6 @@ async def upload_video(
 
     video = Video(
         title=title,
-        file_path=file_path,
         cos_url=cos_url or file_path,  # 如果没填COS地址就用本地路径
         original_filename=file.filename or "",
         category=category,
@@ -143,7 +163,8 @@ async def delete_video(
     if not video:
         raise_error(ErrCode.VIDEO_NOT_FOUND)
 
-    delete_file(video.file_path)
+    if video.cos_url and not video.cos_url.startswith(("http://", "https://")):
+        delete_file(video.cos_url)
     if video.cover_path:
         delete_file(video.cover_path)
 

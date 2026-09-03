@@ -14,6 +14,9 @@
 
     <!-- 登录后全站常驻桌宠 -->
     <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn" />
+
+    <!-- 登录后全站底部播放条（播放时出现）-->
+    <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn" />
   </div>
 </template>
 
@@ -24,6 +27,7 @@ import { useAuthStore } from '@/stores/auth'
 import LoadingView from '@/views/LoadingView.vue'
 import WhaleCompanion from '@/components/effects/WhaleCompanion.vue'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
+import NowPlayingBar from '@/components/NowPlayingBar.vue'
 
 const router = useRouter()
 const route = useRoute()

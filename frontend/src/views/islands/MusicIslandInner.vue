@@ -44,11 +44,34 @@
             :style="getItemStyle(index)"
           >
             <div class="music-info">
-              <span class="music-name">{{ item.name || '未知曲目' }}</span>
+              <span class="music-name">{{ item.title || '未知曲目' }}</span>
               <span class="music-artist">{{ item.artist || '佚名' }}</span>
             </div>
             <div class="music-actions">
-              <button class="play-btn" @click="handlePlay(item)">▶</button>
+              <div class="music-ops" @click.stop>
+                <el-dropdown trigger="click" @command="(cmd) => onOp(cmd, item)">
+                  <button class="ops-btn" title="操作">⋯</button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+              <button
+                class="mini-btn bgm-btn"
+                :class="{ on: isCurBgm(item) }"
+                title="设为背景音乐"
+                @click="setAsBg(item)"
+                aria-label="设为背景音乐"
+              >💠</button>
+              <button
+                class="mini-btn play-btn"
+                :class="{ playing: isCurPlaying(item) }"
+                @click="handlePlay(item)"
+                :title="isCurPlaying(item) ? '暂停' : '播放'"
+              >{{ isCurPlaying(item) ? '❚❚' : '▶' }}</button>
             </div>
           </div>
         </div>
@@ -58,18 +81,47 @@
       <div class="floating-notes">
         <span v-for="i in 12" :key="i" class="note" :style="getNoteStyle(i)">♪</span>
       </div>
+
+      <!-- 编辑弹窗 -->
+      <el-dialog v-model="showEdit" title="编辑音乐" width="440px" append-to-body>
+        <el-form label-width="56px">
+          <el-form-item label="标题">
+            <el-input v-model="editForm.title" placeholder="曲目标题" />
+          </el-form-item>
+          <el-form-item label="作者">
+            <el-input v-model="editForm.artist" placeholder="作者/演奏者" />
+          </el-form-item>
+          <el-form-item label="分类">
+            <el-input v-model="editForm.category" placeholder="分类" />
+          </el-form-item>
+          <el-form-item label="标签">
+            <el-input v-model="editForm.tags" placeholder="标签，用逗号分隔" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="showEdit = false">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="saveEdit">保存</el-button>
+        </template>
+      </el-dialog>
     </div>
   </IslandInnerBase>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import IslandInnerBase from './IslandInnerBase.vue'
 import { useMusicStore } from '@/stores/music'
+import { usePlayerStore } from '@/stores/player'
+import { ElMessage } from 'element-plus'
 
 defineEmits(['back'])
 
 const musicStore = useMusicStore()
+const player = usePlayerStore()
+
+const showEdit = ref(false)
+const saving = ref(false)
+const editForm = ref({ id: null, title: '', artist: '', category: '', tags: '' })
 
 onMounted(async () => {
   await musicStore.fetchList()
@@ -104,7 +156,66 @@ const getItemStyle = (index) => {
 }
 
 const handlePlay = (item) => {
-  console.log('Playing:', item.name)
+  player.playItem(item)
+}
+
+// 设为背景音乐（同时开始播放并持久化选择）
+const setAsBg = (item) => {
+  player.setBackground(item, true)
+}
+
+const isCurBgm = (item) => String(item.id) === String(player.bgmChoiceId)
+
+const isCurPlaying = (item) =>
+  player.curItem && String(player.curItem.id) === String(item.id) && player.isPlaying
+
+function onOp(cmd, item) {
+  if (cmd === 'edit') {
+    editForm.value = {
+      id: item.id,
+      title: item.title || '',
+      artist: item.artist || '',
+      category: item.category || '',
+      tags: item.tags || ''
+    }
+    showEdit.value = true
+  } else if (cmd === 'delete') {
+    doDelete(item)
+  }
+}
+
+async function doDelete(item) {
+  if (Number(item.is_default) === 1) {
+    ElMessage.warning('系统默认曲不可删除')
+    return
+  }
+  try {
+    await musicStore.remove(item.id)
+    ElMessage.success('已删除')
+    if (String(player.bgmChoiceId) === String(item.id)) player.setBackground(null, false)
+    musicStore.fetchList()
+  } catch (e) {
+    ElMessage.error('删除失败')
+  }
+}
+
+async function saveEdit() {
+  saving.value = true
+  try {
+    await musicStore.update(editForm.value.id, {
+      title: editForm.value.title,
+      artist: editForm.value.artist,
+      category: editForm.value.category,
+      tags: editForm.value.tags
+    })
+    ElMessage.success('已保存')
+    showEdit.value = false
+    await musicStore.fetchList()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 
@@ -236,24 +347,82 @@ const handlePlay = (item) => {
 
 .music-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
+}
+
+.mini-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all var(--transition);
 }
 
 .play-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
   background: var(--ls-dai);
-  border: none;
   color: var(--ls-bg1);
-  cursor: pointer;
-  transition: all var(--transition);
-  font-size: 14px;
 }
 
 .play-btn:hover {
   transform: scale(1.1);
   box-shadow: 0 0 15px var(--ls-dai);
+}
+
+.play-btn.playing {
+  background: var(--ls-ochre);
+  box-shadow: 0 0 15px var(--ls-ochre);
+}
+
+.bgm-btn {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--ls-line);
+  color: var(--ls-text-2);
+  font-size: 14px;
+}
+
+.bgm-btn:hover {
+  background: var(--ls-paper-2);
+  color: var(--ls-dai);
+  transform: scale(1.1);
+}
+
+.bgm-btn.on {
+  background: rgba(112, 150, 170, 0.16);
+  border-color: var(--ls-dai);
+  color: var(--ls-dai);
+  box-shadow: 0 0 12px rgba(112, 192, 214, 0.35);
+}
+
+.music-ops {
+  display: flex;
+  align-items: center;
+  margin-right: 2px;
+}
+
+.ops-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ls-line-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ls-text-2);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.ops-btn:hover {
+  background: var(--ls-paper-2);
+  color: var(--ls-text);
 }
 
 .floating-notes {

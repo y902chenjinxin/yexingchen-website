@@ -9,6 +9,7 @@
         <el-input v-model="searchQuery" placeholder="搜索小说" clearable @clear="fetchData" @keyup.enter="fetchData" style="width: 200px">
           <template #append><el-button :icon="Search" @click="fetchData" /></template>
         </el-input>
+        <el-button type="success" plain @click="router.push('/island/novel/inner')">沉浸浏览</el-button>
         <el-button type="primary" @click="showUpload = true">上传小说</el-button>
       </div>
     </header>
@@ -32,9 +33,10 @@
             {{ formatSize(row.file_size) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="downloadFile(row.file_path)">下载</el-button>
+            <el-button size="small" type="primary" plain @click="handleEdit(row)">编辑</el-button>
             <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
@@ -72,6 +74,20 @@
         <el-button type="primary" :loading="uploading" @click="handleUpload">上传</el-button>
       </template>
     </el-dialog>
+
+    <!-- 编辑弹窗 -->
+    <el-dialog v-model="showEdit" title="编辑小说" width="460px">
+      <el-form :model="editForm" label-width="56px">
+        <el-form-item label="标题"><el-input v-model="editForm.title" placeholder="小说标题" /></el-form-item>
+        <el-form-item label="作者"><el-input v-model="editForm.author" placeholder="作者" /></el-form-item>
+        <el-form-item label="分类"><el-input v-model="editForm.category" placeholder="分类" /></el-form-item>
+        <el-form-item label="标签"><el-input v-model="editForm.tags" placeholder="多个标签用逗号分隔" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEdit = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="saveEdit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -94,8 +110,32 @@ const coverFileList = ref([])
 const uploadFile = ref(null)
 const coverFile = ref(null)
 const uploadForm = ref({ title: '', author: '', category: '', tags: '' })
+const showEdit = ref(false)
+const saving = ref(false)
+const editForm = ref({ id: null, title: '', author: '', category: '', tags: '' })
 
 onMounted(() => { fetchData() })
+
+function handleEdit(row) {
+  editForm.value = { id: row.id, title: row.title || '', author: row.author || '', category: row.category || '', tags: row.tags || '' }
+  showEdit.value = true
+}
+
+async function saveEdit() {
+  saving.value = true
+  try {
+    await novelStore.update(editForm.value.id, {
+      title: editForm.value.title,
+      author: editForm.value.author,
+      category: editForm.value.category,
+      tags: editForm.value.tags
+    })
+    ElMessage.success('保存成功')
+    showEdit.value = false
+    fetchData()
+  } catch { /* 错误已由api拦截器处理 */ }
+  finally { saving.value = false }
+}
 
 async function fetchData() {
   await novelStore.fetchList({ q: searchQuery.value })

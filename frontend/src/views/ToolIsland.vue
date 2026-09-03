@@ -6,6 +6,7 @@
         <span class="island-title">⚙️ 工具岛</span>
       </div>
       <div class="header-right">
+        <el-button type="success" plain @click="router.push('/island/tool/inner')">🎬 去水印工具</el-button>
         <el-button type="primary" @click="showAdd = true">添加工具</el-button>
       </div>
     </header>
@@ -98,7 +99,7 @@ async function handleSave() {
       await toolStore.update(editId.value, form.value)
       ElMessage.success('更新成功')
     } else {
-      await toolStore.add(form.value)
+      await toolStore.upload(form.value)
       ElMessage.success('添加成功')
     }
     closeDialog()
