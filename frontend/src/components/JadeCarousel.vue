@@ -226,9 +226,9 @@ onUnmounted(() => {
 .jade-carousel {
   position: relative;
   width: 100%;
-  height: 300px;
+  height: 340px;
   perspective: 1500px;
-  perspective-origin: 50% 40%;
+  perspective-origin: 50% 34%;
   overflow: hidden;
   outline: none;
   user-select: none;
@@ -237,7 +237,7 @@ onUnmounted(() => {
 
 .carousel-track {
   position: absolute;
-  top: 62%;
+  top: 27%;
   left: 50%;
   transform-style: preserve-3d;
   display: flex;

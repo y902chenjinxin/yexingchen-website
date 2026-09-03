@@ -124,7 +124,7 @@ const getToolIcon = (type) => {
 
 .gear {
   position: absolute;
-  border: 3px solid var(--island-tool);
+  border: 3px solid #a5825a;
   border-radius: 50%;
   opacity: 0.2;
 }
@@ -190,7 +190,7 @@ const getToolIcon = (type) => {
 
 .part {
   position: absolute;
-  background: var(--island-tool);
+  background: #a5825a;
   animation: float-part 10s ease-in-out infinite;
   will-change: transform, opacity;
 }
@@ -207,11 +207,14 @@ const getToolIcon = (type) => {
 }
 
 .tool-list-area {
-  background: var(--color-bg-elevated);
-  border: 1px solid rgba(196, 154, 108, 0.2);
+  background: var(--ls-glass);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius);
   padding: 30px;
   min-height: 300px;
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
 }
 
 .loading-state,
@@ -226,7 +229,7 @@ const getToolIcon = (type) => {
 
 .loading-text,
 .empty-text {
-  color: var(--color-text-muted);
+  color: var(--ls-text-3);
   font-size: 14px;
 }
 
@@ -246,17 +249,20 @@ const getToolIcon = (type) => {
   align-items: center;
   gap: 20px;
   padding: 16px 20px;
-  background: rgba(196, 154, 108, 0.05);
-  border: 1px solid rgba(196, 154, 108, 0.15);
+  background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(255,255,255,0) 55%), var(--ls-glass);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  backdrop-filter: saturate(150%) blur(10px);
+  -webkit-backdrop-filter: saturate(150%) blur(10px);
   transition: all var(--transition);
   animation: slide-in 0.5s ease-out backwards;
   cursor: pointer;
 }
 
 .tool-item:hover {
-  background: rgba(196, 154, 108, 0.1);
-  border-color: rgba(196, 154, 108, 0.3);
+  background: var(--ls-paper-2);
+  border-color: var(--ls-line-strong);
   transform: translateX(8px);
 }
 
@@ -276,7 +282,7 @@ const getToolIcon = (type) => {
   height: 48px;
   background: linear-gradient(
     135deg,
-    var(--island-tool) 0%,
+    #a5825a 0%,
     rgba(196, 154, 108, 0.3) 100%
   );
   border-radius: var(--radius-sm);
@@ -296,12 +302,12 @@ const getToolIcon = (type) => {
 
 .tool-name {
   font-family: var(--font-serif);
-  color: var(--color-text);
+  color: var(--ls-text);
   font-size: 16px;
 }
 
 .tool-desc {
-  color: var(--color-text-secondary);
+  color: var(--ls-text-2);
   font-size: 13px;
 }
 
@@ -314,12 +320,12 @@ const getToolIcon = (type) => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--color-text-muted);
+  background: var(--ls-text-3);
   transition: all var(--transition);
 }
 
 .status-dot.active {
-  background: var(--color-success);
-  box-shadow: 0 0 10px var(--color-success);
+  background: var(--ls-jade);
+  box-shadow: 0 0 10px var(--ls-jade);
 }
 </style>

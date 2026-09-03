@@ -179,11 +179,14 @@ const formatMonth = (dateStr) => {
 }
 
 .log-list-area {
-  background: var(--color-bg-elevated);
-  border: 1px solid rgba(122, 155, 124, 0.2);
+  background: var(--ls-glass);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius);
   padding: 30px;
   min-height: 300px;
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
 }
 
 .loading-state,
@@ -198,7 +201,7 @@ const formatMonth = (dateStr) => {
 
 .loading-text,
 .empty-text {
-  color: var(--color-text-muted);
+  color: var(--ls-text-3);
   font-size: 14px;
 }
 
@@ -217,17 +220,20 @@ const formatMonth = (dateStr) => {
   display: flex;
   gap: 24px;
   padding: 20px;
-  background: rgba(122, 155, 124, 0.05);
-  border: 1px solid rgba(122, 155, 124, 0.15);
+  background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(255,255,255,0) 55%), var(--ls-glass);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  backdrop-filter: saturate(150%) blur(10px);
+  -webkit-backdrop-filter: saturate(150%) blur(10px);
   transition: all var(--transition);
   animation: slide-in 0.5s ease-out backwards;
   cursor: pointer;
 }
 
 .log-item:hover {
-  background: rgba(122, 155, 124, 0.1);
-  border-color: rgba(122, 155, 124, 0.3);
+  background: var(--ls-paper-2);
+  border-color: var(--ls-line-strong);
   transform: translateX(8px);
 }
 
@@ -249,20 +255,21 @@ const formatMonth = (dateStr) => {
   justify-content: center;
   min-width: 60px;
   padding: 10px;
-  background: rgba(122, 155, 124, 0.1);
+  background: var(--ls-glass);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius-sm);
 }
 
 .date-day {
   font-family: var(--font-serif);
   font-size: 24px;
-  color: var(--island-log);
+  color: var(--ls-jade);
   line-height: 1;
 }
 
 .date-month {
   font-size: 11px;
-  color: var(--color-text-secondary);
+  color: var(--ls-text-2);
   margin-top: 4px;
 }
 
@@ -275,12 +282,12 @@ const formatMonth = (dateStr) => {
 
 .log-title {
   font-family: var(--font-serif);
-  color: var(--color-text);
+  color: var(--ls-text);
   font-size: 16px;
 }
 
 .log-excerpt {
-  color: var(--color-text-secondary);
+  color: var(--ls-text-2);
   font-size: 13px;
   line-height: 1.5;
 }

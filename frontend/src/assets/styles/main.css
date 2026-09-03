@@ -90,3 +90,17 @@ body {
     --font-size-2xl: 32px;
   }
 }
+
+/* 玄素琉璃玻璃卡片（岛屿内页深色卡片统一材质） */
+.ls-card {
+  background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,0) 48%), var(--ls-paper);
+  border: 1px solid var(--ls-line);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  transition: border-color .25s ease, transform .25s ease, box-shadow .25s ease;
+}
+.ls-card:hover {
+  border-color: var(--ls-line-strong);
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 var(--ls-highlight), 0 14px 34px rgba(0,0,0,.4);
+}

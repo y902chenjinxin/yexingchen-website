@@ -127,7 +127,7 @@ const getItemStyle = (index) => {
 .aperture-ring {
   position: absolute;
   inset: 0;
-  border: 2px solid var(--island-video);
+  border: 2px solid #8a6a86;
   border-radius: 50%;
   opacity: 0.15;
   animation: aperture-pulse 4s ease-in-out infinite;
@@ -161,7 +161,7 @@ const getItemStyle = (index) => {
   height: 80px;
   background: linear-gradient(
     135deg,
-    var(--island-video) 0%,
+    #8a6a86 0%,
     rgba(168, 124, 156, 0.3) 100%
   );
   border-radius: 4px;
@@ -177,11 +177,14 @@ const getItemStyle = (index) => {
 }
 
 .video-list-area {
-  background: var(--color-bg-elevated);
-  border: 1px solid rgba(168, 124, 156, 0.2);
+  background: var(--ls-glass);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius);
   padding: 30px;
   min-height: 300px;
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
 }
 
 .loading-state,
@@ -196,7 +199,7 @@ const getItemStyle = (index) => {
 
 .loading-text,
 .empty-text {
-  color: var(--color-text-muted);
+  color: var(--ls-text-3);
   font-size: 14px;
 }
 
@@ -215,17 +218,20 @@ const getItemStyle = (index) => {
   display: flex;
   gap: 20px;
   padding: 16px;
-  background: rgba(168, 124, 156, 0.05);
-  border: 1px solid rgba(168, 124, 156, 0.15);
+  background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(255,255,255,0) 55%), var(--ls-glass);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  backdrop-filter: saturate(150%) blur(10px);
+  -webkit-backdrop-filter: saturate(150%) blur(10px);
   transition: all var(--transition);
   animation: slide-in 0.5s ease-out backwards;
   cursor: pointer;
 }
 
 .video-item:hover {
-  background: rgba(168, 124, 156, 0.1);
-  border-color: rgba(168, 124, 156, 0.3);
+  background: var(--ls-paper-2);
+  border-color: var(--ls-line-strong);
   transform: translateX(8px);
 }
 
@@ -245,7 +251,7 @@ const getItemStyle = (index) => {
   height: 70px;
   background: linear-gradient(
     135deg,
-    var(--island-video) 0%,
+    #8a6a86 0%,
     rgba(168, 124, 156, 0.3) 100%
   );
   border-radius: 6px;
@@ -257,7 +263,7 @@ const getItemStyle = (index) => {
 
 .play-icon {
   font-size: 24px;
-  color: var(--color-bg);
+  color: var(--ls-bg1);
   opacity: 0.8;
 }
 
@@ -270,12 +276,12 @@ const getItemStyle = (index) => {
 
 .video-title {
   font-family: var(--font-serif);
-  color: var(--color-text);
+  color: var(--ls-text);
   font-size: 16px;
 }
 
 .video-duration {
-  color: var(--color-text-secondary);
+  color: var(--ls-text-2);
   font-size: 13px;
 }
 

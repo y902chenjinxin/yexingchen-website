@@ -142,7 +142,7 @@ const getItemStyle = (index) => {
   height: 50px;
   background: linear-gradient(
     135deg,
-    var(--island-novel) 0%,
+    var(--ls-ochre) 0%,
     rgba(232, 228, 220, 0.3) 100%
   );
   border-radius: 2px;
@@ -190,11 +190,14 @@ const getItemStyle = (index) => {
 }
 
 .novel-list-area {
-  background: var(--color-bg-elevated);
-  border: 1px solid rgba(212, 196, 168, 0.2);
+  background: var(--ls-glass);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius);
   padding: 30px;
   min-height: 300px;
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
 }
 
 .loading-state,
@@ -209,7 +212,7 @@ const getItemStyle = (index) => {
 
 .loading-text,
 .empty-text {
-  color: var(--color-text-muted);
+  color: var(--ls-text-3);
   font-size: 14px;
 }
 
@@ -228,16 +231,19 @@ const getItemStyle = (index) => {
   display: flex;
   gap: 20px;
   padding: 20px;
-  background: rgba(212, 196, 168, 0.05);
-  border: 1px solid rgba(212, 196, 168, 0.15);
+  background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(255,255,255,0) 55%), var(--ls-glass);
+  border: 1px solid var(--ls-line);
   border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  backdrop-filter: saturate(150%) blur(10px);
+  -webkit-backdrop-filter: saturate(150%) blur(10px);
   transition: all var(--transition);
   animation: slide-in 0.5s ease-out backwards;
 }
 
 .novel-item:hover {
-  background: rgba(212, 196, 168, 0.1);
-  border-color: rgba(212, 196, 168, 0.3);
+  background: var(--ls-paper-2);
+  border-color: var(--ls-line-strong);
   transform: translateX(8px);
 }
 
@@ -257,7 +263,7 @@ const getItemStyle = (index) => {
   height: 80px;
   background: linear-gradient(
     135deg,
-    var(--island-novel) 0%,
+    var(--ls-ochre) 0%,
     rgba(212, 196, 168, 0.5) 100%
   );
   border-radius: 4px;
@@ -280,13 +286,13 @@ const getItemStyle = (index) => {
 
 .novel-title {
   font-family: var(--font-serif);
-  color: var(--color-text);
+  color: var(--ls-text);
   font-size: 16px;
 }
 
 .novel-author,
 .novel-chapter {
-  color: var(--color-text-secondary);
+  color: var(--ls-text-2);
   font-size: 13px;
 }
 

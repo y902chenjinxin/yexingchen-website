@@ -476,4 +476,35 @@
   --lj-glass: rgba(251,250,246,.62);
   --lj-glass-blur: saturate(180%) blur(20px);
   --lj-shadow: 0 6px 24px rgba(58,67,80,.08), 0 1px 3px rgba(58,67,80,.05);
+
+  /* ---- 玄素琉璃：深色材质体系（岛屿内页 + 桌宠面板，墨青夜色玻璃） ---- */
+  --ls-bg0: #10161c;                 /* 焦墨夜色（最深底） */
+  --ls-bg1: #1a242c;                 /* 主背景墨青（非纯色渐变） */
+  --ls-bg-glow: rgba(96,130,140,.10);/* 背景径向慢晕光斑 */
+  --ls-paper: #1e2831;               /* 卡片/面板底 */
+  --ls-paper-2: #253039;             /* 浮层/hover */
+  --ls-glass: rgba(32,42,51,.62);    /* 玻璃层（配 backdrop-filter） */
+  --ls-line: rgba(206,220,226,.10);  /* 弱描边 */
+  --ls-line-strong: rgba(206,220,226,.18);
+  --ls-highlight: rgba(255,255,255,.08); /* 上缘内高光 */
+  --ls-shadow: 0 18px 46px rgba(0,0,0,.35), 0 4px 12px rgba(0,0,0,.2);
+  --ls-dai: #5f9499;                 /* 黛青主强调 */
+  --ls-dai-deep: #3f6a70;
+  --ls-ochre: #c2a26b;              /* 鎏金/赭石点缀 */
+  --ls-jade: #6aa98f;               /* 松石青正点缀 */
+  --ls-text: #ecf1f4;               /* 主文字（近纯白） */
+  --ls-text-2: #abb7be;             /* 次要文字 */
+  --ls-text-3: #7f8d94;             /* 弱文字 */
+
+  /* ---- 旧岛屿变量映射到玄素琉璃（模板 SVG fill/stroke 兼容，避免落到 currentColor） ---- */
+  --island-music: #5f9499;
+  --island-novel: #c2a26b;
+  --island-video: #8a6a86;
+  --island-log:    #6aa98f;
+  --island-tool:   #a5825a;
+
+  /* 深色底色变体（内页局部引用，统一为墨青家族） */
+  --color-bg-elevated: var(--ls-paper);
+  --color-bg-card: var(--ls-paper);
+  --color-success: var(--ls-jade);
 }

@@ -91,30 +91,47 @@ onUnmounted(() => {
 .island-inner {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-  background: var(--color-bg);
+  z-index: 10001;
+  background: var(--ls-bg1);
   overflow: hidden;
 }
 
-/* 各岛屿专属色调 */
+/* 墨青夜色背景：双层渐变 + 纸纹噪点 + 慢晕光斑（去平涂廉价感） */
+.island-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 45% at 18% 12%, var(--ls-bg-glow), transparent 62%),
+    radial-gradient(ellipse 55% 40% at 88% 78%, rgba(194, 162, 107, 0.05), transparent 60%),
+    linear-gradient(168deg, #1b262f 0%, #131b22 55%, #10161c 100%);
+}
+.island-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: .5;
+  background:
+    repeating-linear-gradient(0deg, rgba(206,220,226,.012) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(206,220,226,.008) 0 1px, transparent 1px 6px);
+  pointer-events: none;
+}
+
+/* 各岛屿专属低饱和 accent（玄素琉璃同源，克制非鲜艳） */
 .island-inner-music {
-  --island-accent: var(--island-music, #9B8DC9);
+  --island-accent: var(--ls-dai, #5f9499);
 }
-
 .island-inner-novel {
-  --island-accent: var(--island-novel, #D4C4A8);
+  --island-accent: var(--ls-ochre, #c2a26b);
 }
-
 .island-inner-video {
-  --island-accent: var(--island-video, #A87C9C);
+  --island-accent: #8a6a86;
 }
-
 .island-inner-log {
-  --island-accent: var(--island-log, #7A9B7C);
+  --island-accent: var(--ls-jade, #6aa98f);
 }
-
 .island-inner-tool {
-  --island-accent: var(--island-tool, #C49A6C);
+  --island-accent: #a5825a;
 }
 
 .inner-background {
@@ -159,7 +176,7 @@ onUnmounted(() => {
 }
 
 .inner-header {
-  padding: 30px 40px;
+  padding: 26px 40px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -170,18 +187,21 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: rgba(201, 169, 98, 0.1);
-  border: 1px solid rgba(201, 169, 98, 0.3);
+  background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,0) 55%), var(--ls-glass);
+  border: 1px solid var(--ls-line);
   border-radius: 20px;
-  color: var(--color-gold);
+  color: var(--ls-text-2);
   cursor: pointer;
   transition: all 0.3s ease;
   width: fit-content;
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  backdrop-filter: saturate(160%) blur(12px);
 }
 
 .back-btn:hover {
-  background: rgba(201, 169, 98, 0.2);
-  border-color: rgba(201, 169, 98, 0.5);
+  border-color: var(--ls-line-strong);
+  color: var(--ls-text);
+  transform: translateY(-1px);
 }
 
 .back-icon {
@@ -195,18 +215,24 @@ onUnmounted(() => {
 .island-title {
   font-family: var(--font-serif);
   font-size: 36px;
-  color: var(--color-gold);
-  margin: 20px 0 5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  background: linear-gradient(180deg, #f2f6f8 20%, var(--ls-ochre) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 18px 0 4px;
 }
 
 .island-subtitle {
-  font-size: 16px;
-  color: var(--color-text-secondary);
+  font-size: 15px;
+  color: var(--ls-text-2);
+  letter-spacing: .06em;
 }
 
 .inner-main {
   flex: 1;
-  padding: 20px 40px;
+  padding: 16px 40px 40px;
   overflow-y: auto;
 }
 

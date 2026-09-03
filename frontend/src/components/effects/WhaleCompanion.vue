@@ -353,7 +353,7 @@ onMounted(() => {
   position: fixed;
   right: 30px;
   bottom: 40px;
-  z-index: 1200;
+  z-index: 10001;
   pointer-events: none;
 }
 .whale-frame {
@@ -386,11 +386,12 @@ onMounted(() => {
   padding: 4px 10px;
   font-family: var(--font-serif, 'Noto Serif SC', serif);
   font-size: 12px;
-  color: var(--xiu-text, #eaf2f8);
-  background: var(--xiu-card, rgba(26, 58, 74, 0.72));
-  border: 1px solid var(--xiu-line, rgba(201, 169, 110, 0.18));
-  border-radius: var(--radius, 8px);
-  box-shadow: var(--shadow, 0 4px 16px rgba(0, 0, 0, 0.2));
+  color: var(--ls-text, #ecf1f4);
+  background: var(--ls-glass, rgba(32,42,51,.62));
+  border: 1px solid var(--ls-line, rgba(206,220,226,.10));
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 var(--ls-highlight, rgba(255,255,255,.08)), var(--ls-shadow, 0 18px 46px rgba(0,0,0,.35));
+  backdrop-filter: saturate(160%) blur(14px);
   pointer-events: none;
 }
 
@@ -399,15 +400,17 @@ onMounted(() => {
   right: 0;
   bottom: calc(100% + 10px);
   width: 232px;
+  max-height: calc(100dvh - 220px);
+  overflow-y: auto;
   padding: 14px 14px 12px;
   pointer-events: auto;
   font-family: var(--font-serif, 'Noto Serif SC', serif);
-  color: var(--xiu-text, #eaf2f8);
-  background: var(--xiu-card, rgba(16, 38, 46, 0.92));
-  border: 1px solid var(--xiu-line, rgba(61, 184, 176, 0.3));
-  border-radius: var(--radius, 10px);
-  box-shadow: var(--shadow, 0 10px 30px rgba(0, 0, 0, 0.4));
-  backdrop-filter: blur(6px);
+  color: var(--ls-text, #ecf1f4);
+  background: linear-gradient(165deg, rgba(255,255,255,.06), rgba(255,255,255,0) 48%), var(--ls-glass, rgba(32,42,51,.62));
+  border: 1px solid var(--ls-line, rgba(206,220,226,.10));
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 var(--ls-highlight, rgba(255,255,255,.08)), var(--ls-shadow, 0 18px 46px rgba(0,0,0,.35));
+  backdrop-filter: saturate(160%) blur(16px);
   user-select: none;
 }
 .panel-enter-active, .panel-leave-active { transition: opacity .2s ease, transform .2s ease; }
@@ -418,22 +421,22 @@ onMounted(() => {
   right: 8px;
   border: none;
   background: transparent;
-  color: var(--xiu-dim, #8aa5ac);
+  color: var(--ls-text-3, #7f8d94);
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
   padding: 4px;
 }
-.panel-close:hover { color: var(--xiu-gold, #c9a96e); }
+.panel-close:hover { color: var(--ls-ochre, #c2a26b); }
 .panel-title {
   font-size: 14px;
   letter-spacing: 2px;
-  color: var(--xiu-gold, #c9a96e);
+  color: var(--ls-ochre, #c2a26b);
   margin: 0 0 8px;
 }
 .panel-label {
   font-size: 11px;
-  color: var(--xiu-dim, #8aa5ac);
+  color: var(--ls-text-2, #abb7be);
   margin: 6px 0 4px;
   letter-spacing: 1px;
 }
@@ -443,12 +446,12 @@ onMounted(() => {
   gap: 8px;
   padding: 7px 8px;
   margin-bottom: 5px;
-  border: 1px solid var(--xiu-line, rgba(61, 184, 176, 0.16));
+  border: 1px solid var(--ls-line, rgba(206,220,226,.10));
   border-radius: 8px;
   cursor: pointer;
   transition: border-color .2s ease, background .2s ease;
 }
-.opt.on { border-color: var(--xiu-jade, #3db8b0); background: rgba(61, 184, 176, 0.08); }
+.opt.on { border-color: var(--ls-dai, #5f9499); background: rgba(95,148,153,.10); }
 .opt input {
   position: absolute;
   opacity: 0;
@@ -462,21 +465,21 @@ onMounted(() => {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1.5px solid var(--xiu-dim, #7d97a0);
+  border: 1.5px solid var(--ls-text-3, #7f8d94);
   box-sizing: border-box;
   position: relative;
 }
-.opt.on .opt-radio { border-color: var(--xiu-jade, #3db8b0); }
+.opt.on .opt-radio { border-color: var(--ls-dai, #5f9499); }
 .opt.on .opt-radio::after {
   content: '';
   position: absolute;
   inset: 2px;
   border-radius: 50%;
-  background: var(--xiu-jade, #3db8b0);
+  background: var(--ls-dai, #5f9499);
 }
 .opt-body { display: flex; flex-direction: column; gap: 1px; }
-.opt-body b { font-size: 13px; font-weight: 600; color: var(--xiu-text, #eaf2f8); }
-.opt.on .opt-body b { color: var(--xiu-jade, #3db8b0); }
-.opt-body small { font-size: 11px; color: var(--xiu-dim, #8aa5ac); line-height: 1.35; }
+.opt-body b { font-size: 13px; font-weight: 600; color: var(--ls-text, #ecf1f4); }
+.opt.on .opt-body b { color: var(--ls-dai, #5f9499); }
+.opt-body small { font-size: 11px; color: var(--ls-text-3, #7f8d94); line-height: 1.35; }
 .walk-opt { margin-top: 4px; }
 </style>
