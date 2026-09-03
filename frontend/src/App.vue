@@ -8,6 +8,9 @@
 
     <!-- 路由视图 -->
     <router-view v-if="!showInitialLoading" id="main-content" />
+
+    <!-- 登录后全站常驻桌宠 -->
+    <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn" />
   </div>
 </template>
 
@@ -16,6 +19,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import LoadingView from '@/views/LoadingView.vue'
+import WhaleCompanion from '@/components/effects/WhaleCompanion.vue'
 
 const router = useRouter()
 const route = useRoute()

@@ -10,7 +10,7 @@
  * 不缓存：跨源资源（CDN/字体/统计）。
  * 注册失败不应阻塞应用启动（main.js 中已 try/catch）。
  */
-const VERSION = 'xuanhuang-v7'
+const VERSION = 'xuanhuang-v8'
 const STATIC_CACHE = `${VERSION}-static`
 
 self.addEventListener('install', (event) => {
@@ -47,13 +47,14 @@ self.addEventListener('fetch', (event) => {
   // 带 Authorization 头的请求：不缓存
   if (req.headers.get('authorization')) return
 
-  // 仅缓存静态资源（vite 构建产物）
+  // 仅缓存静态资源（vite 构建产物 + 桌宠视频）
   const isStaticAsset =
     url.pathname.startsWith('/assets/') ||
     url.pathname === '/' ||
     url.pathname === '/index.html' ||
     url.pathname === '/manifest.webmanifest' ||
-    url.pathname.startsWith('/icons/')
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/whale-pet/')
 
   if (!isStaticAsset) return
 
