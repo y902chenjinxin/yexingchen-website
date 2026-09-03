@@ -5,7 +5,8 @@
       class="whale-frame"
       :class="{ dragging: dragging, flip: flipped }"
     >
-      <video ref="videoEl" class="whale-video" muted loop playsinline autoplay></video>
+      <video :ref="el => vEls[0].value = el" class="whale-video" muted loop playsinline autoplay></video>
+      <video :ref="el => vEls[1].value = el" class="whale-video" muted loop playsinline autoplay></video>
     </div>
 
     <Transition name="panel">
@@ -44,7 +45,8 @@ const VH = 360
 
 const stageEl = ref(null)
 const frameEl = ref(null)
-const videoEl = ref(null)
+const vEls = [ref(null), ref(null)]
+function activeVideo() { return vEls[activeIdx]?.value }
 
 // 自动动作池（待机为主，穿插慢游/跑步/扭头/日常/轻音乐……多样但都静音安全），让桌宠"自己刷新动作"
 const AUTO_POOL = [
@@ -101,18 +103,19 @@ let offX = 0
 let offY = 0
 let walk = null
 let hintTimer = null
+let activeIdx = 0
 let fadeToken = 0
-let fadeTimer = null
 
 const MODE_KEY = 'whale-pet-mode'
+const FADE_MS = 380
 
-function setAction(pair, force = false) {
-  const key = pair[0] + '/' + pair[1]
+function keyOf(pair) { return pair[0] + '/' + pair[1] }
+
+function applyTo(video, pair) {
+  const key = keyOf(pair)
   const box = VIDBOX[key]
-  if (!box) return
-  if (!force && key === current) return
-  current = key
-  const frame = frameEl.value, video = videoEl.value
+  if (!box) return null
+  const frame = frameEl.value
   frame.style.width = box.bw + 'px'
   frame.style.height = box.bh + 'px'
   video.style.width = VW + 'px'
@@ -122,22 +125,41 @@ function setAction(pair, force = false) {
   video.src = `/whale-pet/videos/${pair[0]}/${pair[1]}.webm`
   video.load()
   video.play().catch(() => {})
+  return box
 }
 
-// 平滑换动作：先淡出再切源淡入，避免动作之间硬切闪烁
-function smoothSwitch(pair, force = true) {
-  const video = videoEl.value
-  const id = ++fadeToken
-  if (walk) { setAction(pair, force); return }
-  video.style.opacity = '0'
-  clearTimeout(fadeTimer)
-  fadeTimer = setTimeout(() => {
-    if (id !== fadeToken) return
-    setAction(pair, force)
-    requestAnimationFrame(() => {
-      if (id === fadeToken) video.style.opacity = '1'
-    })
-  }, 240)
+// 直接换动作（拖拽/初始）：立即切换，不做淡入淡出
+function setAction(pair, force = false) {
+  const cur = keyOf(pair)
+  if (!force && cur === current) return
+  current = cur
+  fadeToken++                        // 取消进行中的交叉淡入淡出
+  const active = activeVideo()
+  if (!applyTo(active, pair)) return
+  active.style.opacity = '1'
+  vEls[1 - activeIdx].value.style.opacity = '0'
+}
+
+// 双层交叉淡入淡出：旧片渐隐、新片(已开播)渐入，没有"消失空洞"或首帧空白
+function crossSwitch(pair) {
+  const newIdx = 1 - activeIdx
+  const oldEl = activeVideo()
+  const newEl = vEls[newIdx].value
+  if (!applyTo(newEl, pair)) return
+  current = keyOf(pair)
+  newEl.style.opacity = '0'
+  const token = ++fadeToken
+  const t0 = performance.now()
+  const fade = (now) => {
+    if (token !== fadeToken) return
+    let p = (now - t0) / FADE_MS
+    if (p >= 1) p = 1
+    oldEl.style.opacity = String(1 - p)
+    newEl.style.opacity = String(p)
+    if (p < 1) requestAnimationFrame(fade)
+    else activeIdx = newIdx
+  }
+  requestAnimationFrame(fade)
 }
 
 function pick(list) {
@@ -154,11 +176,11 @@ function scheduleAuto() {
     if (walk || draggingState) { scheduleAuto(); return }
     playAuto(pickAuto())
     scheduleAuto()
-  }, 5000 + Math.random() * 2000)
+  }, 8000 + Math.random() * 5000)
 }
 
 function playAuto(pair) {
-  smoothSwitch(pair, true)
+  crossSwitch(pair)
   // 跑步类动作触发横向位移穿越，跑完自动回待机
   if (pair[0] === 'moves' && RUN_SET.has(pair[1]) && !walk && !draggingState) {
     runAcross()
@@ -184,7 +206,7 @@ function endAutoWalk() {
   walk = null
   flipped.value = false
   if (autoTimer) clearTimeout(autoTimer)
-  smoothSwitch(pickAuto(), true)
+  crossSwitch(pickAuto())
   scheduleAuto()
 }
 
@@ -197,10 +219,6 @@ function onPointerDown(e) {
   offY = e.clientY - r.top
   dragging.value = true
   stopWalk()
-  // 取消未完成的淡出并确保清晰可见
-  clearTimeout(fadeTimer)
-  fadeToken++
-  videoEl.value.style.opacity = '1'
   setAction(pick(DRAG_POOL), true)
   document.addEventListener('pointermove', onPointerMove)
   document.addEventListener('pointerup', onPointerUp, { once: true })
@@ -235,7 +253,7 @@ function onPointerUp() {
     return
   }
   stopWalk()
-  smoothSwitch(pickAuto(), true)
+  crossSwitch(pickAuto())
 }
 
 function togglePanel() {
@@ -254,10 +272,10 @@ function onWalkToggle() {
 function toggleWalk() {
   if (walk) {
     stopWalk()
-    smoothSwitch(pickAuto(), true)
+    crossSwitch(pickAuto())
     return
   }
-  smoothSwitch(pick(WALK_POOL), true)
+  crossSwitch(pick(WALK_POOL), true)
   const r = stageEl.value.getBoundingClientRect()
   walk = { x: window.innerWidth - r.width - 60, dir: -1, speed: 1.4 }
   flipped.value = false
@@ -318,11 +336,11 @@ onMounted(() => {
   const hintId = setInterval(() => { if (!draggingState) showHint() }, 12000)
   const firstHint = setTimeout(showHint, 1500)
   onBeforeUnmount(() => {
+    fadeToken++
     clearInterval(hintId)
     clearTimeout(firstHint)
     if (autoTimer) clearTimeout(autoTimer)
     if (hintTimer) clearTimeout(hintTimer)
-    if (fadeTimer) clearTimeout(fadeTimer)
     frameEl.value?.removeEventListener('pointerdown', onPointerDown)
     document.removeEventListener('pointermove', onPointerMove)
     document.removeEventListener('pointerup', onPointerUp)
@@ -357,7 +375,6 @@ onMounted(() => {
   left: 0;
   pointer-events: none;
   opacity: 1;
-  transition: opacity 0.24s ease;
 }
 .whale-frame.hint::after {
   content: '单击 设置 · 双击 散步 · 可拖拽';
