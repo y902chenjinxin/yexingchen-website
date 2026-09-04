@@ -66,19 +66,6 @@
 
         <section class="wb-card">
           <header class="wb-card-header">
-            <h2>分类入口</h2>
-          </header>
-          <div class="wb-categories">
-            <router-link to="/notes" class="wb-chip"><el-icon class="wb-chip-icon"><Document /></el-icon>笔记</router-link>
-            <router-link to="/music" class="wb-chip"><el-icon class="wb-chip-icon"><Headset /></el-icon>音乐</router-link>
-            <router-link to="/novel" class="wb-chip"><el-icon class="wb-chip-icon"><Reading /></el-icon>小说</router-link>
-            <router-link to="/video" class="wb-chip"><el-icon class="wb-chip-icon"><VideoCamera /></el-icon>视频</router-link>
-            <router-link to="/tool" class="wb-chip"><el-icon class="wb-chip-icon"><Tools /></el-icon>工具</router-link>
-          </div>
-        </section>
-
-        <section class="wb-card">
-          <header class="wb-card-header">
             <h2>标签</h2>
           </header>
           <div class="wb-categories">
@@ -101,7 +88,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Edit, Document, Headset, VideoCamera, Reading, ChatDotRound, Tools } from '@element-plus/icons-vue'
+import { Edit, ChatDotRound } from '@element-plus/icons-vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { workbenchApi } from '@/api/workbench'
 import JadeCarousel from '@/components/JadeCarousel.vue'

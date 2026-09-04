@@ -68,9 +68,7 @@ const props = defineProps({
       { key: 'video',  rune: '影', label: '光影交织', path: '/video',  color: '#5b6b7a' },
       { key: 'log',    rune: '墨', label: '翰墨丹青', path: '/log',    color: '#4a6a56' },
       { key: 'tool',   rune: '器', label: '机关百变', path: '/tool',   color: '#6a7a6a' },
-      { key: 'notes',  rune: '記', label: '笔记云台', path: '/notes',               color: '#55706b' },
-      { key: 'assets', rune: '藏', label: '内容资产', path: '/assets',              color: '#6b6a7a' },
-      { key: 'tasks',  rune: '約', label: '任务镜台', path: '/tasks',               color: '#7a5a5a' }
+      { key: 'notes',  rune: '記', label: '笔记云台', path: '/notes',               color: '#55706b' }
     ]
   },
   initialIndex: { type: Number, default: 0 },
@@ -188,10 +186,8 @@ function sigilPath(key) {
       return 'M22 18 Q34 8 44 20 L32 30 L42 40 L30 42 L20 32 Q24 24 22 18 Z'
     case 'notes':
       return 'M24 14 L44 14 L44 50 L20 44 L20 20 Z M28 24 L40 24 M28 32 L40 32 M28 40 L36 40'
-    case 'assets':
-      return 'M20 22 L32 14 L44 22 L44 46 L20 46 Z M28 22 L36 22 M28 30 L36 30 M16 30 L48 30'
-    default: // tasks
-      return 'M20 18 L40 18 L44 24 L40 46 L24 46 L20 24 Z M20 24 L44 24 M24 18 L26 12 L38 12 L40 18'
+    default:
+      return 'M20 32 L28 24 L36 32 L28 40 Z'
   }
 }
 
