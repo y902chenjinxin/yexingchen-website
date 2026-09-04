@@ -22,7 +22,7 @@
       <el-input
         v-model="searchWord"
         class="tb-search-input"
-        placeholder="搜笔记 / 资产 / 任务 / 标签"
+        placeholder="搜笔记 / 标签"
         clearable
         :size="isMobile ? 'default' : 'large'"
         @input="onSearchInput"
@@ -137,7 +137,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Grid, User, Lock, Avatar, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
-  Document, FolderOpened, Check, PriceTag
+  Document, Check, PriceTag
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -157,9 +157,7 @@ let suggestTimer = null
 
 /* ---- 导航 ---- */
 const navItems = [
-  { label: '笔记', to: '/notes', icon: Document },
-  { label: '任务', to: '/tasks', icon: Check },
-  { label: '内容资产', to: '/assets', icon: FolderOpened }
+  { label: '笔记', to: '/notes', icon: Document }
 ]
 function isActive(item) {
   return route.path.startsWith(item.to)
@@ -235,18 +233,6 @@ const suggestGroups = computed(() => {
       to: (it) => `/notes/${it?.id}`
     },
     {
-      key: 'tasks', title: '任务', icon: Check,
-      items: r.tasks || [],
-      label: (it) => it?.title || '任务',
-      to: () => '/tasks'
-    },
-    {
-      key: 'assets', title: '内容资产', icon: FolderOpened,
-      items: r.assets || [],
-      label: (it) => it?.title || it?.original_filename || '资产',
-      to: () => '/assets'
-    },
-    {
       key: 'tags', title: '标签', icon: PriceTag,
       items: r.tags || [],
       label: (it) => '#' + it?.name,
@@ -266,8 +252,7 @@ function onSearchInput() {
     try {
       const res = await workbenchApi.search(q, { size: 6 })
       const results = res?.data?.results || {}
-      const count = (results.notes?.length || 0) + (results.tasks?.length || 0) +
-        (results.assets?.length || 0) + (results.tags?.length || 0)
+      const count = (results.notes?.length || 0) + (results.tags?.length || 0)
       suggestions.value = { results, count }
     } catch {
       suggestions.value = { results: null, count: 0 }

@@ -12,7 +12,7 @@
     <section class="wb-hero">
       <div class="wb-eyebrow">玄 黄 · 仙 府 一 隅</div>
       <h1 class="wb-title">玄黄 · 工作台</h1>
-      <p class="wb-subtitle">把零散念头，沉淀为笔记、内容资产与可执之事。</p>
+      <p class="wb-subtitle">把零散念头，沉淀为笔记、AI 与可执之事。</p>
       <JadeCarousel class="wb-jade" />
     </section>
 
@@ -33,51 +33,9 @@
             <small>整理 · 摘要 · 化虚为实</small>
           </span>
         </router-link>
-        <router-link to="/assets" class="wb-action">
-          <span class="wb-action-icon"><el-icon><FolderOpened /></el-icon></span>
-          <span class="wb-action-text">
-            <strong>内容资产</strong>
-            <small>网页 · 图片 · PDF</small>
-          </span>
-        </router-link>
-        <router-link to="/tasks" class="wb-action">
-          <span class="wb-action-icon"><el-icon><Check /></el-icon></span>
-          <span class="wb-action-text">
-            <strong>任务</strong>
-            <small>今日所行 · 逾期之警</small>
-          </span>
-        </router-link>
       </section>
 
       <div class="wb-grid">
-        <section class="wb-card">
-          <header class="wb-card-header">
-            <h2>今日任务</h2>
-            <router-link to="/tasks" class="wb-card-link">全部</router-link>
-          </header>
-          <ul v-if="summary?.today_tasks?.length" class="wb-list">
-            <li v-for="t in summary.today_tasks" :key="t.id">
-              <router-link :to="`/tasks`">{{ t.title }}</router-link>
-              <small>{{ formatDate(t.due_date) }}</small>
-            </li>
-          </ul>
-          <p v-else class="wb-empty">今日暂无任务，静坐修行</p>
-        </section>
-
-        <section class="wb-card">
-          <header class="wb-card-header">
-            <h2>逾期任务</h2>
-            <router-link to="/tasks" class="wb-card-link">查看</router-link>
-          </header>
-          <ul v-if="summary?.overdue_tasks?.length" class="wb-list danger">
-            <li v-for="t in summary.overdue_tasks" :key="t.id">
-              <router-link :to="`/tasks`">{{ t.title }}</router-link>
-              <small>逾期 · {{ formatDate(t.due_date) }}</small>
-            </li>
-          </ul>
-          <p v-else class="wb-empty">没有逾期任务</p>
-        </section>
-
         <section class="wb-card">
           <header class="wb-card-header">
             <h2>最近编辑</h2>
@@ -112,10 +70,6 @@
           </header>
           <div class="wb-categories">
             <router-link to="/notes" class="wb-chip"><el-icon class="wb-chip-icon"><Document /></el-icon>笔记</router-link>
-            <router-link to="/assets?type=link" class="wb-chip"><el-icon class="wb-chip-icon"><Link /></el-icon>网页</router-link>
-            <router-link to="/assets?type=image" class="wb-chip"><el-icon class="wb-chip-icon"><Picture /></el-icon>图片</router-link>
-            <router-link to="/assets?type=pdf" class="wb-chip"><el-icon class="wb-chip-icon"><Document /></el-icon>PDF</router-link>
-            <router-link to="/tasks" class="wb-chip"><el-icon class="wb-chip-icon"><Check /></el-icon>任务</router-link>
             <router-link to="/music" class="wb-chip"><el-icon class="wb-chip-icon"><Headset /></el-icon>音乐</router-link>
             <router-link to="/novel" class="wb-chip"><el-icon class="wb-chip-icon"><Reading /></el-icon>小说</router-link>
             <router-link to="/video" class="wb-chip"><el-icon class="wb-chip-icon"><VideoCamera /></el-icon>视频</router-link>
@@ -147,7 +101,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Edit, FolderOpened, Check, Document, Link, Picture, Headset, VideoCamera, Reading, ChatDotRound, Tools } from '@element-plus/icons-vue'
+import { Edit, Document, Headset, VideoCamera, Reading, ChatDotRound, Tools } from '@element-plus/icons-vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { workbenchApi } from '@/api/workbench'
 import JadeCarousel from '@/components/JadeCarousel.vue'
