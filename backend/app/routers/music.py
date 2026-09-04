@@ -18,7 +18,11 @@ router = APIRouter(prefix="/api/music", tags=["音乐岛"])
 
 async def _stream_file(file_path: str):
     """按物理文件路径流式播放音频（自动识别 WAV/MP3/FLAC）"""
-    full = file_path if os.path.isabs(file_path) else os.path.join(os.path.dirname(__file__), "..", "..", file_path)
+    # 统一到 backend/uploads 写盘目录：老数据存 /uploads/xxx（绝对路径），新上传存 /xxx（也是绝对路径）
+    rel = file_path.lstrip("/")
+    if not rel.startswith("uploads/") and not rel.startswith("uploads\\"):
+        rel = os.path.join("uploads", rel)
+    full = os.path.join(os.path.dirname(__file__), "..", "..", rel)
     if not os.path.exists(full):
         raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐文件不存在")
     with open(full, 'rb') as f:
@@ -55,8 +59,7 @@ async def _stream_file(file_path: str):
 async def stream_music(music_id: str):
     """流式播放音乐（'default'=系统内置古筝，否则按音乐库 id 查 file_path）"""
     if music_id == "default":
-        return await _stream_file(os.path.join(
-            os.path.dirname(__file__), "..", "..", "uploads", "bgm", "bamboo_flute.mp3"))
+        return await _stream_file("uploads/bgm/bamboo_flute.mp3")
     db = SessionLocal()
     try:
         m = db.query(Music).filter(Music.id == int(music_id)).first()
