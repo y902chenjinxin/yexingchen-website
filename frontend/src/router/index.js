@@ -99,6 +99,13 @@ const routes = [
     component: () => import('@/views/WatermarkView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 PDF 工具页（纯前端处理）
+  {
+    path: '/tool/pdf',
+    name: 'PdfTool',
+    component: () => import('@/views/PdfToolView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 外部工具独立页（iframe 内嵌）
   {
     path: '/tool/:id',

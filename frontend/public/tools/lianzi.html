@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>行楷字帖 · 单字查询</title>
+    <style>
+        /* 整体风格：干净、宣纸感 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #f7f3eb;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 250, 240, 0.85);
+            backdrop-filter: blur(2px);
+            border-radius: 40px;
+            padding: 40px 32px 48px;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 8px 16px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e8ddd0;
+            transition: 0.3s;
+        }
+
+        h1 {
+            font-weight: 400;
+            font-size: 28px;
+            letter-spacing: 4px;
+            color: #4a3f35;
+            text-align: center;
+            margin-bottom: 12px;
+            font-family: 'Times New Roman', '楷体', 'KaiTi', serif;
+        }
+
+        .subhead {
+            text-align: center;
+            color: #8a7a6a;
+            font-size: 15px;
+            border-top: 1px dashed #dacfc2;
+            border-bottom: 1px dashed #dacfc2;
+            padding: 10px 0;
+            margin-bottom: 32px;
+            letter-spacing: 2px;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        .input-area label {
+            font-size: 18px;
+            color: #5b4e40;
+            font-weight: 300;
+        }
+
+        #charInput {
+            width: 80px;
+            height: 80px;
+            font-size: 44px;
+            text-align: center;
+            border: 2px solid #d6c9ba;
+            border-radius: 24px;
+            background: #fefcf8;
+            color: #2d241c;
+            font-family: '楷体', 'KaiTi', '华文楷体', serif;
+            outline: none;
+            transition: 0.2s;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.02);
+        }
+
+        #charInput:focus {
+            border-color: #b8a187;
+            box-shadow: 0 0 0 4px rgba(180, 150, 120, 0.15);
+        }
+
+        #queryBtn {
+            background: #dacfc2;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 50px;
+            font-size: 18px;
+            color: #3f342a;
+            font-weight: 500;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.25s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.02);
+            border: 1px solid #e3d7c8;
+        }
+
+        #queryBtn:hover {
+            background: #ccbcaa;
+            color: #1f170f;
+            transform: scale(0.97);
+            box-shadow: 0 6px 12px rgba(80, 60, 40, 0.08);
+        }
+
+ 
+
+        .result-placeholder {
+            color: #b5a693;
+            font-size: 18px;
+            padding: 40px 0;
+            letter-spacing: 2px;
+        }
+
+        .result-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .main-image {
+            width: 100%;
+            max-width: 360px;
+            border-radius: 28px;
+            box-shadow: 0 6px 18px rgba(80, 60, 40, 0.06);
+            background: white;
+            padding: 12px 4px 4px 4px;
+            transition: 0.2s;
+        }
+
+        .main-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 24px;
+            background: #ffffff;
+            image-rendering: crisp-edges; /* 保持清晰 */
+        }
+
+        .char-label {
+            margin: 16px 0 6px 0;
+            font-size: 22px;
+            color: #4f3f30;
+            letter-spacing: 6px;
+            border-bottom: 1px dotted #d6c5b2;
+            padding-bottom: 8px;
+            width: fit-content;
+        }
+
+        .alt-sources {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 18px;
+            font-size: 14px;
+            color: #6d5d4b;
+            background: #f3ede6;
+            padding: 12px 20px;
+            border-radius: 60px;
+        }
+
+        .alt-sources span {
+            background: #e8dfd4;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 15px;
+            color: #3b3228;
+            font-family: '楷体', 'KaiTi', serif;
+            letter-spacing: 1px;
+        }
+
+        .alt-sources a {
+            color: #7a644b;
+            text-decoration: none;
+            border-bottom: 1px dotted #b8a082;
+            font-weight: 400;
+            transition: 0.1s;
+        }
+
+        .alt-sources a:hover {
+            color: #3f2d1b;
+            border-bottom: 1px solid #7a644b;
+        }
+
+        .footnote {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #a6937e;
+            text-align: center;
+            letter-spacing: 1px;
+            border-top: 1px solid #e5d8ca;
+            padding-top: 24px;
+        }
+
+        .error-msg {
+            color: #b55a4a;
+            background: #f7eee9;
+            padding: 10px 22px;
+            border-radius: 60px;
+            font-size: 16px;
+        }
+
+        /* 小屏适配 */
+        @media (max-width: 480px) {
+            .container {
+                padding: 24px 18px 30px;
+            }
+            #charInput {
+                width: 68px;
+                height: 68px;
+                font-size: 38px;
+            }
+            .input-area {
+                gap: 8px;
+            }
+            .main-image {
+                max-width: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>· 行 楷 写 法 ·</h1>
+    <div class="input-area">
+        <label for="charInput">字</label>
+        <input type="text" id="charInput" maxlength="1" placeholder="例：永" value="永" />
+        <button id="queryBtn">查 看</button>
+    </div>
+
+ 
+</div>
+
+
+
+</body>
+</html>

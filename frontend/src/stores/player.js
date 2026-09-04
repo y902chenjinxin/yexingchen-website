@@ -21,6 +21,17 @@ export const usePlayerStore = defineStore('player', () => {
   const shows = computed(() => mode.value === 'playlist' && !!curItem.value)
 
   audio.volume = volume.value
+  // 切换音源前彻底释放旧连接，确保任意时刻只有一条音频流存活
+  function switchSource(url, loop) {
+    try {
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.loop = loop
+      audio.src = url
+      audio.load()
+    } catch { /* 忽略切换过程中的瞬时错误 */ }
+  }
+
   audio.addEventListener('playing', () => { isPlaying.value = true })
   audio.addEventListener('pause', () => { isPlaying.value = false })
   audio.addEventListener('ended', () => {
@@ -33,9 +44,8 @@ export const usePlayerStore = defineStore('player', () => {
   function playBgm() {
     if (!bgmUrl.value) return
     mode.value = 'bgm'
-    audio.src = bgmUrl.value
-    audio.loop = true
     audio.volume = volume.value
+    switchSource(bgmUrl.value, true)
     audio.play().then(() => { rejectedOnce.value = false }).catch(() => {
       rejectedOnce.value = true
       const resume = () => playBgm()

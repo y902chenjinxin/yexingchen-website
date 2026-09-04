@@ -21,6 +21,18 @@
         </div>
       </div>
 
+      <!-- 内置 PDF 工具卡片 -->
+      <div class="tool-card" @click="router.push('/tool/pdf')">
+        <div class="tool-icon">📄</div>
+        <div class="tool-info">
+          <span class="tool-name">PDF 工具</span>
+          <span class="tool-desc">图片转 PDF · PDF 转图片 · 合并与拆分 · 本地处理</span>
+        </div>
+        <div class="tool-actions">
+          <el-button size="small" type="primary" @click.stop="router.push('/tool/pdf')">使用</el-button>
+        </div>
+      </div>
+
       <!-- 外部工具卡片 -->
       <div
         v-for="item in toolStore.list"
