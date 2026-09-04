@@ -9,6 +9,26 @@
       <video :ref="el => vEls[1].value = el" class="whale-video" muted loop playsinline autoplay></video>
     </div>
 
+    <!-- 唯一可交互命中区：小"抓手"角标（鲸鱼本体 pointer-events:none 完全点击穿透，不再遮挡下层入口）
+         按住拖动移动桌宠，单击打开设置面板 -->
+    <div
+      ref="handleEl"
+      class="whale-handle"
+      title="拖动桌宠 · 单击设置"
+      @pointerdown="onHandlePointerDown"
+    >
+      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+        <g fill="currentColor">
+          <rect x="3" y="3" width="3" height="3" rx="1"/>
+          <rect x="8" y="3" width="3" height="3" rx="1"/>
+          <rect x="13" y="3" width="3" height="3" rx="1"/>
+          <rect x="3" y="8" width="3" height="3" rx="1"/>
+          <rect x="8" y="8" width="3" height="3" rx="1"/>
+          <rect x="13" y="8" width="3" height="3" rx="1"/>
+        </g>
+      </svg>
+    </div>
+
     <Transition name="panel">
       <div v-if="showPanel" class="whale-panel" @pointerdown.stop>
         <button class="panel-close" @click="showPanel = false" aria-label="关闭">✕</button>
@@ -45,6 +65,7 @@ const VH = 360
 
 const stageEl = ref(null)
 const frameEl = ref(null)
+const handleEl = ref(null)
 const vEls = [ref(null), ref(null)]
 function activeVideo() { return vEls[activeIdx]?.value }
 
@@ -96,7 +117,6 @@ const walkRunning = ref(false)
 
 let current = null
 let autoTimer = null
-let lastTap = 0
 let draggingState = false
 let moved = false
 let offX = 0
@@ -236,7 +256,9 @@ function endAutoWalk() {
   scheduleAuto()
 }
 
-function onPointerDown(e) {
+// 只有抓手区可交互：按住抓手拖动桌宠（鲸鱼本体 pointer-events:none，点击穿透给下层内容）
+function onHandlePointerDown(e) {
+  e.preventDefault()
   if (e.button !== 0) return
   draggingState = true
   moved = false
@@ -247,7 +269,7 @@ function onPointerDown(e) {
   stopWalk()
   setAction(pick(DRAG_POOL), true)
   document.addEventListener('pointermove', onPointerMove)
-  document.addEventListener('pointerup', onPointerUp, { once: true })
+  document.addEventListener('pointerup', onHandlePointerUp, { once: true })
 }
 
 function onPointerMove(e) {
@@ -262,41 +284,13 @@ function onPointerMove(e) {
   stage.style.top = clampY(e.clientY - offY) + 'px'
 }
 
-function onPointerUp(e) {
+function onHandlePointerUp() {
   document.removeEventListener('pointermove', onPointerMove)
   draggingState = false
   dragging.value = false
-  if (!moved) {
-    // 未拖动（轻点鲸鱼）-> 点击穿透给鲸鱼遮盖的下层内容，避免挡住列表/按钮；下层无可点则退回开/关面板
-    passThroughClick(e)
-    return
-  }
+  if (!moved) { togglePanel(); return }
   stopWalk()
   crossSwitch(pickAuto())
-}
-
-// 轻点鲸鱼时把点击转交给它遮挡的下层可交互元素
-function passThroughClick(e) {
-  const x = e.clientX, y = e.clientY
-  frameEl.value.style.pointerEvents = 'none'
-  let el = document.elementFromPoint(x, y)
-  frameEl.value.style.pointerEvents = ''
-  // 向上找最近的真正可点击元素（button/a/input/role=button），且不得再落在鲸鱼自身
-  let n = el
-  while (n && n !== frameEl.value && !stageEl.value.contains(n) && n !== document) {
-    const t = (n.tagName || '').toLowerCase()
-    const role = n.getAttribute ? n.getAttribute('role') : null
-    if (t === 'button' || t === 'a' || t === 'input' || role === 'button') { el = n; break }
-    n = n.parentElement
-  }
-  if (el && el !== frameEl.value && !stageEl.value.contains(el) && typeof el.click === 'function') {
-    el.click()
-    return
-  }
-  // 下层无可点 -> 保持原单击交互（连点/双击开散步，单击开面板）
-  const now = Date.now()
-  if (now - lastTap < 350) { lastTap = 0; toggleWalk() }
-  else { lastTap = now; togglePanel() }
 }
 
 function togglePanel() {
@@ -361,7 +355,6 @@ onMounted(() => {
   } catch (e) {}
   setAction(pick(AUTO_POOL), true)
   scheduleAuto()
-  frameEl.value.addEventListener('pointerdown', onPointerDown)
   const hintId = setInterval(() => { if (!draggingState) showHint() }, 12000)
   const firstHint = setTimeout(showHint, 1500)
   onBeforeUnmount(() => {
@@ -370,9 +363,8 @@ onMounted(() => {
     clearTimeout(firstHint)
     if (autoTimer) clearTimeout(autoTimer)
     if (hintTimer) clearTimeout(hintTimer)
-    frameEl.value?.removeEventListener('pointerdown', onPointerDown)
     document.removeEventListener('pointermove', onPointerMove)
-    document.removeEventListener('pointerup', onPointerUp)
+    document.removeEventListener('pointerup', onHandlePointerUp)
   })
 })
 </script>
@@ -390,12 +382,34 @@ onMounted(() => {
   overflow: hidden;
   transform: scale(0.75);
   transform-origin: bottom right;
-  cursor: grab;
   filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.45));
-  pointer-events: auto;
-  touch-action: none;
+  /* 鲸鱼本体完全点击穿透：透明留白区域不再拦截下方入口（玉简/按钮/链接）的点击 */
+  pointer-events: none;
   transition: filter 0.4s ease;
 }
+/* 唯一可交互命中区：小“抓手”角标，用于按住拖动桌宠 / 单击打开设置面板 */
+.whale-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  color: var(--ls-text-3, #7f8d94);
+  background: var(--ls-glass, rgba(32,42,51,.55));
+  border: 1px solid var(--ls-line, rgba(206,220,226,.12));
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  opacity: .75;
+  transition: opacity .2s ease, background .2s ease;
+}
+.whale-handle:hover { opacity: 1; background: rgba(95,148,153,.35); color: #c9dde0; }
+.whale-handle:active { cursor: grabbing; }
 .whale-frame.dragging { cursor: grabbing; }
 .whale-frame.flip .whale-video { transform: scaleX(-1); }
 .whale-video {
@@ -406,7 +420,7 @@ onMounted(() => {
   opacity: 1;
 }
 .whale-frame.hint::after {
-  content: '单击 设置 · 双击 散步 · 可拖拽';
+  content: '按住“抓手”可拖动 · 单击抓手设置';
   position: absolute;
   left: 50%;
   bottom: calc(100% + 8px);
