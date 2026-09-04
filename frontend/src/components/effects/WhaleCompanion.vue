@@ -262,24 +262,41 @@ function onPointerMove(e) {
   stage.style.top = clampY(e.clientY - offY) + 'px'
 }
 
-function onPointerUp() {
+function onPointerUp(e) {
+  document.removeEventListener('pointermove', onPointerMove)
   draggingState = false
   dragging.value = false
-  document.removeEventListener('pointermove', onPointerMove)
   if (!moved) {
-    // 没拖动 -> 单击开/关设置面板；双击走/停散步
-    const now = Date.now()
-    if (now - lastTap < 350) {
-      lastTap = 0
-      toggleWalk()
-    } else {
-      lastTap = now
-      togglePanel()
-    }
+    // 未拖动（轻点鲸鱼）-> 点击穿透给鲸鱼遮盖的下层内容，避免挡住列表/按钮；下层无可点则退回开/关面板
+    passThroughClick(e)
     return
   }
   stopWalk()
   crossSwitch(pickAuto())
+}
+
+// 轻点鲸鱼时把点击转交给它遮挡的下层可交互元素
+function passThroughClick(e) {
+  const x = e.clientX, y = e.clientY
+  frameEl.value.style.pointerEvents = 'none'
+  let el = document.elementFromPoint(x, y)
+  frameEl.value.style.pointerEvents = ''
+  // 向上找最近的真正可点击元素（button/a/input/role=button），且不得再落在鲸鱼自身
+  let n = el
+  while (n && n !== frameEl.value && !stageEl.value.contains(n) && n !== document) {
+    const t = (n.tagName || '').toLowerCase()
+    const role = n.getAttribute ? n.getAttribute('role') : null
+    if (t === 'button' || t === 'a' || t === 'input' || role === 'button') { el = n; break }
+    n = n.parentElement
+  }
+  if (el && el !== frameEl.value && !stageEl.value.contains(el) && typeof el.click === 'function') {
+    el.click()
+    return
+  }
+  // 下层无可点 -> 保持原单击交互（连点/双击开散步，单击开面板）
+  const now = Date.now()
+  if (now - lastTap < 350) { lastTap = 0; toggleWalk() }
+  else { lastTap = now; togglePanel() }
 }
 
 function togglePanel() {
