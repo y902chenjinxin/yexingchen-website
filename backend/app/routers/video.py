@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional
 import os, mimetypes
 from app.database import get_db
@@ -28,7 +29,7 @@ async def list_videos(
     query = db.query(Video)
 
     if q:
-        query = query.filter(Video.title.contains(q))
+        query = query.filter(or_(Video.title.contains(q), Video.category.contains(q)))
     if category:
         query = query.filter(Video.category == category)
     if tags:

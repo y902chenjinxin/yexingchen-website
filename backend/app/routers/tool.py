@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional
 from app.database import get_db
 from app.schemas.common import *
@@ -14,9 +15,13 @@ router = APIRouter(prefix="/api/tools", tags=["工具岛"])
 @router.get("", response_model=ResponseBase)
 async def list_tools(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    q: str = Query(None, description="按名称/描述模糊搜索")
 ):
-    items = db.query(Tool).order_by(Tool.created_at.desc()).all()
+    query = db.query(Tool)
+    if q:
+        query = query.filter(or_(Tool.title.contains(q), Tool.description.contains(q)))
+    items = query.order_by(Tool.created_at.desc()).all()
 
     return ResponseBase(data={
         "list": [

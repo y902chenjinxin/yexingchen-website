@@ -46,6 +46,20 @@
 
     <!-- 管理模式：表格 -->
     <div v-show="manage" class="manage-pane">
+      <div class="manage-toolbar">
+        <el-input
+          v-model="keyword"
+          size="small"
+          clearable
+          placeholder="搜索名称/描述"
+          style="width: 260px"
+        >
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
+        <span v-if="keyword" class="search-count">匹配 {{ toolStore.list.length }} 条</span>
+        <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
+      </div>
       <el-table :data="toolStore.list" v-loading="toolStore.loading" stripe style="width: 100%">
         <el-table-column label="名称" min-width="140">
           <template #default="{ row }">
@@ -88,6 +102,15 @@
         <el-button type="primary" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 删除确认（管理页内） -->
+    <el-dialog v-model="showDelete" title="删除确认" width="360px" append-to-body>
+      <p>确定删除「{{ deleteName }}」吗？</p>
+      <template #footer>
+        <el-button @click="showDelete = false">取消</el-button>
+        <el-button type="danger" :loading="deleting" @click="confirmDelete">删除</el-button>
+      </template>
+    </el-dialog>
   </IslandInnerBase>
 </template>
 
@@ -95,7 +118,8 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useToolStore } from '@/stores/tool'
 
 const router = useRouter()
@@ -104,9 +128,15 @@ const toolStore = useToolStore()
 const manage = ref(false)
 const showDialog = ref(false)
 const editId = ref(null)
+const keyword = ref('')
 const form = ref({ title: '', icon: '', description: '', url: '' })
 
 onMounted(() => { toolStore.fetchList() })
+
+function doSearch() {
+  toolStore.page = 1
+  toolStore.fetchList({ q: keyword.value })
+}
 
 function openDialog(item) {
   editId.value = item ? item.id : null
@@ -143,14 +173,28 @@ async function handleSave() {
   }
 }
 
-async function handleDelete(row) {
+const showDelete = ref(false)
+const deleting = ref(false)
+const deleteId = ref(null)
+const deleteName = ref('')
+
+function handleDelete(row) {
+  deleteId.value = row.id
+  deleteName.value = row.title || '这个工具'
+  showDelete.value = true
+}
+
+async function confirmDelete() {
+  deleting.value = true
   try {
-    await ElMessageBox.confirm(`确定删除「${row.title || '这个工具'}」吗？`, '提示', { type: 'warning' })
-    await toolStore.remove(row.id)
+    await toolStore.remove(deleteId.value)
     ElMessage.success('删除成功')
+    showDelete.value = false
     toolStore.fetchList()
   } catch {
-    // 用户取消
+    // 错误已由api拦截器处理
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -241,6 +285,23 @@ function formatTime(timeStr) {
   border-radius: var(--radius);
   padding: 30px;
   box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+}
+
+.manage-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.manage-toolbar :deep(.el-input__wrapper) {
+  background: var(--ls-paper-2);
+  box-shadow: inset 0 0 0 1px var(--ls-line);
+}
+
+.search-count {
+  color: var(--ls-text-3);
+  font-size: 13px;
 }
 
 .empty {

@@ -10,6 +10,14 @@
     <MusicInner v-show="!manage" />
 
     <div v-show="manage" class="manage-pane">
+      <div class="manage-toolbar">
+        <el-input v-model="keyword" size="small" clearable placeholder="搜索标题/作者" style="width: 260px">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
+        <span v-if="keyword" class="search-count">匹配 {{ musicStore.list.length }} 条</span>
+        <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
+      </div>
       <el-table :data="musicStore.list" v-loading="musicStore.loading" stripe style="width: 100%">
         <el-table-column prop="title" label="标题" min-width="150" />
         <el-table-column prop="artist" label="作者" width="110" />
@@ -82,6 +90,15 @@
         <el-button type="primary" :loading="editing" @click="handleEditSubmit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 删除确认（管理页内） -->
+    <el-dialog v-model="showDelete" title="删除确认" width="360px" append-to-body>
+      <p>确定删除「{{ deleteName }}」吗？</p>
+      <template #footer>
+        <el-button @click="showDelete = false">取消</el-button>
+        <el-button type="danger" :loading="deleting" @click="confirmDelete">删除</el-button>
+      </template>
+    </el-dialog>
   </IslandInnerBase>
 </template>
 
@@ -89,7 +106,8 @@
 import { onMounted, ref } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import MusicInner from './islands/MusicIslandInner.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useMusicStore } from '@/stores/music'
 import { usePlayerStore } from '@/stores/player'
 
@@ -98,6 +116,7 @@ const player = usePlayerStore()
 
 const manage = ref(false)
 const showUpload = ref(false)
+const keyword = ref('')
 const uploading = ref(false)
 const uploadRef = ref(null)
 const uploadFileList = ref([])
@@ -114,7 +133,13 @@ onMounted(() => {
 })
 
 async function fetchData() {
-  await musicStore.fetchList()
+  const params = keyword.value ? { q: keyword.value } : {}
+  await musicStore.fetchList(params)
+}
+
+function doSearch() {
+  musicStore.page = 1
+  fetchData()
 }
 
 function openUpload() {
@@ -184,15 +209,29 @@ async function handleEditSubmit() {
   }
 }
 
-async function handleDelete(row) {
+const showDelete = ref(false)
+const deleting = ref(false)
+const deleteId = ref(null)
+const deleteName = ref('')
+
+function handleDelete(row) {
+  deleteId.value = row.id
+  deleteName.value = row.title || ''
+  showDelete.value = true
+}
+
+async function confirmDelete() {
+  deleting.value = true
   try {
-    await ElMessageBox.confirm(`确定删除「${row.title}」吗？`, '提示', { type: 'warning' })
-    await musicStore.remove(row.id)
-    if (String(player.bgmChoiceId) === String(row.id)) player.setBackground(null, false)
+    await musicStore.remove(deleteId.value)
+    if (String(player.bgmChoiceId) === String(deleteId.value)) player.setBackground(null, false)
     ElMessage.success('删除成功')
+    showDelete.value = false
     fetchData()
   } catch {
-    // 用户取消
+    // 错误已由api拦截器处理
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -225,6 +264,23 @@ function formatTime(timeStr) {
   border-radius: var(--radius);
   padding: 30px;
   box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+}
+
+.manage-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.manage-toolbar :deep(.el-input__wrapper) {
+  background: var(--ls-paper-2);
+  box-shadow: inset 0 0 0 1px var(--ls-line);
+}
+
+.search-count {
+  color: var(--ls-text-3);
+  font-size: 13px;
 }
 
 .empty {

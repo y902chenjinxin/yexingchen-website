@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional
 import os
 from app.database import get_db, SessionLocal
@@ -79,7 +80,7 @@ async def list_music(
     query = db.query(Music)
 
     if q:
-        query = query.filter(Music.title.contains(q))
+        query = query.filter(or_(Music.title.contains(q), Music.artist.contains(q)))
 
     if category:
         query = query.filter(Music.category == category)
@@ -106,7 +107,7 @@ async def list_music(
         "is_default": True,
         "created_at": ""
     }
-    list_items = [default_entry] + [
+    list_items = (([default_entry] if not q else []) + [
         {
             "id": m.id,
             "title": m.title,
@@ -122,7 +123,7 @@ async def list_music(
             "created_at": str(m.created_at)
         }
         for m in items
-    ]
+    ])
 
     return ResponseBase(data={
         "list": list_items,

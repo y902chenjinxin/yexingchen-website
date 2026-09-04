@@ -10,6 +10,14 @@
     <NovelInner v-show="!manage" />
 
     <div v-show="manage" class="manage-pane">
+      <div class="manage-toolbar">
+        <el-input v-model="keyword" size="small" clearable placeholder="搜索标题/作者" style="width: 260px">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
+        <span v-if="keyword" class="search-count">匹配 {{ novelStore.list.length }} 条</span>
+        <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
+      </div>
       <el-table :data="novelStore.list" v-loading="novelStore.loading" stripe style="width: 100%">
         <el-table-column prop="title" label="标题" min-width="150" />
         <el-table-column prop="author" label="作者" width="110" />
@@ -72,6 +80,15 @@
         <el-button type="primary" :loading="saving" @click="handleEditSubmit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 删除确认（管理页内） -->
+    <el-dialog v-model="showDelete" title="删除确认" width="360px" append-to-body>
+      <p>确定删除「{{ deleteName }}」吗？</p>
+      <template #footer>
+        <el-button @click="showDelete = false">取消</el-button>
+        <el-button type="danger" :loading="deleting" @click="confirmDelete">删除</el-button>
+      </template>
+    </el-dialog>
   </IslandInnerBase>
 </template>
 
@@ -79,13 +96,15 @@
 import { onMounted, ref } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import NovelInner from './islands/NovelIslandInner.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useNovelStore } from '@/stores/novel'
 
 const novelStore = useNovelStore()
 
 const manage = ref(false)
 const showUpload = ref(false)
+const keyword = ref('')
 const uploading = ref(false)
 const uploadRef = ref(null)
 const coverRef = ref(null)
@@ -103,7 +122,13 @@ const editForm = ref({ title: '', author: '', category: '', tags: '' })
 onMounted(() => { fetchData() })
 
 async function fetchData() {
-  await novelStore.fetchList()
+  const params = keyword.value ? { q: keyword.value } : {}
+  await novelStore.fetchList(params)
+}
+
+function doSearch() {
+  novelStore.page = 1
+  fetchData()
 }
 
 function openUpload() {
@@ -180,14 +205,28 @@ async function handleEditSubmit() {
   }
 }
 
-async function handleDelete(row) {
+const showDelete = ref(false)
+const deleting = ref(false)
+const deleteId = ref(null)
+const deleteName = ref('')
+
+function handleDelete(row) {
+  deleteId.value = row.id
+  deleteName.value = row.title || ''
+  showDelete.value = true
+}
+
+async function confirmDelete() {
+  deleting.value = true
   try {
-    await ElMessageBox.confirm(`确定删除「${row.title}」吗？`, '提示', { type: 'warning' })
-    await novelStore.remove(row.id)
+    await novelStore.remove(deleteId.value)
     ElMessage.success('删除成功')
+    showDelete.value = false
     fetchData()
   } catch {
-    // 用户取消
+    // 错误已由api拦截器处理
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -213,6 +252,23 @@ function formatTime(timeStr) {
   border-radius: var(--radius);
   padding: 30px;
   box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+}
+
+.manage-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.manage-toolbar :deep(.el-input__wrapper) {
+  background: var(--ls-paper-2);
+  box-shadow: inset 0 0 0 1px var(--ls-line);
+}
+
+.search-count {
+  color: var(--ls-text-3);
+  font-size: 13px;
 }
 
 .empty {

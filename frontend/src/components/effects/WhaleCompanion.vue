@@ -187,24 +187,50 @@ function playAuto(pair) {
   }
 }
 
-// 跑步横向穿越：从右下角常驻位出发向左平滑越过全屏，不回屏外冒入、不倒着跑
-function runAcross() {
-  const stage = stageEl.value
-  const w = frameEl.value.offsetWidth
-  walk = { x: window.innerWidth - w - 30, dir: -1, speed: 3.4, endX: 40 }
-  flipped.value = false  // 素材面朝左，向左跑不镜像
-  stage.style.right = 'auto'
-  stage.style.bottom = '40px'
-  stage.style.left = walk.x + 'px'
-  stage.style.top = 'auto'
+// 可见尺寸（含 transform scale(0.75) 后的实际占位），用于边界计算
+function visibleSize() {
+  const f = frameEl.value
+  return { w: (f ? f.offsetWidth : VW) * 0.75, h: (f ? f.offsetHeight : VH) * 0.75 }
+}
+function clampX(x) {
+  const { w } = visibleSize()
+  const max = Math.max(0, window.innerWidth - w)
+  return Math.max(0, Math.min(x, max))
+}
+function clampY(y) {
+  const { h } = visibleSize()
+  const max = Math.max(0, window.innerHeight - h)
+  return Math.max(0, Math.min(y, max))
+}
+function currentX() {
+  return stageEl.value.getBoundingClientRect().left
+}
+
+// 统一横向移动：从当前位置出发，左右边界内来回，到边界镜像调头（正脸朝前，非倒退）
+// mode='autoRun' 自动跑步限时后自然停下；mode='manual' 散步持续直到手动停
+function startWalk(dir, speed, mode) {
+  crossSwitch(pick(WALK_POOL), true)
+  walk = {
+    x: clampX(currentX()),
+    dir,
+    speed,
+    stopAt: mode === 'autoRun' ? performance.now() + (9000 + Math.random() * 7000) : null
+  }
+  flipped.value = dir > 0   // 素材面朝左：向右跑镜像成面右
+  walkRunning.value = true
   tick()
 }
 
+// 自动跑步穿越：改为边界内来回，不再穿屏跑出屏外
+function runAcross() {
+  const maxX = Math.max(0, window.innerWidth - visibleSize().w)
+  const dir = currentX() >= maxX - 10 ? -1 : 1
+  startWalk(dir, 3.4, 'autoRun')
+}
+
 function endAutoWalk() {
-  const stage = stageEl.value
-  if (stage) { stage.style.right = '30px'; stage.style.bottom = '40px'; stage.style.left = 'auto'; stage.style.top = 'auto' }
   walk = null
-  flipped.value = false
+  walkRunning.value = false
   if (autoTimer) clearTimeout(autoTimer)
   crossSwitch(pickAuto())
   scheduleAuto()
@@ -232,8 +258,8 @@ function onPointerMove(e) {
   const stage = stageEl.value
   stage.style.right = 'auto'
   stage.style.bottom = 'auto'
-  stage.style.left = (e.clientX - offX) + 'px'
-  stage.style.top = (e.clientY - offY) + 'px'
+  stage.style.left = clampX(e.clientX - offX) + 'px'
+  stage.style.top = clampY(e.clientY - offY) + 'px'
 }
 
 function onPointerUp() {
@@ -275,33 +301,24 @@ function toggleWalk() {
     crossSwitch(pickAuto())
     return
   }
-  crossSwitch(pick(WALK_POOL), true)
-  const r = stageEl.value.getBoundingClientRect()
-  walk = { x: window.innerWidth - r.width - 60, dir: -1, speed: 1.4 }
-  flipped.value = false
-  walkRunning.value = true
-  tick()
+  const maxX = Math.max(0, window.innerWidth - visibleSize().w)
+  const dir = currentX() >= maxX - 10 ? -1 : 1
+  startWalk(dir, 1.4, 'manual')
 }
 
 function tick() {
   if (!walk) return
+  const maxX = Math.max(0, window.innerWidth - visibleSize().w)
   walk.x += walk.speed * walk.dir
-  if (walk.endX != null) {
-    // 横向穿越：跑到终点或出屏即停下回待机
-    if ((walk.dir < 0 && walk.x <= walk.endX) || (walk.dir < 0 && walk.x < -100) ||
-        (walk.dir > 0 && walk.x >= walk.endX) || (walk.dir > 0 && walk.x > window.innerWidth + 100)) {
-      endAutoWalk(); return
-    }
-  } else {
-    // 素材面朝左：向左跑不镜像(dir=-1)，向右跑镜像成面右(dir=+1)
-    if (walk.x > window.innerWidth - 60) { walk.dir = -1; flipped.value = false }
-    if (walk.x < 0) { walk.dir = 1; flipped.value = true }
-  }
+  // 到边界立即钳位并镜像调头（正脸朝前，非倒退）
+  if (walk.x <= 0) { walk.x = 0; walk.dir = 1; flipped.value = true }
+  else if (walk.x >= maxX) { walk.x = maxX; walk.dir = -1; flipped.value = false }
   const stage = stageEl.value
   stage.style.right = 'auto'
   stage.style.bottom = '40px'
   stage.style.left = walk.x + 'px'
   stage.style.top = 'auto'
+  if (walk.stopAt && performance.now() >= walk.stopAt) { endAutoWalk(); return }
   requestAnimationFrame(tick)
 }
 
@@ -309,12 +326,7 @@ function stopWalk() {
   if (!walk) return
   walk = null
   walkRunning.value = false
-  const stage = stageEl.value
-  stage.style.bottom = '40px'
-  stage.style.right = '30px'
-  stage.style.left = 'auto'
-  stage.style.top = 'auto'
-  flipped.value = false
+  // 停在当前位置，不再归位右下角
 }
 
 function showHint() {
@@ -353,7 +365,7 @@ onMounted(() => {
   position: fixed;
   right: 30px;
   bottom: 40px;
-  z-index: 10001;
+  z-index: 1800;
   pointer-events: none;
 }
 .whale-frame {

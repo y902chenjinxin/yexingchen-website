@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional
 from app.database import get_db
 from app.schemas.common import *
@@ -26,7 +27,7 @@ async def list_novels(
     query = db.query(Novel)
 
     if q:
-        query = query.filter(Novel.title.contains(q))
+        query = query.filter(or_(Novel.title.contains(q), Novel.author.contains(q)))
     if category:
         query = query.filter(Novel.category == category)
     if tags:
