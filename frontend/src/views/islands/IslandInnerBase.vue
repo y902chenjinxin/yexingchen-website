@@ -92,7 +92,9 @@ onUnmounted(() => {
 .island-inner {
   position: fixed;
   inset: 0;
-  z-index: 10001;
+  /* 岛屿内容为普通全屏容器：z-index 需低于 Element 弹层（约 2000）与桌宠配置面板，
+     否则会盖住挂到 body 的上传/编辑/删除等弹窗，表现为"点击按钮没反应" */
+  z-index: 1;
   background: var(--ls-bg1);
   overflow: hidden;
 }
