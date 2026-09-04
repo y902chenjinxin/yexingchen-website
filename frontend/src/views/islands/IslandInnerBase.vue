@@ -176,6 +176,9 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  /* 底部预留播放条空间（npbar：bottom16+高62），避免表格行按钮被其盖住点不到 */
+  padding-bottom: 88px;
+  box-sizing: border-box;
 }
 
 .inner-header {
