@@ -17,10 +17,11 @@ export const usePlayerStore = defineStore('player', () => {
   const volume = ref(Number(localStorage.getItem('bgm_volume') ?? 0.3))
   const rejectedOnce = ref(false)
 
-  const shows = ref(false)            // 播放条显示（有内容播放时）
+  // 播放条显示：仅点播曲目时展示；背景 BGM 不展示
+  const shows = computed(() => mode.value === 'playlist' && !!curItem.value)
 
   audio.volume = volume.value
-  audio.addEventListener('playing', () => { isPlaying.value = true; shows.value = true })
+  audio.addEventListener('playing', () => { isPlaying.value = true })
   audio.addEventListener('pause', () => { isPlaying.value = false })
   audio.addEventListener('ended', () => {
     isPlaying.value = false
@@ -134,7 +135,6 @@ export const usePlayerStore = defineStore('player', () => {
   function stopAndHide() {
     audio.pause()
     isPlaying.value = false
-    shows.value = false
     mode.value = 'idle'
   }
 

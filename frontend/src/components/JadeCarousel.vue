@@ -17,8 +17,6 @@
         :data-type="card.key"
         :style="getCardStyle(index)"
         @click="onCardClick(index)"
-        @mouseenter="onMouseEnter(card)"
-        @mouseleave="onMouseLeave"
       >
         <div class="card-inner">
           <div class="card-texture"></div>
@@ -60,7 +58,6 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useIslandSound } from '@/composables/useIslandSound'
 
 const props = defineProps({
   cards: {
@@ -82,7 +79,6 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const { playHoverSound, stopHoverSound } = useIslandSound()
 
 const carouselRef = ref(null)
 const currentIndex = ref(props.initialIndex)
@@ -132,14 +128,6 @@ function onCardClick(index) {
   }
 }
 
-function onMouseEnter(card) {
-  playHoverSound(card.key)
-}
-
-function onMouseLeave() {
-  stopHoverSound()
-}
-
 /* ---- 拖动 / 触摸 ---- */
 function onMouseDown(e) {
   dragStartX = e.clientX
@@ -168,7 +156,6 @@ function onTouchEnd(e) {
 function onKeydown(e) {
   if (e.key === 'ArrowLeft') go(-1)
   else if (e.key === 'ArrowRight') go(1)
-  else if (e.key === 'Escape') stopHoverSound()
 }
 
 /* ---- 空闲自动回位 ---- */
@@ -217,7 +204,6 @@ function seeded(i, key) {
 
 onUnmounted(() => {
   clearTimer()
-  stopHoverSound()
   window.removeEventListener('mouseup', onMouseUp)
 })
 </script>
