@@ -20,10 +20,9 @@
 
       <main class="inner-main">
         <slot></slot>
+        <!-- 底部网安/备案标识（跟随内容流动，贴在内容末尾，避免短内容页脚悬浮在半空） -->
+        <SiteFooter variant="dark" class="inner-footer" />
       </main>
-
-      <!-- 底部网安/备案标识 -->
-      <SiteFooter variant="dark" class="inner-footer" />
     </div>
 
     <!-- 装饰层 -->
@@ -248,15 +247,15 @@ onUnmounted(() => {
 
 .inner-main {
   flex: 1;
-  /* 底部留出播放条空间（npbar：bottom16+高62），并把页脚顶到画面真实底部，避免页脚悬浮 */
-  padding: 16px 40px 88px;
+  /* 纵向排列：槽内容在上、页脚紧随其后流动；页脚不再钉在视口底部，避免短内容悬浮 */
+  display: flex;
+  flex-direction: column;
+  padding: 16px 40px 24px;
   overflow-y: auto;
 }
 
 .inner-footer {
-  flex: none;
-  position: relative;
-  z-index: 3;
+  margin-top: 16px;
   padding: 8px 20px 10px;
   border-top: 1px solid var(--ls-line);
   background: rgba(16, 22, 28, 0.5);
@@ -301,12 +300,12 @@ onUnmounted(() => {
 /* 桌面缩放(>100%)或较窄视口时收敛留白与字号，避免破版/横向溢出 */
 @media (max-width: 1100px) {
   .inner-header { padding: 22px 26px 12px; }
-  .inner-main { padding: 14px 26px 80px; }
+  .inner-main { padding: 14px 26px 16px; }
   .island-title { font-size: 30px; }
 }
 @media (max-width: 760px) {
   .inner-header { padding: 18px 16px 10px; }
-  .inner-main { padding: 12px 16px 72px; }
+  .inner-main { padding: 12px 16px 12px; }
   .island-title { font-size: 24px; }
   .island-subtitle { font-size: 13px; }
 }
