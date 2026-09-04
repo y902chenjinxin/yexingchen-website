@@ -21,16 +21,29 @@ export const usePlayerStore = defineStore('player', () => {
   const shows = computed(() => mode.value === 'playlist' && !!curItem.value)
 
   audio.volume = volume.value
-  // 切换音源前彻底释放旧连接，确保任意时刻只有一条音频流存活
-  function switchSource(url, loop) {
+
+  // 硬停：清空 src 并 load() 强制中止旧音频的网络流，避免切换时新老两条流重叠
+  function hardStop() {
     try {
       audio.pause()
+      audio.src = ''
       audio.removeAttribute('src')
-      audio.loop = loop
+      audio.load()
+    } catch { /* 忽略瞬时错误 */ }
+  }
+
+  // 切换音源前先硬停旧流，确保任意时刻只有一条音频流存活
+  function switchSource(url, loop) {
+    hardStop()
+    audio.loop = loop
+    if (url) {
       audio.src = url
       audio.load()
-    } catch { /* 忽略切换过程中的瞬时错误 */ }
+    }
   }
+
+  // 播放序号：仅最后一次触发的播放生效，丢弃旧的过期回调，杜绝竞态叠音
+  let playSeq = 0
 
   audio.addEventListener('playing', () => { isPlaying.value = true })
   audio.addEventListener('pause', () => { isPlaying.value = false })
@@ -40,17 +53,27 @@ export const usePlayerStore = defineStore('player', () => {
     if (mode.value === 'playlist') playBgm()
   })
 
+  // 稳定单一的手指 resume 监听，避免多次 catch 累积多个 pointerdown 监听器
+  let resumeHandler = null
+  function armResume() {
+    if (resumeHandler) window.removeEventListener('pointerdown', resumeHandler)
+    resumeHandler = () => playBgm()
+    window.addEventListener('pointerdown', resumeHandler, { once: true })
+  }
+
   // 播放背景 BGM（loop）；浏览器自动播放被拦时，等待首次用户交互再恢复
   function playBgm() {
     if (!bgmUrl.value) return
+    const seq = ++playSeq
     mode.value = 'bgm'
     audio.volume = volume.value
     switchSource(bgmUrl.value, true)
-    audio.play().then(() => { rejectedOnce.value = false }).catch(() => {
+    if (seq !== playSeq) return
+    audio.play().then(() => {
+      if (seq === playSeq) rejectedOnce.value = false
+    }).catch(() => {
       rejectedOnce.value = true
-      const resume = () => playBgm()
-      window.removeEventListener('pointerdown', resume)
-      window.addEventListener('pointerdown', resume, { once: true })
+      armResume()
     })
   }
 
@@ -105,6 +128,9 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function setBackground(item, autoplay = true) {
+    // 先立即停掉当前音轨，避免下方 await 期间旧歌继续播放与换曲后叠加
+    hardStop()
+    const seq = ++playSeq
     await fetchMusicLibrary(true)
     const target = item || musicLibrary.value.find(it => String(it.id) === String(bgmChoiceId.value))
       || musicLibrary.value[0]
@@ -114,18 +140,22 @@ export const usePlayerStore = defineStore('player', () => {
     mode.value = 'bgm'
     // 持久化到后端
     try { await updateBgmChoice({ bgm_music_id: String(target.id) }) } catch { /* 静默 */ }
-    if (autoplay) playBgm()
+    if (autoplay && seq === playSeq) playBgm()
   }
 
   // ---------- 点播曲目 ----------
   function playItem(item) {
-    // 点播：暂停背景，播该曲（仅播一次，不循环）
+    // 点播：硬停背景，播该曲（仅播一次，不循环）
     const url = resolveUrl(item)
     curItem.value = item
     mode.value = 'playlist'
-    audio.src = url
+    hardStop()
     audio.loop = false
     audio.volume = volume.value
+    if (url) {
+      audio.src = url
+      audio.load()
+    }
     audio.play().catch(() => {})
   }
 
@@ -138,7 +168,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function stopAndHide() {
-    audio.pause()
+    hardStop()
     isPlaying.value = false
     // 关闭点播后，自动恢复背景 BGM
     mode.value = 'idle'
