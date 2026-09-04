@@ -139,6 +139,9 @@
         </section>
       </div>
     </div>
+
+    <!-- 底部网安/备案标识（浅色留白页脚，随浅色页面底边展开） -->
+    <SiteFooter variant="light" class="wb-footer" />
   </div>
 </template>
 
@@ -148,6 +151,7 @@ import { Edit, FolderOpened, Check, Document, Link, Picture, Headset, VideoCamer
 import { useWorkbenchStore } from '@/stores/workbench'
 import { workbenchApi } from '@/api/workbench'
 import JadeCarousel from '@/components/JadeCarousel.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
 
 const store = useWorkbenchStore()
 const summary = ref(null)
@@ -180,12 +184,30 @@ onMounted(load)
 .workbench-page {
   position: relative;
   font-family: var(--font-serif);
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 96px 24px 84px;
+  /* 全宽浅底：收窄视口(桌面放大)或宽屏时，浅色宣纸底铺满视口，避免两侧露出深色产生黑边 */
+  width: 100%;
+  padding: 96px 0 0;
+  box-sizing: border-box;
   color: var(--lj-text);
   min-height: 100vh;
   overflow-x: hidden;
+}
+/* 内容块与页脚统一在 1200px 内居中，横向留白 24px 与旧版一致 */
+.wb-hero,
+.wb-body,
+.wb-footer {
+  width: 100%;
+  max-width: 1248px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  padding: 0 24px;
+}
+.wb-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: 28px;
+  padding-bottom: 84px;
 }
 
 /* ===== 浅底留白背景 ===== */
@@ -297,6 +319,10 @@ onMounted(load)
   .wb-title { font-size: 26px; }
   .wb-actions { grid-template-columns: 1fr; }
   .wb-grid { grid-template-columns: 1fr; }
-  .workbench-page { padding: 88px 16px 72px; }
+  .workbench-page { padding: 88px 0 8px; }
+  .wb-hero,
+  .wb-body,
+  .wb-footer { padding: 0 16px; }
+  .wb-footer { margin-top: 20px; padding-bottom: 80px; }
 }
 </style>

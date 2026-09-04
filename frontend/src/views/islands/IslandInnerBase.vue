@@ -180,8 +180,6 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  /* 底部预留播放条空间（npbar：bottom16+高62），避免表格行按钮被其盖住点不到 */
-  padding-bottom: 88px;
   box-sizing: border-box;
 }
 
@@ -250,7 +248,8 @@ onUnmounted(() => {
 
 .inner-main {
   flex: 1;
-  padding: 16px 40px 40px;
+  /* 底部留出播放条空间（npbar：bottom16+高62），并把页脚顶到画面真实底部，避免页脚悬浮 */
+  padding: 16px 40px 88px;
   overflow-y: auto;
 }
 
@@ -302,12 +301,12 @@ onUnmounted(() => {
 /* 桌面缩放(>100%)或较窄视口时收敛留白与字号，避免破版/横向溢出 */
 @media (max-width: 1100px) {
   .inner-header { padding: 22px 26px 12px; }
-  .inner-main { padding: 14px 26px 34px; }
+  .inner-main { padding: 14px 26px 80px; }
   .island-title { font-size: 30px; }
 }
 @media (max-width: 760px) {
   .inner-header { padding: 18px 16px 10px; }
-  .inner-main { padding: 12px 16px 28px; }
+  .inner-main { padding: 12px 16px 72px; }
   .island-title { font-size: 24px; }
   .island-subtitle { font-size: 13px; }
 }

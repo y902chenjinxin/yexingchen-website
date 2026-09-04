@@ -18,13 +18,13 @@
     <!-- 登录后全站底部播放条（播放时出现）-->
     <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn" />
 
-    <!-- 登录后全站底部网安/备案标识 -->
-    <SiteFooter v-if="!showInitialLoading && auth.isLoggedIn" variant="light" />
+    <!-- 登录后全站底部网安/备案标识（工作台与岛屿/工具内容页各自渲染页脚，此处不再重复） -->
+    <SiteFooter v-if="!showInitialLoading && auth.isLoggedIn && showGlobalFooter" variant="light" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import LoadingView from '@/views/LoadingView.vue'
@@ -36,6 +36,14 @@ import SiteFooter from '@/components/SiteFooter.vue'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+
+// 工作台与岛屿/工具内容页在页面内部各自渲染页脚，无需全站级重复页脚
+const showGlobalFooter = computed(() => {
+  const p = route.path
+  if (p === '/workbench') return false
+  if (/^\/(music|novel|video|log|tool)/.test(p)) return false
+  return true
+})
 
 // 初始加载动画状态
 const showInitialLoading = ref(true)
