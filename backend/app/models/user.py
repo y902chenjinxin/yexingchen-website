@@ -110,6 +110,9 @@ class Tool(Base):
     icon = Column(String(255), default="")
     uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     is_test_data = Column(Integer, default=0)
+    kind = Column(String(20), default="external")      # builtin(内置)/external(外部)
+    is_enabled = Column(Integer, default=1)            # 1上架 0下架
+    sort_order = Column(Integer, default=0)            # 排序，内置置顶
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

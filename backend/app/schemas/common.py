@@ -196,13 +196,13 @@ class ToolCreate(BaseModel):
     description: Optional[str] = ""
     icon: Optional[str] = ""
 
-
 class ToolUpdate(BaseModel):
     title: Optional[str] = None
     url: Optional[str] = None
     description: Optional[str] = None
     icon: Optional[str] = None
-
+    is_enabled: Optional[int] = None
+    sort_order: Optional[int] = None
 
 class ToolItem(BaseModel):
     id: int
@@ -211,6 +211,9 @@ class ToolItem(BaseModel):
     description: str
     icon: str
     uploader_id: int
+    kind: str = "external"
+    is_enabled: int = 1
+    sort_order: int = 0
     created_at: datetime
 
     class Config:

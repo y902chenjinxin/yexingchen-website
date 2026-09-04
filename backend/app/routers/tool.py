@@ -16,12 +16,15 @@ router = APIRouter(prefix="/api/tools", tags=["工具岛"])
 async def list_tools(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
-    q: str = Query(None, description="按名称/描述模糊搜索")
+    q: str = Query(None, description="按名称/描述模糊搜索"),
+    enabled_only: int = Query(0, description="1=仅上架内置与外部工具；0=全部（含下架，用于管理页）")
 ):
     query = db.query(Tool)
     if q:
         query = query.filter(or_(Tool.title.contains(q), Tool.description.contains(q)))
-    items = query.order_by(Tool.created_at.desc()).all()
+    if enabled_only:
+        query = query.filter(Tool.is_enabled == 1)
+    items = query.order_by(Tool.sort_order.asc(), Tool.id.asc()).all()
 
     return ResponseBase(data={
         "list": [
@@ -32,6 +35,9 @@ async def list_tools(
                 "description": t.description,
                 "icon": t.icon,
                 "uploader_id": t.uploader_id,
+                "kind": t.kind or "external",
+                "is_enabled": t.is_enabled,
+                "sort_order": t.sort_order,
                 "created_at": str(t.created_at)
             }
             for t in items
@@ -45,12 +51,17 @@ async def create_tool(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    # 外部工具默认追加到外部区末尾
+    last = db.query(Tool).filter(Tool.kind == "external").order_by(Tool.sort_order.desc()).first()
     tool = Tool(
         title=req.title,
         url=req.url,
         description=req.description or "",
         icon=req.icon or "",
-        uploader_id=current_user["user_id"]
+        uploader_id=current_user["user_id"],
+        kind="external",
+        is_enabled=1,
+        sort_order=(last.sort_order + 1 if last else 100000)
     )
     db.add(tool)
     db.commit()
@@ -80,6 +91,10 @@ async def update_tool(
         tool.description = req.description
     if req.icon is not None:
         tool.icon = req.icon
+    if req.is_enabled is not None:
+        tool.is_enabled = 1 if req.is_enabled else 0
+    if req.sort_order is not None:
+        tool.sort_order = req.sort_order
 
     db.commit()
 
@@ -98,6 +113,10 @@ async def delete_tool(
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
     if not tool:
         raise_error(ErrCode.TOOL_NOT_FOUND)
+
+    # 内置工具不允许删除，防止误删核心功能
+    if tool.kind == "builtin":
+        raise_error(ErrCode.FORBIDDEN, detail="内置工具不可删除，可改为下架")
 
     log_action(db, current_user["user_id"], "delete", "tool", tool_id,
                detail=f"删除工具：{tool.title}")

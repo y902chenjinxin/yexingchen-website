@@ -19,7 +19,7 @@
         <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
         <el-button v-if="selectedRows.length" type="danger" size="small" @click="handleBatchDelete">批量删除（{{ selectedRows.length }}）</el-button>
       </div>
-      <el-table ref="tableRef" :data="musicStore.list" v-loading="musicStore.loading" stripe style="width: 100%" @selection-change="onSelectionChange">
+      <el-table ref="tableRef" :data="pagedRows" v-loading="musicStore.loading" stripe style="width: 100%" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="48" :selectable="(row) => Number(row.is_default) !== 1" />
         <el-table-column prop="title" label="标题" min-width="150" />
         <el-table-column prop="artist" label="作者" width="110" />
@@ -51,6 +51,18 @@
         </el-table-column>
       </el-table>
       <div v-if="!musicStore.loading && musicStore.list.length === 0" class="empty">暂无数据</div>
+      <div v-else-if="!musicStore.loading" class="pager-wrap">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next"
+          :total="musicStore.list.length"
+          :page-size="pageSize"
+          :page-sizes="[10, 20, 50]"
+          :current-page="page"
+          @size-change="onSizeChange"
+          @current-change="onPageChange"
+        />
+      </div>
     </div>
 
     <!-- 上传弹窗 -->
@@ -114,7 +126,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import MusicInner from './islands/MusicIslandInner.vue'
 import { ElMessage } from 'element-plus'
@@ -134,6 +146,15 @@ const uploadFileList = ref([])
 const uploadFile = ref(null)
 const uploadForm = ref({ title: '', artist: '', category: '', tags: '' })
 
+/* ---- 管理分页（客户端，默认10条） ---- */
+const page = ref(1)
+const pageSize = ref(10)
+const pagedRows = computed(() =>
+  musicStore.list.slice((page.value - 1) * pageSize.value, page.value * pageSize.value)
+)
+function onSizeChange(sz) { pageSize.value = sz; page.value = 1 }
+function onPageChange(p) { page.value = p }
+
 const showEdit = ref(false)
 const editing = ref(false)
 const editId = ref(null)
@@ -150,6 +171,7 @@ async function fetchData() {
 
 function doSearch() {
   musicStore.page = 1
+  page.value = 1
   fetchData()
 }
 
@@ -316,6 +338,7 @@ function formatTime(timeStr) {
   align-items: center;
   gap: 14px;
   margin-bottom: 18px;
+  flex-wrap: wrap;
 }
 
 .manage-toolbar :deep(.el-input__wrapper) {
@@ -334,6 +357,9 @@ function formatTime(timeStr) {
   color: var(--ls-text-3);
   font-size: 14px;
 }
+
+.pager-wrap { display: flex; justify-content: flex-end; margin-top: 18px; }
+.pager-wrap :deep(.el-pagination) { --el-pagination-bg-color: transparent; }
 
 .manage-pane :deep(.el-table) {
   --el-table-bg-color: transparent;

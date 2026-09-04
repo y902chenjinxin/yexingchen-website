@@ -106,6 +106,13 @@ const routes = [
     component: () => import('@/views/PdfToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 像素压缩 工具页（纯前端本地处理）
+  {
+    path: '/tool/compress',
+    name: 'CompressTool',
+    component: () => import('@/views/CompressToolView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 外部工具独立页（iframe 内嵌）
   {
     path: '/tool/:id',

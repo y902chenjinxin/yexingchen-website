@@ -21,6 +21,9 @@
       <main class="inner-main">
         <slot></slot>
       </main>
+
+      <!-- 底部网安/备案标识 -->
+      <SiteFooter variant="dark" class="inner-footer" />
     </div>
 
     <!-- 装饰层 -->
@@ -37,6 +40,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useParticleSystem } from '@/composables/useParticleSystem'
+import SiteFooter from '@/components/SiteFooter.vue'
 
 const router = useRouter()
 
@@ -250,6 +254,17 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
+.inner-footer {
+  flex: none;
+  position: relative;
+  z-index: 3;
+  padding: 8px 20px 10px;
+  border-top: 1px solid var(--ls-line);
+  background: rgba(16, 22, 28, 0.5);
+  backdrop-filter: saturate(140%) blur(8px);
+  -webkit-backdrop-filter: saturate(140%) blur(8px);
+}
+
 .inner-decorations {
   position: absolute;
   inset: 0;
@@ -282,5 +297,18 @@ onUnmounted(() => {
   inset: 0;
   z-index: 3;
   pointer-events: none;
+}
+
+/* 桌面缩放(>100%)或较窄视口时收敛留白与字号，避免破版/横向溢出 */
+@media (max-width: 1100px) {
+  .inner-header { padding: 22px 26px 12px; }
+  .inner-main { padding: 14px 26px 34px; }
+  .island-title { font-size: 30px; }
+}
+@media (max-width: 760px) {
+  .inner-header { padding: 18px 16px 10px; }
+  .inner-main { padding: 12px 16px 28px; }
+  .island-title { font-size: 24px; }
+  .island-subtitle { font-size: 13px; }
 }
 </style>

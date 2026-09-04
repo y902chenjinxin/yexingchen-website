@@ -45,7 +45,7 @@ const tool = computed(() =>
   toolStore.list.find((t) => String(t.id) === String(route.params.id))
 )
 
-onMounted(() => { toolStore.fetchList() })
+onMounted(() => { toolStore.fetchList({ enabled_only: 1, size: 100 }) })
 </script>
 
 <style scoped>

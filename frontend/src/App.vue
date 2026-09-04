@@ -17,6 +17,9 @@
 
     <!-- 登录后全站底部播放条（播放时出现）-->
     <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn" />
+
+    <!-- 登录后全站底部网安/备案标识 -->
+    <SiteFooter v-if="!showInitialLoading && auth.isLoggedIn" variant="light" />
   </div>
 </template>
 
@@ -28,6 +31,7 @@ import LoadingView from '@/views/LoadingView.vue'
 import WhaleCompanion from '@/components/effects/WhaleCompanion.vue'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
 
 const router = useRouter()
 const route = useRoute()

@@ -91,6 +91,26 @@ body {
   }
 }
 
+/* ========== 管理页通用 桌面缩放收敛 ==========
+   所有管理页（工具/音乐/小说/视频）共用 .manage-pane / .manage-toolbar / .pager-wrap，
+   在桌面浏览器放大(>100%)导致 CSS 视口收窄到约 1100px 以下时收敛留白与控件，避免破版/横向溢出 */
+@media (max-width: 1250px) {
+  .manage-pane { padding: 24px; }
+}
+@media (max-width: 1100px) {
+  .manage-pane { padding: 20px; }
+  .manage-toolbar { gap: 10px; }
+  .manage-toolbar .el-input { width: 200px !important; }
+  .pager-wrap { justify-content: center; }
+}
+@media (max-width: 820px) {
+  .manage-pane { padding: 14px; border-radius: 12px; }
+  .manage-toolbar .el-input { width: 100% !important; max-width: none; }
+  .pager-wrap .el-pagination__sizes { display: none; }
+  /* 管理表格窄视口下允许内部横向滚动而不撑破页面 */
+  .el-table { min-width: 620px; }
+}
+
 /* 玄素琉璃玻璃卡片（岛屿内页深色卡片统一材质） */
 .ls-card {
   background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,0) 48%), var(--ls-paper);
