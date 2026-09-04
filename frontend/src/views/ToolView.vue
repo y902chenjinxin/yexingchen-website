@@ -59,8 +59,10 @@
         <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
         <span v-if="keyword" class="search-count">匹配 {{ toolStore.list.length }} 条</span>
         <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
+        <el-button v-if="selectedRows.length" type="danger" size="small" @click="handleBatchDelete">批量删除（{{ selectedRows.length }}）</el-button>
       </div>
-      <el-table :data="toolStore.list" v-loading="toolStore.loading" stripe style="width: 100%">
+      <el-table ref="tableRef" :data="toolStore.list" v-loading="toolStore.loading" stripe style="width: 100%" @selection-change="onSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column label="名称" min-width="140">
           <template #default="{ row }">
             <span class="icon-cell">{{ row.icon || '🔧' }}</span>{{ row.title }}
@@ -109,6 +111,15 @@
       <template #footer>
         <el-button @click="showDelete = false">取消</el-button>
         <el-button type="danger" :loading="deleting" @click="confirmDelete">删除</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 批量删除确认（管理页内） -->
+    <el-dialog v-model="showBatchDelete" title="批量删除" width="360px" append-to-body>
+      <p>确定删除选中的 <b>{{ selectedRows.length }}</b> 项吗？此操作不可恢复。</p>
+      <template #footer>
+        <el-button @click="showBatchDelete = false">取消</el-button>
+        <el-button type="danger" :loading="batchDeleting" @click="confirmBatchDelete">一键删除</el-button>
       </template>
     </el-dialog>
   </IslandInnerBase>
@@ -195,6 +206,38 @@ async function confirmDelete() {
     // 错误已由api拦截器处理
   } finally {
     deleting.value = false
+  }
+}
+
+/* ---- 批量删除 ---- */
+const tableRef = ref(null)
+const selectedRows = ref([])
+const showBatchDelete = ref(false)
+const batchDeleting = ref(false)
+
+function onSelectionChange(rows) {
+  selectedRows.value = rows
+}
+function handleBatchDelete() {
+  if (!selectedRows.value.length) return
+  showBatchDelete.value = true
+}
+async function confirmBatchDelete() {
+  const ids = selectedRows.value.map(r => r.id)
+  if (!ids.length) return
+  batchDeleting.value = true
+  try {
+    for (const id of ids) {
+      await toolStore.remove(id)
+    }
+    ElMessage.success(`已删除 ${ids.length} 项`)
+    showBatchDelete.value = false
+    tableRef.value?.clearSelection()
+    toolStore.fetchList()
+  } catch {
+    // 错误已由api拦截器处理
+  } finally {
+    batchDeleting.value = false
   }
 }
 

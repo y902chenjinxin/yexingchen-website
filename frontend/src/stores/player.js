@@ -25,8 +25,8 @@ export const usePlayerStore = defineStore('player', () => {
   audio.addEventListener('pause', () => { isPlaying.value = false })
   audio.addEventListener('ended', () => {
     isPlaying.value = false
-    // 点播自然播完后恢复背景 BGM
-    if (mode.value === 'playlist' && bgmUrl.value) resumeBgm()
+    // 点播自然结束后，自动恢复背景 BGM
+    if (mode.value === 'playlist') playBgm()
   })
 
   // 播放背景 BGM（loop）；浏览器自动播放被拦时，等待首次用户交互再恢复
@@ -107,11 +107,6 @@ export const usePlayerStore = defineStore('player', () => {
     if (autoplay) playBgm()
   }
 
-  // 切回后台背景（点播结束后恢复）
-  function resumeBgm() {
-    if (bgmUrl.value) playBgm()
-  }
-
   // ---------- 点播曲目 ----------
   function playItem(item) {
     // 点播：暂停背景，播该曲（仅播一次，不循环）
@@ -135,7 +130,9 @@ export const usePlayerStore = defineStore('player', () => {
   function stopAndHide() {
     audio.pause()
     isPlaying.value = false
+    // 关闭点播后，自动恢复背景 BGM
     mode.value = 'idle'
+    if (bgmUrl.value) playBgm()
   }
 
   // ---------- 音量 ----------
@@ -168,7 +165,7 @@ export const usePlayerStore = defineStore('player', () => {
   return {
     audio, mode, curItem, bgmChoiceId, bgmUrl, isPlaying, volume,
     musicLibrary, shows, progress, duration, rejectedOnce,
-    initBgm, loadBgmLibrary, refreshBgmChoice, setBackground, resumeBgm,
+    initBgm, loadBgmLibrary, refreshBgmChoice, setBackground,
     playItem, togglePlay, stopAndHide, setVolume, toggleMute, seek, seekByRatio,
     get playing() { return isPlaying.value }
   }
