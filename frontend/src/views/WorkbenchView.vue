@@ -16,7 +16,7 @@
       <JadeCarousel class="wb-jade" />
     </section>
 
-    <!-- 快捷动作 + 数据面板 -->
+    <!-- 快捷动作 -->
     <div class="wb-body">
       <section class="wb-actions">
         <router-link to="/notes/new" class="wb-action primary">
@@ -34,51 +34,6 @@
           </span>
         </router-link>
       </section>
-
-      <div class="wb-grid">
-        <section class="wb-card">
-          <header class="wb-card-header">
-            <h2>最近编辑</h2>
-            <router-link to="/notes" class="wb-card-link">全部笔记</router-link>
-          </header>
-          <ul v-if="summary?.recent_notes?.length" class="wb-list">
-            <li v-for="n in summary.recent_notes" :key="n.id">
-              <router-link :to="`/notes/${n.id}`">{{ n.title || '（无标题）' }}</router-link>
-              <small>{{ n.status === 'completed' ? '已完成' : '草稿' }} · {{ formatDate(n.updated_at) }}</small>
-            </li>
-          </ul>
-          <p v-else class="wb-empty">还没有笔记</p>
-        </section>
-
-        <section class="wb-card">
-          <header class="wb-card-header">
-            <h2>待整理草稿</h2>
-            <router-link to="/notes?status=draft" class="wb-card-link">查看</router-link>
-          </header>
-          <ul v-if="summary?.draft_notes?.length" class="wb-list">
-            <li v-for="n in summary.draft_notes" :key="n.id">
-              <router-link :to="`/notes/${n.id}`">{{ n.title || '（无标题）' }}</router-link>
-              <small>草稿 · {{ formatDate(n.updated_at) }}</small>
-            </li>
-          </ul>
-          <p v-else class="wb-empty">没有待整理草稿</p>
-        </section>
-
-        <section class="wb-card">
-          <header class="wb-card-header">
-            <h2>标签</h2>
-          </header>
-          <div class="wb-categories">
-            <span v-if="!tagList.length" class="wb-empty">还没有标签</span>
-            <router-link
-              v-for="t in tagList"
-              :key="t.id"
-              :to="`/notes?tag=${encodeURIComponent(t.name)}`"
-              class="wb-chip tag"
-            >#{{ t.name }}</router-link>
-          </div>
-        </section>
-      </div>
     </div>
 
     <!-- 底部网安/备案标识（浅色留白页脚，随浅色页面底边展开） -->
@@ -87,38 +42,9 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
 import { Edit, ChatDotRound } from '@element-plus/icons-vue'
-import { useWorkbenchStore } from '@/stores/workbench'
-import { workbenchApi } from '@/api/workbench'
 import JadeCarousel from '@/components/JadeCarousel.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
-
-const store = useWorkbenchStore()
-const summary = ref(null)
-const tagList = ref([])
-
-async function load() {
-  await store.loadSummary()
-  summary.value = store.summary
-  try {
-    const res = await workbenchApi.tags.list()
-    tagList.value = res.data?.list || []
-  } catch {
-    tagList.value = []
-  }
-}
-
-function formatDate(s) {
-  if (!s) return ''
-  try {
-    return new Date(s).toLocaleString('zh-CN', { hour12: false })
-  } catch {
-    return s
-  }
-}
-
-onMounted(load)
 </script>
 
 <style scoped>
@@ -210,56 +136,12 @@ onMounted(load)
 .wb-action.primary { background: linear-gradient(135deg, var(--lj-paper), #eef0eb); }
 .wb-action.primary .wb-action-icon { color: var(--lj-ochre); border-color: rgba(176, 128, 90, 0.25); background: rgba(176, 128, 90, 0.08); }
 
-/* ===== 卡片网格（玉简同系轻灵） ===== */
-.wb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
-.wb-card {
-  position: relative; padding: 20px 20px 16px; border-radius: 14px;
-  background: var(--lj-paper);
-  border: 1px solid var(--lj-line); overflow: hidden;
-  box-shadow: var(--lj-shadow);
-  transition: all 0.3s; animation: lj-rise .7s both;
-}
-.wb-card::before { content: ""; position: absolute; top: 0; left: 16%; right: 16%; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--lj-dai), transparent); opacity: .5; }
-.wb-card:hover { transform: translateY(-2px); border-color: var(--lj-line-strong); box-shadow: 0 12px 28px rgba(58, 67, 80, 0.12); }
-.wb-card:nth-child(1) { animation-delay: .1s; } .wb-card:nth-child(2) { animation-delay: .16s; }
-.wb-card:nth-child(3) { animation-delay: .22s; } .wb-card:nth-child(4) { animation-delay: .28s; }
-.wb-card:nth-child(5) { animation-delay: .34s; } .wb-card:nth-child(6) { animation-delay: .4s; }
-.wb-card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
-.wb-card-header h2 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .08em; color: var(--lj-text); }
-.wb-card-link { font-size: 12px; color: var(--lj-dai); text-decoration: none; transition: all 0.25s; }
-.wb-card-link:hover { color: var(--lj-ochre); }
-
-.wb-list { list-style: none; margin: 0; padding: 0; }
-.wb-list li { display: flex; justify-content: space-between; gap: 10px; padding: 11px 2px;
-  border-top: 1px dashed var(--lj-line); font-size: 14px; transition: all 0.25s; }
-.wb-list li:first-child { border-top: 0; }
-.wb-list li:hover { transform: translateX(3px); }
-.wb-list a { color: var(--lj-text); text-decoration: none; transition: all 0.25s; }
-.wb-list li:hover a { color: var(--lj-dai); }
-.wb-list li small { color: var(--lj-text-3); font-size: 11px; white-space: nowrap; }
-.wb-list.danger li a { color: var(--lj-vermilion); }
-.wb-list.danger li:hover a { color: var(--lj-vermilion); }
-.wb-empty { color: var(--lj-text-3); font-size: 13px; margin: 4px 0; }
-
-.wb-categories { display: flex; flex-wrap: wrap; gap: 9px; }
-.wb-chip {
-  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px;
-  font-size: 12px; letter-spacing: .06em; color: var(--lj-text-2); text-decoration: none;
-  background: rgba(251, 250, 246, 0.8); border: 1px solid var(--lj-line); transition: all 0.25s;
-}
-.wb-chip:hover { color: var(--lj-dai); border-color: var(--lj-line-strong); box-shadow: 0 4px 12px rgba(58, 67, 80, 0.08); }
-.wb-chip.tag { color: var(--lj-ochre); }
-.wb-chip.tag:hover { color: var(--lj-dai-deep); border-color: rgba(176, 128, 90, 0.4); }
-.wb-chip-icon { font-size: 14px; vertical-align: -0.15em; }
-
 @media (prefers-reduced-motion: reduce) {
   .workbench-page *, .workbench-page *::before, .workbench-page *::after { animation: none !important; transition: none !important; }
 }
 @media (max-width: 600px) {
   .wb-title { font-size: 26px; }
   .wb-actions { grid-template-columns: 1fr; }
-  .wb-grid { grid-template-columns: 1fr; }
   .workbench-page { padding: 88px 0 8px; }
   .wb-hero,
   .wb-body,
