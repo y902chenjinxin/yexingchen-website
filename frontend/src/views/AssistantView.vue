@@ -101,7 +101,11 @@
               :rows="3"
               placeholder="和 AI 对话…（Enter 发送，Shift+Enter 换行）"
               @keydown.enter.exact.prevent="send"
-            />
+            >
+              <template #suffix>
+                <VoiceInputButton @result="onVoiceDraft" />
+              </template>
+            </el-input>
             <div class="composer-actions">
               <span v-if="streamError" class="composer-error">{{ streamError }}</span>
               <el-button type="primary" :disabled="!draft.trim() || sending" :loading="sending" @click="send">
@@ -198,6 +202,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { workbenchApi } from '@/api/workbench'
 import BackButton from '@/components/BackButton.vue'
+import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
 const conversations = ref([])
 const activeId = ref(null)
@@ -289,6 +294,12 @@ async function del(id) {
   await workbenchApi.ai.deleteConversation(id)
   if (activeId.value === id) { activeId.value = null; messages.value = [] }
   loadConversations()
+}
+
+// 语音输入并入草稿后直接发送
+function onVoiceDraft(text) {
+  draft.value = draft.value.trim() ? `${draft.value.trim()}\n${text}` : text
+  send()
 }
 
 /* ---- 发送：原生流式对话 ---- */

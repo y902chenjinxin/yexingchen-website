@@ -14,6 +14,7 @@
         placeholder="标题"
         @input="scheduleSave"
       />
+      <VoiceInputButton class="ne-voice" @result="onVoiceTitle" />
       <div class="ne-status">
         <span v-if="saveState === 'saving'" class="state saving">保存中…</span>
         <span v-else-if="saveState === 'saved'" class="state saved">已保存</span>
@@ -198,6 +199,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
 import BackButton from '@/components/BackButton.vue'
+import VoiceInputButton from '@/components/VoiceInputButton.vue'
 import { classifyPaste, pickAcceptedFromDrop, summarizeIgnored } from '@/utils/paste-drop'
 import { Document, Link } from '@element-plus/icons-vue'
 import {
@@ -362,6 +364,12 @@ async function doSave() {
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(doSave, 1200)
+}
+
+// 语音输入标题并触发保存
+function onVoiceTitle(text) {
+  title.value = title.value.trim() ? `${title.value.trim()} ${text}` : text
+  scheduleSave()
 }
 
 async function markCompleted() {

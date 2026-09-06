@@ -16,17 +16,14 @@
       <JadeCarousel class="wb-jade" />
     </section>
 
-    <!-- 快捷动作 -->
+    <!-- 常用工具区（工具 + 快捷动作混排） -->
     <div class="wb-body">
-      <section class="wb-actions">
-        <router-link to="/assistant" class="wb-action primary">
-          <span class="wb-action-icon"><el-icon><ChatDotRound /></el-icon></span>
-          <span class="wb-action-text">
-            <strong>AI 助手</strong>
-            <small>整理 · 摘要 · 化虚为实</small>
-          </span>
-        </router-link>
-      </section>
+      <WorkbenchTools />
+    </div>
+
+    <!-- 大数据看板（账本 / 资讯 / 行情 三卡预览） -->
+    <div class="wb-body wb-dash">
+      <WorkbenchDashboard />
     </div>
 
     <!-- 底部网安/备案标识（夜色页脚） -->
@@ -35,9 +32,27 @@
 </template>
 
 <script setup>
-import { ChatDotRound } from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
 import JadeCarousel from '@/components/JadeCarousel.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
+import WorkbenchTools from '@/components/workbench/WorkbenchTools.vue'
+import WorkbenchDashboard from '@/components/workbench/WorkbenchDashboard.vue'
+import { financeApi } from '@/api/finance'
+
+const empty = ref(true)
+const finance = ref({})
+
+onMounted(async () => {
+  try {
+    const res = await financeApi.summary()
+    if (res?.data?.total_count) {
+      empty.value = false
+      finance.value = res.data
+    }
+  } catch (e) {
+    /* 未就绪保持空态 */
+  }
+})
 </script>
 
 <style scoped>
@@ -103,33 +118,7 @@ import SiteFooter from '@/components/SiteFooter.vue'
 
 /* ===== 数据区 ===== */
 .wb-body { padding-top: 10px; }
-.wb-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 0 0 24px; }
-.wb-action {
-  position: relative; display: flex; gap: 14px; align-items: center; padding: 18px;
-  border-radius: 16px; color: var(--lj-text); text-decoration: none;
-  background: var(--lj-paper);
-  border: 1px solid var(--lj-line); overflow: hidden;
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
-  transition: all 0.3s; animation: lj-rise .7s cubic-bezier(.4,0,.2,1) both;
-}
-.wb-action::after { content: ""; position: absolute; top: 0; left: 14%; right: 14%; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--lj-dai), transparent); opacity: .6; }
-.wb-action-icon {
-  width: 46px; height: 46px; flex: none; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--lj-dai); font-size: 22px;
-  border: 1px solid var(--lj-line); background: rgba(127, 168, 163, 0.08);
-  transition: all 0.3s;
-}
-.wb-action:hover { transform: translateY(-2px); border-color: var(--lj-line-strong); box-shadow: var(--glass-highlight), 0 14px 34px rgba(0,0,0,.34); }
-.wb-action:hover .wb-action-icon { background: rgba(127, 168, 163, 0.14); }
-.wb-action-text { display: flex; flex-direction: column; }
-.wb-action-text strong { font-size: 16px; letter-spacing: .06em; }
-.wb-action-text small { margin-top: 3px; color: var(--lj-text-2); font-size: 12px; }
-.wb-action.primary { background: linear-gradient(165deg, rgba(127,168,163,.10), rgba(127,168,163,0) 55%), var(--lj-paper); }
-.wb-action.primary .wb-action-icon { color: var(--lj-ochre); border-color: rgba(199, 169, 107, 0.25); background: rgba(199, 169, 107, 0.12); }
+.wb-body + .wb-body { margin-top: 20px; }
 
 @media (prefers-reduced-motion: reduce) {
   .workbench-page *, .workbench-page *::before, .workbench-page *::after { animation: none !important; transition: none !important; }

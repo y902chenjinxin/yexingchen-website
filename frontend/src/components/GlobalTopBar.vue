@@ -31,6 +31,9 @@
         @keyup.enter="runSearch"
       >
         <template #prefix><el-icon><Search /></el-icon></template>
+        <template #suffix>
+          <VoiceInputButton @result="onVoiceSearch" />
+        </template>
       </el-input>
 
       <!-- 联想面板 -->
@@ -159,6 +162,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { searchAll } from '@/api/search'
+import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -171,8 +175,10 @@ const searchWord = ref('')
 const searchFocus = ref(false)
 let suggestTimer = null
 
-/* ---- 导航 ---- */
-const navItems = []
+/* ---- 导航：只保留「AI 对话」（原笔记位），其余保持干净 ---- */
+const navItems = [
+  { label: 'AI 对话', to: '/assistant', icon: MagicStick }
+]
 function isActive(item) {
   return route.path.startsWith(item.to)
 }
@@ -309,6 +315,14 @@ function runSearch() {
   if (!q) return
   router.push({ path: '/notes', query: { q } })
   suggestions.value = { results: null, count: 0 }
+}
+
+// 语音搜索结果并入搜索框，并即时联想/跳转
+function onVoiceSearch(text) {
+  const merged = searchWord.value.trim() ? `${searchWord.value.trim()} ${text}` : text
+  searchWord.value = merged
+  onSearchInput()
+  runSearch()
 }
 
 /* ---- 移动端 ---- */

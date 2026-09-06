@@ -101,6 +101,38 @@ const routes = [
     component: () => import('@/views/CompressToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 证件照 工具页（Hivision pip 部署）
+  {
+    path: '/tool/idphoto',
+    name: 'IdPhotoTool',
+    component: () => import('@/views/BuildingView.vue'),
+    meta: { requiresAuth: true, placeholder: '证件照' }
+  },
+  // 个人记账（真实页面）
+  {
+    path: '/finance',
+    name: 'Finance',
+    component: () => import('@/views/FinanceView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/feeds',
+    name: 'Feeds',
+    component: () => import('@/views/BuildingView.vue'),
+    meta: { requiresAuth: true, placeholder: '资讯推送' }
+  },
+  {
+    path: '/stocks',
+    name: 'Stocks',
+    component: () => import('@/views/BuildingView.vue'),
+    meta: { requiresAuth: true, placeholder: '股票行情' }
+  },
+  {
+    path: '/stocks/:code',
+    name: 'StockDetail',
+    component: () => import('@/views/BuildingView.vue'),
+    meta: { requiresAuth: true, placeholder: '股票详情' }
+  },
   // 外部工具独立页（iframe 内嵌）
   {
     path: '/tool/:id',

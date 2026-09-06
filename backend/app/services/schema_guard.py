@@ -24,7 +24,7 @@ class ProductionSchemaError(RuntimeError):
     """生产环境 schema 校验失败时的可读异常。"""
 
 
-HEAD_REVISION = "b2c3d4e5f6a7"
+HEAD_REVISION = "f1a2b3c4d5e6"
 
 
 def is_production_env() -> bool:
