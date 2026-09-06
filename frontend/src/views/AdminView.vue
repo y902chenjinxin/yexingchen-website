@@ -278,7 +278,7 @@ function formatTime(timeStr) {
 </script>
 
 <style scoped>
-.admin-page { min-height: 100vh; background: var(--color-bg); padding-bottom: 40px; }
+.admin-page { min-height: 100vh; background: var(--color-bg); padding: 84px 0 40px; box-sizing: border-box; }
 .admin-header {
   display: flex;
   justify-content: space-between;

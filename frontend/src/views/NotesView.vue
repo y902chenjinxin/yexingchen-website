@@ -128,7 +128,7 @@ onMounted(() => { reload(); loadTags() })
 </script>
 
 <style scoped>
-.notes-page { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; font-family: var(--font-serif); color: var(--xiu-text); }
+.notes-page { max-width: 960px; margin: 0 auto; padding: 84px 16px 80px; font-family: var(--font-serif); color: var(--xiu-text); }
 .notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .notes-header h1 { font-size: 26px; margin: 0; letter-spacing: .08em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
 .notes-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }

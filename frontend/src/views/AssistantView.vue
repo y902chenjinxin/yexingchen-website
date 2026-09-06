@@ -468,7 +468,7 @@ onUnmounted(() => {
 
 <style scoped>
 .assistant-page {
-  max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px;
+  max-width: 1120px; margin: 0 auto; padding: 84px 16px 80px;
   font-family: var(--font-serif); color: var(--xiu-text);
 }
 .assistant-header {

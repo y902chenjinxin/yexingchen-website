@@ -1046,7 +1046,7 @@ watch(() => route.params.id, loadNote)
 </script>
 
 <style scoped>
-.note-editor { max-width: 880px; margin: 0 auto; padding: 24px 16px 80px; position: relative; font-family: var(--font-serif); color: var(--xiu-text); }
+.note-editor { max-width: 880px; margin: 0 auto; padding: 84px 16px 80px; position: relative; font-family: var(--font-serif); color: var(--xiu-text); }
 .ne-header { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .ne-title-input { flex: 1; min-width: 200px; font-size: 26px; padding: 6px 8px; border: 0; border-bottom: 1px solid var(--xiu-line); background: transparent; outline: none; color: var(--xiu-text); letter-spacing: .06em; }
 .ne-title-input::placeholder { color: var(--xiu-text-3); }

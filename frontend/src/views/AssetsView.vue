@@ -273,7 +273,7 @@ onMounted(reload)
 </script>
 
 <style scoped>
-.assets-page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; font-family: var(--font-serif); color: var(--xiu-text); }
+.assets-page { max-width: 1100px; margin: 0 auto; padding: 84px 16px 80px; font-family: var(--font-serif); color: var(--xiu-text); }
 .assets-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .assets-header h1 { font-size: 26px; margin: 0; letter-spacing: .08em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
 .upload-btn { display: inline-block; padding: 8px 14px; background: var(--xiu-card); border: 1px solid var(--xiu-line); border-radius: var(--radius-sm); cursor: pointer; margin-left: 8px; color: var(--xiu-text-2); transition: var(--transition); }
