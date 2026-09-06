@@ -95,17 +95,16 @@
             </div>
           </div>
           <div class="composer">
-            <el-input
-              v-model="draft"
-              type="textarea"
-              :rows="3"
-              placeholder="和 AI 对话…（Enter 发送，Shift+Enter 换行）"
-              @keydown.enter.exact.prevent="send"
-            >
-              <template #suffix>
-                <VoiceInputButton @result="onVoiceDraft" />
-              </template>
-            </el-input>
+            <div class="composer-input">
+              <el-input
+                v-model="draft"
+                type="textarea"
+                :rows="3"
+                placeholder="和 AI 对话…（Enter 发送，Shift+Enter 换行）"
+                @keydown.enter.exact.prevent="send"
+              />
+              <VoiceInputButton class="composer-voice" @result="onVoiceDraft" />
+            </div>
             <div class="composer-actions">
               <span v-if="streamError" class="composer-error">{{ streamError }}</span>
               <el-button type="primary" :disabled="!draft.trim() || sending" :loading="sending" @click="send">
@@ -562,6 +561,9 @@ details[open] .chat-save-toggle::before { content: '－ '; }
 .empty-sub { font-size: 13px; margin: 0; }
 
 .composer { padding: 14px; border-top: 1px solid var(--xiu-line); }
+.composer-input { display: flex; align-items: flex-end; gap: 8px; }
+.composer-input .el-textarea { flex: 1; }
+.composer-voice { align-self: flex-end; margin-bottom: 4px; }
 .composer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 .composer-error { color: var(--xiu-danger); font-size: 12px; margin-right: auto; }
 .placeholder { color: var(--xiu-text-3); padding: 48px; text-align: center; }

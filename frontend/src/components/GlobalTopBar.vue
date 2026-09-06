@@ -317,12 +317,12 @@ function runSearch() {
   suggestions.value = { results: null, count: 0 }
 }
 
-// 语音搜索结果并入搜索框，并即时联想/跳转
+// 语音搜索结果并入搜索框，并展开联想下拉供选择（不直接跳转）
 function onVoiceSearch(text) {
   const merged = searchWord.value.trim() ? `${searchWord.value.trim()} ${text}` : text
   searchWord.value = merged
+  searchFocus.value = true
   onSearchInput()
-  runSearch()
 }
 
 /* ---- 移动端 ---- */
@@ -372,7 +372,7 @@ onUnmounted(() => {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--tb-h);
-  z-index: 9999;
+  z-index: 1000;
   display: flex;
   align-items: center;
   gap: 18px;
