@@ -101,12 +101,12 @@ const routes = [
     component: () => import('@/views/CompressToolView.vue'),
     meta: { requiresAuth: true }
   },
-  // 内置 证件照 工具页（Hivision pip 部署）
+  // 内置 证件照 工具页（Hivision 服务）
   {
     path: '/tool/idphoto',
     name: 'IdPhotoTool',
-    component: () => import('@/views/BuildingView.vue'),
-    meta: { requiresAuth: true, placeholder: '证件照' }
+    component: () => import('@/views/IdPhotoToolView.vue'),
+    meta: { requiresAuth: true }
   },
   // 个人记账（真实页面）
   {
