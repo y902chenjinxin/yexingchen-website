@@ -101,7 +101,7 @@ const routes = [
     component: () => import('@/views/CompressToolView.vue'),
     meta: { requiresAuth: true }
   },
-  // 内置 证件照 工具页（Hivision 服务）
+  // 内置 证件照 工具页（纯前端 Canvas）
   {
     path: '/tool/idphoto',
     name: 'IdPhotoTool',
