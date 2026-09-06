@@ -10,7 +10,7 @@
  * 不缓存：跨源资源（CDN/字体/统计）。
  * 注册失败不应阻塞应用启动（main.js 中已 try/catch）。
  */
-const VERSION = 'xuanhuang-v50'
+const VERSION = 'xuanhuang-v52'
 const STATIC_CACHE = `${VERSION}-static`
 
 self.addEventListener('install', (event) => {
@@ -54,7 +54,8 @@ self.addEventListener('fetch', (event) => {
     url.pathname === '/index.html' ||
     url.pathname === '/manifest.webmanifest' ||
     url.pathname.startsWith('/icons/') ||
-    url.pathname.startsWith('/whale-pet/')
+    url.pathname.startsWith('/whale-pet/') ||
+    url.pathname.startsWith('/geo/')
 
   if (!isStaticAsset) return
 

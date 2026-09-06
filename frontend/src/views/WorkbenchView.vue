@@ -21,9 +21,9 @@
       <WorkbenchTools />
     </div>
 
-    <!-- 大数据看板（账本 / 资讯 / 行情 三卡预览） -->
+    <!-- 大数据看板（账本 / 资讯 / 行情 / 足迹 四卡预览） -->
     <div class="wb-body wb-dash">
-      <WorkbenchDashboard :empty="empty" :finance="finance" :feeds="feeds" />
+      <WorkbenchDashboard :empty="empty" :finance="finance" :feeds="feeds" :travels="travels" />
     </div>
 
     <!-- 底部网安/备案标识（夜色页脚） -->
@@ -40,12 +40,14 @@ import WorkbenchDashboard from '@/components/workbench/WorkbenchDashboard.vue'
 import { financeApi } from '@/api/finance'
 import { feedsApi } from '@/api/feeds'
 import { stocksApi } from '@/api/stocks'
+import { listTravels } from '@/api/travels'
 
 const empty = ref(true)
 const finance = ref({})
 const feeds = ref([])
 const stocks = ref({})
 const holdings = ref([])
+const travels = ref({})
 
 onMounted(async () => {
   try {
@@ -75,6 +77,19 @@ onMounted(async () => {
     }
   } catch (e) {
     /* 行情未就绪忽略 */
+  }
+  try {
+    const res = await listTravels()
+    if (res?.data?.total) {
+      travels.value = { travel_count: res.data.total, province_count: 0, city_count: 0 }
+      const prov = new Set(); const cty = new Set()
+      for (const it of res.data.list) {
+        ;(it.cities || []).forEach((c) => { if (c.province) prov.add(c.province); if (c.city) cty.add(c.city) })
+      }
+      travels.value = { travel_count: res.data.total, province_count: prov.size, city_count: cty.size }
+    }
+  } catch (e) {
+    /* 足迹未就绪忽略 */
   }
 })
 </script>

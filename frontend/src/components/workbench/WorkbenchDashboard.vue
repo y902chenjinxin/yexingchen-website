@@ -71,6 +71,27 @@
           </div>
         </div>
       </a>
+
+      <!-- 足迹卡 -->
+      <a class="wd-card" @click.prevent="$router.push('/travels')">
+        <div class="wd-card-head">
+          <span class="wd-card-name">🗺️ 足迹</span>
+          <span class="wd-more">查看全部 →</span>
+        </div>
+        <div v-if="!travels.travel_count" class="wd-empty">
+          <span class="wd-empty-icon">🧭</span>
+          <span class="wd-empty-text">还没有足迹</span>
+          <span class="wd-empty-hint">点「记下旅程」点亮中国地图</span>
+        </div>
+        <div v-else class="wd-body">
+          <div class="wd-rows">
+            <div class="wd-row"><span class="wd-k">已出发</span><span class="wd-v">{{ travels.travel_count }} 段旅程</span></div>
+            <div class="wd-row"><span class="wd-k">点亮省份</span><span class="wd-v">{{ travels.province_count }} 个</span></div>
+            <div class="wd-row"><span class="wd-k">到访城市</span><span class="wd-v">{{ travels.city_count }} 座</span></div>
+          </div>
+          <div class="wd-foot">把到过的地方，在地图上点亮</div>
+        </div>
+      </a>
     </div>
   </section>
 </template>
@@ -81,7 +102,8 @@ defineProps({
   finance: { type: Object, default: () => ({}) },
   feeds: { type: Array, default: () => [] },
   stocks: { type: Object, default: () => ({}) },
-  holdings: { type: Array, default: () => [] }
+  holdings: { type: Array, default: () => [] },
+  travels: { type: Object, default: () => ({}) }
 })
 </script>
 
@@ -91,7 +113,7 @@ defineProps({
 .wd-title { margin: 0; font-size: 18px; letter-spacing: .12em; color: var(--lj-text); }
 .wd-sub { margin-left: 12px; font-size: 12px; color: var(--lj-text-2); letter-spacing: .08em; }
 
-.wd-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.wd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .wd-card {
   position: relative; display: block; padding: 18px; border-radius: 16px; text-decoration: none;
   background: var(--lj-glass); -webkit-backdrop-filter: var(--lj-glass-blur); backdrop-filter: var(--lj-glass-blur);

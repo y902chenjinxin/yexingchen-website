@@ -8,10 +8,13 @@
 技术栈：Vue3 + Vite + Pinia + Element Plus | FastAPI + SQLAlchemy + SQLite | Nginx + PM2 + PWA。
 线上：https://yexingchen.cn（腾讯云 CVM 203.195.208.25，OpenCloudOS 9.4）。
 
-## 二、最近交付（9/4 最新）
+## 二、最近交付（9/6 最新）
 
 | 时间 | 内容 | Commit |
 |------|------|--------|
+| 2026-09-07 | **旅游足迹模块上线（SW `xuanhuang-v52`，见 `TRAVELS_PLAN_20260907.md`，User「标记旅行过的地方」）**：纯前端 SVG 中国地图（离线 GeoJSON `frontend/public/geo/china.json` 省界+九段线 + `geo/cities.json` 34 省 230+ 城市坐标，零第三方地图 API）。后端 `Travel/TravelCity` 模型 + Alembic 迁移 `d1e2f3a4b5c6`（生产 upgrade head 建两表）；`/api/travels`（CRUD + `/stats` + `/upload` 图片≤10MB/视频≤200MB）；公开查看+登录编辑。前端 `TravelMap`（已访省份金色高亮+城市按 seq 打点连线）、`TravelTimeline`、`TravelCityPicker`（省→市两级）、`TravelEditor`（内联录入含 Markdown 正文/星级/相册/视频）、`TravelDetail`（`utils/markdown.js` 安全渲染）；`/travels` 路由（地理数据放 `/geo/` 避 `dist/travels/` 遮蔽）+ 工作台玉简入口。生产浏览器取证 PASS：云南省高亮+丽江打点、星级 ★★★★ 真星星（修 `dist` 陈旧缓存致字面量）、登录新建广东省/广州点亮+Markdown 渲染。验收后已清理测试数据，库归零待录入 | 待提交 |
+| 2026-09-06 | **股票查看模块 /stocks 上线（SW `xuanhuang-v48`，见 `STOCKS_PLAN_20260906.md`）**：`StockWatchlist` 模型 + Alembic 迁移 `e5f6a7b8c9d0`；`stock_fetcher`（东财实时报价 / 日 K 三源回退[东财→腾讯→新浪] / 联想搜索，TTL 缓存）；`/api/stocks` CRUD+quote+kline+search+summary+dashboard；`StocksView`(KPI+加自选内联+实时表格)、`StockDetailView`(自绘 SVG 蜡烛图 `KlineChart`) 替换占位页；工作台行情卡接 dashboard。生产实测修复：`f58` 名称字段误用 `_f2`、搜索 `MarketType` 字符串映射、`push2his` WAF 拒连→K 线三源回退 | 262e60f |
+| 2026-09-06 | **资讯推送模块上线（SW `xuanhuang-v45`）**：`/feeds` 三栏玻璃布局（源 CRUD / 文章筛选分页 / 阅读器 + AI 摘要 + 收藏为笔记 `to-note`），`FeedSource/FeedArticle` + 迁移 `a1b2c3d4e5f7`；工作台资讯卡接 dashboard。遗留：服务器未配 `AI_*`，摘要为 FakeProvider 占位 | 3f3f138 |
 | 2026-09-04 | **工作台极简收敛（SW `xuanhuang-v33`，最新，User「把这三个都干掉」）**：删除工作台数据区三张卡「最近编辑/待整理草稿/标签」（`wb-grid` 与 `WorkbenchView` 脚本树清空，只留玉简+快捷动作+页脚）；前置 v32 已删玉简「内容资产/任务镜台」两张卡 + 「分类入口」整块。工作台现仅含 玉简轮播+快速记录/AI助手+网安页脚。浏览器实测：三卡文本 0 残留、快捷动作+页脚正常 | 本轮 |
 | 2026-09-04 | **工作台模块精简：移除「内容资产」+「任务」界面入口，日志升级为操作日志管理页（SW `xuanhuang-v31`，User 遗留「除音视频/文件/工具外的空间需增加管理页」）**：内容资产(`/assets`)与任务(`/tasks`)**仅从界面移除、保留 DB 数据**（顶栏导航只剩笔记、搜索联想去掉资产/任务、工作台删内容资产/任务卡片与今日/逾期任务板块、分类入口去掉网页/图片/PDF/任务、路由删 `/tasks`/`/assets`）；日志页沿用四库**浏览+管理合并一页**（`IslandInnerBase` 重构，浏览=时间线、管理=表格，后端 `/api/logs` 增时间/动作/关键词筛选 + `DELETE /api/logs` 批量删 + `/api/logs/clear` 清空，前端日期范围/动作下拉/搜索/分页/勾选批删/清空，页内中文确认；日志只读不逐条编辑）。生产浏览器清 SW 实测 14 项全 PASS | 本轮 |
 | 2026-09-04 | **桌宠本体点击穿透 + 右上角"抓手"拖拽（SW `xuanhuang-v30`，最新，修复"点不进去了"）**：根因——`.whale-frame` 命中区为整 sprite 盒（约 175×215）+ `pointer-events:auto`，鲸鱼拖到玉简/按钮上即整片拦截；`passThroughClick` 透传不可靠。修复：`.whale-frame` 改 `pointer-events:none` **完全点击穿透**；新增右上角 `.whale-handle` 小抓手为唯一命中区（按住拖动、单击开设置面板）；删 `passThroughClick`。清 SW 后实测 PASS：入口跳转恢复 | 本轮 |
