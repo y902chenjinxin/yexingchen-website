@@ -1,80 +1,10 @@
 <template>
   <div class="login-page">
-    <!-- 星辰夜空背景 -->
-    <div class="starry-bg">
-      <div class="star" v-for="i in 100" :key="i" :style="getStarStyle(i)"></div>
-    </div>
-
-    <!-- 云雾层 -->
-    <div class="mist-layer">
-      <div class="mist mist-1"></div>
-      <div class="mist mist-2"></div>
-      <div class="mist mist-3"></div>
-    </div>
-
-    <!-- 冰晶琉璃门 -->
-    <div class="crystal-door-container" :class="{ 'doors-opening': doorsOpening, 'doors-open': doorsOpen }">
-      <!-- 左门 -->
-      <div class="crystal-door door-left" :class="{ 'door-closing': !doorsOpening && doorsOpen }">
-        <div class="door-surface">
-          <div class="ice-texture"></div>
-          <div class="light-flow light-flow-1"></div>
-          <div class="light-flow light-flow-2"></div>
-          <div class="light-flow light-flow-3"></div>
-        </div>
-        <div class="door-edge"></div>
-        <!-- 门上的符文装饰 -->
-        <div class="door-runes">
-          <div class="rune rune-1"></div>
-          <div class="rune rune-2"></div>
-          <div class="rune rune-3"></div>
-        </div>
-      </div>
-
-      <!-- 右门 -->
-      <div class="crystal-door door-right" :class="{ 'door-closing': !doorsOpening && doorsOpen }">
-        <div class="door-surface">
-          <div class="ice-texture"></div>
-          <div class="light-flow light-flow-1"></div>
-          <div class="light-flow light-flow-2"></div>
-          <div class="light-flow light-flow-3"></div>
-        </div>
-        <div class="door-edge"></div>
-        <div class="door-runes">
-          <div class="rune rune-1"></div>
-          <div class="rune rune-2"></div>
-          <div class="rune rune-3"></div>
-        </div>
-      </div>
-
-      <!-- 门缝寒气星光 -->
-      <div class="gap-mist" :class="{ 'mist-visible': showGapMist }">
-        <div class="mist-particle" v-for="i in 20" :key="i" :style="getMistParticleStyle(i)"></div>
-      </div>
-
-      <!-- 光环涟漪 -->
-      <div class="light-ring" :class="{ 'ring-visible': showLightRing }">
-        <div class="ring ring-1"></div>
-        <div class="ring ring-2"></div>
-        <div class="ring ring-3"></div>
-      </div>
-
-      <!-- 粒子风 -->
-      <div class="particle-wind" :class="{ 'wind-active': showParticleWind }">
-        <div class="wind-particle" v-for="i in 50" :key="i" :style="getWindParticleStyle(i)"></div>
-      </div>
-    </div>
-
-    <!-- 画面震动效果 -->
-    <div class="shake-overlay" :class="{ 'shake-active': showShake }"></div>
-
-    <!-- 空间扭曲波纹 -->
-    <div class="distortion-wave" :class="{ 'wave-visible': showDistortion }">
-      <div class="wave-ring" v-for="i in 3" :key="i" :style="getWaveRingStyle(i)"></div>
-    </div>
+    <!-- 雨青粒子网背景（博客式：粒子间连线，鼠标移过线条聚拢） -->
+    <canvas ref="particleCanvas" class="particle-bg" aria-hidden="true"></canvas>
 
     <!-- 登录卡片 -->
-    <div class="login-card" :class="{ 'card-visible': showCard }">
+    <div class="login-card">
       <h1 class="site-title font-serif">叶兴辰的个人网站</h1>
       <p class="site-subtitle">神农遗风，云上洞天</p>
 
@@ -108,17 +38,10 @@
         </el-form-item>
       </el-form>
 
-      <!-- 仙气飘飘加载特效 -->
+      <!-- 登录加载特效 -->
       <div v-if="loading && !isRegistering" class="fairy-loading">
-        <div class="fairy-bg"></div>
-        <div class="fairy-curtain curtain-1"></div>
-        <div class="fairy-curtain curtain-2"></div>
-        <div class="fairy-curtain curtain-3"></div>
         <div class="fairy-glow"></div>
         <div class="fairy-ring"></div>
-        <div class="fairy-particles">
-          <span v-for="i in 6" :key="i" class="fairy-particle" :style="getParticleStyle(i)"></span>
-        </div>
       </div>
 
       <!-- 注册流程 -->
@@ -148,35 +71,35 @@
             </el-form-item>
             <el-form-item>
               <el-input v-model="registerForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="设置密码" size="large">
-              <template #suffix>
-                <span class="password-toggle" @click="passwordVisible = !passwordVisible">
-                  <svg v-if="!passwordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </span>
-              </template>
-            </el-input>
+                <template #suffix>
+                  <span class="password-toggle" @click="passwordVisible = !passwordVisible">
+                    <svg v-if="!passwordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </span>
+                </template>
+              </el-input>
             </el-form-item>
             <el-form-item>
               <el-input v-model="registerForm.confirmPassword" :type="confirmPasswordVisible ? 'text' : 'password'" placeholder="确认密码" size="large">
-              <template #suffix>
-                <span class="password-toggle" @click="confirmPasswordVisible = !confirmPasswordVisible">
-                  <svg v-if="!confirmPasswordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </span>
-              </template>
-            </el-input>
+                <template #suffix>
+                  <span class="password-toggle" @click="confirmPasswordVisible = !confirmPasswordVisible">
+                    <svg v-if="!confirmPasswordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </span>
+                </template>
+              </el-input>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" size="large" style="width: 100%" :loading="loading" native-type="submit">
@@ -216,12 +139,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { register as registerApi, verifyCode as verifyCodeApi } from '@/api/auth'
-import { randFloat } from '@/utils/random'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -233,122 +155,172 @@ const isRegistering = ref(false)
 const registerStep = ref(1)
 const loading = ref(false)
 const passwordVisible = ref(false)
-const confirmPasswordVisible = ref(false) // 注册确认密码可见性 // 密码可见性切换
+const confirmPasswordVisible = ref(false)
 
-// 动画状态
-const showGapMist = ref(false)
-const showLightRing = ref(false)
-const showParticleWind = ref(false)
-const showShake = ref(false)
-const showDistortion = ref(false)
-const doorsOpening = ref(false)
-const doorsOpen = ref(false)
-const showCard = ref(false)
+/** ============ 雨青粒子网背景 ============ */
+const particleCanvas = ref(null)
+let pctx = null
+let particles = []
+let rafId = 0
+let resizeTimer = 0
+const pointer = { x: -9999, y: -9999 }
+let reduceMotion = false
 
-// 光纹熄灭动画
-const lightFlowsOff = ref([false, false, false])
+const PARTICLE_COUNT = 72       // 粒子数量
+const LINK_DIST = 130           // 粒子间连线最大距离
+const POINTER_DIST = 190        // 鼠标影响半径
+const BASE_SPEED = 0.32         // 克制漂移速度
+const MAX_SPEED = 0.9
+
+const COL_LINE = '127, 168, 163'        // 雨青连线
+const COL_POINTER = '168, 211, 206'     // 鼠标连线偏亮
+const COL_HALO = '168, 211, 206'        // 粒子光晕
+const COL_CORE = '206, 226, 220'        // 粒子核
+
+function initParticles(w, h) {
+  particles = []
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 2 * BASE_SPEED,
+      vy: (Math.random() - 0.5) * 2 * BASE_SPEED,
+      r: 0.7 + Math.random() * 1.5
+    })
+  }
+}
+
+function setupCanvas() {
+  const canvas = particleCanvas.value
+  if (!canvas) return
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const w = canvas.clientWidth
+  const h = canvas.clientHeight
+  canvas.width = w * dpr
+  canvas.height = h * dpr
+  pctx = canvas.getContext('2d')
+  pctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  initParticles(w, h)
+}
+
+function draw() {
+  if (rafId) cancelAnimationFrame(rafId)
+  if (reduceMotion) return
+  rafId = requestAnimationFrame(draw)
+  const canvas = particleCanvas.value
+  if (!canvas || !pctx) return
+  const w = canvas.clientWidth
+  const h = canvas.clientHeight
+  if (!w || !h) return
+  pctx.clearRect(0, 0, w, h)
+
+  // 更新位置 + 鼠标吸引
+  for (const p of particles) {
+    const dxp = pointer.x - p.x
+    const dyp = pointer.y - p.y
+    const dp = Math.hypot(dxp, dyp)
+    if (dp < POINTER_DIST && dp > 0.5) {
+      const pull = (1 - dp / POINTER_DIST) * 0.022
+      p.vx += (dxp / dp) * pull
+      p.vy += (dyp / dp) * pull
+    }
+    const sp = Math.hypot(p.vx, p.vy)
+    if (sp > MAX_SPEED) {
+      p.vx = (p.vx / sp) * MAX_SPEED
+      p.vy = (p.vy / sp) * MAX_SPEED
+    }
+    p.x += p.vx
+    p.y += p.vy
+    if (p.x < 0) { p.x = 0; p.vx *= -1 }
+    else if (p.x > w) { p.x = w; p.vx *= -1 }
+    if (p.y < 0) { p.y = 0; p.vy *= -1 }
+    else if (p.y > h) { p.y = h; p.vy *= -1 }
+  }
+
+  pctx.lineWidth = 1
+  // 粒子间连线
+  for (let i = 0; i < particles.length; i++) {
+    const a = particles[i]
+    for (let j = i + 1; j < particles.length; j++) {
+      const b = particles[j]
+      const dx = a.x - b.x
+      const dy = a.y - b.y
+      const d = Math.hypot(dx, dy)
+      if (d < LINK_DIST) {
+        const alpha = (1 - d / LINK_DIST) * 0.15
+        pctx.strokeStyle = `rgba(${COL_LINE}, ${alpha.toFixed(3)})`
+        pctx.beginPath()
+        pctx.moveTo(a.x, a.y)
+        pctx.lineTo(b.x, b.y)
+        pctx.stroke()
+      }
+    }
+    // 鼠标连线（指针周围线条聚拢）
+    if (pointer.x > -9000 && pointer.y > -9000) {
+      const dp = Math.hypot(a.x - pointer.x, a.y - pointer.y)
+      if (dp < POINTER_DIST) {
+        const alpha = (1 - dp / POINTER_DIST) * 0.30
+        pctx.strokeStyle = `rgba(${COL_POINTER}, ${alpha.toFixed(3)})`
+        pctx.beginPath()
+        pctx.moveTo(a.x, a.y)
+        pctx.lineTo(pointer.x, pointer.y)
+        pctx.stroke()
+      }
+    }
+  }
+
+  // 粒子（光晕 + 核）
+  for (const p of particles) {
+    const halo = pctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4)
+    halo.addColorStop(0, `rgba(${COL_HALO}, 0.50)`)
+    halo.addColorStop(1, `rgba(${COL_HALO}, 0)`)
+    pctx.fillStyle = halo
+    pctx.beginPath()
+    pctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2)
+    pctx.fill()
+    pctx.fillStyle = `rgba(${COL_CORE}, 0.9)`
+    pctx.beginPath()
+    pctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+    pctx.fill()
+  }
+}
+
+function onPointerMove(e) {
+  const canvas = particleCanvas.value
+  if (!canvas) return
+  const rect = canvas.getBoundingClientRect()
+  pointer.x = e.clientX - rect.left
+  pointer.y = e.clientY - rect.top
+}
+
+function onPointerLeave() {
+  pointer.x = -9999
+  pointer.y = -9999
+}
+
+function onResize() {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    setupCanvas()
+  }, 150)
+}
 
 onMounted(() => {
-  // 动画时序（毫秒）- 优化版：压缩总时长
-  // 动画时序（毫秒）- v1.7.2优化版：卡片提前出现，节奏更紧凑
-  const TIMING = {
-    lightFlowOff1: 0,
-    lightFlowOff2: 150,
-    lightFlowOff3: 300,
-    gapMist: 450,        // 门缝寒气出现
-    doorStart: 600,      // 门开始打开
-    doorPause: 1300,     // 门45度停顿
-    doorResume: 1350,    // 门继续开
-    doorComplete: 1600,  // 门全开
-    particleWind: 1600,  // 粒子风吹出（与门全开同步）
-    lightRing: 1600,     // 光环涟漪（与门全开同步）
-    cardShow: 1000       // 登录卡片出现（优化：门开过程中逐渐显现）
-  }
-
-  // 光纹逐圈熄灭
-  setTimeout(() => { lightFlowsOff.value[0] = true }, TIMING.lightFlowOff1)
-  setTimeout(() => { lightFlowsOff.value[1] = true }, TIMING.lightFlowOff2)
-  setTimeout(() => { lightFlowsOff.value[2] = true }, TIMING.lightFlowOff3)
-
-  // 门缝寒气
-  setTimeout(() => { showGapMist.value = true }, TIMING.gapMist)
-
-  // 门开始打开
-  setTimeout(() => { doorsOpening.value = true }, TIMING.doorStart)
-
-  // 门45度时停顿（模拟封印挣脱）
-  setTimeout(() => {
-    doorsOpening.value = false
-    setTimeout(() => { doorsOpening.value = true }, 50)
-  }, TIMING.doorPause)
-
-  // 门全开 + 粒子风 + 光环
-  setTimeout(() => {
-    doorsOpen.value = true
-    showParticleWind.value = true
-    showLightRing.value = true
-  }, TIMING.doorComplete)
-
-  // 登录卡片（延迟显示）
-  setTimeout(() => { showCard.value = true }, TIMING.cardShow)
+  setupCanvas()
+  window.addEventListener('resize', onResize)
+  window.addEventListener('pointermove', onPointerMove, { passive: true })
+  window.addEventListener('pointerout', onPointerLeave)
+  draw()
 })
 
-function getStarStyle(i) {
-  const seed = i * 137.508
-  const x = (seed % 100)
-  const y = ((seed * 1.618) % 100)
-  const size = 0.5 + (seed % 2)
-  const duration = 3 + (seed % 5)
-  const delay = seed % 3
-  return {
-    left: `${x}%`,
-    top: `${y}%`,
-    width: `${size}px`,
-    height: `${size}px`,
-    animationDuration: `${duration}s`,
-    animationDelay: `${delay}s`
-  }
-}
-
-function getMistParticleStyle(i) {
-  const angle = (i / 20) * 360
-  const delay = i * 0.05
-  return {
-    '--angle': `${angle}deg`,
-    animationDelay: `${delay}s`
-  }
-}
-
-// 仙气飘飘加载特效粒子样式
-function getParticleStyle(i) {
-  const angle = (i / 6) * 360
-  return {
-    '--angle': `${angle}deg`,
-    left: '50%',
-    top: '50%',
-    transform: `rotate(${angle}deg) translateX(50px)`
-  }
-}
-
-function getWindParticleStyle() {
-  // 使用伪随机数生成器，保证每次页面刷新粒子位置一致
-  const x = 40 + randFloat(0, 20)
-  const y = 30 + randFloat(0, 40)
-  const delay = randFloat(0, 0.5)
-  const duration = 0.5 + randFloat(0, 0.5)
-  return {
-    left: `${x}%`,
-    top: `${y}%`,
-    animationDelay: `${delay}s`,
-    animationDuration: `${duration}s`
-  }
-}
-
-function getWaveRingStyle(i) {
-  return {
-    animationDelay: `${i * 0.15}s`
-  }
-}
+onBeforeUnmount(() => {
+  if (rafId) cancelAnimationFrame(rafId)
+  clearTimeout(resizeTimer)
+  window.removeEventListener('resize', onResize)
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerout', onPointerLeave)
+})
 
 async function handleLogin() {
   if (!loginForm.value.email || !loginForm.value.password) {
@@ -363,8 +335,7 @@ async function handleLogin() {
     const next = (route.query.next && String(route.query.next)) || '/workbench'
     router.push(next)
   } catch {
-    // 错误已在api拦截器处理，显示仙气飘飘特效
-    // 延迟关闭loading，让特效显示2秒
+    // 错误已在api拦截器处理
     setTimeout(() => {
       loading.value = false
     }, 2000)
@@ -424,440 +395,24 @@ function resetRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #0a1218 0%, #1a2530 50%, #0d1a24 100%);
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 12%, rgba(127, 168, 163, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.07), transparent 60%),
+    linear-gradient(180deg, #0a1218 0%, #111a22 52%, #0b1419 100%);
   position: relative;
   overflow: hidden;
 }
 
-/* 星辰夜空背景 */
-.starry-bg {
+/* 雨青粒子网画布 */
+.particle-bg {
   position: absolute;
   inset: 0;
-  overflow: hidden;
-}
-
-.star {
-  position: absolute;
-  background: radial-gradient(circle, rgba(200, 220, 240, 0.9) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: twinkle 3s ease-in-out infinite;
-}
-
-@keyframes twinkle {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
-}
-
-/* 云雾层 */
-.mist-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.mist {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.15;
-}
-
-.mist-1 {
-  width: 600px;
-  height: 300px;
-  background: linear-gradient(135deg, #4a6a7a 0%, #2a4a5a 100%);
-  top: 20%;
-  left: -10%;
-  animation: mist-drift 20s ease-in-out infinite;
-}
-
-.mist-2 {
-  width: 500px;
-  height: 250px;
-  background: linear-gradient(225deg, #3a5a6a 0%, #1a3a4a 100%);
-  top: 60%;
-  right: -5%;
-  animation: mist-drift 25s ease-in-out infinite reverse;
-}
-
-.mist-3 {
-  width: 700px;
-  height: 200px;
-  background: linear-gradient(0deg, #5a7a8a 0%, #2a4a5a 100%);
-  bottom: 10%;
-  left: 20%;
-  animation: mist-drift 30s ease-in-out infinite 5s;
-}
-
-@keyframes mist-drift {
-  0%, 100% { transform: translateX(0) translateY(0); }
-  50% { transform: translateX(30px) translateY(-20px); }
-}
-
-/* 冰晶琉璃门容器 */
-.crystal-door-container {
-  position: absolute;
-  width: 500px;
-  height: 600px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  perspective: 1000px;
-  transform-style: preserve-3d;
-}
-
-/* 冰晶门 */
-.crystal-door {
-  position: absolute;
-  width: 200px;
-  height: 500px;
-  background: linear-gradient(180deg,
-    rgba(20, 40, 60, 0.9) 0%,
-    rgba(30, 50, 70, 0.85) 30%,
-    rgba(40, 60, 80, 0.8) 100%
-  );
-  border: 2px solid rgba(100, 180, 220, 0.3);
-  border-radius: 8px 8px 0 0;
-  transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  box-shadow:
-    0 0 30px rgba(100, 180, 220, 0.2),
-    inset 0 0 50px rgba(100, 180, 220, 0.1);
-}
-
-.door-left {
-  left: 50%;
-  margin-left: -200px;
-  transform: translateX(0);
-  transform-origin: right center;
-}
-
-.door-right {
-  left: 50%;
-  margin-right: -200px;
-  transform: translateX(0);
-  transform-origin: left center;
-}
-
-/* 开门动画 - 双门往两边水平滑开 */
-.crystal-door-container.doors-opening .door-left {
-  transform: translateX(-200px);
-}
-
-.crystal-door-container.doors-opening .door-right {
-  transform: translateX(200px);
-}
-
-.crystal-door-container.doors-open .door-left {
-  transform: translateX(-200px);
-}
-
-.crystal-door-container.doors-open .door-right {
-  transform: translateX(200px);
-}
-.door-surface {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.ice-texture {
-  position: absolute;
-  inset: 0;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0px,
-      rgba(100, 180, 220, 0.05) 2px,
-      transparent 4px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0px,
-      rgba(100, 180, 220, 0.03) 2px,
-      transparent 4px
-    );
-}
-
-/* 流淌的光纹 */
-.light-flow {
-  position: absolute;
-  width: 4px;
+  width: 100%;
   height: 100%;
-  background: linear-gradient(180deg,
-    transparent 0%,
-    rgba(100, 180, 255, 0.6) 20%,
-    rgba(150, 220, 255, 0.8) 50%,
-    rgba(100, 180, 255, 0.6) 80%,
-    transparent 100%
-  );
-  animation: flow-down 3s linear infinite;
-  filter: blur(1px);
-  transition: opacity 0.5s ease;
-}
-
-.light-flow-1 { left: 20%; animation-delay: 0s; }
-.light-flow-2 { left: 50%; animation-delay: 1s; }
-.light-flow-3 { left: 80%; animation-delay: 2s; }
-
-.light-flow-1.off { opacity: 0; }
-.light-flow-2.off { opacity: 0; }
-.light-flow-3.off { opacity: 0; }
-
-@keyframes flow-down {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
-}
-
-/* 门边缘 */
-.door-edge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 4px;
-  height: 100%;
-  background: linear-gradient(180deg,
-    rgba(150, 220, 255, 0.8) 0%,
-    rgba(100, 180, 220, 0.5) 50%,
-    rgba(150, 220, 255, 0.8) 100%
-  );
-  box-shadow: 0 0 10px rgba(100, 180, 220, 0.5);
-}
-
-/* 符文装饰 */
-.door-runes {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  align-items: center;
-  padding: 40px 0;
-}
-
-.rune {
-  width: 60px;
-  height: 60px;
-  border: 2px solid rgba(100, 180, 220, 0.3);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: rune-glow 4s ease-in-out infinite;
-}
-
-.rune::before {
-  content: '☯';
-  font-size: 24px;
-  color: rgba(100, 180, 220, 0.5);
-}
-
-.rune-1 { animation-delay: 0s; }
-.rune-2 { animation-delay: 1.3s; }
-.rune-3 { animation-delay: 2.6s; }
-
-@keyframes rune-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(100, 180, 220, 0.2);
-    border-color: rgba(100, 180, 220, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(100, 180, 220, 0.5);
-    border-color: rgba(100, 180, 220, 0.6);
-  }
-}
-
-/* 门缝寒气 */
-.gap-mist {
-  position: absolute;
-  width: 60px;
-  height: 400px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-  transition: opacity 0.5s ease;
   pointer-events: none;
 }
 
-.gap-mist.mist-visible {
-  opacity: 1;
-}
-
-.mist-particle {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: radial-gradient(circle, rgba(150, 220, 255, 0.8) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: mist-rise 2s ease-out infinite;
-  transform: rotate(var(--angle)) translateY(0);
-}
-
-@keyframes mist-rise {
-  0% {
-    opacity: 0;
-    transform: rotate(var(--angle)) translateY(50px) scale(0.5);
-  }
-  50% {
-    opacity: 0.8;
-  }
-  100% {
-    opacity: 0;
-    transform: rotate(var(--angle)) translateY(-100px) scale(1.5);
-  }
-}
-
-/* 粒子风 */
-.particle-wind {
-  position: absolute;
-  width: 300px;
-  height: 400px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.particle-wind.wind-active {
-  opacity: 1;
-}
-
-.wind-particle {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: radial-gradient(circle, rgba(150, 220, 255, 0.8) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: wind-blow 0.8s ease-out forwards;
-}
-
-@keyframes wind-blow {
-  0% {
-    opacity: 1;
-    transform: translate(0, 0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(calc((var(--x, 100) - 50) * 2px), -80px) scale(0);
-  }
-}
-
-/* 光环涟漪 */
-.light-ring {
-  position: absolute;
-  width: 200px;
-  height: 100px;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.light-ring.ring-visible {
-  opacity: 1;
-}
-
-.ring {
-  position: absolute;
-  border: 2px solid rgba(150, 220, 255, 0.5);
-  border-radius: 50%;
-  animation: ring-expand 1.5s ease-out forwards;
-}
-
-.ring-1 {
-  width: 100px;
-  height: 50px;
-  left: 50%;
-  transform: translateX(-50%) scale(0);
-}
-
-.ring-2 {
-  width: 150px;
-  height: 75px;
-  left: 50%;
-  transform: translateX(-50%) scale(0);
-  animation-delay: 0.1s;
-}
-
-.ring-3 {
-  width: 200px;
-  height: 100px;
-  left: 50%;
-  transform: translateX(-50%) scale(0);
-  animation-delay: 0.2s;
-}
-
-@keyframes ring-expand {
-  0% {
-    transform: translateX(-50%) scale(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(-50%) scale(1);
-    opacity: 0;
-  }
-}
-
-/* 画面震动 */
-.shake-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-}
-
-.shake-overlay.shake-active {
-  animation: screen-shake 0.15s ease-out;
-}
-
-@keyframes screen-shake {
-  0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(-1px, 1px); }
-  50% { transform: translate(1px, -1px); }
-  75% { transform: translate(-1px, -0.5px); }
-}
-
-/* 空间扭曲波纹 */
-.distortion-wave {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-}
-
-.distortion-wave.wave-visible {
-  opacity: 1;
-}
-
-.wave-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border: 1px solid rgba(150, 220, 255, 0.3);
-  border-radius: 50%;
-  animation: wave-distort 1s ease-out forwards;
-}
-
-@keyframes wave-distort {
-  0% {
-    width: 0;
-    height: 0;
-    opacity: 0.8;
-    filter: blur(0px);
-  }
-  100% {
-    width: 150vw;
-    height: 150vh;
-    opacity: 0;
-    filter: blur(5px);
-  }
-}
-
-/* 登录卡片 */
+/* 登录卡片（克制淡入，无位移/无 blur 动画，避免逐帧重绘卡顿） */
 .login-card {
   position: relative;
   z-index: 100;
@@ -874,8 +429,12 @@ function resetRegister() {
     0 24px 60px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  animation: card-in 0.5s ease-out 0.15s forwards;
+}
+
+@keyframes card-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* 金色顶边高光 */
@@ -888,11 +447,6 @@ function resetRegister() {
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
   border-radius: 0 0 4px 4px;
-}
-
-.login-card.card-visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .site-title {
@@ -1030,6 +584,51 @@ function resetRegister() {
   color: var(--color-qi-primary);
 }
 
+/* 登录加载特效（克制：仅中央呼吸光 + 旋转细环） */
+.fairy-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fairy-glow {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  background: radial-gradient(circle, rgba(127, 168, 163, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: glow-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.fairy-ring {
+  position: absolute;
+  width: 76px;
+  height: 76px;
+  border: 1.5px solid rgba(127, 168, 163, 0.45);
+  border-radius: 50%;
+  border-top-color: rgba(199, 169, 107, 0.7);
+  animation: ring-rotate 1.1s linear infinite;
+}
+
+@keyframes ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* 备案信息 */
 .filing-footer {
   position: fixed;
@@ -1082,146 +681,12 @@ function resetRegister() {
     width: 90%;
     padding: 30px 20px;
   }
-
-  .crystal-door-container {
-    transform: scale(0.7);
-  }
 }
 
-/* 仙气飘飘加载特效 */
-.fairy-loading {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: inherit;
-  overflow: hidden;
-}
-
-.fairy-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #E8D5F0 0%, #D0E8F0 100%);
-  opacity: 0.95;
-}
-
-.fairy-curtain {
-  position: absolute;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-  height: 100%;
-  width: 60%;
-  filter: blur(20px);
-  animation: curtain-drift 8s ease-in-out infinite;
-}
-
-.fairy-curtain.curtain-1 {
-  top: 0;
-  animation-delay: 0s;
-}
-
-.fairy-curtain.curtain-2 {
-  top: 20%;
-  animation-delay: -2.5s;
-  opacity: 0.7;
-}
-
-.fairy-curtain.curtain-3 {
-  top: 40%;
-  animation-delay: -5s;
-  opacity: 0.5;
-}
-
-@keyframes curtain-drift {
-  0% { left: -60%; transform: translateY(0); }
-  50% { transform: translateY(20px); }
-  100% { left: 140%; transform: translateY(0); }
-}
-
-.fairy-glow {
-  position: absolute;
-  width: 150px;
-  height: 150px;
-  background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: glow-pulse 3s ease-in-out infinite;
-}
-
-@keyframes glow-pulse {
-  0%, 100% { transform: scale(0.8); opacity: 0.6; }
-  50% { transform: scale(1.2); opacity: 1; }
-}
-
-.fairy-ring {
-  position: absolute;
-  width: 80px;
-  height: 80px;
-  border: 2px solid rgba(255,255,255,0.6);
-  border-radius: 50%;
-  animation: ring-rotate 3s linear infinite;
-}
-
-.fairy-ring::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: 50%;
-  width: 8px;
-  height: 8px;
-  background: rgba(255,255,255,0.9);
-  border-radius: 50%;
-  box-shadow: 0 0 15px 5px rgba(255,255,255,0.5);
-}
-
-@keyframes ring-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.fairy-particles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.fairy-particle {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: particle-orbit 6s ease-in-out infinite;
-}
-
-.fairy-particle:nth-child(1) { animation-delay: 0s; }
-.fairy-particle:nth-child(2) { animation-delay: -1s; }
-.fairy-particle:nth-child(3) { animation-delay: -2s; }
-.fairy-particle:nth-child(4) { animation-delay: -3s; }
-.fairy-particle:nth-child(5) { animation-delay: -4s; }
-.fairy-particle:nth-child(6) { animation-delay: -5s; }
-
-@keyframes particle-orbit {
-  0% {
-    transform: rotate(0deg) translateX(50px) rotate(0deg);
-    opacity: 0.3;
-  }
-  25% {
-    opacity: 0.9;
-  }
-  50% {
-    transform: rotate(180deg) translateX(80px) rotate(-180deg);
-    opacity: 0.3;
-  }
-  75% {
-    opacity: 0.9;
-  }
-  100% {
-    transform: rotate(360deg) translateX(50px) rotate(-360deg);
-    opacity: 0.3;
+@media (prefers-reduced-motion: reduce) {
+  .login-card {
+    animation: none;
+    opacity: 1;
   }
 }
 </style>
