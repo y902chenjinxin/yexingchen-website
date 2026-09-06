@@ -46,11 +46,15 @@
             :points="mapPoints"
             :active-trip-id="activeTripId"
             :active-province="activeProvince"
+            :travels="travels"
+            :drill-province="drillProvince"
+            @point-click="onSelectTrip"
+            @province-click="onProvinceDrill"
           />
         </div>
         <div class="tv-slide glass">
           <TravelTimeline
-            :travels="travels"
+            :travels="visibleTravels"
             :active-id="activeTripId"
             :can-edit="canEdit"
             @select="onSelectTrip"
@@ -76,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -95,6 +99,7 @@ const stats = reactive({ travel_count: 0, province_count: 0, city_count: 0 })
 
 const activeTripId = ref(null)
 const activeProvince = ref(null)
+const drillProvince = ref('')
 const detail = ref(null)
 const editorOpen = ref(false)
 const editing = ref(null)
@@ -111,6 +116,23 @@ const mapPoints = computed(() => {
   }
   return pts
 })
+
+const visibleTravels = computed(() => {
+  if (!drillProvince.value) return travels.value
+  return travels.value.filter((t) => (t.cities || []).some((c) => c.province === drillProvince.value))
+})
+
+function onProvinceDrill(p) {
+  drillProvince.value = p || ''
+  if (drillProvince.value && activeTripId.value) {
+    const t = travels.value.find((x) => x.id === activeTripId.value)
+    if (t && !(t.cities || []).some((c) => c.province === drillProvince.value)) {
+      activeTripId.value = null
+      activeProvince.value = null
+      detail.value = null
+    }
+  }
+}
 
 async function reload() {
   loading.value = true
@@ -134,6 +156,10 @@ function onSelectTrip(id) {
   if (id) loadDetail(id)
   else detail.value = null
 }
+
+watch(drillProvince, (v) => {
+  if (v) { activeTripId.value = null; activeProvince.value = null; detail.value = null }
+})
 
 async function loadDetail(id) {
   try {
