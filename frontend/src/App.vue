@@ -3,9 +3,6 @@
     <!-- Skip Link键盘导航 -->
     <a href="#main-content" class="skip-link">跳转到内容</a>
 
-    <!-- 全局初始加载动画 -->
-    <LoadingView v-if="showInitialLoading" @loaded="onInitialLoadingComplete" />
-
     <!-- 路由视图 -->
     <router-view v-if="!showInitialLoading" id="main-content" />
 
@@ -27,7 +24,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import LoadingView from '@/views/LoadingView.vue'
 import WhaleCompanion from '@/components/effects/WhaleCompanion.vue'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
@@ -45,7 +41,7 @@ const showGlobalFooter = computed(() => {
   return true
 })
 
-// 初始加载动画状态
+// 阻止内容闪现的画布（净画布，无开场动画）
 const showInitialLoading = ref(true)
 
 onMounted(async () => {
@@ -65,12 +61,10 @@ onMounted(async () => {
   if (auth.isLoggedIn && route.path === '/login') {
     router.push('/workbench')
   }
-})
 
-// 初始加载动画完成后
-function onInitialLoadingComplete() {
+  // 跳过洞天将开开场动画，鉴权就绪后直接进入应用
   showInitialLoading.value = false
-}
+})
 </script>
 
 <style>
