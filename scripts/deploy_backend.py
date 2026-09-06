@@ -5,8 +5,8 @@ HOST, USER, PORT = "203.195.208.25", "root", 22
 REMOTE_BASE = "/var/www/yexingchen"
 
 BACKEND_FILES = [
-    (os.path.join(ROOT, "backend", "app", "config.py"),                 f"{REMOTE_BASE}/backend/app/config.py"),
     (os.path.join(ROOT, "backend", "app", "main.py"),                   f"{REMOTE_BASE}/backend/app/main.py"),
+    (os.path.join(ROOT, "backend", "app", "config.py"),                 f"{REMOTE_BASE}/backend/app/config.py"),
     (os.path.join(ROOT, "backend", "app", "models", "user.py"),         f"{REMOTE_BASE}/backend/app/models/user.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "music.py"),       f"{REMOTE_BASE}/backend/app/routers/music.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "settings.py"),    f"{REMOTE_BASE}/backend/app/routers/settings.py"),
@@ -17,6 +17,14 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "workbench.py"),    f"{REMOTE_BASE}/backend/app/routers/workbench.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "search.py"),       f"{REMOTE_BASE}/backend/app/routers/search.py"),
     (os.path.join(ROOT, "backend", "app", "services", "ai_providers.py"), f"{REMOTE_BASE}/backend/app/services/ai_providers.py"),
+    (os.path.join(ROOT, "backend", "app", "services", "schema_guard.py"), f"{REMOTE_BASE}/backend/app/services/schema_guard.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "finance.py"),       f"{REMOTE_BASE}/backend/app/routers/finance.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "feed.py"),          f"{REMOTE_BASE}/backend/app/routers/feed.py"),
+    (os.path.join(ROOT, "backend", "app", "models", "finance.py"),        f"{REMOTE_BASE}/backend/app/models/finance.py"),
+    (os.path.join(ROOT, "backend", "app", "models", "feed.py"),           f"{REMOTE_BASE}/backend/app/models/feed.py"),
+    (os.path.join(ROOT, "backend", "alembic", "env.py"),                  f"{REMOTE_BASE}/backend/alembic/env.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "a1b2c3d4e5f7_feed_source_article.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/a1b2c3d4e5f7_feed_source_article.py"),
     (os.path.join(ROOT, "backend", "app", "schemas", "common.py"),      f"{REMOTE_BASE}/backend/app/schemas/common.py"),
     (os.path.join(ROOT, "backend", "app", "schemas", "errors.py"),      f"{REMOTE_BASE}/backend/app/schemas/errors.py"),
     (os.path.join(ROOT, "backend", "requirements.txt"),                 f"{REMOTE_BASE}/backend/requirements.txt"),
@@ -72,26 +80,17 @@ for local, remote in BACKEND_FILES:
     s.put(local, remote)
     print("  ->", remote)
 
-print("== 2/4 install httpx in venv ==")
-code, out, err = cexec(f"{REMOTE_BASE}/backend/venv/bin/pip install -q httpx==0.27.0 2>&1; echo DONE")
+print("== 2/4 install httpx/feedparser/requests in venv ==")
+code, out, err = cexec(f"{REMOTE_BASE}/backend/venv/bin/pip install -q httpx==0.27.0 feedparser requests 2>&1; echo DONE")
 print("  code:", code)
 print("  ", (out + err)[-500:])
 
-print("== 3/4 DB migration: add music.artist/is_default if missing ==")
-python_code = (
-    "import sqlite3;"
-    "c=sqlite3.connect('yexingchen.db');"
-    "cols=[r[1] for r in c.execute('PRAGMA table_info(music)')];"
-    "e=False;"
-    "if 'artist' not in cols: c.execute('ALTER TABLE music ADD COLUMN artist VARCHAR(255) DEFAULT \\'\\''); e=True; print('added artist')"
-    "if 'is_default' not in cols: c.execute('ALTER TABLE music ADD COLUMN is_default INTEGER DEFAULT 0'); e=True; print('added is_default')"
-    "c.commit();print('music cols:', [r[1] for r in c.execute('PRAGMA table_info(music)')])"
+print("== 3/4 alembic upgrade head (feed tables) ==")
+code, out, err = cexec(
+    f"cd {REMOTE_BASE}/backend && ENV=production venv/bin/alembic upgrade head 2>&1 | tail -20"
 )
-code, out, err = cexec(f"cd {REMOTE_BASE}/backend && python3 -c \"{python_code}\"")
 print("  code:", code)
-print("  OUT:", out[-600:])
-print("  ERR:", err[-300:])
-
+print("  ", (out + err)[-800:])
 print("== 4/4 clean pycache + restart backend ==")
 code, out, err = cexec(
     f"find {REMOTE_BASE}/backend -name '__pycache__' -type d -exec rm -rf {{}} + 2>/dev/null; "

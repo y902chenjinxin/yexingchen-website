@@ -10,6 +10,7 @@
 
 | 日期 | Commit（主要） | 交付内容 |
 |------|---------------|----------|
+| 2026-09-06 | 待提交 | **资讯推送模块上线（SW `xuanhuang-v45`，User「继续往下做」）**：后端 `feed.py` 路由（`/api/feeds/*`）+ 数据模型 `FeedSource/FeedArticle`（user 隔离、`user+source+guid` 去重防重复入库）+ Alembic 迁移 `a1b2c3d4e5f7`（`schema_guard` head 同步升至该 revision，生产 `alembic upgrade head` 建两张新表）+ `feedparser/requests` 依赖。API 能力：订阅源 CRUD（添加时自动抓取并识别标题/站点）、单源抓取 `{id}/fetch`、全源 `fetch-all`、文章列表（按源/分类/未读/收藏/关键词过滤 + 分页，`read` 记已读）、AI 摘要 `{id}/summary`（`summarize_note` 复用 Provider 抽象）、收藏开关 `toggle-bookmark`、**收藏为笔记 `to-note`**（生成 AI 摘要写入独立 `Note` 并自动标收藏）、工作台 `dashboard` 卡片数据。前端新增 `FeedsView.vue`（`/feeds`，替代占位 `BuildingView`）三栏玻璃布局：左栏订阅源（状态点绿/红 + 单源抓取/编辑/删除）、中栏文章列表（未读点、搜索、全部/未读/已收藏筛选、分页）、右栏阅读器（标题/元信息 + AI 摘要面板「生成摘要/重新生成」+ 摘要展示 + 正文 + 阅读原文 + 收藏为笔记/收藏/删除操作）；`WorkbenchView` 「数据一览」大看板资讯卡接入真实 `dashboard` 数据（源数未读数最近文章）。部署沿用「全新 outDir 构建→核验标记→替换 dist→部署」+ 后端双 deploy（含 alembic 迁移）。**生产实操端到端取证**：登录后 `/feeds` 三栏渲染、顶栏不遮页头、添加 Hacker News `hnrss.org/frontpage` 源抓取 20 篇真实文章、阅读器打开、AI 摘要面板可生成、`to-note` 成功写入 `/notes` 草稿——全 PASS。**遗留**：生产服务器未配 `AI_*` 环境变量，AI 摘要/助手为 `FakeProvider` 离线占位文本，需配置真实 Provider 后才有真实摘要。 |
 | 2026-08-30 | — | **MVP 部署**：前后端上线 Nginx+PM2+SQLite，DB 9→22 表（12 张工作台表），`/health` 与首页 200 |
 | 2026-08-31 | — | **登录跳转修复**：`LoginView` 未定义 `useRoute` 变量 → 登录后不跳转，补 `const route=useRoute()` |
 | 2026-09-01 | `2b75b64`（+GPT `2954a23`） | **router 补全 + Nginx 修复**：注册 8 条工作台路由（从未注册过）、修 NoteEditor import 语法、修 Nginx `/assets/` 403 与 `/health` 被 SPA 吞掉 |

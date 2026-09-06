@@ -118,8 +118,8 @@ const routes = [
   {
     path: '/feeds',
     name: 'Feeds',
-    component: () => import('@/views/BuildingView.vue'),
-    meta: { requiresAuth: true, placeholder: '资讯推送' }
+    component: () => import('@/views/FeedsView.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/stocks',

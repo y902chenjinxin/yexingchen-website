@@ -23,7 +23,7 @@
 
     <!-- 大数据看板（账本 / 资讯 / 行情 三卡预览） -->
     <div class="wb-body wb-dash">
-      <WorkbenchDashboard />
+      <WorkbenchDashboard :empty="empty" :finance="finance" :feeds="feeds" />
     </div>
 
     <!-- 底部网安/备案标识（夜色页脚） -->
@@ -38,9 +38,11 @@ import SiteFooter from '@/components/SiteFooter.vue'
 import WorkbenchTools from '@/components/workbench/WorkbenchTools.vue'
 import WorkbenchDashboard from '@/components/workbench/WorkbenchDashboard.vue'
 import { financeApi } from '@/api/finance'
+import { feedsApi } from '@/api/feeds'
 
 const empty = ref(true)
 const finance = ref({})
+const feeds = ref([])
 
 onMounted(async () => {
   try {
@@ -51,6 +53,15 @@ onMounted(async () => {
     }
   } catch (e) {
     /* 未就绪保持空态 */
+  }
+  try {
+    const res = await feedsApi.dashboard()
+    if (res?.data) {
+      if (res.data.source_count) empty.value = false
+      feeds.value = res.data.recent || []
+    }
+  } catch (e) {
+    /* 资讯未就绪忽略 */
   }
 })
 </script>

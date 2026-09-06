@@ -49,6 +49,7 @@ from app.models.workbench import (  # noqa: F401,E402
     AiConversationLink,
     WorkbenchLog,
 )
+from app.models.feed import FeedSource, FeedArticle  # noqa: F401,E402
 
 config = context.config
 
