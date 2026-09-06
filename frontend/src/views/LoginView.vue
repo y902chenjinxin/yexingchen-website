@@ -930,13 +930,32 @@ function resetRegister() {
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border: 1px solid rgba(78, 205, 196, 0.3) !important;
-  box-shadow: none !important;
+  background: rgba(24, 32, 41, 0.7) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(127, 168, 163, 0.3) !important;
+  border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+:deep(.el-input__wrapper:hover),
+:deep(.el-input__wrapper.is-focus) {
+  border-color: rgba(127, 168, 163, 0.6) !important;
 }
 
 :deep(.el-input__inner) {
-  color: #1a1a2e !important;
+  color: var(--color-text) !important;
+}
+
+:deep(.el-input__inner::placeholder) {
+  color: rgba(200, 214, 208, 0.5) !important;
+}
+
+:deep(.el-input__suffix .el-icon),
+:deep(.el-input__clear),
+:deep(.el-input__password) {
+  color: rgba(200, 214, 208, 0.7) !important;
 }
 
 :deep(.el-button--primary) {
