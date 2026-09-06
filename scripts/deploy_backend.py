@@ -22,9 +22,14 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "feed.py"),          f"{REMOTE_BASE}/backend/app/routers/feed.py"),
     (os.path.join(ROOT, "backend", "app", "models", "finance.py"),        f"{REMOTE_BASE}/backend/app/models/finance.py"),
     (os.path.join(ROOT, "backend", "app", "models", "feed.py"),           f"{REMOTE_BASE}/backend/app/models/feed.py"),
+    (os.path.join(ROOT, "backend", "app", "models", "stocks.py"),         f"{REMOTE_BASE}/backend/app/models/stocks.py"),
+    (os.path.join(ROOT, "backend", "app", "services", "stock_fetcher.py"),f"{REMOTE_BASE}/backend/app/services/stock_fetcher.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "stocks.py"),        f"{REMOTE_BASE}/backend/app/routers/stocks.py"),
     (os.path.join(ROOT, "backend", "alembic", "env.py"),                  f"{REMOTE_BASE}/backend/alembic/env.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "a1b2c3d4e5f7_feed_source_article.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/a1b2c3d4e5f7_feed_source_article.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "e5f6a7b8c9d0_stock_watchlist.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/e5f6a7b8c9d0_stock_watchlist.py"),
     (os.path.join(ROOT, "backend", "app", "schemas", "common.py"),      f"{REMOTE_BASE}/backend/app/schemas/common.py"),
     (os.path.join(ROOT, "backend", "app", "schemas", "errors.py"),      f"{REMOTE_BASE}/backend/app/schemas/errors.py"),
     (os.path.join(ROOT, "backend", "requirements.txt"),                 f"{REMOTE_BASE}/backend/requirements.txt"),
@@ -85,7 +90,7 @@ code, out, err = cexec(f"{REMOTE_BASE}/backend/venv/bin/pip install -q httpx==0.
 print("  code:", code)
 print("  ", (out + err)[-500:])
 
-print("== 3/4 alembic upgrade head (feed tables) ==")
+print("== 3/4 alembic upgrade head (feed + stock tables) ==")
 code, out, err = cexec(
     f"cd {REMOTE_BASE}/backend && ENV=production venv/bin/alembic upgrade head 2>&1 | tail -20"
 )

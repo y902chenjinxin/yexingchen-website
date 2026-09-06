@@ -39,10 +39,13 @@ import WorkbenchTools from '@/components/workbench/WorkbenchTools.vue'
 import WorkbenchDashboard from '@/components/workbench/WorkbenchDashboard.vue'
 import { financeApi } from '@/api/finance'
 import { feedsApi } from '@/api/feeds'
+import { stocksApi } from '@/api/stocks'
 
 const empty = ref(true)
 const finance = ref({})
 const feeds = ref([])
+const stocks = ref({})
+const holdings = ref([])
 
 onMounted(async () => {
   try {
@@ -62,6 +65,16 @@ onMounted(async () => {
     }
   } catch (e) {
     /* 资讯未就绪忽略 */
+  }
+  try {
+    const res = await stocksApi.dashboard()
+    if (res?.data) {
+      if (res.data.symbol_count) empty.value = false
+      stocks.value = { marketValue: res.data.market_value, profit: res.data.today_pnl }
+      holdings.value = res.data.holdings || []
+    }
+  } catch (e) {
+    /* 行情未就绪忽略 */
   }
 })
 </script>

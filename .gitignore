@@ -58,6 +58,8 @@ restart_pm2.py
 # docs/3D_ISLAND_REVIEW.md
 # docs/GLB_MODEL_STATUS.md
 # docs/PRD_v1.4.md
+# AI/方案协作文档（本地协作层，不参与版本控制，仅代码入库）
+docs/ai/
 # Backup files
 *.bak
 *.bak-*

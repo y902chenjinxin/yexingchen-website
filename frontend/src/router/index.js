@@ -124,14 +124,14 @@ const routes = [
   {
     path: '/stocks',
     name: 'Stocks',
-    component: () => import('@/views/BuildingView.vue'),
-    meta: { requiresAuth: true, placeholder: '股票行情' }
+    component: () => import('@/views/StocksView.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/stocks/:code',
     name: 'StockDetail',
-    component: () => import('@/views/BuildingView.vue'),
-    meta: { requiresAuth: true, placeholder: '股票详情' }
+    component: () => import('@/views/StockDetailView.vue'),
+    meta: { requiresAuth: true }
   },
   // 外部工具独立页（iframe 内嵌）
   {
