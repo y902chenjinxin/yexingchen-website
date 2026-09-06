@@ -508,3 +508,121 @@
   --color-bg-card: var(--ls-paper);
   --color-success: var(--ls-jade);
 }
+
+/* =====================================================================
+ * 向晚·雨青 —— 全站苹果毛玻璃深色夜景（2026-09-06）
+ * 目标：全站统一「夜色为骨、雨青为光」的苹果级玻璃材质，大圆角柔和，动效克制。
+ * 仅覆盖 core / lj(工作台浅) / ls(岛屿深) 三类 token 值，各组件 var() 引用自动跟随。
+ * 依据：docs/ai/GLASSMORPH_UPGRADE_20260906.md
+ * ===================================================================== */
+:root {
+  /* ---- 夜色骨（主背景灯阶） ---- */
+  --yq-bg0: #0b0f14;                       /* 最深墨夜 */
+  --yq-bg1: #10161d;                       /* 主背景墨青 */
+  --yq-bg2: #161e26;                       /* 浮层 */
+  --color-bg-dark: var(--yq-bg0);
+  --color-bg: var(--yq-bg1);
+  --color-bg-elevated: var(--yq-bg2);
+  --color-bg-glass: rgba(20, 28, 36, 0.62);
+  --ink-black: var(--yq-bg0);
+  --ink-dark: var(--yq-bg1);
+  --ink-medium: var(--yq-bg2);
+  --ink-light: #1d2830;
+  --bg-deep: var(--yq-bg0);
+  --bg-indigo: var(--yq-bg1);
+  --bg-night: var(--yq-bg2);
+
+  /* ---- 文字：淡霜阶梯 ---- */
+  --color-text: #e8eef2;
+  --color-text-dark: #0b0f14;
+  --color-text-secondary: #9aa6ad;
+  --color-text-muted: #5f6c74;
+  --color-text-light: rgba(232, 238, 242, 0.92);
+  --xiu-text: #e8eef2;
+  --xiu-text-2: #9aa6ad;
+  --xiu-text-3: #5f6c74;
+
+  /* ---- 主色：向晚雨青 + 幽光亮阶 + 收敛鎏金 ---- */
+  --yq-rain: #7fa8a3;                      /* 主·雨青 */
+  --yq-rain-bright: #a8d3ce;               /* 亮阶·光（hover/发光） */
+  --yq-rain-deep: #5b8a85;                 /* 深雨青 */
+  --yq-gold: #c7a96b;                      /* 吻·鎏金（趋势点睛） */
+  --yq-gold-bright: #e4d9bd;
+  --color-primary: var(--yq-rain);
+  --color-secondary: var(--yq-rain-deep);
+  --color-accent: var(--yq-gold);
+  --color-qi-primary: var(--yq-rain);
+  --color-qi-green: var(--yq-rain-deep);
+  --color-qi-glow: rgba(127, 168, 163, 0.32);
+  --island-glow-color: rgba(127, 168, 163, 0.2);
+  --color-gold: var(--yq-gold);
+  --color-gold-bright: var(--yq-gold-bright);
+  --color-jade: var(--yq-rain-bright);
+  --xiu-primary: var(--yq-rain);
+  --xiu-primary-bright: var(--yq-rain-bright);
+  --xiu-gold: var(--yq-gold);
+  --color-success: #6aa98f;
+  --color-warning: var(--yq-gold);
+  --color-danger: #d28a7c;
+
+  /* ---- 苹果级玻璃系统 ---- */
+  --glass-blur: blur(24px) saturate(185%);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.10), 0 24px 60px rgba(0, 0, 0, 0.18);
+  --glow-rain: rgba(127, 168, 163, 0.18);  /* 玻璃后透出的雨青淡光斑 */
+  --glow-gold: rgba(199, 169, 107, 0.12);  /* 点睛光斑 */
+
+  /* ---- 大圆角柔和 ---- */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+
+  /* ---- 柔和阴影 ---- */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --shadow: var(--glass-shadow);
+  --shadow-lg: 0 18px 46px rgba(0, 0, 0, 0.24), 0 4px 12px rgba(0, 0, 0, 0.16);
+  --shadow-glow: 0 0 40px rgba(127, 168, 163, 0.22);
+  --shadow-ink: 0 0 20px rgba(127, 168, 163, 0.24), 0 0 40px rgba(127, 168, 163, 0.12);
+  --shadow-jade: 0 0 15px rgba(127, 168, 163, 0.22);
+  --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.4);
+
+  /* ========== 工作台浅色(--lj-*) → 夜色玻璃（工作台随动转深色） ========== */
+  --lj-bg: var(--yq-bg1);
+  --lj-bg-deep: var(--yq-bg2);
+  --lj-paper: rgba(25, 33, 42, 0.62);
+  --lj-ink: var(--color-text);
+  --lj-dai: var(--yq-rain);
+  --lj-dai-deep: var(--yq-rain-deep);
+  --lj-mist: var(--color-text-secondary);
+  --lj-ochre: var(--yq-gold);
+  --lj-vermilion: #d28a7c;
+  --lj-line: rgba(127, 168, 163, 0.16);
+  --lj-line-strong: rgba(127, 168, 163, 0.30);
+  --lj-text: var(--color-text);
+  --lj-text-2: var(--color-text-secondary);
+  --lj-text-3: var(--color-text-muted);
+  --lj-glass: rgba(22, 30, 39, 0.62);
+  --lj-glass-blur: saturate(180%) blur(24px);
+  --lj-shadow: 0 6px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* ========== 岛屿深色(--ls-*) → 对齐雨青 ========== */
+  --ls-bg0: var(--yq-bg0);
+  --ls-bg1: var(--yq-bg1);
+  --ls-bg-glow: rgba(127, 168, 163, 0.10);
+  --ls-paper: #182029;
+  --ls-paper-2: #1f2932;
+  --ls-glass: rgba(24, 32, 41, 0.62);
+  --ls-line: rgba(206, 220, 226, 0.10);
+  --ls-line-strong: rgba(127, 168, 163, 0.24);
+  --ls-highlight: rgba(255, 255, 255, 0.08);
+  --ls-shadow: 0 18px 46px rgba(0, 0, 0, 0.32), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --ls-dai: var(--yq-rain);
+  --ls-dai-deep: var(--yq-rain-deep);
+  --ls-ochre: #c7a96b;
+  --ls-jade: #8ac2b8;
+  --ls-text: #eef2f5;
+  --ls-text-2: #aab6bd;
+  --ls-text-3: #7d8b92;
+}

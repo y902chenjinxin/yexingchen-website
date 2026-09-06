@@ -345,19 +345,19 @@ onUnmounted(() => {
   font-size: 13px; color: var(--lj-text-2); cursor: pointer;
   transition: all 0.25s;
 }
-.tb-nav-item:hover { color: var(--lj-dai); background: rgba(74, 95, 99, 0.06); }
-.tb-nav-item.active { color: var(--lj-dai); background: rgba(74, 95, 99, 0.1); font-weight: 600; }
+.tb-nav-item:hover { color: var(--lj-dai); background: rgba(127, 168, 163, 0.10); }
+.tb-nav-item.active { color: var(--lj-dai); background: rgba(127, 168, 163, 0.15); font-weight: 600; }
 .tb-nav-icon { font-size: 15px; }
 
 .tb-search { position: relative; flex: 1; max-width: 460px; }
 .tb-search-input :deep(.el-input__wrapper) {
-  background: rgba(251, 250, 246, 0.7);
+  background: rgba(26, 34, 44, 0.6);
   border-radius: 999px;
   box-shadow: 0 0 0 1px var(--lj-line) inset;
   padding-left: 14px;
 }
 .tb-search-input :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--lj-dai) inset, 0 0 0 3px rgba(74, 95, 99, 0.1);
+  box-shadow: 0 0 0 1px var(--lj-dai) inset, 0 0 0 3px rgba(127, 168, 163, 0.14);
 }
 
 /* 联想面板 */
@@ -390,10 +390,10 @@ onUnmounted(() => {
 .tb-icon-btn {
   position: relative;
   width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--lj-line); border-radius: 10px; background: rgba(251, 250, 246, 0.6);
+  border: 1px solid var(--lj-line); border-radius: 10px; background: var(--lj-paper);
   color: var(--lj-text-2); font-size: 16px; cursor: pointer; transition: all 0.25s;
 }
-.tb-icon-btn:hover { color: var(--lj-dai); border-color: var(--lj-line-strong); background: #fff; }
+.tb-icon-btn:hover { color: var(--lj-dai); border-color: var(--lj-line-strong); background: var(--lj-bg-deep); }
 .tb-audio-dot {
   position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%;
   background: var(--lj-ochre);
@@ -412,7 +412,7 @@ onUnmounted(() => {
 .tb-knob-fill { position: absolute; inset: 0; right: auto; border-radius: 999px; background: var(--lj-dai); }
 .tb-knob-thumb {
   position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%;
-  background: #fff; border: 2px solid var(--lj-dai);
+  background: var(--yq-rain-bright); border: 2px solid var(--lj-dai);
   transform: translate(-50%, -50%);
 }
 

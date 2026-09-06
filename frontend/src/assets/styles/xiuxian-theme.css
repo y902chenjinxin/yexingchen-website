@@ -3,51 +3,51 @@
  * 让所有 el-* 组件融入「深青夜色 + 灵气青绿」修仙风，不再默认蓝/白皮
  * ===================================================================== */
 :root {
-  /* ---- 主色：灵气青绿（登录页） ---- */
-  --el-color-primary: #3db8b0;
-  --el-color-primary-light-3: #62c5bd;
-  --el-color-primary-light-5: #88d3cd;
-  --el-color-primary-light-7: #aee0dc;
-  --el-color-primary-light-8: #c7e8e6;
-  --el-color-primary-light-9: #e4f3f2;
-  --el-color-primary-dark-2: #2e948e;
-  --el-color-success: #4fae9a;
-  --el-color-warning: #d4b878;
-  --el-color-danger: #e08a7a;
-  --el-color-error: #e08a7a;
+  /* ---- 主色：向晚雨青 ---- */
+  --el-color-primary: #7fa8a3;
+  --el-color-primary-light-3: #8fb6b0;
+  --el-color-primary-light-5: #a3c5c0;
+  --el-color-primary-light-7: #b8d2ce;
+  --el-color-primary-light-8: #cddfdc;
+  --el-color-primary-light-9: #e6eff0;
+  --el-color-primary-dark-2: #5b8a85;
+  --el-color-success: #6aa98f;
+  --el-color-warning: #c9a86b;
+  --el-color-danger: #d28a7c;
+  --el-color-error: #d28a7c;
   --el-color-info: #9fb3c2;
 
   /* ---- 形状 ---- */
-  --el-border-radius-base: 8px;
-  --el-border-radius-small: 6px;
+  --el-border-radius-base: 12px;
+  --el-border-radius-small: 8px;
   --el-border-radius-round: 999px;
 
-  /* ---- 夜色背景 ---- */
-  --el-bg-color: #1a2530;
-  --el-bg-color-overlay: #1a2632;
-  --el-bg-color-page: #15212c;
-  --el-fill-color-blank: #1a2733;
-  --el-fill-color: #24313d;
-  --el-fill-color-light: #202e3a;
-  --el-fill-color-lighter: #1c2a36;
-  --el-fill-color-extra-light: #1a2732;
+  /* ---- 夜色背景（对齐向晚雨青） ---- */
+  --el-bg-color: #161e26;
+  --el-bg-color-overlay: #1a222b;
+  --el-bg-color-page: #10161d;
+  --el-fill-color-blank: #1a222b;
+  --el-fill-color: #1e2831;
+  --el-fill-color-light: #202b34;
+  --el-fill-color-lighter: #1a242d;
+  --el-fill-color-extra-light: #182128;
 
   /* ---- 文字：淡霜白 ---- */
   --el-text-color-primary: #eaf2f8;
-  --el-text-color-regular: #c4d2dd;
-  --el-text-color-secondary: #9fb3c2;
-  --el-text-color-placeholder: #5a6b78;
+  --el-text-color-regular: #c6d2da;
+  --el-text-color-secondary: #9aa6ad;
+  --el-text-color-placeholder: #5f6c74;
   --el-text-color-disabled: #40505c;
 
   /* ---- 夜色边框 ---- */
-  --el-border-color: #2c3f4e;
-  --el-border-color-light: #263949;
-  --el-border-color-lighter: #22313e;
-  --el-border-color-extra-light: #1f2f3b;
-  --el-border-color-hover: #3db8b0;
-  --el-border-color-dark: #3a5060;
+  --el-border-color: #263541;
+  --el-border-color-light: #22313d;
+  --el-border-color-lighter: #1f2d37;
+  --el-border-color-extra-light: #1b2933;
+  --el-border-color-hover: #7fa8a3;
+  --el-border-color-dark: #33444f;
 
-  /* ---- 阴影 ---- */
-  --el-box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(201, 169, 110, 0.08) inset;
-  --el-box-shadow-light: 0 12px 32px rgba(0, 0, 0, 0.3);
+  /* ---- 柔和多层阴影 ---- */
+  --el-box-shadow: 0 1px 1px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.12), 0 24px 60px rgba(0,0,0,.22), 0 0 0 1px rgba(127,168,163,.08) inset;
+  --el-box-shadow-light: 0 2px 8px rgba(0,0,0,.12), 0 12px 32px rgba(0,0,0,.16);
 }

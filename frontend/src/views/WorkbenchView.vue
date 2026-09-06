@@ -36,8 +36,8 @@
       </section>
     </div>
 
-    <!-- 底部网安/备案标识（浅色留白页脚，随浅色页面底边展开） -->
-    <SiteFooter variant="light" class="wb-footer" />
+    <!-- 底部网安/备案标识（夜色页脚） -->
+    <SiteFooter variant="dark" class="wb-footer" />
   </div>
 </template>
 
@@ -77,21 +77,21 @@ import SiteFooter from '@/components/SiteFooter.vue'
   padding-bottom: 84px;
 }
 
-/* ===== 浅底留白背景 ===== */
+/* ===== 夜色玻璃底（向晚·雨青） ===== */
 .lj-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
   background:
-    radial-gradient(ellipse 60% 40% at 20% 8%, rgba(74, 95, 99, 0.05), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 85% 30%, rgba(176, 128, 90, 0.05), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 8%, var(--glow-rain), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 30%, var(--glow-gold), transparent 60%),
     var(--lj-bg);
 }
 .lj-paper-texture {
   position: absolute; inset: 0; opacity: 0.55;
   background:
-    repeating-linear-gradient(0deg, rgba(58, 67, 80, 0.012) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(90deg, rgba(58, 67, 80, 0.008) 0 1px, transparent 1px 7px);
+    repeating-linear-gradient(0deg, rgba(127, 168, 163, 0.02) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, rgba(127, 168, 163, 0.014) 0 1px, transparent 1px 7px);
 }
 .lj-wash { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4;
-  background: radial-gradient(circle, rgba(74, 95, 99, 0.12), transparent 70%); animation: lj-drift 30s ease-in-out infinite; }
+  background: radial-gradient(circle, rgba(127, 168, 163, 0.14), transparent 70%); animation: lj-drift 30s ease-in-out infinite; }
 .lj-wash.w1 { width: 480px; height: 420px; top: 12%; left: -6%; }
 .lj-wash.w2 { width: 420px; height: 360px; bottom: 6%; right: -5%; animation-delay: 8s; }
 .lj-wash.w3 { width: 520px; height: 300px; top: 48%; left: 38%; opacity: 0.24; animation-delay: 16s; }
@@ -113,10 +113,12 @@ import SiteFooter from '@/components/SiteFooter.vue'
 .wb-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 0 0 24px; }
 .wb-action {
   position: relative; display: flex; gap: 14px; align-items: center; padding: 18px;
-  border-radius: 14px; color: var(--lj-text); text-decoration: none;
+  border-radius: 16px; color: var(--lj-text); text-decoration: none;
   background: var(--lj-paper);
   border: 1px solid var(--lj-line); overflow: hidden;
-  box-shadow: var(--lj-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
   transition: all 0.3s; animation: lj-rise .7s cubic-bezier(.4,0,.2,1) both;
 }
 .wb-action::after { content: ""; position: absolute; top: 0; left: 14%; right: 14%; height: 1px;
@@ -125,16 +127,16 @@ import SiteFooter from '@/components/SiteFooter.vue'
   width: 46px; height: 46px; flex: none; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
   color: var(--lj-dai); font-size: 22px;
-  border: 1px solid var(--lj-line); background: rgba(74, 95, 99, 0.06);
+  border: 1px solid var(--lj-line); background: rgba(127, 168, 163, 0.08);
   transition: all 0.3s;
 }
-.wb-action:hover { transform: translateY(-2px); border-color: var(--lj-line-strong); box-shadow: 0 12px 30px rgba(58, 67, 80, 0.12); }
-.wb-action:hover .wb-action-icon { background: rgba(74, 95, 99, 0.1); }
+.wb-action:hover { transform: translateY(-2px); border-color: var(--lj-line-strong); box-shadow: var(--glass-highlight), 0 14px 34px rgba(0,0,0,.34); }
+.wb-action:hover .wb-action-icon { background: rgba(127, 168, 163, 0.14); }
 .wb-action-text { display: flex; flex-direction: column; }
 .wb-action-text strong { font-size: 16px; letter-spacing: .06em; }
 .wb-action-text small { margin-top: 3px; color: var(--lj-text-2); font-size: 12px; }
-.wb-action.primary { background: linear-gradient(135deg, var(--lj-paper), #eef0eb); }
-.wb-action.primary .wb-action-icon { color: var(--lj-ochre); border-color: rgba(176, 128, 90, 0.25); background: rgba(176, 128, 90, 0.08); }
+.wb-action.primary { background: linear-gradient(165deg, rgba(127,168,163,.10), rgba(127,168,163,0) 55%), var(--lj-paper); }
+.wb-action.primary .wb-action-icon { color: var(--lj-ochre); border-color: rgba(199, 169, 107, 0.25); background: rgba(199, 169, 107, 0.12); }
 
 @media (prefers-reduced-motion: reduce) {
   .workbench-page *, .workbench-page *::before, .workbench-page *::after { animation: none !important; transition: none !important; }

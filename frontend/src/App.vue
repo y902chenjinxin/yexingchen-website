@@ -19,7 +19,7 @@
     <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn" />
 
     <!-- 登录后全站底部网安/备案标识（工作台与岛屿/工具内容页各自渲染页脚，此处不再重复） -->
-    <SiteFooter v-if="!showInitialLoading && auth.isLoggedIn && showGlobalFooter" variant="light" />
+    <SiteFooter v-if="!showInitialLoading && auth.isLoggedIn && showGlobalFooter" variant="dark" />
   </div>
 </template>
 

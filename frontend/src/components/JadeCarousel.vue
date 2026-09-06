@@ -338,11 +338,11 @@ onUnmounted(() => {
   display: flex;
   gap: 8px;
   padding: 6px 12px;
-  background: rgba(251, 250, 246, 0.7);
+  background: rgba(26, 34, 44, 0.65);
   -webkit-backdrop-filter: var(--lj-glass-blur);
   backdrop-filter: var(--lj-glass-blur);
   border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(58, 67, 80, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   cursor: default;
 }
 

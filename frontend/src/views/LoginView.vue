@@ -863,14 +863,16 @@ function resetRegister() {
   z-index: 100;
   width: 360px;
   padding: 40px;
-  background: rgba(26, 58, 74, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(201, 169, 110, 0.3);
-  border-radius: 16px;
+  background: rgba(20, 28, 36, 0.6);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+  backdrop-filter: blur(24px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 20px;
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.5),
-    0 0 60px rgba(78, 205, 196, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 1px 1px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.10),
+    0 24px 60px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   opacity: 0;
   transform: translateY(30px);
   transition: opacity 0.4s ease, transform 0.4s ease;

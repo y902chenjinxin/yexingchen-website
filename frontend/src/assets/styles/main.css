@@ -111,16 +111,36 @@ body {
   .el-table { min-width: 620px; }
 }
 
-/* 玄素琉璃玻璃卡片（岛屿内页深色卡片统一材质） */
+/* 玄素琉璃玻璃卡片（岛屿内页深色卡片统一材质 → 向晚·雨青苹果玻璃） */
 .ls-card {
-  background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,0) 48%), var(--ls-paper);
+  background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,0) 46%), var(--ls-paper);
   border: 1px solid var(--ls-line);
-  border-radius: 16px;
-  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  border-radius: var(--radius-lg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
   transition: border-color .25s ease, transform .25s ease, box-shadow .25s ease;
 }
 .ls-card:hover {
   border-color: var(--ls-line-strong);
   transform: translateY(-2px);
-  box-shadow: inset 0 1px 0 var(--ls-highlight), 0 14px 34px rgba(0,0,0,.4);
+  box-shadow: var(--glass-highlight), 0 14px 34px rgba(0,0,0,.34);
+}
+
+/* ========== 苹果级玻璃系统 · 通用玻璃卡（向晚·雨青） ========== */
+.glass-card {
+  background: linear-gradient(165deg, rgba(255,255,255,.04), rgba(255,255,255,0) 46%), rgba(22,30,39,.6);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+
+/* ========== 动效克制 ========== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .6s !important;
+    transition-duration: .15s !important;
+  }
 }
