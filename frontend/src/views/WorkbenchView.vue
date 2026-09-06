@@ -19,14 +19,7 @@
     <!-- 快捷动作 -->
     <div class="wb-body">
       <section class="wb-actions">
-        <router-link to="/notes/new" class="wb-action primary">
-          <span class="wb-action-icon"><el-icon><Edit /></el-icon></span>
-          <span class="wb-action-text">
-            <strong>快速记录</strong>
-            <small>新建草稿，自动保存</small>
-          </span>
-        </router-link>
-        <router-link to="/assistant" class="wb-action">
+        <router-link to="/assistant" class="wb-action primary">
           <span class="wb-action-icon"><el-icon><ChatDotRound /></el-icon></span>
           <span class="wb-action-text">
             <strong>AI 助手</strong>
@@ -42,7 +35,7 @@
 </template>
 
 <script setup>
-import { Edit, ChatDotRound } from '@element-plus/icons-vue'
+import { ChatDotRound } from '@element-plus/icons-vue'
 import JadeCarousel from '@/components/JadeCarousel.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 </script>

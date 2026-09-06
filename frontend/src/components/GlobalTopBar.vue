@@ -172,9 +172,7 @@ const searchFocus = ref(false)
 let suggestTimer = null
 
 /* ---- 导航 ---- */
-const navItems = [
-  { label: '笔记', to: '/notes', icon: Document }
-]
+const navItems = []
 function isActive(item) {
   return route.path.startsWith(item.to)
 }
