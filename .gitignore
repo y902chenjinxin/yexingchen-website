@@ -61,3 +61,9 @@ restart_pm2.py
 *.bak
 *.bak-*
 *~\n
+
+# Archives and build artifacts (supplement)
+*.zip
+*.tar.gz
+*.rar
+
