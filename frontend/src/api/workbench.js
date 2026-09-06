@@ -148,6 +148,42 @@ export const workbenchApi = {
     link: (convId, payload) => api.post(`/workbench/ai/conversations/${convId}/links`, payload),
     unlink: (convId, linkId) => api.delete(`/workbench/ai/conversations/${convId}/links/${linkId}`),
     listLinks: (convId) => api.get(`/workbench/ai/conversations/${convId}/links`),
+    // 独立原生对话：SSE 流式（需要原始 fetch，不用 axios 拦截器）
+    chatStream: async (body, onEvent, signal) => {
+      const token = localStorage.getItem('token') || ''
+      const resp = await fetch('/api/workbench/ai/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+        signal,
+      })
+      if (!resp.ok || !resp.body) {
+        const txt = await resp.text().catch(() => '')
+        throw new Error(`对话流请求失败（HTTP ${resp.status}）：${txt.slice(0, 200)}`)
+      }
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let buffer = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        let idx
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const raw = buffer.slice(0, idx).trim()
+          buffer = buffer.slice(idx + 2)
+          if (!raw.startsWith('data:')) continue
+          const payload = raw.replace(/^data:\s*/, '').trim()
+          if (!payload) continue
+          let obj
+          try { obj = JSON.parse(payload) } catch { continue }
+          onEvent(obj)
+        }
+      }
+    },
   },
 }
 

@@ -45,6 +45,7 @@
 | `WORKBENCH_REDESIGN_20260903.md` | 工作台重构（玉简轮播 + 顶栏 + 弃用 /home） | ✅ 已上线（SW v10） |
 | `WORKBENCH_VISUAL_QUALITY_20260903.md` | 玄素琉璃深色材质体系（视觉质感） | ✅ 已上线（SW v11） |
 | `TOOL_LIBRARY_PLAN_20260904.md` | 工具库可接入 GitHub 纯前端工具推荐 | ⏳ 待用户选型后实施（尚未选） |
+| `PC_EXPAND_PLAN_20260906.md` | 5 个 PC 端功能扩展（语音输入 / 个人记账 / 资讯推送 / 股票查看 / 证件照工具）+ 工作台首页改造（玉简只 3 张大分类 / 常用工具区 / 快速入口放下方） | ⏳ 方案评审通过，待实施（4 周路线图） |
 
 > `archive/` 仅存历史任务记录（`coding-tasks-history`），已并入 WORK_LOG，不再维护。
 

@@ -22,19 +22,20 @@
       <el-input
         v-model="searchWord"
         class="tb-search-input"
-        placeholder="搜笔记 / 标签"
+        placeholder="搜索全站：笔记 · 音乐 · 小说 · 视频 · 工具"
         clearable
         :size="isMobile ? 'default' : 'large'"
+        @mousedown="searchFocus = true"
+        @focus="searchFocus = true"
         @input="onSearchInput"
         @keyup.enter="runSearch"
-        @focus="searchFocus = true"
       >
         <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
 
       <!-- 联想面板 -->
       <transition name="fade-drop">
-        <div v-if="searchFocus && suggestions && suggestions.count" class="tb-suggest">
+        <div v-if="searchFocus && searchWord.trim()" class="tb-suggest">
           <template v-for="(group, gkey) in suggestGroups" :key="gkey">
             <div v-if="group.items.length" class="suggest-group">
               <div class="suggest-head">{{ group.title }}</div>
@@ -49,7 +50,22 @@
               </div>
             </div>
           </template>
-          <div v-if="!suggestions.count" class="suggest-empty">无匹配结果</div>
+          <div v-if="!suggestions.count" class="suggest-empty">未找到相关结果，可直达下方模块</div>
+          <!-- 模块快捷入口（固定常驻） -->
+          <div class="suggest-modules">
+            <div class="suggest-head">快速前往</div>
+            <div class="suggest-mod-row">
+              <a
+                v-for="mod in moduleShortcuts"
+                :key="mod.key"
+                class="suggest-mod"
+                @mousedown.prevent="go(mod.to)"
+              >
+                <el-icon class="suggest-icon"><component :is="mod.icon" /></el-icon>
+                <span>{{ mod.label }}</span>
+              </a>
+            </div>
+          </div>
         </div>
       </transition>
     </div>
@@ -137,12 +153,12 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Grid, User, Lock, Avatar, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
-  Document, Check, PriceTag
+  Document, Check, Notebook, VideoPlay, MagicStick, Reading
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
-import { workbenchApi } from '@/api/workbench'
+import { searchAll } from '@/api/search'
 
 const router = useRouter()
 const route = useRoute()
@@ -221,8 +237,18 @@ function onCommand(cmd) {
   }
 }
 
-/* ---- 全局搜索联想 ---- */
+/* ---- 全局搜索联想（全站） ---- */
 const suggestions = ref({ results: null, count: 0 })
+
+// 模块快捷入口（常驻下拉底部）
+const moduleShortcuts = [
+  { key: 'assistant', label: 'AI 助手', to: '/assistant', icon: MagicStick },
+  { key: 'music', label: '音乐', to: '/music', icon: Headset },
+  { key: 'novel', label: '小说', to: '/novel', icon: Reading },
+  { key: 'video', label: '视频', to: '/video', icon: VideoPlay },
+  { key: 'tool', label: '工具', to: '/tool', icon: Tools },
+]
+
 const suggestGroups = computed(() => {
   const r = suggestions.value.results || {}
   return [
@@ -233,10 +259,28 @@ const suggestGroups = computed(() => {
       to: (it) => `/notes/${it?.id}`
     },
     {
-      key: 'tags', title: '标签', icon: PriceTag,
-      items: r.tags || [],
-      label: (it) => '#' + it?.name,
-      to: (it) => `/notes?tag=${encodeURIComponent(it?.name || '')}`
+      key: 'music', title: '音乐', icon: Headset,
+      items: r.music || [],
+      label: (it) => it?.title || '（无标题）',
+      to: (it) => `/music`
+    },
+    {
+      key: 'novels', title: '小说', icon: Reading,
+      items: r.novels || [],
+      label: (it) => it?.title + (it?.author ? `　${it.author}` : ''),
+      to: (it) => `/novel`
+    },
+    {
+      key: 'videos', title: '视频', icon: VideoPlay,
+      items: r.videos || [],
+      label: (it) => it?.title || '（无标题）',
+      to: (it) => `/video`
+    },
+    {
+      key: 'tools', title: '工具', icon: Tools,
+      items: r.tools || [],
+      label: (it) => it?.title || it?.description || '（无标题）',
+      to: (it) => `/tool`
     }
   ]
 })
@@ -250,10 +294,11 @@ function onSearchInput() {
   }
   suggestTimer = setTimeout(async () => {
     try {
-      const res = await workbenchApi.search(q, { size: 6 })
-      const results = res?.data?.results || {}
-      const count = (results.notes?.length || 0) + (results.tags?.length || 0)
-      suggestions.value = { results, count }
+      const res = await searchAll({ q, page: 1, size: 6 })
+      const data = res?.data || {}
+      const count = (data.notes?.length || 0) + (data.music?.length || 0) +
+        (data.novels?.length || 0) + (data.videos?.length || 0) + (data.tools?.length || 0)
+      suggestions.value = { results: data, count }
     } catch {
       suggestions.value = { results: null, count: 0 }
     }
@@ -297,7 +342,8 @@ onMounted(async () => {
 })
 
 function onDocDown(e) {
-  if (!topbarRef.value?.contains(e.target)) searchFocus.value = false
+  const inSearch = e.target?.closest?.('.tb-search') || e.target?.closest?.('.tb-suggest')
+  if (!topbarRef.value?.contains(e.target) && !inSearch) searchFocus.value = false
 }
 
 onUnmounted(() => {
@@ -381,6 +427,17 @@ onUnmounted(() => {
 .suggest-icon { font-size: 14px; }
 .suggest-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .suggest-empty { padding: 14px 16px; font-size: 13px; color: var(--lj-text-3); }
+
+/* 模块快捷入口 */
+.suggest-modules { padding: 6px 0 8px; border-top: 1px solid var(--lj-line); }
+.suggest-mod-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 16px; }
+.suggest-mod {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 10px; border: 1px solid var(--lj-line); border-radius: 8px;
+  font-size: 12px; color: var(--lj-text-2); cursor: pointer;
+  background: rgba(127, 168, 163, 0.06); transition: all 0.2s;
+}
+.suggest-mod:hover { color: var(--lj-dai); border-color: var(--lj-line-strong); background: rgba(127, 168, 163, 0.12); }
 
 .fade-drop-enter-active, .fade-drop-leave-active { transition: all 0.18s ease; }
 .fade-drop-enter-from, .fade-drop-leave-to { opacity: 0; transform: translateY(-4px); }

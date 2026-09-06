@@ -29,7 +29,7 @@ from fastapi import (
     Query,
     UploadFile,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -86,6 +86,15 @@ from app.utils.validation import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/workbench", tags=["工作台"])
+
+# 独立原生 AI 助手：system 提示与携带的历史轮数上限
+AI_CHAT_SYSTEM_PROMPT = (
+    "你是一个独立、通用的人工智能助手，并不隶属于任何笔记或工作台系统。"
+    "你可以回答日常问题、解释概念、分析和总结用户提供的内容、根据需求撰写文本、"
+    "生成笔记草稿、提供建议或进行创作。用自然、温暖、口语化的中文回答，条理清晰，"
+    "不刻意引用‘笔记’等系统概念。"
+)
+AI_CHAT_CONTEXT = 20
 
 # ============================================================
 # 统一响应包装
@@ -225,6 +234,14 @@ class AiMessageIn(BaseModel):
     role: str
     content: str
     input_scope: Optional[str] = None
+
+
+class AiChatStreamIn(BaseModel):
+    """独立原生对话流式请求。"""
+
+    content: str
+    conversation_id: int  # 必填，强制校验归属
+    provider_id: Optional[int] = None  # 指定 provider；不传则用默认；都没则 fake
 
 
 class AiLinkIn(BaseModel):
@@ -1404,6 +1421,103 @@ def ai_invoke(
         "assistant_message_id": assistant_msg.id,
         "scope_preview": preview,
     })
+
+
+@router.post("/ai/chat/stream")
+def ai_chat_stream(
+    payload: AiChatStreamIn,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """独立原生 AI 对话（流式直通，不与笔记/能力绑定）。
+
+    - 读取会话历史 → 拼 system + 最近若干轮 → 追加本次用户消息；
+    - 用户消息立即入库；助手回复以 SSE 逐段下发，流式完成后落库成 assistant 消息；
+    - 前端通过 fetch + ReadableStream 解析，实现打字机输出。
+    """
+    uid = current_user["user_id"]
+    conv = _ensure_user_conversation(db, payload.conversation_id, uid)
+
+    content = sanitize_text(payload.content or "")
+    if not content:
+        raise_http(400, "内容为空", 400)
+
+    # 选 provider：payload.provider_id → 默认 → 都没有则 FakeProvider
+    user_cfg = _resolve_user_provider(db, uid, payload.provider_id)
+    if user_cfg:
+        active_provider = _build_http_provider_from_config(user_cfg)
+        provider_name = f"{user_cfg.provider_key}:{user_cfg.display_name}"
+        model_name = user_cfg.model_name
+    else:
+        active_provider = FakeProvider()
+        provider_name = "fake"
+        model_name = "fake-1"
+
+    history = [{"role": m.role, "content": m.content} for m in conv.messages if m.content]
+    history = history[-(AI_CHAT_CONTEXT - 1):]  # 预留一条给本次 user 消息
+    messages = [
+        {"role": "system", "content": AI_CHAT_SYSTEM_PROMPT},
+        *history,
+        {"role": "user", "content": content},
+    ]
+
+    # 用户消息立即入库
+    user_msg = AiMessage(conversation_id=conv.id, role="user", content=content)
+    db.add(user_msg)
+    conv.updated_at = datetime.now()
+    db.commit()
+    db.refresh(user_msg)
+
+    conv_id = conv.id
+    # 流式生成器在请求主 handler 返回后才执行；用与本次请求同源的 bind 建独立 session，
+    # 避免与 dependency get_db 的生命周期耦合，也便于测试 override 生效。
+    from sqlalchemy.orm import sessionmaker as _make_session
+    _SaveSession = _make_session(bind=db.get_bind(), autoflush=False)
+
+    def sse(obj: dict) -> str:
+        return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
+
+    async def event_stream():
+        total: list = []
+        try:
+            async for delta in active_provider.stream_chat(messages):
+                total.append(delta)
+                yield sse({"type": "token", "delta": delta})
+            text = "".join(total).strip()
+            if not text:
+                text = "（AI 未返回有效内容，请检查 Provider 配置或网络。）"
+            assistant_id = None
+            s = _SaveSession()
+            try:
+                am = AiMessage(
+                    conversation_id=conv_id,
+                    role="assistant",
+                    content=text,
+                    input_scope=None,
+                    pending_apply=False,
+                )
+                s.add(am)
+                s.query(AiConversation).filter(AiConversation.id == conv_id).update(
+                    {"updated_at": datetime.now()}
+                )
+                s.commit()
+                s.refresh(am)
+                assistant_id = am.id
+            finally:
+                s.close()
+            yield sse({
+                "type": "done",
+                "conversation_id": conv_id,
+                "message_id": assistant_id,
+                "text": text,
+                "provider": provider_name,
+                "model": model_name,
+            })
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("AI chat stream failed")
+            yield sse({"type": "error", "msg": str(exc)[:300]})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.post("/ai/apply")

@@ -1,13 +1,15 @@
 <template>
   <div class="assistant-page">
     <header class="assistant-header">
-      <BackButton fallback="/workbench" style="margin-right: 12px;" /><h1>AI 助手</h1>
+      <div class="assistant-header-left">
+        <BackButton fallback="/workbench" style="margin-right: 12px;" /><h1>AI 助手</h1>
+        <span class="header-sub">独立对话 · 流式回答 · 可总结 / 生成笔记</span>
+      </div>
       <div class="header-actions">
         <el-select
           v-model="currentProviderId"
           placeholder="选择 Provider"
           style="width: 220px"
-          @change="onProviderChange"
         >
           <el-option
             v-for="p in providers"
@@ -20,16 +22,18 @@
               {{ p.provider_key }} · {{ p.is_default ? '默认' : '' }}
             </span>
           </el-option>
-          <el-option v-if="!providers.length" :value="null" disabled label="（未配置 Provider，AI 使用 fake）" />
+          <el-option v-if="!providers.length" :value="null" disabled label="（未配置 Provider，使用离线演示）" />
         </el-select>
         <el-button @click="openProviders">配置 AI</el-button>
-        <el-button @click="showCreate = true">新建对话</el-button>
       </div>
     </header>
 
     <div class="assistant-body">
       <aside class="assistant-sidebar">
-        <h3>对话列表</h3>
+        <button class="new-chat-btn" @click="newConversation">
+          <el-icon style="font-size:15px"><Plus /></el-icon><span>新对话</span>
+        </button>
+        <h3>历史对话</h3>
         <ul>
           <li
             v-for="c in conversations"
@@ -37,7 +41,7 @@
             :class="{ active: c.id === activeId }"
             @click="open(c.id)"
           >
-            <span>{{ c.title || '新对话' }}</span>
+            <span class="conv-title">{{ c.title || '新对话' }}</span>
             <button class="del-btn" @click.stop="del(c.id)">×</button>
           </li>
           <li v-if="!conversations.length" class="empty">还没有对话</li>
@@ -45,93 +49,77 @@
       </aside>
 
       <main class="assistant-main">
-        <template v-if="activeId">
-          <div class="messages">
-            <div v-for="m in messages" :key="m.id" :class="['msg', m.role]">
-              <div class="msg-role">{{ roleLabel(m.role) }}</div>
-              <pre class="msg-content">{{ m.content }}</pre>
-              <details v-if="m.input_scope" class="msg-scope">
-                <summary>查看发送范围</summary>
-                <pre>{{ m.input_scope }}</pre>
-              </details>
-              <div v-if="m.provider" class="msg-meta">
-                provider: {{ m.provider }} {{ m.is_fake ? '(fake/离线)' : '(真实)' }}
-              </div>
-              <!-- 结构化结果内联应用（不用弹窗） -->
-              <div v-if="inlineApply && inlineApply.msgId === m.id" class="inline-apply">
-                <template v-if="inlineApply.applied">
-                  <span class="inline-applied">✓ 已应用</span>
-                </template>
-                <template v-else>
-                  <details :open="inlineApplyOpen" class="inline-apply-box">
-                    <summary>{{ inlineApplySummary }}</summary>
-                    <div v-if="inlineApply.ability === 'suggest_task'" class="inline-apply-body">
-                      <p class="inline-apply-tip">将把 AI 建议创建为一条任务草稿。</p>
-                      <div class="inline-apply-actions">
-                        <el-button size="small" @click="hideInlineApply">放弃</el-button>
-                        <el-button size="small" type="primary" :loading="applying" @click="confirmApplyInline">确认创建任务</el-button>
-                      </div>
-                    </div>
-                    <div v-else class="inline-apply-body">
-                      <p class="inline-apply-tip">选择要将结果写入的目标笔记：</p>
-                      <div class="apply-target-row">
-                        <NoteSelect
-                          v-model="applyTargetNoteId"
-                          :items="applyTargetNotes"
-                          :loading="notesLoading"
-                          :has-more="applyTargetNotes.length < applyTargetTotal"
-                          placeholder="输入关键词搜索笔记…"
-                          empty-text="暂无笔记可选，点右侧「新建草稿」"
-                          style="flex: 1; min-width: 200px"
-                          @search="loadApplyTargetNotes({ reset: true, keyword: $event })"
-                          @load-more="loadApplyTargetNotes()"
-                        />
-                        <el-button size="small" @click="loadApplyTargetNotes({ reset: true })" :disabled="notesLoading">刷新</el-button>
-                        <el-button size="small" type="primary" plain @click="createApplyTargetNote" :disabled="notesLoading">新建草稿</el-button>
-                      </div>
-                      <p v-if="applyTargetError" class="ai-apply-error">{{ applyTargetError }}</p>
-                      <div class="inline-apply-actions">
-                        <el-button size="small" @click="hideInlineApply">放弃</el-button>
-                        <el-button size="small" type="primary" :disabled="!applyTargetNoteId || applying" :loading="applying" @click="confirmApplyInline">{{ applyButtonLabel }}</el-button>
+        <template v-if="activeId !== null">
+          <div class="messages" ref="msgListRef">
+            <div v-for="(m, i) in messages" :key="m.key" :class="['chat-msg', m.role]">
+              <div class="chat-bubble">
+                <div class="chat-name">
+                  {{ m.role === 'user' ? '我' : '玄黄 AI' }}
+                  <template v-if="m.role === 'assistant' && m.provider"> · {{ m.provider }}</template>
+                </div>
+                <div class="chat-text" v-html="renderText(m.content)"></div>
+                <span v-if="m.role === 'assistant' && m.status === 'streaming'" class="chat-cursor">▍</span>
+                <!-- 记入笔记（已完成 assistant 气泡内折叠操作，不弹窗） -->
+                <div v-if="m.role === 'assistant' && m.status === 'done'" class="chat-save">
+                  <details @toggle="m.save.open = $event.target.open">
+                    <summary class="chat-save-toggle">记入笔记</summary>
+                    <div class="chat-save-body">
+                      <el-input v-model="m.save.title" size="small" placeholder="笔记标题（可选，默认取首行）" />
+                      <el-input
+                        v-model="m.save.content"
+                        type="textarea"
+                        :rows="5"
+                        size="small"
+                        placeholder="笔记正文（可先编辑再保存）"
+                        class="chat-save-content"
+                      />
+                      <div class="chat-save-actions">
+                        <el-button
+                          size="small"
+                          type="primary"
+                          :loading="m.save.saving"
+                          :disabled="m.save.saved"
+                          @click="saveNoteToNotebook(i)"
+                        >
+                          {{ m.save.saved ? '已保存 ✓' : '创建笔记' }}
+                        </el-button>
                       </div>
                     </div>
                   </details>
-                </template>
+                </div>
               </div>
             </div>
-            <div v-if="!messages.length" class="empty">开始新对话吧</div>
+            <div v-if="!messages.length" class="empty">
+              <p class="empty-title">你好，我是你的独立 AI 助手</p>
+              <p class="empty-sub">随便问我日常问题、让我总结一段文字，或帮我把想法整理成笔记。</p>
+            </div>
           </div>
           <div class="composer">
             <el-input
               v-model="draft"
               type="textarea"
               :rows="3"
-              placeholder="输入要发送给 AI 的内容，回车发送（Shift+回车换行）"
+              placeholder="和 AI 对话…（Enter 发送，Shift+Enter 换行）"
               @keydown.enter.exact.prevent="send"
             />
             <div class="composer-actions">
-              <el-button type="primary" :disabled="!draft.trim() || sending" @click="send" :loading="sending">
+              <span v-if="streamError" class="composer-error">{{ streamError }}</span>
+              <el-button type="primary" :disabled="!draft.trim() || sending" :loading="sending" @click="send">
                 发送
               </el-button>
             </div>
           </div>
         </template>
-        <p v-else class="placeholder">在左侧选择或新建一个对话。</p>
+        <div v-else class="placeholder">
+          <p>点击左侧「新对话」或选择一个历史对话开始。</p>
+        </div>
       </main>
     </div>
-
-    <el-dialog v-model="showCreate" title="新建对话" width="420px">
-      <el-input v-model="newTitle" placeholder="对话标题（可选）" />
-      <template #footer>
-        <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" @click="create">创建</el-button>
-      </template>
-    </el-dialog>
 
     <!-- AI Provider 配置弹窗 -->
     <el-dialog v-model="showProviders" title="配置 AI Provider" width="640px" :close-on-click-modal="false">
       <p class="modal-tip">
-        支持 OpenAI 兼容协议（GPT / DeepSeek / 通义 / Qwen / GLM / 月之暗面 等）。
+        支持 OpenAI 兼容协议（GPT / DeepSeek / 通义 / Qwen / GLM 等）。
         Key 按你的授权明文存储，访问 AI 时直接调用。
       </p>
 
@@ -205,15 +193,23 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import { workbenchApi } from '@/api/workbench'
 import BackButton from '@/components/BackButton.vue'
-import NoteSelect from '@/components/common/NoteSelect.vue'
 
 const conversations = ref([])
+const activeId = ref(null)
+const messages = ref([])
+const draft = ref('')
+const sending = ref(false)
+const streamError = ref('')
+const msgListRef = ref(null)
+const streamController = ref(null)
+let seq = 0  // 防过期响应 / 限制并发
 
-// === AI Provider 配置 ===
+/* ---- Provider 配置 ---- */
 const providers = ref([])
 const currentProviderId = ref(null)
 const showProviders = ref(false)
@@ -230,158 +226,169 @@ const newProvider = ref({
   is_default: false,
   enabled: true,
 })
-const activeId = ref(null)
-const messages = ref([])
-const draft = ref('')
-const showCreate = ref(false)
-const newTitle = ref('')
 
-// AI 流程状态
-const sending = ref(false)
-const pendingAbility = ref('summarize')
-
-const lastInvoke = ref(null)  // { ability, text, data, provider, is_fake, conversation_id, ... }
-const applying = ref(false)
-
-// 内联应用（不弹窗，挂在对应消息气泡下）
-const inlineApply = ref(null)  // { msgId, ability, applied }
-const inlineApplyOpen = ref(true)
-const inlineApplySummary = computed(() => {
-  if (!inlineApply.value || !lastInvoke.value) return ''
-  if (lastInvoke.value.ability === 'suggest_task') return '将 AI 建议创建为任务草稿'
-  return '选择目标笔记并写入结果'
-})
-
-// 目标笔记选择器（apply 到 note 时使用）
-// - applyTargetNotes：当前可见的候选笔记（受 page/size + keyword 影响）
-// - applyTargetTotal：后端返回的总数，用于判断是否还有下一页
-// - applyTargetKeyword：搜索关键词
-// - applyTargetPage / applyTargetSize：分页状态
-// - loadApplyTargetNotes({reset}) 既支持"刷新"（重置）也支持"加载更多"（追加）
-const applyTargetNotes = ref([])
-const applyTargetNoteId = ref(null)
-const applyTargetTotal = ref(0)
-const applyTargetKeyword = ref('')
-const applyTargetPage = ref(1)
-const applyTargetSize = ref(20)
-const notesLoading = ref(false)
-const applyTargetError = ref('')
-let applyTargetSeq = 0  // 防过期响应
-
-// 应用按钮文案
-const applyButtonLabel = computed(() => {
-  const inv = lastInvoke.value
-  if (!inv) return '确认写入'
-  if (inv.ability === 'suggest_task') return '确认创建任务'
-  return '应用到笔记'
-})
-
-/**
- * 加载目标笔记候选列表（支持分页 + 关键词搜索）。
- * @param {Object} opts
- * @param {boolean} [opts.reset=false] - true 表示重置分页到第 1 页并清空候选
- * @param {string} [opts.keyword] - 覆盖当前关键词（可选）
- */
-async function loadApplyTargetNotes({ reset = false, keyword = undefined } = {}) {
-  if (reset) {
-    applyTargetPage.value = 1
-    applyTargetNotes.value = []
-    applyTargetTotal.value = 0
-    if (keyword !== undefined) applyTargetKeyword.value = keyword
-  }
-  notesLoading.value = true
-  applyTargetError.value = ''
-  const seq = ++applyTargetSeq
-  try {
-    const params = {
-      page: applyTargetPage.value,
-      size: applyTargetSize.value,
-    }
-    if (applyTargetKeyword.value) params.q = applyTargetKeyword.value
-    const res = await workbenchApi.notes.list(params)
-    // 过期响应直接丢弃
-    if (seq !== applyTargetSeq) return
-    const data = res.data || {}
-    const list = data.list || []
-    applyTargetTotal.value = data.total || 0
-    // 累加候选（避免覆盖）
-    const seen = new Set(applyTargetNotes.value.map((n) => n.id))
-    for (const n of list) {
-      if (n && n.id && !seen.has(n.id)) {
-        applyTargetNotes.value.push(n)
-        seen.add(n.id)
-      }
-    }
-    // 重置模式下自动选中第一条
-    if (reset && !applyTargetNoteId.value && applyTargetNotes.value.length) {
-      applyTargetNoteId.value = applyTargetNotes.value[0].id
-    }
-  } catch (e) {
-    if (seq !== applyTargetSeq) return
-    applyTargetError.value = '加载笔记失败：' + (e?.response?.data?.msg || e.message)
-  } finally {
-    if (seq === applyTargetSeq) notesLoading.value = false
-  }
+/* ---- 工具函数 ---- */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]))
+}
+function renderText(s) {
+  return escapeHtml(s).replace(/\n/g, '<br>')
+}
+function makeSaveMeta() {
+  return { open: false, title: '', content: '', saved: false, saving: false }
 }
 
-/** 新建草稿笔记作为应用目标，并自动选上 */
-async function createApplyTargetNote() {
-  applyTargetError.value = ''
-  try {
-    const res = await workbenchApi.notes.create({ title: 'AI 应用目标', content: '', status: 'draft' })
-    const note = res.data
-    if (!note || !note.id) {
-      applyTargetError.value = '新建笔记失败：返回为空'
-      return
-    }
-    applyTargetNoteId.value = note.id
-    // 加入候选列表（避免重复）
-    if (!applyTargetNotes.value.find((n) => n.id === note.id)) {
-      applyTargetNotes.value.unshift(note)
-    }
-    // 新建后总数 +1
-    applyTargetTotal.value += 1
-    ElMessage.success('已创建草稿笔记 #' + note.id)
-  } catch (e) {
-    applyTargetError.value = '新建笔记失败：' + (e?.response?.data?.msg || e.message)
-  }
+async function scrollToBottom() {
+  await nextTick()
+  const el = msgListRef.value
+  if (el) el.scrollTop = el.scrollHeight
 }
 
+/* ---- 消息管理 ---- */
 async function loadConversations() {
   const res = await workbenchApi.ai.conversations()
   conversations.value = res.data.list || []
-  if (conversations.value.length && !activeId.value) {
-    open(conversations.value[0].id)
-  }
 }
 
 async function open(id) {
   activeId.value = id
+  streamError.value = ''
   const res = await workbenchApi.ai.messages(id)
-  messages.value = res.data.list || []
+  messages.value = (res.data.list || []).map((m) => ({
+    key: `m-${m.id}`,
+    id: m.id,
+    role: m.role,
+    content: m.content || '',
+    status: 'done',
+    provider: '',
+    save: makeSaveMeta(),
+  }))
+  await scrollToBottom()
 }
 
-async function create() {
-  if (!newTitle.value.trim()) {
-    ElMessage.warning('请输入对话标题')
-    return
+async function newConversation() {
+  // 点击即创建一条真实会话，使对话输入区立即可用
+  streamError.value = ''
+  try {
+    const created = await workbenchApi.ai.createConversation({ title: '新对话' })
+    activeId.value = created.data.id
+    messages.value = []
+    await loadConversations()
+    await scrollToBottom()
+  } catch (e) {
+    ElMessage.error('创建对话失败：' + (e?.response?.data?.msg || e.message))
   }
-  const res = await workbenchApi.ai.createConversation({ title: newTitle.value.trim() })
-  showCreate.value = false
-  newTitle.value = ''
-  await loadConversations()
-  open(res.data.id)
 }
 
+async function del(id) {
+  try {
+    await ElMessageBox.confirm('删除该对话？历史消息也会一并删除。', '提示', { type: 'warning' })
+  } catch { return }
+  await workbenchApi.ai.deleteConversation(id)
+  if (activeId.value === id) { activeId.value = null; messages.value = [] }
+  loadConversations()
+}
 
-// === AI Provider 配置 ===
+/* ---- 发送：原生流式对话 ---- */
+async function send() {
+  const text = draft.value.trim()
+  if (!text || sending.value) return
+  if (!activeId.value) {
+    // 独立助手：没有会话时自动新建，标题取首行
+    const title = text.split('\n')[0].slice(0, 20) || '新对话'
+    const created = await workbenchApi.ai.createConversation({ title })
+    activeId.value = created.data.id
+    await loadConversations()
+  }
+  const convId = activeId.value
+
+  const mySeq = ++seq
+  sending.value = true
+  streamError.value = ''
+  draft.value = ''
+
+  // 本地先推入用户消息 + 空的 assistant 消息（打字机）
+  messages.value.push({ key: `u-${Date.now()}`, role: 'user', content: text, status: 'done' })
+  const asstKey = `a-${Date.now()}`
+  const asstMsg = { key: asstKey, role: 'assistant', content: '', status: 'streaming', provider: '', save: makeSaveMeta() }
+  messages.value.push(asstMsg)
+  await scrollToBottom()
+
+  let aborted = false
+  const controller = new AbortController()
+  streamController.value = controller
+
+  try {
+    await workbenchApi.ai.chatStream(
+      {
+        content: text,
+        conversation_id: convId,
+        provider_id: currentProviderId.value || null,
+      },
+      (ev) => {
+        if (mySeq !== seq || aborted) return
+        if (ev.type === 'token' && ev.delta) {
+          asstMsg.content += ev.delta
+          scrollToBottom()
+        } else if (ev.type === 'done') {
+          asstMsg.status = 'done'
+          asstMsg.provider = ev.provider || ''
+          asstMsg.save.content = ev.text || asstMsg.content
+          asstMsg.save.title = firstLineTitle(asstMsg.content)
+        } else if (ev.type === 'error') {
+          streamError.value = 'AI 出错：' + (ev.msg || '未知错误')
+          asstMsg.content = asstMsg.content || '（生成失败）'
+          asstMsg.status = 'done'
+        }
+      },
+      controller.signal
+    )
+    if (mySeq === seq && asstMsg.status === 'streaming') asstMsg.status = 'done'
+  } catch (e) {
+    if (e.name === 'AbortError') aborted = true
+    else streamError.value = '发送失败：' + (e.message || '网络错误')
+    asstMsg.status = 'done'
+  } finally {
+    sending.value = false
+    if (streamController.value === controller) streamController.value = null
+    await scrollToBottom()
+  }
+}
+
+function firstLineTitle(text) {
+  const line = (text || '').split('\n')[0].trim()
+  return line ? line.slice(0, 30) : 'AI 生成笔记'
+}
+
+/* ---- 记入笔记（创建一条新笔记，不弹窗） ---- */
+async function saveNoteToNotebook(i) {
+  const m = messages.value[i]
+  if (!m || m.save.saving || m.save.saved) return
+  m.save.saving = true
+  streamError.value = ''
+  try {
+    const title = (m.save.title || '').trim() || firstLineTitle(m.content)
+    const content = (m.save.content || m.content || '').trim()
+    if (!content) { ElMessage.warning('笔记内容为空'); m.save.saving = false; return }
+    await workbenchApi.notes.create({ title, content, status: 'draft' })
+    m.save.saved = true
+    ElMessage.success('已保存至笔记')
+  } catch (e) {
+    ElMessage.error('保存失败：' + (e?.response?.data?.msg || e.message))
+  } finally {
+    m.save.saving = false
+  }
+}
+
+/* ---- Provider 配置操作 ---- */
 async function loadProviders() {
   try {
     const r = await workbenchApi.ai.providersList()
     providers.value = r.data || []
-    // 恢复当前选中的 provider（如果还存在），否则选默认或第一个
-    if (!providers.value.find(p => p.id === currentProviderId.value)) {
-      const def = providers.value.find(p => p.is_default && p.enabled)
+    if (!providers.value.find((p) => p.id === currentProviderId.value)) {
+      const def = providers.value.find((p) => p.is_default && p.enabled)
       currentProviderId.value = def ? def.id : (providers.value[0]?.id ?? null)
     }
   } catch (e) {
@@ -389,59 +396,27 @@ async function loadProviders() {
     currentProviderId.value = null
   }
 }
-
-function openProviders() {
-  showProviders.value = true
-  loadProviders()
-}
-
+function openProviders() { showProviders.value = true; loadProviders() }
 function resetProviderForm() {
-  newProvider.value = {
-    provider_key: 'openai',
-    display_name: '',
-    api_key: '',
-    base_url: '',
-    model_name: 'gpt-4o-mini',
-    is_default: false,
-    enabled: true,
-  }
+  newProvider.value = { provider_key: 'openai', display_name: '', api_key: '', base_url: '', model_name: 'gpt-4o-mini', is_default: false, enabled: true }
   editingProviderId.value = null
   showAddProvider.value = false
 }
-
-function openAddProvider() {
-  resetProviderForm()
-  showAddProvider.value = true
-}
-
+function openAddProvider() { resetProviderForm(); showAddProvider.value = true }
 function editProvider(p) {
   editingProviderId.value = p.id
-  newProvider.value = {
-    provider_key: p.provider_key,
-    display_name: p.display_name,
-    api_key: '',  // 编辑时不回填 Key（安全）
-    base_url: p.base_url || '',
-    model_name: p.model_name,
-    is_default: p.is_default,
-    enabled: p.enabled,
-  }
+  newProvider.value = { provider_key: p.provider_key, display_name: p.display_name, api_key: '', base_url: p.base_url || '', model_name: p.model_name, is_default: p.is_default, enabled: p.enabled }
   showAddProvider.value = true
 }
-
-function cancelProviderForm() {
-  resetProviderForm()
-}
-
+function cancelProviderForm() { resetProviderForm() }
 async function saveProvider() {
   if (!newProvider.value.display_name || !newProvider.value.api_key) {
-    ElMessage.warning('请填写显示名称和 API Key')
-    return
+    ElMessage.warning('请填写显示名称和 API Key'); return
   }
   savingProvider.value = true
   try {
     const payload = { ...newProvider.value }
     if (editingProviderId.value) {
-      // 编辑：如果 api_key 为空字符串表示未改，不传
       if (!payload.api_key) delete payload.api_key
       await workbenchApi.ai.providerUpdate(editingProviderId.value, payload)
       ElMessage.success('已保存')
@@ -451,232 +426,135 @@ async function saveProvider() {
     }
     resetProviderForm()
     await loadProviders()
-  } catch (e) {
-    // 错误已由 axios 拦截器处理
-  } finally {
-    savingProvider.value = false
-  }
+  } catch (e) { /* 拦截器已提示 */ } finally { savingProvider.value = false }
 }
-
 async function testProvider(id) {
   testingId.value = id
   try {
     const r = await workbenchApi.ai.providerTest(id)
     const msg = r.data || r
-    if (msg.ok) {
-      ElMessage.success(msg.message || '连接成功')
-    } else {
-      ElMessage.error(msg.message || '连接失败')
-    }
-  } catch (e) {
-    // 拦截器已显示
-  } finally {
-    testingId.value = null
-  }
+    if (msg.ok) ElMessage.success(msg.message || '连接成功')
+    else ElMessage.error(msg.message || '连接失败')
+  } catch (e) { /* 拦截器已提示 */ } finally { testingId.value = null }
 }
-
 async function setDefault(id) {
   try {
     await workbenchApi.ai.providerUpdate(id, { is_default: true })
     ElMessage.success('已设为默认')
     await loadProviders()
-  } catch (e) {}
+  } catch (e) { }
 }
-
 async function delProvider(p) {
   try {
     await ElMessageBox.confirm(`确认删除「${p.display_name}」?`, '删除 Provider', {
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-      type: 'warning',
+      confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning',
     })
-    await workbenchApi.ai.providerDelete(p.id)
-    ElMessage.success('已删除')
-    if (currentProviderId.value === p.id) currentProviderId.value = null
-    await loadProviders()
-  } catch (e) {
-    // 用户取消或失败
-  }
-}
-
-function onProviderChange(id) {
-  currentProviderId.value = id
-}
-
-async function del(id) {
-  try {
-    await ElMessageBox.confirm('删除该对话？原始笔记/资产/任务不会被删除。', '提示', { type: 'warning' })
   } catch { return }
-  await workbenchApi.ai.deleteConversation(id)
-  if (activeId.value === id) {
-    activeId.value = null
-    messages.value = []
-  }
-  loadConversations()
+  await workbenchApi.ai.providerDelete(p.id)
+  ElMessage.success('已删除')
+  if (currentProviderId.value === p.id) currentProviderId.value = null
+  await loadProviders()
 }
 
-// 发送：直接调用 invoke（不再弹预览确认），结果在气泡内联呈现
-async function send() {
-  const text = draft.value.trim()
-  if (!text || !activeId.value) return
-  sending.value = true
-  try {
-    const res = await workbenchApi.ai.invoke({
-      ability: pendingAbility.value,
-      content: text,
-      conversation_id: activeId.value,
-      provider_id: currentProviderId.value || null,
-    })
-    const d = res.data || {}
-    draft.value = ''
-    lastInvoke.value = {
-      ability: d.ability,
-      text: d.text || '',
-      data: d.data || {},
-      provider: d.provider,
-      is_fake: !!d.is_fake,
-      conversation_id: d.conversation_id || activeId.value,
-    }
-    // 刷新消息列表（user/assistant 两条已落库）
-    await open(activeId.value)
-    // 定位本次 assistant 回复，激活其内联应用面板
-    const asst = [...messages.value].reverse().find((m) => m.role === 'assistant')
-    inlineApply.value = {
-      msgId: asst ? asst.id : null,
-      ability: lastInvoke.value.ability,
-      applied: false,
-    }
-    inlineApplyOpen.value = true
-    // note 类能力需要候选笔记列表
-    if (lastInvoke.value.ability !== 'suggest_task') {
-      applyTargetNoteId.value = null
-      applyTargetKeyword.value = ''
-      loadApplyTargetNotes({ reset: true })
-    }
-  } catch (e) {
-    ElMessage.error('调用失败：' + (e?.response?.data?.msg || e.message))
-  } finally {
-    sending.value = false
-  }
-}
+watch(activeId, () => { seq = 0 })
 
-// 关闭内联应用面板
-function hideInlineApply() {
-  inlineApply.value = null
-  applyTargetNoteId.value = null
-}
-
-// 在气泡内联确认应用结果 → ai.apply
-async function confirmApplyInline() {
-  const inv = lastInvoke.value
-  if (!inv || !inlineApply.value) return
-  applying.value = true
-  try {
-    let payload = inv.data || {}
-    let targetType, targetId
-    if (inv.ability === 'suggest_task') {
-      targetType = 'task'
-      targetId = null
-    } else {
-      const noteId = applyTargetNoteId.value
-      if (!noteId) {
-        ElMessage.warning('请先选择或新建目标笔记')
-        applying.value = false
-        return
-      }
-      targetType = 'note'
-      targetId = noteId
-    }
-    const res = await workbenchApi.ai.apply({
-      ability: inv.ability,
-      target_type: targetType,
-      target_id: targetId,
-      conversation_id: inv.conversation_id,
-      payload,
-    })
-    const applied = res.data && res.data.applied
-    if (applied === 'task') {
-      const newTask = (res.data && res.data.task) || {}
-      if (newTask.id) {
-        ElMessage.success(`任务已创建：${newTask.title || ''}（#${newTask.id}）`)
-      } else {
-        ElMessage.success('任务已创建，请到 /tasks 确认')
-      }
-    } else if (applied === 'note') {
-      const note = (res.data && res.data.note) || {}
-      ElMessage.success(`已应用到笔记 #${note.id || targetId}`)
-    } else {
-      ElMessage.success('应用完成')
-    }
-    inlineApply.value.applied = true
-    applyTargetNoteId.value = null
-  } catch (e) {
-    ElMessage.error('应用失败：' + (e?.response?.data?.msg || e.message))
-  } finally {
-    applying.value = false
-  }
-}
-
-function roleLabel(r) { return ({ user: '我', assistant: 'AI', system: '系统' })[r] || r }
-
-watch(activeId, () => { messages.value = [] })
-
-onMounted(() => { loadConversations(); loadProviders(); })
+onMounted(() => { loadConversations(); loadProviders() })
+onUnmounted(() => {
+  seq = 0
+  streamController.value?.abort()
+  streamController.value = null
+})
 </script>
 
 <style scoped>
-.assistant-page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; font-family: var(--font-serif); color: var(--xiu-text); }
-.assistant-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-.assistant-header h1 { font-size: 26px; margin: 0; letter-spacing: .1em; background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
-.assistant-body { display: grid; grid-template-columns: 240px 1fr; gap: 16px; min-height: 60vh; }
-.assistant-sidebar { background: var(--xiu-card); backdrop-filter: blur(12px); border: 1px solid var(--xiu-line); border-radius: 14px; padding: 12px; }
-.assistant-sidebar h3 { font-size: 13px; margin: 0 0 8px; color: var(--xiu-gold); letter-spacing: .1em; }
-.assistant-sidebar ul { list-style: none; margin: 0; padding: 0; }
+.assistant-page {
+  max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px;
+  font-family: var(--font-serif); color: var(--xiu-text);
+}
+.assistant-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
+}
+.assistant-header-left { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.assistant-header h1 {
+  font-size: 26px; margin: 0; letter-spacing: .1em;
+  background: linear-gradient(135deg,#c9a96e,#f0e6c8 48%,#c9a96e);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent;
+}
+.header-sub { font-size: 12px; color: var(--xiu-text-3); margin-left: 8px; letter-spacing: .03em; }
+.header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.assistant-body { display: grid; grid-template-columns: 220px 1fr; gap: 16px; min-height: 62vh; }
+.assistant-sidebar {
+  background: var(--xiu-card); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border: 1px solid var(--xiu-line); border-radius: 14px; padding: 12px;
+}
+.new-chat-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+  padding: 8px; margin-bottom: 10px;
+  border: 1px solid var(--xiu-primary); border-radius: 10px;
+  background: rgba(61, 184, 176, .14); color: var(--xiu-primary-bright);
+  font-size: 13px; cursor: pointer; transition: all .2s;
+}
+.new-chat-btn:hover { background: rgba(61, 184, 176, .24); }
+.assistant-sidebar h3 { font-size: 12px; margin: 0 0 8px; color: var(--xiu-gold); letter-spacing: .1em; }
+.assistant-sidebar ul { list-style: none; margin: 0; padding: 0; max-height: 52vh; overflow-y: auto; }
 .assistant-sidebar li {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--xiu-text-2);
+  padding: 7px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--xiu-text-2);
 }
-.assistant-sidebar li:hover { background: rgba(201, 169, 110, .12); color: var(--xiu-text); }
-.assistant-sidebar li.active { background: rgba(61, 184, 176, .22); color: var(--xiu-primary-bright); }
+.assistant-sidebar li:hover { background: rgba(201,169,110,.12); color: var(--xiu-text); }
+.assistant-sidebar li.active { background: rgba(61,184,176,.22); color: var(--xiu-primary-bright); }
 .assistant-sidebar li.empty { color: var(--xiu-text-3); cursor: default; }
-.del-btn { background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 16px; }
-.assistant-main { background: var(--xiu-card-strong); border: 1px solid var(--xiu-line); border-radius: 14px; display: flex; flex-direction: column; backdrop-filter: blur(12px); }
-.messages { flex: 1; padding: 12px; overflow-y: auto; max-height: 50vh; }
-.msg { margin-bottom: 12px; }
-.msg.user .msg-content { background: rgba(61, 184, 176, .14); border: 1px solid rgba(61, 184, 176, .2); }
-.msg.assistant .msg-content { background: rgba(201, 169, 110, .1); border: 1px solid rgba(201, 169, 110, .18); }
-.msg-role { font-size: 11px; color: var(--xiu-gold); margin-bottom: 2px; }
-.msg-meta { font-size: 11px; color: var(--xiu-text-3); margin-top: 4px; }
-.msg-content {
-  margin: 0; padding: 8px 10px; border-radius: 8px;
-  white-space: pre-wrap; word-break: break-word; font-size: 13px;
-  font-family: inherit; color: var(--xiu-text);
-}
-.msg-scope { margin-top: 4px; font-size: 11px; color: var(--xiu-text-3); }
-.msg-scope pre { background: rgba(0,0,0,.2); padding: 4px; border-radius: 5px; max-height: 120px; overflow: auto; color: var(--xiu-text-2); }
-.inline-apply { margin-top: 8px; }
-.inline-applied {
-  display: inline-block; padding: 4px 10px; font-size: 12px; color: var(--xiu-primary-bright);
-  background: rgba(61, 184, 176, .14); border: 1px solid rgba(61, 184, 176, .3); border-radius: 6px;
-}
-.inline-apply-box { border: 1px solid var(--xiu-line); border-radius: 8px; background: var(--xiu-card); padding: 4px 8px 8px; }
-.inline-apply-box summary {
-  cursor: pointer; font-size: 12px; color: var(--xiu-gold); padding: 4px 2px; user-select: none;
-}
-.inline-apply-body { padding: 6px 2px 2px; }
-.inline-apply-tip { font-size: 12px; color: var(--xiu-text-2); margin: 0 0 8px; }
-.inline-apply-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
-.apply-target-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.composer { padding: 12px; border-top: 1px solid var(--xiu-line); }
-.composer-actions { margin-top: 6px; text-align: right; }
-.placeholder { color: var(--xiu-text-3); padding: 40px; text-align: center; }
-.empty { color: var(--xiu-text-3); text-align: center; padding: 12px; }
-.ai-apply-error { color: var(--xiu-danger); font-size: 12px; margin: 6px 0 0; }
-@media (max-width: 700px) {
-  .assistant-body { grid-template-columns: 1fr; }
-}
+.conv-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.del-btn { background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 16px; line-height: 1; }
 
-.header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.assistant-main {
+  background: var(--xiu-card-strong); border: 1px solid var(--xiu-line); border-radius: 14px;
+  display: flex; flex-direction: column; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.messages { flex: 1; padding: 16px; overflow-y: auto; max-height: 56vh; display: flex; flex-direction: column; gap: 14px; }
+.chat-msg { display: flex; }
+.chat-msg.user { justify-content: flex-end; }
+.chat-msg.assistant { justify-content: flex-start; }
+.chat-bubble { max-width: 82%; }
+.chat-msg.user .chat-bubble { text-align: right; }
+.chat-name { font-size: 11px; color: var(--xiu-gold); margin: 0 0 4px; opacity: .8; }
+.chat-text {
+  display: inline-block; text-align: left;
+  padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.7;
+  white-space: pre-wrap; word-break: break-word; color: var(--xiu-text);
+}
+.chat-msg.user .chat-text { background: rgba(61,184,176,.14); border: 1px solid rgba(61,184,176,.2); }
+.chat-msg.assistant .chat-text { background: rgba(201,169,110,.1); border: 1px solid rgba(201,169,110,.18); }
+.chat-cursor { display: inline-block; color: var(--xiu-gold); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.chat-save { margin-top: 8px; text-align: left; }
+.chat-save-toggle {
+  display: inline-block; cursor: pointer; font-size: 12px; color: var(--xiu-gold);
+  padding: 2px 4px; user-select: none; list-style: none;
+}
+.chat-save-toggle::-webkit-details-marker { display: none; }
+.chat-save-toggle::before { content: '＋ '; }
+details[open] .chat-save-toggle::before { content: '－ '; }
+.chat-save-body {
+  margin-top: 6px; padding: 10px; border: 1px dashed var(--xiu-line);
+  border-radius: 10px; background: rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 8px;
+}
+.chat-save-content { font-family: inherit; }
+.chat-save-actions { display: flex; justify-content: flex-end; }
+.chat-save-error { color: var(--xiu-danger); font-size: 12px; }
+
+.empty { text-align: center; padding: 60px 20px; color: var(--xiu-text-3); }
+.empty-title { font-size: 18px; color: var(--xiu-text); margin: 0 0 8px; }
+.empty-sub { font-size: 13px; margin: 0; }
+
+.composer { padding: 14px; border-top: 1px solid var(--xiu-line); }
+.composer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.composer-error { color: var(--xiu-danger); font-size: 12px; margin-right: auto; }
+.placeholder { color: var(--xiu-text-3); padding: 48px; text-align: center; }
+
 .modal-tip { color: var(--xiu-text-2); font-size: 12px; margin: 0 0 16px 0; line-height: 1.6; }
 .empty-providers { padding: 40px 0; text-align: center; color: var(--xiu-text-3); }
 .provider-list { max-height: 400px; overflow-y: auto; }
@@ -695,4 +573,9 @@ onMounted(() => { loadConversations(); loadProviders(); })
 .add-provider-form { padding: 16px; border-top: 1px dashed var(--xiu-line); margin-top: 12px; }
 .add-provider-form h4 { margin: 0 0 12px 0; color: var(--xiu-text); }
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+@media (max-width: 700px) {
+  .assistant-body { grid-template-columns: 1fr; }
+  .assistant-sidebar { display: none; }
+}
 </style>

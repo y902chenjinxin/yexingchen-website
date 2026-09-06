@@ -434,6 +434,39 @@ def test_ai_response_marks_is_fake(ctx):
 # =================================================================
 # P1-5: AI 结果应用（apply）
 # =================================================================
+def test_ai_stream_native_chat(ctx):
+    """独立原生对话：SSE 流式输出，user 立即落库、assistant 完成后落库。"""
+    cid = _create_conv(ctx)
+    with ctx["client"].stream(
+        "POST",
+        "/api/workbench/ai/chat/stream",
+        json={"content": "帮我总结这段话", "conversation_id": cid},
+    ) as r:
+        assert r.status_code == 200
+        assert r.headers.get("content-type", "").startswith("text/event-stream")
+        body = b"".join(r.iter_bytes()).decode("utf-8")
+    assert "type" in body  # 至少有一个 SSE data 事件
+
+    msgs = ctx["client"].get(f"/api/workbench/ai/conversations/{cid}/messages").json()["data"]["list"]
+    roles = [m["role"] for m in msgs]
+    assert roles.count("user") >= 1
+    assert roles.count("assistant") >= 1
+    assistant = next(m for m in msgs if m["role"] == "assistant")
+    assert assistant["content"]
+    assert assistant["pending_apply"] is False
+
+
+def test_ai_stream_rejects_other_user_conversation(ctx):
+    """他人对话不能用于流式对话。"""
+    r = ctx["client2"].post("/api/workbench/ai/conversations", json={"title": "other"})
+    other_cid = r.json()["data"]["id"]
+    r = ctx["client"].post(
+        "/api/workbench/ai/chat/stream",
+        json={"content": "hi", "conversation_id": other_cid},
+    )
+    assert r.status_code == 404
+
+
 def _create_note(ctx, **kw):
     body = {"title": "t", "content": "c"}
     body.update(kw)

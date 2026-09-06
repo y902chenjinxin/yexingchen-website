@@ -130,6 +130,23 @@ class FakeProvider(AiProvider):
             model="fake-1",
         )
 
+    async def stream_chat(self, messages: list, extra=None):
+        """原生对话流式输出（异步生成器，逐段产出文本增量）。
+
+        messages: [{"role": "user/assistant/system", "content": "..."}, ...]
+        """
+        import asyncio
+
+        snippet = (messages[-1].get("content") or "").strip()
+        title = snippet[:20] or "对话"
+        fake_text = (
+            f"（离线演示）我是你的独立 AI 助手。你问：{title}。"
+            "配置真实 AI Provider 后可获得真实流式答复。"
+        )
+        for i in range(0, len(fake_text), 4):
+            yield fake_text[i : i + 4]
+            await asyncio.sleep(0.02)
+
 
 # ============ Generic HTTP Provider ============
 # 各能力要求模型输出的 JSON schema。reply 字段用于面向用户展示。
@@ -341,6 +358,47 @@ class HttpProvider(AiProvider):
             provider=self.name,
             model=self.model,
         )
+
+    async def stream_chat(self, messages: list, extra=None):
+        """原生多轮对话流式输出（异步生成器）。
+
+        messages: [{"role": "user/assistant/system", "content": "..."}, ...]
+        采用 SSE 逐段读取 delta.content 并产出文本增量。
+        """
+        try:
+            import httpx  # 延迟导入
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError("缺少 httpx，无法使用 HttpProvider") from exc
+
+        base = self.base_url.rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3]
+        url = f"{base}/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {"model": self.model, "messages": messages, "stream": True}
+        if extra:
+            payload.update(extra)
+        async with httpx.AsyncClient(timeout=None) as client:
+            async with client.stream("POST", url, json=payload, headers=headers) as r:
+                if r.status_code >= 400:
+                    body = (await r.aread()).decode(errors="ignore")
+                    raise RuntimeError(f"AI provider HTTP {r.status_code}: {body[:300]}")
+                async for line in r.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data = line[len("data:"):].strip()
+                    if not data or data == "[DONE]":
+                        continue
+                    try:
+                        obj = json.loads(data)
+                    except Exception:
+                        continue
+                    delta = (obj.get("choices") or [{}])[0].get("delta", {}).get("content")
+                    if delta:
+                        yield delta
 
 
 def _remove_embedded_json(text: str) -> str:
