@@ -47,7 +47,7 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="allowed_islands" label="可访问岛屿" min-width="200">
+          <el-table-column prop="allowed_islands" label="可访问模块" min-width="200">
             <template #default="{ row }">
               <div class="island-tags">
                 <el-tag v-for="island in row.allowed_islands.split(',')" :key="island" size="small" type="info">
@@ -203,13 +203,13 @@
             <el-option label="已拒绝" value="rejected" />
           </el-select>
         </el-form-item>
-        <el-form-item label="可访问岛屿">
+        <el-form-item label="可访问模块">
           <el-checkbox-group v-model="editForm.islands">
-            <el-checkbox label="music">音乐岛</el-checkbox>
-            <el-checkbox label="novel">小说岛</el-checkbox>
-            <el-checkbox label="video">视频岛</el-checkbox>
-            <el-checkbox label="diary">日志岛</el-checkbox>
-            <el-checkbox label="tools">工具岛</el-checkbox>
+            <el-checkbox label="music">音乐</el-checkbox>
+            <el-checkbox label="novel">小说</el-checkbox>
+            <el-checkbox label="video">视频</el-checkbox>
+            <el-checkbox label="diary">日志</el-checkbox>
+            <el-checkbox label="tools">工具</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
       </el-form>
@@ -575,7 +575,7 @@ function getStatusText(status) {
   return { pending: '待审批', approved: '已通过', rejected: '已拒绝' }[status] || status
 }
 function getIslandName(island) {
-  return { music: '音乐岛', novel: '小说岛', video: '视频岛', diary: '日志岛', tools: '工具岛' }[island] || island
+  return { music: '音乐', novel: '小说', video: '视频', diary: '日志', tools: '工具' }[island] || island
 }
 function formatTime(timeStr) {
   if (!timeStr) return ''
