@@ -602,6 +602,9 @@
   --lj-vermilion: #d28a7c;
   --lj-line: rgba(127, 168, 163, 0.16);
   --lj-line-strong: rgba(127, 168, 163, 0.30);
+  --lj-seal: #d98a76;
+  --lj-seal-hover: #e09a88;
+  --lj-seal-soft: rgba(217, 138, 118, 0.14);
   --lj-text: var(--color-text);
   --lj-text-2: var(--color-text-secondary);
   --lj-text-3: var(--color-text-muted);

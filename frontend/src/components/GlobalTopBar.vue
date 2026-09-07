@@ -385,8 +385,8 @@ onUnmounted(() => {
   font-size: 13px; color: var(--lj-text-2); cursor: pointer; white-space: nowrap;
   transition: all 0.25s;
 }
-.tb-nav-item:hover { color: var(--lj-dai); background: rgba(127, 168, 163, 0.10); }
-.tb-nav-item.active { color: var(--lj-dai); background: rgba(127, 168, 163, 0.15); font-weight: 600; }
+.tb-nav-item:hover { color: var(--lj-seal); background: var(--lj-seal-soft); }
+.tb-nav-item.active { color: var(--lj-seal-hover); background: var(--lj-seal-soft); font-weight: 600; }
 .tb-nav-icon { font-size: 15px; }
 
 .tb-search { position: relative; flex: 1; max-width: 460px; }

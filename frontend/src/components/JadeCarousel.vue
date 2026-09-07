@@ -266,8 +266,8 @@ onUnmounted(() => {
 .jade-card:hover::after,
 .jade-card.is-active::after {
   opacity: 1;
-  border-color: var(--lj-dai);
-  box-shadow: inset 0 0 12px rgba(74, 95, 99, 0.08);
+  border-color: var(--lj-seal);
+  box-shadow: inset 0 0 12px rgba(217, 138, 118, 0.10);
 }
 
 /* 玉体内层：羊脂玉釉晕光 */
@@ -355,10 +355,10 @@ onUnmounted(() => {
   transition: all 0.3s;
 }
 
-.dot:hover { background: var(--lj-mist); }
+.dot:hover { background: var(--lj-seal); }
 
 .dot.active {
-  background: var(--lj-dai);
+  background: var(--lj-seal-hover);
   transform: scale(1.3);
 }
 
