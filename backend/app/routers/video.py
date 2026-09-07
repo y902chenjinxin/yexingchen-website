@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
 import os, mimetypes
-from app.database import get_db
 from app.schemas.common import *
+from app.database import get_db
+from app.utils.security import get_current_user, check_owner_or_admin
 from app.schemas.errors import ErrCode, raise_error
-from app.utils.security import get_current_user
 from app.models.user import Video
 from app.services.log_service import log_action
 from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_VIDEO_EXTENSIONS, ALLOWED_COVER_EXTENSIONS
@@ -134,6 +134,7 @@ async def update_video(
     current_user: dict = Depends(get_current_user)
 ):
     video = db.query(Video).filter(Video.id == video_id).first()
+    check_owner_or_admin(current_user, video.uploader_id)
     if not video:
         raise_error(ErrCode.VIDEO_NOT_FOUND)
 
@@ -161,6 +162,7 @@ async def delete_video(
     current_user: dict = Depends(get_current_user)
 ):
     video = db.query(Video).filter(Video.id == video_id).first()
+    check_owner_or_admin(current_user, video.uploader_id)
     if not video:
         raise_error(ErrCode.VIDEO_NOT_FOUND)
 

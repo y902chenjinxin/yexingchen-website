@@ -5,7 +5,7 @@ from typing import Optional
 from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
-from app.utils.security import get_current_user
+from app.utils.security import get_current_user, require_super_admin
 from app.models.user import Tool
 from app.services.log_service import log_action
 
@@ -49,7 +49,7 @@ async def list_tools(
 async def create_tool(
     req: ToolCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_super_admin)
 ):
     # 外部工具默认追加到外部区末尾
     last = db.query(Tool).filter(Tool.kind == "external").order_by(Tool.sort_order.desc()).first()
@@ -77,7 +77,7 @@ async def update_tool(
     tool_id: int,
     req: ToolUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_super_admin)
 ):
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
     if not tool:
@@ -108,7 +108,7 @@ async def update_tool(
 async def delete_tool(
     tool_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_super_admin)
 ):
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
     if not tool:

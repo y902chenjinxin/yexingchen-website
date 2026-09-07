@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
 import os
-from app.database import get_db, SessionLocal
 from app.schemas.common import *
+from app.database import get_db, SessionLocal
+from app.utils.security import get_current_user, check_owner_or_admin
 from app.schemas.errors import ErrCode, raise_error
-from app.utils.security import get_current_user
 from app.models.user import Music
 from app.services.log_service import log_action
 from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_MUSIC_EXTENSIONS, ALLOWED_COVER_EXTENSIONS
@@ -180,6 +180,7 @@ async def update_music(
     current_user: dict = Depends(get_current_user)
 ):
     music = db.query(Music).filter(Music.id == music_id).first()
+    check_owner_or_admin(current_user, music.uploader_id)
     if not music:
         raise_error(ErrCode.MUSIC_NOT_FOUND)
 
@@ -207,6 +208,7 @@ async def delete_music(
     current_user: dict = Depends(get_current_user)
 ):
     music = db.query(Music).filter(Music.id == music_id).first()
+    check_owner_or_admin(current_user, music.uploader_id)
     if not music:
         raise_error(ErrCode.MUSIC_NOT_FOUND)
 

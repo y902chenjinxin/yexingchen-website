@@ -32,7 +32,18 @@ async def stream_bgm(bgm_id: str):
     流式播放音乐，自动检测文件真实格式（WAV vs MP3）
     无需认证，因为音频文件是公开的
     """
+    # 防止路径穿越（Path Traversal）：bgm_id 必须是简单文件名
+    if not bgm_id or "/" in bgm_id or "\\" in bgm_id or ".." in bgm_id or "\x00" in bgm_id:
+        raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐文件不存在")
+
     bgm_path = os.path.join(os.path.dirname(__file__), "..", "..", "uploads", "bgm", f"{bgm_id}.mp3")
+
+    # 二次防御：解析为绝对路径后验证仍在允许目录内
+    bgm_path_resolved = os.path.realpath(bgm_path)
+    allowed_root = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads", "bgm"))
+    if not (bgm_path_resolved == allowed_root or bgm_path_resolved.startswith(allowed_root + os.sep)):
+        raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐文件不存在")
+    bgm_path = bgm_path_resolved
 
     if not os.path.exists(bgm_path):
         raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐文件不存在")

@@ -81,3 +81,18 @@ def require_super_admin(current_user: dict = Depends(get_current_user)) -> dict:
         return current_user
 
     raise_error(ErrCode.AUTH_PERMISSION_DENIED)
+def check_owner_or_admin(current_user: dict, owner_id: int) -> None:
+    """检查当前用户是资源所有者或管理员，否则抛 403。
+
+    用于修复 IDOR 漏洞：任何登录用户原本可修改/删除他人上传的资源（novel/video/music/tool 等）。
+    - 资源所有者（uploader_id == user_id）→ 允许
+    - 超级管理员（is_super_admin == 1 或 role in admin/super_admin）→ 允许
+    - 其他 → 抛 AUTH_PERMISSION_DENIED
+    """
+    if current_user.get("user_id") == owner_id:
+        return
+    if current_user.get("is_super_admin") == 1:
+        return
+    if current_user.get("role") in ("admin", "super_admin"):
+        return
+    raise_error(ErrCode.AUTH_PERMISSION_DENIED)
