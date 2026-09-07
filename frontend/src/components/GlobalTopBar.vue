@@ -128,14 +128,12 @@
       <!-- 用户区 -->
       <el-dropdown trigger="click" @command="onCommand">
         <div class="tb-user">
-          <span class="tb-avatar">{{ avatarText }}</span>
           <span class="tb-user-name">{{ userName }}</span>
+          <el-icon class="tb-caret"><CaretBottom /></el-icon>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item command="profile"><el-icon><User /></el-icon>个人中心</el-dropdown-item>
-            <el-dropdown-item divided command="password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item>
-            <el-dropdown-item command="avatar"><el-icon><Avatar /></el-icon>选择头像</el-dropdown-item>
             <el-dropdown-item v-if="auth.isSuperAdmin" divided command="admin"><el-icon><Tools /></el-icon>管理后台</el-dropdown-item>
             <el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出账号</el-dropdown-item>
           </el-dropdown-menu>
@@ -154,11 +152,10 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
-  User, Lock, Avatar, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
+  User, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
   Document, Check, Notebook, VideoPlay, MagicStick, Reading, HomeFilled,
   Collection, TrendCharts, MapLocation, VideoCamera, ChatDotRound, Setting
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { searchAll } from '@/api/search'
@@ -181,11 +178,6 @@ function go(path) {
 }
 
 /* ---- 用户区 ---- */
-const avatarOptions = [{ id: 1, emoji: '🌙' }, { id: 2, emoji: '☁️' }]
-const avatarText = computed(() => {
-  const id = Number(localStorage.getItem('avatar_id') || 1)
-  return avatarOptions.find(a => a.id === id)?.emoji || '🌙'
-})
 const userName = computed(() => auth.user?.nickname || auth.user?.name || auth.user?.email || '道友')
 
 /* ---- 音频控制（接 player store）---- */
@@ -221,16 +213,11 @@ function startVolDrag(e) {
 /* ---- 下拉命令 ---- */
 function onCommand(cmd) {
   switch (cmd) {
-    case 'workbench': router.push('/workbench'); break
     case 'profile': router.push('/profile'); break
     case 'admin': router.push('/admin'); break
     case 'logout':
       auth.logoutAction()
       router.push('/login')
-      break
-    case 'password':
-    case 'avatar':
-      ElMessage.warning('请前往个人中心设置')
       break
   }
 }
@@ -512,14 +499,10 @@ onUnmounted(() => {
 .tb-bgm-check { font-size: 14px; color: var(--lj-dai); }
 .tb-bgm-empty { padding: 10px 8px; color: var(--lj-text-2); font-size: 12px; text-align: center; }
 
-.tb-user { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 8px; border-radius: 10px; }
+.tb-user { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 10px; }
 .tb-user:hover { background: rgba(74, 95, 99, 0.06); }
-.tb-avatar {
-  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--lj-line-strong); border-radius: 10px; background: var(--lj-paper);
-  font-size: 18px;
-}
 .tb-user-name { font-size: 13px; color: var(--lj-text); }
+.tb-caret { font-size: 12px; color: var(--lj-text-2); }
 
 /* 收起态悬浮按钮 */
 .tb-mini {

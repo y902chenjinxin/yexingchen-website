@@ -37,32 +37,6 @@
           <el-button @click="showPasswordDialog = true">修改密码</el-button>
         </div>
       </div>
-
-      <!-- 头像选择 -->
-      <div class="avatar-card">
-        <div class="card-header">
-          <h2>头像设置</h2>
-        </div>
-        <div class="card-body">
-          <div class="current-avatar">
-            <span class="avatar-emoji">{{ currentAvatarEmoji }}</span>
-          </div>
-          <div class="avatar-options">
-            <div
-              v-for="avatar in avatarOptions"
-              :key="avatar.id"
-              class="avatar-option"
-              :class="{ selected: selectedAvatar === avatar.id }"
-              @click="selectedAvatar = avatar.id"
-            >
-              <span class="avatar-emoji">{{ avatar.emoji }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer">
-          <el-button type="primary" :disabled="selectedAvatar === currentAvatarId" @click="saveAvatar">保存头像</el-button>
-        </div>
-      </div>
     </div>
 
     <!-- 编辑信息对话框 -->
@@ -100,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
@@ -117,21 +91,6 @@ const userInfo = ref({
   role: '',
   is_super_admin: 0,
   created_at: ''
-})
-
-// 头像相关
-const avatarOptions = [
-  { id: 1, emoji: '🌙' },
-  { id: 2, emoji: '☁️' },
-  { id: 3, emoji: '⭐' },
-  { id: 4, emoji: '🌸' }
-]
-const currentAvatarId = ref(1)
-const selectedAvatar = ref(1)
-
-const currentAvatarEmoji = computed(() => {
-  const av = avatarOptions.find(a => a.id === currentAvatarId.value)
-  return av?.emoji || '🌙'
 })
 
 // 编辑对话框
@@ -197,19 +156,6 @@ async function saveProfile() {
   }
 }
 
-async function saveAvatar() {
-  saving.value = true
-  try {
-    await updateMe({ avatar_id: selectedAvatar.value })
-    currentAvatarId.value = selectedAvatar.value
-    ElMessage.success('头像已更新')
-  } catch (e) {
-    ElMessage.error('保存失败')
-  } finally {
-    saving.value = false
-  }
-}
-
 async function savePassword() {
   if (!passwordForm.value.oldPassword) {
     ElMessage.warning('请输入当前密码')
@@ -225,12 +171,12 @@ async function savePassword() {
   }
   saving.value = true
   try {
-    // TODO: 调用修改密码API
+    await auth.changePassword(passwordForm.value.oldPassword, passwordForm.value.newPassword)
     ElMessage.success('密码修改成功')
     showPasswordDialog.value = false
     passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
   } catch (e) {
-    ElMessage.error('修改失败')
+    ElMessage.error('修改失败，请检查当前密码是否正确')
   } finally {
     saving.value = false
   }
@@ -265,11 +211,11 @@ async function savePassword() {
   max-width: 800px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 24px;
 }
 
-.info-card, .avatar-card {
+.info-card {
   position: relative;
   background: var(--xiu-card);
   backdrop-filter: blur(14px);
@@ -278,7 +224,7 @@ async function savePassword() {
   box-shadow: 0 16px 40px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .04);
   border: 1px solid var(--xiu-line);
 }
-.info-card::before, .avatar-card::before { content: ""; position: absolute; top: 0; left: 18%; right: 18%; height: 1px; background: linear-gradient(90deg, transparent, var(--xiu-gold), transparent); opacity: .5; }
+.info-card::before { content: ""; position: absolute; top: 0; left: 18%; right: 18%; height: 1px; background: linear-gradient(90deg, transparent, var(--xiu-gold), transparent); opacity: .5; }
 
 .card-header {
   margin-bottom: 20px;
@@ -346,48 +292,6 @@ async function savePassword() {
 
 .card-footer .el-button {
   flex: 1;
-}
-
-.current-avatar {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.current-avatar .avatar-emoji {
-  font-size: 64px;
-}
-
-.avatar-options {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-}
-
-.avatar-option {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: rgba(201, 169, 108, 0.1);
-  border: 2px solid rgba(201, 169, 108, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.avatar-option:hover {
-  border-color: rgba(201, 169, 108, 0.5);
-}
-
-.avatar-option.selected {
-  border-color: var(--color-gold);
-  background: rgba(201, 169, 110, 0.2);
-  box-shadow: 0 0 15px rgba(201, 169, 110, 0.3);
-}
-
-.avatar-option .avatar-emoji {
-  font-size: 28px;
 }
 
 .header-with-back {
