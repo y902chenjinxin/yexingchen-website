@@ -16,14 +16,19 @@
       <JadeCarousel class="wb-jade" />
     </section>
 
+    <!-- 资讯横栏：玉简下 / 常用工具上，自动向上滚动，点击进入资讯页 -->
+    <div class="wb-body wb-feedsbar">
+      <WorkbenchFeedsBar :feeds="feeds" />
+    </div>
+
     <!-- 常用工具区（工具 + 快捷动作混排） -->
     <div class="wb-body">
       <WorkbenchTools />
     </div>
 
-    <!-- 大数据看板（账本 / 资讯 / 行情 / 足迹 四卡预览） -->
+    <!-- 大数据看板（账本 / 行情 / 足迹 三卡预览） -->
     <div class="wb-body wb-dash">
-      <WorkbenchDashboard :empty="empty" :finance="finance" :feeds="feeds" :travels="travels" />
+      <WorkbenchDashboard :empty="empty" :finance="finance" :stocks="stocks" :holdings="holdings" :travels="travels" />
     </div>
 
     <!-- 底部网安/备案标识（夜色页脚） -->
@@ -37,6 +42,7 @@ import JadeCarousel from '@/components/JadeCarousel.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import WorkbenchTools from '@/components/workbench/WorkbenchTools.vue'
 import WorkbenchDashboard from '@/components/workbench/WorkbenchDashboard.vue'
+import WorkbenchFeedsBar from '@/components/workbench/WorkbenchFeedsBar.vue'
 import { financeApi } from '@/api/finance'
 import { feedsApi } from '@/api/feeds'
 import { stocksApi } from '@/api/stocks'
@@ -62,7 +68,6 @@ onMounted(async () => {
   try {
     const res = await feedsApi.dashboard()
     if (res?.data) {
-      if (res.data.source_count) empty.value = false
       feeds.value = res.data.recent || []
     }
   } catch (e) {

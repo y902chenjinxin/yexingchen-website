@@ -9,11 +9,11 @@
       <span class="tb-brand-text">玄 黄</span>
     </div>
 
-    <!-- 全站导航 -->
+    <!-- 全站导航：仅保留 AI 助手入口 -->
     <nav class="tb-nav" aria-label="全站导航">
-      <a v-for="item in navItems" :key="item.to" class="tb-nav-item" :class="{ active: isActive(item) }" @click="go(item.to)">
-        <el-icon class="tb-nav-icon"><component :is="item.icon" /></el-icon>
-        <span>{{ item.label }}</span>
+      <a class="tb-nav-item" :class="{ active: route.path === '/assistant' }" @click="go('/assistant')">
+        <el-icon class="tb-nav-icon"><MagicStick /></el-icon>
+        <span>AI 助手</span>
       </a>
     </nav>
 
@@ -133,7 +133,6 @@
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="workbench"><el-icon><Grid /></el-icon>返回工作台</el-dropdown-item>
             <el-dropdown-item command="profile"><el-icon><User /></el-icon>个人中心</el-dropdown-item>
             <el-dropdown-item divided command="password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item>
             <el-dropdown-item command="avatar"><el-icon><Avatar /></el-icon>选择头像</el-dropdown-item>
@@ -155,7 +154,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
-  Grid, User, Lock, Avatar, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
+  User, Lock, Avatar, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
   Document, Check, Notebook, VideoPlay, MagicStick, Reading, HomeFilled,
   Collection, TrendCharts, MapLocation, VideoCamera, ChatDotRound, Setting
 } from '@element-plus/icons-vue'
@@ -163,7 +162,6 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { searchAll } from '@/api/search'
-import { getPublicMenus } from '@/api/admin'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
 const router = useRouter()
@@ -177,35 +175,7 @@ const searchWord = ref('')
 const searchFocus = ref(false)
 let suggestTimer = null
 
-/* ---- 导航：由菜单表驱动（管理后台仅超级管理员可见） ---- */
-const menuIconMap = {
-  Collection, TrendCharts, MapLocation, Tools, Headset, Reading, VideoCamera,
-  Document, ChatDotRound, Setting, HomeFilled, MagicStick, Notebook, VideoPlay
-}
-const navItems = ref([])
-
-async function loadNavMenus() {
-  try {
-    const res = await getPublicMenus()
-    let items = (res?.data?.list || []).filter(m => m.is_enabled)
-    if (!auth.isSuperAdmin) {
-      items = items.filter(m => m.path !== '/admin')
-    }
-    navItems.value = items.map(m => ({
-      label: m.title,
-      to: m.path,
-      icon: menuIconMap[m.icon] || HomeFilled
-    }))
-  } catch {
-    // 菜单接口不可用时退回默认导航
-    navItems.value = [
-      { label: 'AI 对话', to: '/assistant', icon: MagicStick }
-    ]
-  }
-}
-function isActive(item) {
-  return route.path.startsWith(item.to)
-}
+/* ---- 导航：工作台/模块经搜索与玉简直达，顶栏仅保留 AI 助手 ---- */
 function go(path) {
   router.push(path)
 }
@@ -371,7 +341,6 @@ function expand() { collapsed.value = false }
 
 onMounted(async () => {
   await player.initBgm()
-  loadNavMenus()
   checkMobile()
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', checkMobile)

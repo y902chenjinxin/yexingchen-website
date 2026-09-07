@@ -29,27 +29,6 @@
         </div>
       </a>
 
-      <!-- 资讯卡 -->
-      <a class="wd-card" @click.prevent="$router.push('/feeds')">
-        <div class="wd-card-head">
-          <span class="wd-card-name">📡 资讯</span>
-          <span class="wd-more">查看全部 →</span>
-        </div>
-        <div v-if="empty" class="wd-empty">
-          <span class="wd-empty-icon">📰</span>
-          <span class="wd-empty-text">暂无订阅源</span>
-          <span class="wd-empty-hint">添加 RSS 源后自动抓取</span>
-        </div>
-        <div v-else class="wd-body">
-          <div class="wd-rows">
-            <a v-for="it in feeds.slice(0, 3)" :key="it.id" class="wd-item" @click.prevent.stop="$router.push('/feeds')">
-              <span class="wd-item-dot">→</span><span class="wd-item-txt">{{ it.title }}</span>
-            </a>
-          </div>
-          <div class="wd-foot">今日 {{ feeds.length }} 条摘要</div>
-        </div>
-      </a>
-
       <!-- 行情卡 -->
       <a class="wd-card" @click.prevent="$router.push('/stocks')">
         <div class="wd-card-head">
@@ -100,7 +79,6 @@
 defineProps({
   empty: { type: Boolean, default: true },
   finance: { type: Object, default: () => ({}) },
-  feeds: { type: Array, default: () => [] },
   stocks: { type: Object, default: () => ({}) },
   holdings: { type: Array, default: () => [] },
   travels: { type: Object, default: () => ({}) }
