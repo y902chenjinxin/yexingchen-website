@@ -1,12 +1,13 @@
 """资讯推送模块。
 
-RSS 订阅源 CRUD + 文章抓取 + AI 摘要 + 收藏到笔记，数据按用户隔离。
+RSS 订阅源 CRUD + 文章抓取 + 富文本渲染 + 中文翻译 + AI 摘要 + 收藏到笔记，数据按用户隔离。
 - 源：增删改查 / 抓取 / 刷新
-- 文章：列表 / 详情（自动标记已读）/ AI 摘要 / 收藏开关 / 收藏到笔记
+- 文章：列表 / 详情（自动标记已读）/ 翻译 / AI 摘要 / 收藏开关 / 收藏到笔记
 """
 from __future__ import annotations
 
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import List, Optional
 
@@ -20,6 +21,7 @@ from app.utils.security import get_current_user
 from app.models.feed import FeedArticle, FeedSource
 from app.models.workbench import Note
 from app.services.ai_providers import summarize_note
+from app.services.translate import is_cjk, translate_summary, translate_text, translate_title
 
 router = APIRouter(prefix="/api/feeds", tags=["资讯推送"])
 
@@ -62,8 +64,8 @@ def _source_to_dict(s: FeedSource) -> dict:
     }
 
 
-def _article_to_dict(a: FeedArticle) -> dict:
-    return {
+def _article_to_dict(a: FeedArticle, *, full: bool = False) -> dict:
+    d = {
         "id": a.id,
         "source_id": a.source_id,
         "guid": a.guid,
@@ -71,12 +73,20 @@ def _article_to_dict(a: FeedArticle) -> dict:
         "link": a.link or "",
         "author": a.author or "",
         "summary": a.summary or "",
+        "title_zh": a.title_zh or "",
+        "summary_zh": a.summary_zh or "",
+        "is_foreign": a.is_foreign or 0,
         "ai_summary": a.ai_summary or "",
         "published_at": str(a.published_at) if a.published_at else "",
         "read": a.read,
         "bookmarked": a.bookmarked,
         "created_at": str(a.created_at),
     }
+    if full:
+        d["content_html"] = a.content_html or ""
+        d["content"] = a.content or ""
+        d["content_zh"] = a.content_zh or ""
+    return d
 
 
 # ============================================================
@@ -95,6 +105,71 @@ def _clean_html(text: str) -> str:
     text = re.sub(r"&gt;?", ">", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+# ---------- HTML 白名单清洗（富文本渲染用） ----------
+_SAFE_TAGS = {
+    "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6",
+    "ul", "ol", "li", "dl", "dt", "dd",
+    "blockquote", "pre", "code", "table", "thead", "tbody", "tfoot",
+    "tr", "th", "td", "figure", "figcaption",
+    "strong", "b", "em", "i", "u", "s", "a", "img", "span", "div", "section", "article",
+}
+_SAFE_ATTRS = {
+    "a": ("href", "title", "target", "rel"),
+    "img": ("src", "alt", "title", "loading", "width", "height"),
+    "td": ("colspan", "rowspan"),
+    "th": ("colspan", "rowspan"),
+}
+_DROP_ELEMS = (
+    "script", "style", "iframe", "object", "embed", "form", "input",
+    "button", "select", "textarea", "svg", "math", "noscript", "template",
+    "video", "audio", "source", "link", "meta", "base", "frame", "frameset",
+)
+_TAG_RE = re.compile(
+    r"<(/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s+[^\s>]+)*?)\s*(/?)>", re.S
+)
+_ATTR_RE = re.compile(r'([a-zA-Z0-9:_-]+)(?:\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+))?')
+_UNSAFE_PROTO = re.compile(r"^(javascript|vbscript|data):", re.I)
+
+
+def _sanitize_html(text: str) -> str:
+    """白名单清洗 RSS 正文 HTML：去脚本/事件/危险协议，图片加懒加载。"""
+    if not text:
+        return ""
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    for tag in _DROP_ELEMS:
+        text = re.sub(rf"<{tag}[^>]*>.*?</{tag}>", " ", text, flags=re.S | re.I)
+        text = re.sub(rf"</?{tag}[^>]*>", " ", text, flags=re.I)
+
+    def fix(m: re.Match) -> str:
+        closing, name, attrs, selfclose = m.group(1), m.group(2).lower(), m.group(3) or "", m.group(4)
+        if name not in _SAFE_TAGS:
+            return ""  # 非白名单标签：剥掉标签、保留内部文本
+        if closing:
+            return f"</{name}>"
+        allowed = _SAFE_ATTRS.get(name)
+        keep: list[str] = []
+        for am in _ATTR_RE.finditer(attrs):
+            an = am.group(1).lower()
+            if allowed is None or an not in allowed or an.startswith("on"):
+                continue
+            val = (am.group(2) or "").strip().strip('"\'')
+            if an in ("href", "src"):
+                if _UNSAFE_PROTO.match(val) and not val.lower().startswith("data:image/"):
+                    continue
+                if an == "src" and val.startswith("//"):
+                    val = "https:" + val
+            keep.append(f'{an}="{val[:2000]}"')
+        if name == "img" and "loading" not in {k.split("=")[0] for k in keep}:
+            keep.append('loading="lazy"')
+        attrs_str = (" " + " ".join(keep)) if keep else ""
+        return f"<{name}{attrs_str}{' /' if selfclose and name in ('br', 'hr', 'img') else ''}>"
+
+    text = _TAG_RE.sub(fix, text)
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 def _parse_dt(value) -> Optional[datetime]:
@@ -156,6 +231,7 @@ def _fetch_source_articles(source: FeedSource) -> List[dict]:
         if not content:
             content = summary
         published = _parse_dt(entry.get("published") or entry.get("updated") or entry.get("pubDate"))
+        is_foreign = 0 if is_cjk(title + " " + summary) else 1
         out.append({
             "guid": guid,
             "title": title,
@@ -163,9 +239,38 @@ def _fetch_source_articles(source: FeedSource) -> List[dict]:
             "author": author,
             "summary": summary,
             "content": content,
+            "content_html": _sanitize_html(content_raw) or _sanitize_html(summary_raw),
+            "is_foreign": is_foreign,
+            "title_zh": "",
+            "summary_zh": "",
             "published_at": published,
         })
+    # 外文文章：并行自动翻译标题与摘要（失败静默保留原文）
+    _translate_meta(out)
     return out
+
+
+def _translate_pair(title: str, summary: str):
+    return translate_title(title), translate_summary(summary)
+
+
+def _translate_meta(articles: List[dict]) -> None:
+    """对外文文章的标题/摘要做并行翻译（每篇 ≤10s，失败静默）。"""
+    jobs = [(a, a["title"], a["summary"]) for a in articles if a["is_foreign"]]
+    if not jobs:
+        return
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futs = {ex.submit(_translate_pair, t, s): a for a, t, s in jobs}
+        for fut in as_completed(futs, timeout=90):
+            a = futs[fut]
+            try:
+                t, s = fut.result()
+                if t:
+                    a["title_zh"] = t[:500]
+                if s:
+                    a["summary_zh"] = s[:8000]
+            except Exception:  # noqa: BLE001
+                continue
 
 
 def _upsert_articles(db: Session, source: FeedSource, articles: List[dict]) -> int:
@@ -188,6 +293,10 @@ def _upsert_articles(db: Session, source: FeedSource, articles: List[dict]) -> i
             author=art["author"],
             summary=art["summary"],
             content=art["content"],
+            content_html=art.get("content_html") or "",
+            is_foreign=art.get("is_foreign") or 0,
+            title_zh=art.get("title_zh") or "",
+            summary_zh=art.get("summary_zh") or "",
             published_at=art["published_at"],
         ))
         existing.add(art["guid"])
@@ -491,7 +600,7 @@ def get_article(
         a.read = 1
         db.commit()
         db.refresh(a)
-    d = _article_to_dict(a)
+    d = _article_to_dict(a, full=True)
     src = (
         db.query(FeedSource).filter(
             FeedSource.id == a.source_id, FeedSource.user_id == uid
@@ -499,6 +608,28 @@ def get_article(
     )
     d["source_title"] = src.title if src else ""
     d["source_category"] = src.category if src else DEFAULT_CATEGORY
+    return ok(d)
+
+
+@router.post("/articles/{article_id}/translate")
+def translate_article(
+    article_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """外文文章按需翻译：标题+摘要+正文一次补齐，结果缓存入库。"""
+    a = _guarded_article(db, article_id, current_user["user_id"])
+    if a.is_foreign:
+        if not (a.title_zh or "").strip():
+            a.title_zh = translate_title(a.title or "")[:500]
+        if not (a.summary_zh or "").strip():
+            a.summary_zh = translate_summary(a.summary or "")[:8000]
+        if not (a.content_zh or "").strip():
+            content = (a.content or a.summary or "")[:12000]
+            a.content_zh = translate_text(content)[:MAX_CONTENT_LEN]
+        db.commit()
+        db.refresh(a)
+    d = _article_to_dict(a, full=True)
     return ok(d)
 
 
@@ -527,7 +658,7 @@ def generate_summary(
     if a.ai_summary:
         return ok({"ai_summary": a.ai_summary, "cached": True})
 
-    content = a.content or a.summary or a.title or ""
+    content = (a.content_zh or a.content or a.summary or a.title) or ""
     if not content.strip():
         raise_http(400, "文章内容为空，无法生成摘要")
     # 摘要只看正文前若干字符，降低 token 成本
@@ -578,7 +709,7 @@ def article_to_note(
 
     ai_summary = a.ai_summary
     if payload.with_summary and not ai_summary:
-        content = a.content or a.summary or a.title or ""
+        content = (a.content_zh or a.content or a.summary or a.title) or ""
         if content.strip():
             try:
                 resp = summarize_note(content[:6000])
@@ -591,7 +722,8 @@ def article_to_note(
     lines = []
     if ai_summary:
         lines.append(f"【AI 摘要】{a.ai_summary}")
-    lines.append(a.content or a.summary or "")
+    body_content = (a.content_zh or a.content or a.summary) or ""
+    lines.append(body_content)
     body = "\n\n".join(x for x in lines if x).strip()
     if a.link:
         body = body + f"\n\n原文链接：{a.link}"
@@ -600,7 +732,7 @@ def article_to_note(
 
     note = Note(
         user_id=uid,
-        title=a.title[:255] or "资讯收藏",
+        title=(a.title_zh or a.title)[:255] or "资讯收藏",
         content=body[:60000] or "（内容为空）",
         summary=ai_summary[:2000] or None,
         status="draft",

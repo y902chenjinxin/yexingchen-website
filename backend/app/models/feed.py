@@ -59,6 +59,11 @@ class FeedArticle(Base):
     author = Column(String(128), nullable=True, default="")
     summary = Column(Text, nullable=True, default="")
     content = Column(Text, nullable=True, default="")
+    content_html = Column(Text, nullable=True, default="")  # 清洗后 HTML 原文（富文本渲染）
+    title_zh = Column(String(500), nullable=True, default="")  # 外文源自动翻译标题
+    summary_zh = Column(Text, nullable=True, default="")       # 外文源自动翻译摘要
+    content_zh = Column(Text, nullable=True, default="")       # 外文源按需翻译正文（缓存）
+    is_foreign = Column(Integer, nullable=False, default=0)    # 1=原文非中文
     ai_summary = Column(Text, nullable=True, default="")
     published_at = Column(DateTime, nullable=True)
     read = Column(Integer, nullable=False, default=0)

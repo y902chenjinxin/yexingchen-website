@@ -54,6 +54,7 @@ export const feedsApi = {
   get: (id) => api.get(`/articles/${id}`),
   delArticle: (id) => api.delete(`/articles/${id}`),
   summary: (id) => api.post(`/articles/${id}/summary`),
+  translate: (id) => api.post(`/articles/${id}/translate`),
   toggleBookmark: (id) => api.post(`/articles/${id}/toggle-bookmark`),
   toNote: (id, data) => api.post(`/articles/${id}/to-note`, data),
 }

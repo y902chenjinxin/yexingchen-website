@@ -12,6 +12,15 @@ export async function routeGuard(to, from, next) {
     return
   }
 
+  // 直接刷新受保护页时 user 尚未加载（App.vue onMounted 的 fetchUser 晚于守卫），先同步拉取
+  if (auth.isLoggedIn && !auth.user && to.meta.requiresAuth) {
+    await auth.fetchUser()
+    if (!auth.isLoggedIn) {
+      next('/login')
+      return
+    }
+  }
+
   if (to.meta.role === 'super_admin' && !auth.isSuperAdmin) {
     next('/workbench')
     return

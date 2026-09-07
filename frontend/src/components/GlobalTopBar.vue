@@ -156,12 +156,14 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Grid, User, Lock, Avatar, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
-  Document, Check, Notebook, VideoPlay, MagicStick, Reading
+  Document, Check, Notebook, VideoPlay, MagicStick, Reading, HomeFilled,
+  Collection, TrendCharts, MapLocation, VideoCamera, ChatDotRound, Setting
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { searchAll } from '@/api/search'
+import { getPublicMenus } from '@/api/admin'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
 const router = useRouter()
@@ -175,10 +177,32 @@ const searchWord = ref('')
 const searchFocus = ref(false)
 let suggestTimer = null
 
-/* ---- 导航：只保留「AI 对话」（原笔记位），其余保持干净 ---- */
-const navItems = [
-  { label: 'AI 对话', to: '/assistant', icon: MagicStick }
-]
+/* ---- 导航：由菜单表驱动（管理后台仅超级管理员可见） ---- */
+const menuIconMap = {
+  Collection, TrendCharts, MapLocation, Tools, Headset, Reading, VideoCamera,
+  Document, ChatDotRound, Setting, HomeFilled, MagicStick, Notebook, VideoPlay
+}
+const navItems = ref([])
+
+async function loadNavMenus() {
+  try {
+    const res = await getPublicMenus()
+    let items = (res?.data?.list || []).filter(m => m.is_enabled)
+    if (!auth.isSuperAdmin) {
+      items = items.filter(m => m.path !== '/admin')
+    }
+    navItems.value = items.map(m => ({
+      label: m.title,
+      to: m.path,
+      icon: menuIconMap[m.icon] || HomeFilled
+    }))
+  } catch {
+    // 菜单接口不可用时退回默认导航
+    navItems.value = [
+      { label: 'AI 对话', to: '/assistant', icon: MagicStick }
+    ]
+  }
+}
 function isActive(item) {
   return route.path.startsWith(item.to)
 }
@@ -347,6 +371,7 @@ function expand() { collapsed.value = false }
 
 onMounted(async () => {
   await player.initBgm()
+  loadNavMenus()
   checkMobile()
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', checkMobile)
@@ -396,11 +421,12 @@ onUnmounted(() => {
   color: var(--lj-text);
 }
 
-.tb-nav { display: flex; gap: 4px; flex: none; }
+.tb-nav { display: flex; gap: 2px; flex: none; max-width: 46vw; overflow-x: auto; scrollbar-width: none; }
+.tb-nav::-webkit-scrollbar { display: none; }
 .tb-nav-item {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 12px; border-radius: 8px;
-  font-size: 13px; color: var(--lj-text-2); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 9px; border-radius: 8px;
+  font-size: 13px; color: var(--lj-text-2); cursor: pointer; white-space: nowrap;
   transition: all 0.25s;
 }
 .tb-nav-item:hover { color: var(--lj-dai); background: rgba(127, 168, 163, 0.10); }

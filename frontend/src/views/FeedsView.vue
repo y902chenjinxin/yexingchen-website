@@ -121,14 +121,15 @@
             >
               <span class="fd-a-dot" v-if="!a.read"></span>
               <span class="fd-a-main">
-                <span class="fd-a-title">{{ a.title || '无标题' }}</span>
+                <span class="fd-a-title">{{ a.title_zh || a.title || '无标题' }}</span>
                 <span class="fd-a-meta">
                   <span class="fd-a-source">{{ a.source_title }}</span>
                   <span class="fd-a-time">{{ fmtTime(a.published_at) }}</span>
+                  <span v-if="a.is_foreign && a.title_zh" class="fd-a-badge">已翻译</span>
                   <span v-if="a.ai_summary" class="fd-a-badge">AI 摘要</span>
                   <span v-if="a.bookmarked" class="fd-a-star">★</span>
                 </span>
-                <span v-if="a.summary" class="fd-a-excerpt">{{ a.summary }}</span>
+                <span v-if="a.summary_zh || a.summary" class="fd-a-excerpt">{{ a.summary_zh || a.summary }}</span>
               </span>
             </button>
             <div v-if="!list.length" class="fd-col-empty">暂无文章，点「刷新全部」拉取最新内容</div>
@@ -154,13 +155,31 @@
           <template v-if="active">
             <div class="fd-reader-head">
               <div class="fd-r-titles">
-                <h2 class="fd-r-title">{{ active.title }}</h2>
+                <h2 class="fd-r-title">{{ active.title_zh || active.title }}</h2>
                 <div class="fd-r-meta">
                   <span>{{ active.source_title }}</span>
                   <span v-if="active.author"> · {{ active.author }}</span>
                   <span v-if="active.published_at"> · {{ fmtTime(active.published_at) }}</span>
+                  <span v-if="active.is_foreign" class="fd-r-lang">外文源</span>
                 </div>
               </div>
+            </div>
+
+            <!-- 外文源翻译条 -->
+            <div v-if="active.is_foreign" class="fd-trbar">
+              <span class="fd-trbar-hint">
+                {{ translating ? '正在翻译…' : (active.content_zh ? '已自动翻译为中文' : '原文为外文，可翻译为中文阅读') }}
+              </span>
+              <button
+                v-if="!translating"
+                class="fd-btn ghost small"
+                @click="toggleZh"
+              >{{ zhMode ? '查看原文' : '🌐 中文译文' }}</button>
+              <button
+                v-if="!translating && !active.content_zh"
+                class="fd-btn ghost small"
+                @click="doTranslate"
+              >重新翻译</button>
             </div>
 
             <!-- AI 摘要 -->
@@ -179,10 +198,16 @@
               <div v-else-if="!aiLoading" class="fd-sum-empty">点击「生成摘要」，让 AI 为你提炼本文要点</div>
             </div>
 
-            <!-- 原文摘要 + 正文 -->
+            <!-- 原文摘要 + 正文（富文本 / 纯文本 / 译文） -->
             <div class="fd-reader-body">
-              <p v-if="active.summary" class="fd-body-sum">{{ active.summary }}</p>
-              <p v-if="active.content" class="fd-body">{{ active.content }}</p>
+              <p v-if="active.summary_zh || active.summary" class="fd-body-sum">{{ active.summary_zh || active.summary }}</p>
+              <template v-if="zhMode && active.content_zh">
+                <p class="fd-body">{{ active.content_zh }}</p>
+              </template>
+              <template v-else>
+                <div v-if="active.content_html" class="fd-rich" v-html="active.content_html"></div>
+                <p v-else-if="active.content" class="fd-body">{{ active.content }}</p>
+              </template>
               <div class="fd-body-actions">
                 <a v-if="active.link" class="fd-body-orig" :href="active.link" target="_blank" rel="noopener noreferrer">阅读原文 ↗</a>
               </div>
@@ -246,6 +271,8 @@ const refreshing = ref(false)
 const saving = ref(false)
 const aiLoading = ref(false)
 const noteSaving = ref(false)
+const translating = ref(false)
+const zhMode = ref(false)
 
 const form = reactive({ id: null, feed_url: '', title: '', category: '综合' })
 const adding = ref(false)
@@ -320,6 +347,7 @@ function pickSource(s) {
 async function openArticle(a) {
   activeId.value = a.id
   active.value = { ...a }
+  zhMode.value = false
   // 补充正文（列表不含 content）
   try {
     const res = await feedsApi.get(a.id)
@@ -329,7 +357,39 @@ async function openArticle(a) {
     const idx = list.value.findIndex(x => x.id === a.id)
     if (idx >= 0) list.value[idx].read = fresh.read
     if (!fresh.read) list.value[idx].read = 1
+    // 外文文章自动翻译为中文
+    if (fresh.is_foreign) {
+      if (fresh.content_zh) {
+        zhMode.value = true
+      } else {
+        await doTranslate()
+      }
+    }
   } catch (e) { /* 保留列表摘要 */ }
+}
+
+async function doTranslate() {
+  if (!active.value || translating.value) return
+  translating.value = true
+  try {
+    const res = await feedsApi.translate(active.value.id)
+    const d = res.data
+    active.value = { ...active.value, ...d }
+    const idx = list.value.findIndex(x => x.id === active.value.id)
+    if (idx >= 0) {
+      list.value[idx].title_zh = d.title_zh
+      list.value[idx].summary_zh = d.summary_zh
+    }
+    zhMode.value = true
+  } catch (e) {
+    zhMode.value = false
+  } finally {
+    translating.value = false
+  }
+}
+
+function toggleZh() {
+  zhMode.value = !zhMode.value
 }
 
 function openAdd() {
@@ -594,6 +654,12 @@ onMounted(() => {
 .fd-r-titles { min-width: 0; }
 .fd-r-title { margin: 0; font-size: 17px; line-height: 1.5; letter-spacing: .02em; }
 .fd-r-meta { margin-top: 6px; font-size: 11px; color: var(--lj-text-3); }
+.fd-r-lang { margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10px; color: var(--lj-ochre); background: rgba(199,169,107,.12); border: 1px solid rgba(199,169,107,.25); }
+
+/* 外文源翻译条 */
+.fd-trbar { display: flex; align-items: center; gap: 10px; border-radius: 10px; padding: 8px 12px;
+  background: rgba(127,168,163,.08); border: 1px dashed rgba(127,168,163,.3); }
+.fd-trbar-hint { flex: 1; font-size: 12px; color: var(--lj-text-2); }
 
 .fd-sum { border-radius: 12px; padding: 12px 14px; background: rgba(199,169,107,.10); border-color: rgba(199,169,107,.18); }
 .fd-sum-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -606,6 +672,24 @@ onMounted(() => {
 .fd-reader-body { display: flex; flex-direction: column; gap: 12px; }
 .fd-body-sum { margin: 0; font-size: 13px; line-height: 1.7; color: var(--lj-text-2); border-left: 2px solid var(--lj-dai); padding-left: 10px; }
 .fd-body { margin: 0; font-size: 13px; line-height: 1.85; white-space: pre-wrap; word-break: break-word; }
+/* 富文本正文（服务端白名单清洗后渲染） */
+.fd-rich { font-size: 14px; line-height: 1.9; word-break: break-word; }
+.fd-rich :deep(p) { margin: 0 0 12px; }
+.fd-rich :deep(img) { max-width: 100%; height: auto; border-radius: 10px; margin: 6px 0; }
+.fd-rich :deep(a) { color: var(--lj-dai); text-decoration: none; }
+.fd-rich :deep(a:hover) { text-decoration: underline; }
+.fd-rich :deep(h1), .fd-rich :deep(h2), .fd-rich :deep(h3), .fd-rich :deep(h4) { margin: 18px 0 10px; line-height: 1.4; }
+.fd-rich :deep(ul), .fd-rich :deep(ol) { margin: 6px 0 12px; padding-left: 22px; }
+.fd-rich :deep(li) { margin: 4px 0; }
+.fd-rich :deep(blockquote) { margin: 10px 0; padding: 8px 14px; border-left: 3px solid var(--lj-dai);
+  background: rgba(127,168,163,.07); border-radius: 0 10px 10px 0; color: var(--lj-text-2); }
+.fd-rich :deep(pre) { margin: 10px 0; padding: 12px 14px; border-radius: 10px; background: rgba(0,0,0,.28);
+  overflow-x: auto; font-size: 12px; line-height: 1.7; }
+.fd-rich :deep(code) { font-family: ui-monospace, Consolas, monospace; font-size: .92em; }
+.fd-rich :deep(pre code) { background: transparent; padding: 0; }
+.fd-rich :deep(table) { border-collapse: collapse; margin: 10px 0; max-width: 100%; }
+.fd-rich :deep(th), .fd-rich :deep(td) { border: 1px solid rgba(127,168,163,.25); padding: 6px 10px; font-size: 13px; }
+.fd-rich :deep(hr) { border: none; border-top: 1px solid rgba(127,168,163,.2); margin: 16px 0; }
 .fd-body-actions { margin-top: 4px; }
 .fd-body-orig { font-size: 13px; color: var(--lj-dai); text-decoration: none; }
 .fd-body-orig:hover { text-decoration: underline; }

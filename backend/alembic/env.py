@@ -50,6 +50,8 @@ from app.models.workbench import (  # noqa: F401,E402
     WorkbenchLog,
 )
 from app.models.feed import FeedSource, FeedArticle  # noqa: F401,E402
+from app.models.admin import Role, Menu  # noqa: F401,E402
+from app.models.travels import Travel, TravelCity  # noqa: F401,E402
 
 config = context.config
 
