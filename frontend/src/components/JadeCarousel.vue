@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -73,7 +73,7 @@ const props = defineProps({
   },
   initialIndex: { type: Number, default: 0 },
   autoReturn: { type: Boolean, default: true },
-  autoReturnMs: { type: Number, default: 6000 }
+  autoReturnMs: { type: Number, default: 5000 }
 })
 
 const router = useRouter()
@@ -156,12 +156,14 @@ function onKeydown(e) {
   else if (e.key === 'ArrowRight') go(1)
 }
 
-/* ---- 空闲自动回位 ---- */
+/* ---- 循环自动轮播（从右往左，每 autoReturnMs 切一张，到底回环） ---- */
 function scheduleReturn() {
   if (!props.autoReturn) return
   clearTimer()
   returnTimer = setTimeout(() => {
-    currentIndex.value = props.initialIndex
+    const n = props.cards.length
+    currentIndex.value = (currentIndex.value + 1) % n
+    scheduleReturn()
   }, props.autoReturnMs)
 }
 function clearTimer() {
@@ -197,6 +199,10 @@ function seeded(i, key) {
   const x = Math.sin(s * i * 12.9898) * 43758.5453
   return x - Math.floor(x)
 }
+
+onMounted(() => {
+  scheduleReturn()
+})
 
 onUnmounted(() => {
   clearTimer()

@@ -153,7 +153,7 @@ onMounted(loadAll)
 
 .sd-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .sd-crumb { font-size: 13px; color: var(--lj-text-2); cursor: pointer; }
-.sd-crumb:hover { color: var(--lj-dai); }
+.sd-crumb:hover { color: var(--lj-seal); }
 
 .sd-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-radius: 16px; }
 .sd-name { margin: 0; font-size: 24px; letter-spacing: .04em; color: var(--lj-text); }
@@ -179,14 +179,14 @@ onMounted(loadAll)
 
 .sd-news-list { display: flex; flex-direction: column; gap: 8px; }
 .sd-news-item { display: flex; gap: 8px; font-size: 13px; color: var(--lj-text-2); text-decoration: none; }
-.sd-news-item:hover { color: var(--lj-dai); }
+.sd-news-item:hover { color: var(--lj-seal); }
 .sd-news-dot { color: var(--lj-dai); flex: none; }
 .sd-news-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sd-btn { border-radius: 9px; padding: 7px 14px; font-size: 13px; border: 1px solid transparent; cursor: pointer; transition: all .2s; }
 .sd-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #0B0F14; }
 .sd-btn.ghost { background: transparent; color: var(--lj-text); border-color: var(--lj-line); }
-.sd-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-dai); }
+.sd-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
 .sd-btn.small { padding: 5px 10px; font-size: 12px; }
 
 .sd-risk { margin-top: 26px; text-align: center; font-size: 11px; color: var(--lj-text-3); letter-spacing: .08em; }

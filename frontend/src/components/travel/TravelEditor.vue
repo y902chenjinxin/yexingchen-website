@@ -223,7 +223,7 @@ function submit() {
 .ted-label { font-size: 12px; letter-spacing: .08em; color: var(--lj-text-2); }
 .ted-label i { color: var(--lj-vermilion, #c23c3c); font-style: normal; }
 .ted-input { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--lj-line); background: rgba(255,255,255,.04); color: var(--lj-text); font-size: 13.5px; outline: none; box-sizing: border-box; width: 100%; }
-.ted-input:focus { border-color: var(--lj-dai); }
+.ted-input:focus { border-color: var(--lj-seal); }
 .ted-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ted-stars { display: flex; align-items: center; gap: 3px; }
 .ted-star { font-size: 20px; line-height: 1; border: none; background: none; color: rgba(120,135,145,.25); cursor: pointer; }
@@ -245,14 +245,14 @@ function submit() {
 .ted-photo img { width: 100%; height: 100%; object-fit: cover; }
 .ted-photo-del { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; border: none; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; cursor: pointer; line-height: 1; }
 .ted-photo-add { width: 84px; height: 84px; border-radius: 10px; border: 1px dashed var(--lj-line); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: var(--lj-text-3); }
-.ted-photo-add:hover { border-color: var(--lj-dai); color: var(--lj-dai); }
+.ted-photo-add:hover { border-color: var(--lj-seal); color: var(--lj-seal); }
 .ted-add-plus { font-size: 22px; line-height: 1; }
 .ted-add-txt { font-size: 11px; }
 .ted-video-row { display: flex; gap: 10px; align-items: center; }
 .ted-upload-btn { flex: none; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--lj-line); background: rgba(255,255,255,.05); color: var(--lj-text); font-size: 13px; cursor: pointer; }
 .ted-video { margin-top: 8px; max-width: 100%; max-height: 300px; border-radius: 10px; }
 .ted-textarea { width: 100%; box-sizing: border-box; min-height: 160px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--lj-line); background: rgba(255,255,255,.04); color: var(--lj-text); font-size: 13.5px; line-height: 1.7; resize: vertical; outline: none; font-family: inherit; }
-.ted-textarea:focus { border-color: var(--lj-dai); }
+.ted-textarea:focus { border-color: var(--lj-seal); }
 .ted-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 .ted-btn { padding: 9px 22px; border-radius: 999px; border: 1px solid var(--lj-line-strong); background: linear-gradient(135deg, rgba(127,168,163,.25), rgba(199,169,107,.16)); color: var(--lj-text); font-size: 13.5px; cursor: pointer; }
 .ted-btn.ghost { background: none; border-color: var(--lj-line); color: var(--lj-text-2); }

@@ -463,7 +463,7 @@ drawCrop()
   border: 2px dashed var(--lj-line-strong); border-radius: 16px; padding: 48px 20px;
   text-align: center; cursor: pointer; background: rgba(127,168,163,.05); transition: all var(--transition);
 }
-.idp-drop:hover { border-color: var(--lj-dai); }
+.idp-drop:hover { border-color: var(--lj-seal); }
 .idp-drop.dragging { border-color: var(--lj-dai); background: rgba(127,168,163,.10); }
 .idp-drop-icon { font-size: 44px; margin-bottom: 10px; }
 .idp-drop-text { font-size: 16px; color: var(--lj-text); letter-spacing: .06em; }
@@ -497,8 +497,8 @@ drawCrop()
   background: rgba(127,168,163,.06); color: var(--lj-text); font-size: 13px; cursor: pointer;
   font-family: var(--font-serif); transition: all .2s;
 }
-.idp-chip:hover { border-color: var(--lj-dai); }
-.idp-chip.active { background: var(--lj-dai); color: #101820; border-color: var(--lj-dai); font-weight: 500; }
+.idp-chip:hover { border-color: var(--lj-seal); }
+.idp-chip.active { background: var(--lj-seal); color: #101820; border-color: var(--lj-seal); font-weight: 500; }
 .idp-custom { display: flex; align-items: center; gap: 8px; }
 .idp-num { width: 72px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--lj-line);
   background: rgba(22,30,39,.4); color: var(--lj-text); font-family: var(--font-serif); font-size: 13px; }
@@ -519,7 +519,7 @@ drawCrop()
 .idp-switch-row .idp-desc { font-size: 11px; color: var(--lj-text-3); flex: 1; }
 .idp-toggle { width: 40px; height: 22px; border-radius: 20px; background: rgba(127,168,163,.25); position: relative; cursor: pointer; transition: background .2s; flex: none; }
 .idp-toggle i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #cfd8d5; transition: all .2s; }
-.idp-toggle.on { background: var(--lj-dai); }
+.idp-toggle.on { background: var(--lj-seal); }
 .idp-toggle.on i { left: 20px; background: #fff; }
 
 .idp-generate { margin-top: 4px; padding: 13px; border: none; border-radius: 11px; cursor: pointer;

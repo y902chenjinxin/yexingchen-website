@@ -293,7 +293,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-btn { border-radius: 9px; padding: 8px 16px; font-size: 13px; border: 1px solid transparent; cursor: pointer; transition: all .2s; }
 .st-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #0B0F14; }
 .st-btn.ghost { background: transparent; color: var(--lj-text); border-color: var(--lj-line); }
-.st-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-dai); }
+.st-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
 .st-btn.tiny { padding: 3px 8px; font-size: 12px; }
 .st-btn.danger { color: #D8504F; }
 .st-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -317,11 +317,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-f-field.grow { flex: 1 1 180px; }
 .st-f-label { display: block; font-size: 11px; color: var(--lj-text-2); margin-bottom: 5px; }
 .st-input { width: 100%; background: rgba(11,15,20,.35); border: 1px solid var(--lj-line); color: var(--lj-text); border-radius: 8px; padding: 7px 10px; box-sizing: border-box; }
-.st-input:focus { outline: none; border-color: var(--lj-dai); }
+.st-input:focus { outline: none; border-color: var(--lj-seal); }
 .st-select { appearance: none; }
 .st-sug { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .st-sug-item { display: flex; align-items: baseline; gap: 8px; background: rgba(11,15,20,.35); border: 1px solid var(--lj-line); border-radius: 9px; padding: 6px 12px; cursor: pointer; color: var(--lj-text); }
-.st-sug-item:hover { border-color: var(--lj-dai); }
+.st-sug-item:hover { border-color: var(--lj-seal); }
 .st-sug-name { font-size: 13px; }
 .st-sug-code { font-size: 11px; color: var(--lj-text-3); }
 .st-form-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
@@ -339,7 +339,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-table td { padding: 11px 10px; font-size: 13px; color: var(--lj-text); border-bottom: 1px solid rgba(74,95,99,.12); }
 .st-table tr:hover td { background: rgba(74,95,99,.05); }
 .st-td-name { cursor: pointer; font-weight: 600; }
-.st-td-name:hover { color: var(--lj-dai); }
+.st-td-name:hover { color: var(--lj-seal); }
 .st-td-code { display: block; font-size: 11px; color: var(--lj-text-3); margin-top: 2px; }
 .st-td-edit { margin-left: 8px; font-size: 12px; color: var(--lj-dai); cursor: pointer; }
 .st-num { font-variant-numeric: tabular-nums; }

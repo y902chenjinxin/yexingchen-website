@@ -228,7 +228,7 @@ onMounted(reload)
 .tv-head-right { display: flex; gap: 10px; flex: none; }
 .tv-btn { padding: 8px 18px; border-radius: 999px; border: 1px solid var(--lj-line-strong); font-size: 13.5px; cursor: pointer; transition: all .25s; }
 .tv-btn.ghost { background: none; color: var(--lj-text-2); }
-.tv-btn.ghost:hover { border-color: var(--lj-dai); color: var(--lj-dai); }
+.tv-btn.ghost:hover { border-color: var(--lj-seal); color: var(--lj-seal); }
 .tv-btn.primary { color: var(--lj-text); background: linear-gradient(135deg, rgba(127,168,163,.3), rgba(199,169,107,.18)); }
 .tv-btn.primary:hover { filter: brightness(1.12); }
 

@@ -63,6 +63,6 @@ defineProps({
 
 /* 浅色留白底（工作台/管理页等） */
 .sf-light .sf-links a { color: rgba(74, 95, 99, 0.6); }
-.sf-light .sf-links a:hover { color: var(--lj-dai, #497477); }
+.sf-light .sf-links a:hover { color: var(--lj-seal, #d98a76); }
 .sf-light .sf-divider { color: rgba(74, 95, 99, 0.4); }
 </style>

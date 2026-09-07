@@ -3,14 +3,14 @@
  * 让所有 el-* 组件融入「深青夜色 + 灵气青绿」修仙风，不再默认蓝/白皮
  * ===================================================================== */
 :root {
-  /* ---- 主色：向晚雨青 ---- */
-  --el-color-primary: #7fa8a3;
-  --el-color-primary-light-3: #8fb6b0;
-  --el-color-primary-light-5: #a3c5c0;
-  --el-color-primary-light-7: #b8d2ce;
-  --el-color-primary-light-8: #cddfdc;
-  --el-color-primary-light-9: #e6eff0;
-  --el-color-primary-dark-2: #5b8a85;
+  /* ---- 主色：朱砂印章（全站交互强调统一） ---- */
+  --el-color-primary: #d98a76;
+  --el-color-primary-light-3: #e09a88;
+  --el-color-primary-light-5: #e6aa9a;
+  --el-color-primary-light-7: #ecbbad;
+  --el-color-primary-light-8: #f2ccbe;
+  --el-color-primary-light-9: #f8e3dc;
+  --el-color-primary-dark-2: #b56a54;
   --el-color-success: #6aa98f;
   --el-color-warning: #c9a86b;
   --el-color-danger: #d28a7c;

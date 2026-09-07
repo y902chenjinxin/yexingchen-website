@@ -69,7 +69,7 @@ function back() { router.push('/workbench') }
   transition: all .25s;
 }
 .bp-back:hover {
-  color: var(--lj-dai); border-color: var(--lj-dai);
+  color: var(--lj-seal); border-color: var(--lj-seal);
   background: rgba(127, 168, 163, 0.16);
 }
 @media (max-width: 600px) {

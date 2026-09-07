@@ -105,7 +105,7 @@ defineProps({
 .wd-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .wd-card-name { font-size: 15px; letter-spacing: .06em; color: var(--lj-text); }
 .wd-more { font-size: 12px; color: var(--lj-text-2); opacity: 0; transition: all .25s; }
-.wd-card:hover .wd-more { opacity: 1; color: var(--lj-dai); }
+.wd-card:hover .wd-more { opacity: 1; color: var(--lj-seal); }
 
 .wd-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px 8px; }
 .wd-empty-icon { font-size: 28px; opacity: .7; }

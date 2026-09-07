@@ -91,10 +91,10 @@ function close() { open.value = false }
 }
 .tcp-tabs { display: flex; flex-wrap: wrap; gap: 4px; max-height: 96px; overflow-y: auto; padding-bottom: 6px; border-bottom: 1px dashed var(--lj-line); }
 .tcp-tab { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; background: none; color: var(--lj-text-2); cursor: pointer; }
-.tcp-tab.on { color: var(--lj-dai); border-color: var(--lj-dai); opacity: .9; }
+.tcp-tab.on { color: var(--lj-seal); border-color: var(--lj-seal); opacity: .9; }
 .tcp-cities { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; overflow-y: auto; }
 .tcp-city { font-size: 13px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--lj-line); background: none; color: var(--lj-text); cursor: pointer; }
-.tcp-city:hover { border-color: var(--lj-dai); color: var(--lj-dai); }
-.tcp-city.on { background: rgba(127,168,163,.16); border-color: var(--lj-dai); color: var(--lj-dai); }
+.tcp-city:hover { border-color: var(--lj-seal); color: var(--lj-seal); }
+.tcp-city.on { background: rgba(127,168,163,.16); border-color: var(--lj-seal); color: var(--lj-seal); }
 .tcp-none { font-size: 12px; color: var(--lj-text-3); padding: 8px; }
 </style>

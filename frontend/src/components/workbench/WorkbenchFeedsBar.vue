@@ -83,7 +83,7 @@ onUnmounted(() => clearInterval(timer))
 .wfb-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .wfb-more { flex: none; font-size: 12px; color: var(--lj-text-2); transition: all .25s; }
-.wfb:hover .wfb-more { color: var(--lj-dai); }
+.wfb:hover .wfb-more { color: var(--lj-seal); }
 
 @media (max-width: 600px) {
   .wfb { padding: 0 14px; gap: 10px; }

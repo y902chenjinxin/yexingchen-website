@@ -44,7 +44,7 @@ function onToggle() {
   width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
   color: var(--lj-text-2, #9aa8ad); transition: all .25s; flex: none;
 }
-.vib:hover { color: var(--lj-dai, #7fa8a3); background: rgba(127,168,163,.10); }
+.vib:hover { color: var(--lj-seal, #d98a76); background: rgba(127,168,163,.10); }
 .vib.listening { color: #e06464; }
 .vib-mic { width: 16px; height: 16px; opacity: .9; }
 .vib-wave { display: inline-flex; align-items: center; gap: 2px; height: 16px; }
