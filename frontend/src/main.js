@@ -14,4 +14,14 @@ app.use(createPinia())
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
 
+// 昼夜自适应主题（TIME_THEME_20260908）：本地时间 6:00–18:00 → day，其余 night
+function applyDayTheme() {
+  const h = new Date().getHours()
+  const next = h >= 6 && h < 18 ? 'day' : 'night'
+  const root = document.documentElement
+  if (root.dataset.theme !== next) root.dataset.theme = next
+}
+applyDayTheme()
+setInterval(applyDayTheme, 60000)
+
 app.mount('#app')

@@ -14,6 +14,7 @@ body {
   color: var(--color-text);
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background-color .45s ease, color .45s ease;
 }
 
 /* ========== Scrollbar - 深色风格 ========== */

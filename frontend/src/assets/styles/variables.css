@@ -631,3 +631,119 @@
   --ls-text-2: #aab6bd;
   --ls-text-3: #7d8b92;
 }
+
+/* =====================================================================
+ * 昼夜自适应 · 日间「明亮苹果玻璃」覆盖层（TIME_THEME_20260908）
+ * html[data-theme="day"] 时亮底深字翻转全站，缺省仍为夜色雨青（夜间）。
+ * 由 main.js 每 60s 按本地时间设 data-theme。依据 docs/ai/TIME_THEME_20260908.md
+ * ===================================================================== */
+:root[data-theme="day"] {
+  /* ---- 背景：宣纸亮灰 ---- */
+  --yq-bg0: #f3f1ea;
+  --yq-bg1: #f7f5ef;
+  --yq-bg2: #eeebe2;
+  --color-bg-dark: var(--yq-bg0);
+  --color-bg: var(--yq-bg1);
+  --color-bg-elevated: var(--yq-bg2);
+  --color-bg-glass: rgba(255, 255, 255, 0.6);
+  --ink-black: var(--yq-bg0);
+  --ink-dark: var(--yq-bg1);
+  --ink-medium: var(--yq-bg2);
+  --ink-light: #e6e3da;
+  --bg-deep: var(--yq-bg0);
+  --bg-indigo: var(--yq-bg1);
+  --bg-night: var(--yq-bg2);
+
+  /* ---- 文字：深墨阶梯 ---- */
+  --color-text: #2a3238;
+  --color-text-dark: #14191d;
+  --color-text-secondary: #5f6b70;
+  --color-text-muted: #8a9499;
+  --color-text-light: rgba(42, 50, 56, 0.92);
+  --xiu-text: #2a3238;
+  --xiu-text-2: #5f6b70;
+  --xiu-text-3: #8a9499;
+  --ls-text: #2a3238;
+  --ls-text-2: #5f6b70;
+  --ls-text-3: #8a9499;
+
+  /* ---- 强调：雨青/朱砂/鎏金 加深，亮底可读 ---- */
+  --yq-rain: #2f8a85;
+  --yq-rain-bright: #3fa89f;
+  --yq-rain-deep: #22665f;
+  --yq-gold: #a9804f;
+  --yq-gold-bright: #c7a96b;
+  --color-primary: var(--yq-rain);
+  --color-secondary: var(--yq-rain-deep);
+  --color-accent: var(--yq-gold);
+  --color-qi-primary: var(--yq-rain);
+  --color-qi-green: var(--yq-rain-deep);
+  --color-qi-glow: rgba(47, 138, 133, 0.22);
+  --island-glow-color: rgba(47, 138, 133, 0.16);
+  --color-gold: var(--yq-gold);
+  --color-gold-bright: var(--yq-gold-bright);
+  --color-gold-dark: #8a6a42;
+  --color-jade: var(--yq-rain-bright);
+  --xiu-primary: var(--yq-rain);
+  --xiu-primary-bright: var(--yq-rain-bright);
+  --xiu-gold: var(--yq-gold);
+  --xiu-danger: #cd5844;
+  --color-danger: #c2432f;
+  --color-success: #2f8a5f;
+  --color-warning: var(--yq-gold);
+  --lj-dai: #2f7f7a;
+  --lj-dai-deep: #22665f;
+  --lj-ochre: var(--yq-gold);
+  --lj-vermilion: #b85341;
+  --lj-seal: #c25e4c;
+  --lj-seal-hover: #b95341;
+  --lj-seal-soft: rgba(194, 94, 76, 0.14);
+  --ls-dai: var(--yq-rain);
+  --ls-dai-deep: var(--yq-rain-deep);
+  --ls-ochre: var(--yq-gold);
+  --ls-jade: #3f8a6a;
+
+  /* ---- 玻璃卡/浮层/描边 ---- */
+  --lj-bg: var(--yq-bg1);
+  --lj-bg-deep: var(--yq-bg2);
+  --lj-paper: rgba(255, 255, 255, 0.66);
+  --lj-glass: rgba(255, 255, 255, 0.6);
+  --lj-line: rgba(20, 36, 42, 0.14);
+  --lj-line-strong: rgba(20, 36, 42, 0.24);
+  --lj-text: var(--color-text);
+  --lj-text-2: var(--color-text-secondary);
+  --lj-text-3: var(--color-text-muted);
+  --ls-bg0: var(--yq-bg0);
+  --ls-bg1: var(--yq-bg1);
+  --ls-bg-glow: rgba(47, 138, 133, 0.10);
+  --ls-paper: rgba(255, 255, 255, 0.66);
+  --ls-paper-2: #f0eee7;
+  --ls-glass: rgba(255, 255, 255, 0.6);
+  --ls-line: rgba(30, 45, 54, 0.12);
+  --ls-line-strong: rgba(30, 45, 54, 0.22);
+  --ls-highlight: rgba(255, 255, 255, 0.5);
+  --glass-border: rgba(20, 30, 38, 0.10);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 1px 1px rgba(20, 30, 38, 0.04), 0 8px 24px rgba(20, 30, 38, 0.08), 0 24px 60px rgba(20, 30, 38, 0.12);
+  --glow-rain: rgba(47, 138, 133, 0.14);
+  --glow-gold: rgba(169, 128, 79, 0.10);
+  --lj-shadow: 0 6px 22px rgba(30, 45, 54, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --ls-shadow: 0 14px 36px rgba(30, 45, 54, 0.12), 0 4px 12px rgba(30, 45, 54, 0.08);
+  --shadow-sm: 0 2px 8px rgba(30, 45, 54, 0.08);
+  --shadow: var(--glass-shadow);
+  --shadow-lg: 0 14px 36px rgba(30, 45, 54, 0.14), 0 4px 12px rgba(30, 45, 54, 0.08);
+  --shadow-glow: 0 0 40px rgba(47, 138, 133, 0.16);
+  --shadow-xl: 0 20px 50px rgba(30, 45, 54, 0.18);
+
+  /* ---- 旧变量映射（模板 SVG 等跟随日间） ---- */
+  --island-music: #3f8a85;
+  --island-novel: #a9804f;
+  --island-video: #a06a86;
+  --island-log:    #3f8a6a;
+  --island-tool:   #9a7a52;
+}
+/* 硬编码深色通用类 → 日间亮玻璃 */
+:root[data-theme="day"] .glass-card {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.58) 46%), rgba(247, 245, 239, 0.6);
+  border-color: var(--glass-border);
+}
