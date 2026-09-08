@@ -5,7 +5,7 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # 数据库
-    DATABASE_URL: str = "sqlite:///./yexingchen.db"
+    DATABASE_URL: str = ""  # 必填：sqlite:///./xxx.db 或 postgresql://...
 
     # JWT - 必须从环境变量读取，禁止默认值
     SECRET_KEY: str = ""
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # QQ邮箱
     SMTP_HOST: str = "smtp.qq.com"
     SMTP_PORT: int = 465
-    SMTP_USER: str = "1678069299@qq.com"
+    SMTP_USER: str = ""  # 必填：QQ 邮箱地址
     SMTP_PASSWORD: str = ""
 
     # 腾讯COS
@@ -48,6 +48,10 @@ class Settings(BaseSettings):
         # 启动时强制检查SECRET_KEY
         if not self.SECRET_KEY:
             raise ValueError("SECRET_KEY must be set in environment variables")
+        if not self.DATABASE_URL:
+            raise ValueError("DATABASE_URL must be set in environment variables")
+        if not self.SMTP_USER:
+            raise ValueError("SMTP_USER must be set in environment variables")
 
 
 settings = Settings()

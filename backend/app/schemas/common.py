@@ -44,6 +44,11 @@ class VerifyRequest(BaseModel):
     def email_check(cls, v):
         return validate_email(v)
 
+    @field_validator('password')
+    @classmethod
+    def password_check(cls, v):
+        return validate_password(v)
+
 
 class LoginRequest(BaseModel):
     email: str
@@ -84,6 +89,11 @@ class UserCreateRequest(BaseModel):
     @classmethod
     def email_check(cls, v):
         return validate_email(v)
+
+    @field_validator('password')
+    @classmethod
+    def password_check(cls, v):
+        return validate_password(v)
 
 
 class UserUpdateRequest(BaseModel):
@@ -196,6 +206,20 @@ class ToolCreate(BaseModel):
     description: Optional[str] = ""
     icon: Optional[str] = ""
 
+    @field_validator('url')
+    @classmethod
+    def url_check(cls, v):
+        """校验 url 格式：绝对 URL 必须是 http/https，相对路径以 / 开头（内置工具）。"""
+        if not v:
+            raise ValueError("URL 不能为空")
+        if v.startswith('/'):
+            if '//' in v:
+                raise ValueError("相对路径不能包含 //")
+            return v
+        if not (v.startswith('http://') or v.startswith('https://')):
+            raise ValueError("URL 必须以 http:// 或 https:// 开头（内置工具以 / 开头）")
+        return v
+
 class ToolUpdate(BaseModel):
     title: Optional[str] = None
     url: Optional[str] = None
@@ -203,6 +227,20 @@ class ToolUpdate(BaseModel):
     icon: Optional[str] = None
     is_enabled: Optional[int] = None
     sort_order: Optional[int] = None
+
+    @field_validator('url')
+    @classmethod
+    def url_check(cls, v):
+        """校验 url 格式：绝对 URL 必须是 http/https，相对路径以 / 开头（仅在提供 url 时校验）。"""
+        if v is None or v == '':
+            return v
+        if v.startswith('/'):
+            if '//' in v:
+                raise ValueError("相对路径不能包含 //")
+            return v
+        if not (v.startswith('http://') or v.startswith('https://')):
+            raise ValueError("URL 必须以 http:// 或 https:// 开头（内置工具以 / 开头）")
+        return v
 
 class ToolItem(BaseModel):
     id: int
@@ -234,3 +272,21 @@ class LogItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+def validate_password(password: str) -> str:
+    """校验密码强度：至少 8 位，包含大小写字母和数字。
+
+    防止弱密码（如 123456、password）进入系统。
+    """
+    if len(password) < 8:
+        raise ValueError("密码至少 8 位")
+    if not re.search(r'[A-Z]', password):
+        raise ValueError("密码需包含至少一个大写字母")
+    if not re.search(r'[a-z]', password):
+        raise ValueError("密码需包含至少一个小写字母")
+    if not re.search(r'\d', password):
+        raise ValueError("密码需包含至少一个数字")
+    return password
+
+
