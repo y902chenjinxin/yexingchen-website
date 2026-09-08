@@ -795,3 +795,94 @@
 :root[data-theme="day"] .jade-carousel .carousel-dots {
   background: rgba(20, 36, 42, 0.08);
 }
+
+/* =====================================================================
+ * 日间残留补齐 · 第三轮（2026-09-08，硬编码深底 → 日间浅玻璃）
+ * 主动全站扫描：输入框/下拉/浮卡/编辑器/预览框等组件直接写死深底，
+ * 白天模式下方为深底深字、突兀黑块。统一在日间覆盖为浅光亮玻璃，
+ * 文字经 --lj/--ls/--xiu 变量已在日间同步翻转。依据 docs/ai/TIME_THEME_20260908.md
+ * ===================================================================== */
+/* 笔记选择（输入框 + 下拉列表） */
+:root[data-theme="day"] .note-select-input {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(47, 138, 133, 0.3);
+}
+:root[data-theme="day"] .note-select-list {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--lj-shadow);
+}
+/* 灵根测验面板 */
+:root[data-theme="day"] .spirit-quiz {
+  background: rgba(255, 255, 255, 0.86);
+}
+/* 股票 K 线浮窗提示 */
+:root[data-theme="day"] .kc-tip {
+  background: rgba(255, 255, 255, 0.88);
+}
+/* 旅行足迹 · 迷你地图/玻璃浮卡/幽灵标签 */
+:root[data-theme="day"] .tm-mini,
+:root[data-theme="day"] .tm-card {
+  background: rgba(255, 255, 255, 0.82);
+}
+:root[data-theme="day"] .tm-chip.ghost {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(120, 135, 145, 0.3);
+}
+/* 岛屿内页页脚 */
+:root[data-theme="day"] .inner-footer {
+  background: rgba(255, 255, 255, 0.5);
+}
+/* 资源/素材预览 + 助手保存面板 */
+:root[data-theme="day"] .asset-preview {
+  background: rgba(255, 255, 255, 0.5);
+}
+:root[data-theme="day"] .chat-save-body {
+  background: rgba(20, 36, 42, 0.05);
+}
+/* 日志/记账/股票 输入框群 */
+:root[data-theme="day"] .fd-input,
+:root[data-theme="day"] .fd-search,
+:root[data-theme="day"] .fd-select,
+:root[data-theme="day"] .fin-note-input,
+:root[data-theme="day"] .fin-filter-input,
+:root[data-theme="day"] .st-input,
+:root[data-theme="day"] .st-sug-item,
+:root[data-theme="day"] .st-cell-input,
+:root[data-theme="day"] .sd-input,
+:root[data-theme="day"] .idp-num {
+  background: rgba(255, 255, 255, 0.55);
+}
+/* 富翁日志富文本代码块 */
+:root[data-theme="day"] .fd-rich pre {
+  background: rgba(20, 36, 42, 0.06);
+}
+/* 证件照工具裁剪框 */
+:root[data-theme="day"] .idp-crop {
+  background: #eef0ed;
+}
+/* 登录卡片 + 输入框（覆盖 LoginView 内 !important 深底，html 提升优先级） */
+html:root[data-theme="day"] .login-card {
+  background: rgba(255, 255, 255, 0.7);
+}
+html:root[data-theme="day"] .el-input__wrapper {
+  background: rgba(255, 255, 255, 0.7) !important;
+}
+/* 备案信息页脚 */
+:root[data-theme="day"] .filing-footer {
+  background: rgba(255, 255, 255, 0.5);
+}
+/* 笔记编辑器 · 取色面板/代码块/AI 作用域 */
+:root[data-theme="day"] .ne-color-panel .ne-hex-input,
+:root[data-theme="day"] .ne-color-panel .ne-color-rgb input {
+  background: rgba(255, 255, 255, 0.4);
+}
+:root[data-theme="day"] .ne-content pre {
+  background: rgba(20, 36, 42, 0.05);
+}
+:root[data-theme="day"] .ai-scope {
+  background: rgba(20, 36, 42, 0.05);
+}
+/* 工具详情预览框 */
+:root[data-theme="day"] .detail-frame-wrap {
+  background: #eef0ed;
+}
