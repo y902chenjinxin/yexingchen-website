@@ -762,3 +762,36 @@
   background: var(--lj-seal-soft);
   color: var(--lj-seal);
 }
+
+/* =====================================================================
+ * 日间残留补齐 · 白天完整亮色（2026-09-08 第二轮，User「都还有，白天黑夜各一套」）
+ * ---------------------------------------------------------------------
+ */
+/* AI 助手页：--xiu-* 卡/线/辉 全亮（聊天区/历史侧栏/顶栏统一走日间） */
+:root[data-theme="day"] {
+  --xiu-card: rgba(255, 255, 255, 0.76);
+  --xiu-card-strong: rgba(255, 255, 255, 0.9);
+  --xiu-line: rgba(20, 36, 42, 0.12);
+  --xiu-glow: rgba(47, 138, 133, 0.2);
+  --xiu-danger: var(--color-danger);
+  --el-table-tr-bg-color: transparent;
+  --el-table-row-hover-bg-color: rgba(47, 138, 133, 0.08);
+  --el-fill-color-lighter: rgba(20, 36, 42, 0.04);
+}
+/* 岛屿页顶部硬编码深 hero → 日间亮（Music 等岛共用类名） */
+:root[data-theme="day"] .island-page {
+  background: linear-gradient(180deg, #f4f1e8 0%, #e9ece2 100%);
+}
+:root[data-theme="day"] .island-header {
+  background: rgba(255, 255, 255, 0.6);
+  border-bottom: 1px solid rgba(47, 138, 133, 0.18);
+}
+/* 工作台顶栏搜索框 → 日间淡玻璃底 */
+:root[data-theme="day"] .tb-search .el-input__wrapper {
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 1px rgba(20, 36, 42, 0.08) inset;
+}
+/* 玉简指示器槽 → 日间淡槽 */
+:root[data-theme="day"] .jade-carousel .carousel-dots {
+  background: rgba(20, 36, 42, 0.08);
+}
