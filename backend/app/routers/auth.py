@@ -188,3 +188,29 @@ async def change_password(
     log_action(db, user.id, "password_change", detail="用户修改密码", ip_address=client_ip)
 
     return ResponseBase(msg="密码修改成功")
+
+@router.post("/logout", response_model=ResponseBase)
+async def logout(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """登出：将当前 token 加入黑名单。
+
+    需要在请求头带 Authorization: Bearer <token>，把该 token 的 jti 写入 token_blocklist。
+    后续该 token 再访问任何受保护接口都会被拒绝（INVALID_TOKEN）。
+    """
+    from app.utils.security import revoke_token
+
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise_error(ErrCode.AUTH_INVALID_TOKEN, "缺少 token")
+
+    token = auth[len("Bearer "):].strip()
+    user_id = current_user["user_id"]
+    ok = revoke_token(db, token, user_id)
+    if not ok:
+        raise_error(ErrCode.AUTH_INVALID_TOKEN, "token 无效或已过期")
+
+    log_action(db, user_id, "logout", detail="用户登出（token 吊销）")
+    return ResponseBase(msg="登出成功")

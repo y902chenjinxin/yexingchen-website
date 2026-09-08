@@ -142,3 +142,13 @@ class GlobalSetting(Base):
     value = Column(Text, default="")
     description = Column(String(255), default="")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+class TokenBlocklist(Base):
+    """JWT 黑名单（用于登出 / 主动失效 token）。"""
+    __tablename__ = "token_blocklist"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    jti = Column(String(64), unique=True, nullable=False, index=True)  # JWT ID
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    revoked_at = Column(DateTime, default=datetime.now, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)  # 与 token 过期时间一致，可定期清理
