@@ -383,7 +383,9 @@ onUnmounted(() => {
 .lj-topbar.collapsed { transform: translateY(-100%); }
 .lj-topbar.expanding { transform: translateY(0); }
 
-.tb-brand { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: none; color: var(--lj-dai); }
+.tb-brand { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: none; color: var(--lj-dai); transition: all 0.25s; }
+.tb-brand:hover { color: var(--lj-seal); }
+.tb-brand:hover .tb-logo { filter: drop-shadow(0 0 5px rgba(217, 138, 118, 0.4)); }
 .tb-logo { width: 26px; height: 26px; }
 .tb-brand-text {
   font-family: var(--font-serif);
@@ -401,10 +403,11 @@ onUnmounted(() => {
   flex: none;
   border: 1px solid transparent;
 }
-/* 未激活：hover 淡朱砂底 + 朱砂字（克制，不铺满） */
+/* 未激活：hover 淡朱砂底 + 朱砂字 + 极淡外辉（克制，不铺满不喧宾） */
 .tb-ai-entry:not(.active):hover {
   color: var(--lj-seal);
   background: var(--lj-seal-soft);
+  box-shadow: 0 0 0 1px var(--lj-seal) inset, 0 0 14px rgba(217, 138, 118, 0.16);
 }
 /* 激活（当前在 /assistant）：实填充朱砂渐变胶囊，柔和投影 */
 .tb-ai-entry.active {
@@ -425,6 +428,9 @@ onUnmounted(() => {
 }
 .tb-search-input :deep(.el-input__placeholder),
 .tb-search-input :deep(::placeholder) { color: var(--lj-text-3); }
+.tb-search-input :deep(.el-input__wrapper:hover):not(.is-focus) {
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)), rgba(20, 28, 36, 0.55);
+}
 .tb-search-input :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px var(--lj-seal) inset, 0 0 0 3px var(--lj-seal-soft);
 }
@@ -474,7 +480,7 @@ onUnmounted(() => {
   background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01)), var(--lj-paper);
   color: var(--lj-text-2); font-size: 16px; cursor: pointer; transition: all 0.25s;
 }
-.tb-icon-btn:hover { color: var(--lj-seal); border-color: var(--lj-line-strong); background: var(--lj-bg-deep); }
+.tb-icon-btn:hover { color: var(--lj-seal); border-color: var(--lj-line-strong); background: var(--lj-bg-deep); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
 .tb-audio-dot {
   position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%;
   background: rgba(217, 138, 118, 0.75);
@@ -543,6 +549,7 @@ onUnmounted(() => {
   color: var(--lj-dai); font-size: 18px; cursor: pointer;
   box-shadow: var(--lj-shadow);
 }
+.tb-mini:hover { color: var(--lj-seal); border-color: var(--lj-seal); box-shadow: 0 0 0 1px rgba(217, 138, 118, 0.5), var(--lj-shadow); }
 
 .tb-search-toggle { display: none; }
 

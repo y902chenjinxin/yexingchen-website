@@ -315,6 +315,11 @@ onUnmounted(() => {
   filter: drop-shadow(0 1px 3px rgba(58, 67, 80, 0.15));
   transition: all 0.4s;
 }
+/* 篆符对比度：整体提笔，激活/悬停卡最清晰 */
+.card-sigil path { opacity: 0.92; }
+.card-sigil circle { opacity: 0.42; }
+.jade-card:hover .card-sigil path,
+.jade-card.is-active .card-sigil path { opacity: 1; }
 
 /* 标签托片：微凹玻璃片（简头/简身意象），hover/active 转朱砂 */
 .card-label {
@@ -352,6 +357,15 @@ onUnmounted(() => {
     0 0 26px rgba(217, 138, 118, 0.18);
 }
 
+/* 主次层次：激活卡色纯，两侧侧卡轻微退后（不改变卡片几何/尺寸） */
+.jade-card:not(.is-active):not(:hover) { filter: saturate(0.9) brightness(0.985); }
+.jade-card:not(.is-active):hover { filter: saturate(1) brightness(1.05); }
+
+/* 激活卡篆符：极淡朱砂光晕（材质生动，克制） */
+.jade-card.is-active .card-sigil {
+  filter: drop-shadow(0 0 6px rgba(217, 138, 118, 0.30)) drop-shadow(0 1px 3px rgba(58, 67, 80, 0.15));
+}
+
 /* 小圆点指示 */
 .carousel-dots {
   position: absolute;
@@ -378,7 +392,7 @@ onUnmounted(() => {
   transition: all 0.3s cubic-bezier(0.3, 0.6, 0.3, 1);
 }
 
-.dot:hover { background: var(--lj-seal); }
+.dot:hover { background: var(--lj-seal); transform: scale(1.25); }
 
 .dot.active {
   width: 18px;
