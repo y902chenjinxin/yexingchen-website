@@ -389,8 +389,8 @@ async function compressOne(f) {
     progress.value = 80
 
     // 步骤5：防负优化
-    const outSize = blob.size
-    const negOptim = outSize >= file.size
+    let outSize = blob.size
+    let negOptim = outSize >= file.size
     let finalBlob = blob
     let outName = baseName(file.name) + '_compressed.' + extFor(blob.type || outType)
     if (negOptim) {

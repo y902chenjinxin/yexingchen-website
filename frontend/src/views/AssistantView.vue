@@ -6,6 +6,10 @@
         <span class="header-sub">独立对话 · 流式回答 · 可总结 / 生成笔记</span>
       </div>
       <div class="header-actions">
+        <span class="kb-toggle">
+          <el-switch v-model="knowledgeEnabled" size="small" style="--el-switch-on-color:#d98a76; --el-switch-off-color:#8a9aa0" />
+          <span class="kb-label">知识库</span>
+        </span>
         <el-select
           v-model="currentProviderId"
           placeholder="选择 Provider"
@@ -216,6 +220,7 @@ let seq = 0  // 防过期响应 / 限制并发
 /* ---- Provider 配置 ---- */
 const providers = ref([])
 const currentProviderId = ref(null)
+const knowledgeEnabled = ref(true)  // 是否检索站内知识库（笔记/资讯/旅行）注入上下文
 const showProviders = ref(false)
 const showAddProvider = ref(false)
 const editingProviderId = ref(null)
@@ -336,6 +341,7 @@ async function send() {
         content: text,
         conversation_id: convId,
         provider_id: currentProviderId.value || null,
+        use_knowledge: knowledgeEnabled.value,
       },
       (ev) => {
         if (mySeq !== seq || aborted) return
@@ -493,6 +499,8 @@ onUnmounted(() => {
 }
 .header-sub { font-size: 12px; color: var(--xiu-text-3); margin-left: 8px; letter-spacing: .03em; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kb-toggle { display: inline-flex; align-items: center; gap: 6px; }
+.kb-label { font-size: 13px; color: var(--lj-text-2, #5a6c72); white-space: nowrap; }
 
 .assistant-body { display: grid; grid-template-columns: 220px 1fr; gap: 16px; min-height: 62vh; }
 .assistant-sidebar {

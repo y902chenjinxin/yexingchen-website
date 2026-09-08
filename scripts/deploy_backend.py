@@ -6,6 +6,7 @@ REMOTE_BASE = "/var/www/yexingchen"
 
 BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "main.py"),                   f"{REMOTE_BASE}/backend/app/main.py"),
+    (os.path.join(ROOT, "backend", "app", "utils", "security.py"),      f"{REMOTE_BASE}/backend/app/utils/security.py"),
     (os.path.join(ROOT, "backend", "app", "config.py"),                 f"{REMOTE_BASE}/backend/app/config.py"),
     (os.path.join(ROOT, "backend", "app", "models", "user.py"),         f"{REMOTE_BASE}/backend/app/models/user.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "music.py"),       f"{REMOTE_BASE}/backend/app/routers/music.py"),

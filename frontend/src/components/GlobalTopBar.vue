@@ -361,13 +361,24 @@ onUnmounted(() => {
   align-items: center;
   gap: 18px;
   padding: 0 22px;
-  background: var(--lj-glass);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0) 46%), var(--lj-glass);
   -webkit-backdrop-filter: var(--lj-glass-blur);
   backdrop-filter: var(--lj-glass-blur);
-  border-bottom: 1px solid var(--lj-line);
-  box-shadow: 0 1px 10px rgba(58, 67, 80, 0.05);
+  border-bottom: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07),
+              inset 0 -1px 0 rgba(127, 168, 163, 0.08),
+              0 8px 28px rgba(0, 0, 0, 0.22);
   box-sizing: border-box;
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+}
+/* 上缘高光细线（Apple 式玻璃发丝线） */
+.lj-topbar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18) 20%, rgba(255,255,255,0.10) 80%, transparent);
+  pointer-events: none;
 }
 .lj-topbar.collapsed { transform: translateY(-100%); }
 .lj-topbar.expanding { transform: translateY(0); }
@@ -380,26 +391,40 @@ onUnmounted(() => {
   color: var(--lj-text);
 }
 
-/* AI 对话常驻入口（桌面与移动端均显示） */
+/* AI 对话常驻入口（桌面与移动端均显示）——朱砂胶囊 */
 .tb-ai-entry {
+  position: relative;
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 999px;
+  padding: 6px 14px; border-radius: 999px;
   font-size: 13px; color: var(--lj-text-2); cursor: pointer; white-space: nowrap;
   transition: all 0.25s;
   flex: none;
   border: 1px solid transparent;
 }
-.tb-ai-entry:hover { color: var(--lj-seal); background: var(--lj-seal-soft); border-color: var(--lj-seal); }
-.tb-ai-entry.active { color: var(--lj-seal-hover); background: var(--lj-seal-soft); border-color: var(--lj-seal); font-weight: 600; }
+/* 未激活：hover 淡朱砂底 + 朱砂字（克制，不铺满） */
+.tb-ai-entry:not(.active):hover {
+  color: var(--lj-seal);
+  background: var(--lj-seal-soft);
+}
+/* 激活（当前在 /assistant）：实填充朱砂渐变胶囊，柔和投影 */
+.tb-ai-entry.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--lj-seal), var(--lj-seal-hover));
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(217, 138, 118, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
 .tb-ai-icon { font-size: 15px; }
 
 .tb-search { position: relative; flex: 1; max-width: 460px; }
 .tb-search-input :deep(.el-input__wrapper) {
-  background: rgba(26, 34, 44, 0.6);
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)), rgba(18, 26, 34, 0.5);
   border-radius: 999px;
-  box-shadow: 0 0 0 1px var(--lj-line) inset;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 1px var(--lj-line) inset;
   padding-left: 14px;
 }
+.tb-search-input :deep(.el-input__placeholder),
+.tb-search-input :deep(::placeholder) { color: var(--lj-text-3); }
 .tb-search-input :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px var(--lj-seal) inset, 0 0 0 3px var(--lj-seal-soft);
 }
@@ -445,13 +470,14 @@ onUnmounted(() => {
 .tb-icon-btn {
   position: relative;
   width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--lj-line); border-radius: 10px; background: var(--lj-paper);
+  border: 1px solid var(--lj-line); border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01)), var(--lj-paper);
   color: var(--lj-text-2); font-size: 16px; cursor: pointer; transition: all 0.25s;
 }
 .tb-icon-btn:hover { color: var(--lj-seal); border-color: var(--lj-line-strong); background: var(--lj-bg-deep); }
 .tb-audio-dot {
   position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--lj-ochre);
+  background: rgba(217, 138, 118, 0.75);
 }
 .tb-audio-dot.off { background: var(--lj-vermilion); }
 

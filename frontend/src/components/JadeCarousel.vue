@@ -236,7 +236,7 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* 玉简：竖条简 + 毛玻璃羊脂青玉釉 */
+/* 玉简：竖条简 + 毛玻璃羊脂青玉釉（向晚·雨青） */
 .jade-card {
   position: relative;
   width: 132px;
@@ -244,17 +244,18 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   transform-style: preserve-3d;
-  border-radius: 14px;
+  border-radius: 16px;
   z-index: 1;
   pointer-events: auto;
-  background: var(--lj-glass);
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.01)), var(--lj-glass);
   -webkit-backdrop-filter: var(--lj-glass-blur);
   backdrop-filter: var(--lj-glass-blur);
   border: 1px solid var(--lj-line-strong);
   box-shadow:
-    0 8px 22px rgba(58, 67, 80, 0.1),
-    0 2px 6px rgba(58, 67, 80, 0.06),
-    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    0 8px 22px rgba(0, 0, 0, 0.20),
+    0 2px 6px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 22px rgba(127, 168, 163, 0.08);
 }
 
 /* 内侧淡墨细线（呼应玉简篆纹） */
@@ -263,7 +264,7 @@ onUnmounted(() => {
   position: absolute;
   inset: 5px;
   border: 1px solid var(--lj-line);
-  border-radius: 9px;
+  border-radius: 11px;
   opacity: 0.45;
   transition: all 0.4s;
   pointer-events: none;
@@ -273,14 +274,14 @@ onUnmounted(() => {
 .jade-card.is-active::after {
   opacity: 1;
   border-color: var(--lj-seal);
-  box-shadow: inset 0 0 12px rgba(217, 138, 118, 0.10);
+  box-shadow: inset 0 0 14px rgba(217, 138, 118, 0.10);
 }
 
 /* 玉体内层：羊脂玉釉晕光 */
 .card-inner {
   position: absolute;
   inset: 0;
-  border-radius: 13px;
+  border-radius: 15px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -288,8 +289,9 @@ onUnmounted(() => {
   justify-content: center;
   gap: 16px;
   background:
-    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 42%),
-    linear-gradient(165deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.08) 55%, rgba(74, 95, 99, 0.05) 100%);
+    radial-gradient(circle at 30% 16%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 44%),
+    radial-gradient(ellipse 120% 55% at 110% 105%, rgba(127, 168, 163, 0.16), transparent 60%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(74, 95, 99, 0.08) 100%);
 }
 
 /* 冰裂纹纹理 */
@@ -314,6 +316,7 @@ onUnmounted(() => {
   transition: all 0.4s;
 }
 
+/* 标签托片：微凹玻璃片（简头/简身意象），hover/active 转朱砂 */
 .card-label {
   font-family: var(--font-serif);
   font-size: 12px;
@@ -321,6 +324,18 @@ onUnmounted(() => {
   letter-spacing: 0.22em;
   position: relative;
   z-index: 1;
+  padding: 5px 11px 4px;
+  border-radius: 999px;
+  background: rgba(26, 34, 44, 0.45);
+  border: 1px solid var(--lj-line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: all 0.35s;
+}
+.jade-card:hover .card-label,
+.jade-card.is-active .card-label {
+  color: var(--lj-seal-hover);
+  border-color: var(--lj-seal);
+  background: var(--lj-seal-soft);
 }
 
 .jade-card:hover .card-sigil,
@@ -328,11 +343,13 @@ onUnmounted(() => {
   transform: scale(1.08);
 }
 
+/* 激活卡：柔朱砂光环（克制，非铺满） */
 .jade-card.is-active {
   box-shadow:
-    0 14px 30px rgba(58, 67, 80, 0.14),
-    0 0 0 1px var(--lj-line-strong) inset,
-    inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    0 14px 30px rgba(0, 0, 0, 0.24),
+    0 0 0 1px var(--lj-seal) inset,
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 26px rgba(217, 138, 118, 0.18);
 }
 
 /* 小圆点指示 */
@@ -355,17 +372,18 @@ onUnmounted(() => {
 .dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: 999px;
   background: var(--lj-line-strong);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.3, 0.6, 0.3, 1);
 }
 
 .dot:hover { background: var(--lj-seal); }
 
 .dot.active {
-  background: var(--lj-seal-hover);
-  transform: scale(1.3);
+  width: 18px;
+  background: linear-gradient(90deg, var(--lj-seal), var(--lj-seal-hover));
+  box-shadow: 0 0 8px rgba(217, 138, 118, 0.4);
 }
 
 @media (prefers-reduced-motion: reduce) {

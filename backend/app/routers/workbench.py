@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re as _re
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -50,6 +51,8 @@ from app.models.workbench import (
     TaskLink,
 )
 from app.models.user import User
+from app.models.feed import FeedArticle
+from app.models.travels import Travel
 from app.services.softdelete import (
     TRASH_RETENTION_DAYS,
     active_query,
@@ -95,6 +98,133 @@ AI_CHAT_SYSTEM_PROMPT = (
     "不刻意引用‘笔记’等系统概念。"
 )
 AI_CHAT_CONTEXT = 20
+
+# 知识库检索注入：单源最多命中条数、注入总字数上限
+KB_SOURCE_LIMIT = 3
+KB_MAX_CHARS = 1600
+
+
+def _strip_html(text: Optional[str]) -> str:
+    """粗略剥离 HTML 标签与多余空白，用于把富文本内容变成可注入的纯文本片段。"""
+    if not text:
+        return ""
+    out = _re.sub(r"<[^>]+>", " ", text or "")
+    return _re.sub(r"\s+", " ", out).strip()
+
+
+def _match_tokens(query: str) -> List[str]:
+    """把查询拆成语意片段：按 2 字连续片段取最长命中（覆盖中文无空格情形）。"""
+    q = (query or "").strip()
+    if not q:
+        return []
+    # 去掉标点分隔，中文按连续 2 字滑窗取关键片段（限制长度，避免注入过多）
+    frags = _re.split(r"[\s,，。;；:：!！?？、()（）''\"\"“”]+", q)
+    frags = [t for t in frags if t]
+    tokens = []
+    for t in frags:
+        if len(t) >= 2:
+            tokens.append(t[:8])  # 片段最长 8 字
+    return tokens or [q[:8]]
+
+
+def _build_knowledge_context(db: Session, user_id: int, query: str) -> Optional[str]:
+    """检索站内知识库（笔记/资讯/旅行）并拼接注入上下文。
+
+    返回注入用的 system 文本片段；无命中返回 None。
+    检索仅限当前用户、未软删、按更新时间降序，每源取前几条，控制总字数。
+    """
+    tokens = _match_tokens(query)
+    if not tokens:
+        return None
+
+    chunks: List[str] = []
+    uid = user_id
+
+    # 1) 笔记全文检索
+    try:
+        conds = [Note.user_id == uid, Note.deleted_at.is_(None)]
+        like = [or_(Note.title.contains(t), Note.content.contains(t)) for t in tokens]
+        notes = (
+            db.query(Note)
+            .filter(*conds, or_(*like))
+            .order_by(Note.updated_at.desc())
+            .limit(KB_SOURCE_LIMIT)
+            .all()
+        )
+        for n in notes:
+            body = _strip_html(n.content)[:300]
+            pieces = [n.title or ""]
+            if body:
+                pieces.append(body)
+            chunks.append("【笔记】" + "：".join(pieces))
+    except Exception:  # noqa: BLE001
+        logger.debug("knowledge: note search failed", exc_info=True)
+
+    # 2) 资讯文章
+    try:
+        like = [
+            or_(
+                FeedArticle.title.contains(t),
+                FeedArticle.title_zh.contains(t),
+                FeedArticle.summary_zh.contains(t),
+                FeedArticle.content_zh.contains(t),
+            )
+            for t in tokens
+        ]
+        arts = (
+            db.query(FeedArticle)
+            .filter(FeedArticle.user_id == uid, or_(*like))
+            .order_by(FeedArticle.updated_at.desc())
+            .limit(KB_SOURCE_LIMIT)
+            .all()
+        )
+        for a in arts:
+            title = a.title_zh or a.title or ""
+            body = _strip_html(a.summary_zh or (a.content_zh or "")[:200])
+            pieces = [title]
+            if body:
+                pieces.append(body[:300])
+            chunks.append("【资讯】" + "：".join(pieces))
+    except Exception:  # noqa: BLE001
+        logger.debug("knowledge: feed search failed", exc_info=True)
+
+    # 3) 旅行足迹
+    try:
+        like = [
+            or_(
+                Travel.title.contains(t),
+                Travel.summary.contains(t),
+                Travel.markdown.contains(t),
+            )
+            for t in tokens
+        ]
+        travels = (
+            db.query(Travel)
+            .filter(Travel.user_id == uid, or_(*like))
+            .order_by(Travel.updated_at.desc())
+            .limit(KB_SOURCE_LIMIT)
+            .all()
+        )
+        for tv in travels:
+            body = _strip_html(tv.markdown)[:300]
+            pieces = [tv.title or ""]
+            if body:
+                pieces.append(body)
+            chunks.append("【旅行】" + "：".join(pieces))
+    except Exception:  # noqa: BLE001
+        logger.debug("knowledge: travel search failed", exc_info=True)
+
+    if not chunks:
+        return None
+
+    joined = "\n\n".join(chunks)
+    if len(joined) > KB_MAX_CHARS:
+        joined = joined[:KB_MAX_CHARS] + "…"
+    return (
+        "以下是你的个人知识库（笔记/资讯/旅行足迹）中与本次提问相关的内容，"
+        "请优先据此回答；若未提及相关信息，请如实说明，不要编造：\n\n" + joined
+    )
+
 
 # ============================================================
 # 统一响应包装
@@ -242,6 +372,7 @@ class AiChatStreamIn(BaseModel):
     content: str
     conversation_id: int  # 必填，强制校验归属
     provider_id: Optional[int] = None  # 指定 provider；不传则用默认；都没则 fake
+    use_knowledge: bool = True  # 是否检索站内知识库（笔记/资讯/旅行）注入上下文
 
 
 class AiLinkIn(BaseModel):
@@ -1461,8 +1592,26 @@ def ai_chat_stream(
         {"role": "user", "content": content},
     ]
 
-    # 用户消息立即入库
+    # 知识库检索注入：可选（前端开关控制），命中则追加一条 system 上下文
+    knowledge_ctx = ""
+    if payload.use_knowledge:
+        try:
+            knowledge_ctx = _build_knowledge_context(db, uid, content) or ""
+        except Exception:  # noqa: BLE001
+            logger.debug("knowledge injection failed, fallback to plain chat", exc_info=True)
+            knowledge_ctx = ""
+    if knowledge_ctx:
+        messages.insert(1, {"role": "system", "content": knowledge_ctx})
+
+    # 用户消息立即入库（input_scope 记录知识库注入情况，便于排障/取证）
     user_msg = AiMessage(conversation_id=conv.id, role="user", content=content)
+    if knowledge_ctx:
+        try:
+            user_msg.input_scope = json.dumps(
+                {"knowledge": True, "chars": len(knowledge_ctx)}, ensure_ascii=False
+            )
+        except Exception:  # noqa: BLE001
+            pass
     db.add(user_msg)
     conv.updated_at = datetime.now()
     db.commit()
