@@ -73,7 +73,7 @@ const props = defineProps({
   },
   initialIndex: { type: Number, default: 0 },
   autoReturn: { type: Boolean, default: true },
-  autoReturnMs: { type: Number, default: 5000 }
+  autoReturnMs: { type: Number, default: 3000 }
 })
 
 const router = useRouter()
