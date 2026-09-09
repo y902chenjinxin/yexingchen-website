@@ -24,7 +24,7 @@ class ProductionSchemaError(RuntimeError):
     """生产环境 schema 校验失败时的可读异常。"""
 
 
-HEAD_REVISION = "a2b3c4d5e6f7"
+HEAD_REVISION = "g1h2i3j4k5l6"  # 2026-09-09 更新：合并 token_blocklist migration 后
 
 
 def is_production_env() -> bool:

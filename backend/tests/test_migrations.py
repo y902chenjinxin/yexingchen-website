@@ -57,6 +57,15 @@ EXPECTED_TABLES = {
     "xuanhuang_tasks",
     "xuanhuang_ai_conversation_links",
     "user_ai_providers",
+    "xuanhuang_finance_transactions",
+    "xuanhuang_feed_articles",
+    "xuanhuang_feed_sources",
+    "xuanhuang_menus",
+    "xuanhuang_roles",
+    "xuanhuang_stock_watchlist",
+    "xuanhuang_travel_cities",
+    "xuanhuang_travels",
+    "token_blocklist",
 }
 
 

@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-HEAD_REVISION = "b2c3d4e5f6a7"
+from app.services.schema_guard import HEAD_REVISION  # 与 schema_guard.HEAD_REVISION 保持一致
 
 
 def _make_db(tmp_path: Path) -> Path:
@@ -122,7 +122,7 @@ def test_head_revision_constant_matches_alembic_head():
                 after = line.split(":", 1)[1]
                 # 取第一个引号包裹的字符串
                 import re
-                m = re.search(r"""['"]([0-9a-fA-F]+)['"]""", after)
+                m = re.search(r"""['"]([0-9a-zA-Z]+)['"]""", after)
                 if m:
                     heads.add(m.group(1))
     assert heads, "no revision id parsed"
