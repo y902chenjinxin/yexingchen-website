@@ -9,8 +9,8 @@
     <!-- 登录后全站常驻：全局顶栏（悬浮，置于桌宠上层）-->
     <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn" />
 
-    <!-- 登录后全站常驻桌宠 -->
-    <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn" />
+    <!-- 登录后全站常驻桌宠（音乐岛内容列表页隐藏：桌宠固定右下会压住列表行/最后一张卡片） -->
+    <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn && showWhale" />
 
     <!-- 登录后全站底部播放条（播放时出现）-->
     <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn" />
@@ -38,6 +38,13 @@ const showGlobalFooter = computed(() => {
   const p = route.path
   if (p === '/workbench') return false
   if (/^\/(music|novel|video|log|tool)/.test(p)) return false
+  return true
+})
+
+// 音乐岛内容列表页隐藏桌宠：桌宠固定右下(z-index:1800)会压住音乐列表行及最后一张卡片，造成"错位/按钮消失"观感
+const showWhale = computed(() => {
+  const p = route.path
+  if (/^\/music/.test(p)) return false
   return true
 })
 
