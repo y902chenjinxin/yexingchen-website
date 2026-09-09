@@ -261,6 +261,12 @@ onUnmounted(() => {
   background: rgba(16, 22, 28, 0.5);
   backdrop-filter: saturate(140%) blur(8px);
   -webkit-backdrop-filter: saturate(140%) blur(8px);
+  /* 页脚常驻滚动容器底部：长列表滚动查看时不会"卡"进列表中部压住下方歌曲，
+     始终贴合视图底部；短内容无滚动时仍跟随内容末尾，不悬浮半空（沿用原设计） */
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
 }
 
 .inner-decorations {
