@@ -20,9 +20,10 @@
 
       <main class="inner-main">
         <slot></slot>
-        <!-- 底部网安/备案标识（跟随内容流动，贴在内容末尾，避免短内容页脚悬浮在半空） -->
-        <SiteFooter variant="dark" class="inner-footer" />
       </main>
+
+      <!-- 网安/备案标识：常驻可视区底部独立条，与滚动内容区解耦（绝不随列表滚动嵌进卡片间/盖住卡片） -->
+      <SiteFooter variant="dark" class="inner-footer" />
     </div>
 
     <!-- 装饰层 -->
@@ -247,7 +248,7 @@ onUnmounted(() => {
 
 .inner-main {
   flex: 1;
-  /* 纵向排列：槽内容在上、页脚紧随其后流动；页脚不再钉在视口底部，避免短内容悬浮 */
+  /* 独立滚动内容区；页脚已在 .inner-main 之外作为底部独立条，二者互不重叠 */
   display: flex;
   flex-direction: column;
   padding: 16px 40px 24px;
@@ -255,18 +256,12 @@ onUnmounted(() => {
 }
 
 .inner-footer {
-  margin-top: 16px;
-  padding: 8px 20px 10px;
+  flex-shrink: 0;
+  padding: 10px 40px 12px;
   border-top: 1px solid var(--ls-line);
   background: rgba(16, 22, 28, 0.5);
   backdrop-filter: saturate(140%) blur(8px);
   -webkit-backdrop-filter: saturate(140%) blur(8px);
-  /* 页脚常驻滚动容器底部：长列表滚动查看时不会"卡"进列表中部压住下方歌曲，
-     始终贴合视图底部；短内容无滚动时仍跟随内容末尾，不悬浮半空（沿用原设计） */
-  flex-shrink: 0;
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
 }
 
 .inner-decorations {
@@ -307,11 +302,13 @@ onUnmounted(() => {
 @media (max-width: 1100px) {
   .inner-header { padding: 22px 26px 12px; }
   .inner-main { padding: 14px 26px 16px; }
+  .inner-footer { padding: 10px 26px 12px; }
   .island-title { font-size: 30px; }
 }
 @media (max-width: 760px) {
   .inner-header { padding: 18px 16px 10px; }
   .inner-main { padding: 12px 16px 12px; }
+  .inner-footer { padding: 10px 16px 12px; }
   .island-title { font-size: 24px; }
   .island-subtitle { font-size: 13px; }
 }
