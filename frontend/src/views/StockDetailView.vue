@@ -29,14 +29,49 @@
         </div>
       </section>
 
+      <!-- 行情速览 -->
+      <section class="sd-quote glass">
+        <div class="sd-q-item"><span class="sd-q-k">今开</span><b :class="refCls(quote.open)">{{ fmt(quote.open) }}</b></div>
+        <div class="sd-q-item"><span class="sd-q-k">昨收</span><b class="flat">{{ fmt(quote.pre_close) }}</b></div>
+        <div class="sd-q-item"><span class="sd-q-k s-up">最高</span><b :class="refCls(quote.high)">{{ fmt(quote.high) }}</b></div>
+        <div class="sd-q-item"><span class="sd-q-k s-down">最低</span><b :class="refCls(quote.low)">{{ fmt(quote.low) }}</b></div>
+        <div class="sd-q-item"><span class="sd-q-k">成交量</span><b>{{ volTxt(quote.volume) }}</b></div>
+        <div class="sd-q-item"><span class="sd-q-k">成交额</span><b>{{ amtTxt(quote.amount) }}</b></div>
+      </section>
+
       <!-- K 线 -->
       <section class="sd-kline glass">
         <div class="sd-block-head">
           <span class="sd-block-title">日 K 线</span>
           <span class="sd-block-sub">MA5/10/20 · 复权</span>
         </div>
-        <KlineChart v-if="kline.length" :data="kline" :height="340" />
+        <KlineChart v-if="kline.length" :data="kline" :height="420" @analysis="onAnalysis" />
         <div v-else class="sd-loading">{{ klineErr || 'K 线加载中…' }}</div>
+      </section>
+
+      <!-- 每日研判 -->
+      <section class="sd-analysis glass" v-if="analysis.period && analysis.list.length">
+        <div class="sd-block-head">
+          <span class="sd-block-title">每日研判</span>
+          <span class="sd-an-period">{{ analysis.periodLabel }}</span>
+          <span class="sd-block-sub">规则化形态 · 操作参考</span>
+        </div>
+        <div class="sd-an-table">
+          <div class="sd-an-row sd-an-head">
+            <span>日期</span><span class="ta-r">收盘</span><span class="ta-r">涨跌</span><span>形态总结</span><span>操作建议</span>
+          </div>
+          <div v-for="(it, i) in analysis.list" :key="it.date + i" class="sd-an-row" :class="{ latest: i === 0 }">
+            <span class="sd-an-date">{{ it.date }}<i v-if="i === 0" class="sd-an-now">今</i></span>
+            <span class="ta-r sd-an-close">{{ fmt(it.close) }}</span>
+            <span class="ta-r" :class="it.up ? 'up' : 'down'">{{ chgTxt(it.chg) }}</span>
+            <span class="sd-an-sum">{{ it.summary }}</span>
+            <span class="sd-an-sug" :class="'lv-' + it.lv">
+              <i class="sd-an-badge">{{ badgeTxt[it.lv] }}</i>
+              <em>{{ it.sug }}</em>
+            </span>
+          </div>
+        </div>
+        <div class="sd-an-risk">技术形态规则研判，仅供参考，不构成投资建议</div>
       </section>
 
       <!-- 持仓 -->
@@ -102,11 +137,32 @@ const savingHold = ref(false)
 const editQty = ref(null)
 const editCost = ref(null)
 const news = ref([])
+const analysis = ref({ period: '', list: [] })
+
+const badgeTxt = { up: '强', hold: '持', watch: '观', down: '减', danger: '避' }
+const periodNames = { day: '日K', week: '周K', month: '月K' }
 
 const marketLabel = { sh: '沪', sz: '深', hk: '港', us: '美' }[market] || market.toUpperCase()
 
+function chgTxt(v) { return v == null ? '--' : (v > 0 ? '+' : '') + fmt(v, 2) + '%' }
+function onAnalysis(payload) {
+  if (!payload) return
+  analysis.value = { ...payload, periodLabel: periodNames[payload.period] || payload.period }
+}
+
 function sign(v) { return v > 0 ? '+' : '' }
 function fmt(v, n = 2) { return v == null ? '--' : Number(v).toFixed(n) }
+function refCls(v) { const r = quote.value.pre_close; if (v == null || r == null || v === r) return 'flat'; return v > r ? 'up' : 'down' }
+function volTxt(v) {
+  if (v == null) return '--'
+  return v >= 1e8 ? (v / 1e8).toFixed(2) + '亿手'
+    : v >= 1e4 ? (v / 1e4).toFixed(1) + '万手'
+    : v.toFixed(0) + '手'
+}
+function amtTxt(v) {
+  if (v == null) return '--'
+  return v >= 1e8 ? (v / 1e8).toFixed(2) + '亿' : v >= 1e4 ? (v / 1e4).toFixed(1) + '万' : v.toFixed(0)
+}
 const pct = computed(() => quote.value.pct ?? 0)
 const cls = computed(() => (pct.value > 0 ? 'up' : pct.value < 0 ? 'down' : 'flat'))
 const pnlCls = computed(() => (watch.value?.hold_pnl > 0 ? 'up' : watch.value?.hold_pnl < 0 ? 'down' : 'flat'))
@@ -117,7 +173,7 @@ async function loadAll() {
     quote.value = r.data || {}
     editQty.value = null; editCost.value = null
   } catch (e) { /* quote err handled */ }
-  try { kline.value = (await stocksApi.kline(market, code)).data?.list || [] }
+  try { kline.value = (await stocksApi.kline(market, code, 500)).data?.list || [] }
   catch (e) { klineErr.value = '暂无 K 线数据' }
   try {
     const wl = (await stocksApi.watchlist()).data?.list || []
@@ -160,15 +216,70 @@ onMounted(loadAll)
 .sd-code { font-size: 13px; color: var(--lj-text-2); }
 .sd-price { font-size: 34px; font-weight: 700; letter-spacing: .02em; }
 .sd-chg { font-size: 15px; margin-top: 4px; }
+
+.sd-quote { margin-top: 12px; padding: 14px 20px; border-radius: 16px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px 12px; }
+.sd-q-item { display: flex; flex-direction: column; gap: 3px; }
+.sd-q-k { font-size: 11px; color: var(--lj-text-3); letter-spacing: .05em; }
+.sd-q-k.s-up { color: rgba(216, 80, 79, 0.85); }
+.sd-q-k.s-down { color: rgba(63, 150, 142, 0.85); }
+.sd-q-item b { font-size: 15px; font-weight: 600; color: var(--lj-text); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+@media (max-width: 640px) { .sd-quote { grid-template-columns: repeat(3, 1fr); } }
 .up { color: #D8504F; }
 .down { color: #3F968E; }
 .flat { color: var(--lj-text-2); }
 
-.sd-kline, .sd-hold, .sd-news { margin-top: 16px; padding: 18px 20px; border-radius: 16px; }
+.sd-kline, .sd-hold, .sd-news, .sd-analysis { margin-top: 16px; padding: 18px 20px; border-radius: 16px; }
 .sd-block-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
 .sd-block-title { font-size: 16px; letter-spacing: .08em; color: var(--lj-text); }
 .sd-block-sub { font-size: 12px; color: var(--lj-text-3); }
 .sd-loading, .sd-empty-row { padding: 26px; text-align: center; color: var(--lj-text-3); font-size: 13px; }
+
+/* 每日研判 */
+.sd-an-period {
+  font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: 999px;
+  background: rgba(199, 169, 107, 0.14); color: var(--lj-seal); letter-spacing: .06em; flex: none;
+}
+.sd-an-table { display: flex; flex-direction: column; max-height: 340px; overflow: auto; padding-right: 4px; margin: 0 -6px; }
+.sd-an-row {
+  display: grid; grid-template-columns: 78px 58px 66px 1fr 1.45fr; gap: 8px; align-items: center;
+  font-size: 12.5px; padding: 7px 10px; border-radius: 10px; transition: background .15s;
+}
+.sd-an-row:hover { background: rgba(120, 150, 150, 0.08); }
+.sd-an-head {
+  color: var(--lj-text-3); font-size: 11px; letter-spacing: .08em;
+  position: sticky; top: 0; z-index: 1;
+  background: rgba(246, 243, 234, 0.7); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+html[data-theme="night"] .sd-an-head { background: rgba(18, 24, 32, 0.7); }
+.sd-an-date { color: var(--lj-text-2); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; }
+.sd-an-now {
+  font-style: normal; font-size: 10px; line-height: 15px; padding: 0 4px; border-radius: 5px;
+  background: rgba(216, 80, 79, 0.14); color: #d8504f; font-weight: 700; letter-spacing: .02em;
+}
+.sd-an-close { font-weight: 600; color: var(--lj-text); font-variant-numeric: tabular-nums; }
+.ta-r { text-align: right; }
+.sd-an-sum { color: var(--lj-text-2); line-height: 1.5; }
+.sd-an-sug { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.sd-an-sug em { font-style: normal; color: var(--lj-text); line-height: 1.5; }
+.sd-an-badge { font-style: normal; min-width: 22px; height: 20px; line-height: 20px; text-align: center; border-radius: 7px; font-size: 12px; font-weight: 700; flex: none; }
+.sd-an-sug.lv-up .sd-an-badge { background: rgba(192, 57, 43, 0.15); color: #c0392b; }
+.sd-an-sug.lv-up em { color: #c0392b; }
+.sd-an-sug.lv-hold .sd-an-badge { background: rgba(198, 152, 63, 0.16); color: #b3821f; }
+.sd-an-sug.lv-hold em { color: #b3821f; }
+.sd-an-sug.lv-watch .sd-an-badge { background: rgba(122, 142, 148, 0.16); color: #5f7277; }
+.sd-an-sug.lv-watch em { color: #5f7277; }
+.sd-an-sug.lv-down .sd-an-badge { background: rgba(63, 150, 142, 0.15); color: #2f8077; }
+.sd-an-sug.lv-down em { color: #2f8077; }
+.sd-an-sug.lv-danger .sd-an-badge { background: rgba(91, 110, 225, 0.15); color: #4a5bd0; }
+.sd-an-sug.lv-danger em { color: #4a5bd0; }
+.sd-an-risk {
+  margin-top: 8px; padding-top: 9px; border-top: 1px dashed var(--lj-line, rgba(120,150,150,0.2));
+  font-size: 10.5px; color: var(--lj-text-3); letter-spacing: .04em;
+}
+@media (max-width: 640px) {
+  .sd-an-row { grid-template-columns: 70px 52px 60px 1fr; }
+  .sd-an-sug { grid-column: 1 / -1; margin-top: 1px; }
+}
 
 .sd-hold-body { display: flex; flex-direction: column; gap: 10px; }
 .sd-hold-row { display: flex; justify-content: space-between; font-size: 14px; }
