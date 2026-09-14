@@ -48,8 +48,29 @@ export const usePlayerStore = defineStore('player', () => {
   // 播放序号：仅最后一次触发的播放生效，丢弃旧的过期回调，杜绝竞态叠音
   let playSeq = 0
 
-  // 自动播放被浏览器拦截时的恢复句柄：注册一次性 pointerdown，用户首次点击页面即自动拉起 BGM
+  // 自动播放被浏览器拦截时的恢复句柄：在用户任意一次指针按下（pointerdown）时拉起 BGM。
+  // 采用持久监听（非 once），若某次点击仍被拦则保留句柄，直到真正出声成功为止。
   let resumeHandler = null
+  function armResume() {
+    if (resumeHandler) return
+    resumeHandler = () => {
+      const seq = ++playSeq
+      if (!bgmUrl.value) return                 // 源地址尚未就绪，保留句柄等待
+      mode.value = 'bgm'
+      switchSource(bgmUrl.value, true)
+      audio.volume = volume.value
+      if (seq === playSeq) {
+        audio.play().then(() => {
+          if (seq === playSeq) { rejectedOnce.value = false; disarmResume() }
+        }).catch(() => {                       // 仍被拦，保留句柄供下一次点按恢复
+        })
+      }
+    }
+    window.addEventListener('pointerdown', resumeHandler)
+  }
+  function disarmResume() {
+    if (resumeHandler) { window.removeEventListener('pointerdown', resumeHandler); resumeHandler = null }
+  }
 
   audio.addEventListener('playing', () => { isPlaying.value = true })
   audio.addEventListener('pause', () => { isPlaying.value = false })
@@ -64,17 +85,6 @@ export const usePlayerStore = defineStore('player', () => {
   audio.addEventListener('error', () => {
     isPlaying.value = false
   })
-
-  // 自动播放被拦后：注册一次性 pointerdown，用户首次点击页面即恢复播放 BGM（借用了用户手势）
-  function armResume() {
-    if (audio.paused) {
-      audio.play().then(() => { rejectedOnce.value = false }).catch(() => {
-        if (resumeHandler) window.removeEventListener('pointerdown', resumeHandler)
-        resumeHandler = () => playBgm()
-        window.addEventListener('pointerdown', resumeHandler, { once: true })
-      })
-    }
-  }
 
 
   // 点播曲目：硬停背景，播该曲（仅播一次，不循环）
@@ -142,13 +152,12 @@ export const usePlayerStore = defineStore('player', () => {
     if (url) bgmUrl.value = url
     if (!bgmUrl.value) return
     const seq = ++playSeq
-    curItem.value = curItem.value || { id: 'default', title: '玄黄古筝 · 默认背景', artist: '系统', is_default: true }
     mode.value = 'bgm'
     switchSource(bgmUrl.value, true)
     audio.volume = volume.value
     if (seq === playSeq) {
       audio.play().then(() => {
-        if (seq === playSeq) rejectedOnce.value = false
+        if (seq === playSeq) { rejectedOnce.value = false; disarmResume() }
       }).catch(() => {
         rejectedOnce.value = true
         armResume()
@@ -157,7 +166,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
   return {
     audio, mode, curItem, isPlaying, volume, shows, progress, duration, rejectedOnce, bgmUrl,
-    hardStop, switchSource, resolveUrl, armResume, playBgm, setBgmUrl,
+    hardStop, switchSource, resolveUrl, armResume, disarmResume, playBgm, setBgmUrl,
     playItem, togglePlay, stopAndHide, setVolume, toggleMute,
     seek, seekByRatio,
     get playing() { return isPlaying.value },

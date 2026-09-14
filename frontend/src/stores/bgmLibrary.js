@@ -53,9 +53,13 @@ export const useBgmLibraryStore = defineStore('bgmLibrary', () => {
   }
 
   async function initBgm() {
+    // 先用默认曲尽快发起播放（贴近首帧/登录手势），避免被自动播放策略彻底拦死；
+    // 被拦则由 player 武装持久恢复句柄，任意首次点击即自动拉起。
+    if (!player.bgmUrl) player.playBgm('/api/music/default/stream')
     await fetchMusicLibrary()
     await refreshBgmChoice()
-    player.playBgm()
+    // 偏好源就绪后再用最终地址触发一次（自动播放允许则无缝切到用户所选；被拦则沿用恢复句柄）
+    player.playBgm(bgmUrl.value)
   }
 
   async function setBackground(item, autoplay = true) {

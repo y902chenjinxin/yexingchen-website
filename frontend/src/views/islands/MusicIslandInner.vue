@@ -286,7 +286,16 @@ async function saveEdit() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: 460px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(127,168,163,.35) transparent;
 }
+
+.music-items::-webkit-scrollbar { width: 6px; }
+.music-items::-webkit-scrollbar-track { background: transparent; }
+.music-items::-webkit-scrollbar-thumb { background: rgba(127,168,163,.32); border-radius: 3px; }
 
 .music-item {
   display: flex;
