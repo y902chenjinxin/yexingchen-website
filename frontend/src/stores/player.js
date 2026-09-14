@@ -48,6 +48,9 @@ export const usePlayerStore = defineStore('player', () => {
   // 播放序号：仅最后一次触发的播放生效，丢弃旧的过期回调，杜绝竞态叠音
   let playSeq = 0
 
+  // 自动播放被浏览器拦截时的恢复句柄：注册一次性 pointerdown，用户首次点击页面即自动拉起 BGM
+  let resumeHandler = null
+
   audio.addEventListener('playing', () => { isPlaying.value = true })
   audio.addEventListener('pause', () => { isPlaying.value = false })
   audio.addEventListener('ended', () => {
@@ -62,10 +65,14 @@ export const usePlayerStore = defineStore('player', () => {
     isPlaying.value = false
   })
 
-  // 恢复：用户曾经交互过页面（rejectedOnce 标志），再次 play() 浏览器不会拒绝
+  // 自动播放被拦后：注册一次性 pointerdown，用户首次点击页面即恢复播放 BGM（借用了用户手势）
   function armResume() {
     if (audio.paused) {
-      audio.play().then(() => { rejectedOnce.value = false }).catch(() => {})
+      audio.play().then(() => { rejectedOnce.value = false }).catch(() => {
+        if (resumeHandler) window.removeEventListener('pointerdown', resumeHandler)
+        resumeHandler = () => playBgm()
+        window.addEventListener('pointerdown', resumeHandler, { once: true })
+      })
     }
   }
 
@@ -140,7 +147,12 @@ export const usePlayerStore = defineStore('player', () => {
     switchSource(bgmUrl.value, true)
     audio.volume = volume.value
     if (seq === playSeq) {
-      audio.play().catch(() => {})
+      audio.play().then(() => {
+        if (seq === playSeq) rejectedOnce.value = false
+      }).catch(() => {
+        rejectedOnce.value = true
+        armResume()
+      })
     }
   }
   return {
