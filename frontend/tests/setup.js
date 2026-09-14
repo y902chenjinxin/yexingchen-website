@@ -14,6 +14,27 @@
  * 3. 在所有文件 require/setup 之前预加载，避免其它测试先污染。
  */
 import { afterEach, beforeEach, vi } from 'vitest'
+import { config as vtuConfig } from '@vue/test-utils'
+import ElementPlus from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+
+// 全局注册 ElementPlus：所有 mount() 出来的 app 自动包含 el-* 组件
+vtuConfig.global.plugins.push([ElementPlus, { locale: zhCn }])
+
+// 全局 mock auth.fetchUser（路由守卫直接调用；个别测试只 mock useAuthStore() 而不写 fetchUser）
+vi.mock('@/stores/auth', async () => {
+  const actual = await vi.importActual('@/stores/auth')
+  return {
+    ...actual,
+    useAuthStore: () => ({
+      isLoggedIn: false,
+      isSuperAdmin: false,
+      token: '',
+      user: null,
+      fetchUser: vi.fn().mockResolvedValue(null),
+    }),
+  }
+})
 
 const REAL_URL_CREATE = URL.createObjectURL
 const REAL_URL_REVOKE = URL.revokeObjectURL

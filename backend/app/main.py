@@ -6,12 +6,17 @@ import logging
 
 from app.database import engine, Base
 from app.routers import (
-    admin, auth, feed, finance, log, music, novel, search, settings as settings_router,
-    stocks, tool, travels, video, video_parse, workbench,
+    admin_menus, admin_roles, admin_users, auth, datahub, finance, log, music, novel, quick, search, settings as settings_router,
+    stocks, tool, travels, video, video_parse,
 )
+from app.routers.workbench import router as workbench_router
+from app.routers.feed import router as feed_router
 from app.config import settings
 from app.models.login_attempt import LoginAttempt  # 登录限流模型
 from app.services import schema_guard
+from app.services.logging_config import configure_logging
+
+configure_logging()
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +55,9 @@ if os.path.exists(uploads_dir):
 
 # 注册路由
 app.include_router(auth.router)
-app.include_router(admin.router)
+app.include_router(admin_users.router)
+app.include_router(admin_roles.router)
+app.include_router(admin_menus.router)
 app.include_router(music.router)
 app.include_router(novel.router)
 app.include_router(video.router)
@@ -58,12 +65,14 @@ app.include_router(tool.router)
 app.include_router(log.router)
 app.include_router(search.router)
 app.include_router(settings_router.router)
-app.include_router(workbench.router)
+app.include_router(workbench_router)
 app.include_router(video_parse.router)
 app.include_router(finance.router)
-app.include_router(feed.router)
+app.include_router(feed_router)
 app.include_router(stocks.router)
 app.include_router(travels.router)
+app.include_router(datahub.router)
+app.include_router(quick.router)
 
 
 @app.get("/")
@@ -73,4 +82,63 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    """深度健康检查：DB / parse-service / 磁盘。"""
+    import shutil
+    import time
+
+    from app.database import engine
+    from sqlalchemy import text
+
+    checks = {}
+    overall_ok = True
+
+    # 1) DB 连通
+    db_start = time.monotonic()
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["db"] = {"ok": True, "latency_ms": int((time.monotonic() - db_start) * 1000)}
+    except Exception as exc:  # noqa: BLE001
+        overall_ok = False
+        checks["db"] = {"ok": False, "error": str(exc)[:200]}
+
+    # 2) parse-service 可达
+    ps_start = time.monotonic()
+    try:
+        import httpx
+        base_url = settings.PARSE_SERVICE_URL.rstrip("/")
+        with httpx.Client(timeout=3) as client:
+            r = client.get(f"{base_url}/health")
+        checks["parse_service"] = {
+            "ok": r.status_code in (200, 400, 422),
+            "status_code": r.status_code,
+            "latency_ms": int((time.monotonic() - ps_start) * 1000),
+        }
+        if r.status_code >= 500:
+            overall_ok = False
+    except Exception as exc:  # noqa: BLE001
+        overall_ok = False
+        checks["parse_service"] = {"ok": False, "error": str(exc)[:200]}
+
+    # 3) 磁盘（uploads / 数据库所在盘）
+    try:
+        upload_dir = os.path.join(os.path.dirname(__file__), "..", "uploads")
+        total, used, free = shutil.disk_usage(upload_dir)
+        free_gb = free / (1024 ** 3)
+        checks["disk"] = {
+            "ok": free_gb > 0.5,  # 至少 500MB 空闲
+            "free_gb": round(free_gb, 2),
+            "path": upload_dir,
+        }
+        if free_gb <= 0.5:
+            overall_ok = False
+    except Exception as exc:  # noqa: BLE001
+        checks["disk"] = {"ok": False, "error": str(exc)[:200]}
+
+    body = {
+        "status": "ok" if overall_ok else "degraded",
+        "checks": checks,
+    }
+    return body
+
+

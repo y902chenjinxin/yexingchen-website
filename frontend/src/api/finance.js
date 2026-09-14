@@ -49,6 +49,30 @@ export const financeApi = {
   create: (data) => api.post('/finance/transactions', data),
   update: (id, data) => api.put(`/finance/transactions/${id}`, data),
   remove: (id) => api.delete(`/finance/transactions/${id}`),
+  importCsv: (csvText) => api.post('/finance/import', { csv: csvText }),
+}
+
+// CSV 导出走 blob（不经 axios 拦截器，避免响应处理差异）
+export function exportFinanceCsv(params = {}) {
+  const token = localStorage.getItem('token')
+  const query = new URLSearchParams()
+  if (params.start) query.set('start', params.start)
+  if (params.end) query.set('end', params.end)
+  return fetch(`/api/finance/export?${query.toString()}`, { headers: { authorization: `Bearer ${token}` } })
+    .then(async (resp) => {
+      if (!resp.ok) throw new Error('导出失败')
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const cd = resp.headers.get('content-disposition') || ''
+      const m = /filename="?([^";]+)"?/.exec(cd)
+      a.href = url
+      a.download = m ? m[1] : `账本导出_${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    })
 }
 
 export default financeApi

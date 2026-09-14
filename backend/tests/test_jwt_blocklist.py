@@ -17,7 +17,8 @@ import app.services.schema_guard as sg
 sg.assert_production_schema_ok = lambda engine: None
 
 from app.database import Base
-from app.models.user import User, TokenBlocklist
+from app.models.user import User
+from app.models.system import TokenBlocklist
 from app.utils.security import (
     get_password_hash,
     create_access_token,
@@ -166,3 +167,4 @@ def test_auth_router_has_logout_endpoint():
     assert any("/logout" in r for r in routes), (
         "auth.py 缺少 /logout 接口，无法吊销 token"
     )
+

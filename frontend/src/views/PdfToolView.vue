@@ -25,19 +25,12 @@
             <div class="dz-hint">支持格式：JPG、PNG、BMP、WEBP（单文件≤10MB，最多20个）</div>
           </div>
 
-          <div v-if="aList.length" class="file-list">
-            <div v-for="(f, i) in aList" :key="'a' + i" class="file-row">
-              <span class="fr-idx">{{ i + 1 }}</span>
-              <span class="fr-name" :title="f.name">{{ f.name }}</span>
-              <span class="fr-size">{{ sizeStr(f.size) }}</span>
-              <span class="fr-status" :class="f.error ? 'err' : ''">{{ f.error || '待处理' }}</span>
-              <span class="fr-ops">
-                <button class="op" :disabled="i === 0 || processing" @click="move('a', i, -1)">上移</button>
-                <button class="op" :disabled="i === aList.length - 1 || processing" @click="move('a', i, 1)">下移</button>
-                <button class="op danger" @click="removeAt('a', i)">删除</button>
-              </span>
-            </div>
-          </div>
+          <PdfFileList
+            :files="aList"
+            :processing="processing"
+            @remove="(i) => removeAt('a', i)"
+            @move="(i, d) => move('a', i, d)"
+          />
 
           <div class="opt-grid">
             <label class="opt">页面尺寸
@@ -70,15 +63,12 @@
             <div class="dz-text">拖拽 PDF 到这里，或点击选择文件</div>
             <div class="dz-hint">提取每一页为高清 JPG；多页自动打包为 ZIP（单文件≤10MB）</div>
           </div>
-          <div v-if="bList.length" class="file-list">
-            <div v-for="(f, i) in bList" :key="'b' + i" class="file-row">
-              <span class="fr-idx">{{ i + 1 }}</span>
-              <span class="fr-name" :title="f.name">{{ f.name }}</span>
-              <span class="fr-size">{{ sizeStr(f.size) }}</span>
-              <span class="fr-status" :class="f.error ? 'err' : ''">{{ f.error || '待处理' }}</span>
-              <span class="fr-ops"><button class="op danger" @click="removeAt('b', i)">删除</button></span>
-            </div>
-          </div>
+          <PdfFileList
+            :files="bList"
+            :processing="processing"
+            :show-reorder="false"
+            @remove="(i) => removeAt('b', i)"
+          />
           <div class="opt-grid">
             <label class="opt">分辨率
               <select v-model="bOpt.dpi">
@@ -96,19 +86,12 @@
             <div class="dz-text">拖拽 PDF 到这里，或点击选择文件</div>
             <div class="dz-hint">合并：调整顺序合并为一个 PDF；拆分：按页码范围提取（单文件≤10MB）</div>
           </div>
-          <div v-if="cList.length" class="file-list">
-            <div v-for="(f, i) in cList" :key="'c' + i" class="file-row">
-              <span class="fr-idx">{{ i + 1 }}</span>
-              <span class="fr-name" :title="f.name">{{ f.name }}</span>
-              <span class="fr-size">{{ sizeStr(f.size) }}</span>
-              <span class="fr-status" :class="f.error ? 'err' : ''">{{ f.error || '待处理' }}</span>
-              <span class="fr-ops">
-                <button class="op" :disabled="i === 0 || processing" @click="move('c', i, -1)">上移</button>
-                <button class="op" :disabled="i === cList.length - 1 || processing" @click="move('c', i, 1)">下移</button>
-                <button class="op danger" @click="removeAt('c', i)">删除</button>
-              </span>
-            </div>
-          </div>
+          <PdfFileList
+            :files="cList"
+            :processing="processing"
+            @remove="(i) => removeAt('c', i)"
+            @move="(i, d) => move('c', i, d)"
+          />
           <label class="opt-inline">合并生成的 PDF 文件名
             <input v-model="cOpt.mergedName" class="text-input" placeholder="merged.pdf" />
           </label>
@@ -148,6 +131,7 @@
 import { ref, reactive, computed, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import PdfFileList from './pdftool/PdfFileList.vue'
 
 const tabs = [
   { key: 'a', label: '🖼 图片转 PDF' },

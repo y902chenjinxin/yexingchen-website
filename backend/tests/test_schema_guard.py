@@ -6,19 +6,18 @@
 - 版本落后（alembic_version 指向旧 revision）→ 启动失败
 - 版本与 head 一致 → 通过
 - 非生产环境 → 不校验
-- HEAD_REVISION 常量保持与迁移 head 一致
+- HEAD 自动扫描：从 alembic/versions 文件中识别 head revision
 """
 import importlib
 import os
-import subprocess
-import sys
 import sqlite3
+import sys
 from pathlib import Path
 
 import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-from app.services.schema_guard import HEAD_REVISION  # 与 schema_guard.HEAD_REVISION 保持一致
+from app.services import schema_guard as _schema_guard  # noqa: E402
 
 
 def _make_db(tmp_path: Path) -> Path:
@@ -42,9 +41,12 @@ def _write_alembic_version(db_path: Path, value: str | None) -> None:
 def _import_schema_guard():
     if str(BACKEND_DIR) not in sys.path:
         sys.path.insert(0, str(BACKEND_DIR))
-    from app.services import schema_guard  # noqa: E402
+    return importlib.reload(_schema_guard)
 
-    return importlib.reload(schema_guard)
+
+def _current_head() -> str:
+    """从 alembic/versions 动态识别第一个 head（用于测试断言）。"""
+    return _schema_guard._expected_heads()[0]
 
 
 def test_empty_db_fails_in_production(tmp_path):
@@ -73,7 +75,7 @@ def test_versionless_alembic_version_fails_in_production(tmp_path):
 
 def test_version_mismatch_fails_in_production(tmp_path):
     db = _make_db(tmp_path)
-    _write_alembic_version(db, "old_rev")
+    _write_alembic_version(db, "old_rev_definitely_not_existing")
     guard = _import_schema_guard()
     from sqlalchemy import create_engine
 
@@ -85,7 +87,7 @@ def test_version_mismatch_fails_in_production(tmp_path):
 
 def test_matching_head_passes_in_production(tmp_path):
     db = _make_db(tmp_path)
-    _write_alembic_version(db, HEAD_REVISION)
+    _write_alembic_version(db, _current_head())
     guard = _import_schema_guard()
     from sqlalchemy import create_engine
 
@@ -107,30 +109,31 @@ def test_non_production_skips_check(tmp_path):
         guard.check_schema_for_env(engine, env=env)
 
 
-def test_head_revision_constant_matches_alembic_head():
-    """HEAD_REVISION 必须与 alembic/versions 下实际 head 一致。"""
+def test_discover_heads_finds_alembic_heads():
+    """_discover_heads 必须能从 alembic/versions 下识别真正的 head revision。"""
     versions_dir = BACKEND_DIR / "alembic" / "versions"
     rev_files = list(versions_dir.glob("*.py"))
     assert rev_files, "no alembic migration file found"
-    heads = set()
+
+    # 直接解析每个文件的 revision + down_revision
+    revs: dict[str, str | None] = {}
     for f in rev_files:
         text = f.read_text(encoding="utf-8")
+        rev = down = None
         for line in text.splitlines():
             line = line.strip()
-            if line.startswith("revision:"):
-                # 形如: revision: str = 'abc123'
-                after = line.split(":", 1)[1]
-                # 取第一个引号包裹的字符串
-                import re
-                m = re.search(r"""['"]([0-9a-zA-Z]+)['"]""", after)
-                if m:
-                    heads.add(m.group(1))
-    assert heads, "no revision id parsed"
-    from app.services import schema_guard
+            if (line.startswith("revision ") or line.startswith("revision:")) and "=" in line:
+                rev = _schema_guard._parse_value(line.split("=", 1)[1])
+            elif (line.startswith("down_revision ") or line.startswith("down_revision:")) and "=" in line:
+                down = _schema_guard._parse_value(line.split("=", 1)[1])
+        if rev:
+            revs[rev] = down
+    referenced = {v for v in revs.values() if v}
+    expected_heads = sorted(r for r in revs if r not in referenced)
 
-    assert schema_guard.HEAD_REVISION in heads, (
-        f"schema_guard.HEAD_REVISION={schema_guard.HEAD_REVISION!r} not in {heads}"
-    )
+    discovered = _schema_guard._discover_heads(versions_dir)
+    assert discovered == expected_heads
+    assert discovered, "no head discovered"
 
 
 def test_production_env_case_insensitive(monkeypatch):

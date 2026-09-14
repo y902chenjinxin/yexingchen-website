@@ -6,7 +6,11 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import SessionLocal, engine, Base
-from app.models.user import User, Music, Novel, Video, Tool
+from app.models.user import User
+from app.models.music import Music
+from app.models.novel import Novel
+from app.models.video import Video
+from app.models.tool import Tool
 from app.utils.security import get_password_hash
 from datetime import datetime
 import random

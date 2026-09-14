@@ -133,9 +133,11 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useMusicStore } from '@/stores/music'
 import { usePlayerStore } from '@/stores/player'
+import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 
 const musicStore = useMusicStore()
 const player = usePlayerStore()
+  const bgm = useBgmLibraryStore()
 
 const manage = ref(false)
 const showUpload = ref(false)
@@ -257,7 +259,7 @@ async function confirmDelete() {
   deleting.value = true
   try {
     await musicStore.remove(deleteId.value)
-    if (String(player.bgmChoiceId) === String(deleteId.value)) player.setBackground(null, false)
+    if (String(bgm.bgmChoiceId) === String(deleteId.value)) bgm.setBackground(null, false)
     ElMessage.success('删除成功')
     showDelete.value = false
     fetchData()

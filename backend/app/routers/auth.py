@@ -1,3 +1,4 @@
+from app.models.user import User
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -6,9 +7,8 @@ from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
 from app.services.auth_service import send_register_code, verify_code
-from app.utils.security import verify_password, create_access_token, get_current_user
+from app.utils.security import verify_password, create_access_token, get_current_user, get_client_ip
 from app.utils.rate_limit import login_limiter, register_limiter
-from app.models.user import User
 from app.services.log_service import log_action
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/auth", tags=["认证"])
 
 @router.post("/register", response_model=ResponseBase)
 async def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
-    client_ip = request.client.host if request.client else ""
+    client_ip = get_client_ip(request)
 
     # 检查注册限流
     rate_check = register_limiter.check_and_record(db, client_ip, req.email)
@@ -39,7 +39,7 @@ async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=ResponseBase)
 async def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    client_ip = request.client.host if request.client else ""
+    client_ip = get_client_ip(request)
 
     # 检查IP是否被封禁
     rate_check = login_limiter.check_and_record(db, client_ip, False, req.email)
@@ -92,7 +92,7 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
 
 @router.post("/logout", response_model=ResponseBase)
 async def logout(request: Request, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    client_ip = request.client.host if request.client else ""
+    client_ip = get_client_ip(request)
     log_action(db, current_user["user_id"], "logout", detail="用户登出", ip_address=client_ip)
     return ResponseBase(msg="登出成功")
 
@@ -214,3 +214,4 @@ async def logout(
 
     log_action(db, user_id, "logout", detail="用户登出（token 吊销）")
     return ResponseBase(msg="登出成功")
+

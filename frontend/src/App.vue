@@ -21,13 +21,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, defineAsyncComponent, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import WhaleCompanion from '@/components/effects/WhaleCompanion.vue'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
+
+// WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
+const WhaleCompanion = defineAsyncComponent(() => import('@/components/effects/WhaleCompanion.vue'))
 
 const router = useRouter()
 const route = useRoute()

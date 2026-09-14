@@ -50,6 +50,8 @@ export const stocksApi = {
   kline: (market, code, lmt) => api.get(`/kline/${market}/${encodeURIComponent(code)}`, { params: { lmt } }),
   summary: () => api.get('/summary'),
   dashboard: () => api.get('/dashboard'),
+  snapshots: (days) => api.get('/snapshots', { params: { days } }),
+  recordSnapshot: () => api.post('/snapshots/today'),
 }
 
 export default stocksApi

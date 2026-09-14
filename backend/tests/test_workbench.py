@@ -1,3 +1,4 @@
+from app.models.user import User
 """玄黄工作台 API 测试。
 
 使用真实 FastAPI TestClient + 临时 sqlite + 独立 app.dependency_overrides，
@@ -77,7 +78,6 @@ def ctx(tmp_path, monkeypatch):
 
     # 创建 schema
     from app.database import Base
-    from app.models.user import User  # noqa
     from app.models.workbench import (  # noqa
         Note, Asset, Task, Tag, NoteTag, AssetTag, TaskLink,
         AiConversation, AiMessage, AiConversationLink, WorkbenchLog,
@@ -1016,3 +1016,4 @@ def test_sw_skips_api_requests():
     assert "url.pathname.startsWith('/api/')" in text or "startsWith('/api/')" in text
     # 必须过滤 Authorization 头
     assert "authorization" in text.lower()
+

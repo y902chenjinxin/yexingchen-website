@@ -104,10 +104,12 @@
 import { onMounted, ref } from 'vue'
 import { useMusicStore } from '@/stores/music'
 import { usePlayerStore } from '@/stores/player'
+import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { ElMessage } from 'element-plus'
 
 const musicStore = useMusicStore()
 const player = usePlayerStore()
+  const bgm = useBgmLibraryStore()
 
 const showEdit = ref(false)
 const saving = ref(false)
@@ -151,10 +153,10 @@ const handlePlay = (item) => {
 
 // 设为背景音乐（同时开始播放并持久化选择）
 const setAsBg = (item) => {
-  player.setBackground(item, true)
+  bgm.setBackground(item, true)
 }
 
-const isCurBgm = (item) => String(item.id) === String(player.bgmChoiceId)
+const isCurBgm = (item) => String(item.id) === String(bgm.bgmChoiceId)
 
 const isCurPlaying = (item) =>
   player.curItem && String(player.curItem.id) === String(item.id) && player.isPlaying

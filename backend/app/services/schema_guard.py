@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -24,7 +25,62 @@ class ProductionSchemaError(RuntimeError):
     """生产环境 schema 校验失败时的可读异常。"""
 
 
-HEAD_REVISION = "g1h2i3j4k5l6"  # 2026-09-09 更新：合并 token_blocklist migration 后
+def _alembic_versions_dir() -> Path:
+    """定位 alembic/versions 目录。"""
+    # schema_guard.py 位于 backend/app/services/schema_guard.py
+    # alembic/versions 在 backend/alembic/versions
+    return Path(__file__).resolve().parent.parent.parent / "alembic" / "versions"
+
+
+def _discover_heads(versions_dir: Path) -> List[str]:
+    """扫描 alembic/versions 下的所有迁移文件，找出真正的 head revisions。
+
+    head = 没有任何其他迁移的 ``down_revision`` 指向它。
+    改用扫描而不是 ``alembic heads`` 子进程，避免生产启动时多一次进程开销。
+    """
+    if not versions_dir.is_dir():
+        return []
+
+    revisions: dict[str, Optional[str]] = {}
+    for py in versions_dir.glob("*.py"):
+        if py.name.startswith("_"):
+            continue
+        text = py.read_text(encoding="utf-8")
+        rev = _down_rev = None
+        for line in text.splitlines():
+            line = line.strip()
+            if (line.startswith("revision ") or line.startswith("revision:")) and "=" in line:
+                # revision = "xxxxx"  或  revision = ('a', 'b')
+                rev = _parse_value(line.split("=", 1)[1])
+            elif (line.startswith("down_revision ") or line.startswith("down_revision:")) and "=" in line:
+                _down_rev = _parse_value(line.split("=", 1)[1])
+        if rev:
+            revisions[rev] = _down_rev
+
+    # 所有被任何迁移 down_revision 引用的 revision 不是
+    # head = 至少有一个 revision 没有被引用
+    referenced = {v for v in revisions.values() if v}
+    # 元组形式（branch_labels）需要平展
+    flat_referenced = set()
+    for r in referenced:
+        flat_referenced.add(r)
+    heads = [r for r in revisions if r not in flat_referenced]
+    return sorted(heads)
+
+
+def _parse_value(raw: str) -> Optional[str]:
+    """解析 alembic 的 revision / down_revision 赋值右侧，返回第一个 revision id（如果是元组取第一个）。"""
+    raw = raw.strip().rstrip(",").strip()
+    if not raw or raw == "None":
+        return None
+    # 元组形式 ('a', 'b') → 取第一个
+    if raw.startswith("(") and raw.endswith(")"):
+        inner = raw[1:-1].strip()
+        if not inner:
+            return None
+        first = inner.split(",", 1)[0].strip().strip("'\"")
+        return first or None
+    return raw.strip("'\"")
 
 
 def is_production_env() -> bool:
@@ -58,10 +114,21 @@ def get_alembic_version(engine: Engine) -> Optional[str]:
         return None
 
 
+def _expected_heads() -> List[str]:
+    """返回当前迁移树期望的 head revisions（自动从文件扫描，禁止手写）。"""
+    return _discover_heads(_alembic_versions_dir())
+
+
 def assert_production_schema_ok(engine: Engine) -> None:
     """生产环境 fail-fast 校验。"""
     if not is_production_env():
         return
+
+    expected_heads = _expected_heads()
+    if not expected_heads:
+        raise ProductionSchemaError(
+            "无法从 alembic/versions 发现任何 head revision，请检查迁移文件。"
+        )
 
     cnt = _count_heads(engine)
     if cnt == 0:
@@ -80,13 +147,16 @@ def assert_production_schema_ok(engine: Engine) -> None:
     if version is None:
         raise ProductionSchemaError("alembic_version 表为空，无法确认当前版本")
 
-    if version != HEAD_REVISION:
+    if version not in expected_heads:
         raise ProductionSchemaError(
-            f"Production alembic version mismatch: db={version!r} != head={HEAD_REVISION!r}. "
+            f"Production alembic version {version!r} 不在已知 head 列表 {expected_heads} 中。"
             "请执行: alembic upgrade head"
         )
 
-    logger.info("Production schema OK: alembic head=%s", HEAD_REVISION)
+    logger.info(
+        "Production schema OK: alembic head=%s (auto-discovered)",
+        version,
+    )
 
 
 def check_schema_for_env(engine: Engine, *, env: Optional[str] = None) -> None:

@@ -1,5 +1,5 @@
+from app.models.log import OperationLog
 from sqlalchemy.orm import Session
-from app.models.user import OperationLog
 from datetime import datetime
 
 
@@ -18,3 +18,4 @@ def log_action(db: Session, user_id: int, action: str,
     db.add(log)
     db.commit()
     return log
+

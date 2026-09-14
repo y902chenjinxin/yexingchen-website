@@ -71,6 +71,21 @@
           <div class="wd-foot">把到过的地方，在地图上点亮</div>
         </div>
       </a>
+
+      <!-- 数据中心卡 -->
+      <a class="wd-card wd-hub" @click.prevent="$router.push('/datahub')">
+        <div class="wd-card-head">
+          <span class="wd-card-name">🏛️ 数据中心</span>
+          <span class="wd-more">查看全部 →</span>
+        </div>
+        <div class="wd-body">
+          <div class="wd-rows">
+            <div class="wd-row"><span class="wd-k">聚合</span><span class="wd-v">账本 · 持仓 · 足迹 · 笔记</span></div>
+            <div class="wd-row"><span class="wd-k">模式</span><span class="wd-v">一目了然</span></div>
+          </div>
+          <div class="wd-foot">你的数据总览看板 · 一处一览</div>
+        </div>
+      </a>
     </div>
   </section>
 </template>

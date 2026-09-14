@@ -139,6 +139,18 @@ const routes = [
     component: () => import('@/views/TravelsView.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/datahub',
+    name: 'DataHub',
+    component: () => import('@/views/DataHubView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/diary',
+    name: 'Quick',
+    component: () => import('@/views/QuickView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 外部工具独立页（iframe 内嵌）
   {
     path: '/tool/:id',

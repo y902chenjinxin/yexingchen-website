@@ -307,3 +307,4 @@ def test_cleanup_expired_codes_noop_when_nothing_expired(ctx):
 
     cleanup_expired_codes(db)
     assert db.query(VerificationCode).count() == 1
+

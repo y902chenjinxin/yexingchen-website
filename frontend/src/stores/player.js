@@ -1,23 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getBgmChoice, updateBgmChoice } from '@/api/settings'
-import { getMusicList } from '@/api/music'
 
-// 单一音频中枢：统一管理「背景 BGM」与「点播曲目」的播放/暂停/进度/音量。
-// 规则：背景与点播互斥——点播时暂停背景 BGM，离开点播恢复。
+/**
+ * 音频播放控制核心：管理单一 <audio> 实例，处理「点播 / 暂停 / 进度 / 音量」。
+ * 不感知「BGM」业务语义——BGM 库与选曲由 useBgmLibraryStore 管理（它调用本 store 触发播放）。
+ */
 export const usePlayerStore = defineStore('player', () => {
   const audio = new Audio()
   audio.preload = 'auto'
 
   const mode = ref('idle')            // 'idle' | 'bgm' | 'playlist'
-  const curItem = ref(null)           // 当前播放曲目 {id,title,artist,url}
-  const bgmChoiceId = ref('default')  // 用户选定的背景曲 (default | id)
-  const bgmUrl = ref('')              // 已解析的背景 BGM 流地址
+  const curItem = ref(null)           // 当前播放曲目
   const isPlaying = ref(false)
   const volume = ref(Number(localStorage.getItem('bgm_volume') ?? 0.3))
   const rejectedOnce = ref(false)
-
-  // 播放条显示：仅点播曲目时展示；背景 BGM 不展示
   const shows = computed(() => mode.value === 'playlist' && !!curItem.value)
 
   audio.volume = volume.value
@@ -42,6 +38,13 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
+  // 解析播放 URL：default 曲 / 上传曲目 / 外部链接
+  function resolveUrl(item) {
+    if (!item) return ''
+    if (item.id === 'default' || item.is_default) return '/api/music/default/stream'
+    return `/api/music/${item.id}/stream`
+  }
+
   // 播放序号：仅最后一次触发的播放生效，丢弃旧的过期回调，杜绝竞态叠音
   let playSeq = 0
 
@@ -49,103 +52,26 @@ export const usePlayerStore = defineStore('player', () => {
   audio.addEventListener('pause', () => { isPlaying.value = false })
   audio.addEventListener('ended', () => {
     isPlaying.value = false
-    // 点播自然结束后，自动恢复背景 BGM
-    if (mode.value === 'playlist') playBgm()
+    // 点播结束：自动恢复背景 BGM
+    if (mode.value === 'playlist') {
+      mode.value = 'idle'
+      playBgm()
+    }
+  })
+  audio.addEventListener('error', () => {
+    isPlaying.value = false
   })
 
-  // 稳定单一的手指 resume 监听，避免多次 catch 累积多个 pointerdown 监听器
-  let resumeHandler = null
+  // 恢复：用户曾经交互过页面（rejectedOnce 标志），再次 play() 浏览器不会拒绝
   function armResume() {
-    if (resumeHandler) window.removeEventListener('pointerdown', resumeHandler)
-    resumeHandler = () => playBgm()
-    window.addEventListener('pointerdown', resumeHandler, { once: true })
-  }
-
-  // 播放背景 BGM（loop）；浏览器自动播放被拦时，等待首次用户交互再恢复
-  function playBgm() {
-    if (!bgmUrl.value) return
-    const seq = ++playSeq
-    mode.value = 'bgm'
-    audio.volume = volume.value
-    switchSource(bgmUrl.value, true)
-    if (seq !== playSeq) return
-    audio.play().then(() => {
-      if (seq === playSeq) rejectedOnce.value = false
-    }).catch(() => {
-      rejectedOnce.value = true
-      armResume()
-    })
-  }
-
-  // ---------- 曲目 url 解析 ----------
-  function resolveUrl(item) {
-    if (!item) return ''
-    // 列表项的 file_path 后端已返回可播 url；default 曲是 /api/music/default/stream
-    if (item.id === 'default' || item.is_default) return '/api/music/default/stream'
-    return `/api/music/${item.id}/stream`
-  }
-
-  async function fetchMusicLibrary(force = false) {
-    if (!force && musicLibrary.value.length) return
-    try {
-      const res = await getMusicList({ size: 200 })
-      const list = res?.data?.list || []
-      const def = list.find(it => it.is_default) || {
-        id: 'default', title: '玄黄古筝 · 默认背景', artist: '系统', is_default: true
-      }
-      const uploads = list.filter(it => !it.is_default)
-      musicLibrary.value = [def, ...uploads]
-    } catch {
-      musicLibrary.value = [{ id: 'default', title: '玄黄古筝 · 默认背景', artist: '系统', is_default: true }]
+    if (audio.paused) {
+      audio.play().then(() => { rejectedOnce.value = false }).catch(() => {})
     }
   }
-  const musicLibrary = ref([])
 
-  // ---------- 背景 BGM ----------
-  async function loadBgmLibrary() {
-    await fetchMusicLibrary()
-  }
 
-  async function initBgm() {
-    await fetchMusicLibrary()
-    await refreshBgmChoice()
-    playBgm()
-  }
-
-  async function refreshBgmChoice() {
-    try {
-      const res = await getBgmChoice()
-      bgmChoiceId.value = res?.data?.bgm_music_id ?? 'default'
-    } catch {
-      bgmChoiceId.value = 'default'
-    }
-    // 用实际选择的曲目 url 播放
-    const target = musicLibrary.value.find(it => String(it.id) === String(bgmChoiceId.value))
-    const url = target ? resolveUrl(target) : '/api/music/default/stream'
-    bgmUrl.value = url
-    curItem.value = target || { id: 'default', title: '玄黄古筝 · 默认背景', artist: '系统', is_default: true }
-    return url
-  }
-
-  async function setBackground(item, autoplay = true) {
-    // 先立即停掉当前音轨，避免下方 await 期间旧歌继续播放与换曲后叠加
-    hardStop()
-    const seq = ++playSeq
-    await fetchMusicLibrary(true)
-    const target = item || musicLibrary.value.find(it => String(it.id) === String(bgmChoiceId.value))
-      || musicLibrary.value[0]
-    bgmChoiceId.value = String(target.id)
-    curItem.value = target
-    bgmUrl.value = resolveUrl(target)
-    mode.value = 'bgm'
-    // 持久化到后端
-    try { await updateBgmChoice({ bgm_music_id: String(target.id) }) } catch { /* 静默 */ }
-    if (autoplay && seq === playSeq) playBgm()
-  }
-
-  // ---------- 点播曲目 ----------
+  // 点播曲目：硬停背景，播该曲（仅播一次，不循环）
   function playItem(item) {
-    // 点播：硬停背景，播该曲（仅播一次，不循环）
     const url = resolveUrl(item)
     curItem.value = item
     mode.value = 'playlist'
@@ -170,7 +96,6 @@ export const usePlayerStore = defineStore('player', () => {
   function stopAndHide() {
     hardStop()
     isPlaying.value = false
-    // 关闭点播后，自动恢复背景 BGM
     mode.value = 'idle'
     if (bgmUrl.value) playBgm()
   }
@@ -187,6 +112,7 @@ export const usePlayerStore = defineStore('player', () => {
     setVolume(volume.value > 0 ? 0 : 0.3)
   }
 
+  // ---------- 进度 ----------
   const progress = ref(0)
   const duration = ref(0)
   audio.addEventListener('timeupdate', () => {
@@ -202,11 +128,26 @@ export const usePlayerStore = defineStore('player', () => {
     if (audio.duration) audio.currentTime = r * audio.duration
   }
 
+  // 内部维护 BGM 流地址；由 useBgmLibraryStore 同步
+  const bgmUrl = ref('')
+  function setBgmUrl(url) { bgmUrl.value = url || '' }
+  function playBgm(url) {
+    if (url) bgmUrl.value = url
+    if (!bgmUrl.value) return
+    const seq = ++playSeq
+    curItem.value = curItem.value || { id: 'default', title: '玄黄古筝 · 默认背景', artist: '系统', is_default: true }
+    mode.value = 'bgm'
+    switchSource(bgmUrl.value, true)
+    audio.volume = volume.value
+    if (seq === playSeq) {
+      audio.play().catch(() => {})
+    }
+  }
   return {
-    audio, mode, curItem, bgmChoiceId, bgmUrl, isPlaying, volume,
-    musicLibrary, shows, progress, duration, rejectedOnce,
-    initBgm, loadBgmLibrary, refreshBgmChoice, setBackground,
-    playItem, togglePlay, stopAndHide, setVolume, toggleMute, seek, seekByRatio,
-    get playing() { return isPlaying.value }
+    audio, mode, curItem, isPlaying, volume, shows, progress, duration, rejectedOnce, bgmUrl,
+    hardStop, switchSource, resolveUrl, armResume, playBgm, setBgmUrl,
+    playItem, togglePlay, stopAndHide, setVolume, toggleMute,
+    seek, seekByRatio,
+    get playing() { return isPlaying.value },
   }
 })

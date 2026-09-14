@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 import hashlib
 import uuid
-import hashlib
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status, Request
@@ -67,7 +66,7 @@ async def get_current_user(
     # 检查 JWT 黑名单（已登出 / 主动失效的 token）
     jti = payload.get("jti")
     if jti:
-        from app.models.user import TokenBlocklist
+        from app.models.system import TokenBlocklist
         from datetime import datetime
         revoked = db.query(TokenBlocklist).filter(
             TokenBlocklist.jti == jti,
@@ -126,7 +125,7 @@ def revoke_token(db: Session, token: str, user_id: int) -> bool:
     exp_ts = payload.get("exp")
     if not jti or not exp_ts:
         return False
-    from app.models.user import TokenBlocklist
+    from app.models.system import TokenBlocklist
     from datetime import datetime, timezone
     expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc).replace(tzinfo=None)
     # 幂等：jti 唯一约束
@@ -140,7 +139,7 @@ def revoke_token(db: Session, token: str, user_id: int) -> bool:
 
 def is_token_revoked(db: Session, jti: str) -> bool:
     """检查 token 是否在黑名单（且未过期）。"""
-    from app.models.user import TokenBlocklist
+    from app.models.system import TokenBlocklist
     from datetime import datetime
     return db.query(TokenBlocklist).filter(
         TokenBlocklist.jti == jti,
@@ -150,10 +149,40 @@ def is_token_revoked(db: Session, jti: str) -> bool:
 
 def cleanup_expired_tokens(db: Session) -> int:
     """清理过期的黑名单记录（可定期 cron 调用）。"""
-    from app.models.user import TokenBlocklist
+    from app.models.system import TokenBlocklist
     from datetime import datetime
     deleted = db.query(TokenBlocklist).filter(
         TokenBlocklist.expires_at <= datetime.now()
     ).delete()
     db.commit()
     return deleted
+
+
+def get_client_ip(request) -> str:
+    """获取客户端真实 IP。
+
+    优先级：
+    1. X-Real-IP（nginx 反向代理设置）
+    2. X-Forwarded-For 第一项（多级代理时是最左）
+    3. request.client.host（直连 IP，作为兜底）
+
+    生产环境强烈建议配 nginx 设置 X-Real-IP 并只信任本地代理。
+    攻击者绕过 nginx 直打后端 8000 端口会得到直连 IP（仍可被限流）。
+    """
+    if request is None:
+        return ""
+    # 优先：X-Real-IP（nginx 标准）
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
+    # 次选：X-Forwarded-For 第一项
+    xff = request.headers.get("x-forwarded-for", "").strip()
+    if xff:
+        # 形如 "client, proxy1, proxy2"，第一项是真实客户端
+        return xff.split(",")[0].strip()
+    # 兜底：直连
+    if request.client and request.client.host:
+        return request.client.host
+    return ""
+
+

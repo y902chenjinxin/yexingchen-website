@@ -54,6 +54,31 @@ EXPECTED_TABLES = {
     "xuanhuang_notes",
     "xuanhuang_tags",
     "xuanhuang_task_links",
+    # FTS5 虚拟表及其内部 shadow 表
+    "note_fts",
+    "note_fts_data",
+    "note_fts_idx",
+    "note_fts_content",
+    "note_fts_docsize",
+    "note_fts_config",
+    "asset_fts",
+    "asset_fts_data",
+    "asset_fts_idx",
+    "asset_fts_content",
+    "asset_fts_docsize",
+    "asset_fts_config",
+    "task_fts",
+    "task_fts_data",
+    "task_fts_idx",
+    "task_fts_content",
+    "task_fts_docsize",
+    "task_fts_config",
+    "feed_article_fts",
+    "feed_article_fts_data",
+    "feed_article_fts_idx",
+    "feed_article_fts_content",
+    "feed_article_fts_docsize",
+    "feed_article_fts_config",
     "xuanhuang_tasks",
     "xuanhuang_ai_conversation_links",
     "user_ai_providers",
@@ -61,6 +86,8 @@ EXPECTED_TABLES = {
     "xuanhuang_feed_articles",
     "xuanhuang_feed_sources",
     "xuanhuang_menus",
+    "xuanhuang_portfolio_snapshots",
+    "xuanhuang_quick_notes",
     "xuanhuang_roles",
     "xuanhuang_stock_watchlist",
     "xuanhuang_travel_cities",
@@ -125,7 +152,13 @@ def test_alembic_upgrade_is_idempotent(temp_db_env):
     engine, Session = _make_fresh_engine(db_path)
     _ensure_backend_path()
     # pylint: disable=import-outside-toplevel
-    from app.models.user import User
+    from app.models.user import User  # noqa: F401
+    from app.models.music import Music  # noqa: F401
+    from app.models.novel import Novel  # noqa: F401
+    from app.models.video import Video  # noqa: F401
+    from app.models.tool import Tool  # noqa: F401
+    from app.models.log import OperationLog  # noqa: F401
+    from app.models.system import GlobalSetting  # noqa: F401
 
     session = Session(bind=engine)
     session.add(
@@ -159,16 +192,13 @@ def test_legacy_database_can_be_stamped(temp_db_env):
     # pylint: disable=import-outside-toplevel
     from app.database import Base
     from app.models.login_attempt import LoginAttempt  # noqa: F401
-    from app.models.user import (  # noqa: F401
-        GlobalSetting,
-        Music,
-        Novel,
-        OperationLog,
-        Tool,
-        User,
-        VerificationCode,
-        Video,
-    )
+    from app.models.music import Music  # noqa: F401
+    from app.models.novel import Novel  # noqa: F401
+    from app.models.video import Video  # noqa: F401
+    from app.models.tool import Tool  # noqa: F401
+    from app.models.user import User, VerificationCode  # noqa: F401
+    from app.models.log import OperationLog  # noqa: F401
+    from app.models.system import GlobalSetting  # noqa: F401
 
     Base.metadata.create_all(engine)
 

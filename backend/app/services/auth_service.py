@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import random
 import string
-from app.models.user import VerificationCode, User
+from app.models.user import User
+from app.models.user import VerificationCode
 from app.config import settings
 from app.services.email_service import send_verification_email
 
@@ -86,7 +87,7 @@ def verify_code(db: Session, email: str, code: str, password: str) -> tuple[bool
     # 验证成功，创建用户
     from app.utils.security import get_password_hash
     from app.database import engine
-    from app.models.user import Base
+    from app.database import Base
 
     # 创建表（如果不存在）
     Base.metadata.create_all(bind=engine)
@@ -111,3 +112,4 @@ def cleanup_expired_codes(db: Session):
         VerificationCode.expires_at < datetime.now()
     ).delete()
     db.commit()
+

@@ -33,10 +33,11 @@ import { useToolStore } from '@/stores/tool'
 const router = useRouter()
 const toolStore = useToolStore()
 
-// 本轮固定 6 个默认项：4 内置工具 + AI 对话 / 记一笔（自定义增删排序下轮再做）
+// 混排：内置工具置顶 + 固定动作（AI 对话 / 记一笔 / 闪念速记）
 const actionDefs = [
-  { key: 'ai',   name: 'AI 对话', desc: '问答 · 摘要 · 生成', tone: 'ai',   to: '/assistant', icon: '🧠' },
-  { key: 'book', name: '记一笔',  desc: '快速记账',           tone: 'book', to: '/finance',   icon: '💰' }
+  { key: 'ai',    name: 'AI 对话', desc: '问答 · 摘要 · 生成', tone: 'ai',    to: '/assistant', icon: '🧠' },
+  { key: 'book',  name: '记一笔',  desc: '快速记账',           tone: 'book',  to: '/finance',   icon: '💰' },
+  { key: 'flash', name: '闪念速记', desc: '随手记 · 日记',      tone: 'flash', to: '/diary',     icon: '✍️' }
 ]
 const BUILTIN_SLOT = 4 // 固定 6 - 2 动作
 

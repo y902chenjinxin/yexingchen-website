@@ -8,7 +8,8 @@ const mockAuth = {
   isLoggedIn: false,
   isSuperAdmin: false,
   token: '',
-  user: null
+  user: null,
+  fetchUser: vi.fn().mockResolvedValue(null)
 }
 
 vi.mock('@/stores/auth', () => ({
@@ -34,11 +35,11 @@ describe('routeGuard', () => {
     expect(next).toHaveBeenCalledWith('/login')
   })
 
-  it('已登录访问 /login 应跳 /home（修复死代码 bug）', async () => {
+  it('已登录访问 /login 应跳 /workbench', async () => {
     mockAuth.isLoggedIn = true
     const next = vi.fn()
     await routeGuard(makeTo('/login', { requiresAuth: false }), makeTo('/'), next)
-    expect(next).toHaveBeenCalledWith('/home')
+    expect(next).toHaveBeenCalledWith('/workbench')
   })
 
   it('未登录访问 /login 应放行', async () => {
@@ -48,12 +49,12 @@ describe('routeGuard', () => {
     expect(next).toHaveBeenCalledWith()
   })
 
-  it('已登录普通用户访问 /admin 应跳 /home', async () => {
+  it('已登录普通用户访问 /admin 应跳 /workbench', async () => {
     mockAuth.isLoggedIn = true
     mockAuth.isSuperAdmin = false
     const next = vi.fn()
     await routeGuard(makeTo('/admin', { requiresAuth: true, role: 'super_admin' }), makeTo('/'), next)
-    expect(next).toHaveBeenCalledWith('/home')
+    expect(next).toHaveBeenCalledWith('/workbench')
   })
 
   it('已登录 super_admin 访问 /admin 应放行', async () => {

@@ -1,3 +1,4 @@
+from app.models.music import Music
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -8,7 +9,6 @@ from app.schemas.common import *
 from app.database import get_db, SessionLocal
 from app.utils.security import get_current_user, check_owner_or_admin
 from app.schemas.errors import ErrCode, raise_error
-from app.models.user import Music
 from app.services.log_service import log_action
 from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_MUSIC_EXTENSIONS, ALLOWED_COVER_EXTENSIONS
 from app.config import settings
@@ -221,3 +221,5 @@ async def delete_music(
     db.commit()
 
     return ResponseBase(msg="删除成功")
+
+

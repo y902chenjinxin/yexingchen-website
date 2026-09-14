@@ -862,14 +862,52 @@
 }
 /* 登录卡片 + 输入框（覆盖 LoginView 内 !important 深底，html 提升优先级） */
 html:root[data-theme="day"] .login-card {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(20, 36, 42, 0.12);
+  box-shadow:
+    0 1px 1px rgba(20, 36, 42, 0.05),
+    0 8px 24px rgba(20, 36, 42, 0.12),
+    0 24px 60px rgba(20, 36, 42, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 html:root[data-theme="day"] .el-input__wrapper {
-  background: rgba(255, 255, 255, 0.7) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: inset 0 0 0 1px rgba(20, 36, 42, 0.08) !important;
 }
-/* 备案信息页脚 */
-:root[data-theme="day"] .filing-footer {
-  background: rgba(255, 255, 255, 0.5);
+html:root[data-theme="day"] .el-input__inner::placeholder {
+  color: rgba(42, 50, 56, 0.45) !important;
+}
+html:root[data-theme="day"] .el-input__suffix .el-icon,
+html:root[data-theme="day"] .el-input__clear,
+html:root[data-theme="day"] .el-input__password {
+  color: rgba(42, 50, 56, 0.55) !important;
+}
+/* 登录页整页深蓝黑渐变 → 日间亮底（LoginView 硬编码，需整体反转） */
+html:root[data-theme="day"] .login-page {
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 12%, rgba(47, 138, 133, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.07), transparent 60%),
+    linear-gradient(180deg, #f4f1e8 0%, #e9ece2 100%);
+}
+/* 登录页次级文字（原浅色留白字 → 深色可读） */
+html:root[data-theme="day"] .login-page .site-subtitle,
+html:root[data-theme="day"] .login-page .back-link,
+html:root[data-theme="day"] .login-page .text-secondary {
+  color: rgba(42, 50, 56, 0.62);
+}
+/* 备案信息页脚：深底 → 浅底 + 文字深色可读 */
+html:root[data-theme="day"] .filing-footer {
+  background: rgba(255, 255, 255, 0.62);
+  border-top-color: rgba(20, 36, 42, 0.10);
+}
+html:root[data-theme="day"] .filing-links a {
+  color: rgba(42, 50, 56, 0.6);
+}
+html:root[data-theme="day"] .filing-links a:hover {
+  color: var(--lj-seal);
+}
+html:root[data-theme="day"] .filing-divider {
+  color: rgba(20, 36, 42, 0.35);
 }
 /* 笔记编辑器 · 取色面板/代码块/AI 作用域 */
 :root[data-theme="day"] .ne-color-panel .ne-hex-input,

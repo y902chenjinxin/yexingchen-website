@@ -4,7 +4,10 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.common import *
 from app.utils.security import get_current_user
-from app.models.user import Music, Novel, Video, Tool
+from app.models.music import Music
+from app.models.novel import Novel
+from app.models.video import Video
+from app.models.tool import Tool
 from app.models.workbench import Note
 
 router = APIRouter(prefix="/api/search", tags=["搜索"])

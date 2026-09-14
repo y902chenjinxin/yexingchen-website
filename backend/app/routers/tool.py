@@ -1,3 +1,4 @@
+from app.models.tool import Tool
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -6,7 +7,6 @@ from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user, require_super_admin
-from app.models.user import Tool
 from app.services.log_service import log_action
 
 router = APIRouter(prefix="/api/tools", tags=["工具岛"])
@@ -125,3 +125,5 @@ async def delete_tool(
     db.commit()
 
     return ResponseBase(msg="删除成功")
+
+

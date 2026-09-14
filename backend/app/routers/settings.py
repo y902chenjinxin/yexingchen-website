@@ -8,7 +8,8 @@ from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user, require_super_admin
-from app.models.user import GlobalSetting, Music
+from app.models.system import GlobalSetting
+from app.models.music import Music
 from app.utils.file_utils import save_upload_file, ALLOWED_MUSIC_EXTENSIONS
 from app.config import settings
 
@@ -149,3 +150,4 @@ async def update_bgm_choice(
 
     db.commit()
     return ResponseBase(msg="背景音乐已保存", data={"bgm_music_id": bgm_id})
+

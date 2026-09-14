@@ -1,3 +1,4 @@
+from app.models.novel import Novel
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -6,7 +7,6 @@ from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user, check_owner_or_admin
-from app.models.user import Novel
 from app.services.log_service import log_action
 from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_NOVEL_EXTENSIONS, ALLOWED_COVER_EXTENSIONS
 from app.config import settings
@@ -158,3 +158,5 @@ async def delete_novel(
     db.commit()
 
     return ResponseBase(msg="删除成功")
+
+

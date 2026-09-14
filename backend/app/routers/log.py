@@ -1,3 +1,5 @@
+from app.models.log import OperationLog
+from app.models.user import User
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Body
@@ -7,7 +9,6 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.common import ResponseBase
 from app.utils.security import get_current_user
-from app.models.user import OperationLog, User
 
 router = APIRouter(prefix="/api/logs", tags=["日志岛"])
 
@@ -144,3 +145,4 @@ async def clear_logs(
     count = query.delete()
     db.commit()
     return ResponseBase(data={"deleted": count})
+

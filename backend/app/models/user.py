@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+"""用户与认证相关模型。"""
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from datetime import datetime
+
 from app.database import Base
 
 
@@ -21,6 +23,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+    # 字符串延迟查找，跨文件引用其他领域模型（music / novel / video / tool / OperationLog）
     music = relationship("Music", back_populates="uploader", cascade="all, delete-orphan")
     novels = relationship("Novel", back_populates="uploader", cascade="all, delete-orphan")
     videos = relationship("Video", back_populates="uploader", cascade="all, delete-orphan")
@@ -38,117 +41,3 @@ class VerificationCode(Base):
     attempts = Column(Integer, nullable=False, default=0)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
-
-
-class Music(Base):
-    __tablename__ = "music"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String(255), nullable=False)
-    artist = Column(String(255), default="")
-    file_path = Column(String(500), nullable=False)
-    original_filename = Column(String(255), default="")
-    duration = Column(Integer, default=0)
-    category = Column(String(100), default="")
-    tags = Column(String(500), default="")
-    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    is_test_data = Column(Integer, default=0)  # 1=测试数据, 0=真实数据
-    is_default = Column(Integer, default=0)     # 1=系统内置默认曲, 0=用户上传
-    file_size = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-    uploader = relationship("User", back_populates="music")
-
-
-class Novel(Base):
-    __tablename__ = "novels"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String(255), nullable=False)
-    author = Column(String(255), default="")
-    cover_path = Column(String(500), default="")
-    file_path = Column(String(500), nullable=False)
-    original_filename = Column(String(255), default="")
-    category = Column(String(100), default="")
-    tags = Column(String(500), default="")
-    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    is_test_data = Column(Integer, default=0)
-    file_size = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-    uploader = relationship("User", back_populates="novels")
-
-
-class Video(Base):
-    __tablename__ = "videos"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String(255), nullable=False)
-    cover_path = Column(String(500), default="")
-    cos_url = Column(String(500), nullable=False)
-    original_filename = Column(String(255), default="")
-    category = Column(String(100), default="")
-    tags = Column(String(500), default="")
-    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    is_test_data = Column(Integer, default=0)
-    file_size = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-    uploader = relationship("User", back_populates="videos")
-
-
-class Tool(Base):
-    __tablename__ = "tools"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String(255), nullable=False)
-    url = Column(String(500), nullable=False)
-    description = Column(String(500), default="")
-    icon = Column(String(255), default="")
-    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    is_test_data = Column(Integer, default=0)
-    kind = Column(String(20), default="external")      # builtin(内置)/external(外部)
-    is_enabled = Column(Integer, default=1)            # 1上架 0下架
-    sort_order = Column(Integer, default=0)            # 排序，内置置顶
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-    uploader = relationship("User", back_populates="tools")
-
-
-class OperationLog(Base):
-    __tablename__ = "operation_logs"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    action = Column(String(100), nullable=False)
-    target_type = Column(String(50), nullable=True)
-    target_id = Column(Integer, nullable=True)
-    detail = Column(Text, default="")
-    ip_address = Column(String(50), default="")
-    created_at = Column(DateTime, default=datetime.now)
-
-    user = relationship("User", back_populates="logs")
-
-
-class GlobalSetting(Base):
-    __tablename__ = "global_settings"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    key = Column(String(100), unique=True, nullable=False)
-    value = Column(Text, default="")
-    description = Column(String(255), default="")
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-class TokenBlocklist(Base):
-    """JWT 黑名单（用于登出 / 主动失效 token）。"""
-    __tablename__ = "token_blocklist"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    jti = Column(String(64), unique=True, nullable=False, index=True)  # JWT ID
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    revoked_at = Column(DateTime, default=datetime.now, nullable=False)
-    expires_at = Column(DateTime, nullable=False, index=True)  # 与 token 过期时间一致，可定期清理

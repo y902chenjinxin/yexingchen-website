@@ -102,16 +102,16 @@
               <transition name="fade-drop">
                 <div v-if="bgmListOpen" class="tb-bgm-list">
                   <div
-                    v-for="it in player.musicLibrary"
+                    v-for="it in bgm.musicLibrary"
                     :key="it.id"
                     class="tb-bgm-item"
-                    :class="{ active: String(it.id) === String(player.bgmChoiceId) }"
+                    :class="{ active: String(it.id) === String(bgm.bgmChoiceId) }"
                     @click="chooseBgm(it)"
                   >
                     <span class="tb-bgm-name">{{ it.title }}</span>
-                    <el-icon v-if="String(it.id) === String(player.bgmChoiceId)" class="tb-bgm-check"><Check /></el-icon>
+                    <el-icon v-if="String(it.id) === String(bgm.bgmChoiceId)" class="tb-bgm-check"><Check /></el-icon>
                   </div>
-                  <div v-if="!player.musicLibrary.length" class="tb-bgm-empty">音乐库为空</div>
+                  <div v-if="!bgm.musicLibrary.length" class="tb-bgm-empty">音乐库为空</div>
                 </div>
               </transition>
             </div>
@@ -161,6 +161,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
+import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { searchAll } from '@/api/search'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
@@ -168,6 +169,7 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const player = usePlayerStore()
+  const bgm = useBgmLibraryStore()
 
 const topbarRef = ref(null)
 const collapsed = ref(false)
@@ -187,13 +189,13 @@ const userName = computed(() => auth.user?.nickname || auth.user?.name || auth.u
 const bgmListOpen = ref(false)
 
 const curBgmName = computed(() => {
-  const id = player.bgmChoiceId
-  const it = player.musicLibrary.find(x => String(x.id) === String(id))
+  const id = bgm.bgmChoiceId
+  const it = bgm.musicLibrary.find(x => String(x.id) === String(id))
   return it ? it.title : '默认古筝'
 })
 
 function chooseBgm(item) {
-  player.setBackground(item, true)
+  bgm.setBackground(item, true)
   bgmListOpen.value = false
 }
 
@@ -330,7 +332,7 @@ function onScroll() {
 function expand() { collapsed.value = false }
 
 onMounted(async () => {
-  await player.initBgm()
+  await bgm.initBgm()
   checkMobile()
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', checkMobile)

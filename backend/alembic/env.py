@@ -25,16 +25,13 @@ from app.database import Base  # noqa: E402
 
 # 显式注册所有现有模型到 Base.metadata。
 from app.models.login_attempt import LoginAttempt  # noqa: F401,E402
-from app.models.user import (  # noqa: F401,E402
-    User,
-    VerificationCode,
-    Music,
-    Novel,
-    Video,
-    Tool,
-    OperationLog,
-    GlobalSetting,
-)
+from app.models.user import User, VerificationCode  # noqa: F401,E402
+from app.models.music import Music  # noqa: F401,E402
+from app.models.novel import Novel  # noqa: F401,E402
+from app.models.video import Video  # noqa: F401,E402
+from app.models.tool import Tool  # noqa: F401,E402
+from app.models.log import OperationLog  # noqa: F401,E402
+from app.models.system import GlobalSetting  # noqa: F401,E402
 from app.models.workbench import (  # noqa: F401,E402
     Note,
     Asset,
@@ -101,3 +98,4 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+

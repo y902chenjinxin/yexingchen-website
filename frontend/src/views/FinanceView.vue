@@ -28,7 +28,26 @@
           <button class="fin-month-label" @click="goThisMonth">{{ monthLabel }}<span v-if="!isThisMonth" class="fin-this" @click.stop="goThisMonth">回本月</span></button>
           <button class="fin-nav" @click="shiftMonth(1)">›</button>
         </div>
+        <div class="fin-io">
+          <button class="fin-btn ghost small" @click="exportCsv">导出 CSV</button>
+          <label class="fin-btn ghost small fin-import">
+            导入 CSV
+            <input type="file" accept=".csv,text/csv,text/plain" class="fin-import-file" @change="onImportFile" />
+          </label>
+          <a class="fin-help" href="javascript:void(0)" @click="showImportHelp = !showImportHelp">导入格式说明</a>
+        </div>
       </div>
+
+      <!-- 导入说明 -->
+      <transition name="fd">
+        <div v-if="showImportHelp" class="fin-io-help glass">
+          <h4 class="fin-io-help-title">CSV 导入格式</h4>
+          <p class="fin-io-help-line">首行为表头：<code>日期,类型,分类,金额(元),备注</code></p>
+          <p class="fin-io-help-line">示例：<code>2026-09-01,支出,餐饮,32.50,午饭</code></p>
+          <p class="fin-io-help-line">类型填「支出/收入」；金额为正记收入、为负记支出；分类缺失归「其他」。</p>
+          <p class="fin-io-help-line">也可直接上传本页面「导出 CSV」得到的文件，再次导入即可批量还原。</p>
+        </div>
+      </transition>
 
       <!-- 记一笔（内联面板，非弹窗） -->
       <transition name="fd">
@@ -222,11 +241,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
 import TrendChart from '@/components/finance/TrendChart.vue'
-import { financeApi } from '@/api/finance'
+import { financeApi, exportFinanceCsv } from '@/api/finance'
 
 function backToTopScroll() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -303,6 +323,40 @@ async function loadList() {
   list.value = res.data.list
   total.value = res.data.total
 }
+function handleCurrentChange() {}
+const showImportHelp = ref(false)
+async function exportCsv() {
+  const [y, m] = month.value.split('-').map(Number)
+  const lastDay = new Date(y, m, 0).getDate()
+  try {
+    await exportFinanceCsv({
+      start: `${month.value}-01`,
+      end: `${month.value}-${String(lastDay).padStart(2, '0')}`,
+    })
+    ElMessage.success('CSV 已导出')
+  } catch (e) {
+    ElMessage.error('导出失败，请重试')
+  }
+}
+async function onImportFile(e) {
+  const file = e.target.files && e.target.files[0]
+  e.target.value = '' // 允许重复选择同一文件
+  if (!file) return
+  try {
+    const text = await file.text()
+    const res = await financeApi.importCsv(text)
+    const d = res.data || {}
+    if (d.errors && d.errors.length) {
+      ElMessage.warning(`导入 ${d.imported} 条，跳过 ${d.skipped} 条（${d.errors[0]}）`)
+    } else {
+      ElMessage.success(`导入成功 ${d.imported} 条`)
+    }
+    if (d.imported > 0) goThisMonth()
+  } catch (err) {
+    ElMessage.error('导入失败，请检查文件格式')
+  }
+}
+
 function reload(p) {
   if (p) page.value = p
   return loadList()
@@ -442,7 +496,7 @@ onMounted(() => {
 .fin-btn.small { padding: 6px 12px; font-size: 13px; }
 
 /* 月份 */
-.fin-toolbar { display: flex; justify-content: center; margin-bottom: 16px; }
+.fin-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .fin-month { display: flex; align-items: center; gap: 10px; }
 .fin-nav { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--lj-line); background: var(--lj-glass);
   color: var(--lj-text); font-size: 18px; cursor: pointer; transition: all .2s; }
@@ -450,6 +504,17 @@ onMounted(() => {
 .fin-month-label { position: relative; border: 1px solid var(--lj-line); background: var(--lj-glass); color: var(--lj-text);
   padding: 7px 18px; border-radius: 999px; font-family: var(--font-serif); letter-spacing: .1em; font-size: 16px; cursor: default; }
 .fin-this { margin-left: 8px; font-size: 11px; color: var(--lj-dai); cursor: pointer; }
+
+/* 导入/导出 */
+.fin-io { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fin-import { position: relative; display: inline-block; margin: 0; }
+.fin-import-file { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.fin-help { font-size: 12px; color: var(--lj-text-3); text-decoration: none; letter-spacing: .04em; }
+.fin-help:hover { color: var(--lj-dai); }
+.fin-io-help { padding: 14px 18px; border-radius: 14px; margin-bottom: 14px; }
+.fin-io-help-title { margin: 0 0 8px; font-size: 14px; letter-spacing: .06em; }
+.fin-io-help-line { margin: 4px 0; font-size: 12.5px; color: var(--lj-text-2); }
+.fin-io-help-line code { background: rgba(127,168,163,.14); padding: 1px 6px; border-radius: 5px; color: var(--lj-seal); }
 
 /* 记一笔面板 */
 .fin-form { border-radius: 16px; padding: 18px 20px; margin-bottom: 18px; }

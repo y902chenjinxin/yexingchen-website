@@ -39,6 +39,23 @@
         </div>
       </section>
 
+      <!-- 持仓盈亏趋势 -->
+      <section class="st-trend glass" v-if="trend.length">
+        <div class="st-trend-head">
+          <span class="st-trend-title">持仓盈亏趋势</span>
+          <span class="st-trend-sub">近 {{ trend.length }} 个记录日（持仓市值）</span>
+          <button class="st-btn ghost tiny" :disabled="recording" @click="recordToday">{{ recording ? '记录中…' : '记今日快照' }}</button>
+        </div>
+        <svg class="st-trend-svg" :viewBox="trendBox" preserveAspectRatio="none">
+          <line v-for="(g, i) in trend" :key="'gl' + i" class="st-trend-g" :x1="tx(i)" :x2="tx(i)" :y1="6" :y2="th" />
+          <polyline class="st-trend-poly" :points="trendPts" />
+          <circle v-for="(g, i) in trend" :key="'c' + i" class="st-trend-dot" :cx="tx(i)" :cy="ty(g.market_value)" r="2.6" />
+          <template v-for="(g, i) in trend" :key="'t' + i">
+            <text class="st-trend-x" :x="tx(i)" :y="th" :text-anchor="i===0 ? 'start' : i===trend.length-1 ? 'end' : 'middle'">{{ shortDate(g.date) }}</text>
+          </template>
+        </svg>
+      </section>
+
       <!-- 加自选（内联面板，无弹窗） -->
       <transition name="st-panel">
         <section v-if="adding" class="st-form glass">
@@ -107,6 +124,7 @@
               <tr v-for="it in list" :key="it.id">
                 <td>
                   <span class="st-td-name" @click="goDetail(it)">{{ it.name }}</span>
+                  <span v-if="it.target_alert" class="st-alert" :class="'a-' + it.target_alert">{{ it.target_alert === 'up' ? '涨破目标' : '跌破目标' }}</span>
                   <span class="st-td-code">{{ it.market.toUpperCase() }} {{ it.code }}</span>
                   <span @click="toggleEdit(it)" class="st-td-edit">{{ editingId === it.id ? '收起' : '✎' }}</span>
                 </td>
@@ -121,6 +139,7 @@
                 </td>
                 <td class="r" :class="pnlCls(it.hold_pnl)">
                   <template v-if="editingId === it.id">
+                    <input v-model.number="editTarget" class="st-cell-input" type="number" min="0" step="0.01" placeholder="目标价" />
                     <button class="st-btn tiny" @click="saveEdit(it)">保存</button>
                   </template>
                   <template v-else-if="it.quantity">{{ sign(it.hold_pnl) }}¥{{ fmt(Math.abs(it.hold_pnl ?? 0)) }}<br /><i class="st-sub-pct">{{ sign(it.hold_pct) }}{{ fmt(it.hold_pct, 2) }}%</i></template>
@@ -186,6 +205,34 @@ let sugTimer = null
 const editingId = ref(null)
 const editQty = ref(null)
 const editCost = ref(null)
+const editTarget = ref(null)
+
+const trend = ref([])
+const recording = ref(false)
+const th = 84
+const trendBox = computed(() => `0 0 600 ${th}`)
+const trendPts = computed(() => {
+  const vals = trend.value.map(g => g.market_value)
+  const max = Math.max(...vals, 1)
+  const min = Math.min(...vals)
+  const span = (max - min) || 1
+  return trend.value.map((g, i) => `${tx(i)},${minSafe(min, span, g.market_value)}`).join(' ')
+})
+function tx(i) {
+  const n = trend.value.length
+  return n <= 1 ? 300 : 30 + (i * 540) / (n - 1)
+}
+function ty(v) {
+  const vals = trend.value.map(g => g.market_value)
+  const max = Math.max(...vals, 1)
+  const min = Math.min(...vals)
+  const span = (max - min) || 1
+  return minSafe(min, span, v)
+}
+function minSafe(min, span, v) {
+  return 12 + (th - 24) * (1 - ((v - min) / span))
+}
+function shortDate(d) { return (d || '').slice(2, 7).replace('-', '/') }
 
 const isMobile = ref(window.innerWidth < 760)
 function onResize() { isMobile.value = window.innerWidth < 760 }
@@ -254,11 +301,15 @@ async function doAdd() {
 
 function toggleEdit(it) {
   editingId.value = editingId.value === it.id ? null : it.id
-  editQty.value = it.quantity; editCost.value = it.cost_price
+  editQty.value = it.quantity; editCost.value = it.cost_price; editTarget.value = it.target_price
 }
 async function saveEdit(it) {
   try {
-    const r = await stocksApi.update(it.id, { quantity: editQty.value || 0, cost_price: editCost.value })
+    const r = await stocksApi.update(it.id, {
+      quantity: editQty.value || 0,
+      cost_price: editCost.value,
+      target_price: editTarget.value || null,
+    })
     const fresh = r.data || {}
     Object.assign(it, fresh, fresh.quote ? { price: fresh.price, pct: fresh.pct, change: fresh.change } : {})
     if (fresh.hold_pnl != null) { it.hold_pnl = fresh.hold_pnl; it.hold_pct = fresh.hold_pct }
@@ -267,12 +318,29 @@ async function saveEdit(it) {
   } catch (e) { /* handled */ }
 }
 
+async function loadTrend() {
+  try {
+    const r = await stocksApi.snapshots(60)
+    trend.value = r.data || []
+  } catch (e) { trend.value = [] }
+}
+async function recordToday() {
+  recording.value = true
+  try {
+    await stocksApi.recordSnapshot()
+    await loadTrend()
+    ElMessage.success('今日快照已记录')
+  } catch (e) { /* handled */ }
+  finally { recording.value = false }
+}
+
 function goDetail(it) {
   router.push({ path: `/stocks/${it.code}`, query: { market: it.market } })
 }
 
 onMounted(() => {
   loadAll()
+  loadTrend()
   window.addEventListener('resize', onResize)
 })
 onBeforeUnmount(() => window.removeEventListener('resize', onResize))
@@ -326,6 +394,24 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-sug-code { font-size: 11px; color: var(--lj-text-3); }
 .st-form-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
 .st-save-tip { font-size: 11px; color: var(--lj-text-3); }
+
+/* 目标价预警徽标 */
+.st-alert { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; color: #fff; vertical-align: 2px; }
+.st-alert.a-up { background: #D8504F; }
+.st-alert.a-down { background: #3F968E; }
+
+/* 持仓趋势 */
+.st-trend { border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; }
+.st-trend-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.st-trend-title { font-size: 15px; letter-spacing: .08em; color: var(--lj-text); }
+.st-trend-sub { font-size: 12px; color: var(--lj-text-3); }
+.st-trend-head .st-btn { margin-left: auto; }
+.st-trend-svg { width: 100%; height: 84px; display: block; }
+.st-trend-g { stroke: rgba(74,95,99,.12); stroke-width: 1; }
+.st-trend-poly { fill: none; stroke: var(--lj-ochre); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.st-trend-dot { fill: var(--lj-ochre); }
+.st-trend-x { font-size: 9px; fill: var(--lj-text-3); }
 
 .st-list { border-radius: 16px; padding: 18px 20px; }
 .st-list-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
