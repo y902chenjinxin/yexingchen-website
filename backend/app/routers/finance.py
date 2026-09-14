@@ -332,35 +332,33 @@ class ImportIn(BaseModel):
     csv: str = Field(..., description="CSV 原文")  # noqa: A003
 
 
-@router.post("/import")
-async def import_csv(
-    payload: ImportIn = Body(...),
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """批量导入流水。
+class ImportRowsIn(BaseModel):
+    """AI 识别 / 本地解析确认后的结构化流水行。"""
+    rows: list[dict] = Field(default_factory=list)
 
-    首行为表头（可选，可含 日期/类型/分类/金额(元)/备注 任一本站点导出列）；
-    每行字段顺序与表头对应，缺省取本站点导出顺序。金额支持正负号推断收支。
+
+def _locate_header(lines):
+    """识别表头：首行含「日期」「类型」「金额」任一关键词则视为表头，返回 (行号, 列映射)。"""
+    first = [c.strip() for c in lines[0]]
+    if not any(("日期" in c or "金额" in c or "类型" in c) for c in first):
+        return -1, None
+    col_map = {}
+    for field, kw in (("date", "日期"), ("type", "类型"), ("category", "分类"), ("amount", "金额"), ("note", "备注")):
+        col_map[field] = first.index(next((c for c in first if kw in c), None)) if any(kw in c for c in first) else None
+    return 0, col_map
+
+
+def _local_parse_csv(text: str):
+    """无 AI 时的本地 CSV 解析兜底，返回 (rows, skipped, errors)。
+
+    rows 为已规整、可直接入库的结构：{occurred, type, category, amount_cents, note}。
     """
-    uid = current_user["user_id"]
-    reader = csv.reader(io.StringIO(payload.csv.lstrip("\ufeff")))
+    reader = csv.reader(io.StringIO(text.lstrip("\ufeff")))
     lines = [ln for ln in reader if any(cell.strip() for cell in ln)]
     if not lines:
-        return ResponseBase(data={"imported": 0, "skipped": 0, "errors": ["文件为空"]})
+        return [], 0, ["文件为空"]
 
-    # 识别表头：首行含「日期」「类型」「金额」中任一关键词则视为表头
-    header_row, col_map = -1, None
-    first = [c.strip() for c in lines[0]]
-    if any(("日期" in c or "金额" in c or "类型" in c) for c in first):
-        header_row = 0
-        col_map = {
-            "date": first.index(next((c for c in first if "日期" in c), None)) if any("日期" in c for c in first) else None,
-            "type": first.index(next((c for c in first if "类型" in c), None)) if any("类型" in c for c in first) else None,
-            "category": first.index(next((c for c in first if "分类" in c), None)) if any("分类" in c for c in first) else None,
-            "amount": first.index(next((c for c in first if "金额" in c), None)) if any("金额" in c for c in first) else None,
-            "note": first.index(next((c for c in first if "备注" in c), None)) if any("备注" in c for c in first) else None,
-        }
+    header_row, col_map = _locate_header(lines)
 
     def cell(row, field, fallback):
         idx = col_map[field] if col_map else None
@@ -368,7 +366,7 @@ async def import_csv(
             return fallback
         return (row[idx] if idx < len(row) else "").strip()
 
-    imported, skipped, errors = 0, 0, []
+    rows, skipped, errors = [], 0, []
     now = datetime.now()
     for i, raw in enumerate(lines):
         if i == header_row:
@@ -381,7 +379,6 @@ async def import_csv(
         amount_s = cell(row, "amount", (row[3] if len(row) > 3 else ""))
         cat_s = cell(row, "category", (row[2] if len(row) > 2 else ""))
         note_s = cell(row, "note", (row[4] if len(row) > 4 else ""))
-
         try:
             amount = float(amount_s.replace(",", ""))
             if amount == 0:
@@ -400,17 +397,165 @@ async def import_csv(
                     occurred = datetime.strptime(date_s, "%Y/%m/%d")
                 except (ValueError, TypeError):
                     occurred = now
-            db.add(FinanceTransaction(
-                user_id=uid,
-                type=ttype,
-                amount_cents=int(round(amount * 100)),
-                category=_valid_category(ttype, cat_s or "其他"),
-                note=(note_s or "")[:255],
-                occurred_at=occurred,
-            ))
-            imported += 1
+            rows.append({
+                "occurred": occurred,
+                "type": ttype,
+                "category": _valid_category(ttype, cat_s or "其他"),
+                "amount_cents": int(round(amount * 100)),
+                "note": (note_s or "")[:255],
+            })
         except (ValueError, TypeError):
             skipped += 1
             errors.append(f"第{i + 1}行：金额无效「{amount_s}」")
+    return rows, skipped, errors
+
+
+def _normalize_rows(raw: list) -> list[dict]:
+    """把字典列表（AI 返回或前端回传）规整为可入库结构，无法识别的整行剔除。"""
+    out = []
+    now = datetime.now()
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            amount = float(str(item.get("amount") or item.get("金额") or "0").replace(",", "").replace("¥", "").strip())
+            if amount == 0:
+                continue
+            ts = str(item.get("type") or item.get("类型") or "")
+            if "收" in ts or str(item.get("type") or "").strip().lower().startswith("inc"):
+                ttype = "income"
+            else:
+                ttype = "expense"
+            date_s = str(item.get("date") or item.get("日期") or "").strip()
+            occurred = _parse_dt(date_s) if date_s else now
+            if occurred is None:
+                # 兼容 YYYY/MM/DD
+                try:
+                    occurred = datetime.strptime(date_s, "%Y/%m/%d")
+                except (ValueError, TypeError):
+                    occurred = now
+            cat = str(item.get("category") or item.get("分类") or "").strip() or "其他"
+            note = str(item.get("note") or item.get("备注") or "").strip()[:255]
+            out.append({
+                "occurred": occurred,
+                "type": ttype,
+                "amount_cents": int(round(abs(amount) * 100)),
+                "category": _valid_category(ttype, cat),
+                "note": note,
+            })
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def _insert_transactions(db: Session, uid: int, rows: list[dict]):
+    imported = 0
+    for r in rows:
+        db.add(FinanceTransaction(
+            user_id=uid,
+            type=r["type"],
+            amount_cents=r["amount_cents"],
+            category=r["category"],
+            note=r["note"],
+            occurred_at=r["occurred"],
+        ))
+        imported += 1
     db.commit()
+    return imported
+
+
+FINANCE_AI_INSTRUCT = (
+    "下面是个人记账流水（可能来自微信/支付宝/银行/各式 App 导出的原始文本，格式杂乱、"
+    "列名不一、夹杂无效行）。请只输出符合给定 schema 的一个 JSON 对象，不要输出其它内容。"
+    "把每条有效交易提取为一行 rows；金额无效或缺少日期的行放进 skipped 并简述原因；"
+    "分类尽量归到给定分类池。\n"
+    "分类池：支出=餐饮/交通/购物/居家/娱乐/医疗/教育/人情/其他；收入=工资/奖金/理财/兼职/红包/其他。\n"
+)
+
+
+@router.post("/import/analyze")
+async def import_analyze(
+    payload: ImportIn = Body(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """AI 识别：把杂乱 CSV 归一为结构化流水并返回预览（不落库）。
+
+    存在用户已配置且启用的 AI Provider 时走 AI；否则 / AI 异常时回退本地解析。
+    """
+    uid = current_user["user_id"]
+    text = payload.csv.lstrip("\ufeff")
+
+    from app.services.ai_providers import AiRequest, FakeProvider
+    from app.services.user_ai_provider import build_http_provider_from_config, resolve_user_provider
+
+    cfg = resolve_user_provider(db, uid, None)
+    provider, is_fake = (FakeProvider(), True) if not cfg else (build_http_provider_from_config(cfg), False)
+
+    rows, skipped, errors, summary = [], 0, [], ""
+    if not is_fake:
+        try:
+            resp = provider.invoke(AiRequest(
+                ability="finance_csv_import",
+                content=FINANCE_AI_INSTRUCT + f"\n原始数据：\n{text}",
+            ))
+            data = resp.data or {}
+            ai_rows = _normalize_rows(data.get("rows") or [])
+            if ai_rows:
+                rows, skipped = ai_rows, len(data.get("skipped") or [])
+                summary = getattr(resp, "text", "")
+            else:
+                rows, skipped, errors = _local_parse_csv(text)
+        except Exception:  # noqa: BLE001
+            rows, skipped, errors = _local_parse_csv(text)
+    else:
+        rows, skipped, errors = _local_parse_csv(text)
+
+    preview = [{
+        "date": r["occurred"].strftime("%Y-%m-%d"),
+        "type": r["type"],
+        "amount": round(r["amount_cents"] / 100, 2),
+        "category": r["category"],
+        "note": r["note"],
+    } for r in rows]
+    return ResponseBase(data={
+        "rows": preview,
+        "skipped": skipped,
+        "errors": errors[:20],
+        "is_fake": is_fake,
+        "provider": provider.model if not is_fake else "fake",
+        "summary": summary,
+    })
+
+
+@router.post("/import/confirm")
+async def import_confirm(
+    payload: ImportRowsIn = Body(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """确认导入 AI 识别（或本地解析）出的结构化流水，直接落库。"""
+    uid = current_user["user_id"]
+    rows = _normalize_rows(payload.rows)
+    imported = _insert_transactions(db, uid, rows)
+    return ResponseBase(data={
+        "imported": imported,
+        "skipped": max(0, len(payload.rows or []) - len(rows)),
+    })
+
+
+@router.post("/import")
+async def import_csv(
+    payload: ImportIn = Body(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """批量导入流水（本地直析，无 AI）。
+
+    首行为表头（可选，可含 日期/类型/分类/金额(元)/备注 任一本站点导出列）；
+    每行字段顺序与表头对应，缺省取本站点导出顺序。金额支持正负号推断收支。
+    """
+    uid = current_user["user_id"]
+    rows, skipped, errors = _local_parse_csv(payload.csv)
+    imported = _insert_transactions(db, uid, rows)
     return ResponseBase(data={"imported": imported, "skipped": skipped, "errors": errors[:20]})

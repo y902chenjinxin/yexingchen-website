@@ -49,6 +49,56 @@
         </div>
       </transition>
 
+      <!-- 智能导入预览（内联面板，非弹窗） -->
+      <transition name="fd">
+        <section v-if="importing.analyzing || importing.rows.length || importing.skipped || importing.errors.length" class="fin-import-panel glass">
+          <div class="fin-import-panel-head">
+            <span class="fin-import-panel-title">🤖 智能导入预览</span>
+            <span v-if="importing.analyzing" class="fin-import-loading">AI 正在识别并精简数据…</span>
+            <span v-else class="fin-import-done">识别完成</span>
+            <button class="fin-form-close" @click="cancelImport">✕</button>
+          </div>
+
+          <div v-if="importing.analyzing" class="fin-import-empty">正在读取并识别文件，请稍候…</div>
+
+          <template v-else>
+            <div class="fin-import-summary">
+              <span>识别出 <b>{{ importing.rows.length }}</b> 条流水</span>
+              <span v-if="importing.skipped">跳过 <b class="warn">{{ importing.skipped }}</b> 条无效数据</span>
+              <span v-if="importing.summary" class="fin-import-ai">{{ importing.summary }}</span>
+              <span v-if="importing.is_fake" class="fin-import-fake">未配置 AI Provider，已用本地规则解析</span>
+            </div>
+
+            <div v-if="importing.errors.length" class="fin-import-errors">
+              <span v-for="(err, i) in importing.errors" :key="i" class="fin-import-err">{{ err }}</span>
+            </div>
+
+            <table v-if="importing.rows.length" class="fin-import-table">
+              <thead>
+                <tr><th>日期</th><th>收支</th><th>分类</th><th>金额</th><th>备注</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, i) in importing.rows" :key="i">
+                  <td>{{ r.date }}</td>
+                  <td><span class="fin-import-type" :class="r.type">{{ r.type === 'income' ? '收' : '支' }}</span></td>
+                  <td>{{ r.category }}</td>
+                  <td class="fin-import-amt" :class="r.type">{{ r.type === 'income' ? '+' : '−' }} ¥ {{ money(r.amount) }}</td>
+                  <td class="fin-import-note">{{ r.note }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-else class="fin-import-empty">没有识别到有效流水，请检查文件格式。</div>
+
+            <div class="fin-import-actions">
+              <button class="fin-btn ghost" @click="cancelImport">取消</button>
+              <button class="fin-btn primary" :disabled="!importing.rows.length || importing.confirming" @click="doConfirmImport">
+                {{ importing.confirming ? '导入中…' : `确认导入 ${importing.rows.length} 条` }}
+              </button>
+            </div>
+          </template>
+        </section>
+      </transition>
+
       <!-- 记一笔（内联面板，非弹窗） -->
       <transition name="fd">
         <section v-if="form.show" class="fin-form glass">
@@ -338,22 +388,66 @@ async function exportCsv() {
     ElMessage.error('导出失败，请重试')
   }
 }
+const importing = reactive({
+  analyzing: false,
+  confirming: false,
+  rows: [],
+  skipped: 0,
+  errors: [],
+  summary: '',
+  is_fake: false,
+})
+
 async function onImportFile(e) {
   const file = e.target.files && e.target.files[0]
   e.target.value = '' // 允许重复选择同一文件
   if (!file) return
   try {
     const text = await file.text()
-    const res = await financeApi.importCsv(text)
+    importing.analyzing = true
+    importing.rows = []
+    importing.skipped = 0
+    importing.errors = []
+    importing.summary = ''
+    importing.is_fake = false
+    const res = await financeApi.analyzeImport(text)
     const d = res.data || {}
-    if (d.errors && d.errors.length) {
-      ElMessage.warning(`导入 ${d.imported} 条，跳过 ${d.skipped} 条（${d.errors[0]}）`)
-    } else {
-      ElMessage.success(`导入成功 ${d.imported} 条`)
-    }
-    if (d.imported > 0) goThisMonth()
+    importing.rows = d.rows || []
+    importing.skipped = d.skipped || 0
+    importing.errors = d.errors || []
+    importing.summary = d.summary || ''
+    importing.is_fake = !!d.is_fake
+    if (!importing.rows.length) ElMessage.warning('未识别到有效流水，请检查文件格式')
   } catch (err) {
-    ElMessage.error('导入失败，请检查文件格式')
+    ElMessage.error('识别失败，请重试')
+  } finally {
+    importing.analyzing = false
+  }
+}
+
+function cancelImport() {
+  importing.rows = []
+  importing.skipped = 0
+  importing.errors = []
+  importing.summary = ''
+  importing.is_fake = false
+  importing.analyzing = false
+  importing.confirming = false
+}
+
+async function doConfirmImport() {
+  if (!importing.rows.length) return
+  importing.confirming = true
+  try {
+    const res = await financeApi.confirmImport(importing.rows)
+    const d = res.data || {}
+    ElMessage.success(`导入成功 ${d.imported} 条`)
+    cancelImport()
+    goThisMonth()
+  } catch (err) {
+    ElMessage.error('导入失败，请重试')
+  } finally {
+    importing.confirming = false
   }
 }
 
@@ -515,6 +609,33 @@ onMounted(() => {
 .fin-io-help-title { margin: 0 0 8px; font-size: 14px; letter-spacing: .06em; }
 .fin-io-help-line { margin: 4px 0; font-size: 12.5px; color: var(--lj-text-2); }
 .fin-io-help-line code { background: rgba(127,168,163,.14); padding: 1px 6px; border-radius: 5px; color: var(--lj-seal); }
+
+/* 智能导入预览 */
+.fin-import-panel { padding: 16px 18px; border-radius: 16px; margin-bottom: 16px; }
+.fin-import-panel-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.fin-import-panel-title { font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--lj-seal); }
+.fin-import-loading { font-size: 12.5px; color: var(--lj-text-2); animation: fin-pulse 1.2s ease-in-out infinite; }
+.fin-import-done { font-size: 12px; padding: 2px 10px; border-radius: 999px; background: rgba(127,168,163,.16); color: var(--lj-seal); }
+@keyframes fin-pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+.fin-import-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 13px; margin-bottom: 10px; color: var(--lj-text); }
+.fin-import-summary b { color: var(--lj-seal); }
+.fin-import-summary b.warn { color: var(--lj-cinnabar, #c27053); }
+.fin-import-ai { flex: 1 1 100%; font-size: 12.5px; color: var(--lj-text-2); font-style: italic; }
+.fin-import-fake { font-size: 11.5px; padding: 2px 10px; border-radius: 999px; background: rgba(199,169,107,.18); color: var(--lj-gold, #b18a4a); }
+.fin-import-errors { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 10px; font-size: 12px; color: var(--lj-cinnabar, #c27053); }
+.fin-import-empty { padding: 18px 0; text-align: center; font-size: 13px; color: var(--lj-text-2); }
+.fin-import-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fin-import-table th { text-align: left; padding: 7px 10px; font-weight: 600; font-size: 12px; color: var(--lj-text-2); border-bottom: 1px solid var(--lj-line);
+  background: rgba(127,168,163,.08); }
+.fin-import-table td { padding: 8px 10px; border-bottom: 1px dashed var(--lj-line); vertical-align: middle; }
+.fin-import-type { display: inline-block; min-width: 24px; text-align: center; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
+.fin-import-type.income { background: rgba(127,168,163,.16); color: var(--lj-seal); }
+.fin-import-type.expense { background: rgba(194,150,120,.18); color: var(--lj-cinnabar, #c27053); }
+.fin-import-amt { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fin-import-amt.income { color: var(--lj-seal); }
+.fin-import-amt.expense { color: var(--lj-cinnabar, #c27053); }
+.fin-import-note { color: var(--lj-text-2); max-width: 260px; }
+.fin-import-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 14px; }
 
 /* 记一笔面板 */
 .fin-form { border-radius: 16px; padding: 18px 20px; margin-bottom: 18px; }

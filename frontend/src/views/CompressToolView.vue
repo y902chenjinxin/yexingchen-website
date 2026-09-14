@@ -96,8 +96,8 @@
         <span class="ct-progress-text">{{ statusText }}</span>
       </div>
 
-      <!-- 底部操作栏 -->
-      <div class="ct-actionbar">
+      <!-- 底部悬浮操作栏：固定页面下方，滚动时浮现 -->
+      <div ref="actionbar" class="ct-actionbar" :class="{ 'op-hidden': !barVisible }">
         <div class="ct-summary" v-if="list.length">
           <template v-if="finishedCount">
             <span>已压缩 <b>{{ finishedCount }}/{{ list.length }}</b></span>
@@ -128,9 +128,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onBeforeUnmount, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+
+/* 底部操作栏：固定在滚动容底，滚动后浮现（顶部时隐藏） */
+const actionbar = ref(null)
+const barVisible = ref(false)
+let barScrollEl = null
+function onBarScroll() {
+  barVisible.value = (barScrollEl?.scrollTop || 0) > 6
+}
+onMounted(() => {
+  barScrollEl = actionbar.value?.closest('.inner-main') || null
+  if (barScrollEl) { barScrollEl.addEventListener('scroll', onBarScroll); onBarScroll() }
+})
 
 /* ========== 模式 ========== */
 const modes = [
@@ -231,6 +243,7 @@ function clearAll() {
   list.value.length = 0
 }
 onBeforeUnmount(() => {
+  if (barScrollEl) barScrollEl.removeEventListener('scroll', onBarScroll)
   clearAll()
   if (fileInput && fileInput.parentNode) fileInput.parentNode.removeChild(fileInput)
 })
@@ -574,6 +587,12 @@ function loadZip() {
   padding: 12px 18px; border-radius: var(--radius);
   background: var(--ls-glass); border: 1px solid var(--ls-line);
   backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+  transition: transform .3s ease, opacity .3s ease;
+}
+.ct-actionbar.op-hidden {
+  transform: translateY(130%);
+  opacity: 0;
+  pointer-events: none;
 }
 .ct-summary { font-size: 13px; color: var(--ls-text-2); display: flex; gap: 14px; }
 .ct-summary b { color: var(--ls-dai); }

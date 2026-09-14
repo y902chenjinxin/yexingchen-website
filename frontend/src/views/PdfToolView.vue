@@ -92,12 +92,16 @@
             @remove="(i) => removeAt('c', i)"
             @move="(i, d) => move('c', i, d)"
           />
-          <label class="opt-inline">合并生成的 PDF 文件名
-            <input v-model="cOpt.mergedName" class="text-input" placeholder="merged.pdf" />
-          </label>
-          <label class="opt-inline">页码范围（拆分，如 <code>1-3,5</code>）
-            <input v-model="cOpt.range" class="text-input" placeholder="1-3,5" />
-          </label>
+          <div class="c-inputs">
+            <label class="opt-inline">
+              <span class="opt-lbl">合并生成的 PDF 文件名</span>
+              <input v-model="cOpt.mergedName" class="text-input" placeholder="merged.pdf" />
+            </label>
+            <label class="opt-inline">
+              <span class="opt-lbl">页码范围（拆分，如 <code>1-3,5</code>）</span>
+              <input v-model="cOpt.range" class="text-input" placeholder="1-3,5" />
+            </label>
+          </div>
           <div class="range-ops">
             <button class="mini-btn" :disabled="!cList.length || processing" @click="doMerge">合并 PDF</button>
             <button class="mini-btn" :disabled="cList.length !== 1 || processing" @click="doSplitPdf">拆分 PDF</button>
@@ -106,8 +110,8 @@
         </div>
       </div>
 
-      <!-- 底部固定操作栏 -->
-      <div class="pt-actionbar">
+      <!-- 底部悬浮操作栏：固定页面下方，滚动时浮现 -->
+      <div ref="actionbar" class="pt-actionbar" :class="{ 'op-hidden': !barVisible }">
         <div class="pt-summary" v-if="currentList.length">
           <span>已选 <b>{{ currentList.length }}</b> 项</span>
           <span>共 {{ sizeStr(currentList.reduce((s, f) => s + f.size, 0)) }}</span>
@@ -128,10 +132,22 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onBeforeUnmount, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import PdfFileList from './pdftool/PdfFileList.vue'
+
+/* 底部操作栏：固定在滚动容底，滚动后浮现（顶部时隐藏） */
+const actionbar = ref(null)
+const barVisible = ref(false)
+let barScrollEl = null
+function onBarScroll() {
+  barVisible.value = (barScrollEl?.scrollTop || 0) > 6
+}
+onMounted(() => {
+  barScrollEl = actionbar.value?.closest('.inner-main') || null
+  if (barScrollEl) { barScrollEl.addEventListener('scroll', onBarScroll); onBarScroll() }
+})
 
 const tabs = [
   { key: 'a', label: '🖼 图片转 PDF' },
@@ -561,6 +577,7 @@ function clearList(kind) {
 }
 
 onBeforeUnmount(() => {
+  if (barScrollEl) barScrollEl.removeEventListener('scroll', onBarScroll)
   if (uploadInput && uploadInput.parentNode) uploadInput.parentNode.removeChild(uploadInput)
 })
 </script>
@@ -614,16 +631,20 @@ onBeforeUnmount(() => {
 
 .opt-grid { display: flex; gap: 16px; flex-wrap: wrap; }
 .opt { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--ls-text-2); }
+
+.c-inputs { display: flex; flex-direction: column; gap: 14px; margin: 6px 0 4px; }
+.opt-inline { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ls-text-2); flex-wrap: wrap; }
+.opt-lbl { min-width: 12px; }
+.opt-inline code { font-family: inherit; color: var(--ls-dai); }
 .opt select {
   padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--ls-line);
   background: var(--ls-paper-2); color: var(--ls-text); font-size: 13px; min-width: 130px;
 }
-.opt-inline { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ls-text-2); flex-wrap: wrap; }
 .text-input {
   padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--ls-line);
   background: var(--ls-paper-2); color: var(--ls-text); font-size: 13px; min-width: 200px;
 }
-.range-ops { display: flex; gap: 10px; flex-wrap: wrap; }
+.range-ops { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .mini-btn {
   padding: 9px 18px; border-radius: var(--radius-sm); border: 1px solid var(--ls-line-strong);
   background: var(--ls-paper-2); color: var(--ls-text); font-size: 13px; cursor: pointer;
@@ -638,6 +659,12 @@ onBeforeUnmount(() => {
   padding: 12px 18px; border-radius: var(--radius);
   background: var(--ls-glass); border: 1px solid var(--ls-line);
   backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+  transition: transform .3s ease, opacity .3s ease;
+}
+.pt-actionbar.op-hidden {
+  transform: translateY(130%);
+  opacity: 0;
+  pointer-events: none;
 }
 .pt-summary { font-size: 13px; color: var(--ls-text-2); display: flex; gap: 16px; }
 .pt-summary b { color: var(--ls-dai); }

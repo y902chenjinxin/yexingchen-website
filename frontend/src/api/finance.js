@@ -50,6 +50,8 @@ export const financeApi = {
   update: (id, data) => api.put(`/finance/transactions/${id}`, data),
   remove: (id) => api.delete(`/finance/transactions/${id}`),
   importCsv: (csvText) => api.post('/finance/import', { csv: csvText }),
+  analyzeImport: (csvText) => api.post('/finance/import/analyze', { csv: csvText }),
+  confirmImport: (rows) => api.post('/finance/import/confirm', { rows }),
 }
 
 // CSV 导出走 blob（不经 axios 拦截器，避免响应处理差异）

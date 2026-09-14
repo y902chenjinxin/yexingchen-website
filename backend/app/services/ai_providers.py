@@ -118,6 +118,9 @@ class FakeProvider(AiProvider):
                 "title": f"跟进：{title}",
                 "description": f"来自笔记「{title}」的待办建议（fake）",
             }
+        elif req.ability == "finance_csv_import":
+            text = "[fake] 已离线解析流水（未连接 AI Provider）"
+            data = {"rows": [], "skipped": []}
         else:
             text = f"[fake] 未知能力 {req.ability}"
             data = {}
@@ -170,6 +173,13 @@ _ABILITY_SCHEMAS = {
         "reply": "面向用户的任务建议中文说明",
         "title": "任务标题",
         "description": "任务描述",
+    },
+    "finance_csv_import": {
+        "reply": "给用户的识别结果中文说明（简洁，2~3句）",
+        "rows": [
+            {"date": "YYYY-MM-DD", "type": "income 或 expense", "category": "分类名", "amount": 12.34, "note": "备注"}
+        ],
+        "skipped": ["无法识别或无效的一行的简短说明"],
     },
 }
 
