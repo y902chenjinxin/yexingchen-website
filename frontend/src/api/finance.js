@@ -44,7 +44,7 @@ api.interceptors.response.use(
 
 export const financeApi = {
   categories: () => api.get('/finance/categories'),
-  summary: (month) => api.get('/finance/summary', { params: { month } }),
+  summary: (params) => api.get('/finance/summary', { params: params || {} }),
   list: (params) => api.get('/finance/transactions', { params }),
   create: (data) => api.post('/finance/transactions', data),
   update: (id, data) => api.put(`/finance/transactions/${id}`, data),

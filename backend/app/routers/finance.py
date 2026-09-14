@@ -95,33 +95,57 @@ async def list_categories():
 # ---------- 汇总（供首页看板 + 记账页） ----------
 @router.get("/summary", response_model=ResponseBase)
 async def summary(
-    month: str = Query("", description="YYYY-MM，缺省当前月"),
+    dim: str = Query("month", description="day/month/year，统计维度"),
+    month: str = Query("", description="YYYY-MM，dim=month 时生效"),
+    day: str = Query("", description="YYYY-MM-DD，dim=day 时生效"),
+    year: str = Query("", description="YYYY，dim=year 时生效"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     uid = current_user["user_id"]
     now = datetime.now()
+    dim = dim if dim in ("day", "month", "year") else "month"
 
-    if month:
+    # ---- 解析时间窗与趋势粒度 ----
+    if dim == "day":
+        d = day or f"{now.year}-{now.month:02d}-{now.day:02d}"
         try:
-            y, m = (int(x) for x in month.split("-"))
+            sy, sm, sd = (int(x) for x in d.split("-"))
         except (ValueError, TypeError):
-            y, m = now.year, now.month
+            sy, sm, sd = now.year, now.month, now.day
+        start = datetime(sy, sm, sd)
+        end = start + timedelta(days=1)
+        period = f"{sy}-{sm:02d}-{sd:02d}"
+        grain = "day"
+    elif dim == "year":
+        sy = int(year) if year and str(year).isdigit() else now.year
+        start = datetime(sy, 1, 1)
+        end = datetime(sy + 1, 1, 1)
+        period = str(sy)
+        grain = "month"
     else:
-        y, m = now.year, now.month
-    m_start = datetime(y, m, 1)
-    m_end = datetime(y + (1 if m == 12 else 0), 1 if m == 12 else m + 1, 1)
+        if month:
+            try:
+                sy, sm = (int(x) for x in month.split("-"))
+            except (ValueError, TypeError):
+                sy, sm = now.year, now.month
+        else:
+            sy, sm = now.year, now.month
+        start = datetime(sy, sm, 1)
+        end = datetime(sy + (1 if sm == 12 else 0), 1 if sm == 12 else sm + 1, 1)
+        period = f"{sy}-{sm:02d}"
+        grain = "day"
 
     base = db.query(FinanceTransaction).filter(
         FinanceTransaction.user_id == uid,
         FinanceTransaction.deleted_at.is_(None),
     )
 
-    # 本月流水（用于本月KPI + 分类占比 + 趋势）
-    month_rows = [r for r in base.filter(FinanceTransaction.occurred_at >= m_start, FinanceTransaction.occurred_at < m_end).all()]
-    month_income = sum(r.amount_cents for r in month_rows if r.type == "income")
-    month_expense = sum(r.amount_cents for r in month_rows if r.type == "expense")
-    month_count = len(month_rows)
+    # 所选维度窗口内的流水（KPI + 分类占比 + 趋势）
+    rows = base.filter(FinanceTransaction.occurred_at >= start, FinanceTransaction.occurred_at < end).all()
+    income = sum(r.amount_cents for r in rows if r.type == "income")
+    expense = sum(r.amount_cents for r in rows if r.type == "expense")
+    count = len(rows)
 
     # 累计结余（全量，含已删除过滤）
     all_rows = base.all()
@@ -129,9 +153,9 @@ async def summary(
     total_expense = sum(r.amount_cents for r in all_rows if r.type == "expense")
     balance = total_income - total_expense
 
-    # 本月支出分类占比
+    # 窗口内支出分类占比
     cat_agg = defaultdict(int)
-    for r in month_rows:
+    for r in rows:
         if r.type == "expense":
             cat_agg[r.category] += r.amount_cents
     categories = [
@@ -139,25 +163,43 @@ async def summary(
         for k, v in sorted(cat_agg.items(), key=lambda x: -x[1])
     ]
 
-    # 本月每日收支趋势（1..当月天数）
-    end_day = (m_end - timedelta(days=1)).day
-    day_map = {r.occurred_at.day: r for r in month_rows}
+    # 趋势：日为单点｜月按日｜年按月
     trends = []
-    for d in range(1, end_day + 1):
-        rows = [r for r in month_rows if r.occurred_at.day == d]
+    if grain == "day":
         trends.append({
-            "day": f"{m}-{d:02d}",
-            "income": round(sum(r.amount_cents for r in rows if r.type == "income") / 100, 2),
-            "expense": round(sum(r.amount_cents for r in rows if r.type == "expense") / 100, 2),
+            "day": period,
+            "income": round(income / 100, 2),
+            "expense": round(expense / 100, 2),
         })
+    elif grain == "month":
+        for d in range(1, (end - timedelta(days=1)).day + 1):
+            sub = [r for r in rows if r.occurred_at.day == d]
+            trends.append({
+                "day": f"{period}-{d:02d}",
+                "income": round(sum(r.amount_cents for r in sub if r.type == "income") / 100, 2),
+                "expense": round(sum(r.amount_cents for r in sub if r.type == "expense") / 100, 2),
+            })
+    else:
+        for mi in range(1, 13):
+            sub = [r for r in rows if r.occurred_at.month == mi]
+            trends.append({
+                "day": f"{sy}-{mi:02d}",
+                "income": round(sum(r.amount_cents for r in sub if r.type == "income") / 100, 2),
+                "expense": round(sum(r.amount_cents for r in sub if r.type == "expense") / 100, 2),
+            })
 
     recent = base.order_by(FinanceTransaction.occurred_at.desc()).limit(10).all()
 
     return ResponseBase(data={
-        "month": f"{y}-{m:02d}",
-        "month_income": round(month_income / 100, 2),
-        "month_expense": round(month_expense / 100, 2),
-        "month_count": month_count,
+        "period": period,
+        "dim": dim,
+        "income": round(income / 100, 2),
+        "expense": round(expense / 100, 2),
+        "count": count,
+        # 旧字段兼容：工作台/数据看板在默认「本月」视图下消费这些字段
+        "month_income": round(income / 100, 2),
+        "month_expense": round(expense / 100, 2),
+        "month_count": count,
         "balance": round(balance / 100, 2),
         "total_count": len(all_rows),
         "categories": categories,

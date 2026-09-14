@@ -23,10 +23,15 @@
 
       <!-- 月份切换 + 记一笔面板 -->
       <div class="fin-toolbar">
-        <div class="fin-month">
-          <button class="fin-nav" @click="shiftMonth(-1)">‹</button>
-          <button class="fin-month-label" @click="goThisMonth">{{ monthLabel }}<span v-if="!isThisMonth" class="fin-this" @click.stop="goThisMonth">回本月</span></button>
-          <button class="fin-nav" @click="shiftMonth(1)">›</button>
+        <div class="fin-period">
+          <div class="fin-dim">
+            <button class="fin-dim-btn" :class="{ on: dim === 'day' }" @click="setDim('day')">日</button>
+            <button class="fin-dim-btn" :class="{ on: dim === 'month' }" @click="setDim('month')">月</button>
+            <button class="fin-dim-btn" :class="{ on: dim === 'year' }" @click="setDim('year')">年</button>
+          </div>
+          <button class="fin-nav" @click="shift(-1)">‹</button>
+          <button class="fin-month-label" @click="goNow">{{ periodLabel }}<span v-if="!isNowPeriod" class="fin-this" @click.stop="goNow">回{{ dim === 'day' ? '今天' : (dim === 'year' ? '今年' : '本月') }}</span></button>
+          <button class="fin-nav" @click="shift(1)">›</button>
         </div>
         <div class="fin-io">
           <button class="fin-btn ghost small" @click="exportCsv">导出 CSV</button>
@@ -181,16 +186,16 @@
       <!-- KPI 卡片 -->
       <section class="fin-kpis">
         <div class="fin-kpi glass">
-          <span class="fin-kpi-label">本月收入</span>
-          <span class="fin-kpi-val income">+ ¥ {{ money(summary.month_income) }}</span>
+          <span class="fin-kpi-label">{{ unitLabel }}收入</span>
+          <span class="fin-kpi-val income">+ ¥ {{ money(summary.income) }}</span>
         </div>
         <div class="fin-kpi glass">
-          <span class="fin-kpi-label">本月支出</span>
-          <span class="fin-kpi-val expense">− ¥ {{ money(summary.month_expense) }}</span>
+          <span class="fin-kpi-label">{{ unitLabel }}支出</span>
+          <span class="fin-kpi-val expense">− ¥ {{ money(summary.expense) }}</span>
         </div>
         <div class="fin-kpi glass">
-          <span class="fin-kpi-label">本月笔数</span>
-          <span class="fin-kpi-val">{{ summary.month_count }}</span>
+          <span class="fin-kpi-label">{{ unitLabel }}笔数</span>
+          <span class="fin-kpi-val">{{ summary.count }}</span>
           <span class="fin-kpi-sub">笔流水</span>
         </div>
         <div class="fin-kpi glass">
@@ -202,7 +207,7 @@
       <!-- 图表区 -->
       <section class="fin-charts">
         <div class="fin-chart glass">
-          <h2 class="fin-chart-title">本月支出分类占比</h2>
+          <h2 class="fin-chart-title">{{ unitLabel }}支出分类占比</h2>
           <div v-if="summary.categories.length" class="fin-chart-body">
             <DonutChart :data="summary.categories" />
             <ul class="fin-legend">
@@ -214,15 +219,15 @@
               </li>
             </ul>
           </div>
-          <div v-else class="fin-chart-empty">本月暂无支出，去「记一笔」吧</div>
+          <div v-else class="fin-chart-empty">{{ unitLabel }}暂无支出，去「记一笔」吧</div>
         </div>
 
         <div class="fin-chart glass">
-          <h2 class="fin-chart-title">本月收支趋势</h2>
-          <div v-if="summary.trends.length" class="fin-chart-body">
+          <h2 class="fin-chart-title">{{ unitLabel }}收支趋势</h2>
+          <div v-if="dim !== 'day' && summary.trends.length" class="fin-chart-body">
             <TrendChart :days="summary.trends" :has-any="hasAnyTrend" />
           </div>
-          <div v-else class="fin-chart-empty">暂无数据</div>
+          <div v-else class="fin-chart-empty">{{ dim === 'day' ? '单日无跨期趋势，切换「月/年」查看' : '暂无数据' }}</div>
         </div>
       </section>
 
@@ -310,7 +315,12 @@ const typeTabs = [
 const PALETTE = ['#7FA8A3', '#C7A96B', '#6E8BA6', '#B98BA6', '#8BB07A', '#C98B6B', '#6FA6C9', '#A98BC9', '#7F8FA3']
 
 const now = new Date()
-const month = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+const pad = (n) => String(n).padStart(2, '0')
+const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+const dim = ref('month')
+const day = ref(today)
+const month = ref(`${now.getFullYear()}-${pad(now.getMonth() + 1)}`)
+const year = ref(String(now.getFullYear()))
 const summary = ref({ categories: [], trends: [], balance: 0 })
 const categoriesMeta = ref({ expense: [], income: [] })
 const list = ref([])
@@ -332,14 +342,21 @@ const form = reactive({
   note: '',
 })
 
-const monthLabel = computed(() => {
+const periodLabel = computed(() => {
+  if (dim.value === 'day') {
+    const [y, m, d] = day.value.split('-')
+    return `${y}年${Number(m)}月${Number(d)}日`
+  }
+  if (dim.value === 'year') return `${year.value}年`
   const [y, m] = month.value.split('-')
   return `${y}年${Number(m)}月`
 })
-const isThisMonth = computed(() => {
-  const label = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  return month.value === label
+const isNowPeriod = computed(() => {
+  if (dim.value === 'day') return day.value === today
+  if (dim.value === 'year') return year.value === String(now.getFullYear())
+  return month.value === `${now.getFullYear()}-${pad(now.getMonth() + 1)}`
 })
+const unitLabel = computed(() => (dim.value === 'day' ? '今日' : (dim.value === 'year' ? '本年' : '本月')))
 const currentCats = computed(() => {
   const pool = form.type === 'income' ? categoriesMeta.value.income : categoriesMeta.value.expense
   return pool.length ? pool : [{ key: '其他', icon: '🧾' }]
@@ -368,8 +385,12 @@ async function loadCategories() {
   categoriesMeta.value = res.data
 }
 async function loadSummary() {
-  const res = await financeApi.summary(month.value)
-  summary.value = { ...res.data, categories: res.data.categories.map((c, i) => ({ ...c, color: PALETTE[i % PALETTE.length] })) }
+  const params = { dim: dim.value }
+  if (dim.value === 'day') params.day = day.value
+  else if (dim.value === 'year') params.year = year.value
+  else params.month = month.value
+  const res = await financeApi.summary(params)
+  summary.value = { ...res.data, categories: (res.data.categories || []).map((c, i) => ({ ...c, color: PALETTE[i % PALETTE.length] })) }
 }
 async function loadList() {
   const params = { page: page.value, size: pageSize }
@@ -382,13 +403,20 @@ async function loadList() {
 function handleCurrentChange() {}
 const showImportHelp = ref(false)
 async function exportCsv() {
-  const [y, m] = month.value.split('-').map(Number)
-  const lastDay = new Date(y, m, 0).getDate()
+  let start, end
+  if (dim.value === 'day') {
+    start = day.value
+    end = day.value
+  } else if (dim.value === 'year') {
+    start = `${year.value}-01-01`
+    end = `${year.value}-12-31`
+  } else {
+    const [y, m] = month.value.split('-').map(Number)
+    start = `${month.value}-01`
+    end = `${month.value}-${pad(new Date(y, m, 0).getDate())}`
+  }
   try {
-    await exportFinanceCsv({
-      start: `${month.value}-01`,
-      end: `${month.value}-${String(lastDay).padStart(2, '0')}`,
-    })
+    await exportFinanceCsv({ start, end })
     ElMessage.success('CSV 已导出')
   } catch (e) {
     ElMessage.error('导出失败，请重试')
@@ -453,7 +481,7 @@ async function doConfirmImport() {
     const d = res.data || {}
     ElMessage.success(`导入成功 ${d.imported} 条`)
     cancelImport()
-    goThisMonth()
+    reloadAndScroll()
   } catch (err) {
     ElMessage.error('导入失败，请重试')
   } finally {
@@ -465,21 +493,40 @@ function reload(p) {
   if (p) page.value = p
   return loadList()
 }
-function shiftMonth(d) {
-  const [y, m] = month.value.split('-').map(Number)
-  const totalM = y * 12 + (m - 1) + d
-  const ny = Math.floor(totalM / 12)
-  const nm = (totalM % 12) + 1
-  month.value = `${ny}-${String(nm).padStart(2, '0')}`
+function setDim(d) {
+  if (dim.value === d || !['day', 'month', 'year'].includes(d)) return
+  dim.value = d
   page.value = 1
   loadSummary()
   loadList()
 }
-function goThisMonth() {
-  month.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+function shift(step) {
+  if (dim.value === 'day') {
+    const nv = new Date(`${day.value}T12:00:00`)
+    nv.setDate(nv.getDate() + step)
+    day.value = fmtDate(nv)
+  } else if (dim.value === 'year') {
+    year.value = String(Number(year.value) + step)
+  } else {
+    const [y, m] = month.value.split('-').map(Number)
+    const totalM = y * 12 + (m - 1) + step
+    month.value = `${Math.floor(totalM / 12)}-${pad((totalM % 12) + 1)}`
+  }
   page.value = 1
   loadSummary()
   loadList()
+}
+function goNow() {
+  if (dim.value === 'day') day.value = today
+  else if (dim.value === 'year') year.value = String(now.getFullYear())
+  else month.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`
+  page.value = 1
+  loadSummary()
+  loadList()
+}
+async function reloadAndScroll() {
+  await Promise.all([loadSummary(), reload(1)])
+  backToTopScroll()
 }
 
 function resetForm() {
@@ -601,7 +648,13 @@ onMounted(() => {
 
 /* 月份 */
 .fin-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.fin-month { display: flex; align-items: center; gap: 10px; }
+.fin-period { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fin-dim { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(127,168,163,.08);
+  border: 1px solid var(--lj-line); }
+.fin-dim-btn { border: 0; background: transparent; color: var(--lj-text-3); font-size: 12px; padding: 5px 14px; border-radius: 999px;
+  cursor: pointer; font-family: var(--font-serif); letter-spacing: .08em; transition: all .2s; }
+.fin-dim-btn:hover { color: var(--lj-text); }
+.fin-dim-btn.on { color: #fff; background: var(--lj-dai); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .fin-nav { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--lj-line); background: var(--lj-glass);
   color: var(--lj-text); font-size: 18px; cursor: pointer; transition: all .2s; }
 .fin-nav:hover { border-color: var(--lj-line-strong); }
