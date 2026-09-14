@@ -180,12 +180,32 @@ def test_local_parse_wechat_style_preamble_and_arbitrary_header():
         "微信昵称:[夜空下] 起始时间:[2026-01-01] 导出类型:[全部账单]\n"
         "共2笔记录\n"
         "交易时间,交易类型,交易对方,商品,收/支,金额(元),支付方式,当前状态\n"
-        "2026-08-31 18:16:42,商户消费,青羊区某店,秦食荟订单,支出,15,零钱,支付成功\n"
+        "2026-08-31 18:16:42,商户消费,华莱士,汉堡套餐,支出,15,零钱,支付成功\n"
         "2026-08-29 10:32:11,其他,某活动,收款备注,收入,0.16,/,已到账\n"
     )
     rows, skipped, errors = _local_parse_csv(csv_text)
     assert len(rows) == 2 and skipped == 0 and errors == []
     assert rows[0]["type"] == "expense" and rows[0]["amount_cents"] == 1500
     assert rows[0]["occurred"].strftime("%Y-%m-%d") == "2026-08-31"
-    assert rows[0]["note"] == "秦食荟订单"
+    assert rows[0]["note"] == "汉堡套餐"
+    assert rows[0]["category"] == "餐饮"  # 自动归类
     assert rows[1]["type"] == "income" and rows[1]["amount_cents"] == 16
+
+
+def test_local_parse_auto_categorize():
+    """无分类列时按 交易对方/商品/类型 关键词自动归类到分类池。"""
+    from app.routers.finance import _auto_categorize
+    cases = [
+        ("expense", "成都市轨道交通2号线 三里庵站 商户消费", "交通"),
+        ("expense", "中国石油 加油站付款 商户消费", "交通"),
+        ("expense", "廖家蹄花 二维码收款 扫二维码付款", "其他"),
+        ("expense", "合肥市口腔医院 标准支付接口 商户消费", "医疗"),
+        ("expense", "发给丽莎姐姐 微信红包", "人情"),
+        ("expense", "京东 订单编号33864 商户消费", "购物"),
+        ("expense", "火星人 无 无", "其他"),
+        ("income", "微信红包 张三", "红包"),
+        ("income", "深圳市xx公司 工资发放", "工资"),
+    ]
+    for ttype, text, expect in cases:
+        got = _auto_categorize(ttype, text)
+        assert got == expect, f"{text} -> {got}, expect {expect}"

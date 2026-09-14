@@ -64,6 +64,11 @@ def _valid_category(ttype: str, category: str) -> str:
     return category if category in keys else "其他"
 
 
+def _valid_categories(ttype: str) -> set:
+    pool = EXPENSE_CATEGORIES if ttype == "expense" else INCOME_CATEGORIES
+    return {c["key"] for c in pool}
+
+
 def _to_dict(t: FinanceTransaction) -> dict:
     return {
         "id": t.id,
@@ -344,7 +349,8 @@ _HEADER_KWS = {
     "direction": ["收/支", "收支", "收 支", "借贷", "方向", "收付"],
     "type": ["交易类型", "类型", "流水类型", "商户单号", "类别"],
     "category": ["分类", "类目", "细分", "category"],
-    "note": ["备注", "商品", "摘要", "说明", "用途", "交易对方", "对方", "项目", "名称"],
+    "note": ["备注", "商品", "摘要", "说明", "用途", "项目", "名称"],
+    "merchant": ["交易对方", "商户", "对方", "收单", "收款方"],
 }
 
 
@@ -361,7 +367,7 @@ def _locate_header(lines):
         if not any(k in joined for k in joined_required):
             continue
         col_map = {}
-        for field in ("date", "amount", "direction", "type", "category", "note"):
+        for field in ("date", "amount", "direction", "type", "category", "note", "merchant"):
             col_map[field] = None
             for k in _HEADER_KWS[field]:
                 if not k or k in ("/", " "):
@@ -405,6 +411,47 @@ def _ttype_of(direction_s, type_s, amount):
     return "income" if amount > 0 else "expense"
 
 
+# 无 AI 时的自动归类：按 交易对方+商品+类型 里的关键词命中分类池（按优先级）
+_CAT_RULES = {
+    "医疗": ["医院", "药", "诊所", "口腔", "牙科", "牙", "体检", "门诊", "挂号", "医疗", "太医", "康复"],
+    "教育": ["学费", "课程", "培训", "书店", "书籍", "报班", "网课", "教育", "学习", "试卷", "文具"],
+    "娱乐": ["电影", "影院", "ktv", "网吧", "网咖", "游戏", "门票", "演出", "摄影", "影像", "旅游", "度假", "景区", "纹绣", "婚纱", "KTV"],
+    "交通": ["地铁", "轨道", "公交", "打车", "滴滴", "出租", "网约", "高铁", "火车", "航空", "机票", "加油", "加油站", "石油", "石化", "汽油", "停车", "充电", "单车", "骑行", "高速", "过路", "车辆", "汽车", "汽配", "修车", "车站", "骑车"],
+    "人情": ["红包", "发给", "随礼", "份子", "祝福", "人情", "借款", "还", "礼金", "转账给"],
+    "居家": ["水电", "燃气", "物业", "房租", "宽带", "话费", "手机充值", "电信", "联通", "移动", "维修", "家居"],
+    "购物": ["超市", "便利店", "商场", "百货", "淘宝", "京东", "拼多多", "天猫", "生鲜", "水果", "果园", "零食", "雪糕", "蛋糕", "黄金", "饰品", "服装", "衣库", "衣广汇", "鞋", "箱包", "批发", "零售", "MUJI", "无印良品", "名创", "购物"],
+    "餐饮": ["餐", "食", "饭", "吃", "奶茶", "咖啡", "包子", "面馆", "燃面", "馄饨", "米线", "火锅", "烧烤", "小吃", "甜品", "汤", "饺", "堡", "快餐", "餐馆", "饭店", "面包", "华莱士", "麦当劳", "肯德基", "蜜雪", "老乡鸡", "猪脚饭", "盖浇", "炒饭", "盖饭", "黄焖", "鸡公煲", "烧烤", "炸鸡", "龙虾", "螃蟹", "茶", "油炸", "夜宵", "烧腊"],
+}
+
+# 收入分类关键词（微信等账单无收入分类列，按金额来源归类）
+_CAT_INCOME_RULES = {
+    "红包": ["红包", "利是", "压岁"],
+    "工资": ["工资", "薪资", "薪", "发薪", "劳务", "薪水"],
+    "奖金": ["奖金", "绩效", "奖励"],
+    "理财": ["理财", "收益", "利息", "基金", "股票", "分红", "零钱通", "余额宝"],
+    "兼职": ["兼职", "佣金", "提成", "跑腿", "稿费", "接单"],
+}
+
+
+def _auto_categorize(ttype: str, text: str) -> str:
+    """根据 交易对方+商品+类型 文本自动归类；命中不了归「其他」。"""
+    if not text:
+        return "其他"
+    t = text.lower()
+    rules = _CAT_INCOME_RULES if ttype == "income" else _CAT_RULES
+    for cat, kws in rules.items():
+        for kw in kws:
+            if kw.lower() in t:
+                return cat
+    if ttype == "income" and any(k in t for k in ("退款", "退回", "退还")):
+        # 退款尽量按商户名归回原支出分类
+        for cat, kws in _CAT_RULES.items():
+            for kw in kws:
+                if kw.lower() in t:
+                    return cat
+    return "其他"
+
+
 def _local_parse_csv(text: str):
     """无 AI 时的本地 CSV 解析兜底，返回 (rows, skipped, errors)。
 
@@ -442,6 +489,7 @@ def _local_parse_csv(text: str):
         amount_s = cell(row, "amount")
         cat_s = cell(row, "category")
         note_s = cell(row, "note") or cell(row, "type")
+        classify_text = " ".join(x for x in (cell(row, "merchant"), note_s, type_s) if x)
         try:
             amount = float(amount_s.replace(",", "").replace("¥", "").strip())
             if amount == 0:
@@ -454,10 +502,13 @@ def _local_parse_csv(text: str):
                     occurred = datetime.strptime(date_s, "%Y/%m/%d")
                 except (ValueError, TypeError):
                     occurred = now
+            cat = cat_s or "其他"
+            if cat == "其他" or cat not in _valid_categories(ttype):
+                cat = _auto_categorize(ttype, classify_text)
             rows.append({
                 "occurred": occurred,
                 "type": ttype,
-                "category": _valid_category(ttype, cat_s or "其他"),
+                "category": _valid_category(ttype, cat),
                 "amount_cents": int(round(abs(amount) * 100)),
                 "note": (note_s or "")[:255],
             })
