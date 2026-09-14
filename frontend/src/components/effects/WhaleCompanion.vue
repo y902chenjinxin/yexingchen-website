@@ -390,8 +390,9 @@ onMounted(() => {
 /* 唯一可交互命中区：小“抓手”角标，用于按住拖动桌宠 / 单击打开设置面板 */
 .whale-handle {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
   width: 24px;
   height: 24px;
   border-radius: 8px;

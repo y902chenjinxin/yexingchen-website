@@ -209,6 +209,7 @@
               <li v-for="c in summary.categories" :key="c.category" class="fin-legend-item">
                 <i class="fin-dot" :style="{ background: c.color }"></i>
                 <span class="fin-legend-name">{{ c.icon }} {{ c.category }}</span>
+                <span class="fin-legend-pct">{{ pct(c.amount) }}%</span>
                 <span class="fin-legend-amt">¥ {{ money(c.amount) }}</span>
               </li>
             </ul>
@@ -346,6 +347,11 @@ const currentCats = computed(() => {
 const hasAnyTrend = computed(() => (summary.value.trends || []).some(d => d.income || d.expense))
 
 function money(v) { return Number(v || 0).toFixed(2) }
+function pct(v) {
+  const t = summary.value.categories.reduce((s, c) => s + (c.amount || 0), 0)
+  if (!t) return '0'
+  return ((v || 0) / t * 100).toFixed(1)
+}
 function fmtDate(d) {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -688,7 +694,8 @@ onMounted(() => {
 .fin-legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .fin-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 .fin-legend-name { flex: 1; color: var(--lj-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fin-legend-amt { color: var(--lj-text); font-weight: 600; }
+.fin-legend-pct { flex: none; font-size: 12px; color: var(--lj-seal); font-weight: 600; font-variant-numeric: tabular-nums; width: 46px; text-align: right; }
+.fin-legend-amt { color: var(--lj-text); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* 流水 */
 .fin-ledger { border-radius: 16px; padding: 18px; }

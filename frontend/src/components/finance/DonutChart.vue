@@ -46,7 +46,7 @@ const segments = computed(() => {
     return seg
   })
 })
-const totalLabel = computed(() => Number(tot.value).toFixed(0))
+const totalLabel = computed(() => Number(tot.value).toFixed(2))
 const countLabel = computed(() => `${props.data.length} 类`)
 </script>
 
