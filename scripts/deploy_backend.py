@@ -27,6 +27,8 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "models", "feed.py"),           f"{REMOTE_BASE}/backend/app/models/feed.py"),
     (os.path.join(ROOT, "backend", "app", "models", "stocks.py"),         f"{REMOTE_BASE}/backend/app/models/stocks.py"),
     (os.path.join(ROOT, "backend", "app", "services", "stock_fetcher.py"),f"{REMOTE_BASE}/backend/app/services/stock_fetcher.py"),
+    (os.path.join(ROOT, "backend", "app", "services", "feed_sync.py"),     f"{REMOTE_BASE}/backend/app/services/feed_sync.py"),
+    (os.path.join(ROOT, "backend", "ecosystem.config.cjs"),                 f"{REMOTE_BASE}/backend/ecosystem.config.cjs"),
     (os.path.join(ROOT, "backend", "app", "routers", "stocks.py"),        f"{REMOTE_BASE}/backend/app/routers/stocks.py"),
     (os.path.join(ROOT, "backend", "alembic", "env.py"),                  f"{REMOTE_BASE}/backend/alembic/env.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "a1b2c3d4e5f7_feed_source_article.py"),
@@ -108,11 +110,13 @@ code, out, err = cexec(
 )
 print("  code:", code)
 print("  ", (out + err)[-800:])
-print("== 4/4 clean pycache + restart backend ==")
+print("== 4/4 clean pycache + restart via ecosystem (preserve ENV=production) ==")
 code, out, err = cexec(
     f"find {REMOTE_BASE}/backend -name '__pycache__' -type d -exec rm -rf {{}} + 2>/dev/null; "
-    f"pm2 restart yexingchen-backend --update-env 2>&1 && sleep 4 && "
+    f"pm2 startOrReload {REMOTE_BASE}/backend/ecosystem.config.cjs 2>&1 && pm2 save 2>&1 | tail -1 && sleep 4 && "
     f"pm2 list | grep -E 'yexingchen-backend|status' && "
+    f"ENV_PROD=$(tr '\\0' '\\n' < /proc/$(pm2 pid yexingchen-backend)/environ 2>/dev/null | grep -c '^ENV=production'); "
+    f"echo 'ENV=production in proc:' $ENV_PROD && "
     f"curl -s -o /dev/null -w 'health=%{{http_code}}' http://127.0.0.1:8000/health && echo '' "
 )
 print("  code:", code)

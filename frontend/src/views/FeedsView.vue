@@ -14,7 +14,7 @@
         </div>
         <div class="fd-titles">
           <h1 class="fd-title">资讯推送</h1>
-          <p class="fd-sub">订阅源 · 智能摘要 · 一键收藏</p>
+          <p class="fd-sub">订阅源 · 智能摘要 · 一键收藏 · 上次更新 {{ lastSynced }}</p>
         </div>
         <div class="fd-head-right">
           <button class="fd-btn ghost" :disabled="refreshing" @click="refreshAll">{{ refreshing ? '刷新中…' : '⟳ 刷新全部' }}</button>
@@ -287,6 +287,21 @@ const listTitle = computed(() => {
     return s ? s.title : '文章列表'
   }
   return '最新文章'
+})
+
+// 最近一次成功抓取时间（取各源 last_check_at 的最大值），用于感知数据新旧
+const lastSynced = computed(() => {
+  const ts = sources.value.reduce((m, s) => {
+    const t = s.last_check_at ? new Date(s.last_check_at).getTime() : 0
+    return Math.max(m, t)
+  }, 0)
+  if (!ts) return '暂无记录'
+  const min = Math.floor((Date.now() - ts) / 60000)
+  if (min < 1) return '刚刚'
+  if (min < 60) return `${min} 分钟前`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h} 小时前`
+  return `${Math.floor(h / 24)} 天前`
 })
 
 function statusClass(s) {

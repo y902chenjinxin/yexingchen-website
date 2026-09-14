@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import asyncio
 import os
 import logging
 
@@ -14,6 +15,7 @@ from app.routers.feed import router as feed_router
 from app.config import settings
 from app.models.login_attempt import LoginAttempt  # 登录限流模型
 from app.services import schema_guard
+from app.services.feed_sync import FEED_SYNC_INTERVAL, FEED_SYNC_WARMUP, sync_all_sources_once
 from app.services.logging_config import configure_logging
 
 configure_logging()
@@ -36,6 +38,44 @@ app = FastAPI(
     docs_url="/docs" if os.environ.get("ENV") != "production" else None,
     redoc_url="/redoc" if os.environ.get("ENV") != "production" else None,
 )
+
+
+# ---------- 资讯后台自动同步（仅生产环境） ----------
+# 测试环境不启动后台任务，避免拉取真实 RSS 网络请求与事件循环泄露。
+_feed_sync_task: "asyncio.Task | None" = None
+
+
+async def _feed_sync_loop() -> None:
+    """预热后先抓一次，之后按固定间隔循环。"""
+    await asyncio.sleep(FEED_SYNC_WARMUP)
+    while True:
+        try:
+            await asyncio.to_thread(sync_all_sources_once)
+        except Exception:  # noqa: BLE001
+            logger.exception("资讯后台自动同步失败")
+        await asyncio.sleep(FEED_SYNC_INTERVAL)
+
+
+if schema_guard.is_production_env():
+
+    @app.on_event("startup")
+    async def _start_feed_auto_sync() -> None:
+        global _feed_sync_task
+        if _feed_sync_task is None:
+            _feed_sync_task = asyncio.create_task(_feed_sync_loop())
+            logger.info("资讯后台自动同步已启动（每 %d 秒一次）", FEED_SYNC_INTERVAL)
+
+    @app.on_event("shutdown")
+    async def _stop_feed_auto_sync() -> None:
+        global _feed_sync_task
+        if _feed_sync_task is not None:
+            _feed_sync_task.cancel()
+            try:
+                await _feed_sync_task
+            except asyncio.CancelledError:
+                pass
+            _feed_sync_task = None
+            logger.info("资讯后台自动同步已停止")
 
 # CORS - 严格配置，禁止通配符
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "https://yexingchen.cn").split(",")
