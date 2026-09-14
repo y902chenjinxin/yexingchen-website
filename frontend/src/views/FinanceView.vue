@@ -30,7 +30,34 @@
             <button class="fin-dim-btn" :class="{ on: dim === 'year' }" @click="setDim('year')">年</button>
           </div>
           <button class="fin-nav" @click="shift(-1)">‹</button>
-          <button class="fin-month-label" @click="goNow">{{ periodLabel }}<span v-if="!isNowPeriod" class="fin-this" @click.stop="goNow">回{{ dim === 'day' ? '今天' : (dim === 'year' ? '今年' : '本月') }}</span></button>
+          <div class="fin-dd-wrap">
+            <button class="fin-month-label" @click.stop="toggleDd">
+              {{ periodLabel }}<span v-if="!isNowPeriod" class="fin-this" @click.stop="goNow">回{{ dim === 'day' ? '今天' : (dim === 'year' ? '今年' : '本月') }}</span>
+              <span class="fin-dd-caret">▾</span>
+            </button>
+            <transition name="fd">
+              <div v-if="ddOpen" class="fin-dd glass" @click.stop>
+                <div class="fin-dd-col">
+                  <div class="fin-dd-head">年</div>
+                  <div class="fin-dd-list" ref="ddYearList">
+                    <button v-for="y in yearOptions" :key="y" class="fin-dd-item" :class="{ on: y === ddYear }" @click="pickYear(y)">{{ y }}</button>
+                  </div>
+                </div>
+                <div v-if="dim !== 'year'" class="fin-dd-col">
+                  <div class="fin-dd-head">月</div>
+                  <div class="fin-dd-list">
+                    <button v-for="m in 12" :key="m" class="fin-dd-item" :class="{ on: m === ddMonth }" @click="pickMonth(m)">{{ m }}</button>
+                  </div>
+                </div>
+                <div v-if="dim === 'day'" class="fin-dd-col">
+                  <div class="fin-dd-head">日</div>
+                  <div class="fin-dd-list">
+                    <button v-for="d in ddDays" :key="d" class="fin-dd-item" :class="{ on: d === ddSelDay }" @click="pickDay(d)">{{ d }}</button>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
           <button class="fin-nav" @click="shift(1)">›</button>
         </div>
         <div class="fin-io">
@@ -296,7 +323,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
@@ -357,6 +384,70 @@ const isNowPeriod = computed(() => {
   return month.value === `${now.getFullYear()}-${pad(now.getMonth() + 1)}`
 })
 const unitLabel = computed(() => (dim.value === 'day' ? '今日' : (dim.value === 'year' ? '本年' : '本月')))
+
+const ddOpen = ref(false)
+const ddYear = ref(now.getFullYear())
+const ddMonth = ref(now.getMonth() + 1)
+const ddYearList = ref(null)
+const yearOptions = computed(() => {
+  const max = now.getFullYear()
+  const min = Math.min(summary.value.min_year || max, max)
+  const arr = []
+  for (let y = max; y >= min; y--) arr.push(y)
+  return arr
+})
+const ddDays = computed(() => new Date(ddYear.value, ddMonth.value, 0).getDate())
+const ddSelDay = computed(() => {
+  if (dim.value !== 'day') return 0
+  const [y, m, d] = day.value.split('-').map(Number)
+  return (y === ddYear.value && m === ddMonth.value) ? d : 0
+})
+function toggleDd() {
+  if (ddOpen.value) { ddOpen.value = false; return }
+  if (dim.value === 'year') {
+    ddYear.value = parseInt(year.value) || now.getFullYear()
+    ddMonth.value = 1
+  } else if (dim.value === 'day') {
+    const [y, m] = day.value.split('-').map(Number)
+    ddYear.value = y; ddMonth.value = m
+  } else {
+    const [y, m] = month.value.split('-').map(Number)
+    ddYear.value = y; ddMonth.value = m
+  }
+  ddOpen.value = true
+  nextTick(() => {
+    const el = ddYearList.value
+    if (!el) return
+    const active = el.querySelector('.fin-dd-item.on')
+    if (active) active.scrollIntoView({ block: 'center' })
+  })
+}
+function pickYear(y) {
+  ddYear.value = y
+  if (dim.value !== 'year') return
+  year.value = String(y)
+  closeDd()
+}
+function pickMonth(m) {
+  if (dim.value === 'year') return
+  ddMonth.value = m
+  if (dim.value === 'month') {
+    month.value = `${ddYear.value}-${pad(m)}`
+    closeDd()
+  }
+}
+function pickDay(d) {
+  if (dim.value !== 'day') return
+  day.value = `${ddYear.value}-${pad(ddMonth.value)}-${pad(d)}`
+  closeDd()
+}
+function closeDd() {
+  ddOpen.value = false
+  page.value = 1
+  loadSummary()
+  loadList()
+}
+function onDocClick() { if (ddOpen.value) ddOpen.value = false }
 const currentCats = computed(() => {
   const pool = form.type === 'income' ? categoriesMeta.value.income : categoriesMeta.value.expense
   return pool.length ? pool : [{ key: '其他', icon: '🧾' }]
@@ -596,7 +687,9 @@ onMounted(() => {
   loadCategories()
   loadSummary()
   loadList()
+  document.addEventListener('click', onDocClick)
 })
+onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 </script>
 
 <style scoped>
@@ -658,9 +751,25 @@ onMounted(() => {
 .fin-nav { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--lj-line); background: var(--lj-glass);
   color: var(--lj-text); font-size: 18px; cursor: pointer; transition: all .2s; }
 .fin-nav:hover { border-color: var(--lj-line-strong); }
-.fin-month-label { position: relative; border: 1px solid var(--lj-line); background: var(--lj-glass); color: var(--lj-text);
-  padding: 7px 18px; border-radius: 999px; font-family: var(--font-serif); letter-spacing: .1em; font-size: 16px; cursor: default; }
+.fin-month-label { border: 1px solid var(--lj-line); background: var(--lj-glass); color: var(--lj-text);
+  padding: 7px 16px; border-radius: 999px; font-family: var(--font-serif); letter-spacing: .1em; font-size: 16px;
+  cursor: pointer; transition: border-color .2s; white-space: nowrap; }
+.fin-month-label:hover { border-color: var(--lj-line-strong); }
 .fin-this { margin-left: 8px; font-size: 11px; color: var(--lj-dai); cursor: pointer; }
+.fin-dd-caret { margin-left: 8px; font-size: 12px; color: var(--lj-text-3); }
+.fin-dd-wrap { position: relative; }
+.fin-dd { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 60;
+  display: flex; gap: 8px; padding: 12px; border-radius: 16px; box-shadow: 0 14px 40px rgba(0,0,0,.28); min-width: 240px; }
+.fin-dd-col { display: flex; flex-direction: column; gap: 6px; min-width: 78px; }
+.fin-dd-head { font-size: 11px; color: var(--lj-text-3); text-align: center; letter-spacing: .2em; padding: 2px 0; }
+.fin-dd-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
+  scrollbar-width: thin; scrollbar-color: var(--lj-line-strong) transparent; padding-right: 2px; }
+.fin-dd-list::-webkit-scrollbar { width: 6px; }
+.fin-dd-list::-webkit-scrollbar-thumb { background: var(--lj-line-strong); border-radius: 3px; }
+.fin-dd-item { border: 0; background: transparent; color: var(--lj-text-2); font-size: 13px; padding: 6px 10px;
+  border-radius: 8px; cursor: pointer; font-family: var(--font-serif); transition: all .15s; text-align: center; }
+.fin-dd-item:hover { background: rgba(127,168,163,.12); color: var(--lj-text); }
+.fin-dd-item.on { color: #fff; background: var(--lj-dai); font-weight: 600; }
 
 /* 导入/导出 */
 .fin-io { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

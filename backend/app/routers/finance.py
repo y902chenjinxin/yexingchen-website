@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from openpyxl import load_workbook
 
 from app.database import get_db
@@ -153,6 +153,13 @@ async def summary(
     total_expense = sum(r.amount_cents for r in all_rows if r.type == "expense")
     balance = total_income - total_expense
 
+    # 最早记账年份（前端用于下拉范围覆盖所有历史数据）
+    first = db.query(func.min(FinanceTransaction.occurred_at)).filter(
+        FinanceTransaction.user_id == uid,
+        FinanceTransaction.deleted_at.is_(None),
+    ).scalar()
+    min_year = first.year if first else now.year
+
     # 窗口内支出分类占比
     cat_agg = defaultdict(int)
     for r in rows:
@@ -193,6 +200,7 @@ async def summary(
     return ResponseBase(data={
         "period": period,
         "dim": dim,
+        "min_year": min_year,
         "income": round(income / 100, 2),
         "expense": round(expense / 100, 2),
         "count": count,
