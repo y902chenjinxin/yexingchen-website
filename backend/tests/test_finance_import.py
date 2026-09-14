@@ -111,3 +111,62 @@ def test_import_csv_legacy_endpoint_still_works(fin_ctx):
     data = _data(resp)
     assert data["imported"] == 2
     assert data["skipped"] == 0
+
+
+def _make_xlsx(rows):
+    from io import BytesIO
+    from openpyxl import Workbook
+    wb = Workbook()
+    ws = wb.active
+    for row in rows:
+        ws.append(row)
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def test_import_analyze_file_xlsx_standard_header(fin_ctx):
+    """上传 .xlsx（标准中文表头）→ analyze-file 返回结构化预览。"""
+    xlsx = _make_xlsx([
+        ["日期", "类型", "分类", "金额(元)", "备注"],
+        ["2026-09-03", "支出", "交通", "8.00", "地铁"],
+        ["2026-09-04", "收入", "兼职", "200.00", "投稿"],
+    ])
+    resp = client.post(
+        "/api/finance/import/analyze-file",
+        files={"file": ("bank.xlsx", xlsx, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    data = _data(resp)
+    assert data["is_fake"] is True
+    assert len(data["rows"]) == 2
+    assert data["rows"][0]["date"] == "2026-09-03"
+    assert data["rows"][0]["amount"] == 8.0
+    assert data["rows"][1]["type"] == "income"
+
+
+def test_import_analyze_file_xlsx_arbitrary_header_ok(fin_ctx):
+    """任意表头、表头与数据混排也能上传，接口正常返回（AI 场景交由生产验证）。"""
+    xlsx = _make_xlsx([
+        ["流水号", "交易时间", "对方", "交易金额(/元)", "交易类型", "商品说明"],
+        [1, "2026-09-05 12:10", "老王", "-12.50", "支出", "午餐"],
+        [2, "2026-09-05 18:33", "公司", "5000.00", "转账", "工资"],
+    ])
+    resp = client.post(
+        "/api/finance/import/analyze-file",
+        files={"file": ("ali.xlsx", xlsx, "application/octet-stream")},
+    )
+    data = _data(resp)
+    assert resp.status_code == 200
+    assert "rows" in data and "errors" in data and "is_fake" in data
+
+
+def test_import_analyze_file_old_xls_rejected(fin_ctx):
+    """旧版 .xls（openpyxl 不支持）应给出明确提示而非 500。"""
+    resp = client.post(
+        "/api/finance/import/analyze-file",
+        files={"file": ("old.xls", b"D0CF11E0A1B11AE1notrealbiff", "application/vnd.ms-excel")},
+    )
+    data = _data(resp)
+    assert data["rows"] == []
+    assert any("另存" in e for e in data["errors"])

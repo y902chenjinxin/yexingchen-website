@@ -15,4 +15,5 @@ email-validator==2.3.0
 httpx==0.27.0
 feedparser==6.0.14
 requests==2.34.2
+openpyxl==3.1.5  # 账本导入支持 Excel 表格(xlsx/xls)
 werkzeug>=3.0.0  # secure_filename（file_utils 导入），此前未显式声明

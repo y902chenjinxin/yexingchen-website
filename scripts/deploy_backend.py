@@ -100,7 +100,7 @@ for local, remote in BACKEND_FILES:
     print("  ->", remote)
 
 print("== 2/4 install httpx/feedparser/requests in venv ==")
-code, out, err = cexec(f"{REMOTE_BASE}/backend/venv/bin/pip install -q httpx==0.27.0 feedparser requests 2>&1; echo DONE")
+code, out, err = cexec(f"{REMOTE_BASE}/backend/venv/bin/pip install -q httpx==0.27.0 feedparser requests openpyxl 2>&1; echo DONE")
 print("  code:", code)
 print("  ", (out + err)[-500:])
 

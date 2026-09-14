@@ -31,8 +31,8 @@
         <div class="fin-io">
           <button class="fin-btn ghost small" @click="exportCsv">导出 CSV</button>
           <label class="fin-btn ghost small fin-import">
-            导入 CSV
-            <input type="file" accept=".csv,text/csv,text/plain" class="fin-import-file" @change="onImportFile" />
+            导入账本
+            <input type="file" accept=".csv,.xlsx,.xlsm,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="fin-import-file" @change="onImportFile" />
           </label>
           <a class="fin-help" href="javascript:void(0)" @click="showImportHelp = !showImportHelp">导入格式说明</a>
         </div>
@@ -41,11 +41,11 @@
       <!-- 导入说明 -->
       <transition name="fd">
         <div v-if="showImportHelp" class="fin-io-help glass">
-          <h4 class="fin-io-help-title">CSV 导入格式</h4>
-          <p class="fin-io-help-line">首行为表头：<code>日期,类型,分类,金额(元),备注</code></p>
-          <p class="fin-io-help-line">示例：<code>2026-09-01,支出,餐饮,32.50,午饭</code></p>
-          <p class="fin-io-help-line">类型填「支出/收入」；金额为正记收入、为负记支出；分类缺失归「其他」。</p>
-          <p class="fin-io-help-line">也可直接上传本页面「导出 CSV」得到的文件，再次导入即可批量还原。</p>
+          <h4 class="fin-io-help-title">导入格式说明</h4>
+          <p class="fin-io-help-line">支持 <b>.csv / .xlsx / .xlsm</b>（表格与文本均可）。</p>
+          <p class="fin-io-help-line">无需手动整理：任意表头或杂乱格式（微信/支付宝/银行/Excel 导出），均由 <b>AI 自动识别</b>为「日期 / 收支 / 分类 / 金额 / 备注」并精简后展示，确认后再入库。</p>
+          <p class="fin-io-help-line">规则参考：金额为负或「支/消费」语境归支出、为正归收入；分类缺失归「其他」；可上传本站「导出 CSV」的文件批量还原。</p>
+          <p class="fin-io-help-line">旧版 <code>.xls</code> 请先另存为 <code>.xlsx</code> 或 CSV。</p>
         </div>
       </transition>
 
@@ -403,21 +403,23 @@ async function onImportFile(e) {
   e.target.value = '' // 允许重复选择同一文件
   if (!file) return
   try {
-    const text = await file.text()
     importing.analyzing = true
     importing.rows = []
     importing.skipped = 0
     importing.errors = []
     importing.summary = ''
     importing.is_fake = false
-    const res = await financeApi.analyzeImport(text)
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    const res = /^(xlsx|xlsm|xls)$/.test(ext)
+      ? await financeApi.analyzeImportFile(file)
+      : await financeApi.analyzeImport(await file.text())
     const d = res.data || {}
     importing.rows = d.rows || []
     importing.skipped = d.skipped || 0
     importing.errors = d.errors || []
     importing.summary = d.summary || ''
     importing.is_fake = !!d.is_fake
-    if (!importing.rows.length) ElMessage.warning('未识别到有效流水，请检查文件格式')
+    if (!importing.rows.length && !importing.errors.length) ElMessage.warning('未识别到有效流水，请检查文件内容')
   } catch (err) {
     ElMessage.error('识别失败，请重试')
   } finally {

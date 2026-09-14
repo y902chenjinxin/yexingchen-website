@@ -51,6 +51,11 @@ export const financeApi = {
   remove: (id) => api.delete(`/finance/transactions/${id}`),
   importCsv: (csvText) => api.post('/finance/import', { csv: csvText }),
   analyzeImport: (csvText) => api.post('/finance/import/analyze', { csv: csvText }),
+  analyzeImportFile: (file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post('/finance/import/analyze-file', fd)
+  },
   confirmImport: (rows) => api.post('/finance/import/confirm', { rows }),
 }
 

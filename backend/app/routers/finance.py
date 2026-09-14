@@ -10,11 +10,12 @@ import io
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, Query, Body
+from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from openpyxl import load_workbook
 
 from app.database import get_db
 from app.schemas.common import ResponseBase
@@ -465,9 +466,10 @@ def _insert_transactions(db: Session, uid: int, rows: list[dict]):
 
 
 FINANCE_AI_INSTRUCT = (
-    "下面是个人记账流水（可能来自微信/支付宝/银行/各式 App 导出的原始文本，格式杂乱、"
-    "列名不一、夹杂无效行）。请只输出符合给定 schema 的一个 JSON 对象，不要输出其它内容。"
-    "把每条有效交易提取为一行 rows；金额无效或缺少日期的行放进 skipped 并简述原因；"
+    "下面是个人记账流水（可能来自微信/支付宝/银行/各类 App/Excel 表格导出的原始内容，"
+    "表头和列名任意、格式杂乱、夹杂无效行，甚至表头与数据混排）。请只输出符合给定 schema 的一个 JSON 对象，不要输出其它内容。"
+    "先判断表头在哪一行、每列含义，把每条有效交易提取为一行 rows；金额无效或缺少日期的行放进 skipped 并简述原因；"
+    "日期统一为 YYYY-MM-DD，金额为元（负数或带「支/消费/(-)」语义归支出，否则归收入）。"
     "分类尽量归到给定分类池。\n"
     "分类池：支出=餐饮/交通/购物/居家/娱乐/医疗/教育/人情/其他；收入=工资/奖金/理财/兼职/红包/其他。\n"
 )
@@ -479,13 +481,69 @@ async def import_analyze(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """AI 识别：把杂乱 CSV 归一为结构化流水并返回预览（不落库）。
-
-    存在用户已配置且启用的 AI Provider 时走 AI；否则 / AI 异常时回退本地解析。
-    """
+    """AI 识别 CSV 文本：把杂乱 CSV 归一为结构化流水并返回预览（不落库）。"""
     uid = current_user["user_id"]
-    text = payload.csv.lstrip("\ufeff")
+    return ResponseBase(data=_analyze_table_text(db, uid, payload.csv.lstrip("\ufeff")))
 
+
+@router.post("/import/analyze-file")
+async def import_analyze_file(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """AI 识别上传的表格/文本文件（xlsx/xlsm/csv/txt），把任意表头/杂格式归一为结构化流水预览（不落库）。"""
+    uid = current_user["user_id"]
+    name = file.filename or ""
+    ext = name.lower().rsplit(".", 1)[-1]
+    if ext == "xls":
+        # 旧版 .xls 为二进制 BIFF，openpyxl 不支持；提示另存
+        return ResponseBase(data={
+            "rows": [], "skipped": 0, "errors": ["暂不支持旧版 .xls，请先在 Excel 中另存为 .xlsx 或 CSV 后重试"],
+            "is_fake": True, "provider": "fake", "summary": "",
+        })
+
+    binary = await file.read()
+    if ext in ("xlsx", "xlsm"):
+        text = _xlsx_to_text(binary)
+    else:
+        for enc in ("utf-8-sig", "gb18030", "utf-8"):
+            try:
+                text = binary.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            text = binary.decode("utf-8", errors="replace")
+    return ResponseBase(data=_analyze_table_text(db, uid, text.lstrip("\ufeff")))
+
+
+def _xlsx_to_text(binary: bytes) -> str:
+    """把 Excel 首个工作表读为「CSV 风格」文本（表头 + 数据行），供 AI/本地解析重识别。"""
+    wb = load_workbook(io.BytesIO(binary), read_only=True, data_only=True)
+    try:
+        ws = wb.active
+        lines = []
+        seen_head = False
+        for row in ws.iter_rows(values_only=True):
+            cells = ["" if c is None else str(c).strip() for c in row]
+            if not any(cells):
+                continue
+            if not seen_head:
+                seen_head = True
+            out = [('"' + c.replace('"', '""') + '"') if any(ch in c for ch in (",", "\n", '"')) else c for c in cells]
+            lines.append(",".join(out))
+        return "\n".join(lines)
+    finally:
+        wb.close()
+
+
+def _analyze_table_text(db: Session, uid: int, text: str) -> dict:
+    """核心：杂表/文本 → 归一化流水 → 预览（不落库）。
+
+    存在用户已配置且启用的 AI Provider 时由 AI 识别（任意表头均可映射到 日期/收支/分类/金额/备注）；
+    未配置、或 AI 异常/未吐出有效行时回退本地解析。
+    """
     from app.services.ai_providers import AiRequest, FakeProvider
     from app.services.user_ai_provider import build_http_provider_from_config, resolve_user_provider
 
@@ -502,8 +560,7 @@ async def import_analyze(
             data = resp.data or {}
             ai_rows = _normalize_rows(data.get("rows") or [])
             if ai_rows:
-                rows, skipped = ai_rows, len(data.get("skipped") or [])
-                summary = getattr(resp, "text", "")
+                rows, skipped, summary = ai_rows, len(data.get("skipped") or []), getattr(resp, "text", "")
             else:
                 rows, skipped, errors = _local_parse_csv(text)
         except Exception:  # noqa: BLE001
@@ -518,14 +575,14 @@ async def import_analyze(
         "category": r["category"],
         "note": r["note"],
     } for r in rows]
-    return ResponseBase(data={
+    return {
         "rows": preview,
         "skipped": skipped,
         "errors": errors[:20],
         "is_fake": is_fake,
-        "provider": provider.model if not is_fake else "fake",
+        "provider": (provider.model if not is_fake else "fake"),
         "summary": summary,
-    })
+    }
 
 
 @router.post("/import/confirm")
