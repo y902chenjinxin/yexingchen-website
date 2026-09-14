@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <el-config-provider :locale="zhCn">
     <!-- Skip Link键盘导航 -->
     <a href="#main-content" class="skip-link">跳转到内容</a>
 
@@ -17,12 +18,14 @@
 
     <!-- 登录后全站底部网安/备案标识（工作台与岛屿/工具内容页各自渲染页脚，此处不再重复） -->
     <SiteFooter v-if="!showInitialLoading && auth.isLoggedIn && showGlobalFooter" variant="dark" />
+    </el-config-provider>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, defineAsyncComponent, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useAuthStore } from '@/stores/auth'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
@@ -99,3 +102,4 @@ onMounted(async () => {
   top: 10px;
 }
 </style>
+
