@@ -10,12 +10,10 @@
         fill="none"
         :stroke="seg.color"
         :stroke-width="thickness"
-        :stroke-dasharray="`${seg.len} ${C - seg.len}`"
-        :stroke-dashoffset="seg.offset"
-        transform="rotate(-90 50 50)"
+        :stroke-dasharray="seg.frame"
+        :transform="`rotate(${seg.angle} ${center} ${center})`"
         stroke-linecap="butt"
         class="dc-seg"
-        :style="{ '--seg': i }"
       />
       <text x="50%" y="47%" text-anchor="middle" class="dc-total">{{ totalLabel }}</text>
       <text x="50%" y="59%" text-anchor="middle" class="dc-total-sub">{{ countLabel }}</text>
@@ -32,17 +30,25 @@ const props = defineProps({
 
 const size = 190
 const thickness = 24
+const center = size / 2
 const r = (size - thickness * 2 - 6) / 2
 const C = 2 * Math.PI * r
 
 const tot = computed(() => props.data.reduce((s, c) => s + (c.amount || 0), 0))
+// 每段以「累计圆心角」旋转其独立起点绘制，绕开 stroke-dashoffset 的边界行为，保证圆环完整闭合
 const segments = computed(() => {
-  if (!tot.value) return []
-  let off = 0
+  const total = tot.value
+  if (!total) return []
+  let acc = 0
   return props.data.map((c) => {
-    const len = tot.value ? ((c.amount || 0) / tot.value) * C : 0
-    const seg = { color: c.color, len, offset: -off }
-    off += len
+    const frac = Math.max(0, (c.amount || 0) / total)
+    const seg = {
+      color: c.color,
+      len: frac * C,
+      frame: `${frac * C} ${C - frac * C}`,
+      angle: acc * 360 - 90,
+    }
+    acc += frac
     return seg
   })
 })
@@ -53,18 +59,7 @@ const countLabel = computed(() => `${props.data.length} 类`)
 <style scoped>
 .dc { flex: none; width: 190px; height: 190px; }
 .dc-svg { width: 100%; height: 100%; display: block; }
-.dc-seg { opacity: 0; animation: dc-in .6s ease forwards; }
-.dc-seg:nth-child(1) { animation-delay: .05s; }
-.dc-seg:nth-child(2) { animation-delay: .10s; }
-.dc-seg:nth-child(3) { animation-delay: .15s; }
-.dc-seg:nth-child(4) { animation-delay: .20s; }
-.dc-seg:nth-child(5) { animation-delay: .25s; }
-.dc-seg:nth-child(6) { animation-delay: .30s; }
-.dc-seg:nth-child(7) { animation-delay: .35s; }
-.dc-seg:nth-child(8) { animation-delay: .40s; }
-.dc-seg:nth-child(9) { animation-delay: .45s; }
-@keyframes dc-in { from { opacity: 0; } to { opacity: 1; } }
+.dc-seg { opacity: 1; }
 .dc-total { font-size: 30px; font-weight: 700; fill: var(--lj-text); letter-spacing: .02em; }
 .dc-total-sub { font-size: 12px; fill: var(--lj-text-3); }
-@media (prefers-reduced-motion: reduce) { .dc-seg { opacity: 1; animation: none; } }
 </style>
