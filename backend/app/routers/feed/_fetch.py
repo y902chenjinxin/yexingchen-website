@@ -59,6 +59,54 @@ _TAG_RE = re.compile(
 )
 _ATTR_RE = re.compile(r'([a-zA-Z0-9:_-]+)(?:\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+))?')
 _UNSAFE_PROTO = re.compile(r"^(javascript|vbscript|data):", re.I)
+_IMG_SRC_RE = re.compile(r'<img[^>]+src=["\']([^"\']+)["\']', re.I)
+
+
+def _extract_image(entry, summary_raw: str, content_raw: str) -> str:
+    """从 RSS entry 中提取首图 URL（media / enclosure / <img> 依次兜底）。"""
+    candidate = ""
+
+    def _pick(values) -> str:
+        for v in values or []:
+            if isinstance(v, dict):
+                url = v.get("url") or v.get("href")
+                if url:
+                    return str(url)
+            elif isinstance(v, str):
+                return v
+        return ""
+
+    candidate = _pick(entry.get("media_content") or entry.get("media_thumbnail") or [])
+    if not candidate:
+        enc = entry.get("enclosure")
+        if isinstance(enc, dict):
+            t = str(enc.get("type") or "")
+            url = enc.get("url") or enc.get("href")
+            if url and ("image" in t or url.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))):
+                candidate = str(url)
+        elif isinstance(enc, list):
+            for e in enc:
+                if isinstance(e, dict):
+                    t = str(e.get("type") or "")
+                    url = e.get("url") or e.get("href")
+                    if url and ("image" in t or url.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))):
+                        candidate = str(url)
+                        break
+    if not candidate:
+        img = entry.get("image")
+        if isinstance(img, dict) and img.get("href"):
+            candidate = str(img["href"])
+    if not candidate:
+        m = _IMG_SRC_RE.search(content_raw or "") or _IMG_SRC_RE.search(summary_raw or "")
+        if m:
+            candidate = m.group(1).strip()
+    if not candidate:
+        return ""
+    if candidate.startswith("//"):
+        candidate = "https:" + candidate
+    if _UNSAFE_PROTO.match(candidate) and not candidate.lower().startswith("data:image/"):
+        return ""
+    return candidate[:2048]
 
 
 def _sanitize_html(text: str) -> str:
@@ -199,6 +247,7 @@ def _fetch_source_articles(source: FeedSource) -> List[dict]:
             "summary": summary,
             "content": content,
             "content_html": _sanitize_html(content_raw) or _sanitize_html(summary_raw),
+            "image": _extract_image(entry, summary_raw, content_raw),
             "is_foreign": is_foreign,
             "title_zh": "",
             "summary_zh": "",
@@ -229,6 +278,7 @@ def _upsert_articles(db: Session, source: FeedSource, articles: List[dict]) -> i
             summary=art["summary"],
             content=art["content"],
             content_html=art.get("content_html") or "",
+            image=art.get("image") or "",
             is_foreign=art.get("is_foreign") or 0,
             title_zh=art.get("title_zh") or "",
             summary_zh=art.get("summary_zh") or "",

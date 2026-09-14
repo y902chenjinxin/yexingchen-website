@@ -131,6 +131,8 @@
                 </span>
                 <span v-if="a.summary_zh || a.summary" class="fd-a-excerpt">{{ a.summary_zh || a.summary }}</span>
               </span>
+              <img v-if="a.image" class="fd-a-thumb" :src="a.image" alt=""
+                   loading="lazy" referrerpolicy="no-referrer" @error="onImgError" />
             </button>
             <div v-if="!list.length" class="fd-col-empty">暂无文章，点「刷新全部」拉取最新内容</div>
           </div>
@@ -200,6 +202,8 @@
 
             <!-- 原文摘要 + 正文（富文本 / 纯文本 / 译文） -->
             <div class="fd-reader-body">
+              <img v-if="active.image" class="fd-hero" :src="active.image" alt="文章插图"
+                   loading="lazy" referrerpolicy="no-referrer" @error="onImgError" />
               <p v-if="active.summary_zh || active.summary" class="fd-body-sum">{{ active.summary_zh || active.summary }}</p>
               <template v-if="zhMode && active.content_zh">
                 <p class="fd-body">{{ active.content_zh }}</p>
@@ -297,6 +301,10 @@ function fmtTime(iso) {
   if (isNaN(d)) return iso.slice(0, 10)
   const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function onImgError(e) {
+  e.target.style.display = 'none'
 }
 
 async function loadSources() {
@@ -628,21 +636,24 @@ onMounted(() => {
 .fd-search { width: 130px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); font-size: 12px; outline: none; }
 .fd-search:focus { border-color: var(--lj-seal); }
 
-.fd-article-list { display: flex; flex-direction: column; gap: 4px; max-height: 640px; overflow-y: auto; }
-.fd-article { display: flex; gap: 10px; padding: 12px 10px; border-radius: 12px; border: 1px solid transparent;
+.fd-article-list { display: flex; flex-direction: column; gap: 10px; max-height: 640px; overflow-y: auto; }
+.fd-article { display: flex; gap: 12px; padding: 14px 12px; border-radius: 12px; border: 1px solid transparent;
   background: transparent; color: var(--lj-text); cursor: pointer; text-align: left; font-family: var(--font-serif);
-  transition: all .2s; align-items: flex-start; min-height: 46px; }
+  transition: all .2s; align-items: flex-start; min-height: 70px; }
+.fd-a-thumb { flex: none; width: 80px; height: 60px; border-radius: 8px; object-fit: cover; overflow: hidden;
+  background: rgba(127,168,163,.1); }
+.fd-a-thumb:error { display: none; }
 .fd-article:hover { background: rgba(127,168,163,.06); }
 .fd-article.active { background: rgba(127,168,163,.12); border-color: var(--lj-seal); }
 .fd-a-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--lj-ochre); margin-top: 7px; }
-.fd-a-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.fd-a-title { font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fd-a-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.fd-a-title { font-size: 14px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .fd-article.unread .fd-a-title { font-weight: 600; }
-.fd-a-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--lj-text-3); }
+.fd-a-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--lj-text-3); line-height: 1; }
 .fd-a-source { color: var(--lj-dai); }
 .fd-a-badge { background: rgba(199,169,107,.15); color: var(--lj-ochre); padding: 0 6px; border-radius: 999px; font-size: 10px; }
 .fd-a-star { color: var(--lj-ochre); }
-.fd-a-excerpt { font-size: 11px; color: var(--lj-text-3); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fd-a-excerpt { font-size: 12px; color: var(--lj-text-3); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 .fd-pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; }
 .fd-pager-info { font-size: 12px; color: var(--lj-text-3); }
@@ -670,6 +681,7 @@ onMounted(() => {
 .fd-sum-empty { font-size: 12px; color: var(--lj-text-3); }
 
 .fd-reader-body { display: flex; flex-direction: column; gap: 12px; }
+.fd-hero { width: 100%; max-height: 320px; object-fit: cover; border-radius: 12px; border: 1px solid var(--lj-line); }
 .fd-body-sum { margin: 0; font-size: 13px; line-height: 1.7; color: var(--lj-text-2); border-left: 2px solid var(--lj-dai); padding-left: 10px; }
 .fd-body { margin: 0; font-size: 13px; line-height: 1.85; white-space: pre-wrap; word-break: break-word; }
 /* 富文本正文（服务端白名单清洗后渲染） */

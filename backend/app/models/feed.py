@@ -65,6 +65,7 @@ class FeedArticle(Base):
     content_zh = Column(Text, nullable=True, default="")       # 外文源按需翻译正文（缓存）
     is_foreign = Column(Integer, nullable=False, default=0)    # 1=原文非中文
     ai_summary = Column(Text, nullable=True, default="")
+    image = Column(String(2048), nullable=True, default="")  # 首图 URL（直接热链云端展示）
     published_at = Column(DateTime, nullable=True)
     read = Column(Integer, nullable=False, default=0)
     bookmarked = Column(Integer, nullable=False, default=0)

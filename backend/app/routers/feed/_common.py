@@ -1,6 +1,7 @@
 """feed 子路由共享工具。"""
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 from fastapi import HTTPException
@@ -48,6 +49,19 @@ def _source_to_dict(s: FeedSource) -> dict:
     }
 
 
+_IMG_SRC_RE = re.compile(r'<img[^>]+src=["\']([^"\']+)["\']', re.I)
+
+
+def _first_img_url(content_html: str) -> str:
+    m = _IMG_SRC_RE.search(content_html or "")
+    if not m:
+        return ""
+    url = m.group(1).strip()
+    if url.startswith("//"):
+        url = "https:" + url
+    return url[:2048]
+
+
 def _article_to_dict(a: FeedArticle, *, full: bool = False) -> dict:
     d = {
         "id": a.id,
@@ -57,6 +71,7 @@ def _article_to_dict(a: FeedArticle, *, full: bool = False) -> dict:
         "link": a.link or "",
         "author": a.author or "",
         "summary": a.summary or "",
+        "image": (a.image or "") or _first_img_url(a.content_html),
         "title_zh": a.title_zh or "",
         "summary_zh": a.summary_zh or "",
         "is_foreign": a.is_foreign or 0,
