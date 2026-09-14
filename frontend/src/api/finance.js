@@ -51,10 +51,25 @@ export const financeApi = {
   remove: (id) => api.delete(`/finance/transactions/${id}`),
   importCsv: (csvText) => api.post('/finance/import', { csv: csvText }),
   analyzeImport: (csvText) => api.post('/finance/import/analyze', { csv: csvText }),
-  analyzeImportFile: (file) => {
+  // 文件上传走原生 fetch（不设 Content-Type，交给浏览器填充 multipart/form-data; boundary=...）
+  // —— 共享 api 实例默认 `application/json`，直接 post FormData 会被当 JSON 发 → 后端 422
+  analyzeImportFile: async (file) => {
     const fd = new FormData()
     fd.append('file', file)
-    return api.post('/finance/import/analyze-file', fd)
+    const token = localStorage.getItem('token')
+    const resp = await fetch('/api/finance/import/analyze-file', {
+      method: 'POST',
+      body: fd,
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+    })
+    let body = {}
+    try { body = await resp.json() } catch { /* ignore */ }
+    if (!resp.ok) {
+      const d = body.detail
+      const msg = typeof d === 'string' ? d : (d?.msg || d?.[0]?.msg || '识别失败，请重试')
+      throw Object.assign(new Error(msg), { status: resp.status })
+    }
+    return body
   },
   confirmImport: (rows) => api.post('/finance/import/confirm', { rows }),
 }

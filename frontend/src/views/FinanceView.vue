@@ -421,7 +421,9 @@ async function onImportFile(e) {
     importing.is_fake = !!d.is_fake
     if (!importing.rows.length && !importing.errors.length) ElMessage.warning('未识别到有效流水，请检查文件内容')
   } catch (err) {
-    ElMessage.error('识别失败，请重试')
+    const d = err?.response?.data?.detail
+    const msg = typeof d === 'string' ? d : (d?.msg || err?.message || '识别失败，请重试')
+    ElMessage.error(`识别失败：${msg}`)
   } finally {
     importing.analyzing = false
   }
