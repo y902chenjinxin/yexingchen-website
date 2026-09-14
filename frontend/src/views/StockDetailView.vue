@@ -233,6 +233,9 @@ onMounted(loadAll)
 .sd-block-title { font-size: 16px; letter-spacing: .08em; color: var(--lj-text); }
 .sd-block-sub { font-size: 12px; color: var(--lj-text-3); }
 .sd-loading, .sd-empty-row { padding: 26px; text-align: center; color: var(--lj-text-3); font-size: 13px; }
+.sd-loading::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -2px;
+  border-radius: 50%; border: 2px solid var(--lj-line-strong); border-top-color: var(--lj-dai); animation: sd-spin .9s linear infinite; }
+@keyframes sd-spin { to { transform: rotate(360deg); } }
 
 /* 每日研判 */
 .sd-an-period {

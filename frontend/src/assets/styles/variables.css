@@ -107,8 +107,8 @@
   --transition-slow: all 0.8s ease;
 
   /* ========== 字体 ========== */
-  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  --font-sans: 'Noto Sans SC', 'Source Han Sans SC', sans-serif;
+  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Source Han Serif CN', 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-sans: 'Noto Sans SC', 'Source Han Sans SC', 'Noto Sans CJK SC', 'Source Han Sans CN', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-size-xs: 12px;
   --font-size-sm: 14px;
   --font-size-base: 16px;
@@ -537,12 +537,12 @@
   /* ---- 文字：淡霜阶梯 ---- */
   --color-text: #e8eef2;
   --color-text-dark: #0b0f14;
-  --color-text-secondary: #9aa6ad;
-  --color-text-muted: #5f6c74;
+  --color-text-secondary: #adb7bd;
+  --color-text-muted: #89949c;
   --color-text-light: rgba(232, 238, 242, 0.92);
   --xiu-text: #e8eef2;
-  --xiu-text-2: #9aa6ad;
-  --xiu-text-3: #5f6c74;
+  --xiu-text-2: #adb7bd;
+  --xiu-text-3: #89949c;
 
   /* ---- 主色：向晚雨青 + 幽光亮阶 + 收敛鎏金 ---- */
   --yq-rain: #7fa8a3;                      /* 主·雨青 */

@@ -240,7 +240,12 @@
           </template>
           <div v-else class="fd-col-empty reader-placeholder">
             <span class="fd-rp-icon">📰</span>
-            从左侧选择一篇文章开始阅读
+            <b class="fd-rp-title">资讯馆</b>
+            <p class="fd-rp-line">从左侧选择一篇文章开始阅读</p>
+            <div class="fd-rp-stats">
+              <div class="fd-rp-stat"><b>{{ sources.length }}</b><span>订阅源</span></div>
+              <div class="fd-rp-stat"><b>{{ total }}</b><span>文章</span></div>
+            </div>
           </div>
         </section>
       </div>
@@ -666,7 +671,7 @@ onMounted(() => {
 .fd-article.unread::before { background: var(--lj-ochre); }
 .fd-article.active::before { background: var(--lj-seal); width: 4px; }
 .fd-a-thumb { flex: none; width: 96px; height: 70px; border-radius: 10px; object-fit: cover; overflow: hidden;
-  background: rgba(127,168,163,.1); border: 1px solid var(--lj-line); margin-top: 2px; }
+  border: 1px solid rgba(127,168,163,.20); box-shadow: inset 0 0 0 1px rgba(255,255,255,.03); margin-top: 2px; }
 .fd-a-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 7px; background: var(--lj-ochre); }
 .fd-a-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
 .fd-a-title { font-size: 16px; font-weight: 700; line-height: 1.42; letter-spacing: .01em;
@@ -689,6 +694,13 @@ onMounted(() => {
 .fd-reader { display: flex; flex-direction: column; gap: 18px; max-height: 760px; overflow-y: auto; }
 .reader-placeholder { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 120px; }
 .fd-rp-icon { font-size: 40px; opacity: .5; }
+.fd-rp-title { font-size: 16px; letter-spacing: 4px; color: var(--lj-text); font-family: var(--font-serif); }
+.fd-rp-line { font-size: 12px; color: var(--lj-text-3); }
+.fd-rp-stats { display: flex; gap: 10px; margin-top: 6px; }
+.fd-rp-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 78px;
+  padding: 10px 12px; border-radius: 12px; background: rgba(127,168,163,.08); border: 1px solid rgba(127,168,163,.16); }
+.fd-rp-stat b { font-size: 20px; font-weight: 600; color: var(--lj-dai); font-family: var(--font-serif); }
+.fd-rp-stat span { font-size: 11px; color: var(--lj-text-3); letter-spacing: 1px; }
 .fd-r-titles { min-width: 0; }
 .fd-reader-head { padding-bottom: 14px; border-bottom: 1px solid rgba(127,168,163,.14); }
 .fd-r-title { margin: 0; font-size: 21px; line-height: 1.45; letter-spacing: .02em; }

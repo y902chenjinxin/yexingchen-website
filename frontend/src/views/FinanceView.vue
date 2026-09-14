@@ -30,7 +30,7 @@
             <button class="fin-dim-btn" :class="{ on: dim === 'year' }" @click="setDim('year')">年</button>
           </div>
           <button class="fin-nav" @click="shift(-1)">‹</button>
-          <div class="fin-dd-wrap">
+          <div class="fin-dd-wrap" @keydown.esc="ddOpen = false">
             <button class="fin-month-label" @click.stop="toggleDd">
               {{ periodLabel }}<span v-if="!isNowPeriod" class="fin-this" @click.stop="goNow">回{{ dim === 'day' ? '今天' : (dim === 'year' ? '今年' : '本月') }}</span>
               <span class="fin-dd-caret">▾</span>
@@ -311,7 +311,7 @@
                 :page-size="pageSize"
                 :current-page="page"
                 background
-                small
+                size="small"
                 @current-change="onPage"
               />
             </div>
@@ -483,6 +483,11 @@ async function loadSummary() {
   const res = await financeApi.summary(params)
   summary.value = { ...res.data, categories: (res.data.categories || []).map((c, i) => ({ ...c, color: PALETTE[i % PALETTE.length] })) }
 }
+function onPage(p) {
+  page.value = p
+  loadList()
+}
+
 async function loadList() {
   const params = { page: page.value, size: pageSize }
   if (filters.type) params.type = filters.type

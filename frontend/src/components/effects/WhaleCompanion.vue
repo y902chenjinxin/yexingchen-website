@@ -1,5 +1,8 @@
 <template>
-  <div class="whale-stage" ref="stageEl">
+  <div class="whale-stage" ref="stageEl" :class="{ hidden, recede }">
+    <button v-if="hidden" class="whale-summon" @click="revealPet" title="召唤桌宠" aria-label="召唤桌宠">🐋</button>
+
+    <template v-if="!hidden">
     <div
       ref="frameEl"
       class="whale-frame"
@@ -51,8 +54,11 @@
           <span class="opt-radio"></span>
           <span class="opt-body"><b>散步模式</b><small>在页面底部来回走动</small></span>
         </label>
+
+        <button class="panel-hide" @click="hidePet">隐藏桌宠</button>
       </div>
     </Transition>
+    </template>
   </div>
 </template>
 
@@ -127,7 +133,33 @@ let activeIdx = 0
 let fadeToken = 0
 
 const MODE_KEY = 'whale-pet-mode'
+const HIDE_KEY = 'whale-pet-hidden'
 const FADE_MS = 380
+
+const hidden = ref(false)
+const recede = ref(false)
+let recedeTimer = null
+
+function loadBool(key) { try { return localStorage.getItem(key) === '1' } catch (e) { return false } }
+function saveBool(key, v) { try { localStorage.setItem(key, v ? '1' : '0') } catch (e) {} }
+
+function hidePet() {
+  hidden.value = true
+  showPanel.value = false
+  saveBool(HIDE_KEY, true)
+}
+function revealPet() {
+  hidden.value = false
+  saveBool(HIDE_KEY, false)
+}
+
+// 滚动时让位：桌宠短暂淡出/缩小，停止滚动后恢复，避免压在内容上
+function onScrollRecede() {
+  if (hidden.value) return
+  recede.value = true
+  clearTimeout(recedeTimer)
+  recedeTimer = setTimeout(() => { recede.value = false }, 500)
+}
 
 function keyOf(pair) { return pair[0] + '/' + pair[1] }
 
@@ -353,19 +385,26 @@ onMounted(() => {
     const saved = localStorage.getItem(MODE_KEY)
     if (saved === 'auto' || saved === 'random') mode.value = saved
   } catch (e) {}
+  hidden.value = loadBool(HIDE_KEY)
   setAction(pick(AUTO_POOL), true)
-  scheduleAuto()
-  const hintId = setInterval(() => { if (!draggingState) showHint() }, 12000)
-  const firstHint = setTimeout(showHint, 1500)
-  onBeforeUnmount(() => {
-    fadeToken++
-    clearInterval(hintId)
-    clearTimeout(firstHint)
-    if (autoTimer) clearTimeout(autoTimer)
-    if (hintTimer) clearTimeout(hintTimer)
-    document.removeEventListener('pointermove', onPointerMove)
-    document.removeEventListener('pointerup', onHandlePointerUp)
-  })
+  if (!hidden.value) {
+    scheduleAuto()
+    const hintId = setInterval(() => { if (!draggingState) showHint() }, 12000)
+    const firstHint = setTimeout(showHint, 1500)
+    window.addEventListener('scroll', onScrollRecede, { passive: true })
+    onBeforeUnmount(() => {
+      fadeToken++
+      clearInterval(hintId)
+      clearTimeout(firstHint)
+      if (autoTimer) clearTimeout(autoTimer)
+      if (hintTimer) clearTimeout(hintTimer)
+      if (recedeTimer) clearTimeout(recedeTimer)
+      document.removeEventListener('pointermove', onPointerMove)
+      document.removeEventListener('pointerup', onHandlePointerUp)
+      window.removeEventListener('scroll', onScrollRecede)
+    })
+  }
+  onBeforeUnmount(() => window.removeEventListener('scroll', onScrollRecede))
 })
 </script>
 
@@ -526,4 +565,47 @@ onMounted(() => {
 .opt.on .opt-body b { color: var(--ls-dai, #5f9499); }
 .opt-body small { font-size: 11px; color: var(--ls-text-3, #7f8d94); line-height: 1.35; }
 .walk-opt { margin-top: 4px; }
+
+/* 隐藏桌宠：只剩一个小召唤按钮 */
+.whale-stage.hidden { right: 18px; bottom: 18px; }
+.whale-summon {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--ls-line, rgba(206,220,226,.14));
+  background: var(--ls-glass, rgba(32,42,51,.55));
+  color: var(--ls-dai, #5f9499);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0,0,0,.3);
+  opacity: .8;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.whale-summon:hover { opacity: 1; transform: translateY(-1px); }
+
+/* 滚动让位：淡出缩小 */
+.whale-stage.recede { opacity: .35; }
+.whale-frame { transition: filter .4s ease, opacity .25s ease, transform .25s ease; }
+.whale-stage.recede .whale-frame { transform: scale(.6); }
+
+/* 隐藏桌宠按钮 */
+.panel-hide {
+  margin-top: 6px;
+  width: 100%;
+  border: 1px solid rgba(170,96,84,.35);
+  background: rgba(170,96,84,.10);
+  color: var(--ls-ochre, #c2a26b);
+  font-family: var(--font-serif, 'Noto Serif SC', serif);
+  font-size: 12px;
+  letter-spacing: 2px;
+  padding: 7px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .2s ease;
+}
+.panel-hide:hover { background: rgba(170,96,84,.2); }
 </style>

@@ -17,6 +17,24 @@ body {
   transition: background-color .45s ease, color .45s ease;
 }
 
+/* ========== Accessibility: 键盘焦点可见 ========== */
+:focus-visible {
+  outline: 2px solid var(--lj-dai, #5f9499);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+::selection { background: var(--lj-dai, #5f9499); color: #fff; }
+
+/* ========== 动效: 尊重用户「减少动态效果」偏好 ========== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  html { scroll-behavior: auto !important; }
+}
+
 /* ========== Scrollbar - 深色风格 ========== */
 ::-webkit-scrollbar {
   width: 6px;
