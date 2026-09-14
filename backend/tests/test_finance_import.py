@@ -170,3 +170,22 @@ def test_import_analyze_file_old_xls_rejected(fin_ctx):
     data = _data(resp)
     assert data["rows"] == []
     assert any("另存" in e for e in data["errors"])
+
+
+def test_local_parse_wechat_style_preamble_and_arbitrary_header():
+    """微信账单式：表头上方有说明头 + 任意列名 + 独立「收/支」方向列 → 本地解析也能正确映射。"""
+    from app.routers.finance import _local_parse_csv
+    csv_text = (
+        "微信支付账单明细\n"
+        "微信昵称:[夜空下] 起始时间:[2026-01-01] 导出类型:[全部账单]\n"
+        "共2笔记录\n"
+        "交易时间,交易类型,交易对方,商品,收/支,金额(元),支付方式,当前状态\n"
+        "2026-08-31 18:16:42,商户消费,青羊区某店,秦食荟订单,支出,15,零钱,支付成功\n"
+        "2026-08-29 10:32:11,其他,某活动,收款备注,收入,0.16,/,已到账\n"
+    )
+    rows, skipped, errors = _local_parse_csv(csv_text)
+    assert len(rows) == 2 and skipped == 0 and errors == []
+    assert rows[0]["type"] == "expense" and rows[0]["amount_cents"] == 1500
+    assert rows[0]["occurred"].strftime("%Y-%m-%d") == "2026-08-31"
+    assert rows[0]["note"] == "秦食荟订单"
+    assert rows[1]["type"] == "income" and rows[1]["amount_cents"] == 16

@@ -338,15 +338,71 @@ class ImportRowsIn(BaseModel):
     rows: list[dict] = Field(default_factory=list)
 
 
+_HEADER_KWS = {
+    "date": ["日期", "时间", "交易日", "记账日", "交易创建", "date"],
+    "amount": ["金额", "money", "总额", "净额", "occurred"],
+    "direction": ["收/支", "收支", "收 支", "借贷", "方向", "收付"],
+    "type": ["交易类型", "类型", "流水类型", "商户单号", "类别"],
+    "category": ["分类", "类目", "细分", "category"],
+    "note": ["备注", "商品", "摘要", "说明", "用途", "交易对方", "对方", "项目", "名称"],
+}
+
+
 def _locate_header(lines):
-    """识别表头：首行含「日期」「类型」「金额」任一关键词则视为表头，返回 (行号, 列映射)。"""
-    first = [c.strip() for c in lines[0]]
-    if not any(("日期" in c or "金额" in c or "类型" in c) for c in first):
-        return -1, None
-    col_map = {}
-    for field, kw in (("date", "日期"), ("type", "类型"), ("category", "分类"), ("amount", "金额"), ("note", "备注")):
-        col_map[field] = first.index(next((c for c in first if kw in c), None)) if any(kw in c for c in first) else None
-    return 0, col_map
+    """扫描全表找首个「含日期 + 金额列」的表头行，返回 (行号, 列映射)。
+
+    容忍表头上方存在说明/元信息（如微信/支付宝账单的导出头部），
+    并尽量按「列名语义」映射到 date/amount/direction/type/category/note。
+    """
+    joined_required = ("日期", "时间", "金额", "type", "money")
+    for idx, line in enumerate(lines):
+        cells = [c.strip() for c in line]
+        joined = " ".join(cells)
+        if not any(k in joined for k in joined_required):
+            continue
+        col_map = {}
+        for field in ("date", "amount", "direction", "type", "category", "note"):
+            col_map[field] = None
+            for k in _HEADER_KWS[field]:
+                if not k or k in ("/", " "):
+                    continue
+                hit = next((j for j, c in enumerate(cells) if k in c), None)
+                if hit is not None:
+                    col_map[field] = hit
+                    break
+        if col_map["date"] is not None and col_map["amount"] is not None:
+            return idx, col_map
+    return -1, None
+
+
+def _trim_to_header(text: str) -> str:
+    """去掉表头上方的说明/元信息行，返回从表头起的文本，供 AI 读取（减少噪声）。"""
+    lines = [ln for ln in csv.reader(io.StringIO(text.lstrip("\ufeff"))) if any(c.strip() for c in ln)]
+    hr, _ = _locate_header(lines)
+    if hr is None or hr < 0:
+        return text
+    return "\n".join(",".join(cell for cell in ln) for ln in lines[hr:])
+
+
+def _ttype_of(direction_s, type_s, amount):
+    """由「收/支 方向列」「类型列」与金额符号判定收支，优先级：方向列 > 类型列 > 金额正负。"""
+    def p(s):
+        return s and ("收" in s or s.lower().startswith("inc") or s.lower().startswith("cr"))
+    def e(s):
+        return s and ("支" in s or s.lower().startswith("exp") or s.lower().startswith("db"))
+    if direction_s:
+        if p(direction_s):
+            return "income"
+        if e(direction_s):
+            return "expense"
+        if direction_s.strip():
+            return "income" if amount > 0 else "expense"
+    if type_s:
+        if p(type_s):
+            return "income"
+        if e(type_s):
+            return "expense"
+    return "income" if amount > 0 else "expense"
 
 
 def _local_parse_csv(text: str):
@@ -361,39 +417,39 @@ def _local_parse_csv(text: str):
 
     header_row, col_map = _locate_header(lines)
 
-    def cell(row, field, fallback):
+    def cell(row, field):
         idx = col_map[field] if col_map else None
-        if idx is None:
-            return fallback
-        return (row[idx] if idx < len(row) else "").strip()
+        if idx is None or idx >= len(row):
+            return ""
+        return row[idx].strip()
+
+    if col_map is None:
+        return [], len(lines), ["未识别到表头（应有含「日期」与「金额」的列名），请先整理为标准流水或交由 AI 识别"]
 
     rows, skipped, errors = [], 0, []
     now = datetime.now()
     for i, raw in enumerate(lines):
+        if i < header_row:
+            continue  # 跳过表头上方说明/元信息
         if i == header_row:
-            continue
+            continue  # 表头
         row = [c.strip() for c in raw]
         if not row or all(c == "" for c in row):
             continue
-        date_s = cell(row, "date", row[0] if row else "")
-        type_s = cell(row, "type", (row[1] if len(row) > 1 else ""))
-        amount_s = cell(row, "amount", (row[3] if len(row) > 3 else ""))
-        cat_s = cell(row, "category", (row[2] if len(row) > 2 else ""))
-        note_s = cell(row, "note", (row[4] if len(row) > 4 else ""))
+        date_s = cell(row, "date")
+        type_s = cell(row, "type")
+        direction_s = cell(row, "direction")
+        amount_s = cell(row, "amount")
+        cat_s = cell(row, "category")
+        note_s = cell(row, "note") or cell(row, "type")
         try:
-            amount = float(amount_s.replace(",", ""))
+            amount = float(amount_s.replace(",", "").replace("¥", "").strip())
             if amount == 0:
                 skipped += 1
                 continue
-            ttype = "income" if amount > 0 else "expense"
-            if type_s and ("收" in type_s or "income" in type_s.lower()):
-                ttype = "income"
-            elif type_s and ("支" in type_s or "expense" in type_s.lower()):
-                ttype = "expense"
-            amount = abs(amount)
+            ttype = _ttype_of(direction_s, type_s, amount)
             occurred = _parse_dt(date_s) if date_s else now
             if occurred is None:
-                # 兼容 YYYY/MM/DD
                 try:
                     occurred = datetime.strptime(date_s, "%Y/%m/%d")
                 except (ValueError, TypeError):
@@ -402,12 +458,12 @@ def _local_parse_csv(text: str):
                 "occurred": occurred,
                 "type": ttype,
                 "category": _valid_category(ttype, cat_s or "其他"),
-                "amount_cents": int(round(amount * 100)),
+                "amount_cents": int(round(abs(amount) * 100)),
                 "note": (note_s or "")[:255],
             })
         except (ValueError, TypeError):
             skipped += 1
-            errors.append(f"第{i + 1}行：金额无效「{amount_s}」")
+            errors.append(f"第{header_row + i + 1}行：金额无效「{amount_s}」")
     return rows, skipped, errors
 
 
@@ -524,13 +580,10 @@ def _xlsx_to_text(binary: bytes) -> str:
     try:
         ws = wb.active
         lines = []
-        seen_head = False
         for row in ws.iter_rows(values_only=True):
             cells = ["" if c is None else str(c).strip() for c in row]
             if not any(cells):
                 continue
-            if not seen_head:
-                seen_head = True
             out = [('"' + c.replace('"', '""') + '"') if any(ch in c for ch in (",", "\n", '"')) else c for c in cells]
             lines.append(",".join(out))
         return "\n".join(lines)
@@ -553,9 +606,10 @@ def _analyze_table_text(db: Session, uid: int, text: str) -> dict:
     rows, skipped, errors, summary = [], 0, [], ""
     if not is_fake:
         try:
+            ai_text = _trim_to_header(text)  # 去掉表头上方说明/元信息，减少 AI 干扰
             resp = provider.invoke(AiRequest(
                 ability="finance_csv_import",
-                content=FINANCE_AI_INSTRUCT + f"\n原始数据：\n{text}",
+                content=FINANCE_AI_INSTRUCT + f"\n原始数据：\n{ai_text}",
             ))
             data = resp.data or {}
             ai_rows = _normalize_rows(data.get("rows") or [])
