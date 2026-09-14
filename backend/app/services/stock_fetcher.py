@@ -217,8 +217,12 @@ def _kline_eastmoney(market: str, code: str, lmt: int) -> list:
     return out
 
 
-def _kline_tencent(market: str, code: str, lmt: int) -> list:
-    sym = _sym_for(market, code)
+# 腾讯美股代码需带交易所后缀才有完整历史：.OQ=纳斯达克 / .N=纽交所 / .A=美交所；
+# 无后缀的 "usAAPL" 只返回最近 1~2 根。依次探测取根数最多者。
+TENCENT_US_SUFFIXES = ("", ".OQ", ".N", ".A")
+
+
+def _tencent_fetch(sym: str, lmt: int) -> list:
     resp = requests.get(
         "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get",
         params={"param": f"{sym},day,,,{lmt},qfq"},
@@ -242,6 +246,26 @@ def _kline_tencent(market: str, code: str, lmt: int) -> list:
             "volume": _f2(row[5]) if len(row) > 5 else None,
             "amount": None,
         })
+    return out
+
+
+def _kline_tencent(market: str, code: str, lmt: int) -> list:
+    market = (market or "").lower()
+    code = str(code).strip().upper()
+    if market.startswith("us"):
+        best = []
+        for suf in TENCENT_US_SUFFIXES:
+            try:
+                got = _tencent_fetch(f"us{code}{suf}", lmt)
+            except (requests.RequestException, ValueError):
+                continue
+            if len(got) > len(best):
+                best = got
+        if not best:
+            raise RuntimeError("腾讯：该美股无 K 线数据")
+        return best
+    sym = _sym_for(market, code)
+    out = _tencent_fetch(sym, lmt)
     if not out:
         raise RuntimeError("腾讯：该代码无 K 线数据")
     return out

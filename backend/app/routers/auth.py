@@ -215,3 +215,36 @@ async def logout(
     log_action(db, user_id, "logout", detail="用户登出（token 吊销）")
     return ResponseBase(msg="登出成功")
 
+
+@router.post("/extend", response_model=ResponseBase)
+async def extend_token(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """滑动续期：吊销当前 token，签发新 token，避免登录会话中途过期。
+
+    前端定时（临近过期前）调用此接口，换取新 token 并更新本地存储，
+    实现“活跃用户不掉线”的体验；旧 token 的 jti 会被加入黑名单失效。
+    """
+    from app.utils.security import revoke_token, create_access_token
+
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise_error(ErrCode.AUTH_INVALID_TOKEN, "缺少 token")
+
+    user_id = current_user["user_id"]
+    revoke_token(db, auth[len("Bearer "):].strip(), user_id)
+
+    new_token = create_access_token({
+        "user_id": user_id,
+        "role": current_user["role"],
+        "is_super_admin": current_user["is_super_admin"],
+    })
+
+    client_ip = get_client_ip(request)
+    log_action(db, user_id, "token_extend", detail="会话滑动续期", ip_address=client_ip)
+    db.commit()
+    return ResponseBase(msg="续期成功", data={"token": new_token})
+
+

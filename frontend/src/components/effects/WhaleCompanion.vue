@@ -34,7 +34,7 @@
 
     <Transition name="panel">
       <div v-if="showPanel" class="whale-panel" @pointerdown.stop>
-        <button class="panel-close" @click="showPanel = false" aria-label="关闭">✕</button>
+        <button class="panel-close" @click="closePanel" aria-label="关闭">✕</button>
         <div class="panel-title">桌宠设置</div>
 
         <div class="panel-label">动作方式</div>
@@ -55,7 +55,7 @@
           <span class="opt-body"><b>散步模式</b><small>在页面底部来回走动</small></span>
         </label>
 
-        <button class="panel-hide" @click="hidePet">隐藏桌宠</button>
+        <button class="panel-hide" :class="{ armed: hideArmed }" @click="hidePet">{{ hideArmed ? '再次点击确认隐藏桌宠' : '隐藏桌宠' }}</button>
       </div>
     </Transition>
     </template>
@@ -138,14 +138,25 @@ const FADE_MS = 380
 
 const hidden = ref(false)
 const recede = ref(false)
+const hideArmed = ref(false)
 let recedeTimer = null
+let hideArmedTimer = null
 
 function loadBool(key) { try { return localStorage.getItem(key) === '1' } catch (e) { return false } }
 function saveBool(key, v) { try { localStorage.setItem(key, v ? '1' : '0') } catch (e) {} }
 
+// “隐藏桌宠”需要二次确认，避免用户误点面板时桌宠直接消失
 function hidePet() {
+  if (!hideArmed.value) {
+    hideArmed.value = true
+    clearTimeout(hideArmedTimer)
+    hideArmedTimer = setTimeout(() => { hideArmed.value = false }, 3000)
+    return
+  }
+  clearTimeout(hideArmedTimer)
+  hideArmed.value = false
   hidden.value = true
-  showPanel.value = false
+  closePanel()
   saveBool(HIDE_KEY, true)
 }
 function revealPet() {
@@ -327,6 +338,30 @@ function onHandlePointerUp() {
 
 function togglePanel() {
   showPanel.value = !showPanel.value
+  if (showPanel.value) {
+    // 面板打开时监听全局点击，点击非面板区域即关闭面板并复位二次确认
+    document.addEventListener('pointerdown', onPanelOutsideDown)
+  } else {
+    document.removeEventListener('pointerdown', onPanelOutsideDown)
+  }
+}
+
+function onPanelOutsideDown(e) {
+  const panel = document.querySelector('.whale-panel')
+  const handle = handleEl.value
+  if (panel && panel.contains(e.target)) return
+  if (handle && handle.contains(e.target)) return
+  showPanel.value = false
+  hideArmed.value = false
+  clearTimeout(hideArmedTimer)
+  document.removeEventListener('pointerdown', onPanelOutsideDown)
+}
+
+function closePanel() {
+  showPanel.value = false
+  hideArmed.value = false
+  clearTimeout(hideArmedTimer)
+  document.removeEventListener('pointerdown', onPanelOutsideDown)
 }
 
 function setMode(m) {
@@ -401,6 +436,7 @@ onMounted(() => {
       if (recedeTimer) clearTimeout(recedeTimer)
       document.removeEventListener('pointermove', onPointerMove)
       document.removeEventListener('pointerup', onHandlePointerUp)
+      document.removeEventListener('pointerdown', onPanelOutsideDown)
       window.removeEventListener('scroll', onScrollRecede)
     })
   }

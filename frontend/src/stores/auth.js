@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, getMe, logout as logoutApi, updateMe as updateMeApi, changePassword as changePasswordApi } from '@/api/auth'
-import { isTokenValid } from '@/utils/token'
+import { login as loginApi, getMe, logout as logoutApi, updateMe as updateMeApi, changePassword as changePasswordApi, extendToken as extendTokenApi } from '@/api/auth'
+import { isTokenValid, getTokenExpiresIn } from '@/utils/token'
+
+// 剩余有效期不足该秒数（24h）时触发滑动续期
+const EXTEND_THRESHOLD = 24 * 60 * 60
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -54,5 +57,25 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
   }
 
-  return { token, user, isLoggedIn, isSuperAdmin, loginAction, fetchUser, logoutAction, updateMe, changePassword }
+  // 滑动续期：距过期不足阈值时调用 /auth/extend 换取新 token，保持登录不掉线
+  function scheduleExtend() {
+    const t = token.value
+    if (!t) return
+    const left = getTokenExpiresIn(t)
+    if (left <= 0) return
+    // 剩余有效期不足下方秒数才续期，避免频繁请求
+    if (left > EXTEND_THRESHOLD) return
+    extendTokenApi()
+      .then((res) => {
+        if (res?.data?.token) {
+          token.value = res.data.token
+          localStorage.setItem('token', res.data.token)
+        }
+      })
+      .catch(() => {
+        // 续期失败（网络/服务异常）：保留旧 token，下次定时再试
+      })
+  }
+
+  return { token, user, isLoggedIn, isSuperAdmin, loginAction, fetchUser, logoutAction, updateMe, changePassword, scheduleExtend }
 })

@@ -1,4 +1,28 @@
-# CHANGELOG
+## [v2.13.0] - 2026-09-15
+
+### 安全修复
+- **AI Provider 路由权限漏洞**：`routers/workbench/providers.py` 5 个端点全部 `get_current_user` → `require_super_admin`，避免普通用户修改 Provider 配置
+- **注册密码强度校验**：`auth_service.verify_code` 加 8 位+大小写+数字校验，与 change_password 端点一致
+- **移除 verify_code 内 Base.metadata.create_all**：避免在生产路径里触发 DDL（alembic 接管）
+
+### 用户体验
+- **token 主动监控**（`App.vue`）：每 30 分钟检查 token 剩余时间，即将过期自动续期，保持登录不掉线
+- **token 主动延长**（`POST /auth/extend`）：剩余有效期不足 24h 时前端定时自动续期，用户无感知
+- **滑动续期**：续期后旧 token 的 jti 加入黑名单失效，签发新 token 并更新本地存储
+- **美股 K 线修复**：腾讯源对无后缀美股仅返回 1~2 根 K 线，改为依次尝试 `.OQ/.N/.A` 取数据量最多结果，点击股票名称可正常查看 K 线
+- **桌宠防误隐藏**：`隐藏桌宠` 按钮增加二次确认（再点一次确认），并支持点击面板外自动关闭；避免误触导致桌宠消失
+
+### 工程
+- **`utils/http.js` 工厂函数**：消除 6 个 api/*.js 重复的 axios + 401 拦截代码
+- **LoginView 拆分**：粒子背景 → `views/login/LoginParticleCanvas.vue`（692→528 行）
+- **ISSUES.md 同步**：P2-006 部署监控告警标记已修复
+
+### 性能（多轮累计）
+- Nginx GZip 启用（部署后首屏 -70% 带宽）
+- 3 个 FTS5 全文搜索表（Asset / Task / FeedArticle）
+- 5 个 list 端点 N+1 优化（notes / assets / tasks / search）
+- WhaleCompanion 异步加载
+CHANGELOG
 
 > 每次版本发布后记录变更内容
 
@@ -404,3 +428,5 @@
 - 登录特效修复
 - 管理后台新增用户功能
 - 仙气飘飘特效
+
+

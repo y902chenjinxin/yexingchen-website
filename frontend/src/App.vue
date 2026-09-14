@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, computed, defineAsyncComponent, onMounted } from 'vue'
+import { ref, computed, defineAsyncComponent, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useAuthStore } from '@/stores/auth'
@@ -74,8 +74,18 @@ onMounted(async () => {
     router.push('/workbench')
   }
 
+  // 已登录后启动 token 滑动续期定时器：周期性检查，临近过期自动续期，保持不掉线
+  let extendTimer = null
+  const EXTEND_INTERVAL = 30 * 60 * 1000 // 每 30 分钟检查一次
+  if (auth.isLoggedIn) {
+    auth.scheduleExtend()
+    extendTimer = setInterval(() => auth.scheduleExtend(), EXTEND_INTERVAL)
+  }
+
   // 跳过洞天将开开场动画，鉴权就绪后直接进入应用
   showInitialLoading.value = false
+
+  onBeforeUnmount(() => { if (extendTimer) clearInterval(extendTimer) })
 })
 </script>
 
