@@ -10,7 +10,7 @@
   >
     <div class="carousel-track" :style="carouselStyle">
       <div
-        v-for="(card, index) in cards"
+        v-for="(card, index) in displayCards"
         :key="card.key"
         class="jade-card"
         :class="{ 'is-active': index === currentIndex }"
@@ -57,7 +57,7 @@
     <!-- 当前位小圆点指示 -->
     <div class="carousel-dots">
       <span
-        v-for="(c, i) in cards"
+        v-for="(c, i) in displayCards"
         :key="c.key"
         class="dot"
         :class="{ active: i === currentIndex }"
@@ -68,8 +68,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useMenusStore } from '@/stores/menus'
 
 const props = defineProps({
   cards: {
@@ -93,12 +94,23 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const menus = useMenusStore()
 
 const carouselRef = ref(null)
 const currentIndex = ref(props.initialIndex)
 let dragStartX = 0
 let isDragging = false
 let returnTimer = null
+
+// 按角色过滤：被角色限制掉的模块不该在玉简上留卡片（点了也进不去）。
+// 菜单尚未加载成功时 isPathAllowed 一律放行，避免接口抖动把主视觉导航清空。
+const displayCards = computed(() => props.cards.filter(c => menus.isPathAllowed(c.path)))
+
+// 卡片数量变化后（角色过滤生效）把索引夹回合法范围，否则高亮会落在不存在的卡上
+watch(() => displayCards.value.length, (n) => {
+  if (!n) { currentIndex.value = 0; return }
+  if (currentIndex.value < 0 || currentIndex.value >= n) currentIndex.value = 0
+})
 
 const carouselStyle = computed(() => ({
   transform: `translateX(${-currentIndex.value * 178}px)`
@@ -152,13 +164,14 @@ function onCardPointerLeave(e) {
 }
 
 function go(delta) {
-  const n = props.cards.length
+  const n = displayCards.value.length
+  if (!n) return
   currentIndex.value = (currentIndex.value + delta + n) % n
   scheduleReturn()
 }
 
 function onCardClick(index) {
-  const card = props.cards[index]
+  const card = displayCards.value[index]
   if (card) {
     if (index !== currentIndex.value) {
       currentIndex.value = index
@@ -204,7 +217,8 @@ function scheduleReturn() {
   if (!props.autoReturn) return
   clearTimer()
   returnTimer = setTimeout(() => {
-    const n = props.cards.length
+    const n = displayCards.value.length
+    if (!n) return
     currentIndex.value = (currentIndex.value + 1) % n
     scheduleReturn()
   }, props.autoReturnMs)

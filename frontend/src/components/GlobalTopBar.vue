@@ -57,19 +57,41 @@
             </div>
           </template>
           <div v-if="!suggestions.count" class="suggest-empty">未找到相关结果，可直达下方模块</div>
-          <!-- 模块快捷入口（固定常驻） -->
+          <!-- 模块快捷入口：改为 DB 驱动（支持一级/二级分组，且已按角色过滤） -->
           <div class="suggest-modules">
             <div class="suggest-head">快速前往</div>
-            <div class="suggest-mod-row">
+
+            <!-- 无子项的一级菜单聚成一行 -->
+            <div v-if="menus.loose.length" class="suggest-mod-row">
               <a
-                v-for="mod in visibleShortcuts"
-                :key="mod.key"
+                v-for="mod in menus.loose"
+                :key="'m' + mod.id"
                 class="suggest-mod"
-                @mousedown.prevent="go(mod.to)"
+                @mousedown.prevent="go(mod.path)"
               >
-                <el-icon class="suggest-icon"><component :is="mod.icon" /></el-icon>
-                <span>{{ mod.label }}</span>
+                <el-icon class="suggest-icon"><component :is="menuIcon(mod.icon)" /></el-icon>
+                <span>{{ mod.title }}</span>
               </a>
+            </div>
+
+            <!-- 分组：标题 + 其下二级菜单 -->
+            <div v-for="grp in menus.groups" :key="'g' + grp.id" class="suggest-mod-group">
+              <div class="suggest-subhead">
+                <el-icon class="suggest-icon"><component :is="menuIcon(grp.icon)" /></el-icon>
+                <span>{{ grp.title }}</span>
+              </div>
+              <div class="suggest-mod-row">
+                <a
+                  v-for="sub in grp.children"
+                  :key="'s' + sub.id"
+                  class="suggest-mod"
+                  :class="{ active: isActivePath(sub.path) }"
+                  @mousedown.prevent="go(sub.path)"
+                >
+                  <el-icon class="suggest-icon"><component :is="menuIcon(sub.icon)" /></el-icon>
+                  <span>{{ sub.title }}</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -177,13 +199,13 @@ import {
   User, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
   Document, Check, Notebook, VideoPlay, MagicStick, Reading, HomeFilled,
   Collection, TrendCharts, MapLocation, VideoCamera, ChatDotRound, Setting,
-  Tickets, Wallet
+  Tickets, Wallet, Money, DataAnalysis, DataBoard, Grid
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { searchAll } from '@/api/search'
-import { getPublicMenus } from '@/api/admin'
+import { useMenusStore } from '@/stores/menus'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
 const router = useRouter()
@@ -253,33 +275,24 @@ function onCommand(cmd) {
 /* ---- 全局搜索联想（全站） ---- */
 const suggestions = ref({ results: null, count: 0 })
 
-// 模块快捷入口（常驻下拉底部）
-const moduleShortcuts = [
-  { key: 'assistant', label: 'AI 助手', to: '/assistant', icon: MagicStick },
-  { key: 'contacts', label: '通讯录', to: '/contacts', icon: User },
-  { key: 'tasks', label: '待办', to: '/tasks', icon: Tickets },
-  { key: 'subscriptions', label: '订阅', to: '/subscriptions', icon: Wallet },
-  { key: 'music', label: '音乐', to: '/music', icon: Headset },
-  { key: 'novel', label: '小说', to: '/novel', icon: Reading },
-  { key: 'video', label: '视频', to: '/video', icon: VideoPlay },
-  { key: 'tool', label: '工具', to: '/tool', icon: Tools },
-]
+// 模块快捷入口：由数据库菜单驱动（见 stores/menus.js），支持一级/二级分组
+const menus = useMenusStore()
 
-// 角色可见菜单（/api/admin/menus/public 按角色过滤）；null=未加载/失败→显示全部
-const publicMenuPaths = ref(null)
-const visibleShortcuts = computed(() => {
-  if (!publicMenuPaths.value) return moduleShortcuts
-  return moduleShortcuts.filter(s => publicMenuPaths.value.has(s.to))
-})
+// 菜单里的 icon 字段存的是 Element Plus 图标名；未知名字回落到 Grid，避免整块导航渲染不出来
+const ICON_MAP = {
+  Collection, TrendCharts, MapLocation, Tools, Headset, Reading, VideoCamera,
+  Document, ChatDotRound, Setting, User, Tickets, Wallet, Money, DataAnalysis, DataBoard,
+  MagicStick, VideoPlay, Notebook,
+}
+function menuIcon(name) {
+  return ICON_MAP[name] || Grid
+}
 
-async function loadPublicMenus() {
-  try {
-    const res = await getPublicMenus()
-    const list = res?.data?.list || []
-    publicMenuPaths.value = list.length ? new Set(list.map(m => m.path)) : null
-  } catch {
-    publicMenuPaths.value = null
-  }
+/** 当前路由是否落在该菜单下（用于高亮，如 /stocks 与 /stocks/600519） */
+function isActivePath(path) {
+  if (!path) return false
+  const cur = route.path
+  return cur === path || cur.startsWith(path + '/')
 }
 
 const suggestGroups = computed(() => {
@@ -376,7 +389,7 @@ function expand() { collapsed.value = false }
 
 onMounted(async () => {
   await bgm.initBgm()
-  loadPublicMenus()
+  menus.load()
   checkMobile()
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', checkMobile)
@@ -506,12 +519,20 @@ onUnmounted(() => {
 /* 模块快捷入口 */
 .suggest-modules { padding: 6px 0 8px; border-top: 1px solid var(--lj-line); }
 .suggest-mod-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 16px; }
+/* 二级分组：与普通入口同排布局，仅多一行小标题作为层级提示 */
+.suggest-mod-group { margin-top: 6px; }
+.suggest-mod-group + .suggest-mod-group { margin-top: 8px; }
+.suggest-subhead {
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 16px 4px; font-size: 11px; letter-spacing: 0.12em; color: var(--lj-text-3);
+}
 .suggest-mod {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 6px 10px; border: 1px solid var(--lj-line); border-radius: 8px;
   font-size: 12px; color: var(--lj-text-2); cursor: pointer;
   background: rgba(127, 168, 163, 0.06); transition: all 0.2s;
 }
+.suggest-mod.active { color: var(--lj-seal); border-color: var(--lj-seal); background: var(--lj-seal-soft); }
 .suggest-mod:hover { color: var(--lj-seal); border-color: var(--lj-seal); background: var(--lj-seal-soft); }
 
 .fade-drop-enter-active, .fade-drop-leave-active { transition: all 0.18s ease; }

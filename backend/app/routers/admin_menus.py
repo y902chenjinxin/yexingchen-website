@@ -59,6 +59,8 @@ async def list_public_menus(
 
     - super_admin：恒见全部启用菜单
     - 其余角色：若其 role.menu_ids 为空(未配置) → 全部启用菜单；否则仅返回其中 id 命中的菜单
+      另：父菜单只是容器，只要任一子项被允许，父菜单一并放行
+      （否则会出现「超管明明勾了『账本』，用户却连『数据一览』入口都看不到」）
     """
     rows = (
         db.query(Menu)
@@ -74,7 +76,9 @@ async def list_public_menus(
         menu_ids = None
     if not menu_ids:
         return ResponseBase(data={"list": [_menu_to_dict(m) for m in rows]})
+
     allowed = {int(x) for x in menu_ids if str(x).strip().lstrip("-").isdigit()}
+    allowed |= {m.parent_id for m in rows if m.id in allowed and m.parent_id}
     filtered = [m for m in rows if m.id in allowed]
     return ResponseBase(data={"list": [_menu_to_dict(m) for m in filtered]})
 
