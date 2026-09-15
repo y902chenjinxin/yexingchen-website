@@ -1,3 +1,37 @@
+## [v2.18.0] - 2026-09-16
+
+### A 组三项（User「① 背景音乐开关 ② 玉简闪光卡 ⑥ 股票看板增强」SW `xuanhuang-v94`）
+
+#### ① 背景音乐总开关（滑动开关 + 状态持久化）
+- `stores/player.js` 新增 `bgmEnabled`（localStorage 键 `bgm_enabled`）+ `setBgmEnabled`/`toggleBgm`；`playBgm()` 与自动播放恢复句柄 `armResume` 均加总开关守卫——关闭时撤销恢复句柄并硬停释放网络流，**只作用于 BGM，不影响点播中的曲目**
+- `GlobalTopBar` 音频面板新增滑动开关（`role="switch"` + `aria-checked` + `:focus-visible`），关闭时曲目选择与音量区降权显示；选中曲目时自动开启总开关，避免「选了却没反应」
+
+#### ② 玉简卡片 3D 分层视差 + 镭射流光（纯 CSS，零依赖）
+- `JadeCarousel.vue` 重构为四层 3D 舞台：玉体 z=0 / 篆符 z=22 / 镭射箔面 z=38 / 标签托片 z=54，靠 `preserve-3d` 拿到真实层间景深；标签压在箔面之上保证文字不被糊掉
+- 指针写入 `--px` `--py` `--tl-x` `--tl-y` 四个 CSS 变量，驱动卡片微倾（±12°/±14° 封顶）与箔面扫光；倾斜并入轮播 `transform` 同一条链，与位移互不覆盖
+- 箔面 = 指针跟随高光 + 多色镭射箔带 + 镭射细条纹，`mix-blend-mode` 由 token 分流（夜间 `color-dodge` / 日间 `overlay`，避免亮底被刷白）；激活卡未悬停时走 6.5s 环境流光，触摸端也有质感
+- 实现思路参考 GitHub 成熟全息卡方案（`kongyo2/cards-css` 等），**未引入第三方依赖**——其 CSS 含大量硬编码 hex，会破坏项目「颜色必须走 variables.css」的门控
+- 新增 token：`--jade-foil-blend` `--jade-foil-opacity` `--jade-foil-opacity-active` `--jade-glare` `--jade-foil-1..4` `--jade-foil-grain`（含日间覆盖）
+
+#### ③ 股票看板增强
+- KPI 由 3 张扩到 6 张：持仓市值 / 每日盈亏 / **总收益** / 总收益率 / **今日仓位收益**（= 今日盈亏 ÷ 昨日收盘市值）/ **目标价预警**
+- 新增 `components/stocks/PortfolioPanel.vue`：
+  - **资产配置**环形图——按个股持仓市值占比，复用 `finance/DonutChart`
+  - **每日盈亏走势**柱状图——快照环比，红盈绿亏，附区间合计 / 最大单日 / 最大回撤
+  - **每日盈亏日历**——当月月历按日染色，当日取实时行情，历史取收盘快照
+- 每日快照由既有后台定时任务（交易日 15:35）自动记录，走势随天数自然累积；不足 2 天时给明确空态说明而非空白
+- `DonutChart` 增可选 `unit`（默认「类」）与 `ariaLabel` prop，向后兼容账本页
+- 新增 token `--pnl-up` `--pnl-down` 及 soft/line 变体，统一「红涨绿跌」语义色
+
+### 工程
+- 前端 `npx vite build --outDir dist2 --emptyOutDir false` 构建通过。注：`npm run build` 与 `--outDir dist2` 均在清空输出目录时失败（`dist/whale-pet`、`dist2/whale-pet` 无法移入回收站），**属本机安全删除机制问题，非代码问题**（`1796 modules transformed` 已通过）
+- 产物标记核验：`jadeFoilSweep` `card-foil` `tb-switch` `bgmEnabled` `今日仓位收益` `资产配置` `每日盈亏走势` `pnl-up-soft` `jade-glare` 俱在；`--jade-foil-opacity` 日间 `.42` / 夜间 `.58` 两套均在
+- `npx eslint` 改动文件 **0 error**（既有 172 warning 为项目风格告警，非本次引入）
+- ⚠️ 未完成的验证：`vitest` 跑不起来——`vitest.config.js` 声明 `environment:'jsdom'`，但 `package.json` 未声明 `jsdom` 依赖、`node_modules` 里也没有（11 errors / no tests）。尝试安装时 npm 缓存被沙箱拦（EPERM），改工作区缓存后又因 `node_modules` 被运行中进程锁定（EBUSY）失败，故未强装（避免重写依赖树影响在跑的 dev server）。**属既有环境缺陷**
+- **已全量部署现网（SW `xuanhuang-v93→v94`）**：全新 `npx vite build --outDir dist2` 核验 StocksView 含 `pp-alloc/资产配置/PortfolioPanel`、vendor/main 含 `bgm_enabled/setBgmEnabled`、css 含 `--jade-foil`、sw.js 含 `xuanhuang-v94` → 替换 dist → **197 文件 home=200**。生产浏览器取证 PASS：`/stocks` 正常加载、持仓市值/总收益/今日仓位收益等 KPI 俱在，「资产配置」环形图成功渲染（持仓市值 6970.00 / 1 只 / 红宝丽 100.0%）。
+
+---
+
 ## [v2.17.0] - 2026-09-16
 
 ### 角色 · 菜单绑定（User「权限改为下拉，选择能看到哪些菜单」SW `xuanhuang-v93`）
