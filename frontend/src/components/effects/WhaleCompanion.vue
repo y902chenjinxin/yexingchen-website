@@ -4,28 +4,12 @@
       ref="frameEl"
       class="whale-frame"
       :class="{ dragging: dragging, flip: flipped }"
+      title="按住我可拖动"
+      @pointerdown="onFramePointerDown"
     >
       <video :ref="el => vEls[0].value = el" class="whale-video" muted loop playsinline autoplay></video>
       <video :ref="el => vEls[1].value = el" class="whale-video" muted loop playsinline autoplay></video>
-    </div>
-
-    <!-- 唯一可交互命中区：小"抓手"角标（鲸鱼本体 pointer-events:none 完全点击穿透，不再遮挡下层入口）按住即可拖动桌宠 -->
-    <div
-      ref="handleEl"
-      class="whale-handle"
-      title="拖动桌宠"
-      @pointerdown="onHandlePointerDown"
-    >
-      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-        <g fill="currentColor">
-          <rect x="3" y="3" width="3" height="3" rx="1"/>
-          <rect x="8" y="3" width="3" height="3" rx="1"/>
-          <rect x="13" y="3" width="3" height="3" rx="1"/>
-          <rect x="3" y="8" width="3" height="3" rx="1"/>
-          <rect x="8" y="8" width="3" height="3" rx="1"/>
-          <rect x="13" y="8" width="3" height="3" rx="1"/>
-        </g>
-      </svg>
+      <!-- 鲸鱼本体即拖动区：透明视频区域不拦截下层点击，可命中帧内实际内容即可拖动 -->
     </div>
   </div>
 </template>
@@ -39,7 +23,6 @@ const VH = 360
 
 const stageEl = ref(null)
 const frameEl = ref(null)
-const handleEl = ref(null)
 const vEls = [ref(null), ref(null)]
 function activeVideo() { return vEls[activeIdx]?.value }
 
@@ -200,8 +183,8 @@ function endAutoWalk() {
   scheduleAuto()
 }
 
-// 只有抓手区可交互：按住抓手拖动桌宠（鲸鱼本体 pointer-events:none，点击穿透给下层内容）
-function onHandlePointerDown(e) {
+// 桌宠本体即拖动区：按住桌宠拖动（鲸鱼本体 pointer-events:auto 接管拖动，视频帧透明仍不拦截内容点击）
+function onFramePointerDown(e) {
   e.preventDefault()
   if (e.button !== 0) return
   draggingState = true
@@ -213,7 +196,7 @@ function onHandlePointerDown(e) {
   stopWalk()
   setAction(pick(DRAG_POOL), true)
   document.addEventListener('pointermove', onPointerMove)
-  document.addEventListener('pointerup', onHandlePointerUp, { once: true })
+  document.addEventListener('pointerup', onFramePointerUp, { once: true })
 }
 
 function onPointerMove(e) {
@@ -228,11 +211,16 @@ function onPointerMove(e) {
   stage.style.top = clampY(e.clientY - offY) + 'px'
 }
 
-function onHandlePointerUp() {
+function onFramePointerUp() {
   document.removeEventListener('pointermove', onPointerMove)
   draggingState = false
   dragging.value = false
-  if (!moved) return
+  if (!moved) {
+    // 轻点桌宠：切一个随机动作当作互动反馈
+    stopWalk()
+    crossSwitch(pickRnd())
+    return
+  }
   stopWalk()
   crossSwitch(pickRnd())
 }
@@ -280,7 +268,7 @@ onMounted(() => {
     if (hintTimer) clearTimeout(hintTimer)
     if (recedeTimer) clearTimeout(recedeTimer)
     document.removeEventListener('pointermove', onPointerMove)
-    document.removeEventListener('pointerup', onHandlePointerUp)
+    document.removeEventListener('pointerup', onFramePointerUp)
     window.removeEventListener('scroll', onScrollRecede)
   })
 })
@@ -300,34 +288,12 @@ onMounted(() => {
   transform: scale(0.75);
   transform-origin: bottom right;
   filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.45));
-  /* 鲸鱼本体完全点击穿透：透明留白区域不再拦截下方入口（玉简/按钮/链接）的点击 */
-  pointer-events: none;
-  transition: filter 0.4s ease;
-}
-/* 唯一可交互命中区：小"抓手"角标，用于按住拖动桌宠 */
-.whale-handle {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  /* 桌宠本体即拖动区：接管拖拽；透明区域不拦截下层入口（玉简/按钮/链接）的点击 */
   pointer-events: auto;
   cursor: grab;
   touch-action: none;
-  color: var(--ls-text-3, #7f8d94);
-  background: var(--ls-glass, rgba(32,42,51,.55));
-  border: 1px solid var(--ls-line, rgba(206,220,226,.12));
-  box-shadow: 0 2px 8px rgba(0,0,0,.25);
-  opacity: .75;
-  transition: opacity .2s ease, background .2s ease;
+  transition: filter 0.4s ease;
 }
-.whale-handle:hover { opacity: 1; background: rgba(95,148,153,.35); color: #c9dde0; }
-.whale-handle:active { cursor: grabbing; }
 .whale-frame.dragging { cursor: grabbing; }
 .whale-frame.flip .whale-video { transform: scaleX(-1); }
 .whale-video {
@@ -338,7 +304,7 @@ onMounted(() => {
   opacity: 1;
 }
 .whale-frame.hint::after {
-  content: '按住抓手可拖动';
+  content: '按住我可拖动';
   position: absolute;
   left: 50%;
   bottom: calc(100% + 8px);
