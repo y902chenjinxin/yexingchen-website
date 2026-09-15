@@ -49,17 +49,21 @@
 
 ### 顺带修复
 
-- **生产 `/docs` 曾对外暴露（本次部署核验时实测发现）**：`is_production_env()` 只读
+- **`ENV=production` 判定脆弱（本次部署核验时发现并修复）**：`is_production_env()` 只读
   `os.environ["ENV"]`，而 `ENV=production` 只写在 `backend/.env` 里
   （pydantic-settings 只把它读进 `Settings`，不写回 `os.environ`），
-  于是 pm2 用别的方式重启一次判定就翻成「非生产」→ `/docs`、`/redoc`、`/openapi.json`
-  在生产上均返回 200（实测三者都是 200）。
+  于是 pm2 用别的方式重启一次（如 `pm2 restart --update-env`）判定就会翻成「非生产」，
+  **生产便不再走 schema fail-fast 校验、改为执行 `create_all`**。
   修复：`Settings` 显式声明 `ENV` 字段；新增 `resolved_env()`（环境变量优先，回落 `.env`）；
   文档路由抽成 `schema_guard.docs_urls()`，生产**三个一起关**
-  （只关 `docs_url` 时 `/openapi.json` 仍可访问，等于把接口结构全公开）。
+  （只关 `docs_url` 时 `/openapi.json` 仍是 FastAPI 路由，属于白留一个入口）。
   上线前已在服务器上以 `ENV=production` **空跑一次** `assert_production_schema_ok`
   确认通过（期望 head == 库内版本 == `n4o5p6q7r8s9`、alembic_version 恰 1 行），
   排除「改完起不来」的风险
+  > 附带更正一处**误报**：核验时曾以为生产 `/docs` 对外暴露，实则 `/docs`、`/redoc`、
+  > `/openapi.json` 返回的是前端 `index.html`（nginx SPA 回退，与首页 md5 逐字节相同），
+  > 后端文档的真实挂载点 `/api/docs` 一直是 404 —— **接口文档从未暴露**。
+  > 教训：判断「暴露」必须看响应体与 `Content-Type`，不能只看状态码。
 - `alembic/env.py` 从未注册记账模块，`Base.metadata` 里没有这两张表（autogenerate 看不到）
 - `contacts.py` 两处 `raise_error(code, msg, 404)` 传了 3 个参数，而 `raise_error` 只接受 2 个
   → 「联系人不存在」「回收站中无此联系人」实际会抛 TypeError 变成 500，已改 `ErrCode.NOT_FOUND`
@@ -88,7 +92,9 @@ password_validation 25 / schema_guard 7 / security 17 / client_ip 6。
   农历联系人返回 `lunar_text=八月十五` 且 `next_birthday=2026-09-25`（换算正确）、
   农历 31 日被拒 400；自定义分类记账后分类**未被归一成「其他」**、统计环形图含该分类。
   验证后按逆序删除全部探针数据，**账号与数据零残留**（用户数 5 → 5，探针账号已无法登录 401）
-- 修复后再核验：`/docs`、`/redoc`、`/openapi.json` 生产均不再暴露
+- 修复后再核验：`/docs`、`/redoc`、`/openapi.json` 返回的仍是前端 SPA 回退页（与首页 md5 一致），
+  而 `/api/docs`、`/api/redoc`、`/api/openapi.json` 均为 404；`/health` 200、超管登录 200
+  → 站点与业务接口全部正常，文档路由确认未暴露
 
 ---
 
