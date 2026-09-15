@@ -57,12 +57,12 @@ defineProps({
 .sf-divider { opacity: 0.55; }
 
 /* 墨青深色底（岛屿页） */
-.sf-dark .sf-links a { color: rgba(232, 244, 252, 0.5); }
-.sf-dark .sf-links a:hover { color: var(--ls-dai, #5f9499); }
-.sf-dark .sf-divider { color: rgba(221, 221, 221, 0.5); }
+.sf-dark .sf-links a { color: rgba(232, 244, 252, 0.72); }
+.sf-dark .sf-links a:hover { color: var(--ls-dai, #7fb0b5); }
+.sf-dark .sf-divider { color: rgba(221, 221, 221, 0.7); }
 
 /* 浅色留白底（工作台/管理页等） */
-.sf-light .sf-links a { color: rgba(74, 95, 99, 0.6); }
-.sf-light .sf-links a:hover { color: var(--lj-seal, #d98a76); }
-.sf-light .sf-divider { color: rgba(74, 95, 99, 0.4); }
+.sf-light .sf-links a { color: rgba(48, 63, 68, 0.88); }
+.sf-light .sf-links a:hover { color: var(--lj-seal, #c96a54); }
+.sf-light .sf-divider { color: rgba(74, 95, 99, 0.62); }
 </style>
