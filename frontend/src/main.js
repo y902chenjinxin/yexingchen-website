@@ -3,6 +3,8 @@ import { createPinia } from 'pinia'
 import 'element-plus/dist/index.css'
 import App from './App.vue'
 import router from './router'
+import { registerServiceWorker } from './sw-register'
+import { usePwaInstall } from './composables/usePwaInstall'
 import './assets/styles/main.css'
 import './assets/styles/xiuxian-theme.css'
 
@@ -10,6 +12,12 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+
+// PWA：SW 注册 + beforeinstallprompt 监听都必须在应用启动时就位。
+// 后者尤其关键：事件在页面加载后几秒内派发一次，若等用户进个人中心才挂监听，
+// 事件早已错过，「安装为应用」入口会永远不出现（v2.22.1 修复的实际 bug）。
+registerServiceWorker()
+usePwaInstall()
 
 // 昼夜自适应主题（TIME_THEME_20260908）：本地时间 6:00–18:00 → day，其余 night
 function applyDayTheme() {
