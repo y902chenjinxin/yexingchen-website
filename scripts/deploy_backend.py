@@ -58,6 +58,23 @@ BACKEND_FILES = [
      f"{REMOTE_BASE}/backend/alembic/versions/a2b3c4d5e6f7_admin_roles_menus.py"),
     (os.path.join(ROOT, "backend", "app", "schemas", "common.py"),      f"{REMOTE_BASE}/backend/app/schemas/common.py"),
     (os.path.join(ROOT, "backend", "app", "schemas", "errors.py"),      f"{REMOTE_BASE}/backend/app/schemas/errors.py"),
+    # ---- 2026-09-16 补齐：此前本白名单缺 workbench 包内文件与 family 相关文件，
+    #      用它部署会出现「部分文件是新的、部分是旧的」的半同步状态。
+    #      若改动了下方未列出的后端文件，请直接用 deploy_backend_full.py（整树同步）。
+    (os.path.join(ROOT, "backend", "app", "models", "workbench.py"),    f"{REMOTE_BASE}/backend/app/models/workbench.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "__init__.py"),   f"{REMOTE_BASE}/backend/app/routers/workbench/__init__.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "_common.py"),    f"{REMOTE_BASE}/backend/app/routers/workbench/_common.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "_schemas.py"),   f"{REMOTE_BASE}/backend/app/routers/workbench/_schemas.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "_kb.py"),        f"{REMOTE_BASE}/backend/app/routers/workbench/_kb.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "tasks.py"),      f"{REMOTE_BASE}/backend/app/routers/workbench/tasks.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "dashboard.py"),  f"{REMOTE_BASE}/backend/app/routers/workbench/dashboard.py"),
+    # ---- 家庭助理（通讯录 / 待办 / 订阅）----
+    (os.path.join(ROOT, "backend", "app", "models", "family.py"),        f"{REMOTE_BASE}/backend/app/models/family.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "contacts.py"),     f"{REMOTE_BASE}/backend/app/routers/contacts.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "subscriptions.py"), f"{REMOTE_BASE}/backend/app/routers/subscriptions.py"),
+    (os.path.join(ROOT, "backend", "app", "services", "family_reminder.py"), f"{REMOTE_BASE}/backend/app/services/family_reminder.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "m3n4o5p6q7r8_family_contacts_subscriptions.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/m3n4o5p6q7r8_family_contacts_subscriptions.py"),
     (os.path.join(ROOT, "backend", "requirements.txt"),                 f"{REMOTE_BASE}/backend/requirements.txt"),
 ]
 

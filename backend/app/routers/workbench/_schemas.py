@@ -94,6 +94,11 @@ class TaskOut(BaseModel):
     updated_at: Optional[str] = None
     note_ids: List[int] = []
     asset_ids: List[int] = []
+    # 自动待办溯源：manual / contact_birthday / subscription
+    # 前端据此显示「生日 / 续费」徽标，并区分手工与自动生成
+    source_type: Optional[str] = "manual"
+    source_id: Optional[int] = None
+    source_key: Optional[str] = None
 
 
 # ---------- AI ----------

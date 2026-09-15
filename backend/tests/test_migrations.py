@@ -47,6 +47,8 @@ EXPECTED_TABLES = {
     "xuanhuang_ai_conversations",
     "xuanhuang_ai_messages",
     "xuanhuang_asset_tags",
+    "xuanhuang_contacts",
+    "xuanhuang_subscriptions",
     "xuanhuang_assets",
     "xuanhuang_logs",
     "xuanhuang_note_assets",

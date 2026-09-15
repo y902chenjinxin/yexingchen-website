@@ -203,6 +203,8 @@
 | TD-009 | 项目 eslint 存量告警 172 条（多为 `vue/max-attributes-per-line`、`vue/html-self-closing` 等风格规则）；`GlobalTopBar.vue` 另有 14 条存量 error（未使用导入 `reactive`/多个 icon、lambda 形参 `it` 未用、全角空格 `no-irregular-whitespace`），会阻塞 `npm run lint` 全绿 | 前端 | 待修复 |
 | ENV-004 | `test_api.py` / `test_auth_service.py` / `test_workbench.py` 在**全量或串行**执行时进程异常终止（36 个点后无输出、无失败汇总，退出码 1），单独隔离运行则通过。已用 `git stash` 对比确认与改动无关，疑为测试间状态污染或原生依赖崩溃。**影响：`pytest` 全量门控不可用，只能逐文件跑** | CI | 待修复 |
 | TD-010 | `AdminView.vue` 存量 2 条 `no-unused-vars` error：`allIslands`、`formatPerms` | 前端 | 待修复 |
+| FEAT-001 | **农历生日未做公历转换**：`xuanhuang_contacts.birthday_type` 已预留 `lunar`，但当前仅原样存储与展示，提醒仍按录入的月日当公历算。真正的农历→公历换算需引入历法库（如 `lunardate`）并处理闰月、除夕等边界 | 功能 | **待用户确认是否需要**（若需要，需同步改部署脚本的依赖安装与 requirements） |
+| ENV-005 | `scripts/deploy_backend.py` 白名单**此前缺 `workbench/` 包内全部文件、`models/workbench.py`**，以及 v2.20.0 全部新文件。用它部署会静默产生「半新半旧」状态：进程正常启动、health=200，但部分改动未生效，极易误判为「改动无效」 | 构建 | **已修复**（补齐白名单 + 文件内加警示注释）；改动不在名单内时请直接用 `deploy_backend_full.py` |
 
 ---
 
@@ -215,6 +217,7 @@
 | 2026-05-29 | v1.7.1 | 登录卡片延迟优化 |
 | 2026-09-16 | ENV-001~003 / TD-009 | v2.18.0 落地过程中发现：单测环境缺 `jsdom`、构建受安全删除机制阻塞、npm 缓存需改道工作区、eslint 存量 error 阻塞 lint 全绿 |
 | 2026-09-16 | ENV-004 / TD-010 | v2.19.0 落地过程中发现：后端 pytest 全量执行存在既有崩溃（只能逐文件跑）、AdminView 存量 2 条 unused-vars |
+| 2026-09-16 | FEAT-001 / ENV-005 | v2.20.0 家庭助理三件套：农历生日仅存值未转换（待用户确认）；deploy_backend.py 白名单缺 workbench 包文件已补齐 |
 
 ---
 

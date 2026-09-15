@@ -16,6 +16,7 @@ from app.services.softdelete import (
     restore,
     soft_delete,
 )
+from app.services.family_reminder import sync_reminders
 from app.utils.security import get_current_user
 from app.routers.workbench._common import (
     _ensure_user_asset,
@@ -43,6 +44,10 @@ def list_tasks(
     current_user: dict = Depends(get_current_user),
 ):
     uid = current_user["user_id"]
+    # 打开待办页即同步提醒：家人生日 / 订阅到期 → 自动待办。
+    # 幂等（靠 ix_task_source 唯一索引 + 已被用户删除的不再拉起），
+    # 放在读取列表之前，保证看到的永远是最新提醒，不依赖后台定时任务是否跑过。
+    sync_reminders(db, uid)
     page, size = _paginate(page, size)
     query = _user_owned(db, Task, uid)
     if status_filter:

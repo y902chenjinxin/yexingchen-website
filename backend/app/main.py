@@ -7,7 +7,8 @@ import logging
 
 from app.database import engine, Base
 from app.routers import (
-    admin_menus, admin_roles, admin_users, auth, datahub, finance, log, music, novel, quick, search, settings as settings_router,
+    admin_menus, admin_roles, admin_users, auth, contacts, datahub, finance, log, music, novel,
+    quick, search, settings as settings_router, subscriptions,
     stocks, tool, travels, video, video_parse,
 )
 from app.routers.workbench import router as workbench_router
@@ -154,6 +155,8 @@ app.include_router(stocks.router)
 app.include_router(travels.router)
 app.include_router(datahub.router)
 app.include_router(quick.router)
+app.include_router(contacts.router)
+app.include_router(subscriptions.router)
 
 
 @app.get("/")

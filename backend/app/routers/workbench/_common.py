@@ -175,4 +175,7 @@ def _task_to_out(t: Task) -> TaskOut:
         updated_at=_to_iso(t.updated_at),
         note_ids=note_ids,
         asset_ids=asset_ids,
+        source_type=t.source_type or "manual",
+        source_id=t.source_id,
+        source_key=t.source_key,
     )

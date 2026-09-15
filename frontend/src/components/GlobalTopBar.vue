@@ -176,7 +176,8 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   User, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
   Document, Check, Notebook, VideoPlay, MagicStick, Reading, HomeFilled,
-  Collection, TrendCharts, MapLocation, VideoCamera, ChatDotRound, Setting
+  Collection, TrendCharts, MapLocation, VideoCamera, ChatDotRound, Setting,
+  Tickets, Wallet
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
@@ -255,6 +256,9 @@ const suggestions = ref({ results: null, count: 0 })
 // 模块快捷入口（常驻下拉底部）
 const moduleShortcuts = [
   { key: 'assistant', label: 'AI 助手', to: '/assistant', icon: MagicStick },
+  { key: 'contacts', label: '通讯录', to: '/contacts', icon: User },
+  { key: 'tasks', label: '待办', to: '/tasks', icon: Tickets },
+  { key: 'subscriptions', label: '订阅', to: '/subscriptions', icon: Wallet },
   { key: 'music', label: '音乐', to: '/music', icon: Headset },
   { key: 'novel', label: '小说', to: '/novel', icon: Reading },
   { key: 'video', label: '视频', to: '/video', icon: VideoPlay },

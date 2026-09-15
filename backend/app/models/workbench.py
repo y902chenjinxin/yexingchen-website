@@ -160,6 +160,12 @@ class Task(Base):
     priority = Column(String(16), nullable=False, default="medium")
     due_date = Column(DateTime, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # ---- 自动生成的待办溯源（家庭助理：生日 / 订阅提醒）----
+    # 手工待办三项皆空；自动待办由 services/family_reminder.py 写入，
+    # 靠下面的唯一索引保证「同一事件只生成一条」，重复同步幂等。
+    source_type = Column(String(24), nullable=False, default="manual")  # manual / contact_birthday / subscription
+    source_id = Column(Integer, nullable=True)       # 关联的 contact.id 或 subscription.id
+    source_key = Column(String(32), nullable=True)   # 该次事件的幂等键：生日 '2026'，订阅 '2026-10-01'
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
     completed_at = Column(DateTime, nullable=True)
@@ -169,6 +175,16 @@ class Task(Base):
         "TaskLink",
         cascade="all, delete-orphan",
         order_by="TaskLink.id",
+    )
+
+    __table_args__ = (
+        # SQLite 中 NULL 互不相等 → 手工待办（source_id/source_key 为空）不会互相冲突，
+        # 只有同一事件的自动待办会撞上唯一键
+        Index(
+            "ix_task_source",
+            "user_id", "source_type", "source_id", "source_key",
+            unique=True,
+        ),
     )
 
 

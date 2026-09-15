@@ -80,7 +80,11 @@ const props = defineProps({
       { key: 'video',  rune: '影', label: '光影交织', path: '/video',  color: '#5b6b7a' },
       { key: 'log',    rune: '墨', label: '翰墨丹青', path: '/log',    color: '#4a6a56' },
       { key: 'tool',   rune: '器', label: '机关百变', path: '/tool',   color: '#6a7a6a' },
-      { key: 'notes',  rune: '記', label: '笔记云台', path: '/notes',               color: '#55706b' }
+      { key: 'notes',  rune: '記', label: '笔记云台', path: '/notes',               color: '#55706b' },
+      // 家庭助理三件套：通讯录 / 待办 / 订阅（共用生日与续费提醒引擎）
+      { key: 'contacts', rune: '家', label: '骨肉亲缘', path: '/contacts',      color: '#a06a4a' },
+      { key: 'tasks',    rune: '待', label: '诸事待理', path: '/tasks',         color: '#5a6f5f' },
+      { key: 'subs',     rune: '费', label: '细水长流', path: '/subscriptions', color: '#6a6a8a' }
     ]
   },
   initialIndex: { type: Number, default: 0 },
@@ -227,6 +231,15 @@ function sigilPath(key) {
       return 'M22 18 Q34 8 44 20 L32 30 L42 40 L30 42 L20 32 Q24 24 22 18 Z'
     case 'notes':
       return 'M24 14 L44 14 L44 50 L20 44 L20 20 Z M28 24 L40 24 M28 32 L40 32 M28 40 L36 40'
+    case 'contacts':
+      // 一人形：头 + 肩
+      return 'M32 16 Q39 16 39 24 Q39 32 32 32 Q25 32 25 24 Q25 16 32 16 Z M20 50 Q20 37 32 37 Q44 37 44 50'
+    case 'tasks':
+      // 简 + 勾
+      return 'M22 16 L42 16 L42 48 L22 48 Z M27 26 L37 26 M27 33 L37 33 M26 41 L29 44 L37 36'
+    case 'subs':
+      // 钱币：外圆 + 十字
+      return 'M32 15 Q46 15 46 32 Q46 49 32 49 Q18 49 18 32 Q18 15 32 15 Z M25 32 L39 32 M32 25 L32 39'
     default:
       return 'M20 32 L28 24 L36 32 L28 40 Z'
   }

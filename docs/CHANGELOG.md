@@ -1,3 +1,54 @@
+## [v2.20.0] - 2026-09-16
+
+### 家庭助理三件套（User 需求 4/5/7：家人通讯录 / 待办事项 / 订阅账单统计）
+
+三者的共同点是**都会产出待办提醒**，因此先抽出一套提醒引擎，再各自做界面——拆开做会返工。
+
+#### ① 家人通讯录 `/contacts`
+- 新表 `xuanhuang_contacts`：姓名/关系/电话/住址/生日/出生年/标签/备注/置顶
+- **生日只存 MM-DD**（家人往往只记得月日，且年份不参与提醒），年份单独存 `birth_year` 仅用于显示年龄；
+  `birthday_type` 预留 solar/lunar（**当前农历仅存值，未做转换**，见 ISSUES）
+- 列表 + **日历双视图**：列表按「置顶 → 生日临近 → 姓名」排序；日历按当月月日铺开，点名字直接编辑
+- 接口返回补算 `next_birthday` / `days_to_birthday` / `age`，前端两视图都不必各自重算
+
+#### ② 待办事项 `/tasks`
+- **后端接口原本就完整**（`routers/workbench/tasks.py` 全 CRUD），只是 9/4 把前端入口撤了 → 本次复活前端
+- 给 `Task` 加溯源三字段 `source_type` / `source_id` / `source_key`，支撑幂等自动生成
+- 前端按当前设计系统重写（原 `TasksView.vue` 用的是已废弃的 `--xiu-*` token + 硬编码 hex）：
+  逾期/今天/未来 7 天/更远/未设截止**分组**，自动待办带「生日提醒 / 续费提醒」**来源徽标**，一键勾选完成
+
+#### ③ 订阅账单 `/subscriptions`
+- 新表 `xuanhuang_subscriptions`：名称/金额/周期/下次到期/自动续费/分类/提前提醒天数/启用状态
+- **统计口径统一折算月均**，这样「每年 240」与「每月 20」可直接相加比较；一次性订阅不计入月均/年均
+- KPI（月均/年均/活跃数/7 天内到期）+ 分类环形图（复用 `finance/DonutChart`）+ 周期分布条 + 列表
+- 「已缴费」按钮**顺延到下一账单周期**（月末收敛：1/31 + 1 月 → 2/28，不溢出到 3 月）
+
+#### ④ 提醒引擎 `services/family_reminder.py`（三者的共同心脏）
+- 生日 → 每年一条待办（幂等键 = 年份）；订阅到期 → 每个账单周期一条（幂等键 = 到期日）
+- **幂等靠唯一索引** `ix_task_source(user_id, source_type, source_id, source_key)`，
+  而非改表约束——SQLite 不支持直接 ADD CONSTRAINT，且 `CREATE UNIQUE INDEX` 对已有数据的表安全得多
+- **NULL 语义利用**：手工待办三项为空，SQLite 中 NULL 互不相等 → 手工待办可无限创建、不会互相冲突
+- **尊重用户删除**：自动待办被用户删掉后，同步**不会再次拉起**（否则「删了又长出来」）
+- 同步时机挂在 `GET /tasks` 上 → 打开待办页永远看到最新提醒，**不依赖后台定时任务是否跑过**
+- 日期边界全部覆盖：闰日 2-29 在平年顺延 2-28、月末收敛、已过生日顺延明年、脏数据返回 None 不抛异常
+
+#### ⑤ 接入
+- 路由 `/contacts` `/tasks` `/subscriptions`；顶栏「快速前往」3 项；**玉简轮播加 3 张卡**（骨肉亲缘/诸事待理/细水长流，含专属篆符）
+- 迁移 `m3n4o5p6q7r8` 播种 3 条菜单（`is_builtin=1`，幂等：path 已存在则跳过），可在管理后台菜单树中授给角色
+
+### 测试
+- 新增 `tests/test_family_reminder.py` **21 例**：日期纯函数（闰日/月末/跨年/脏数据）+ 生日与订阅生成 + 幂等 + 用户删除不复活 + 标题随天数刷新
+- 新增 `tests/test_family_api.py` **16 例**：通讯录 CRUD/排序/搜索/生日归一化、订阅 CRUD/月均年均折算/分类统计/缴费顺延、与引擎联动
+- `test_migrations.py` 期望表清单补 `xuanhuang_contacts` / `xuanhuang_subscriptions`；迁移 3 例全过
+- 三个文件合计 **41 passed**；`app.main` 导入无误；OpenAPI 路径 123 条（contacts 4 / subscriptions 6 / workbench tasks 4）
+
+### 工程
+- 前端 `npx vite build --outDir dist-deploy` 构建通过；产物核验 ContactsView / SubscriptionsView / TasksView 三个 chunk 及关键文案俱在
+- eslint 新增文件 0 error；顺手清掉 `router/index.js` 一处**既有**未使用导入（`useAuthStore`，经 `git show HEAD` 确认改动前即存在）
+- **`scripts/deploy_backend.py` 白名单补全**：此前缺 `workbench/` 包内文件、`models/workbench.py` 与本次全部新文件——用它部署会产生「半新半旧」的静默半同步。已补齐并在文件内加了警示注释；改动不在名单内的后端文件请直接走 `deploy_backend_full.py`（整树同步）
+
+---
+
 ## [v2.19.0] - 2026-09-16
 
 ### 超管建号免校验通道（User「我是超管，理论上可以自己创建用户账号，但被校验规则拦住了，需要增加条路径」SW `xuanhuang-v95`）

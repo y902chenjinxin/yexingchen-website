@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 import { routeGuard } from './guards'
 
 const routes = [
@@ -149,6 +148,25 @@ const routes = [
     path: '/diary',
     name: 'Quick',
     component: () => import('@/views/QuickView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 家庭助理：通讯录 / 待办 / 订阅（三者共用生日与续费提醒引擎）
+  {
+    path: '/contacts',
+    name: 'Contacts',
+    component: () => import('@/views/ContactsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/tasks',
+    name: 'Tasks',
+    component: () => import('@/views/TasksView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/subscriptions',
+    name: 'Subscriptions',
+    component: () => import('@/views/SubscriptionsView.vue'),
     meta: { requiresAuth: true }
   },
   // 外部工具独立页（iframe 内嵌）
