@@ -54,6 +54,7 @@ EXPECTED_TABLES = {
     "xuanhuang_notes",
     "xuanhuang_tags",
     "xuanhuang_task_links",
+    "xuanhuang_stock_daily_analysis",
     # FTS5 虚拟表及其内部 shadow 表
     "note_fts",
     "note_fts_data",
@@ -219,3 +220,6 @@ def test_legacy_database_can_be_stamped(temp_db_env):
     r = _run_alembic(env, "upgrade", "head")
     assert r.returncode == 0, r.stdout + r.stderr
     engine.dispose()
+
+
+
