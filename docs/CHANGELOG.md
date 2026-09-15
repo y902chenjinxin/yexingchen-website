@@ -1,6 +1,7 @@
 ## [v2.14.0] - 2026-09-15
 
 ### 股票
+- **行情自动轮询刷新（SW `xuanhuang-v89`，User「希望加自动刷新，轮询的」）**：`StockDetailView` 新增自动刷新——行情 **15 秒**轮询、K 线每 3 次同刷一次（≈45s，后端 5 分钟缓存故不必更快）；标签页不可见时自动暂停省资源；K 线区块头部新增「自动 15s/已暂停 · X秒前更新」状态 + 点拨小灯 + 暂停/开启按钮；开关心记忆 `localStorage['stock-auto-refresh']`（默认开），退出页面自动清理定时器
 - **每日研判改用 AI 增强（规则保底 + AI）**：后端 `stock_analysis.py` 新增 AI 研判链路——交易日按默认/启用 AI Provider 调模型（能力 `stock_analysis`），结合近 30 根 K 线、规则基线、相关资讯，产出 `level/summary/suggestion` 并落库 `xuanhuang_stock_daily_analysis`（user+code+market+date 唯一幂等覆盖）；未配置或调用失败时自动降级为规则档位，不阻塞不写空壳
 - **每日自动调度**：`main.py` 仿资讯后台协程（仅 `ENV=production` 启动），交易日 **15:35 后**每 5 分钟检查一次，为「有自选股且当日尚未研判」的用户自动生成研判 + 记录当日持仓快照
 - **研判接口**：新增 `GET/POST /api/stocks/analysis/{market}/{code}`（查询历史 / 立即生成今日研判）

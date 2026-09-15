@@ -44,6 +44,8 @@
         <div class="sd-block-head">
           <span class="sd-block-title">日 K 线</span>
           <span class="sd-block-sub">MA5/10/20 · 复权</span>
+          <span class="sd-autoref" :class="{ on: autoRef }">{{ autoRef ? '自动 15s' : '自动已关' }} · {{ lastQStr }}</span>
+          <button class="sd-btn ghost small sd-autoref-btn" @click="toggleAuto">{{ autoRef ? '暂停' : '开启自动刷新' }}</button>
         </div>
         <KlineChart v-if="kline.length" :data="kline" :height="420" @analysis="onAnalysis" />
         <div v-else class="sd-loading">{{ klineErr || 'K 线加载中…' }}</div>
@@ -123,7 +125,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import BackButton from '@/components/BackButton.vue'
 import KlineChart from '@/components/stocks/KlineChart.vue'
@@ -202,6 +204,7 @@ async function loadAll() {
   try {
     const r = await stocksApi.quote(market, code)
     quote.value = r.data || {}
+    lastQuoteAt.value = Date.now()
     editQty.value = null; editCost.value = null
   } catch (e) { /* quote err handled */ }
   try { kline.value = (await stocksApi.kline(market, code, 500)).data?.list || [] }
@@ -250,7 +253,49 @@ async function saveHold() {
   } finally { savingHold.value = false }
 }
 
-onMounted(loadAll)
+// ---- 自动轮询刷新（行情 15s；K 线每 3 次同刷一次 ≈45s，后端缓存 5 分钟故不必更快）----
+const REFRESH_SHORT = 15000
+const REFRESH_KLINE_TICKS = 3
+const REF_KEY = 'stock-auto-refresh'
+function loadBool(k) { try { return localStorage.getItem(k) === '1' } catch (e) { return false } }
+function saveBool(k, v) { try { localStorage.setItem(k, v ? '1' : '0') } catch (e) {} }
+
+const autoRef = ref(loadBool(REF_KEY) !== false) // 默认开启自动刷新
+const lastQuoteAt = ref(0)
+let pollTimer = null
+let tickCount = 0
+
+function startPolling() {
+  stopPolling()
+  pollTimer = setInterval(async () => {
+    if (document.hidden) return // 标签页不可见时暂停，省资源
+    try {
+      const r = await stocksApi.quote(market, code)
+      if (r.data) { quote.value = r.data; lastQuoteAt.value = Date.now() }
+    } catch (e) { /* 单次失败忽略，等下一轮 */ }
+    if (++tickCount % REFRESH_KLINE_TICKS === 0) {
+      try { kline.value = (await stocksApi.kline(market, code, 500)).data?.list || kline.value }
+      catch (e) { /* ignore */ }
+    }
+  }, REFRESH_SHORT)
+}
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  tickCount = 0
+}
+function toggleAuto() {
+  autoRef.value = !autoRef.value
+  saveBool(REF_KEY, autoRef.value)
+  if (autoRef.value) startPolling(); else stopPolling()
+}
+const lastQStr = computed(() => {
+  if (!lastQuoteAt.value) return '刚加载'
+  const s = Math.round((Date.now() - lastQuoteAt.value) / 1000)
+  return s < 60 ? s + '秒前更新' : Math.round(s / 60) + '分前更新'
+})
+
+onMounted(() => { loadAll(); if (autoRef.value) startPolling() })
+onBeforeUnmount(stopPolling)
 </script>
 
 <style scoped>
@@ -283,6 +328,12 @@ onMounted(loadAll)
 .sd-block-title { font-size: 16px; letter-spacing: .08em; color: var(--lj-text); }
 .sd-block-sub { font-size: 12px; color: var(--lj-text-3); }
 .sd-loading, .sd-empty-row { padding: 26px; text-align: center; color: var(--lj-text-3); font-size: 13px; }
+.sd-autoref { font-size: 11px; color: var(--lj-text-3); display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.sd-autoref::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--lj-text-3); opacity: .45; flex: none; }
+.sd-autoref.on::before { background: var(--lj-dai); opacity: 1; box-shadow: 0 0 6px var(--lj-dai); animation: sd-pulse 1.6s ease-in-out infinite; }
+@keyframes sd-pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+.sd-autoref-btn { flex: none; margin-left: auto; }
+@media (prefers-reduced-motion: reduce) { .sd-autoref.on::before { animation: none; } }
 .sd-loading::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -2px;
   border-radius: 50%; border: 2px solid var(--lj-line-strong); border-top-color: var(--lj-dai); animation: sd-spin .9s linear infinite; }
 @keyframes sd-spin { to { transform: rotate(360deg); } }
