@@ -1,3 +1,72 @@
+## [v2.22.0] - 2026-09-16
+
+### 数据一览菜单分组 + AI 封面 + 音色克隆 + PWA 可安装（User 需求 1/3/9）
+
+#### 1. 「数据一览」一级分组，行情/账本/旅行足迹/资讯/数据中心挂二级，按角色限制
+
+- 迁移 `o5p6q7r8s9t0`：新建一级分组「数据一览」，5 个模块挂为其二级；
+  顺带补齐 `/finance`、`/datahub`、`/notes` 三条缺失的菜单记录
+  （页面路由一直存在但从未进导航表——顶栏此前是前端写死的）
+- 全程按 path 查 id 再挂父级（生产库自增 id 与本地顺序不保证一致）；先查后插幂等
+- `/api/admin/menus/public`：子项命中时把 parent_id 一并放行
+  —— 否则超管只勾「账本」，用户连「数据一览」分组入口都看不到
+- 角色未配置 menu_ids（或空数组）→ 全部启用菜单；超管恒见全部；
+  既有角色的 menu_ids 是显式配置，不代改：需超管在角色管理里补勾
+- 前端导航全面 DB 驱动：新增 `stores/menus.js`（拉取 public 菜单组树，
+  接口失败时 isPathAllowed 一律放行——接口抖动不该清空全站导航）；
+  `GlobalTopBar` 删除写死的 moduleShortcuts；`JadeCarousel` 玉简卡片按角色过滤
+
+#### 2. AI 封面生成（工具岛）
+
+- 不做文生图：封面 90% 的需求是「固定版式 + 自己的标题 + 统一视觉」，
+  模板渲染零成本秒出、完全可复现。服务端 Pillow 渲染（零新增依赖）
+- 4 尺寸（公众号首图/小红书/视频/方形）× 3 主题（玄墨流金/雨青/宣纸）× 3 版式
+  （居中/左带装裱/朱砂钤印），标题以「最多 3 行」为目标自动选字号
+- 自带中文字体得意黑（OFL-1.1 可再分发）：生产服务器只有 dejavu，不带字体中文全是豆腐块
+- 迁移 `p6q7r8s9t0u1`：tools 表补 kind/is_enabled/sort_order 三列
+  （模型有但从未进 Alembic，生产手工 ALTER、开发库缺失，本次幂等对齐）；
+  内置工具改迁移播种（按 url 幂等），不再手工同步生产库
+- 前端 `CoverToolView`：左表单右预览，500ms 防抖实时渲染 + 竞态序号保护
+
+#### 3. 音色克隆（工具岛）
+
+- 复用已配好的 MiniMax 共享 Provider（超管共享全站可用，家人零配置）；
+  仅当 base_url 指向 MiniMax 时开放，其它 Provider 前端引导去配置而非报错
+- 链路：文件上传(voice_clone purpose) → 声音复刻 → T2A 合成试听，
+  接口国内站 api.minimaxi.com，与共享 Provider 同凭据
+- 新表 `voice_clones`（迁移 `q7r8s9t0u1v2`），按 user_id 隔离（用户级资源）
+- 前端 `VoiceCloneView`：上传录音 → 命名 → 试听，已有音色列表可删可试听
+
+#### 4. PWA 可安装化（App 第一步）
+
+- 现状诊断：manifest 早就写好，但 index.html 一个引用都没有——浏览器从未提示过安装；
+  icons 只有 SVG，iOS 完全不认
+- 新增 4 张 PNG 图标（any 192/512 + maskable 512 + apple-touch 180），
+  maskable 内容缩进安全区 78% 避免 Android 自适应裁切
+- index.html：manifest link + theme-color + viewport-fit=cover + apple 三件套
+- `composables/usePwaInstall.js`：捕获 beforeinstallprompt 由站内入口触发原生弹窗；
+  iOS 检测 UA + iPadOS 手势特征显示文字引导；standalone 模式整块隐藏
+- 入口放个人中心「界面偏好」卡片；Web Push 预留注释（接入时补 /api/push/* + VAPID）
+- SW v97 → v98（index.html 与 /icons/** 在缓存清单里，不提升老客户端拿不到新元数据）
+
+### 迁移
+
+- `o5p6q7r8s9t0`：数据一览分组 + 补齐 /finance /datahub /notes 菜单记录
+- `p6q7r8s9t0u1`：tools 表补 kind/is_enabled/sort_order + 播种内置工具（AI 封面/音色克隆）
+- `q7r8s9t0u1v2`：新建 `voice_clones`
+
+### 顺带修复
+
+- **finance `_parse_dt` 对所有 ISO 日期解析失败，流水日期一律回退为当天**：
+  `str.replace(tzinfo=None)` 写在了字符串而非 datetime 对象上，TypeError 被吞掉恒返回 None。
+  影响手动新增/编辑流水与 CSV 导入的日期列，全部静默落成「今天」。
+  `tests/test_finance_import.py` 3 例由红转绿（此前失败被当作环境问题漏检）
+
+### 测试
+
+- 新增 `test_menu_group.py`（4 例）、`test_cover.py`（6 例）、`test_voice_clone.py`（7 例，全 mock 网络）
+- 后端全量 451 例通过
+
 ## [v2.21.0] - 2026-09-16
 
 ### 桌宠开关 + 账本自定义分类 + AI Provider 权限修复 + 农历生日（User 需求 1/2/3/4）
