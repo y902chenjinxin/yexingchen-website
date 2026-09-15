@@ -1,6 +1,6 @@
 <template>
   <div class="dc">
-    <svg :viewBox="`0 0 ${size} ${size}`" class="dc-svg" role="img" aria-label="支出分类占比">
+    <svg :viewBox="`0 0 ${size} ${size}`" class="dc-svg" role="img" :aria-label="ariaLabel">
       <circle
         v-for="(seg, i) in segments"
         :key="i"
@@ -26,6 +26,8 @@ import { computed } from 'vue'
 
 const props = defineProps({
   data: { type: Array, default: () => [] }, // [{category, amount, color}]
+  unit: { type: String, default: '类' },     // 中心计数单位（账本=类 / 持仓=只）
+  ariaLabel: { type: String, default: '分类占比环形图' },
 })
 
 const size = 190
@@ -53,7 +55,7 @@ const segments = computed(() => {
   })
 })
 const totalLabel = computed(() => Number(tot.value).toFixed(2))
-const countLabel = computed(() => `${props.data.length} 类`)
+const countLabel = computed(() => `${props.data.length} ${props.unit}`)
 </script>
 
 <style scoped>

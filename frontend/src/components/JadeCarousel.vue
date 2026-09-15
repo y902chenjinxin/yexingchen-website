@@ -17,10 +17,17 @@
         :data-type="card.key"
         :style="getCardStyle(index)"
         @click="onCardClick(index)"
+        @pointermove="onCardPointerMove($event)"
+        @pointerleave="onCardPointerLeave($event)"
       >
+        <!-- 3D 舞台：四层按不同 Z 深度堆叠，形成真实景深 -->
         <div class="card-inner">
-          <div class="card-texture"></div>
-          <!-- 专属 SVG 篆符 -->
+          <!-- 层 1｜玉体：羊脂玉釉晕光 + 冰裂纹（z=0，唯一承载裁切的层） -->
+          <div class="card-face">
+            <div class="card-texture"></div>
+          </div>
+
+          <!-- 层 2｜专属 SVG 篆符（z=22） -->
           <svg class="card-sigil" viewBox="0 0 64 64" aria-hidden="true">
             <path
               :d="sigilPath(card.key)"
@@ -37,6 +44,11 @@
               opacity="0.3"
             />
           </svg>
+
+          <!-- 层 3｜镭射箔面 + 指针高光（z=38，压在篆符之上呈「覆膜」感） -->
+          <div class="card-foil" aria-hidden="true"></div>
+
+          <!-- 层 4｜标签托片（z=54，最前，保证箔面不会糊掉文字） -->
           <div class="card-label">{{ card.label }}</div>
         </div>
       </div>
@@ -88,7 +100,11 @@ const carouselStyle = computed(() => ({
   transform: `translateX(${-currentIndex.value * 178}px)`
 }))
 
-/** 3D 透视位姿：中间最大最前，两侧扇形收缩（沿用 HomeView 逻辑） */
+/**
+ * 3D 透视位姿：中间最大最前，两侧扇形收缩（沿用 HomeView 逻辑）。
+ * 末尾追加 rotateX/rotateY，由指针变量 --tl-x/--tl-y 驱动卡片微倾；
+ * 因写在同一条 transform 里，倾斜与轮播位移互不覆盖。
+ */
 function getCardStyle(index) {
   const offset = index - currentIndex.value
   const absOffset = Math.abs(offset)
@@ -100,10 +116,35 @@ function getCardStyle(index) {
   const opacity = absOffset === 0 ? 1 : Math.max(0.5, 1 - absOffset * 0.22)
   const zIndex = 8 - absOffset
   return {
-    transform: `translateX(${translateX}px) translateY(${translateY}px) translateZ(${translateZ}px) scale(${scale}) rotateZ(${rotateZ}deg)`,
+    transform: `translateX(${translateX}px) translateY(${translateY}px) translateZ(${translateZ}px) scale(${scale}) rotateZ(${rotateZ}deg) rotateX(var(--tl-x, 0deg)) rotateY(var(--tl-y, 0deg))`,
     opacity,
     zIndex
   }
+}
+
+/* ---- 指针驱动：箔面扫光 + 卡片微倾（直接写 CSS 变量，避免逐帧触发重渲染） ---- */
+const NEUTRAL_POINTER = { '--px': '0.5', '--py': '0.5', '--tl-x': '0deg', '--tl-y': '0deg' }
+
+function onCardPointerMove(e) {
+  // 触摸端不做指针跟随（避免拖动轮播时卡片被「甩歪」）
+  if (e.pointerType && e.pointerType !== 'mouse') return
+  const el = e.currentTarget
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  if (!r.width || !r.height) return
+  const px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+  const py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))
+  el.style.setProperty('--px', px.toFixed(3))
+  el.style.setProperty('--py', py.toFixed(3))
+  // 倾角封顶 ±13°：超过后文字可读性与「反光可信度」都会崩（业界经验值）
+  el.style.setProperty('--tl-x', ((0.5 - py) * 12).toFixed(2) + 'deg')
+  el.style.setProperty('--tl-y', ((px - 0.5) * 14).toFixed(2) + 'deg')
+}
+
+function onCardPointerLeave(e) {
+  const el = e.currentTarget
+  if (!el) return
+  Object.entries(NEUTRAL_POINTER).forEach(([k, v]) => el.style.setProperty(k, v))
 }
 
 function go(delta) {
@@ -115,8 +156,6 @@ function go(delta) {
 function onCardClick(index) {
   const card = props.cards[index]
   if (card) {
-    const delta = index - currentIndex.value
-    const wrap = Math.abs(delta) > props.cards.length / 2
     if (index !== currentIndex.value) {
       currentIndex.value = index
       scheduleReturn()
@@ -277,17 +316,26 @@ onUnmounted(() => {
   box-shadow: inset 0 0 14px rgba(217, 138, 118, 0.10);
 }
 
-/* 玉体内层：羊脂玉釉晕光 */
+/* 3D 舞台：preserve-3d 让四层在 Z 轴上真正错开；不设 overflow 以免压平子层景深 */
 .card-inner {
   position: absolute;
   inset: 0;
   border-radius: 15px;
-  overflow: hidden;
+  transform-style: preserve-3d;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 16px;
+}
+
+/* 层 1｜玉体：羊脂玉釉晕光（z=0） */
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 15px;
+  overflow: hidden;
+  transform: translateZ(0px);
   background:
     radial-gradient(circle at 30% 16%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 44%),
     radial-gradient(ellipse 120% 55% at 110% 105%, rgba(127, 168, 163, 0.16), transparent 60%),
@@ -306,12 +354,13 @@ onUnmounted(() => {
   opacity: 0.6;
 }
 
-/* 专属篆符 */
+/* 层 2｜专属篆符（z=22，浮出玉体） */
 .card-sigil {
   width: 52px;
   height: 52px;
   position: relative;
   z-index: 1;
+  transform: translateZ(22px);
   filter: drop-shadow(0 1px 3px rgba(58, 67, 80, 0.15));
   transition: all 0.4s;
 }
@@ -321,7 +370,49 @@ onUnmounted(() => {
 .jade-card:hover .card-sigil path,
 .jade-card.is-active .card-sigil path { opacity: 1; }
 
-/* 标签托片：微凹玻璃片（简头/简身意象），hover/active 转朱砂 */
+/* 层 3｜镭射箔面：多层渐变叠 mix-blend-mode，随指针扫过（z=38） */
+.card-foil {
+  position: absolute;
+  inset: 0;
+  border-radius: 15px;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateZ(38px);
+  opacity: 0;
+  mix-blend-mode: var(--jade-foil-blend, color-dodge);
+  background-image:
+    radial-gradient(circle at calc(var(--px, 0.5) * 100%) calc(var(--py, 0.5) * 100%), var(--jade-glare) 0%, transparent 40%),
+    linear-gradient(
+      115deg,
+      transparent 12%,
+      var(--jade-foil-1) 34%,
+      var(--jade-foil-2) 46%,
+      transparent 54%,
+      var(--jade-foil-3) 68%,
+      var(--jade-foil-4) 78%,
+      transparent 90%
+    ),
+    repeating-linear-gradient(0deg, transparent 0 3px, var(--jade-foil-grain) 3px 4px);
+  background-size: 100% 100%, 300% 300%, 100% 100%;
+  background-position: 0 0, calc(var(--px, 0.5) * 100%) calc(var(--py, 0.5) * 100%), 0 0;
+  background-repeat: no-repeat, no-repeat, repeat;
+  transition: opacity 0.45s ease, background-position 0.18s ease-out;
+}
+.jade-card:hover .card-foil { opacity: var(--jade-foil-opacity, 0.58); }
+.jade-card.is-active .card-foil { opacity: var(--jade-foil-opacity-active, 0.46); }
+
+/* 静止态环境流光：激活卡在未悬停时缓慢自扫，触摸端也能看到质感 */
+@media (prefers-reduced-motion: no-preference) {
+  .jade-card.is-active:not(:hover) .card-foil {
+    animation: jadeFoilSweep 6.5s ease-in-out infinite;
+  }
+}
+@keyframes jadeFoilSweep {
+  0%, 100% { background-position: 0 0, 14% 86%, 0 0; }
+  50%      { background-position: 0 0, 86% 14%, 0 0; }
+}
+
+/* 层 4｜标签托片：微凹玻璃片（简头/简身意象），hover/active 转朱砂（z=54） */
 .card-label {
   font-family: var(--font-serif);
   font-size: 12px;
@@ -329,6 +420,7 @@ onUnmounted(() => {
   letter-spacing: 0.22em;
   position: relative;
   z-index: 1;
+  transform: translateZ(54px);
   padding: 5px 11px 4px;
   border-radius: 999px;
   background: rgba(26, 34, 44, 0.45);
@@ -345,7 +437,7 @@ onUnmounted(() => {
 
 .jade-card:hover .card-sigil,
 .jade-card.is-active .card-sigil {
-  transform: scale(1.08);
+  transform: translateZ(22px) scale(1.08);
 }
 
 /* 激活卡：柔朱砂光环（克制，非铺满） */
@@ -401,6 +493,8 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jade-card, .carousel-track, .carousel-dots, .dot { transition: none !important; }
+  .jade-card, .carousel-track, .carousel-dots, .dot,
+  .card-inner, .card-foil, .card-sigil, .card-label { transition: none !important; }
+  .card-foil { animation: none !important; }
 }
 </style>

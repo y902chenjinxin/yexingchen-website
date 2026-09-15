@@ -10,6 +10,7 @@ build/
 
 # Node
 node_modules/
+.npm-cache/
 *.log
 
 # Environment

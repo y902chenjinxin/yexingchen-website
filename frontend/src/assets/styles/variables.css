@@ -924,3 +924,47 @@ html:root[data-theme="day"] .filing-divider {
 :root[data-theme="day"] .detail-frame-wrap {
   background: #eef0ed;
 }
+
+/* =====================================================================
+ * 涨跌语义色（国内习惯：红涨 / 绿跌，与欧美相反）
+ * 股票看板、账本等一切「盈/亏」着色统一走这套 token，禁止再散写 hex。
+ * ===================================================================== */
+:root {
+  --pnl-up: #D8504F;              /* 涨 / 盈利 */
+  --pnl-down: #3F968E;            /* 跌 / 亏损 */
+  --pnl-up-soft: rgba(216, 80, 79, .16);
+  --pnl-down-soft: rgba(63, 150, 142, .16);
+  --pnl-up-line: rgba(216, 80, 79, .35);
+  --pnl-down-line: rgba(63, 150, 142, .35);
+}
+
+/* =====================================================================
+ * 玉简镭射箔面（JadeCarousel 全息闪卡，2026-09-16）
+ * 依据 GitHub 成熟全息卡方案（pointer 变量 + 多层渐变 + mix-blend-mode）
+ * 自研实现，色相全部取自玄墨流金体系，不引入第三方依赖。
+ * 效果强度：卡片仅 132×176，箔面必须克制以保证篆符与标签可读。
+ * ===================================================================== */
+:root {
+  --jade-foil-blend: color-dodge;          /* 夜间：加光叠色，箔面最显 */
+  --jade-foil-opacity: 0.58;               /* hover 时的箔面强度 */
+  --jade-foil-opacity-active: 0.46;        /* 激活卡常驻强度（低于 hover） */
+  --jade-glare: rgba(255, 255, 255, 0.26); /* 指针跟随的高光斑 */
+  --jade-foil-1: rgba(255, 255, 255, 0.50);/* 箔带·白高光 */
+  --jade-foil-2: rgba(199, 169, 107, 0.44);/* 箔带·鎏金 */
+  --jade-foil-3: rgba(127, 168, 163, 0.38);/* 箔带·雨青 */
+  --jade-foil-4: rgba(217, 138, 118, 0.30);/* 箔带·朱砂 */
+  --jade-foil-grain: rgba(255, 255, 255, 0.05); /* 镭射细条纹 */
+}
+
+/* 日间：亮底不能用 color-dodge（会把整卡刷白），改 overlay 并压低强度 */
+:root[data-theme="day"] {
+  --jade-foil-blend: overlay;
+  --jade-foil-opacity: 0.42;
+  --jade-foil-opacity-active: 0.30;
+  --jade-glare: rgba(255, 255, 255, 0.58);
+  --jade-foil-1: rgba(255, 255, 255, 0.85);
+  --jade-foil-2: rgba(169, 128, 79, 0.42);
+  --jade-foil-3: rgba(47, 138, 133, 0.34);
+  --jade-foil-4: rgba(194, 94, 76, 0.28);
+  --jade-foil-grain: rgba(20, 36, 42, 0.05);
+}

@@ -14,6 +14,9 @@ export const usePlayerStore = defineStore('player', () => {
   const isPlaying = ref(false)
   const volume = ref(Number(localStorage.getItem('bgm_volume') ?? 0.3))
   const rejectedOnce = ref(false)
+  // BGM 总开关：关闭时彻底停播且不再自动拉起（含自动播放被拦后的恢复句柄）；
+  // 状态持久化到 localStorage，下次进站保持用户上次的选择。
+  const bgmEnabled = ref(localStorage.getItem('bgm_enabled') !== '0')
   const shows = computed(() => mode.value === 'playlist' && !!curItem.value)
 
   audio.volume = volume.value
@@ -54,6 +57,8 @@ export const usePlayerStore = defineStore('player', () => {
   function armResume() {
     if (resumeHandler) return
     resumeHandler = () => {
+      // 总开关关闭：立刻撤销句柄，杜绝「关掉后随便点一下又响起来」
+      if (!bgmEnabled.value) { disarmResume(); return }
       const seq = ++playSeq
       if (!bgmUrl.value) return                 // 源地址尚未就绪，保留句柄等待
       mode.value = 'bgm'
@@ -129,6 +134,29 @@ export const usePlayerStore = defineStore('player', () => {
     setVolume(volume.value > 0 ? 0 : 0.3)
   }
 
+  // ---------- BGM 总开关 ----------
+  // 关闭：撤销自动恢复句柄 + 彻底停播并释放网络流（仅作用于 BGM，不影响点播中的曲目）
+  // 开启：按当前偏好源立即恢复播放（被浏览器拦截时自动武装恢复句柄）
+  function setBgmEnabled(on) {
+    bgmEnabled.value = !!on
+    localStorage.setItem('bgm_enabled', bgmEnabled.value ? '1' : '0')
+    if (!bgmEnabled.value) {
+      disarmResume()
+      if (mode.value === 'bgm') {
+        hardStop()
+        isPlaying.value = false
+        mode.value = 'idle'
+        curItem.value = null
+      }
+      return
+    }
+    playBgm()
+  }
+
+  function toggleBgm() {
+    setBgmEnabled(!bgmEnabled.value)
+  }
+
   // ---------- 进度 ----------
   const progress = ref(0)
   const duration = ref(0)
@@ -149,6 +177,7 @@ export const usePlayerStore = defineStore('player', () => {
   const bgmUrl = ref('')
   function setBgmUrl(url) { bgmUrl.value = url || '' }
   function playBgm(url) {
+    if (!bgmEnabled.value) return                // 总开关关闭：任何来源的自动播放请求一律拦下
     if (url) bgmUrl.value = url
     if (!bgmUrl.value) return
     const seq = ++playSeq
@@ -166,8 +195,10 @@ export const usePlayerStore = defineStore('player', () => {
   }
   return {
     audio, mode, curItem, isPlaying, volume, shows, progress, duration, rejectedOnce, bgmUrl,
+    bgmEnabled,
     hardStop, switchSource, resolveUrl, armResume, disarmResume, playBgm, setBgmUrl,
     playItem, togglePlay, stopAndHide, setVolume, toggleMute,
+    setBgmEnabled, toggleBgm,
     seek, seekByRatio,
     get playing() { return isPlaying.value },
   }

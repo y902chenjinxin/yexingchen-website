@@ -28,33 +28,40 @@
           <span class="st-kpi-s">{{ summary.symbol_count }} 只自选</span>
         </div>
         <div class="st-kpi-card glass">
-          <span class="st-kpi-k">今日盈亏</span>
+          <span class="st-kpi-k">每日盈亏</span>
           <span class="st-kpi-v" :class="pnlCls(summary.today_pnl)">{{ sign(summary.today_pnl) }}¥ {{ fmt(Math.abs(summary.today_pnl ?? 0)) }}</span>
           <span class="st-kpi-s">按持仓量估算</span>
         </div>
         <div class="st-kpi-card glass">
-          <span class="st-kpi-k">持有盈亏</span>
+          <span class="st-kpi-k">总收益</span>
+          <span class="st-kpi-v" :class="pnlCls(summary.hold_pnl)">{{ sign(summary.hold_pnl) }}¥ {{ fmt(Math.abs(summary.hold_pnl ?? 0)) }}</span>
+          <span class="st-kpi-s">现价对比成本</span>
+        </div>
+        <div class="st-kpi-card glass">
+          <span class="st-kpi-k">总收益率</span>
           <span class="st-kpi-v" :class="pnlCls(summary.hold_pct)">{{ sign(summary.hold_pct) }}{{ fmt(summary.hold_pct, 2) }}%</span>
           <span class="st-kpi-s">成本均价对比现价</span>
         </div>
+        <div class="st-kpi-card glass">
+          <span class="st-kpi-k">今日仓位收益</span>
+          <span class="st-kpi-v" :class="pnlCls(todayPct)">{{ todayPct == null ? '--' : sign(todayPct) + fmt(todayPct, 2) + '%' }}</span>
+          <span class="st-kpi-s">按昨日市值折算</span>
+        </div>
+        <div class="st-kpi-card glass">
+          <span class="st-kpi-k">目标价预警</span>
+          <span class="st-kpi-v" :class="{ down: summary.alerts > 0 }">{{ summary.alerts || 0 }}</span>
+          <span class="st-kpi-s">{{ summary.alerts ? '有股票触达目标价' : '暂无触达' }}</span>
+        </div>
       </section>
 
-      <!-- 持仓盈亏趋势 -->
-      <section class="st-trend glass" v-if="trend.length">
-        <div class="st-trend-head">
-          <span class="st-trend-title">持仓盈亏趋势</span>
-          <span class="st-trend-sub">近 {{ trend.length }} 个记录日（持仓市值）</span>
-          <button class="st-btn ghost tiny" :disabled="recording" @click="recordToday">{{ recording ? '记录中…' : '记今日快照' }}</button>
-        </div>
-        <svg class="st-trend-svg" :viewBox="trendBox" preserveAspectRatio="none">
-          <line v-for="(g, i) in trend" :key="'gl' + i" class="st-trend-g" :x1="tx(i)" :x2="tx(i)" :y1="6" :y2="th" />
-          <polyline class="st-trend-poly" :points="trendPts" />
-          <circle v-for="(g, i) in trend" :key="'c' + i" class="st-trend-dot" :cx="tx(i)" :cy="ty(g.market_value)" r="2.6" />
-          <template v-for="(g, i) in trend" :key="'t' + i">
-            <text class="st-trend-x" :x="tx(i)" :y="th" :text-anchor="i===0 ? 'start' : i===trend.length-1 ? 'end' : 'middle'">{{ shortDate(g.date) }}</text>
-          </template>
-        </svg>
-      </section>
+      <!-- 资产配置 / 每日盈亏走势 / 每日盈亏日历 -->
+      <PortfolioPanel
+        :holdings="summary.holdings || []"
+        :snapshots="trend"
+        :today-pnl="Number(summary.today_pnl) || 0"
+        :recording="recording"
+        @record="recordToday"
+      />
 
       <!-- 加自选（内联面板，无弹窗） -->
       <transition name="st-panel">
@@ -185,13 +192,14 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import PortfolioPanel from '@/components/stocks/PortfolioPanel.vue'
 import { stocksApi } from '@/api/stocks'
 
 const router = useRouter()
 const list = ref([])
 const loading = ref(true)
 const refreshing = ref(false)
-const summary = reactive({ market_value: 0, today_pnl: 0, hold_pct: 0, symbol_count: 0 })
+const summary = reactive({ market_value: 0, today_pnl: 0, hold_pnl: 0, hold_pct: 0, symbol_count: 0, alerts: 0, holdings: [] })
 
 const adding = ref(false)
 const addingSave = ref(false)
@@ -209,30 +217,14 @@ const editTarget = ref(null)
 
 const trend = ref([])
 const recording = ref(false)
-const th = 84
-const trendBox = computed(() => `0 0 600 ${th}`)
-const trendPts = computed(() => {
-  const vals = trend.value.map(g => g.market_value)
-  const max = Math.max(...vals, 1)
-  const min = Math.min(...vals)
-  const span = (max - min) || 1
-  return trend.value.map((g, i) => `${tx(i)},${minSafe(min, span, g.market_value)}`).join(' ')
+
+// 今日仓位收益 = 今日盈亏 / 昨日收盘市值（= 当前市值 − 今日盈亏）
+const todayPct = computed(() => {
+  const mv = Number(summary.market_value) || 0
+  const today = Number(summary.today_pnl) || 0
+  const base = mv - today
+  return base ? (today / base) * 100 : null
 })
-function tx(i) {
-  const n = trend.value.length
-  return n <= 1 ? 300 : 30 + (i * 540) / (n - 1)
-}
-function ty(v) {
-  const vals = trend.value.map(g => g.market_value)
-  const max = Math.max(...vals, 1)
-  const min = Math.min(...vals)
-  const span = (max - min) || 1
-  return minSafe(min, span, v)
-}
-function minSafe(min, span, v) {
-  return 12 + (th - 24) * (1 - ((v - min) / span))
-}
-function shortDate(d) { return (d || '').slice(2, 7).replace('-', '/') }
 
 const isMobile = ref(window.innerWidth < 760)
 function onResize() { isMobile.value = window.innerWidth < 760 }
@@ -400,18 +392,6 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
   font-size: 11px; color: #fff; vertical-align: 2px; }
 .st-alert.a-up { background: #D8504F; }
 .st-alert.a-down { background: #3F968E; }
-
-/* 持仓趋势 */
-.st-trend { border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; }
-.st-trend-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-.st-trend-title { font-size: 15px; letter-spacing: .08em; color: var(--lj-text); }
-.st-trend-sub { font-size: 12px; color: var(--lj-text-3); }
-.st-trend-head .st-btn { margin-left: auto; }
-.st-trend-svg { width: 100%; height: 84px; display: block; }
-.st-trend-g { stroke: rgba(74,95,99,.12); stroke-width: 1; }
-.st-trend-poly { fill: none; stroke: var(--lj-ochre); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.st-trend-dot { fill: var(--lj-ochre); }
-.st-trend-x { font-size: 9px; fill: var(--lj-text-3); }
 
 .st-list { border-radius: 16px; padding: 18px 20px; }
 .st-list-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
