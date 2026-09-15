@@ -33,12 +33,14 @@ if schema_guard.is_production_env():
 else:
     Base.metadata.create_all(bind=engine)
 
+# 生产环境关闭交互式文档。注意 openapi_url 也要一起关：
+# FastAPI 只关 docs_url 时，/openapi.json 仍然可访问（会把全部接口结构暴露出去）。
+# 判定统一走 schema_guard，避免「只读 os.environ」导致 pm2 重启后判定翻转。
 app = FastAPI(
     title="叶兴辰的个人网站 API",
     version="1.0.0",
     description="个人云存储与展示平台后端API",
-    docs_url="/docs" if os.environ.get("ENV") != "production" else None,
-    redoc_url="/redoc" if os.environ.get("ENV") != "production" else None,
+    **schema_guard.docs_urls(),
 )
 
 

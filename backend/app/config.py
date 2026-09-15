@@ -4,6 +4,12 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
+    # 运行环境：production / 其他（留空）——决定是否关掉 /docs、是否启用 schema fail-fast 校验
+    # 必须显式声明为字段：此前只靠 extra="allow" 兜着，值只进 Settings 不进 os.environ，
+    # 于是 is_production_env()（只读 os.environ）在 pm2 重启后可能变 False，
+    # 生产会静默把 /docs、/redoc、/openapi.json 暴露出去（2026-09-16 实测发现）
+    ENV: str = ""
+
     # 数据库
     DATABASE_URL: str = ""  # 必填：sqlite:///./xxx.db 或 postgresql://...
 

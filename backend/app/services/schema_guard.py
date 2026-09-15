@@ -83,8 +83,38 @@ def _parse_value(raw: str) -> Optional[str]:
     return raw.strip("'\"")
 
 
+def resolved_env() -> str:
+    """当前运行环境标识。
+
+    优先取真实环境变量（生产 pm2 / CI 会显式传入），其次回落到 ``.env`` 里的 ``ENV``。
+    前者兼容既有部署方式，后者避免「同一份配置，pm2 重启一次就变回非生产」——
+    这个差异会让 `/docs` 悄悄对外可用（见 ISSUES ENV-008）。
+    """
+    value = os.environ.get("ENV") or ""
+    if not value:
+        try:
+            from app.config import settings  # 延迟导入，避免与 config 形成导入环
+
+            value = getattr(settings, "ENV", "") or ""
+        except Exception:  # noqa: BLE001 — 配置不可用时按非生产处理，不影响主流程
+            value = ""
+    return value.strip().lower()
+
+
 def is_production_env() -> bool:
-    return os.environ.get("ENV", "").strip().lower() == "production"
+    return resolved_env() == "production"
+
+
+def docs_urls() -> dict:
+    """FastAPI 的文档路由配置。
+
+    生产环境必须**三处一起关**：只关 `docs_url` 时 `/openapi.json` 仍可访问，
+    等于把全部接口结构公开（本次实测：三者在生产都是 200）。
+    抽成函数是为了让「生产关文档」这件事可被单测直接覆盖，而不必去 import app.main。
+    """
+    if is_production_env():
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
 
 
 def _count_heads(engine: Engine) -> int:

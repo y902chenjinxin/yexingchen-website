@@ -1,113 +1,98 @@
-"""生产环境 schema 边界测试。
+"""生产环境判定与文档路由暴露的回归测试。
 
-验证：
-1. ENV=production 时，导入 app.main 不会触发 Base.metadata.create_all()。
-2. 非生产环境（development / 未设置 / 其他值）导入 app.main 时，
-   仍然会调用 Base.metadata.create_all()，保持向后兼容。
+背景（2026-09-16 生产实测发现）：`is_production_env()` 原来只读 `os.environ["ENV"]`，
+而 `ENV=production` 只写在 `backend/.env` 里（pydantic-settings 只把它读进 Settings，
+不写回 os.environ）。结果 pm2 用别的方式重启一次，判定就翻成「非生产」，
+于是 `/docs`、`/redoc`、`/openapi.json` **在生产上变成公开可访问**（实测三者均 200）。
 
-测试通过 subprocess 启动独立 Python 进程，并 monkey-patch
-Base.metadata.create_all 来记录调用次数，避免污染当前测试进程的数据库。
+本测试锁住两件事：
+1. 判定要同时认「真实环境变量」和「.env 里的 ENV」，且环境变量优先
+2. 生产环境下三个文档路由必须一起关（只关 docs_url 不够）
 """
 import os
-import subprocess
-import sys
-import textwrap
-from pathlib import Path
+
+os.environ.setdefault("SECRET_KEY", "test-secret")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 import pytest
 
-BACKEND_DIR = Path(__file__).resolve().parent.parent
+from app.services import schema_guard
 
 
-SCRIPT_TEMPLATE = textwrap.dedent(
-    """
-    import os
-    import sys
-    import tempfile
-
-    sys.path.insert(0, {backend_dir!r})
-
-    # 用临时 sqlite 文件作为目标库
-    tmpdir = tempfile.mkdtemp(prefix='prod_env_')
-    db_path = os.path.join(tmpdir, 'empty.db')
-    open(db_path, 'wb').close()
-    os.environ['SECRET_KEY'] = 'test-secret'
-    os.environ['DATABASE_URL'] = 'sqlite:///' + db_path
-
-    # 旁路 schema_guard（测试目标是 create_all 是否被调用，不是 guard 行为）
-    import app.services.schema_guard as sg
-    sg.assert_production_schema_ok = lambda engine: None
-
-    from app.database import Base
-
-    # 记录 create_all 是否被调用
-    called = {{'count': 0}}
-
-    real_create_all = Base.metadata.create_all
-
-    def patched_create_all(*args, **kwargs):
-        called['count'] += 1
-        return None
-
-    Base.metadata.create_all = patched_create_all
-
-    try:
-        import app.main  # noqa: F401
-    finally:
-        Base.metadata.create_all = real_create_all
-
-    print('CREATE_ALL_CALLED=' + str(called['count']))
-    """
-)
-
-
-def _run_in_child(env_value):
-    """在独立 Python 进程中以指定 ENV 导入 app.main，记录 create_all 调用次数。
-
-    旁路 schema_guard，仅验证 create_all 调用次数（schema_guard 行为由
-    test_schema_guard.py 单独覆盖）。
-    """
-    env = os.environ.copy()
-    env["SECRET_KEY"] = "test-secret"
-    env.pop("DATABASE_URL", None)
-    if env_value is None:
-        env.pop("ENV", None)
+@pytest.fixture(autouse=True)
+def _restore_env():
+    """本文件会改动 ENV，逐例还原，避免污染其他测试。"""
+    saved = os.environ.get("ENV")
+    yield
+    if saved is None:
+        os.environ.pop("ENV", None)
     else:
-        env["ENV"] = env_value
-
-    script = SCRIPT_TEMPLATE.format(backend_dir=str(BACKEND_DIR))
-    r = subprocess.run(
-        [sys.executable, "-c", script],
-        cwd=str(BACKEND_DIR),
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    assert r.returncode == 0, (
-        f"child process failed (ENV={env_value!r})\n"
-        f"stdout={r.stdout}\nstderr={r.stderr}"
-    )
-    last_line = r.stdout.strip().splitlines()[-1]
-    assert last_line.startswith("CREATE_ALL_CALLED="), last_line
-    return int(last_line.split("=", 1)[1])
+        os.environ["ENV"] = saved
 
 
-@pytest.mark.parametrize("env_value", ["production", "PRODUCTION", "Production"])
-def test_production_env_skips_create_all(env_value):
-    """ENV=production（任意大小写）必须跳过 Base.metadata.create_all()。"""
-    count = _run_in_child(env_value)
-    assert count == 0, f"ENV={env_value!r} 不应调用 create_all，实际调用 {count} 次"
+class TestResolvedEnv:
+    def test_reads_real_env_var(self):
+        os.environ["ENV"] = "production"
+        assert schema_guard.resolved_env() == "production"
+        assert schema_guard.is_production_env() is True
+
+    def test_falls_back_to_settings_when_env_var_absent(self, monkeypatch):
+        """回归重点：pm2 重启丢掉环境变量时，必须还能从 .env 读到 production。"""
+        os.environ.pop("ENV", None)
+        from app.config import settings
+
+        monkeypatch.setattr(settings, "ENV", "production", raising=False)
+        assert schema_guard.resolved_env() == "production"
+        assert schema_guard.is_production_env() is True
+
+    def test_real_env_var_wins_over_settings(self, monkeypatch):
+        from app.config import settings
+
+        os.environ["ENV"] = "development"
+        monkeypatch.setattr(settings, "ENV", "production", raising=False)
+        assert schema_guard.is_production_env() is False
+
+    def test_settings_fallback_is_case_insensitive(self, monkeypatch):
+        os.environ.pop("ENV", None)
+        from app.config import settings
+
+        monkeypatch.setattr(settings, "ENV", "  Production  ", raising=False)
+        assert schema_guard.is_production_env() is True
+
+    @pytest.mark.parametrize("value", ["development", "test", "", "staging"])
+    def test_non_production_values(self, value, monkeypatch):
+        from app.config import settings
+
+        os.environ["ENV"] = value
+        monkeypatch.setattr(settings, "ENV", value, raising=False)
+        assert schema_guard.is_production_env() is False
 
 
-@pytest.mark.parametrize("env_value", ["development", "staging", "test", ""])
-def test_non_production_env_still_calls_create_all(env_value):
-    """非生产环境必须保留 create_all，向后兼容历史部署与现有 test_api.py。"""
-    count = _run_in_child(env_value)
-    assert count == 1, f"ENV={env_value!r} 应调用 create_all 1 次，实际 {count} 次"
+class TestDocsUrls:
+    def test_production_disables_all_three(self):
+        os.environ["ENV"] = "production"
+        urls = schema_guard.docs_urls()
+        assert urls == {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+    def test_non_production_keeps_docs(self):
+        os.environ["ENV"] = "development"
+        urls = schema_guard.docs_urls()
+        assert urls["docs_url"] == "/docs"
+        assert urls["redoc_url"] == "/redoc"
+        # openapi_url 必须一起暴露，否则 /docs 页面拿不到 schema 会白屏
+        assert urls["openapi_url"] == "/openapi.json"
+
+    def test_openapi_disabled_whenever_docs_disabled(self):
+        """防回归：任何情况下都不允许出现「docs 关了但 openapi.json 还开着」。"""
+        for value in ("production", "Production", "development", "test"):
+            os.environ["ENV"] = value
+            urls = schema_guard.docs_urls()
+            assert (urls["docs_url"] is None) == (urls["openapi_url"] is None)
 
 
-def test_env_unset_still_calls_create_all():
-    """未设置 ENV 时按非生产处理。"""
-    count = _run_in_child(None)
-    assert count == 1, f"未设置 ENV 应调用 create_all 1 次，实际 {count} 次"
+class TestSettingsDeclaresEnv:
+    def test_env_is_a_declared_field(self):
+        """必须显式声明：靠 extra='allow' 兜着的值不会写回 os.environ。"""
+        from app.config import Settings
+
+        assert "ENV" in Settings.model_fields

@@ -208,6 +208,7 @@
 | ENV-006 | **本地开发库 `yexingchen.db` 与 alembic 版本已漂移**：`alembic_version` 停在 `b2c3d4e5f6a7`，但表其实是 `app.main` 启动时 `Base.metadata.create_all()` 建的（`user_ai_providers` 等表存在但版本未记录）。后果：① `alembic upgrade head` 会撞 `table already exists` 无法重放；② `create_all` 只补表**不补列**，所以 `xuanhuang_tasks` 缺 `source_type/source_id/source_key`、`xuanhuang_contacts` 等新表也缺 → 本地起后端时待办/通讯录相关功能必报错 | 环境 | 待处理（需人工决定：`stamp head` 后按模型补列，或备份后重建开发库；生产不受影响，生产走的是正常迁移链） |
 | ENV-007 | 受限运行环境（沙箱）禁止写入任何 SQLite 文件，导致所有 `import app.main` 的测试在 collection 阶段失败（`attempt to write a readonly database`）。绕行：把 `DATABASE_URL` 指向 `sqlite:///:memory:`，或使用纯内存 fixture（本次新增测试均已按此写） | CI | 已知绕行方案 |
 | TD-011 | 存量 eslint error 新增两处记录：`AssistantView.vue:474`（`no-empty` 空块）、`FinanceView.vue:646`（`handleCurrentChange` 未使用）。两者经 `git show HEAD` 对比确认改动前即存在 | 前端 | 待修复 |
+| ENV-008 | **`ENV=production` 判定脆弱，曾导致生产 `/docs` 对外暴露**：`is_production_env()` 只读 `os.environ["ENV"]`，而该值只在 `backend/.env` 里（pydantic-settings 不把 `.env` 写回 `os.environ`）。凡是不带 `ENV=production` 的方式重启（如 `pm2 restart --update-env`）都会让判定翻成非生产，进而：① `/docs`、`/redoc`、`/openapi.json` 公开可访问（实测三者均 200）；② 生产不再做 schema fail-fast 校验，改为执行 `create_all` | 安全 | **已修复（v2.21.0）**：`Settings` 显式声明 `ENV`，新增 `resolved_env()`（环境变量优先 → 回落 `.env`），文档路由抽为 `docs_urls()` 且生产三个一起关；补 `test_production_env.py` 11 例锁死行为 |
 
 ---
 
@@ -222,6 +223,7 @@
 | 2026-09-16 | ENV-004 / TD-010 | v2.19.0 落地过程中发现：后端 pytest 全量执行存在既有崩溃（只能逐文件跑）、AdminView 存量 2 条 unused-vars |
 | 2026-09-16 | FEAT-001 / ENV-005 | v2.20.0 家庭助理三件套：农历生日仅存值未转换（待用户确认）；deploy_backend.py 白名单缺 workbench 包文件已补齐 |
 | 2026-09-16 | FEAT-001(已实现) / ENV-006 / ENV-007 / TD-011 | v2.21.0：农历换算落地（lunardate，8 春节锚点 + 3 闰月校验）；发现本地开发库 alembic 版本漂移（ENV-006）、受限环境无法写 SQLite 文件（ENV-007）、两处存量 eslint error（TD-011） |
+| 2026-09-16 | ENV-008 | v2.21.0 部署核验时实测发现生产 `/docs`、`/redoc`、`/openapi.json` 均 200 可访问（`ENV=production` 判定只读 `os.environ`，而该值只在 `.env` 里）→ 已修复并补 11 例回归测试 |
 
 ---
 

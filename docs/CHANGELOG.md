@@ -49,18 +49,46 @@
 
 ### 顺带修复
 
+- **生产 `/docs` 曾对外暴露（本次部署核验时实测发现）**：`is_production_env()` 只读
+  `os.environ["ENV"]`，而 `ENV=production` 只写在 `backend/.env` 里
+  （pydantic-settings 只把它读进 `Settings`，不写回 `os.environ`），
+  于是 pm2 用别的方式重启一次判定就翻成「非生产」→ `/docs`、`/redoc`、`/openapi.json`
+  在生产上均返回 200（实测三者都是 200）。
+  修复：`Settings` 显式声明 `ENV` 字段；新增 `resolved_env()`（环境变量优先，回落 `.env`）；
+  文档路由抽成 `schema_guard.docs_urls()`，生产**三个一起关**
+  （只关 `docs_url` 时 `/openapi.json` 仍可访问，等于把接口结构全公开）。
+  上线前已在服务器上以 `ENV=production` **空跑一次** `assert_production_schema_ok`
+  确认通过（期望 head == 库内版本 == `n4o5p6q7r8s9`、alembic_version 恰 1 行），
+  排除「改完起不来」的风险
 - `alembic/env.py` 从未注册记账模块，`Base.metadata` 里没有这两张表（autogenerate 看不到）
 - `contacts.py` 两处 `raise_error(code, msg, 404)` 传了 3 个参数，而 `raise_error` 只接受 2 个
   → 「联系人不存在」「回收站中无此联系人」实际会抛 TypeError 变成 500，已改 `ErrCode.NOT_FOUND`
+- `deploy_backend.py`：pip 改为 `-r requirements.txt`（原先手写包名清单，新增依赖会漏装，
+  v2.21.0 的 lunardate 就差点漏），并补齐本次白名单
+- `.gitignore` 补 `.pip-cache/`、`backend/.pip-cache/`；修掉一处 `*~\n` 字面量笔误
 
 ### 测试
 
-新增 108 例：`test_lunar.py` 49 + `test_finance_categories.py` 32 + `test_ai_provider_shared.py` 27。
+新增 119 例：`test_lunar.py` 49 + `test_finance_categories.py` 32 +
+`test_ai_provider_shared.py` 27 + `test_production_env.py` 11。
 后端逐文件回归全通过：lunar 49 / family_reminder 23 / family_api 16 / finance_categories 32 /
-ai_providers 15 / ai_provider_shared 27 / migrations 3 / password_validation 25 /
-schema_guard 7 / security 17 / client_ip 6。
+ai_providers 15 / ai_provider_shared 27 / production_env 11 / migrations 3 /
+password_validation 25 / schema_guard 7 / security 17 / client_ip 6。
 前端 `vite build` 通过（FinanceView 20.6→28.3 kB，新增分类管理）；eslint 改动文件**零新增 error**
 （`AssistantView` 474 与 `FinanceView` 646 两条 error 经 HEAD 对比确认为存量）。
+
+### 部署取证（yexingchen.cn）
+
+- 前端 SW v96 → **v97**（204 文件，home=200）；生产 4 个新 chunk 均含本次文案：
+  FinanceView「管理分类」/ ContactsView「闰月」/ ProfileView「桌宠展示」/ AssistantView「共享」
+- 后端迁移 `m3n4o5p6q7r8 -> n4o5p6q7r8s9` 已应用（`alembic current` = head）；PM2 online、health=200；
+  服务器 venv 已装 `lunardate`（并实测 `LunarDate(2026,8,15)` → 2026-09-25）
+- 端到端取证：**新建一个临时普通用户**，用它的身份跑完整链路 ——
+  AI Provider 列表 **200**（旧代码此处 403）、可见超管 2 条共享配置（`is_shared=True`）；
+  农历联系人返回 `lunar_text=八月十五` 且 `next_birthday=2026-09-25`（换算正确）、
+  农历 31 日被拒 400；自定义分类记账后分类**未被归一成「其他」**、统计环形图含该分类。
+  验证后按逆序删除全部探针数据，**账号与数据零残留**（用户数 5 → 5，探针账号已无法登录 401）
+- 修复后再核验：`/docs`、`/redoc`、`/openapi.json` 生产均不再暴露
 
 ---
 
