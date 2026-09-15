@@ -118,7 +118,8 @@ class TestBirthdayReminder:
 
         tasks = _auto_tasks(session, uid, SOURCE_BIRTHDAY)
         assert len(tasks) == 1
-        assert "奶奶" in tasks[0].title and "4 天后" in tasks[0].title
+        assert "4 天后生日" in tasks[0].title
+        assert "奶奶" in tasks[0].title
         assert "祖母" in tasks[0].title
         assert tasks[0].source_key == "2026"
         assert "138" in tasks[0].description
@@ -128,7 +129,16 @@ class TestBirthdayReminder:
         session.add(Contact(user_id=uid, name="爸爸", birthday="09-16"))
         session.commit()
         sync_reminders(session, uid, today=TODAY)
-        assert "就在今天" in _auto_tasks(session, uid, SOURCE_BIRTHDAY)[0].title
+        assert "今天生日" in _auto_tasks(session, uid, SOURCE_BIRTHDAY)[0].title
+
+    def test_tomorrow_birthday_uses_natural_wording(self, db):
+        """「明天生日」比「生日1 天后」自然。"""
+        session, uid = db
+        session.add(Contact(user_id=uid, name="妈妈", birthday="09-17"))
+        session.commit()
+        sync_reminders(session, uid, today=TODAY)
+        title = _auto_tasks(session, uid, SOURCE_BIRTHDAY)[0].title
+        assert title == "妈妈 明天生日"
 
     def test_far_away_birthday_creates_nothing(self, db):
         session, uid = db
@@ -239,13 +249,13 @@ class TestIdempotency:
         assert _auto_tasks(session, uid, SOURCE_BIRTHDAY)[0].deleted_at is not None
 
     def test_sync_refreshes_title_when_date_moves_closer(self, db):
-        """同步会刷新标题里的天数，保证「3 天后」不会一直停在旧值。"""
+        """同步会刷新标题里的临近度，保证「14 天后」不会一直停在旧值。"""
         session, uid = db
         session.add(Contact(user_id=uid, name="奶奶", birthday="09-30"))
         session.commit()
         sync_reminders(session, uid, today=TODAY)
-        assert "14 天后" in _auto_tasks(session, uid, SOURCE_BIRTHDAY)[0].title
+        assert "14 天后生日" in _auto_tasks(session, uid, SOURCE_BIRTHDAY)[0].title
 
         sync_reminders(session, uid, today=date(2026, 9, 29))
-        assert "1 天后" in _auto_tasks(session, uid, SOURCE_BIRTHDAY)[0].title
+        assert "明天生日" in _auto_tasks(session, uid, SOURCE_BIRTHDAY)[0].title
         assert session.query(Task).filter(Task.user_id == uid).count() == 1

@@ -182,8 +182,14 @@ def sync_reminders(
         if days > horizon_days:
             continue
         who = c.name + (f"（{c.relation}）" if c.relation else "")
-        when = "就在今天" if days == 0 else f"{days} 天后"
-        title = f"{who} 生日{when}"
+        # 中文里「生日1 天后」这种拼接读着别扭，按临近程度换成人话
+        if days == 0:
+            label = "今天生日"
+        elif days == 1:
+            label = "明天生日"
+        else:
+            label = f"{days} 天后生日"
+        title = f"{who} {label}"
         parts = [nb.strftime("%Y 年 %m 月 %d 日")]
         if c.birth_year and nb.year - c.birth_year > 0:
             parts.append(f"{nb.year - c.birth_year} 岁")
