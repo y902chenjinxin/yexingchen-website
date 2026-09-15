@@ -58,6 +58,22 @@
               aria-label="桌宠展示开关"
             />
           </div>
+
+          <!-- 安装到主屏幕（PWA）：仅在可安装/需手动引导时出现，已安装则整块隐藏 -->
+          <div v-if="showInstallRow" class="info-item">
+            <div class="pref-text">
+              <span class="info-label">安装为应用</span>
+              <span class="pref-hint">{{ iosGuide
+                ? 'iPhone/iPad：点浏览器底部「分享」按钮，选择「添加到主屏幕」'
+                : '安装到桌面 / 主屏幕，像原生应用一样全屏打开' }}</span>
+            </div>
+            <el-button
+              v-if="!iosGuide"
+              size="small" type="primary" plain
+              :disabled="!canPrompt"
+              @click="doInstall"
+            >安装</el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -103,11 +119,25 @@ import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePrefsStore } from '@/stores/prefs'
+import { usePwaInstall } from '@/composables/usePwaInstall'
 import { getMe, updateMe } from '@/api/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
 const prefs = usePrefsStore()
+
+// PWA 安装：Chromium 可直接弹原生安装框；iOS 只能文字引导「分享 → 添加到主屏幕」
+const {
+  canInstall, showIosGuide, promptInstall, installed,
+} = usePwaInstall()
+const iosGuide = showIosGuide
+const canPrompt = canInstall
+const showInstallRow = computed(() => !installed.value && (canInstall.value || showIosGuide.value))
+
+async function doInstall() {
+  const outcome = await promptInstall()
+  if (outcome === 'accepted') ElMessage.success('安装成功，可从桌面 / 主屏幕打开')
+}
 
 // 桌宠开关：直接读写偏好 store，App.vue 里的 showWhale 会立即响应（无需刷新）
 const petVisible = computed({
