@@ -230,13 +230,20 @@
     </el-dialog>
 
     <!-- ============ 新增用户弹窗 ============ -->
-    <el-dialog v-model="showAddDialog" title="新增用户" width="400px">
-      <el-form :model="addForm" label-width="80px">
-        <el-form-item label="邮箱">
-          <el-input v-model="addForm.email" placeholder="请输入邮箱" clearable />
+    <el-dialog v-model="showAddDialog" title="新增用户" width="470px">
+      <el-form :model="addForm" label-width="96px">
+        <el-form-item label="账号">
+          <el-input v-model="addForm.email" placeholder="邮箱或任意账号，如 爸爸 / 13800138000" clearable />
         </el-form-item>
         <el-form-item label="密码">
           <el-input v-model="addForm.password" type="password" placeholder="请输入密码" show-password />
+        </el-form-item>
+        <el-form-item label="校验">
+          <el-checkbox v-model="addForm.strict">启用严格校验</el-checkbox>
+          <div class="form-tip">
+            默认关闭：超管建号不套用公开注册的「邮箱格式 + 密码强度」规则，方便给家里人开简单账号。
+            勾选后本次创建按公开注册同款规则校验。
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -251,6 +258,10 @@
       <el-form label-width="80px">
         <el-form-item label="新密码">
           <el-input v-model="resetPwdForm.password" type="password" placeholder="请输入新密码" show-password autocomplete="new-password" />
+        </el-form-item>
+        <el-form-item label="校验">
+          <el-checkbox v-model="resetPwdForm.strict">启用严格校验</el-checkbox>
+          <div class="form-tip">默认关闭：不强制密码强度，可直接设为家里人好记的简单密码。</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -361,11 +372,11 @@ const searchQuery = ref('')
 const showEditDialog = ref(false)
 const showAddDialog = ref(false)
 const editUserId = ref(null)
-const addForm = ref({ email: '', password: '' })
+const addForm = ref({ email: '', password: '', strict: false })
 const editForm = ref({ role: 'user', status: 'approved', islands: [] })
 const showResetPwdDialog = ref(false)
 const resetPwdTarget = ref(null)
-const resetPwdForm = ref({ password: '' })
+const resetPwdForm = ref({ password: '', strict: false })
 
 const allIslands = ['music', 'novel', 'video', 'diary', 'tools']
 
@@ -402,7 +413,7 @@ async function handleCommand(id, command) {
 
 function openResetPwd(user) {
   resetPwdTarget.value = user
-  resetPwdForm.value = { password: '' }
+  resetPwdForm.value = { password: '', strict: false }
   showResetPwdDialog.value = true
 }
 
@@ -412,12 +423,16 @@ async function handleResetPwd() {
     ElMessage.warning('请输入新密码')
     return
   }
-  if (pwd.length < 6) {
-    ElMessage.warning('密码长度至少 6 位')
+  // 严格校验时按公开注册同款强度要求（≥8 位 + 大小写 + 数字）；默认不校验，由超管自行把关
+  if (resetPwdForm.value.strict && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pwd)) {
+    ElMessage.warning('严格校验要求：至少 8 位且包含大小写字母与数字')
     return
   }
   try {
-    await resetUserPassword(resetPwdTarget.value.id, { password: pwd })
+    await resetUserPassword(resetPwdTarget.value.id, {
+      password: pwd,
+      strict_validation: resetPwdForm.value.strict,
+    })
     ElMessage.success('密码重置成功')
     showResetPwdDialog.value = false
     resetPwdTarget.value = null
@@ -462,20 +477,33 @@ async function handleDeleteUser(id) {
 }
 
 async function handleAddUser() {
-  if (!addForm.value.email || !addForm.value.password) {
-    ElMessage.warning('请填写邮箱和密码')
+  const account = (addForm.value.email || '').trim()
+  const pwd = addForm.value.password || ''
+  if (!account || !pwd) {
+    ElMessage.warning('请填写账号和密码')
     return
   }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(addForm.value.email)) {
-    ElMessage.warning('请输入正确的邮箱格式')
-    return
+  // 默认不校验格式与强度（超管给家里人开简单账号，如账号「爸爸」密码「123456」）；
+  // 勾选严格校验时，才套用公开注册同款规则
+  if (addForm.value.strict) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account)) {
+      ElMessage.warning('严格校验要求：账号须为邮箱格式')
+      return
+    }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pwd)) {
+      ElMessage.warning('严格校验要求：密码至少 8 位且包含大小写字母与数字')
+      return
+    }
   }
   try {
-    await addUser({ email: addForm.value.email, password: addForm.value.password })
+    await addUser({
+      email: account,
+      password: pwd,
+      strict_validation: addForm.value.strict,
+    })
     ElMessage.success('用户创建成功')
     showAddDialog.value = false
-    addForm.value = { email: '', password: '' }
+    addForm.value = { email: '', password: '', strict: false }
     fetchUsers()
   } catch { /* 错误已由api拦截器处理 */ }
 }
@@ -765,6 +793,9 @@ onMounted(() => { fetchUsers(); fetchRoles() })
 .menu-branch { vertical-align: -2px; margin-right: 6px; color: var(--color-gold); }
 .reset-target { margin-bottom: 14px; font-size: 13px; color: var(--color-text-secondary); }
 .reset-target b { color: var(--color-gold); font-weight: 600; }
+
+/* 校验开关下方的说明文字（超管建号默认不套用公开注册规则） */
+.form-tip { margin-top: 6px; font-size: 12px; line-height: 1.7; color: var(--color-text-muted); }
 .form-hint { font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; }
 .role-menu-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 4px; }
 .role-menu-tree-wrap {

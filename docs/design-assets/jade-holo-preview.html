@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="day">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>玉简闪光卡 · 效果预览（v2.18.0）</title>
+<link rel="stylesheet" href="../../frontend/src/assets/styles/variables.css" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--yq-bg1, #f7f5ef);
+    color: var(--color-text, #2a3238);
+    font-family: var(--font-sans);
+    padding: 34px 22px 60px;
+    transition: background .3s ease, color .3s ease;
+  }
+  .pv-head { max-width: 980px; margin: 0 auto 8px; }
+  .pv-title { margin: 0; font-size: 20px; letter-spacing: .1em; font-weight: 500; }
+  .pv-sub { margin: 6px 0 0; font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
+  .pv-bar { max-width: 980px; margin: 18px auto 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .pv-btn {
+    border: 1px solid var(--lj-line-strong); border-radius: 10px; padding: 7px 15px;
+    background: var(--lj-paper, transparent); color: var(--color-text);
+    font-size: 13px; cursor: pointer; font-family: inherit; transition: all .2s;
+  }
+  .pv-btn:hover { border-color: var(--lj-seal); color: var(--lj-seal); }
+  .pv-tag { font-size: 12px; color: var(--color-text-muted); }
+
+  .pv-stage {
+    max-width: 980px; margin: 26px auto 0; padding: 26px 10px 30px;
+    border: 1px solid var(--lj-line); border-radius: 20px;
+    background: linear-gradient(180deg, rgba(127,168,163,.06), transparent 60%);
+  }
+  .pv-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+
+  /* ---------- 以下为 JadeCarousel 卡片的实际实现（原样搬用） ---------- */
+  .jade-card {
+    position: relative;
+    width: 132px;
+    height: 176px;
+    cursor: pointer;
+    transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform-style: preserve-3d;
+    border-radius: 16px;
+    z-index: 1;
+    perspective: 900px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.01)), var(--lj-glass);
+    -webkit-backdrop-filter: var(--lj-glass-blur);
+    backdrop-filter: var(--lj-glass-blur);
+    border: 1px solid var(--lj-line-strong);
+    box-shadow:
+      0 8px 22px rgba(0, 0, 0, 0.20),
+      0 2px 6px rgba(0, 0, 0, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 0 22px rgba(127, 168, 163, 0.08);
+    transform: rotateX(var(--tl-x, 0deg)) rotateY(var(--tl-y, 0deg));
+  }
+  .jade-card::after {
+    content: '';
+    position: absolute; inset: 5px;
+    border: 1px solid var(--lj-line);
+    border-radius: 11px;
+    opacity: .45;
+    transition: all .4s;
+    pointer-events: none;
+  }
+  .jade-card:hover::after {
+    opacity: 1;
+    border-color: var(--lj-seal);
+    box-shadow: inset 0 0 14px rgba(217, 138, 118, 0.10);
+  }
+  .card-inner {
+    position: absolute; inset: 0;
+    border-radius: 15px;
+    transform-style: preserve-3d;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px;
+  }
+  .card-face {
+    position: absolute; inset: 0;
+    border-radius: 15px;
+    overflow: hidden;
+    transform: translateZ(0px);
+    background:
+      radial-gradient(circle at 30% 16%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 44%),
+      radial-gradient(ellipse 120% 55% at 110% 105%, rgba(127, 168, 163, 0.16), transparent 60%),
+      linear-gradient(170deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(74, 95, 99, 0.08) 100%);
+  }
+  .card-texture {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(120deg, rgba(74, 95, 99, 0.05) 0%, transparent 30%),
+      repeating-linear-gradient(45deg, rgba(74, 95, 99, 0.025) 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(-45deg, rgba(74, 95, 99, 0.02) 0 1px, transparent 1px 11px);
+    opacity: .6; pointer-events: none;
+  }
+  .card-sigil {
+    width: 52px; height: 52px; position: relative; z-index: 1;
+    transform: translateZ(22px);
+    filter: drop-shadow(0 1px 3px rgba(58, 67, 80, 0.15));
+    transition: all .4s;
+  }
+  .card-sigil path { opacity: .92; }
+  .card-sigil circle { opacity: .42; }
+  .jade-card:hover .card-sigil { transform: translateZ(22px) scale(1.08); }
+  .card-foil {
+    position: absolute; inset: 0;
+    border-radius: 15px;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateZ(38px);
+    opacity: 0;
+    mix-blend-mode: var(--jade-foil-blend, color-dodge);
+    background-image:
+      radial-gradient(circle at calc(var(--px, 0.5) * 100%) calc(var(--py, 0.5) * 100%), var(--jade-glare) 0%, transparent 40%),
+      linear-gradient(115deg,
+        transparent 12%,
+        var(--jade-foil-1) 34%,
+        var(--jade-foil-2) 46%,
+        transparent 54%,
+        var(--jade-foil-3) 68%,
+        var(--jade-foil-4) 78%,
+        transparent 90%),
+      repeating-linear-gradient(0deg, transparent 0 3px, var(--jade-foil-grain) 3px 4px);
+    background-size: 100% 100%, 300% 300%, 100% 100%;
+    background-position: 0 0, calc(var(--px, 0.5) * 100%) calc(var(--py, 0.5) * 100%), 0 0;
+    background-repeat: no-repeat, no-repeat, repeat;
+    transition: opacity .45s ease, background-position .18s ease-out;
+  }
+  .jade-card:hover .card-foil { opacity: var(--jade-foil-opacity, 0.58); }
+  .card-label {
+    font-family: var(--font-serif);
+    font-size: 12px;
+    color: var(--lj-text-2);
+    letter-spacing: .22em;
+    position: relative; z-index: 1;
+    transform: translateZ(54px);
+    padding: 5px 11px 4px;
+    border-radius: 999px;
+    background: rgba(26, 34, 44, 0.45);
+    border: 1px solid var(--lj-line);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: all .35s;
+  }
+  .jade-card:hover .card-label {
+    color: var(--lj-seal-hover);
+    border-color: var(--lj-seal);
+    background: var(--lj-seal-soft);
+  }
+  @keyframes jadeFoilSweep {
+    0%, 100% { background-position: 0 0, 14% 86%, 0 0; }
+    50%      { background-position: 0 0, 86% 14%, 0 0; }
+  }
+  /* 预览页：常驻自扫，方便不开鼠标也能看到箔面流动 */
+  .pv-auto .card-foil { opacity: var(--jade-foil-opacity); animation: jadeFoilSweep 6.5s ease-in-out infinite; }
+
+  .pv-note { max-width: 980px; margin: 22px auto 0; font-size: 12px; line-height: 1.9; color: var(--color-text-muted); }
+  .pv-note b { color: var(--color-text); font-weight: 500; }
+  code { font-family: var(--font-mono, monospace); font-size: 11px; padding: 1px 5px; border-radius: 4px; background: rgba(127,168,163,.14); }
+</style>
+</head>
+<body>
+  <div class="pv-head">
+    <h1 class="pv-title">玉简闪光卡 · 效果预览</h1>
+    <p class="pv-sub">
+      把鼠标移到卡片上——卡片会跟着倾斜，镭射箔面随指针扫过，篆符与标签因为处在不同 Z 深度会产生真实视差。<br />
+      本页直接引用项目的 <code>variables.css</code>，配色与线上完全一致。
+    </p>
+  </div>
+
+  <div class="pv-bar">
+    <button class="pv-btn" id="themeBtn">切换到夜间</button>
+    <button class="pv-btn" id="autoBtn">开启常驻流光</button>
+    <span class="pv-tag" id="stateTag">当前：日间主题 · color-dodge 换成 overlay（避免亮底刷白）</span>
+  </div>
+
+  <div class="pv-stage">
+    <div class="pv-row" id="stage"></div>
+  </div>
+
+  <div class="pv-note">
+    <p><b>四层 Z 深度</b>：玉体 <code>z=0</code> → 篆符 <code>z=22</code> → 镭射箔面 <code>z=38</code> → 标签 <code>z=54</code>。标签刻意压在箔面之上，保证文字不被反光糊掉。</p>
+    <p><b>倾角封顶</b> <code>±12° / ±14°</code>：超过这个角度文字可读性与「反光可信度」都会崩，这是全息卡的业界经验值。</p>
+    <p><b>昼夜差异</b>：夜间用 <code>color-dodge</code> 加光叠色（箔面最显）；日间亮底会被刷白，所以切 <code>overlay</code> 并把强度从 <code>.58</code> 压到 <code>.42</code>。切到夜间看看区别。</p>
+    <p><b>零依赖</b>：整页只有 CSS 变量变换与 <code>mix-blend-mode</code>，没有 WebGL、没有 Three.js、没有第三方库。</p>
+  </div>
+
+<script>
+const CARDS = [
+  { key: 'music', label: '宫商流转', color: '#4a5f63', d: 'M16 44 L40 20 Q44 16 48 20 L42 28 Q38 24 34 28 L34 44' },
+  { key: 'novel', label: '卷帙浩繁', color: '#b0805a', d: 'M20 16 L44 16 L44 48 L20 44 Z M28 26 L42 26 M28 34 L42 34 M24 18 L24 40' },
+  { key: 'video', label: '光影交织', color: '#5b6b7a', d: 'M16 24 L48 24 L48 44 L16 44 Z M24 30 L38 34 L24 40 Z' },
+  { key: 'log', label: '翰墨丹青', color: '#4a6a56', d: 'M18 20 Q30 14 42 20 L42 36 Q30 30 18 36 Z M18 20 L18 36 M30 18 L30 30' },
+  { key: 'tool', label: '机关百变', color: '#6a7a6a', d: 'M22 18 Q34 8 44 20 L32 30 L42 40 L30 42 L20 32 Q24 24 22 18 Z' },
+  { key: 'notes', label: '笔记云台', color: '#55706b', d: 'M24 14 L44 14 L44 50 L20 44 L20 20 Z M28 24 L40 24 M28 32 L40 32 M28 40 L36 40' },
+]
+
+const stage = document.getElementById('stage')
+stage.innerHTML = CARDS.map(c => `
+  <div class="jade-card" data-key="${c.key}">
+    <div class="card-inner">
+      <div class="card-face"><div class="card-texture"></div></div>
+      <svg class="card-sigil" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="${c.d}" fill="${c.color}" opacity="0.78" />
+        <circle cx="${(c.key.length * 13) % 64}" cy="${(c.key.length * 29) % 64}" r="1.6" fill="${c.color}" opacity="0.3" />
+        <circle cx="${(c.key.length * 7) % 64}" cy="${(c.key.length * 41) % 64}" r="1.6" fill="${c.color}" opacity="0.3" />
+        <circle cx="${(c.key.length * 23) % 64}" cy="${(c.key.length * 17) % 64}" r="1.6" fill="${c.color}" opacity="0.3" />
+      </svg>
+      <div class="card-foil" aria-hidden="true"></div>
+      <div class="card-label">${c.label}</div>
+    </div>
+  </div>
+`).join('')
+
+const NEUTRAL = { '--px': '0.5', '--py': '0.5', '--tl-x': '0deg', '--tl-y': '0deg' }
+
+stage.querySelectorAll('.jade-card').forEach(el => {
+  el.addEventListener('pointermove', e => {
+    const r = el.getBoundingClientRect()
+    if (!r.width || !r.height) return
+    const px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+    const py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))
+    el.style.setProperty('--px', px.toFixed(3))
+    el.style.setProperty('--py', py.toFixed(3))
+    el.style.setProperty('--tl-x', ((0.5 - py) * 12).toFixed(2) + 'deg')
+    el.style.setProperty('--tl-y', ((px - 0.5) * 14).toFixed(2) + 'deg')
+  })
+  el.addEventListener('pointerleave', () => {
+    Object.entries(NEUTRAL).forEach(([k, v]) => el.style.setProperty(k, v))
+  })
+})
+
+const themeBtn = document.getElementById('themeBtn')
+const autoBtn = document.getElementById('autoBtn')
+const stateTag = document.getElementById('stateTag')
+
+themeBtn.addEventListener('click', () => {
+  const day = document.documentElement.dataset.theme === 'day'
+  document.documentElement.dataset.theme = day ? 'night' : 'day'
+  themeBtn.textContent = day ? '切换到日间' : '切换到夜间'
+  stateTag.textContent = day
+    ? '当前：夜间主题 · color-dodge 加光叠色（箔面最显）'
+    : '当前：日间主题 · overlay 且强度压到 .42（避免亮底刷白）'
+})
+
+autoBtn.addEventListener('click', () => {
+  stage.classList.toggle('pv-auto')
+  autoBtn.textContent = stage.classList.contains('pv-auto') ? '关闭常驻流光' : '开启常驻流光'
+})
+</script>
+</body>
+</html>

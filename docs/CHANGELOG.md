@@ -1,3 +1,35 @@
+## [v2.19.0] - 2026-09-16
+
+### 超管建号免校验通道（User「我是超管，理论上可以自己创建用户账号，但被校验规则拦住了，需要增加条路径」SW `xuanhuang-v95`）
+
+**问题定位（实测复现，非推测）**：拦人的是三条规则——密码需 ≥8 位、必须含大写字母、必须含数字；账号还必须是合法邮箱格式（`爸爸`、`13800138000` 一律 `Invalid email`）。共三处拦截：后端建号 schema、后端登录 schema、前端表单正则。
+
+#### 后端
+- **`admin_users.py` 新增 `_check_credentials(email, password, strict)`**：`strict=False`（默认）只挡空值，邮箱格式与密码强度放行；`strict=True` 套用公开注册同款规则。同时返回 `strip()` 后的账号供落库，避免「 爸爸 」与「爸爸」被当成两个账号
+- **`UserCreateRequest`**：移除 pydantic 层的邮箱/密码校验（pydantic 校验先于路由执行，无法按开关分流），改为 `strict_validation: bool = False`，校验下移到 `create_user`
+- **`UserPasswordResetRequest`**：同样下移校验 + `strict_validation` 开关——建号口放宽了而改密口不放宽，家里人账号改密时照样撞墙
+- **`LoginRequest` 不再校验邮箱格式**：这是本次的**必要项**——登录口若仍强制邮箱，超管创建的非邮箱账号建了也登不进去，等于白做。现仅挡空值与超长（>254），账号是否存在交由查库判定（查询为参数化 SQL，无注入面；登录限流仍在）
+- **公开注册口不变**：`RegisterRequest` 仍强制邮箱、`VerifyRequest` 仍强制密码强度——面向公网的自主注册不能被削弱
+- 合规：密码仍走 `get_password_hash()`，无明文；跳过校验时操作日志记录「（超管建号，已跳过格式/强度校验）」，可审计
+
+#### 前端
+- `AdminView` 新增用户弹窗：账号输入框改为「邮箱或任意账号」提示，新增 **「启用严格校验」勾选框（默认关闭）**，附说明文字
+- 重置密码弹窗：同一开关
+- 客户端校验改为随开关分流：默认只挡空值，勾选后才用邮箱正则 + 密码强度正则
+- 新增 `.form-tip` 说明样式
+
+#### 测试
+- `tests/test_password_validation.py` **按新语义重写而非删除**：`TestUserCreateRequestPassword`（断言弱密码被拒）已失效，改为 `TestUserCreateRequestAdminBypass` + `TestAdminCredentialCheck` + `TestLoginRequestAcceptsNonEmail` 三组，覆盖默认放行 / strict 拦截 / 空值与超长兜底 / 账号 strip / 登录口接受非邮箱；`TestVerifyRequestPassword` 原样保留（公开注册口必须继续拒绝弱密码）
+- 该文件 **25 passed**
+
+### 工程
+- 后端逐文件跑测试：`test_ai_providers` 15 / `test_client_ip` 6 / `test_errors` 19 / `test_feed_sync` 2 / `test_finance_import` 9 / `test_jwt_blocklist` 10 / `test_migrations` 3 / `test_music_stream` 8 / `test_password_validation` 25 / `test_production_env` 8 / `test_router_smoke` 7 / `test_schema_guard` 7 / `test_security` 17 / `test_security_fixes` 12 / `test_tool_url_validation` 12 全通过
+- ⚠️ 既有环境缺陷（**已用 `git stash` 对比验证与本次改动无关**）：`test_api.py` / `test_auth_service.py` / `test_workbench.py` 在**全量或串行**执行时进程异常终止（无失败汇总、退出码 1），单独隔离运行则通过——疑为测试间状态污染或原生依赖崩溃。单独跑 `test_auth_service.py::test_generate_code_custom_length` PASSED
+- 前端 `npx vite build --outDir dist2 --emptyOutDir false` 构建通过（AdminView 63.85 kB → 64.77 kB）
+- `npx eslint` 改动文件无新增 error（AdminView 现存 2 条 `no-unused-vars`：`allIslands`、`formatPerms`，经 `git show HEAD` 确认改动前即存在）
+
+---
+
 ## [v2.18.0] - 2026-09-16
 
 ### A 组三项（User「① 背景音乐开关 ② 玉简闪光卡 ⑥ 股票看板增强」SW `xuanhuang-v94`）

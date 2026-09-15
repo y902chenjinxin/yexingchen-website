@@ -4,17 +4,49 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.common import ResponseBase, UserCreateRequest, UserUpdateRequest, validate_password
+from app.schemas.common import (
+    ResponseBase,
+    UserCreateRequest,
+    UserUpdateRequest,
+    validate_email,
+    validate_password,
+)
 from app.schemas.errors import ErrCode, raise_error
 from app.services.log_service import log_action
 from app.utils.security import get_password_hash, require_super_admin
 
 router = APIRouter(prefix="/api/admin", tags=["管理员-用户"])
+
+
+def _check_credentials(email: str, password: Optional[str], strict: bool) -> str:
+    """超管建号 / 改密的凭据检查。
+
+    strict=False（默认）：只挡空值，邮箱格式与密码强度一律放行——超管建的是家里人用的账号，
+                         不该被「面向公网自主注册」的规则卡住。
+    strict=True：套用公开注册同款规则（邮箱格式 + 密码强度），超管需要时按次选用。
+    返回 strip 后的账号，供调用方落库（避免「 爸爸 」与「爸爸」被当成两个账号）。
+    """
+    account = (email or "").strip()
+    if not account:
+        raise_error(ErrCode.INVALID_PARAM, "账号不能为空")
+    if not (password or "").strip():
+        raise_error(ErrCode.INVALID_PARAM, "密码不能为空")
+    if not strict:
+        return account
+    try:
+        validate_email(account)
+    except ValueError:
+        raise_error(ErrCode.INVALID_PARAM, "账号格式不正确：启用严格校验时须为邮箱格式")
+    try:
+        validate_password(password)
+    except ValueError as exc:
+        raise_error(ErrCode.INVALID_PARAM, str(exc))
+    return account
 
 
 class UserRoleUpdateRequest(BaseModel):
@@ -23,12 +55,9 @@ class UserRoleUpdateRequest(BaseModel):
 
 
 class UserPasswordResetRequest(BaseModel):
+    # 与 UserCreateRequest 同理：校验下移到路由层，由 strict_validation 决定是否启用
     password: str
-
-    @field_validator("password")
-    @classmethod
-    def password_check(cls, v):
-        return validate_password(v)
+    strict_validation: bool = False
 
 
 @router.post("/users", response_model=ResponseBase)
@@ -37,12 +66,14 @@ async def create_user(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_super_admin),
 ):
-    existing = db.query(User).filter(User.email == req.email).first()
+    account = _check_credentials(req.email, req.password, req.strict_validation)
+
+    existing = db.query(User).filter(User.email == account).first()
     if existing:
         raise_error(ErrCode.REG_EMAIL_EXISTS)
 
     user = User(
-        email=req.email,
+        email=account,
         password_hash=get_password_hash(req.password),
         role=req.role,
         status=req.status,
@@ -55,7 +86,8 @@ async def create_user(
     log_action(
         db, current_user["user_id"], "create",
         target_type="user", target_id=user.id,
-        detail=f"新增用户 {user.email}",
+        detail=f"新增用户 {user.email}"
+        + ("" if req.strict_validation else "（超管建号，已跳过格式/强度校验）"),
     )
     return ResponseBase(msg="用户创建成功")
 
@@ -207,12 +239,15 @@ async def reset_user_password(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise_error(ErrCode.AUTH_USER_NOT_EXIST)
+    # 改密与建号同一套规则：默认只挡空值，strict_validation=True 时套用公开注册的密码强度
+    _check_credentials(user.email, req.password, req.strict_validation)
     user.password_hash = get_password_hash(req.password)
     db.commit()
     log_action(
         db, current_user["user_id"], "reset_password",
         target_type="user", target_id=user_id,
-        detail=f"重置用户 {user.email} 密码",
+        detail=f"重置用户 {user.email} 密码"
+        + ("" if req.strict_validation else "（超管操作，已跳过强度校验）"),
     )
     return ResponseBase(msg="密码重置成功")
 

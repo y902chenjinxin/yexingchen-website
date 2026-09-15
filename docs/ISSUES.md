@@ -193,6 +193,19 @@
 
 ---
 
+## 本次迭代新发现（v2.18.0 · 2026-09-16）
+
+| ID | 问题 | 类别 | 状态 |
+|----|------|------|------|
+| ENV-001 | `vitest.config.js` 声明 `environment:'jsdom'`，但 `jsdom` 既未写入 `package.json` 也未安装 → 前端单测整体跑不起来（11 errors / no tests） | CI | **待修复**（需 `cd frontend && npm i -D jsdom`，需先关闭占用 node_modules 的 dev server） |
+| ENV-002 | `npm run build` / `npx vite build --outDir dist2` 在清空输出目录时失败：`dist/whale-pet`、`dist2/whale-pet` 无法移入回收站。绕行：`--emptyOutDir false` | 构建 | 待修复（疑与本机安全删除机制对 `public/whale-pet` 目录的处理有关） |
+| ENV-003 | npm 默认缓存目录（`~\AppData\Local\npm-cache`）被沙箱禁止写入（EPERM），安装依赖需改用工作区内缓存 `--cache ./.npm-cache`（该目录已在 `.gitignore`） | 构建 | 已知绕行方案 |
+| TD-009 | 项目 eslint 存量告警 172 条（多为 `vue/max-attributes-per-line`、`vue/html-self-closing` 等风格规则）；`GlobalTopBar.vue` 另有 14 条存量 error（未使用导入 `reactive`/多个 icon、lambda 形参 `it` 未用、全角空格 `no-irregular-whitespace`），会阻塞 `npm run lint` 全绿 | 前端 | 待修复 |
+| ENV-004 | `test_api.py` / `test_auth_service.py` / `test_workbench.py` 在**全量或串行**执行时进程异常终止（36 个点后无输出、无失败汇总，退出码 1），单独隔离运行则通过。已用 `git stash` 对比确认与改动无关，疑为测试间状态污染或原生依赖崩溃。**影响：`pytest` 全量门控不可用，只能逐文件跑** | CI | 待修复 |
+| TD-010 | `AdminView.vue` 存量 2 条 `no-unused-vars` error：`allIslands`、`formatPerms` | 前端 | 待修复 |
+
+---
+
 ## 状态变更记录
 
 | 日期 | ID | 变更内容 |
@@ -200,6 +213,8 @@
 | 2026-05-29 | P0-001~P0-010 | 创建，来源全角色审查 |
 | 2026-05-29 | v1.7.0 | 视觉优化上线 |
 | 2026-05-29 | v1.7.1 | 登录卡片延迟优化 |
+| 2026-09-16 | ENV-001~003 / TD-009 | v2.18.0 落地过程中发现：单测环境缺 `jsdom`、构建受安全删除机制阻塞、npm 缓存需改道工作区、eslint 存量 error 阻塞 lint 全绿 |
+| 2026-09-16 | ENV-004 / TD-010 | v2.19.0 落地过程中发现：后端 pytest 全量执行存在既有崩溃（只能逐文件跑）、AdminView 存量 2 条 unused-vars |
 
 ---
 

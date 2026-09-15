@@ -51,13 +51,26 @@ class VerifyRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    """登录请求。
+
+    字段名沿用 email 以保持接口兼容，但**不对账号做邮箱格式强校验**：
+    超管可在后台创建非邮箱账号（如「爸爸」「13800138000」），这些账号必须能登录。
+    格式约束统一由创建侧把关——公开注册（RegisterRequest / VerifyRequest）仍强制邮箱格式。
+    这里只挡空值与超长输入，账号是否存在交由查库判定。
+    """
+
     email: str
     password: str
 
     @field_validator('email')
     @classmethod
     def email_check(cls, v):
-        return validate_email(v)
+        v = (v or '').strip()
+        if not v:
+            raise ValueError('请输入账号')
+        if len(v) > 254:
+            raise ValueError('账号过长')
+        return v
 
 
 class UserInfo(BaseModel):
@@ -79,21 +92,20 @@ class LoginResponse(BaseModel):
 
 # ========== 用户管理 ==========
 class UserCreateRequest(BaseModel):
+    """超管建号请求。
+
+    校验刻意**不放在 pydantic 层**：公开注册的邮箱格式 / 密码强度是为「面向公网的自主注册」
+    设计的，超管给家里人开号不需要满足同样的复杂度（如账号「爸爸」、密码「123456」）。
+    因此校验下移到 admin_users.create_user，由 strict_validation 决定本次是否启用——
+    默认 False（不校验），置 True 可对本次创建启用邮箱格式 + 密码强度校验。
+    """
+
     email: str
     password: str
     role: Optional[str] = "normal"
     status: Optional[str] = "approved"
     allowed_islands: Optional[str] = "music,novel,video,diary,tools"
-
-    @field_validator('email')
-    @classmethod
-    def email_check(cls, v):
-        return validate_email(v)
-
-    @field_validator('password')
-    @classmethod
-    def password_check(cls, v):
-        return validate_password(v)
+    strict_validation: bool = False
 
 
 class UserUpdateRequest(BaseModel):
