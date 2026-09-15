@@ -42,6 +42,8 @@ class Contact(Base):
     birthday = Column(String(5), nullable=True)
     birth_year = Column(Integer, nullable=True)
     birthday_type = Column(String(8), nullable=False, default="solar")  # solar / lunar
+    # 阴历闰月标记：闰四月初一 vs 四月初一是两个不同的日子，必须分开存
+    lunar_leap = Column(Integer, nullable=False, default=0)  # 0/1，仅 birthday_type=lunar 时有意义
     tags = Column(String(255), nullable=False, default="")  # 逗号分隔
     notes = Column(Text, nullable=False, default="")
     is_pinned = Column(Integer, nullable=False, default=0)

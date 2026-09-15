@@ -72,6 +72,11 @@ export const financeApi = {
     return body
   },
   confirmImport: (rows) => api.post('/finance/import/confirm', { rows }),
+
+  // —— 自定义分类（内置分类写死在后端，这里只管用户新增的）
+  createCategory: (data) => api.post('/finance/categories', data),
+  updateCategory: (id, data) => api.put(`/finance/categories/${id}`, data),
+  deleteCategory: (id) => api.delete(`/finance/categories/${id}`),
 }
 
 // CSV 导出走 blob（不经 axios 拦截器，避免响应处理差异）

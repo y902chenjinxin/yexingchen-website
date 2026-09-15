@@ -2,6 +2,11 @@
 
 生日只存「月-日」，返回时补算 `next_birthday` / `days_to_birthday` / `age`，
 前端列表与日历视图都直接用这几个字段，不必各自重算。
+
+**农历（2026-09-16）**：`birthday_type=lunar` 时会把农历月日换算成公历，
+`next_birthday` 给的是**换算后的公历日期**（日历视图直接可用），
+同时返回 `lunar_text`（如「八月十五」）供展示；`age` 按农历年差计算——
+腊月生日落在公历次年，混用会把长辈算小一岁。
 """
 from __future__ import annotations
 
@@ -17,7 +22,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.family import Contact
 from app.schemas.errors import ErrCode, raise_error
-from app.services.family_reminder import next_birthday
+from app.services.family_reminder import next_birthday_any
+from app.services.lunar import format_lunar_text, parse_lunar_mmdd
 from app.services.log_service import log_action
 from app.services.softdelete import restore, soft_delete
 from app.utils.security import get_current_user
@@ -36,9 +42,10 @@ class ContactIn(BaseModel):
     relation: Optional[str] = ""
     phone: Optional[str] = ""
     address: Optional[str] = ""
-    birthday: Optional[str] = None       # MM-DD
+    birthday: Optional[str] = None       # MM-DD（公历或农历，由 birthday_type 决定）
     birth_year: Optional[int] = None
-    birthday_type: Optional[str] = "solar"
+    birthday_type: Optional[str] = "solar"   # solar / lunar
+    lunar_leap: Optional[int] = 0            # 农历闰月标记（闰四月初一 vs 四月初一）
     tags: Optional[str] = ""
     notes: Optional[str] = ""
     is_pinned: Optional[int] = 0
@@ -68,6 +75,7 @@ class ContactUpdateIn(BaseModel):
     birthday: Optional[str] = None
     birth_year: Optional[int] = None
     birthday_type: Optional[str] = None
+    lunar_leap: Optional[int] = None
     tags: Optional[str] = None
     notes: Optional[str] = None
     is_pinned: Optional[int] = None
@@ -98,10 +106,28 @@ def _norm_type(v):
     return v if v in ("solar", "lunar") else "solar"
 
 
+def _check_lunar(birthday: Optional[str], btype: str) -> None:
+    """农历的月日另有约束：日不能是 31（农历月最多 30 天）。
+
+    公历才可能有 31 日；把 13-31 收进农历会在换算时静默落到月末，
+    用户还以为存对了——所以在这里直接拦下来。
+    """
+    if btype != "lunar" or not birthday:
+        return
+    parsed = parse_lunar_mmdd(birthday)
+    if parsed is None:
+        raise_error(ErrCode.INVALID_PARAM, "农历生日应为 01-01 ~ 12-30（农历无 31 日）")
+
+
 def _to_out(c: Contact, today: date | None = None) -> dict:
     today = today or date.today()
-    nb = next_birthday(c.birthday, today)
-    age = nb.year - c.birth_year if (nb and c.birth_year) else None
+    btype = c.birthday_type or "solar"
+    got = next_birthday_any(c, today)
+    if got:
+        nb, ref_year, _is_lunar = got
+    else:
+        nb, ref_year = None, None
+    age = (ref_year - c.birth_year) if (ref_year and c.birth_year) else None
     return {
         "id": c.id,
         "name": c.name,
@@ -110,7 +136,10 @@ def _to_out(c: Contact, today: date | None = None) -> dict:
         "address": c.address or "",
         "birthday": c.birthday,
         "birth_year": c.birth_year,
-        "birthday_type": c.birthday_type or "solar",
+        "birthday_type": btype,
+        "lunar_leap": c.lunar_leap or 0,
+        # 农历月日的中文写法（如「八月十五」「闰四月初一」），公历生日为空
+        "lunar_text": format_lunar_text(c.birthday, bool(c.lunar_leap)) if btype == "lunar" else "",
         "tags": c.tags or "",
         "notes": c.notes or "",
         "is_pinned": c.is_pinned or 0,
@@ -206,11 +235,13 @@ def create_contact(
         birthday=payload.birthday or None,
         birth_year=payload.birth_year,
         birthday_type=_norm_type(payload.birthday_type),
+        lunar_leap=1 if payload.lunar_leap else 0,
         tags=payload.tags or "",
         notes=payload.notes or "",
         is_pinned=payload.is_pinned or 0,
         sort_order=payload.sort_order or 0,
     )
+    _check_lunar(c.birthday, c.birthday_type)
     db.add(c)
     db.commit()
     db.refresh(c)
@@ -244,10 +275,13 @@ def update_contact(
         c.birth_year = payload.birth_year or None
     if payload.birthday_type is not None:
         c.birthday_type = _norm_type(payload.birthday_type)
+    if payload.lunar_leap is not None:
+        c.lunar_leap = 1 if payload.lunar_leap else 0
     if payload.is_pinned is not None:
         c.is_pinned = payload.is_pinned
     if payload.sort_order is not None:
         c.sort_order = payload.sort_order
+    _check_lunar(c.birthday, c.birthday_type)
     db.commit()
     db.refresh(c)
     log_action(
@@ -288,7 +322,7 @@ def restore_contact(
         .first()
     )
     if not c:
-        raise_error(ErrCode.INVALID_PARAM, "回收站中无此联系人", 404)
+        raise_error(ErrCode.NOT_FOUND, "回收站中无此联系人")
     restore(c, db)
     return ok(_to_out(c), "已恢复")
 
@@ -304,5 +338,5 @@ def _ensure(db: Session, contact_id: int, user_id: int) -> Contact:
         .first()
     )
     if not c:
-        raise_error(ErrCode.INVALID_PARAM, "联系人不存在", 404)
+        raise_error(ErrCode.NOT_FOUND, "联系人不存在")
     return c

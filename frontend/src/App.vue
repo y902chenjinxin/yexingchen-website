@@ -23,10 +23,11 @@
 </template>
 
 <script setup>
-import { ref, computed, defineAsyncComponent, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, defineAsyncComponent, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useAuthStore } from '@/stores/auth'
+import { usePrefsStore } from '@/stores/prefs'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
@@ -37,6 +38,14 @@ const WhaleCompanion = defineAsyncComponent(() => import('@/components/effects/W
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const prefs = usePrefsStore()
+
+// 桌宠偏好按用户隔离：登录用户或切换账号时重新绑定，读取各自的 localStorage 记录
+watch(
+  () => auth.user?.id,
+  (uid) => prefs.bindUser(uid),
+  { immediate: true },
+)
 
 // 工作台与岛屿/工具内容页在页面内部各自渲染页脚，无需全站级重复页脚
 const showGlobalFooter = computed(() => {
@@ -47,7 +56,9 @@ const showGlobalFooter = computed(() => {
 })
 
 // 音乐岛内容列表页隐藏桌宠：桌宠固定右下(z-index:1800)会压住音乐列表行及最后一张卡片，造成"错位/按钮消失"观感
+// 另叠加用户偏好（个人中心可关闭桌宠，默认展示）——两者是 AND 关系
 const showWhale = computed(() => {
+  if (!prefs.petVisible) return false
   const p = route.path
   if (/^\/music/.test(p)) return false
   return true

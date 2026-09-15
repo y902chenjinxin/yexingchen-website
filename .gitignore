@@ -4,6 +4,9 @@ __pycache__/
 venv/
 .pytest_cache/
 *.egg-info/
+# pip 缓存（装依赖时用 --cache-dir 指到这里，避免污染工作区根目录）
+.pip-cache/
+backend/.pip-cache/
 dist/
 dist2/
 # 临时构建目录：dist 被 whale-pet 目录占用无法清空时，改用全新目录构建再部署（见 docs/ISSUES.md ENV-002）
@@ -66,7 +69,7 @@ docs/ai/
 # Backup files
 *.bak
 *.bak-*
-*~\n
+*~
 
 # Archives and build artifacts (supplement)
 *.zip

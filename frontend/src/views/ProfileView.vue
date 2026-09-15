@@ -37,6 +37,29 @@
           <el-button @click="showPasswordDialog = true">修改密码</el-button>
         </div>
       </div>
+
+      <!-- 界面偏好 -->
+      <div class="info-card">
+        <div class="card-header">
+          <h2>界面偏好</h2>
+        </div>
+        <div class="card-body">
+          <div class="info-item">
+            <div class="pref-text">
+              <span class="info-label">桌宠展示</span>
+              <span class="pref-hint">关闭后全站不再出现右下角的鲸鱼；设置只对当前账号生效</span>
+            </div>
+            <el-switch
+              v-model="petVisible"
+              class="pref-switch"
+              inline-prompt
+              active-text="显示"
+              inactive-text="隐藏"
+              aria-label="桌宠展示开关"
+            />
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 编辑信息对话框 -->
@@ -74,15 +97,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { useAuthStore } from '@/stores/auth'
+import { usePrefsStore } from '@/stores/prefs'
 import { getMe, updateMe } from '@/api/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
+const prefs = usePrefsStore()
+
+// 桌宠开关：直接读写偏好 store，App.vue 里的 showWhale 会立即响应（无需刷新）
+const petVisible = computed({
+  get: () => prefs.petVisible,
+  set: (v) => prefs.setPetVisible(v),
+})
 
 // 用户信息
 const userInfo = ref({
@@ -292,6 +323,25 @@ async function savePassword() {
 
 .card-footer .el-button {
   flex: 1;
+}
+
+/* 界面偏好 */
+.pref-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 16px;
+}
+
+.pref-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: .8;
+  line-height: 1.5;
+}
+
+.pref-switch {
+  flex: none;
 }
 
 .header-with-back {

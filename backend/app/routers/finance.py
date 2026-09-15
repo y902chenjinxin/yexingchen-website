@@ -19,8 +19,9 @@ from openpyxl import load_workbook
 
 from app.database import get_db
 from app.schemas.common import ResponseBase
+from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user
-from app.models.finance import FinanceTransaction
+from app.models.finance import FinanceCategory, FinanceTransaction
 
 router = APIRouter(prefix="/api/finance", tags=["个人记账"])
 
@@ -36,6 +37,70 @@ INCOME_CATEGORIES = [
 ]
 
 CATEGORY_ICONS = {c["key"]: c["icon"] for c in EXPENSE_CATEGORIES + INCOME_CATEGORIES}
+
+# 兜底分类名（两个收支方向各有一个「其他」）
+FALLBACK_CATEGORY = "其他"
+# 自定义分类名长度上限，须 ≤ FinanceTransaction.category(String(32))
+MAX_CATEGORY_NAME_LEN = 12
+DEFAULT_CUSTOM_ICON = "🏷️"
+
+
+# ---------- 分类池（内置 + 自定义） ----------
+def _builtin_pool(ttype: str) -> list:
+    return EXPENSE_CATEGORIES if ttype == "expense" else INCOME_CATEGORIES
+
+
+def _custom_rows(db: Session, uid: int, ttype: str) -> list:
+    """该用户某方向的未删自定义分类，按排序值→id 稳定排列。"""
+    return (
+        db.query(FinanceCategory)
+        .filter(
+            FinanceCategory.user_id == uid,
+            FinanceCategory.type == ttype,
+            FinanceCategory.deleted_at.is_(None),
+        )
+        .order_by(FinanceCategory.sort_order, FinanceCategory.id)
+        .all()
+    )
+
+
+def _category_pool(db: Session, uid: int, ttype: str) -> list:
+    """内置 + 自定义合并后的分类列表（内置在前，自定义按用户排序在后）。"""
+    pool = [dict(c, is_custom=False) for c in _builtin_pool(ttype)]
+    pool += [
+        {"key": r.name, "icon": r.icon or DEFAULT_CUSTOM_ICON, "is_custom": True, "id": r.id}
+        for r in _custom_rows(db, uid, ttype)
+    ]
+    return pool
+
+
+def _category_icon_map(db: Session, uid: int) -> dict:
+    """分类名 → 图标。含自定义，供流水序列化与统计复用。
+
+    这里**不过滤软删**：分类被删后，历史流水仍引用那个名字，
+    若把图标也一并抹掉，老流水的图标会集体回落成 🧾，看起来像数据坏了。
+    """
+    icons = dict(CATEGORY_ICONS)
+    rows = (
+        db.query(FinanceCategory)
+        .filter(FinanceCategory.user_id == uid)
+        .all()
+    )
+    for r in rows:
+        icons[r.name] = r.icon or DEFAULT_CUSTOM_ICON
+    return icons
+
+
+def _all_categories(db: Session, uid: int) -> dict:
+    return {"expense": _category_pool(db, uid, "expense"), "income": _category_pool(db, uid, "income")}
+
+
+def _allowed_categories(db: Session, uid: int) -> dict:
+    """{"expense": {分类名...}, "income": {...}}：内置 + 该用户自定义，供导入校验。"""
+    return {
+        ttype: {c["key"] for c in _category_pool(db, uid, ttype)}
+        for ttype in ("expense", "income")
+    }
 
 
 class TransactionIn(BaseModel):
@@ -53,30 +118,48 @@ def _parse_dt(value: str):
     if not value:
         return None
     try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).replace(tzinfo=None)
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00").replace(tzinfo=None))
     except (ValueError, TypeError):
         return None
 
 
-def _valid_category(ttype: str, category: str) -> str:
-    pool = EXPENSE_CATEGORIES if ttype == "expense" else INCOME_CATEGORIES
-    keys = [c["key"] for c in pool]
-    return category if category in keys else "其他"
-
-
 def _valid_categories(ttype: str) -> set:
-    pool = EXPENSE_CATEGORIES if ttype == "expense" else INCOME_CATEGORIES
-    return {c["key"] for c in pool}
+    """内置分类名集合。含自定义的校验请用 _allowed_categories。"""
+    return {c["key"] for c in _builtin_pool(ttype)}
 
 
-def _to_dict(t: FinanceTransaction) -> dict:
+def _resolve_category(db: Session, uid: int, ttype: str, category: str) -> str:
+    """校验并归一化分类名：命中「内置或该用户自定义」则保留，否则归「其他」。
+
+    自定义分类必须先在此通过，否则前端选了新分类、后端仍会把它写成「其他」。
+    """
+    name = (category or "").strip()[:MAX_CATEGORY_NAME_LEN]
+    if not name:
+        return FALLBACK_CATEGORY
+    if name in _valid_categories(ttype):
+        return name
+    hit = (
+        db.query(FinanceCategory)
+        .filter(
+            FinanceCategory.user_id == uid,
+            FinanceCategory.type == ttype,
+            FinanceCategory.name == name,
+            FinanceCategory.deleted_at.is_(None),
+        )
+        .first()
+    )
+    return name if hit else FALLBACK_CATEGORY
+
+
+def _to_dict(t: FinanceTransaction, icons: dict = None) -> dict:
+    imap = icons if icons is not None else CATEGORY_ICONS
     return {
         "id": t.id,
         "type": t.type,
         "amount": round(t.amount_cents / 100, 2),
         "amount_cents": t.amount_cents,
         "category": t.category,
-        "category_icon": CATEGORY_ICONS.get(t.category, "🧾"),
+        "category_icon": imap.get(t.category, "🧾"),
         "note": t.note,
         "occurred_at": str(t.occurred_at),
         "created_at": str(t.created_at),
@@ -85,11 +168,164 @@ def _to_dict(t: FinanceTransaction) -> dict:
 
 # ---------- 分类元数据 ----------
 @router.get("/categories", response_model=ResponseBase)
-async def list_categories():
-    return ResponseBase(data={
-        "expense": EXPENSE_CATEGORIES,
-        "income": INCOME_CATEGORIES,
-    })
+async def list_categories(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """内置分类 + 当前用户的自定义分类（is_custom=True 的可改可删）。"""
+    return ResponseBase(data=_all_categories(db, current_user["user_id"]))
+
+
+class CategoryIn(BaseModel):
+    type: str = "expense"
+    name: str = Field(..., min_length=1, max_length=MAX_CATEGORY_NAME_LEN)
+    icon: str = Field(default=DEFAULT_CUSTOM_ICON, max_length=16)
+
+
+@router.post("/categories", response_model=ResponseBase)
+async def create_category(
+    payload: CategoryIn,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """新增自定义分类。同名（或与内置同名）直接拒绝，避免下拉里出现两个「餐饮」。"""
+    uid = current_user["user_id"]
+    ttype = payload.type if payload.type in ("income", "expense") else "expense"
+    name = (payload.name or "").strip()
+    if not name:
+        raise_error(ErrCode.INVALID_PARAM, "分类名不能为空")
+    if name in _valid_categories(ttype):
+        raise_error(ErrCode.INVALID_PARAM, f"「{name}」是内置分类，无需重复添加")
+    dup = (
+        db.query(FinanceCategory)
+        .filter(
+            FinanceCategory.user_id == uid,
+            FinanceCategory.type == ttype,
+            FinanceCategory.name == name,
+            FinanceCategory.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if dup:
+        raise_error(ErrCode.INVALID_PARAM, f"已存在同名分类「{name}」")
+
+    max_sort = (
+        db.query(func.max(FinanceCategory.sort_order))
+        .filter(FinanceCategory.user_id == uid, FinanceCategory.type == ttype)
+        .scalar()
+    )
+    row = FinanceCategory(
+        user_id=uid,
+        type=ttype,
+        name=name,
+        icon=(payload.icon or DEFAULT_CUSTOM_ICON).strip() or DEFAULT_CUSTOM_ICON,
+        sort_order=(max_sort or 0) + 10,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return ResponseBase(
+        data={"id": row.id, "key": row.name, "icon": row.icon, "is_custom": True},
+        msg="分类已添加",
+    )
+
+
+@router.put("/categories/{category_id}", response_model=ResponseBase)
+async def update_category(
+    category_id: int,
+    payload: CategoryIn,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """改自定义分类的名字/图标。
+
+    改名会**同步更新该用户的存量流水**——否则老流水会指向一个已不存在的分类名，
+    在统计里变成孤儿（既不在分类列表里、也不计入任何分类）。
+    """
+    uid = current_user["user_id"]
+    row = (
+        db.query(FinanceCategory)
+        .filter(
+            FinanceCategory.id == category_id,
+            FinanceCategory.user_id == uid,
+            FinanceCategory.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not row:
+        raise_error(ErrCode.NOT_FOUND, "分类不存在")
+
+    new_name = (payload.name or "").strip()
+    if not new_name:
+        raise_error(ErrCode.INVALID_PARAM, "分类名不能为空")
+    if new_name != row.name:
+        if new_name in _valid_categories(row.type):
+            raise_error(ErrCode.INVALID_PARAM, f"「{new_name}」是内置分类，会混淆统计数据")
+        dup = (
+            db.query(FinanceCategory)
+            .filter(
+                FinanceCategory.user_id == uid,
+                FinanceCategory.type == row.type,
+                FinanceCategory.name == new_name,
+                FinanceCategory.deleted_at.is_(None),
+                FinanceCategory.id != row.id,
+            )
+            .first()
+        )
+        if dup:
+            raise_error(ErrCode.INVALID_PARAM, f"已存在同名分类「{new_name}」")
+        old_name = row.name
+        db.query(FinanceTransaction).filter(
+            FinanceTransaction.user_id == uid,
+            FinanceTransaction.category == old_name,
+        ).update({"category": new_name}, synchronize_session=False)
+        row.name = new_name
+
+    if payload.icon:
+        row.icon = payload.icon.strip()[:16] or DEFAULT_CUSTOM_ICON
+    db.commit()
+    db.refresh(row)
+    return ResponseBase(
+        data={"id": row.id, "key": row.name, "icon": row.icon, "is_custom": True},
+        msg="分类已更新",
+    )
+
+
+@router.delete("/categories/{category_id}", response_model=ResponseBase)
+async def delete_category(
+    category_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """软删自定义分类。存量流水保留原名（不迁移成「其他」），只是下拉里不再出现。"""
+    uid = current_user["user_id"]
+    row = (
+        db.query(FinanceCategory)
+        .filter(
+            FinanceCategory.id == category_id,
+            FinanceCategory.user_id == uid,
+            FinanceCategory.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not row:
+        raise_error(ErrCode.NOT_FOUND, "分类不存在")
+    used = (
+        db.query(FinanceTransaction)
+        .filter(
+            FinanceTransaction.user_id == uid,
+            FinanceTransaction.category == row.name,
+            FinanceTransaction.deleted_at.is_(None),
+        )
+        .count()
+    )
+    row.deleted_at = datetime.now()
+    db.commit()
+    return ResponseBase(
+        data={"used_count": used},
+        msg=f"分类已删除（{used} 条历史流水仍保留该分类名）" if used else "分类已删除",
+    )
+
 
 
 # ---------- 汇总（供首页看板 + 记账页） ----------
@@ -160,13 +396,14 @@ async def summary(
     ).scalar()
     min_year = first.year if first else now.year
 
-    # 窗口内支出分类占比
+    # 窗口内支出分类占比（自定义分类的图标由 _category_icon_map 提供）
+    icon_map = _category_icon_map(db, uid)
     cat_agg = defaultdict(int)
     for r in rows:
         if r.type == "expense":
             cat_agg[r.category] += r.amount_cents
     categories = [
-        {"category": k, "amount": round(v / 100, 2), "amount_cents": v, "icon": CATEGORY_ICONS.get(k, "🧾")}
+        {"category": k, "amount": round(v / 100, 2), "amount_cents": v, "icon": icon_map.get(k, "🧾")}
         for k, v in sorted(cat_agg.items(), key=lambda x: -x[1])
     ]
 
@@ -212,7 +449,7 @@ async def summary(
         "total_count": len(all_rows),
         "categories": categories,
         "trends": trends,
-        "recent": [_to_dict(r) for r in reversed(recent)],
+        "recent": [_to_dict(r, icon_map) for r in reversed(recent)],
     })
 
 
@@ -252,7 +489,7 @@ async def list_transactions(
         .offset((page - 1) * size).limit(size).all()
     )
     return ResponseBase(data={
-        "list": [_to_dict(r) for r in rows],
+        "list": [_to_dict(r, _category_icon_map(db, current_user["user_id"])) for r in rows],
         "total": total,
         "page": page,
         "size": size,
@@ -271,9 +508,8 @@ async def get_transaction(
         FinanceTransaction.deleted_at.is_(None),
     ).first()
     if not row:
-        from app.schemas.errors import raise_error, ErrCode
         raise_error(ErrCode.NOT_FOUND)
-    return ResponseBase(data=_to_dict(row))
+    return ResponseBase(data=_to_dict(row, _category_icon_map(db, current_user["user_id"])))
 
 
 @router.post("/transactions", response_model=ResponseBase)
@@ -284,18 +520,19 @@ async def create_transaction(
 ):
     ttype = payload.type if payload.type in ("income", "expense") else "expense"
     occurred = _parse_dt(payload.occurred_at) or datetime.now()
+    uid = current_user["user_id"]
     row = FinanceTransaction(
-        user_id=current_user["user_id"],
+        user_id=uid,
         type=ttype,
         amount_cents=abs(payload.amount_cents()),
-        category=_valid_category(ttype, payload.category),
+        category=_resolve_category(db, uid, ttype, payload.category),
         note=(payload.note or "")[:255],
         occurred_at=occurred,
     )
     db.add(row)
     db.commit()
     db.refresh(row)
-    return ResponseBase(data=_to_dict(row))
+    return ResponseBase(data=_to_dict(row, _category_icon_map(db, uid)))
 
 
 @router.put("/transactions/{t_id}", response_model=ResponseBase)
@@ -311,18 +548,18 @@ async def update_transaction(
         FinanceTransaction.deleted_at.is_(None),
     ).first()
     if not row:
-        from app.schemas.errors import raise_error, ErrCode
         raise_error(ErrCode.NOT_FOUND)
     ttype = payload.type if payload.type in ("income", "expense") else "expense"
+    uid = current_user["user_id"]
     row.type = ttype
     row.amount_cents = abs(payload.amount_cents())
-    row.category = _valid_category(ttype, payload.category)
+    row.category = _resolve_category(db, uid, ttype, payload.category)
     row.note = (payload.note or "")[:255]
     occurred = _parse_dt(payload.occurred_at) or row.occurred_at
     row.occurred_at = occurred
     db.commit()
     db.refresh(row)
-    return ResponseBase(data=_to_dict(row))
+    return ResponseBase(data=_to_dict(row, _category_icon_map(db, uid)))
 
 
 @router.delete("/transactions/{t_id}", response_model=ResponseBase)
@@ -502,10 +739,11 @@ def _auto_categorize(ttype: str, text: str) -> str:
     return "其他"
 
 
-def _local_parse_csv(text: str):
+def _local_parse_csv(text: str, allowed: dict = None):
     """无 AI 时的本地 CSV 解析兜底，返回 (rows, skipped, errors)。
 
     rows 为已规整、可直接入库的结构：{occurred, type, category, amount_cents, note}。
+    ``allowed`` 形如 {"expense": {分类名...}, "income": {分类名...}}；缺省只用内置分类。
     """
     reader = csv.reader(io.StringIO(text.lstrip("\ufeff")))
     lines = [ln for ln in reader if any(cell.strip() for cell in ln)]
@@ -553,12 +791,16 @@ def _local_parse_csv(text: str):
                 except (ValueError, TypeError):
                     occurred = now
             cat = cat_s or "其他"
-            if cat == "其他" or cat not in _valid_categories(ttype):
+            known = (allowed or {}).get(ttype) or _valid_categories(ttype)
+            # 保持原语义：CSV 里写着「其他」（或不在已知分类里）时，用备注再猜一次
+            if cat == "其他" or cat not in known:
                 cat = _auto_categorize(ttype, classify_text)
+            if cat not in known:
+                cat = "其他"
             rows.append({
                 "occurred": occurred,
                 "type": ttype,
-                "category": _valid_category(ttype, cat),
+                "category": cat,
                 "amount_cents": int(round(abs(amount) * 100)),
                 "note": (note_s or "")[:255],
             })
@@ -568,8 +810,12 @@ def _local_parse_csv(text: str):
     return rows, skipped, errors
 
 
-def _normalize_rows(raw: list) -> list[dict]:
-    """把字典列表（AI 返回或前端回传）规整为可入库结构，无法识别的整行剔除。"""
+def _normalize_rows(raw: list, allowed: dict = None) -> list[dict]:
+    """把字典列表（AI 返回或前端回传）规整为可入库结构，无法识别的整行剔除。
+
+    ``allowed`` 形如 {"expense": {分类名...}, "income": {分类名...}}；
+    缺省只用内置分类。传入后可保留用户自定义分类，避免导入时被归成「其他」。
+    """
     out = []
     now = datetime.now()
     for item in raw or []:
@@ -593,12 +839,15 @@ def _normalize_rows(raw: list) -> list[dict]:
                 except (ValueError, TypeError):
                     occurred = now
             cat = str(item.get("category") or item.get("分类") or "").strip() or "其他"
+            known = (allowed or {}).get(ttype) or _valid_categories(ttype)
+            if cat not in known:
+                cat = "其他"
             note = str(item.get("note") or item.get("备注") or "").strip()[:255]
             out.append({
                 "occurred": occurred,
                 "type": ttype,
                 "amount_cents": int(round(abs(amount) * 100)),
-                "category": _valid_category(ttype, cat),
+                "category": cat,
                 "note": note,
             })
         except (ValueError, TypeError):
@@ -705,6 +954,7 @@ def _analyze_table_text(db: Session, uid: int, text: str) -> dict:
     provider, is_fake = (FakeProvider(), True) if not cfg else (build_http_provider_from_config(cfg), False)
 
     rows, skipped, errors, summary = [], 0, [], ""
+    allowed = _allowed_categories(db, uid)
     if not is_fake:
         try:
             ai_text = _trim_to_header(text)  # 去掉表头上方说明/元信息，减少 AI 干扰
@@ -713,15 +963,15 @@ def _analyze_table_text(db: Session, uid: int, text: str) -> dict:
                 content=FINANCE_AI_INSTRUCT + f"\n原始数据：\n{ai_text}",
             ))
             data = resp.data or {}
-            ai_rows = _normalize_rows(data.get("rows") or [])
+            ai_rows = _normalize_rows(data.get("rows") or [], allowed)
             if ai_rows:
                 rows, skipped, summary = ai_rows, len(data.get("skipped") or []), getattr(resp, "text", "")
             else:
-                rows, skipped, errors = _local_parse_csv(text)
+                rows, skipped, errors = _local_parse_csv(text, allowed)
         except Exception:  # noqa: BLE001
-            rows, skipped, errors = _local_parse_csv(text)
+            rows, skipped, errors = _local_parse_csv(text, allowed)
     else:
-        rows, skipped, errors = _local_parse_csv(text)
+        rows, skipped, errors = _local_parse_csv(text, allowed)
 
     preview = [{
         "date": r["occurred"].strftime("%Y-%m-%d"),
@@ -748,7 +998,7 @@ async def import_confirm(
 ):
     """确认导入 AI 识别（或本地解析）出的结构化流水，直接落库。"""
     uid = current_user["user_id"]
-    rows = _normalize_rows(payload.rows)
+    rows = _normalize_rows(payload.rows, _allowed_categories(db, uid))
     imported = _insert_transactions(db, uid, rows)
     return ResponseBase(data={
         "imported": imported,
@@ -768,6 +1018,6 @@ async def import_csv(
     每行字段顺序与表头对应，缺省取本站点导出顺序。金额支持正负号推断收支。
     """
     uid = current_user["user_id"]
-    rows, skipped, errors = _local_parse_csv(payload.csv)
+    rows, skipped, errors = _local_parse_csv(payload.csv, _allowed_categories(db, uid))
     imported = _insert_transactions(db, uid, rows)
     return ResponseBase(data={"imported": imported, "skipped": skipped, "errors": errors[:20]})

@@ -50,6 +50,8 @@ from app.models.feed import FeedSource, FeedArticle  # noqa: F401,E402
 from app.models.admin import Role, Menu  # noqa: F401,E402
 from app.models.travels import Travel, TravelCity  # noqa: F401,E402
 from app.models.family import Contact, Subscription  # noqa: F401,E402
+# 记账模块此前漏注册（Base.metadata 里没有它，autogenerate 看不到这两张表）
+from app.models.finance import FinanceCategory, FinanceTransaction  # noqa: F401,E402
 
 config = context.config
 

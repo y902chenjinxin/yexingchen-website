@@ -75,6 +75,12 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "services", "family_reminder.py"), f"{REMOTE_BASE}/backend/app/services/family_reminder.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "m3n4o5p6q7r8_family_contacts_subscriptions.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/m3n4o5p6q7r8_family_contacts_subscriptions.py"),
+    # ---- v2.21.0（桌宠开关 / 账本自定义分类 / AI Provider 权限 / 农历生日）----
+    (os.path.join(ROOT, "backend", "app", "services", "lunar.py"),           f"{REMOTE_BASE}/backend/app/services/lunar.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "providers.py"), f"{REMOTE_BASE}/backend/app/routers/workbench/providers.py"),
+    (os.path.join(ROOT, "backend", "app", "schemas", "ai_provider.py"),      f"{REMOTE_BASE}/backend/app/schemas/ai_provider.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "n4o5p6q7r8s9_finance_categories_lunar.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/n4o5p6q7r8s9_finance_categories_lunar.py"),
     (os.path.join(ROOT, "backend", "requirements.txt"),                 f"{REMOTE_BASE}/backend/requirements.txt"),
 ]
 
@@ -128,8 +134,10 @@ for local, remote in BACKEND_FILES:
     s.put(local, remote)
     print("  ->", remote)
 
-print("== 2/4 install httpx/feedparser/requests in venv ==")
-code, out, err = cexec(f"{REMOTE_BASE}/backend/venv/bin/pip install -q httpx==0.27.0 feedparser requests openpyxl 2>&1; echo DONE")
+print("== 2/4 install deps from requirements.txt ==")
+# 用 requirements.txt 而不是手写包名清单：手写清单会漏掉新增依赖
+# （v2.21.0 的 lunardate 就差点漏装，症状是线上 import 直接失败）
+code, out, err = cexec(f"cd {REMOTE_BASE}/backend && venv/bin/pip install -q -r requirements.txt 2>&1; echo DONE")
 print("  code:", code)
 print("  ", (out + err)[-500:])
 

@@ -203,8 +203,11 @@
 | TD-009 | 项目 eslint 存量告警 172 条（多为 `vue/max-attributes-per-line`、`vue/html-self-closing` 等风格规则）；`GlobalTopBar.vue` 另有 14 条存量 error（未使用导入 `reactive`/多个 icon、lambda 形参 `it` 未用、全角空格 `no-irregular-whitespace`），会阻塞 `npm run lint` 全绿 | 前端 | 待修复 |
 | ENV-004 | `test_api.py` / `test_auth_service.py` / `test_workbench.py` 在**全量或串行**执行时进程异常终止（36 个点后无输出、无失败汇总，退出码 1），单独隔离运行则通过。已用 `git stash` 对比确认与改动无关，疑为测试间状态污染或原生依赖崩溃。**影响：`pytest` 全量门控不可用，只能逐文件跑** | CI | 待修复 |
 | TD-010 | `AdminView.vue` 存量 2 条 `no-unused-vars` error：`allIslands`、`formatPerms` | 前端 | 待修复 |
-| FEAT-001 | **农历生日未做公历转换**：`xuanhuang_contacts.birthday_type` 已预留 `lunar`，但当前仅原样存储与展示，提醒仍按录入的月日当公历算。真正的农历→公历换算需引入历法库（如 `lunardate`）并处理闰月、除夕等边界 | 功能 | **待用户确认是否需要**（若需要，需同步改部署脚本的依赖安装与 requirements） |
+| FEAT-001 | ~~农历生日未做公历转换~~ | 功能 | **已实现（v2.21.0）**：新增 `services/lunar.py`（lunardate 0.3.0），通讯录支持公历/农历切换 + 闰月勾选，提醒按换算后的公历日期生成；闰月缺失与月小无三十两种边界已按中国习惯回落 |
 | ENV-005 | `scripts/deploy_backend.py` 白名单**此前缺 `workbench/` 包内全部文件、`models/workbench.py`**，以及 v2.20.0 全部新文件。用它部署会静默产生「半新半旧」状态：进程正常启动、health=200，但部分改动未生效，极易误判为「改动无效」 | 构建 | **已修复**（补齐白名单 + 文件内加警示注释）；改动不在名单内时请直接用 `deploy_backend_full.py` |
+| ENV-006 | **本地开发库 `yexingchen.db` 与 alembic 版本已漂移**：`alembic_version` 停在 `b2c3d4e5f6a7`，但表其实是 `app.main` 启动时 `Base.metadata.create_all()` 建的（`user_ai_providers` 等表存在但版本未记录）。后果：① `alembic upgrade head` 会撞 `table already exists` 无法重放；② `create_all` 只补表**不补列**，所以 `xuanhuang_tasks` 缺 `source_type/source_id/source_key`、`xuanhuang_contacts` 等新表也缺 → 本地起后端时待办/通讯录相关功能必报错 | 环境 | 待处理（需人工决定：`stamp head` 后按模型补列，或备份后重建开发库；生产不受影响，生产走的是正常迁移链） |
+| ENV-007 | 受限运行环境（沙箱）禁止写入任何 SQLite 文件，导致所有 `import app.main` 的测试在 collection 阶段失败（`attempt to write a readonly database`）。绕行：把 `DATABASE_URL` 指向 `sqlite:///:memory:`，或使用纯内存 fixture（本次新增测试均已按此写） | CI | 已知绕行方案 |
+| TD-011 | 存量 eslint error 新增两处记录：`AssistantView.vue:474`（`no-empty` 空块）、`FinanceView.vue:646`（`handleCurrentChange` 未使用）。两者经 `git show HEAD` 对比确认改动前即存在 | 前端 | 待修复 |
 
 ---
 
@@ -218,6 +221,7 @@
 | 2026-09-16 | ENV-001~003 / TD-009 | v2.18.0 落地过程中发现：单测环境缺 `jsdom`、构建受安全删除机制阻塞、npm 缓存需改道工作区、eslint 存量 error 阻塞 lint 全绿 |
 | 2026-09-16 | ENV-004 / TD-010 | v2.19.0 落地过程中发现：后端 pytest 全量执行存在既有崩溃（只能逐文件跑）、AdminView 存量 2 条 unused-vars |
 | 2026-09-16 | FEAT-001 / ENV-005 | v2.20.0 家庭助理三件套：农历生日仅存值未转换（待用户确认）；deploy_backend.py 白名单缺 workbench 包文件已补齐 |
+| 2026-09-16 | FEAT-001(已实现) / ENV-006 / ENV-007 / TD-011 | v2.21.0：农历换算落地（lunardate，8 春节锚点 + 3 闰月校验）；发现本地开发库 alembic 版本漂移（ENV-006）、受限环境无法写 SQLite 文件（ENV-007）、两处存量 eslint error（TD-011） |
 
 ---
 

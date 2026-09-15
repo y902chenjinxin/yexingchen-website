@@ -39,6 +39,9 @@ class AiProviderOut(BaseModel):
     model_name: str
     enabled: bool
     is_default: bool
+    # 共享配置：超管配置的 Provider 对所有用户可见可用
+    is_owner: bool = True    # False = 这条是别人（超管）的共享配置，当前用户只读
+    is_shared: bool = False  # True = 来自超管的共享配置
     created_at: datetime
     updated_at: datetime
 

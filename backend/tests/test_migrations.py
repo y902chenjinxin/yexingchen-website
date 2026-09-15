@@ -86,6 +86,7 @@ EXPECTED_TABLES = {
     "xuanhuang_ai_conversation_links",
     "user_ai_providers",
     "xuanhuang_finance_transactions",
+    "xuanhuang_finance_categories",
     "xuanhuang_feed_articles",
     "xuanhuang_feed_sources",
     "xuanhuang_menus",

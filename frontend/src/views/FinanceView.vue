@@ -177,7 +177,10 @@
             </div>
 
             <div class="fin-f-field">
-              <label class="fin-f-label">分类</label>
+              <div class="fin-f-label-row">
+                <label class="fin-f-label">分类</label>
+                <button class="fin-cat-manage" @click="openCatDialog">管理分类</button>
+              </div>
               <div class="fin-cats">
                 <button
                   v-for="c in currentCats"
@@ -318,6 +321,80 @@
           </div>
         </div>
       </section>
+    </div>
+
+    <!-- ============ 分类管理弹窗 ============ -->
+    <div class="fin-cat-dialog">
+      <el-dialog
+        v-model="catDialog"
+        :title="catDialogTitle"
+        width="520px"
+        :close-on-click-modal="false"
+      >
+        <!-- 自定义分类 -->
+        <div class="fin-cd-section">
+          <div class="fin-cd-head">
+            <span class="fin-cd-title">自定义分类</span>
+            <span class="fin-cd-note">改名会同步更新已记账的流水，不会留下「孤儿分类」</span>
+          </div>
+
+          <div v-if="customCats.length" class="fin-cd-list">
+            <div v-for="c in customCats" :key="c.id" class="fin-cd-row">
+              <el-select v-model="c.icon" class="fin-cd-icon" @change="(v) => saveCat(c, c.key, v)">
+                <el-option v-for="e in ICON_PRESETS" :key="e" :label="e" :value="e" />
+              </el-select>
+              <el-input
+                :model-value="c.key"
+                class="fin-cd-name"
+                maxlength="12"
+                show-word-limit
+                @change="(v) => saveCat(c, v, c.icon)"
+              />
+              <el-popconfirm
+                title="删除后不再出现在选择列表；已记账的流水仍保留这个分类名"
+                confirm-button-text="删除"
+                cancel-button-text="取消"
+                width="240"
+                @confirm="removeCat(c)"
+              >
+                <template #reference>
+                  <el-button link type="danger">删除</el-button>
+                </template>
+              </el-popconfirm>
+            </div>
+          </div>
+          <p v-else class="fin-cd-empty">还没有自定义分类，用下面的输入框加一个。</p>
+
+          <div class="fin-cd-add">
+            <el-select v-model="newCat.icon" class="fin-cd-icon">
+              <el-option v-for="e in ICON_PRESETS" :key="e" :label="e" :value="e" />
+            </el-select>
+            <el-input
+              v-model="newCat.name"
+              class="fin-cd-name"
+              maxlength="12"
+              placeholder="如：宠物、通勤、房贷"
+              @keyup.enter="addCat"
+            />
+            <el-button type="primary" :loading="catSaving" @click="addCat">添加</el-button>
+          </div>
+        </div>
+
+        <!-- 内置分类（只读） -->
+        <div class="fin-cd-section">
+          <div class="fin-cd-head">
+            <span class="fin-cd-title">内置分类</span>
+            <span class="fin-cd-note">系统自带，不可修改删除</span>
+          </div>
+          <div class="fin-cd-builtin">
+            <span v-for="c in builtinCats" :key="c.key" class="fin-cd-chip">{{ c.icon }} {{ c.key }}</span>
+          </div>
+        </div>
+
+        <template #footer>
+          <el-button @click="catDialog = false">关闭</el-button>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -474,6 +551,76 @@ function fmtDay(iso) {
 async function loadCategories() {
   const res = await financeApi.categories()
   categoriesMeta.value = res.data
+}
+
+/* ---- 自定义分类管理 ---- */
+// 常见图标预设：给个够用的小抄，省得用户为了一个 emoji 去翻输入法
+const ICON_PRESETS = [
+  '🍜', '🍚', '☕', '🛒', '🛍️', '🚇', '🚗', '✈️', '🏠', '💡',
+  '🎮', '🎬', '🎵', '📚', '🎓', '💊', '🏥', '🏋️', '🐱', '🐾',
+  '👶', '🎁', '🧧', '💐', '🧴', '🛠️', '📱', '💰', '📈', '🧾',
+]
+const catDialog = ref(false)
+const catSaving = ref(false)
+const newCat = ref({ icon: ICON_PRESETS[0], name: '' })
+
+// 管理面板跟随当前收支方向：在「支出」下打开就管支出分类
+const currentPool = computed(() => (
+  form.type === 'income' ? categoriesMeta.value.income : categoriesMeta.value.expense
+))
+const customCats = computed(() => currentPool.value.filter(c => c.is_custom))
+const builtinCats = computed(() => currentPool.value.filter(c => !c.is_custom))
+const catDialogTitle = computed(() => (form.type === 'income' ? '管理收入分类' : '管理支出分类'))
+
+function openCatDialog() {
+  newCat.value = { icon: ICON_PRESETS[0], name: '' }
+  catDialog.value = true
+}
+
+async function addCat() {
+  const name = (newCat.value.name || '').trim()
+  if (!name) {
+    ElMessage.warning('请输入分类名')
+    return
+  }
+  catSaving.value = true
+  try {
+    await financeApi.createCategory({ type: form.type, name, icon: newCat.value.icon })
+    ElMessage.success(`已添加「${name}」`)
+    newCat.value = { icon: newCat.value.icon, name: '' }
+    await loadCategories()
+  } catch { /* 错误已由 api 拦截器提示 */ } finally {
+    catSaving.value = false
+  }
+}
+
+async function saveCat(cat, name, icon) {
+  const next = (name || '').trim()
+  if (!next) {
+    ElMessage.warning('分类名不能为空')
+    await loadCategories()
+    return
+  }
+  if (next === cat.key && icon === cat.icon) return
+  try {
+    await financeApi.updateCategory(cat.id, { type: form.type, name: next, icon })
+    ElMessage.success('已更新')
+    // 正在记的这笔如果选的就是它，跟着改名，否则保存时会被归成「其他」
+    if (form.category === cat.key) form.category = next
+    await loadCategories()
+  } catch {
+    await loadCategories()   // 回滚界面上的乐观改动
+  }
+}
+
+async function removeCat(cat) {
+  try {
+    const res = await financeApi.deleteCategory(cat.id)
+    ElMessage.success(res.msg || '已删除')
+    if (form.category === cat.key) form.category = '其他'
+    await loadCategories()
+    await loadSummary()
+  } catch { /* 错误已由 api 拦截器提示 */ }
 }
 async function loadSummary() {
   const params = { dim: dim.value }
@@ -833,6 +980,23 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-cats { display: flex; flex-wrap: wrap; gap: 8px; }
 .fin-cat { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: all .2s; font-family: var(--font-serif); font-size: 13px; }
 .fin-cat.active { border-color: var(--lj-ochre); color: var(--lj-ochre); background: rgba(199,169,107,.14); }
+.fin-f-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fin-cat-manage { background: none; border: none; padding: 0; cursor: pointer; font-size: 12px; color: var(--lj-ochre); font-family: var(--font-serif); letter-spacing: .04em; }
+.fin-cat-manage:hover { text-decoration: underline; }
+
+/* 分类管理弹窗 */
+.fin-cd-section { margin-bottom: 20px; }
+.fin-cd-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.fin-cd-title { font-size: 14px; color: var(--lj-text); letter-spacing: .06em; }
+.fin-cd-note { font-size: 12px; color: var(--lj-text-3); }
+.fin-cd-list { display: flex; flex-direction: column; gap: 8px; }
+.fin-cd-row, .fin-cd-add { display: flex; align-items: center; gap: 8px; }
+.fin-cd-icon { width: 76px; flex: none; }
+.fin-cd-name { flex: 1; }
+.fin-cd-empty { font-size: 13px; color: var(--lj-text-3); margin: 0 0 10px; }
+.fin-cd-add { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--lj-line); }
+.fin-cd-builtin { display: flex; flex-wrap: wrap; gap: 8px; }
+.fin-cd-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--lj-line); font-size: 12px; color: var(--lj-text-3); }
 .fin-note-row { display: flex; align-items: center; gap: 8px; }
 .fin-note-input { flex: 1; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); outline: none; }
 .fin-note-input:focus { border-color: var(--lj-seal); }

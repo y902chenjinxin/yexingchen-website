@@ -10,6 +10,8 @@
    否则删了又长出来，等于删不掉。
 3. **不依赖定时任务**：在 `GET /api/workbench/tasks` 时按需同步，
    保证打开待办页永远看到最新提醒；后台定时任务只作为兜底（可选）。
+4. **农历生日**：家里人大多按农历过生日。农历月日需换算成公历才能算「还有几天」，
+   换算规则与闰月/月小回落见 `services/lunar.py`；`birth_year` 在农历下按**农历年**理解。
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.models.family import Contact, Subscription
 from app.models.workbench import Task
+from app.services.lunar import format_lunar_text, next_lunar_occurrence
 
 # 生日提前多少天开始提醒
 BIRTHDAY_HORIZON_DAYS = 15
@@ -72,6 +75,33 @@ def next_birthday(mmdd: str | None, today: date) -> date | None:
         if cand >= today:
             return cand
     return None
+
+
+def next_birthday_any(contact: Contact, today: date) -> tuple[date, int, bool] | None:
+    """算出该联系人下一次生日的 (公历日期, 参照年份, 是否农历)。
+
+    参照年份用于算年龄：农历生日取**农历年**，公历生日取公历年——
+    混用会把腊月生日的人算小一岁（腊月落在公历次年）。
+    """
+    if (contact.birthday_type or "solar") == "lunar":
+        got = next_lunar_occurrence(contact.birthday, today, bool(contact.lunar_leap))
+        if got is None:
+            return None
+        solar, lunar_year = got
+        return solar, lunar_year, True
+    solar = next_birthday(contact.birthday, today)
+    if solar is None:
+        return None
+    return solar, solar.year, False
+
+
+def birthday_label(days: int) -> str:
+    """中文里「生日1 天后」这种拼接读着别扭，按临近程度换成人话。"""
+    if days == 0:
+        return "今天生日"
+    if days == 1:
+        return "明天生日"
+    return f"{days} 天后生日"
 
 
 def add_months(d: date, months: int) -> date:
@@ -175,26 +205,23 @@ def sync_reminders(
         .all()
     )
     for c in contacts:
-        nb = next_birthday(c.birthday, today)
-        if nb is None:
+        got = next_birthday_any(c, today)
+        if got is None:
             continue
+        nb, ref_year, is_lunar = got
         days = (nb - today).days
         if days > horizon_days:
             continue
         who = c.name + (f"（{c.relation}）" if c.relation else "")
-        # 中文里「生日1 天后」这种拼接读着别扭，按临近程度换成人话
-        if days == 0:
-            label = "今天生日"
-        elif days == 1:
-            label = "明天生日"
-        else:
-            label = f"{days} 天后生日"
-        title = f"{who} {label}"
-        parts = [nb.strftime("%Y 年 %m 月 %d 日")]
-        if c.birth_year and nb.year - c.birth_year > 0:
-            parts.append(f"{nb.year - c.birth_year} 岁")
-        if c.birthday_type == "lunar":
-            parts.append("农历")
+        title = f"{who} {birthday_label(days)}"
+        parts = []
+        lunar_text = format_lunar_text(c.birthday, bool(c.lunar_leap)) if is_lunar else ""
+        if lunar_text:
+            parts.append(f"农历{lunar_text}")
+        parts.append(nb.strftime("%Y 年 %m 月 %d 日"))
+        # 年龄按同历法的年份差算：农历用农历年，公历用公历年
+        if c.birth_year and ref_year - c.birth_year > 0:
+            parts.append(f"{ref_year - c.birth_year} 岁")
         if c.phone:
             parts.append(f"电话 {c.phone}")
         if c.address:

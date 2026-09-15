@@ -40,7 +40,7 @@
                 </span>
               </div>
               <div class="ct-meta">
-                <span v-if="c.birthday">生日 {{ c.birthday }}{{ c.birthday_type === 'lunar' ? '（农历）' : '' }}{{ c.age ? ` · ${c.age} 岁` : '' }}</span>
+                <span v-if="c.birthday">{{ bdayText(c) }}{{ c.age ? ` · ${c.age} 岁` : '' }}</span>
                 <span v-if="c.phone">
                   电话 <a class="ct-tel" :href="`tel:${c.phone}`">{{ c.phone }}</a>
                 </span>
@@ -77,16 +77,16 @@
             <template v-if="!cell.blank">
               <span class="ct-day-n">{{ cell.day }}</span>
               <ul v-if="cell.people.length" class="ct-day-list">
-                <li v-for="p in cell.people.slice(0, 3)" :key="p.id" class="ct-day-item" :title="`${p.name} ${p.birthday}`"
+                <li v-for="p in cell.people.slice(0, 3)" :key="p.id" class="ct-day-item" :title="`${p.name} ${bdayText(p)}`"
                     @click="openEdit(p)">
-                  {{ p.name }}<span v-if="p.age" class="ct-day-age">{{ p.age }}</span>
+                  {{ p.name }}<span v-if="p.birthday_type === 'lunar'" class="ct-day-lunar">农</span><span v-if="p.age" class="ct-day-age">{{ p.age }}</span>
                 </li>
                 <li v-if="cell.people.length > 3" class="ct-day-more">+{{ cell.people.length - 3 }}</li>
               </ul>
             </template>
           </div>
         </div>
-        <p class="ct-cal-tip">点日历上的名字可直接编辑。生日按公历月份排布；标注「农历」的联系人目前仍按录入的月日显示。</p>
+        <p class="ct-cal-tip">点日历上的名字可直接编辑。农历生日已换算成对应公历日期后落入日历（标「农」角标），换算以上面列表里的下次生日为准。</p>
       </section>
     </div>
 
@@ -104,22 +104,36 @@
         </el-form-item>
         <el-form-item label="生日">
           <div class="ct-bday-row">
-            <el-select v-model="birthMonth" placeholder="月" clearable style="width:110px">
+            <el-select v-model="birthMonth" placeholder="月" clearable style="width:100px">
               <el-option v-for="m in 12" :key="m" :label="`${m} 月`" :value="m" />
             </el-select>
-            <el-select v-model="birthDay" placeholder="日" clearable style="width:110px">
-              <el-option v-for="d in 31" :key="d" :label="`${d} 日`" :value="d" />
+            <el-select v-model="birthDay" placeholder="日" clearable style="width:100px">
+              <el-option v-for="d in maxBirthDay" :key="d" :label="`${d} 日`" :value="d" />
             </el-select>
-            <el-select v-model="form.birthday_type" style="width:120px">
+            <el-select v-model="form.birthday_type" style="width:110px" @change="onBdayTypeChange">
               <el-option label="公历" value="solar" />
               <el-option label="农历" value="lunar" />
             </el-select>
+            <el-checkbox
+              v-if="form.birthday_type === 'lunar'"
+              v-model="form.lunar_leap"
+              :true-value="1"
+              :false-value="0"
+              class="ct-leap"
+            >闰月</el-checkbox>
           </div>
-          <div class="ct-form-tip">只记得月日也可以，年份留空即可（年份仅用于显示年龄）</div>
+          <div class="ct-form-tip">
+            <template v-if="form.birthday_type === 'lunar'">
+              按农历填报（家里长辈的生日多是农历）。系统会自动换算成公历并生成提醒；
+              只有闰四月、闰二月这类年份才勾「闰月」，没有对应闰月的年份自动按普通月过。
+            </template>
+            <template v-else>只记得月日也可以，年份留空即可（年份仅用于显示年龄）</template>
+          </div>
         </el-form-item>
         <el-form-item label="出生年">
           <el-input-number v-model="form.birth_year" :min="1900" :max="2100" :controls="false"
-                           placeholder="可选，如 1950" style="width:160px" />
+                           :placeholder="form.birthday_type === 'lunar' ? '可选，填农历年' : '可选，如 1950'" style="width:180px" />
+          <span v-if="form.birthday_type === 'lunar'" class="ct-inline-tip">农历生日请填农历年，年龄才准（腊月生日会差一岁）</span>
         </el-form-item>
         <el-form-item label="电话">
           <el-input v-model="form.phone" placeholder="手机号或座机" maxlength="40" />
@@ -167,11 +181,28 @@ const birthMonth = ref(null)
 const birthDay = ref(null)
 const form = reactive(emptyForm())
 
+// 农历没有 31 日，日下拉要跟着历法收窄，否则会填出永远存不进的日期
+const maxBirthDay = computed(() => (form.birthday_type === 'lunar' ? 30 : 31))
+
 function emptyForm() {
   return {
     id: null, name: '', relation: '', phone: '', address: '',
-    birthday_type: 'solar', birth_year: null, tags: '', notes: '', is_pinned: 0,
+    birthday_type: 'solar', lunar_leap: 0, birth_year: null, tags: '', notes: '', is_pinned: 0,
   }
+}
+
+function onBdayTypeChange() {
+  // 从公历切到农历时，原本选的 31 日不存在了 → 清掉，避免提交被后端拒
+  if (form.birthday_type === 'lunar' && birthDay.value > 30) birthDay.value = null
+  if (form.birthday_type === 'solar') form.lunar_leap = 0
+}
+
+/** 生日展示文案：农历显示中文月日 + 换算后的公历日期 */
+function bdayText(c) {
+  if (c.birthday_type === 'lunar' && c.lunar_text) {
+    return c.next_birthday ? `农历${c.lunar_text} → ${c.next_birthday}` : `农历${c.lunar_text}`
+  }
+  return `生日 ${c.birthday}`
 }
 
 const filtered = computed(() => {
@@ -211,7 +242,9 @@ const byMonthDay = computed(() => {
   const map = {}
   for (const c of list.value) {
     if (!c.birthday) continue
-    ;(map[c.birthday] ||= []).push(c)
+    // 农历生日要落在**换算后的公历**那一格：直接拿农历月日去排公历日历会错位近一个月
+    const key = c.next_birthday ? c.next_birthday.slice(5) : c.birthday
+    ;(map[key] ||= []).push(c)
   }
   return map
 })
@@ -276,7 +309,8 @@ function openCreate() {
 function openEdit(c) {
   Object.assign(form, {
     id: c.id, name: c.name, relation: c.relation, phone: c.phone, address: c.address,
-    birthday_type: c.birthday_type || 'solar', birth_year: c.birth_year,
+    birthday_type: c.birthday_type || 'solar', lunar_leap: c.lunar_leap || 0,
+    birth_year: c.birth_year,
     tags: c.tags, notes: c.notes, is_pinned: c.is_pinned || 0,
   })
   if (c.birthday) {
@@ -312,6 +346,7 @@ async function submit() {
       birthday: bday,
       birth_year: form.birth_year || null,
       birthday_type: form.birthday_type,
+      lunar_leap: form.birthday_type === 'lunar' ? (form.lunar_leap ? 1 : 0) : 0,
       tags: form.tags || '',
       notes: form.notes || '',
       is_pinned: form.is_pinned ? 1 : 0,
@@ -424,8 +459,12 @@ onMounted(reload)
 .ct-day-more { font-size: 10px; color: var(--lj-text-3); }
 .ct-cal-tip { margin: 12px 0 0; font-size: 11px; line-height: 1.7; color: var(--lj-text-3); }
 
-.ct-bday-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ct-bday-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .ct-form-tip { font-size: 11px; color: var(--lj-text-3); line-height: 1.6; margin-top: 4px; }
+.ct-leap { margin-left: 2px; }
+.ct-inline-tip { margin-left: 10px; font-size: 11px; color: var(--lj-text-3); }
+.ct-day-lunar { font-size: 9px; margin-left: 3px; padding: 0 3px; border-radius: 3px;
+  background: var(--lj-ochre); color: #0B0F14; }
 
 @media (max-width: 760px) {
   .ct-head-right { width: 100%; }

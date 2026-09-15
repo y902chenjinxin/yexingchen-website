@@ -1,3 +1,69 @@
+## [v2.21.0] - 2026-09-16
+
+### 桌宠开关 + 账本自定义分类 + AI Provider 权限修复 + 农历生日（User 需求 1/2/3/4）
+
+#### 1. 个人中心桌宠开关（默认展示）
+
+- 新增 `stores/prefs.js`：界面偏好按**用户**分键存 localStorage（家里共用设备时不该互相覆盖）
+- `App.vue` 的 `showWhale` 叠加该偏好，与既有的「音乐页隐藏桌宠」是 AND 关系
+- 个人中心新增「界面偏好」卡片，`el-switch` 即时生效（无需刷新）
+- 细节：模块加载时先用「上次登录用户」的偏好 hydrate，避免关掉桌宠的人每次进站先闪一下鲸鱼
+
+#### 2. 账本自定义分类
+
+- 新增表 `xuanhuang_finance_categories`（用户级）；内置分类仍写死在 `routers/finance.py`
+  —— 内置项的图标/文案与代码强绑定，搬进库反而更难改
+- 新增 `POST/PUT/DELETE /api/finance/categories`；`GET` 返回内置 + 自定义（带 `is_custom`）
+- **改名会同步更新该用户的存量流水**，否则老流水会指向一个已不存在的分类名，在统计里变成孤儿
+- **删除走软删**，且图标映射不过滤软删：删掉分类后历史流水的图标不会集体回落成 🧾
+- `_valid_category` 换成基于 db 的 `_resolve_category`——原先自定义分类会被白名单静默归一成「其他」
+- CSV/AI 导入链路一并改为「内置 + 该用户自定义」白名单，导入时自定义分类不再被吞掉
+- 前端账本：分类区加「管理分类」入口（增删改 + 图标预设 30 个），内置分类只读展示
+
+#### 3. AI Provider「权限不足」修复（生产实测根因）
+
+- **现象**：家里人登录后点开 AI 助手「配置 AI Provider」弹窗，满屏 403「权限不足」
+- **根因**：`UserAiProvider` 明明是**用户级**（模型名、查询条件、docstring 全写着「当前用户」），
+  但 `routers/workbench/providers.py` 的 5 个接口全挂了 `require_super_admin`
+- **修复**：5 个接口改 `get_current_user`；引入「共享配置」——超管配置的 Provider
+  对全站可见可用（`is_shared` / `is_owner` 标记），家里人不必各配一份 Key；
+  自己另配的优先级高于共享；共享配置对非属主**只读**（否则谁都能改掉全站共用的 Key）
+- `resolve_user_provider` 解析顺序：指定 id → 自己的默认 → 自己的任意启用项 → 超管共享 → FakeProvider
+  （影响面：AI 助手、账本导入、行情解读、股票每日分析四处自动受益）
+- 前端显示「共享」徽标，非属主隐藏改删入口，并给出「超管配置 · 只读」提示
+
+#### 4. 农历生日（用户强调：家里基本都按农历）
+
+- 新增 `services/lunar.py`，基于 **lunardate 0.3.0**（纯 Python，无 C 扩展，覆盖 1900–2099）
+- 选库而非手抄历法表：闰月与月大月小是查表规则，抄错极难发现，而这类错误会直接算错「家人今天生日」
+- 已对 **8 个春节锚点 + 端午/中秋/七夕 + 3 个闰月**做独立校验（用公开历法事实，不是「跑一遍抄输出」）
+- 两种中国习惯回落：闰月生日在无对应闰月的年份按**普通月**过；月小只有 29 天却记了三十 → 按**当月最后一天**（腊月三十 → 腊月廿九）
+- 年龄按**同历法年份差**计算：农历取农历年——腊月生日落在公历次年，混用会把长辈算小一岁
+- 通讯录新增 `lunar_leap` 列；农历生日填 31 日会被明确拒绝（农历月最多 30 天）
+- 界面：公历/农历切换 + 闰月勾选（仅农历时出现）、日下拉按历法收窄到 30、
+  列表显示「农历八月十五 → 2026-09-25」、日历把农历生日落到**换算后的公历**格位（标「农」角标）
+
+### 迁移
+
+`n4o5p6q7r8s9`：新建 `xuanhuang_finance_categories` + `xuanhuang_contacts.lunar_leap`
+
+### 顺带修复
+
+- `alembic/env.py` 从未注册记账模块，`Base.metadata` 里没有这两张表（autogenerate 看不到）
+- `contacts.py` 两处 `raise_error(code, msg, 404)` 传了 3 个参数，而 `raise_error` 只接受 2 个
+  → 「联系人不存在」「回收站中无此联系人」实际会抛 TypeError 变成 500，已改 `ErrCode.NOT_FOUND`
+
+### 测试
+
+新增 108 例：`test_lunar.py` 49 + `test_finance_categories.py` 32 + `test_ai_provider_shared.py` 27。
+后端逐文件回归全通过：lunar 49 / family_reminder 23 / family_api 16 / finance_categories 32 /
+ai_providers 15 / ai_provider_shared 27 / migrations 3 / password_validation 25 /
+schema_guard 7 / security 17 / client_ip 6。
+前端 `vite build` 通过（FinanceView 20.6→28.3 kB，新增分类管理）；eslint 改动文件**零新增 error**
+（`AssistantView` 474 与 `FinanceView` 646 两条 error 经 HEAD 对比确认为存量）。
+
+---
+
 ## [v2.20.0] - 2026-09-16
 
 ### 家庭助理三件套（User 需求 4/5/7：家人通讯录 / 待办事项 / 订阅账单统计）

@@ -23,7 +23,7 @@
           >
             <span style="float:left">{{ p.display_name }}</span>
             <span style="float:right;font-size:12px;color:#999;margin-left:8px">
-              {{ p.provider_key }} · {{ p.is_default ? '默认' : '' }}
+              {{ p.provider_key }} · {{ p.is_default ? '默认' : '' }}{{ p.is_shared ? ' · 共享' : '' }}
             </span>
           </el-option>
           <el-option v-if="!providers.length" :value="null" disabled label="（未配置 Provider，使用离线演示）" />
@@ -128,6 +128,9 @@
       <p class="modal-tip">
         支持 OpenAI 兼容协议（GPT / DeepSeek / 通义 / Qwen / GLM 等）。
         Key 按你的授权明文存储，访问 AI 时直接调用。
+        <br />
+        标有「共享」的是超级管理员配置好的，<b>所有人开箱可用</b>，无需自己再配一份；
+        你自己添加的配置会优先于共享配置。
       </p>
 
       <div v-if="!providers.length && !showAddProvider" class="empty-providers">
@@ -143,15 +146,20 @@
               {{ p.provider_key }} · {{ p.model_name }}
               <span v-if="p.base_url"> · {{ p.base_url }}</span>
               <span v-if="p.is_default" class="badge">默认</span>
+              <span v-if="p.is_shared" class="badge-shared">共享</span>
               <span v-if="!p.enabled" class="badge-off">已停用</span>
             </div>
             <div class="provider-key">Key: {{ p.api_key_masked }}</div>
           </div>
           <div class="provider-actions">
             <el-button size="small" :loading="testingId === p.id" @click="testProvider(p.id)">测试</el-button>
-            <el-button size="small" @click="editProvider(p)">编辑</el-button>
-            <el-button v-if="!p.is_default" size="small" @click="setDefault(p.id)">设为默认</el-button>
-            <el-button size="small" type="danger" @click="delProvider(p)">删除</el-button>
+            <!-- 共享配置对非属主只读：改删归超管，避免谁都能改掉全站共用的 Key -->
+            <template v-if="p.is_owner !== false">
+              <el-button size="small" @click="editProvider(p)">编辑</el-button>
+              <el-button v-if="!p.is_default" size="small" @click="setDefault(p.id)">设为默认</el-button>
+              <el-button size="small" type="danger" @click="delProvider(p)">删除</el-button>
+            </template>
+            <span v-else class="provider-readonly">超管配置 · 只读</span>
           </div>
         </div>
         <el-button @click="openAddProvider" style="margin-top: 12px;">
@@ -404,8 +412,13 @@ async function loadProviders() {
     const r = await workbenchApi.ai.providersList()
     providers.value = r.data || []
     if (!providers.value.find((p) => p.id === currentProviderId.value)) {
-      const def = providers.value.find((p) => p.is_default && p.enabled)
-      currentProviderId.value = def ? def.id : (providers.value[0]?.id ?? null)
+      // 优先级与后端 resolve_user_provider 一致：自己的默认 → 自己的启用项 → 共享默认 → 共享启用项
+      const pick = (own) => {
+        const pool = providers.value.filter((p) => p.enabled && (p.is_owner !== false) === own)
+        return pool.find((p) => p.is_default) || pool[0]
+      }
+      const chosen = pick(true) || pick(false) || providers.value[0]
+      currentProviderId.value = chosen?.id ?? null
     }
   } catch (e) {
     providers.value = []
@@ -590,6 +603,8 @@ details[open] .chat-save-toggle::before { content: '－ '; }
 .provider-key { font-size: 12px; color: var(--xiu-text-3); font-family: monospace; }
 .provider-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 .badge { display: inline-block; padding: 2px 6px; background: var(--xiu-primary); color: #fff; border-radius: 3px; font-size: 11px; margin-left: 6px; }
+.badge-shared { display: inline-block; padding: 2px 6px; background: var(--lj-ochre); color: #fff; border-radius: 3px; font-size: 11px; margin-left: 6px; }
+.provider-readonly { font-size: 12px; color: var(--lj-text-3); align-self: center; }
 .badge-off { display: inline-block; padding: 2px 6px; background: var(--xiu-text-3); color: #fff; border-radius: 3px; font-size: 11px; margin-left: 6px; }
 .add-provider-form { padding: 16px; border-top: 1px dashed var(--xiu-line); margin-top: 12px; }
 .add-provider-form h4 { margin: 0 0 12px 0; color: var(--xiu-text); }
