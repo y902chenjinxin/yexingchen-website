@@ -60,9 +60,11 @@ def sanitize_payload(payload: Any) -> Any:
 class AiRequest:
     """单次 AI 调用的入参。"""
 
-    ability: str  # organize / summarize / suggest_tags / suggest_task
+    ability: str  # organize / summarize / suggest_tags / suggest_task / stock_analysis
     content: str
     options: Optional[Dict[str, Any]] = None
+    # 可选：覆盖默认"笔记助手"系统提示，用于非笔记场景（如股票研判）
+    system: Optional[str] = None
 
 
 @dataclass
@@ -181,6 +183,12 @@ _ABILITY_SCHEMAS = {
         ],
         "skipped": ["无法识别或无效的一行的简短说明"],
     },
+    "stock_analysis": {
+        "reply": "面向用户的每日研判中文说明（1~3句，直接可用）",
+        "level": "只填一个档位：up(强/偏多)/hold(持/中性偏多)/watch(观/中性)/down(减/偏空)/danger(避/空头)",
+        "summary": "该股当日技术形态总结（中文，1~2句）",
+        "suggestion": "具体可操作建议（中文，1~2句）",
+    },
 }
 
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.IGNORECASE | re.DOTALL)
@@ -274,20 +282,25 @@ class HttpProvider(AiProvider):
         schema = json.dumps(
             _ABILITY_SCHEMAS.get(ability, {}), ensure_ascii=False, indent=2
         )
+        if req.system:
+            # 非笔记场景（如股票研判）使用调用方给定角色/原则
+            intro = req.system
+        else:
+            intro = "你是用户的贴心笔记助手，陪他整理生活和工作。"
         return (
-            "你是用户的贴心笔记助手，陪他整理生活和工作。请只输出一个有效的 JSON 对象，"
+            f"{intro}请只输出一个有效的 JSON 对象，"
             "不要输出任何其它内容。\n"
             "输出 JSON 的绝对原则：\n"
             "1. 只输出 JSON 本身，前面不要任何解释、思考过程、逐字推断；"
             "不要包裹 markdown 代码块（不要用 ```）；不要用 <thinking> 等任何标记。\n"
             "2. reply 字段是直接展示给用户看的中文本体：语气要自然、温暖、口语化，"
             "像好朋友在说话，不说官腔、不用生硬书面语。\n"
-            "3. reply 必须紧扣笔记本身，简洁地说清结果（一般 2~4 句），"
-            "不要复述或大段引用笔记原文，不要堆砌空话，能一句话讲清就不要三句。\n"
+            "3. reply 必须紧扣输入内容，简洁地说清结果（一般 2~4 句），"
+            "不要复述或大段引用原文，不要堆砌空话，能一句话讲清就不要三句。\n"
             "4. 其它字段严格按给定 schema 填充，缺失用 null 或空数组，不要乱加字段。\n"
             f"能力：{ability}\n"
             f"schema：\n{schema}\n"
-            f"笔记内容：\n{content}\n"
+            f"待研判内容：\n{content}\n"
         )
 
     def invoke(self, req: AiRequest) -> AiResponse:

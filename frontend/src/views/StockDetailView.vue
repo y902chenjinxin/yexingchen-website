@@ -50,28 +50,34 @@
       </section>
 
       <!-- 每日研判 -->
-      <section class="sd-analysis glass" v-if="analysis.period && analysis.list.length">
+      <section class="sd-analysis glass" v-if="view.period || (view.list && view.list.length)">
         <div class="sd-block-head">
           <span class="sd-block-title">每日研判</span>
-          <span class="sd-an-period">{{ analysis.periodLabel }}</span>
-          <span class="sd-block-sub">规则化形态 · 操作参考</span>
+          <span class="sd-an-period">{{ view.label }}</span>
+          <span v-if="view.ai && view.model" class="sd-an-model" :title="'研判模型：' + view.model">{{ view.model }}</span>
+          <span class="sd-block-sub" style="flex:1">
+            {{ view.ai ? 'AI 技术面 · 规则保底 · 盘后生成' : '盘中规则化形态 · 操作参考' }}
+          </span>
+          <button class="sd-btn ghost small sd-an-gen" :disabled="genBusy" @click="generateAnalysis">
+            {{ genBusy ? '生成中…' : (todayAnalyzed ? '今日已研判' : '立即研判') }}
+          </button>
         </div>
         <div class="sd-an-table">
           <div class="sd-an-row sd-an-head">
             <span>日期</span><span class="ta-r">收盘</span><span class="ta-r">涨跌</span><span>形态总结</span><span>操作建议</span>
           </div>
-          <div v-for="(it, i) in analysis.list" :key="it.date + i" class="sd-an-row" :class="{ latest: i === 0 }">
+          <div v-for="(it, i) in view.list" :key="it.date + i" class="sd-an-row" :class="{ latest: i === 0 }">
             <span class="sd-an-date">{{ it.date }}<i v-if="i === 0" class="sd-an-now">今</i></span>
             <span class="ta-r sd-an-close">{{ fmt(it.close) }}</span>
             <span class="ta-r" :class="it.up ? 'up' : 'down'">{{ chgTxt(it.chg) }}</span>
             <span class="sd-an-sum">{{ it.summary }}</span>
             <span class="sd-an-sug" :class="'lv-' + it.lv">
-              <i class="sd-an-badge">{{ badgeTxt[it.lv] }}</i>
+              <i class="sd-an-badge">{{ badgeTxt[it.lv] || badgeTxt.watch }}</i>
               <em>{{ it.sug }}</em>
             </span>
           </div>
         </div>
-        <div class="sd-an-risk">技术形态规则研判，仅供参考，不构成投资建议</div>
+        <div class="sd-an-risk">技术面研判仅供参考，不构成投资建议{{ view.ai ? '· 盘后生成，盘中以实时规则为准' : '' }}</div>
       </section>
 
       <!-- 持仓 -->
@@ -138,6 +144,31 @@ const editQty = ref(null)
 const editCost = ref(null)
 const news = ref([])
 const analysis = ref({ period: '', list: [] })
+const aiList = ref([])
+const genBusy = ref(false)
+
+const todayDate = new Date().toISOString().slice(0, 10)
+// AI 研判优先展示；无记录时回退 KlineChart 的盘中规则研判
+const view = computed(() => {
+  if (aiList.value.length) {
+    return {
+      ai: true,
+      label: 'AI · 盘后',
+      model: aiList.value[0]?.model_name || '',
+      list: aiList.value.map((it) => ({
+        date: it.date,
+        close: it.price,
+        chg: it.pct,
+        up: it.pct != null && it.pct > 0,
+        summary: it.summary,
+        sug: it.suggestion,
+        lv: it.level,
+      })),
+    }
+  }
+  return { ...analysis.value, ai: false, label: '盘中规则', model: '' }
+})
+const todayAnalyzed = computed(() => aiList.value[0]?.date === todayDate)
 
 const badgeTxt = { up: '强', hold: '持', watch: '观', down: '减', danger: '避' }
 const periodNames = { day: '日K', week: '周K', month: '月K' }
@@ -187,6 +218,25 @@ async function loadAll() {
       news.value = (j?.data?.list || []).slice(0, 4)
     } catch (e) { news.value = [] }
   }
+  await loadAnalysis()
+}
+
+async function loadAnalysis() {
+  try {
+    const r = await stocksApi.analysis(market, code, 7)
+    aiList.value = r.data?.list || []
+  } catch (e) { aiList.value = [] }
+}
+
+async function generateAnalysis() {
+  genBusy.value = true
+  try {
+    await stocksApi.generateAnalysis(market, code)
+    ElMessage.success('研判已生成')
+    await loadAnalysis()
+    try { quote.value = (await stocksApi.quote(market, code)).data || quote.value } catch (e) { /* ignore */ }
+  } catch (e) { /* 错误已由拦截器提示 */ }
+  finally { genBusy.value = false }
 }
 
 async function saveHold() {
@@ -242,6 +292,12 @@ onMounted(loadAll)
   font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: 999px;
   background: rgba(199, 169, 107, 0.14); color: var(--lj-seal); letter-spacing: .06em; flex: none;
 }
+.sd-an-model {
+  font-size: 10.5px; line-height: 16px; padding: 0 6px; border-radius: 6px;
+  background: rgba(127, 168, 163, 0.14); color: var(--lj-dai); letter-spacing: .03em;
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none;
+}
+.sd-an-gen { flex: none; }
 .sd-an-table { display: flex; flex-direction: column; max-height: 340px; overflow: auto; padding-right: 4px; margin: 0 -6px; }
 .sd-an-row {
   display: grid; grid-template-columns: 78px 58px 66px 1fr 1.45fr; gap: 8px; align-items: center;

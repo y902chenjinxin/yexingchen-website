@@ -33,7 +33,7 @@ def send_verification_email(to_email: str, code: str):
             <div class="code-box">
                 <div class="code">{code}</div>
             </div>
-            <div class="desc">验证码有效期为3分钟，请尽快完成验证</div>
+            <div class="desc">验证码有效期为 {settings.VERIFY_CODE_EXPIRE_MINUTES} 分钟，请尽快完成验证</div>
             <div class="footer">如果您没有进行注册操作，请忽略此邮件</div>
         </div>
     </body>

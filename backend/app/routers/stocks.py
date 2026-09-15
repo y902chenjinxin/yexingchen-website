@@ -15,8 +15,10 @@ from sqlalchemy import or_
 
 from app.database import get_db
 from app.utils.security import get_current_user
-from app.models.stocks import StockWatchlist, PortfolioSnapshot
+from app.models.stocks import StockWatchlist, PortfolioSnapshot, StockDailyAnalysis
 from app.services import stock_fetcher as sf
+from app.services.stock_analysis import analyze_stock
+from app.services.user_ai_provider import build_http_provider_from_config, resolve_user_provider
 
 router = APIRouter(prefix="/api/stocks", tags=["股票查看"])
 
@@ -356,3 +358,69 @@ async def record_snapshot_today(db: Session = Depends(get_db), current_user=Depe
         "hold_pnl": s["hold_pnl"],
         "hold_pct": s["hold_pct"],
     })
+
+
+# ---------- 每日研判（AI，规则保底） ----------
+def _analysis_to_dict(r: StockDailyAnalysis) -> dict:
+    return {
+        "date": r.date,
+        "price": float(r.price) if r.price is not None else None,
+        "pct": float(r.pct) if r.pct is not None else None,
+        "level": r.level,
+        "summary": r.summary,
+        "suggestion": r.suggestion,
+        "model_name": r.model_name,
+    }
+
+
+@router.get("/analysis/{market}/{code}")
+async def stock_analysis_list(
+    market: str,
+    code: str,
+    days: int = Query(7, ge=1, le=90),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """查询单只自选股的每日研判历史（最新在前）。"""
+    uid = current_user["user_id"]
+    rows = (
+        db.query(StockDailyAnalysis)
+        .filter(
+            StockDailyAnalysis.user_id == uid,
+            StockDailyAnalysis.market == market.lower(),
+            StockDailyAnalysis.code == code.upper(),
+        )
+        .order_by(StockDailyAnalysis.date.desc())
+        .limit(days)
+        .all()
+    )
+    return ok({"market": market.lower(), "code": code.upper(), "list": [_analysis_to_dict(r) for r in rows]})
+
+
+@router.post("/analysis/{market}/{code}")
+async def stock_analysis_generate(
+    market: str,
+    code: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """立即为单只自选股生成今日研判（同日幂等覆盖；未配 AI 时降级规则保底）。"""
+    uid = current_user["user_id"]
+    mk, cd = market.lower(), code.strip().upper()
+    w = (
+        db.query(StockWatchlist)
+        .filter(
+            StockWatchlist.user_id == uid,
+            StockWatchlist.market == mk,
+            StockWatchlist.code == cd,
+            StockWatchlist.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not w:
+        raise_http(404, "该股不在自选列表中", 404)
+    cfg = resolve_user_provider(db, uid, None)
+    provider = None if not cfg else build_http_provider_from_config(cfg)
+    today = datetime.now().strftime("%Y-%m-%d")
+    r = analyze_stock(db, uid, w, today, provider=provider)
+    return ok(r, "研判已生成")

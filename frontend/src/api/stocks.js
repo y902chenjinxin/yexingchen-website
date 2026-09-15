@@ -52,6 +52,8 @@ export const stocksApi = {
   dashboard: () => api.get('/dashboard'),
   snapshots: (days) => api.get('/snapshots', { params: { days } }),
   recordSnapshot: () => api.post('/snapshots/today'),
+  analysis: (market, code, days) => api.get(`/analysis/${market}/${code}`, { params: { days } }),
+  generateAnalysis: (market, code) => api.post(`/analysis/${market}/${code}`),
 }
 
 export default stocksApi

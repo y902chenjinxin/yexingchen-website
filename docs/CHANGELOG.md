@@ -1,3 +1,17 @@
+## [v2.14.0] - 2026-09-15
+
+### 股票
+- **每日研判改用 AI 增强（规则保底 + AI）**：后端 `stock_analysis.py` 新增 AI 研判链路——交易日按默认/启用 AI Provider 调模型（能力 `stock_analysis`），结合近 30 根 K 线、规则基线、相关资讯，产出 `level/summary/suggestion` 并落库 `xuanhuang_stock_daily_analysis`（user+code+market+date 唯一幂等覆盖）；未配置或调用失败时自动降级为规则档位，不阻塞不写空壳
+- **每日自动调度**：`main.py` 仿资讯后台协程（仅 `ENV=production` 启动），交易日 **15:35 后**每 5 分钟检查一次，为「有自选股且当日尚未研判」的用户自动生成研判 + 记录当日持仓快照
+- **研判接口**：新增 `GET/POST /api/stocks/analysis/{market}/{code}`（查询历史 / 立即生成今日研判）
+- **详情页展示**：`StockDetailView` 每日研判区块优先展示 AI 研判（日期/收盘/涨跌/形态总结/操作建议 + 徽标 + 模型名，`AI·盘后` 标注），无 AI 记录时回退 KlineChart 盘中规则（`盘中规则` 标注）；新增「立即研判」按钮可手动触发
+
+### 工程
+- `deploy_backend.py` 白名单新增 `stock_analysis.py`、`user_ai_provider.py`、迁移 `e7f8a9b0c1d2`
+- 随带清理：移除已无引用的 `cos_service.py`；邮箱验证码文案改用 `VERIFY_CODE_EXPIRE_MINUTES` 配置
+
+---
+
 ## [v2.13.0] - 2026-09-15
 
 ### 安全修复
