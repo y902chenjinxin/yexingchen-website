@@ -118,7 +118,9 @@ def _parse_dt(value: str):
     if not value:
         return None
     try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00").replace(tzinfo=None))
+        # 注意 tzinfo 要在 datetime 对象上抹除；此前误写在字符串上，
+        # str.replace() 不认该关键字 → TypeError 被吞 → 所有日期解析失败回退“今天”
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).replace(tzinfo=None)
     except (ValueError, TypeError):
         return None
 
