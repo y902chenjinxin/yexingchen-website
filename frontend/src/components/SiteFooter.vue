@@ -25,22 +25,38 @@ defineProps({
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 20px;
+  padding: 10px 20px;
   text-align: center;
 }
+
+/* 备案标识须始终清晰可辨：用「随昼夜主题自适应的玻璃徽章」承载，
+   自带底片 + backdrop 模糊，无论所在页面背景深浅、夜间/白昼，文字都有稳定对比，全站生效 */
 .sf-content {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 48%),
+    var(--ls-glass);
+  border: 1px solid var(--ls-line);
+  box-shadow:
+    var(--glass-highlight, inset 0 1px 0 rgba(255, 255, 255, 0.06)),
+    0 6px 20px rgba(0, 0, 0, 0.18);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  backdrop-filter: saturate(160%) blur(16px);
 }
+
 .sf-icon {
   width: 18px;
   height: 18px;
   object-fit: contain;
   flex: none;
 }
+
 .sf-links {
   display: flex;
   align-items: center;
@@ -50,19 +66,12 @@ defineProps({
   justify-content: center;
 }
 .sf-links a {
+  color: var(--ls-text);
   text-decoration: none;
   transition: color 0.2s;
   white-space: nowrap;
+  font-weight: 500;
 }
-.sf-divider { opacity: 0.55; }
-
-/* 墨青深色底（岛屿页） */
-.sf-dark .sf-links a { color: rgba(232, 244, 252, 0.72); }
-.sf-dark .sf-links a:hover { color: var(--ls-dai, #7fb0b5); }
-.sf-dark .sf-divider { color: rgba(221, 221, 221, 0.7); }
-
-/* 浅色留白底（工作台/管理页等） */
-.sf-light .sf-links a { color: rgba(48, 63, 68, 0.88); }
-.sf-light .sf-links a:hover { color: var(--lj-seal, #c96a54); }
-.sf-light .sf-divider { color: rgba(74, 95, 99, 0.62); }
+.sf-links a:hover { color: var(--ls-dai); }
+.sf-divider { color: var(--ls-text-3, rgba(160, 170, 178, 0.85)); }
 </style>

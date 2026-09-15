@@ -496,9 +496,10 @@ function resetRegister() {
 }
 
 .filing-links a {
-  color: rgba(232, 244, 252, 0.5);
+  color: rgba(232, 244, 252, 0.88);
   text-decoration: none;
   transition: color 0.2s;
+  font-weight: 500;
 }
 
 .filing-links a:hover {
@@ -506,7 +507,7 @@ function resetRegister() {
 }
 
 .filing-divider {
-  color: #ddd;
+  color: rgba(232, 244, 252, 0.6);
 }
 
 @media (max-width: 768px) {

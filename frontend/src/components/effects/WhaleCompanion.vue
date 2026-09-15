@@ -37,18 +37,6 @@
         <button class="panel-close" @click="closePanel" aria-label="关闭">✕</button>
         <div class="panel-title">桌宠设置</div>
 
-        <div class="panel-label">动作方式</div>
-        <label class="opt" :class="{ on: mode === 'auto' }">
-          <input type="radio" name="whale-mode" value="auto" :checked="mode === 'auto'" @change="setMode('auto')" />
-          <span class="opt-radio"></span>
-          <span class="opt-body"><b>固定编排</b><small>待机为主，按预设节奏穿插动作</small></span>
-        </label>
-        <label class="opt" :class="{ on: mode === 'random' }">
-          <input type="radio" name="whale-mode" value="random" :checked="mode === 'random'" @change="setMode('random')" />
-          <span class="opt-radio"></span>
-          <span class="opt-body"><b>随机动作</b><small>每次都换一个不同动作</small></span>
-        </label>
-
         <label class="opt walk-opt" :class="{ on: walkRunning }">
           <input type="checkbox" :checked="walkRunning" @change="onWalkToggle" />
           <span class="opt-radio"></span>
@@ -75,37 +63,10 @@ const handleEl = ref(null)
 const vEls = [ref(null), ref(null)]
 function activeVideo() { return vEls[activeIdx]?.value }
 
-// 自动动作池（待机为主，穿插慢游/跑步/扭头/日常/轻音乐……多样但都静音安全），让桌宠"自己刷新动作"
-const AUTO_POOL = [
-  ['idle', 'breathing'],
-  ['idle', 'breathing'],
-  ['idle', 'breathing'],
-  ['turn', 'looking_around'],
-  ['turn', 'looking_around'],
-  ['moves', 'floating_steps'],
-  ['moves', 'floating_steps'],
-  ['moves', 'running_trip'],
-  ['moves', 'target_point_run'],
-  ['moves', 'crab_walk'],
-  ['daily', 'big_stretch'],
-  ['daily', 'gentle_spin'],
-  ['daily', 'sleepy_yawn'],
-  ['daily', 'mirror_check'],
-  ['daily', 'quick_nap'],
-  ['daily', 'maid_curtsy'],
-  ['music', 'light_sway_dance'],
-  ['music', 'carefree_humming'],
-  ['fun', 'desk_tap'],
-  ['fun', 'petting_a_cat'],
-  ['fun', 'gravity_squash'],
-  ['games', 'spinning_a_top'],
-  ['food', 'melting_ice_cream'],
-  ['seasonal', 'cooling_with_a_hand_fan'],
-]
 // 跑步类动作：素材原始朝向为「面朝左」，位移时按运动方向决定是否镜像
 const RUN_KEYS = ['running_trip', 'target_point_run', 'crab_walk']
 const RUN_SET = new Set(RUN_KEYS)
-// 随机模式：从全部动作（排除拖拽类）随机
+// 随机动作（唯一模式）：从全部动作（排除拖拽类）随机挑一个
 const RANDOM_POOL = Object.keys(VIDBOX).filter((k) => !k.startsWith('drag/'))
 function pickRnd() {
   const k = RANDOM_POOL[Math.floor(Math.random() * RANDOM_POOL.length)]
@@ -116,8 +77,6 @@ const WALK_POOL = [['moves', 'floating_steps'], ['moves', 'running_trip'], ['mov
 
 const dragging = ref(false)
 const flipped = ref(false)
-// 模式：auto=固定编排，random=随机动作；walkRunning 供面板散步开关回显
-const mode = ref('auto')
 const showPanel = ref(false)
 const walkRunning = ref(false)
 
@@ -132,7 +91,6 @@ let hintTimer = null
 let activeIdx = 0
 let fadeToken = 0
 
-const MODE_KEY = 'whale-pet-mode'
 const HIDE_KEY = 'whale-pet-hidden'
 const FADE_MS = 380
 
@@ -229,15 +187,10 @@ function pick(list) {
   return list[Math.floor(Math.random() * list.length)]
 }
 
-function pickAuto() {
-  if (mode.value === 'random') return pickRnd()
-  return pick(AUTO_POOL)
-}
-
 function scheduleAuto() {
   autoTimer = setTimeout(() => {
     if (walk || draggingState) { scheduleAuto(); return }
-    playAuto(pickAuto())
+    playAuto(pickRnd())
     scheduleAuto()
   }, 8000 + Math.random() * 5000)
 }
@@ -295,7 +248,7 @@ function endAutoWalk() {
   walk = null
   walkRunning.value = false
   if (autoTimer) clearTimeout(autoTimer)
-  crossSwitch(pickAuto())
+  crossSwitch(pickRnd())
   scheduleAuto()
 }
 
@@ -333,7 +286,7 @@ function onHandlePointerUp() {
   dragging.value = false
   if (!moved) { togglePanel(); return }
   stopWalk()
-  crossSwitch(pickAuto())
+  crossSwitch(pickRnd())
 }
 
 function togglePanel() {
@@ -364,11 +317,6 @@ function closePanel() {
   document.removeEventListener('pointerdown', onPanelOutsideDown)
 }
 
-function setMode(m) {
-  mode.value = m
-  try { localStorage.setItem(MODE_KEY, m) } catch (e) {}
-}
-
 function onWalkToggle() {
   toggleWalk()
 }
@@ -376,7 +324,7 @@ function onWalkToggle() {
 function toggleWalk() {
   if (walk) {
     stopWalk()
-    crossSwitch(pickAuto())
+    crossSwitch(pickRnd())
     return
   }
   const maxX = Math.max(0, window.innerWidth - visibleSize().w)
@@ -416,12 +364,8 @@ function showHint() {
 }
 
 onMounted(() => {
-  try {
-    const saved = localStorage.getItem(MODE_KEY)
-    if (saved === 'auto' || saved === 'random') mode.value = saved
-  } catch (e) {}
   hidden.value = loadBool(HIDE_KEY)
-  setAction(pick(AUTO_POOL), true)
+  setAction(pickRnd(), true)
   if (!hidden.value) {
     scheduleAuto()
     const hintId = setInterval(() => { if (!draggingState) showHint() }, 12000)
