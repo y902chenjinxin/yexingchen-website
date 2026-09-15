@@ -85,6 +85,7 @@
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item command="edit">修改</el-dropdown-item>
+                      <el-dropdown-item command="resetPwd">重置密码</el-dropdown-item>
                       <el-dropdown-item command="delete" style="color: #F56C6C;">删除</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
@@ -143,16 +144,27 @@
       <!-- ============ 菜单管理 ============ -->
       <section v-if="tab === 'menus'" class="section">
         <div class="section-title">菜单管理</div>
-        <div class="section-tip">控制全站顶栏导航入口的可见性、排序与启用状态。系统内置菜单不可删除。</div>
-        <el-table :data="menus" stripe style="width: 100%" v-loading="menuLoading">
-          <el-table-column prop="title" label="菜单名称" min-width="130">
+        <div class="section-tip">支持一级 / 二级模块：一二级模块展示为树状层级。控制全站顶栏导航入口的可见性、排序与启用状态。系统内置菜单不可删除。</div>
+        <el-table :data="menuTree" stripe style="width: 100%" v-loading="menuLoading" row-key="id">
+          <el-table-column label="菜单名称" min-width="160">
             <template #default="{ row }">
-              <el-icon class="menu-icon"><component :is="iconMap[row.icon] || HomeFilled" /></el-icon>
-              <span>{{ row.title }}</span>
-              <el-tag v-if="row.is_builtin" size="small" type="warning" class="builtin-tag">内置</el-tag>
+              <span class="menu-level-indent" :style="{ paddingLeft: (6 + row.level * 22) + 'px' }">
+                <el-icon v-if="row.level === 1" class="menu-branch"><FolderOpened /></el-icon>
+                <el-icon v-else class="menu-icon"><component :is="iconMap[row.icon] || HomeFilled" /></el-icon>
+                <span>{{ row.title }}</span>
+                <el-tag v-if="row.is_builtin" size="small" type="warning" class="builtin-tag">内置</el-tag>
+                <el-tag size="small" :type="row.level === 0 ? 'primary' : 'success'" class="builtin-tag">
+                  {{ row.level === 0 ? '一级' : '二级' }}
+                </el-tag>
+              </span>
             </template>
           </el-table-column>
-          <el-table-column prop="path" label="路径" min-width="140" />
+          <el-table-column prop="path" label="路径" min-width="140" show-overflow-tooltip />
+          <el-table-column label="上级" width="130">
+            <template #default="{ row }">
+              {{ row.parent_title || '—' }}
+            </template>
+          </el-table-column>
           <el-table-column prop="sort_order" label="排序" width="80" />
           <el-table-column label="状态" width="90">
             <template #default="{ row }">
@@ -191,9 +203,7 @@
       <el-form :model="editForm" label-width="100px">
         <el-form-item label="角色">
           <el-select v-model="editForm.role" style="width: 100%">
-            <el-option label="普通用户" value="user" />
-            <el-option label="管理员" value="admin" />
-            <el-option label="超级管理员" value="super_admin" />
+            <el-option v-for="r in roles" :key="r.code" :label="r.name" :value="r.code" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -235,6 +245,20 @@
       </template>
     </el-dialog>
 
+    <!-- ============ 重置密码弹窗 ============ -->
+    <el-dialog v-model="showResetPwdDialog" title="重置用户密码" width="400px">
+      <div v-if="resetPwdTarget" class="reset-target">将重置 <b>{{ resetPwdTarget.email }}</b> 的登录密码</div>
+      <el-form label-width="80px">
+        <el-form-item label="新密码">
+          <el-input v-model="resetPwdForm.password" type="password" placeholder="请输入新密码" show-password autocomplete="new-password" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showResetPwdDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleResetPwd">确认重置</el-button>
+      </template>
+    </el-dialog>
+
     <!-- ============ 角色编辑弹窗 ============ -->
     <el-dialog v-model="showRoleDialog" :title="roleForm.id ? '编辑角色' : '新增角色'" width="520px">
       <el-form :model="roleForm" label-width="90px">
@@ -264,6 +288,12 @@
     <!-- ============ 菜单编辑弹窗 ============ -->
     <el-dialog v-model="showMenuDialog" :title="menuForm.id ? '编辑菜单' : '新增菜单'" width="520px">
       <el-form :model="menuForm" label-width="90px">
+        <el-form-item label="上级模块">
+          <el-select v-model="menuForm.parent_id" style="width: 100%" placeholder="选择上级模块（选“无”则为一二级中的一级模块）">
+            <el-option label="无（一级模块）" :value="0" />
+            <el-option v-for="p in parentMenuOptions" :key="p.id" :label="`一级：${p.title}`" :value="p.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="菜单名称">
           <el-input v-model="menuForm.title" placeholder="如：资讯" maxlength="60" />
         </el-form-item>
@@ -298,11 +328,11 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Search, CaretBottom, HomeFilled, Collection, TrendCharts, MapLocation, Tools,
-  Headset, Reading, VideoCamera, Document, ChatDotRound, Setting
+  Headset, Reading, VideoCamera, Document, ChatDotRound, Setting, FolderOpened
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import {
-  getUserList, addUser, approveUser, rejectUser, updateUser, updateUserRole, deleteUser,
+  getUserList, addUser, approveUser, rejectUser, updateUser, updateUserRole, resetUserPassword, deleteUser,
   getRoleList, addRole, updateRole, deleteRole,
   getMenuList, addMenu, updateMenu, deleteMenu
 } from '@/api/admin'
@@ -319,6 +349,9 @@ const showAddDialog = ref(false)
 const editUserId = ref(null)
 const addForm = ref({ email: '', password: '' })
 const editForm = ref({ role: 'user', status: 'approved', islands: [] })
+const showResetPwdDialog = ref(false)
+const resetPwdTarget = ref(null)
+const resetPwdForm = ref({ password: '' })
 
 const allIslands = ['music', 'novel', 'video', 'diary', 'tools']
 
@@ -345,9 +378,36 @@ async function handleCommand(id, command) {
   } else if (command === 'edit') {
     const user = users.value.find(u => u.id === id)
     if (user) handleEditUser(user)
+  } else if (command === 'resetPwd') {
+    const user = users.value.find(u => u.id === id)
+    if (user) openResetPwd(user)
   } else if (command === 'delete') {
     await handleDeleteUser(id)
   }
+}
+
+function openResetPwd(user) {
+  resetPwdTarget.value = user
+  resetPwdForm.value = { password: '' }
+  showResetPwdDialog.value = true
+}
+
+async function handleResetPwd() {
+  const pwd = resetPwdForm.value.password
+  if (!pwd) {
+    ElMessage.warning('请输入新密码')
+    return
+  }
+  if (pwd.length < 6) {
+    ElMessage.warning('密码长度至少 6 位')
+    return
+  }
+  try {
+    await resetUserPassword(resetPwdTarget.value.id, { password: pwd })
+    ElMessage.success('密码重置成功')
+    showResetPwdDialog.value = false
+    resetPwdTarget.value = null
+  } catch { /* 错误已由api拦截器处理 */ }
 }
 
 function handleEditUser(row) {
@@ -494,12 +554,29 @@ async function handleDeleteRole(row) {
 const menus = ref([])
 const menuLoading = ref(false)
 const showMenuDialog = ref(false)
-const menuForm = ref({ id: null, title: '', path: '', icon: 'Document', sort_order: 0, is_enabled: 1, is_builtin: 0 })
+const menuForm = ref({ id: null, parent_id: 0, title: '', path: '', icon: 'Document', sort_order: 0, is_enabled: 1, is_builtin: 0 })
 
 const iconMap = {
   Collection, TrendCharts, MapLocation, Tools, Headset, Reading, VideoCamera,
   Document, ChatDotRound, Setting, HomeFilled
 }
+
+// 一级模块（parent_id==0），供「新增/编辑二级模块」时选择上级
+const parentMenuOptions = computed(() => menus.value.filter(m => !m.parent_id))
+
+// 扁平 menus → 树状展示（一级模块 + 其下二级模块缩进）
+const menuTree = computed(() => {
+  const l1 = menus.value.filter(m => !m.parent_id)
+  const orphans = menus.value.filter(m => m.parent_id && !l1.some(p => p.id === m.parent_id))
+  return [
+    ...l1.map(m => ({ ...m, level: 0, parent_title: '' })),
+    ...l1.flatMap(p => menus.value
+      .filter(c => c.parent_id === p.id)
+      .map(c => ({ ...c, level: 1, parent_title: p.title }))
+    ),
+    ...orphans.map(m => ({ ...m, level: 1, parent_title: '（缺失上级）' })),
+  ]
+})
 
 async function fetchMenus() {
   menuLoading.value = true
@@ -513,11 +590,11 @@ async function fetchMenus() {
 function openMenuForm(row) {
   if (row) {
     menuForm.value = {
-      id: row.id, title: row.title, path: row.path, icon: row.icon,
+      id: row.id, parent_id: row.parent_id || 0, title: row.title, path: row.path, icon: row.icon,
       sort_order: row.sort_order, is_enabled: row.is_enabled, is_builtin: row.is_builtin
     }
   } else {
-    menuForm.value = { id: null, title: '', path: '', icon: 'Document', sort_order: 0, is_enabled: 1, is_builtin: 0 }
+    menuForm.value = { id: null, parent_id: 0, title: '', path: '', icon: 'Document', sort_order: 0, is_enabled: 1, is_builtin: 0 }
   }
   showMenuDialog.value = true
 }
@@ -528,6 +605,7 @@ async function handleSaveMenu() {
     return
   }
   const payload = {
+    parent_id: menuForm.value.parent_id || 0,
     title: menuForm.value.title.trim(),
     path: menuForm.value.path.trim(),
     icon: menuForm.value.icon,
@@ -583,7 +661,7 @@ function formatTime(timeStr) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
-onMounted(() => { fetchUsers() })
+onMounted(() => { fetchUsers(); fetchRoles() })
 </script>
 
 <style scoped>
@@ -617,6 +695,10 @@ onMounted(() => { fetchUsers() })
 .role-name { font-weight: 600; }
 .menu-icon { vertical-align: -2px; margin-right: 6px; }
 .menu-icon-name { margin-left: 8px; }
+.menu-level-indent { display: inline-flex; align-items: center; }
+.menu-branch { vertical-align: -2px; margin-right: 6px; color: var(--color-gold); }
+.reset-target { margin-bottom: 14px; font-size: 13px; color: var(--color-text-secondary); }
+.reset-target b { color: var(--color-gold); font-weight: 600; }
 .form-hint { font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; }
 
 /* Tab 样式 */

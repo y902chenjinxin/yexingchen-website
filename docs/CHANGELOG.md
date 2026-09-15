@@ -1,3 +1,17 @@
+## [v2.16.0] - 2026-09-16
+
+### 管理后台 · 三需求落地并部署现网（SW `xuanhuang-v92`）
+- **用户重置密码**（User「用户管理没办法重置密码」）：`AdminView` 编辑下拉新增「重置密码」项 + 独立弹窗（显示目标邮箱 + 新密码，前端长度校验，`POST /admin/users/{id}/reset-password`，后端 `get_password_hash` 改密 + 操作日志）
+- **角色下拉数据化**（User「角色管理支持下拉选择」）：用户编辑弹窗角色下拉改由角色表动态填充（code→name），替代硬编码三项
+- **菜单一 / 二级模块**（User「菜单管理一级、二级模块」）：`Menu.parent_id` 字段 + 迁移 `j1k2l3m4n5o6`；`AdminView` 菜单管理改**树状展示**（一级模块 + 二级缩进 + `FolderOpened` 图标 + 「一级/二级」标签 + 「上级」列），表单新增「上级模块」下拉（「无（一级模块）」+ 各一级模块），保存带 `parent_id`；后端 `_validate_parent` 校验父须为一级、禁自身/禁三级，删除含子模块的一级模块被拦截
+- **工作台视觉打磨部署**：朱砂印章 / 山峦剪影 / 玻璃徽章 / 楼层式载入落地上线（详见 v2.15.0 的待部署项，本轮补部署）
+
+### 工程
+- `deploy_backend.py` 白名单补齐 `admin_users/admin_roles/admin_menus` + 迁移 `j1k2l3m4n5o6`；生产 `alembic upgrade j1k2l3m4n5o6` 显式目标升级（规避仓库 FTS 平行分支多 head），重启后 `ENV=production` 保留、health=200
+- **踩坑记**：`npm run build -- --outDir dist2` 参数转发失效、产出陈旧 bundle；改 `npx vite build --outDir dist2` 显式构建，校验 AdminView/WorkbenchView 标记后整体替换 dist
+
+---
+
 ## [v2.15.0] - 2026-09-15
 
 ### 桌宠 · 极简（User「这些选项我都不要，就进来默认展示、随机动作」、「把手也去掉、直接拖本体」）

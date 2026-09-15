@@ -6,6 +6,7 @@ export const approveUser = (id) => api.post(`/admin/users/${id}/approve`)
 export const rejectUser = (id) => api.post(`/admin/users/${id}/reject`)
 export const updateUser = (id, data) => api.put(`/admin/users/${id}`, data)
 export const updateUserRole = (id, data) => api.put(`/admin/users/${id}/role`, data)
+export const resetUserPassword = (id, data) => api.post(`/admin/users/${id}/reset-password`, data)
 export const deleteUser = (id) => api.delete(`/admin/users/${id}`)
 
 export const getRoleList = () => api.get('/admin/roles')

@@ -16,6 +16,9 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "tool.py"),        f"{REMOTE_BASE}/backend/app/routers/tool.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "log.py"),          f"{REMOTE_BASE}/backend/app/routers/log.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "admin.py"),         f"{REMOTE_BASE}/backend/app/routers/admin.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "admin_users.py"),   f"{REMOTE_BASE}/backend/app/routers/admin_users.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "admin_roles.py"),   f"{REMOTE_BASE}/backend/app/routers/admin_roles.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "admin_menus.py"),   f"{REMOTE_BASE}/backend/app/routers/admin_menus.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "workbench.py"),    f"{REMOTE_BASE}/backend/app/routers/workbench.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "search.py"),       f"{REMOTE_BASE}/backend/app/routers/search.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "auth.py"),         f"{REMOTE_BASE}/backend/app/routers/auth.py"),
@@ -40,6 +43,8 @@ BACKEND_FILES = [
      f"{REMOTE_BASE}/backend/alembic/versions/e5f6a7b8c9d0_stock_watchlist.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "e7f8a9b0c1d2_stock_daily_analysis.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/e7f8a9b0c1d2_stock_daily_analysis.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "j1k2l3m4n5o6_menu_parent_id.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/j1k2l3m4n5o6_menu_parent_id.py"),
     (os.path.join(ROOT, "backend", "app", "models", "travels.py"),          f"{REMOTE_BASE}/backend/app/models/travels.py"),
     (os.path.join(ROOT, "backend", "app", "models", "admin.py"),            f"{REMOTE_BASE}/backend/app/models/admin.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "travels.py"),         f"{REMOTE_BASE}/backend/app/routers/travels.py"),
@@ -109,9 +114,9 @@ code, out, err = cexec(f"{REMOTE_BASE}/backend/venv/bin/pip install -q httpx==0.
 print("  code:", code)
 print("  ", (out + err)[-500:])
 
-print("== 3/4 alembic upgrade head (feed + stock tables) ==")
+print("== 3/4 alembic upgrade j1k2l3m4n5o6 (menu.parent_id; explicit target due to FTS branch) ==")
 code, out, err = cexec(
-    f"cd {REMOTE_BASE}/backend && ENV=production venv/bin/alembic upgrade head 2>&1 | tail -20"
+    f"cd {REMOTE_BASE}/backend && ENV=production venv/bin/alembic upgrade j1k2l3m4n5o6 2>&1 | tail -20"
 )
 print("  code:", code)
 print("  ", (out + err)[-800:])
