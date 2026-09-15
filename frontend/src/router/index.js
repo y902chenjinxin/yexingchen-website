@@ -107,6 +107,13 @@ const routes = [
     component: () => import('@/views/IdPhotoToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 AI 封面 工具页（服务端 Pillow 模板渲染）
+  {
+    path: '/tool/cover',
+    name: 'CoverTool',
+    component: () => import('@/views/CoverToolView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 个人记账（真实页面）
   {
     path: '/finance',

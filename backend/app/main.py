@@ -7,7 +7,7 @@ import logging
 
 from app.database import engine, Base
 from app.routers import (
-    admin_menus, admin_roles, admin_users, auth, contacts, datahub, finance, log, music, novel,
+    admin_menus, admin_roles, admin_users, auth, contacts, cover, datahub, finance, log, music, novel,
     quick, search, settings as settings_router, subscriptions,
     stocks, tool, travels, video, video_parse,
 )
@@ -146,6 +146,7 @@ app.include_router(music.router)
 app.include_router(novel.router)
 app.include_router(video.router)
 app.include_router(tool.router)
+app.include_router(cover.router)
 app.include_router(log.router)
 app.include_router(search.router)
 app.include_router(settings_router.router)
