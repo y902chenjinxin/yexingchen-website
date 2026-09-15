@@ -96,6 +96,7 @@ EXPECTED_TABLES = {
     "xuanhuang_stock_watchlist",
     "xuanhuang_travel_cities",
     "xuanhuang_travels",
+    "voice_clones",
     "token_blocklist",
 }
 

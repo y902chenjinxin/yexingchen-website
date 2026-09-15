@@ -114,6 +114,13 @@ const routes = [
     component: () => import('@/views/CoverToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 音色克隆 工具页（MiniMax 声音复刻 + T2A 试听）
+  {
+    path: '/tool/voice',
+    name: 'VoiceCloneTool',
+    component: () => import('@/views/VoiceCloneView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 个人记账（真实页面）
   {
     path: '/finance',

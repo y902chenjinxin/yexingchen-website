@@ -33,6 +33,8 @@ BUILTIN_TOOLS = [
     # url 唯一键幂等；icon 用 emoji（与外部工具一致）
     {"title": "AI 封面", "url": "/tool/cover", "description": "输入标题副标题，一键生成公众号/小红书/视频封面",
      "icon": "🖼️", "sort_order": 1},
+    {"title": "音色克隆", "url": "/tool/voice", "description": "上传一段录音复刻专属音色，输入文字即可生成语音",
+     "icon": "🎙️", "sort_order": 2},
 ]
 
 
