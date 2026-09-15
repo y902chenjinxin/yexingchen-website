@@ -103,7 +103,7 @@
       <!-- ============ 角色管理 ============ -->
       <section v-if="tab === 'roles'" class="section">
         <div class="section-title">角色管理</div>
-        <div class="section-tip">角色的权限标识（permissions）以 JSON 数组存储，如 ["*"] 表示全部权限。系统内置角色不可删除、不可修改标识。</div>
+        <div class="section-tip">角色与菜单绑定：在编辑弹窗中勾选该角色可见的菜单，决定其登录后「快速前往」导航能看到的模块。系统内置角色不可删除、不可修改标识。</div>
         <el-table :data="roles" stripe style="width: 100%" v-loading="roleLoading">
           <el-table-column prop="name" label="角色名称" min-width="130">
             <template #default="{ row }">
@@ -113,8 +113,8 @@
           </el-table-column>
           <el-table-column prop="code" label="标识" width="140" />
           <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="permissions" label="权限" min-width="150" show-overflow-tooltip>
-            <template #default="{ row }">{{ formatPerms(row.permissions) }}</template>
+          <el-table-column prop="permissions" label="可见菜单" min-width="170" show-overflow-tooltip>
+            <template #default="{ row }">{{ formatMenuPerms(row) }}</template>
           </el-table-column>
           <el-table-column prop="sort_order" label="排序" width="80" />
           <el-table-column label="操作" width="140" fixed="right">
@@ -271,9 +271,23 @@
         <el-form-item label="描述">
           <el-input v-model="roleForm.description" placeholder="角色用途说明" maxlength="255" />
         </el-form-item>
-        <el-form-item label="权限">
-          <el-input v-model="roleForm.permissions" placeholder='JSON 数组，如 ["read","write"] 或 ["*"]' />
-          <div class="form-hint">支持逗号分隔简化写法：read,write 也会被转为 JSON 数组</div>
+        <el-form-item label="可见菜单">
+          <div class="role-menu-toolbar">
+            <el-button link type="primary" size="small" @click="setRoleMenuAll">全选</el-button>
+            <el-button link size="small" @click="setRoleMenuNone">清空</el-button>
+          </div>
+          <div class="role-menu-tree-wrap">
+            <el-tree
+              ref="roleMenuTreeRef"
+              :data="roleMenuTreeData"
+              :props="{ label: 'title', children: 'children' }"
+              node-key="id"
+              show-checkbox
+              default-expand-all
+              @check="onRoleMenuCheck"
+            />
+          </div>
+          <div class="form-hint">勾选该角色可访问 / 可见的菜单；不勾选任何菜单时默认可见全部启用菜单</div>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="roleForm.sort_order" :min="0" :max="999" />
@@ -324,7 +338,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, nextTick, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Search, CaretBottom, HomeFilled, Collection, TrendCharts, MapLocation, Tools,
@@ -470,7 +484,9 @@ async function handleAddUser() {
 const roles = ref([])
 const roleLoading = ref(false)
 const showRoleDialog = ref(false)
-const roleForm = ref({ id: null, name: '', code: '', description: '', permissions: '[]', sort_order: 0, is_builtin: 0 })
+const roleForm = ref({ id: null, name: '', code: '', description: '', permissions: '[]', menu_ids: [], sort_order: 0, is_builtin: 0 })
+const roleMenuTreeRef = ref(null)
+const roleMenuTreeData = ref([])
 
 async function fetchRoles() {
   roleLoading.value = true
@@ -481,16 +497,65 @@ async function fetchRoles() {
   finally { roleLoading.value = false }
 }
 
+function parseMenuIds(raw) {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.map(Number).filter(n => Number.isFinite(n)) : []
+  } catch { return [] }
+}
+
+function buildRoleMenuTree() {
+  const l1 = menus.value.filter(m => !m.parent_id)
+  roleMenuTreeData.value = l1.map(p => ({
+    id: p.id,
+    title: p.title,
+    children: menus.value.filter(c => c.parent_id === p.id).map(c => ({ id: c.id, title: c.title })),
+  }))
+}
+
+async function ensureMenusLoaded() {
+  if (!menus.value.length) await fetchMenus()
+}
+
 function openRoleForm(row) {
-  if (row) {
-    roleForm.value = {
-      id: row.id, name: row.name, code: row.code, description: row.description,
-      permissions: row.permissions, sort_order: row.sort_order, is_builtin: row.is_builtin
+  ensureMenusLoaded().then(() => {
+    if (row) {
+      roleForm.value = {
+        id: row.id, name: row.name, code: row.code, description: row.description,
+        permissions: row.permissions || '[]', menu_ids: parseMenuIds(row.menu_ids),
+        sort_order: row.sort_order, is_builtin: row.is_builtin
+      }
+    } else {
+      roleForm.value = { id: null, name: '', code: '', description: '', permissions: '[]', menu_ids: [], sort_order: 0, is_builtin: 0 }
     }
-  } else {
-    roleForm.value = { id: null, name: '', code: '', description: '', permissions: '[]', sort_order: 0, is_builtin: 0 }
-  }
-  showRoleDialog.value = true
+    buildRoleMenuTree()
+    showRoleDialog.value = true
+    nextTick(() => {
+      roleMenuTreeRef.value?.setCheckedKeys(roleForm.value.menu_ids)
+    })
+  })
+}
+
+function onRoleMenuCheck() {
+  roleForm.value.menu_ids = (roleMenuTreeRef.value?.getCheckedKeys(false) || []).map(Number)
+}
+
+function setRoleMenuAll() {
+  roleMenuTreeRef.value?.setCheckedKeys(menus.value.filter(m => !m.parent_id).map(m => m.id))
+  onRoleMenuCheck()
+}
+
+function setRoleMenuNone() {
+  roleMenuTreeRef.value?.setCheckedKeys([])
+  roleForm.value.menu_ids = []
+}
+
+function formatMenuPerms(row) {
+  const ids = parseMenuIds(row.menu_ids)
+  if (!ids.length) return '全部菜单'
+  const names = menus.value.filter(m => ids.includes(m.id)).map(m => m.title)
+  return names.length ? names.join('、') : '无（不显示菜单）'
 }
 
 function formatPerms(perms) {
@@ -527,6 +592,7 @@ async function handleSaveRole() {
     code: roleForm.value.code.trim(),
     description: roleForm.value.description.trim(),
     permissions: normalizePerms(roleForm.value.permissions),
+    menu_ids: JSON.stringify(roleForm.value.menu_ids),
     sort_order: roleForm.value.sort_order
   }
   try {
@@ -700,6 +766,12 @@ onMounted(() => { fetchUsers(); fetchRoles() })
 .reset-target { margin-bottom: 14px; font-size: 13px; color: var(--color-text-secondary); }
 .reset-target b { color: var(--color-gold); font-weight: 600; }
 .form-hint { font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; }
+.role-menu-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 4px; }
+.role-menu-tree-wrap {
+  width: 100%; max-height: 240px; overflow: auto; border: 1px solid var(--color-border);
+  border-radius: 6px; padding: 6px;
+  background: var(--color-bg, #fff);
+}
 
 /* Tab 样式 */
 :deep(.el-tabs__item) {

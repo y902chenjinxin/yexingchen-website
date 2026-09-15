@@ -45,6 +45,8 @@ BACKEND_FILES = [
      f"{REMOTE_BASE}/backend/alembic/versions/e7f8a9b0c1d2_stock_daily_analysis.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "j1k2l3m4n5o6_menu_parent_id.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/j1k2l3m4n5o6_menu_parent_id.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "k2l3m4n5o6p7_role_menu_ids.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/k2l3m4n5o6p7_role_menu_ids.py"),
     (os.path.join(ROOT, "backend", "app", "models", "travels.py"),          f"{REMOTE_BASE}/backend/app/models/travels.py"),
     (os.path.join(ROOT, "backend", "app", "models", "admin.py"),            f"{REMOTE_BASE}/backend/app/models/admin.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "travels.py"),         f"{REMOTE_BASE}/backend/app/routers/travels.py"),
@@ -114,9 +116,9 @@ code, out, err = cexec(f"{REMOTE_BASE}/backend/venv/bin/pip install -q httpx==0.
 print("  code:", code)
 print("  ", (out + err)[-500:])
 
-print("== 3/4 alembic upgrade j1k2l3m4n5o6 (menu.parent_id; explicit target due to FTS branch) ==")
+print("== 3/4 alembic upgrade k2l3m4n5o6p7 (role.menu_ids; explicit target due to FTS branch) ==")
 code, out, err = cexec(
-    f"cd {REMOTE_BASE}/backend && ENV=production venv/bin/alembic upgrade j1k2l3m4n5o6 2>&1 | tail -20"
+    f"cd {REMOTE_BASE}/backend && ENV=production venv/bin/alembic upgrade k2l3m4n5o6p7 2>&1 | tail -20"
 )
 print("  code:", code)
 print("  ", (out + err)[-800:])

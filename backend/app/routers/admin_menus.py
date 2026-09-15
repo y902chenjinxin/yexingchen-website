@@ -1,6 +1,7 @@
 """管理员 - 菜单管理。"""
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends
@@ -8,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.admin import Menu
+from app.models.admin import Menu, Role
 from app.schemas.common import ResponseBase
 from app.schemas.errors import ErrCode, raise_error
 from app.services.log_service import log_action
@@ -54,14 +55,42 @@ async def list_public_menus(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """登录用户可见的启用菜单（顶栏导航用，按启用+排序过滤）。"""
+    """登录用户可见的启用菜单（顶栏导航用，按角色 menu_ids 过滤）。
+
+    - super_admin：恒见全部启用菜单
+    - 其余角色：若其 role.menu_ids 为空(未配置) → 全部启用菜单；否则仅返回其中 id 命中的菜单
+    """
     rows = (
         db.query(Menu)
         .filter(Menu.is_enabled == 1)
         .order_by(Menu.sort_order, Menu.id)
         .all()
     )
-    return ResponseBase(data={"list": [_menu_to_dict(m) for m in rows]})
+    if current_user.get("is_super_admin") == 1:
+        return ResponseBase(data={"list": [_menu_to_dict(m) for m in rows]})
+    try:
+        menu_ids = _role_allowed_menu_ids(db, current_user.get("role"))
+    except Exception:
+        menu_ids = None
+    if not menu_ids:
+        return ResponseBase(data={"list": [_menu_to_dict(m) for m in rows]})
+    allowed = {int(x) for x in menu_ids if str(x).strip().lstrip("-").isdigit()}
+    filtered = [m for m in rows if m.id in allowed]
+    return ResponseBase(data={"list": [_menu_to_dict(m) for m in filtered]})
+
+
+def _role_allowed_menu_ids(db: Session, role_code: Optional[str]) -> list:
+    """返回指定角色 code 允许可见的菜单 id 列表；未配置时返回空（表示全部）。"""
+    if not role_code:
+        return []
+    role = db.query(Role).filter(Role.code == role_code).first()
+    if not role or not role.menu_ids:
+        return []
+    try:
+        parsed = json.loads(role.menu_ids)
+    except Exception:
+        return []
+    return [int(x) for x in parsed] if isinstance(parsed, list) else []
 
 
 @router.post("/menus", response_model=ResponseBase)

@@ -16,6 +16,7 @@ class Role(Base):
     code = Column(String(40), nullable=False)
     description = Column(String(255), nullable=False, default="")
     permissions = Column(Text, nullable=False, default="[]")  # JSON 权限数组
+    menu_ids = Column(Text, nullable=False, default="[]")  # JSON 数组：角色可见菜单 id；[]=未配置默认全部
     sort_order = Column(Integer, nullable=False, default=0)
     is_builtin = Column(Integer, nullable=False, default=0)  # 1=系统内置，禁删禁改标识
     created_at = Column(DateTime, nullable=False, default=datetime.now)

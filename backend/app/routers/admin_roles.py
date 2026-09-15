@@ -22,6 +22,7 @@ def _role_to_dict(r: Role) -> dict:
         "code": r.code,
         "description": r.description,
         "permissions": r.permissions,
+        "menu_ids": r.menu_ids,
         "sort_order": r.sort_order,
         "is_builtin": r.is_builtin,
         "created_at": str(r.created_at),
@@ -33,6 +34,7 @@ class RoleIn(BaseModel):
     code: str = ""
     description: str = ""
     permissions: str = "[]"
+    menu_ids: str = "[]"
     sort_order: int = 0
 
 
@@ -61,6 +63,7 @@ async def create_role(
         code=code[:40],
         description=req.description.strip()[:255],
         permissions=req.permissions[:2000] or "[]",
+        menu_ids=req.menu_ids[:2000] or "[]",
         sort_order=req.sort_order,
         is_builtin=0,
     )
@@ -97,6 +100,8 @@ async def update_role(
         role.description = req.description.strip()[:255]
     if req.permissions:
         role.permissions = req.permissions[:2000]
+    if req.menu_ids:
+        role.menu_ids = req.menu_ids[:2000]
     role.sort_order = req.sort_order
     db.commit()
     log_action(

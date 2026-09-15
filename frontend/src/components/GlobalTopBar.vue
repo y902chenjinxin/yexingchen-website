@@ -62,7 +62,7 @@
             <div class="suggest-head">快速前往</div>
             <div class="suggest-mod-row">
               <a
-                v-for="mod in moduleShortcuts"
+                v-for="mod in visibleShortcuts"
                 :key="mod.key"
                 class="suggest-mod"
                 @mousedown.prevent="go(mod.to)"
@@ -92,8 +92,27 @@
           <div class="tb-audio-panel" @click.stop>
             <div class="tb-panel-title">音频面板</div>
 
+            <!-- 背景音乐总开关（滑动开关，状态持久化） -->
+            <div class="tb-audio-row">
+              <span class="tb-audio-label">背景音乐</span>
+              <button
+                type="button"
+                class="tb-switch"
+                role="switch"
+                :aria-checked="player.bgmEnabled ? 'true' : 'false'"
+                :class="{ on: player.bgmEnabled }"
+                :title="player.bgmEnabled ? '点击关闭背景音乐' : '点击开启背景音乐'"
+                @click="player.toggleBgm()"
+              >
+                <span class="tb-switch-thumb"></span>
+              </button>
+              <span class="tb-switch-hint" :class="{ off: !player.bgmEnabled }">
+                {{ player.bgmEnabled ? '开启' : '关闭' }}
+              </span>
+            </div>
+
             <!-- 背景音乐选择 -->
-            <div class="tb-audio-seg">
+            <div class="tb-audio-seg" :class="{ 'is-muted': !player.bgmEnabled }">
               <div class="tb-seg-head" @click="bgmListOpen = !bgmListOpen">
                 <span class="tb-audio-label">背景音乐</span>
                 <span class="tb-bgm-cur">{{ curBgmName }}</span>
@@ -117,7 +136,7 @@
             </div>
 
             <!-- 音量 -->
-            <div class="tb-audio-row">
+            <div class="tb-audio-row tb-audio-vol" :class="{ 'is-muted': !player.bgmEnabled }">
               <span class="tb-audio-label">音量</span>
               <div class="tb-knob" @mousedown.prevent="startVolDrag($event)">
                 <div class="tb-knob-fill" :style="{ width: player.volume * 100 + '%' }"></div>
@@ -163,6 +182,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { searchAll } from '@/api/search'
+import { getPublicMenus } from '@/api/admin'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
 const router = useRouter()
@@ -195,6 +215,8 @@ const curBgmName = computed(() => {
 })
 
 function chooseBgm(item) {
+  // 选曲即视为「想听」：总开关若处于关闭态先打开，避免出现「选了却没反应」
+  if (!player.bgmEnabled) player.setBgmEnabled(true)
   bgm.setBackground(item, true)
   bgmListOpen.value = false
 }
@@ -238,6 +260,23 @@ const moduleShortcuts = [
   { key: 'video', label: '视频', to: '/video', icon: VideoPlay },
   { key: 'tool', label: '工具', to: '/tool', icon: Tools },
 ]
+
+// 角色可见菜单（/api/admin/menus/public 按角色过滤）；null=未加载/失败→显示全部
+const publicMenuPaths = ref(null)
+const visibleShortcuts = computed(() => {
+  if (!publicMenuPaths.value) return moduleShortcuts
+  return moduleShortcuts.filter(s => publicMenuPaths.value.has(s.to))
+})
+
+async function loadPublicMenus() {
+  try {
+    const res = await getPublicMenus()
+    const list = res?.data?.list || []
+    publicMenuPaths.value = list.length ? new Set(list.map(m => m.path)) : null
+  } catch {
+    publicMenuPaths.value = null
+  }
+}
 
 const suggestGroups = computed(() => {
   const r = suggestions.value.results || {}
@@ -333,6 +372,7 @@ function expand() { collapsed.value = false }
 
 onMounted(async () => {
   await bgm.initBgm()
+  loadPublicMenus()
   checkMobile()
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', checkMobile)
@@ -494,6 +534,38 @@ onUnmounted(() => {
 .tb-panel-title { font-size: 13px; color: var(--lj-text); font-weight: 600; margin-bottom: 12px; letter-spacing: 0.05em; }
 .tb-audio-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .tb-audio-label { font-size: 12px; color: var(--lj-text-2); width: 60px; flex: none; }
+
+/* 背景音乐总开关：滑动开关（.tb-switch）——关闭即彻底停播并记忆状态 */
+.tb-switch {
+  position: relative; flex: none; padding: 0;
+  width: 42px; height: 22px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--lj-line-strong);
+  background: rgba(74, 95, 99, 0.16);
+  transition: background 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
+}
+.tb-switch:hover { border-color: var(--lj-dai); }
+.tb-switch-thumb {
+  position: absolute; top: 50%; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--lj-text-3); transform: translateY(-50%);
+  transition: left 0.28s cubic-bezier(0.34, 1.3, 0.64, 1), background 0.28s ease;
+}
+.tb-switch.on {
+  background: var(--lj-seal-soft);
+  border-color: var(--lj-seal);
+  box-shadow: 0 0 0 1px var(--lj-seal-soft), 0 0 12px rgba(217, 138, 118, 0.18);
+}
+.tb-switch.on .tb-switch-thumb {
+  left: 21px; background: var(--yq-rain-bright);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.tb-switch:focus-visible { outline: var(--focus-outline); outline-offset: var(--focus-outline-offset); }
+.tb-switch-hint { font-size: 12px; color: var(--lj-dai); flex: none; }
+.tb-switch-hint.off { color: var(--lj-text-3); }
+
+/* 总开关关闭时：曲目选择与音量区降权，暗示当前不生效 */
+.tb-audio-seg.is-muted, .tb-audio-vol.is-muted { opacity: 0.5; }
+
 .tb-knob {
   flex: 1; height: 5px; border-radius: 999px; background: rgba(74, 95, 99, 0.15);
   position: relative; cursor: pointer;

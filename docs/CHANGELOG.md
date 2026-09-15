@@ -1,3 +1,17 @@
+## [v2.17.0] - 2026-09-16
+
+### 角色 · 菜单绑定（User「权限改为下拉，选择能看到哪些菜单」SW `xuanhuang-v93`）
+- **后端**：`Role` 增 `menu_ids`(JSON) + 迁移 `k2l3m4n5o6p7`；`admin_roles` CRUD 接受/返回 `menu_ids`；`GET /api/admin/menus/public` 改为**按当前用户角色过滤**——super_admin 见全部启用菜单，普通角色按其 `menu_ids` 过滤（未配置=默认全部启用，向后兼容）
+- **前端管理后台**：角色编辑弹窗「权限」由裸 JSON 文本框改为**菜单勾选树**（`el-tree`，一/二级模块、带全选/清空、保存 `menu_ids`）；角色表「可见菜单」列显示菜单名（未配置=「全部菜单」）而非 JSON
+- **GlobalTopBar**：拉取 `/api/admin/menus/public`，按角色过滤搜索联想下拉「快速前往」模块快捷入口（super_admin/未配置→全显）
+
+### 工程
+- `deploy_backend.py` 白名单补 `k2l3m4n5o6p7_role_menu_ids.py`，生产 `alembic upgrade k2l3m4n5o6p7` 成功（j1..→k2..），重启 health=200、ENV=production 保留
+- 前端全新 `npx vite build --outDir dist2` 核验 AdminView 含「可见菜单/全部菜单」、chunk 含 `/admin/menus/public` → 整体替换 → SW v92→v93 → 195 文件 home=200
+- 生产备证：`GET /api/admin/menus/public` 以 admin(超管) 返回 10 条启用菜单；角色编辑菜单树、角色表可见菜单列浏览器取证 PASS
+
+---
+
 ## [v2.16.0] - 2026-09-16
 
 ### 管理后台 · 三需求落地并部署现网（SW `xuanhuang-v92`）
