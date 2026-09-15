@@ -27,6 +27,7 @@ class Menu(Base):
     __tablename__ = "xuanhuang_menus"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    parent_id = Column(Integer, nullable=False, default=0)  # 0=一级模块；>0=二级模块(父菜单id)
     title = Column(String(60), nullable=False, default="")
     path = Column(String(255), nullable=False, default="")
     icon = Column(String(60), nullable=False, default="")

@@ -2,6 +2,7 @@
   <section class="wd-section">
     <header class="wd-head">
       <div class="wd-title-block">
+        <span class="wd-seal" aria-hidden="true"><i style="--rune: '彙'"></i></span>
         <h2 class="wd-title">数据一览</h2>
         <span class="wd-sub">账本 · 资讯 · 行情，一眼入目</span>
       </div>
@@ -11,8 +12,8 @@
       <!-- 账本卡 -->
       <a class="wd-card" @click.prevent="$router.push('/finance')">
         <div class="wd-card-head">
-          <span class="wd-card-name">💰 账本</span>
-          <span class="wd-more">查看全部 →</span>
+          <span class="wd-card-name"><span class="wd-badge b-ledger" aria-hidden="true">💰</span><span>账本</span></span>
+          <span class="wd-more">查看全部 <i>→</i></span>
         </div>
         <div v-if="empty" class="wd-empty">
           <span class="wd-empty-icon">🧾</span>
@@ -32,8 +33,8 @@
       <!-- 行情卡 -->
       <a class="wd-card" @click.prevent="$router.push('/stocks')">
         <div class="wd-card-head">
-          <span class="wd-card-name">📈 行情</span>
-          <span class="wd-more">查看全部 →</span>
+          <span class="wd-card-name"><span class="wd-badge b-quote" aria-hidden="true">📈</span><span>行情</span></span>
+          <span class="wd-more">查看全部 <i>→</i></span>
         </div>
         <div v-if="empty" class="wd-empty">
           <span class="wd-empty-icon">📊</span>
@@ -54,8 +55,8 @@
       <!-- 足迹卡 -->
       <a class="wd-card" @click.prevent="$router.push('/travels')">
         <div class="wd-card-head">
-          <span class="wd-card-name">🗺️ 足迹</span>
-          <span class="wd-more">查看全部 →</span>
+          <span class="wd-card-name"><span class="wd-badge b-travel" aria-hidden="true">🗺️</span><span>足迹</span></span>
+          <span class="wd-more">查看全部 <i>→</i></span>
         </div>
         <div v-if="!travels.travel_count" class="wd-empty">
           <span class="wd-empty-icon">🧭</span>
@@ -75,8 +76,8 @@
       <!-- 数据中心卡 -->
       <a class="wd-card wd-hub" @click.prevent="$router.push('/datahub')">
         <div class="wd-card-head">
-          <span class="wd-card-name">🏛️ 数据中心</span>
-          <span class="wd-more">查看全部 →</span>
+          <span class="wd-card-name"><span class="wd-badge b-hub" aria-hidden="true">🏛️</span><span>数据中心</span></span>
+          <span class="wd-more">查看全部 <i>→</i></span>
         </div>
         <div class="wd-body">
           <div class="wd-rows">
@@ -91,6 +92,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 defineProps({
   empty: { type: Boolean, default: true },
   finance: { type: Object, default: () => ({}) },
@@ -98,11 +101,24 @@ defineProps({
   holdings: { type: Array, default: () => [] },
   travels: { type: Object, default: () => ({}) }
 })
+
+const barBg = computed(() => `rgba(74,95,99,.14)`)
+const barFill = computed(() => `linear-gradient(90deg, var(--lj-dai), var(--lj-ochre))`)
 </script>
 
 <style scoped>
 .wd-section { margin-bottom: 8px; }
 .wd-head { display: flex; align-items: baseline; margin-bottom: 14px; }
+.wd-title-block { display: flex; align-items: center; }
+.wd-seal {
+  flex: none; width: 20px; height: 20px; margin-right: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--lj-seal); border-radius: 5px;
+  background: linear-gradient(180deg, rgba(181,90,72,.10), rgba(181,90,72,.04));
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
+}
+.wd-seal i { font-style: normal; font-size: 12px; line-height: 1; color: var(--lj-seal); }
+.wd-seal i::before { content: var(--rune); }
 .wd-title { margin: 0; font-size: 18px; letter-spacing: .12em; color: var(--lj-text); }
 .wd-sub { margin-left: 12px; font-size: 12px; color: var(--lj-text-2); letter-spacing: .08em; }
 
@@ -121,9 +137,26 @@ defineProps({
 .wd-card-name { font-size: 15px; letter-spacing: .06em; color: var(--lj-text); }
 .wd-more { font-size: 12px; color: var(--lj-text-2); opacity: 0; transition: all .25s; }
 .wd-card:hover .wd-more { opacity: 1; color: var(--lj-seal); }
+.wd-more i { display: inline-block; transition: transform .25s; }
+.wd-card:hover .wd-more i { transform: translateX(2px); }
+
+/* 玻璃徽章：emoji 装圆角框，主题色 */
+.wd-card-name { display: flex; align-items: center; gap: 8px; }
+.wd-badge {
+  width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; font-size: 14px; border: 1px solid;
+  background: var(--lj-glass); -webkit-backdrop-filter: var(--lj-glass-blur); backdrop-filter: var(--lj-glass-blur);
+}
+.b-ledger { color: #6d9a6b; border-color: rgba(109,154,107,.35); background: rgba(109,154,107,.10); }
+.b-quote { color: #b0805a; border-color: rgba(176,128,90,.35); background: rgba(176,128,90,.10); }
+.b-travel { color: #5b6b7a; border-color: rgba(91,107,122,.35); background: rgba(91,107,122,.10); }
+.b-hub { color: var(--lj-seal); border-color: rgba(181,90,72,.35); background: rgba(181,90,72,.08); }
 
 .wd-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px 8px; }
-.wd-empty-icon { font-size: 28px; opacity: .7; }
+.wd-empty-icon {
+  font-size: 28px; opacity: .7;
+  box-shadow: 0 0 0 14px rgba(120,140,140,.05); border-radius: 999px;
+}
 .wd-empty-text { font-size: 14px; color: var(--lj-text-2); }
 .wd-empty-hint { font-size: 12px; color: var(--lj-text-3); }
 

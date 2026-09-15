@@ -1,6 +1,8 @@
 """管理员 - 菜单管理。"""
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -18,6 +20,7 @@ router = APIRouter(prefix="/api/admin", tags=["管理员-菜单"])
 def _menu_to_dict(m: Menu) -> dict:
     return {
         "id": m.id,
+        "parent_id": m.parent_id,
         "title": m.title,
         "path": m.path,
         "icon": m.icon,
@@ -29,6 +32,7 @@ def _menu_to_dict(m: Menu) -> dict:
 
 
 class MenuIn(BaseModel):
+    parent_id: int = 0
     title: str = ""
     path: str = ""
     icon: str = ""
@@ -71,7 +75,9 @@ async def create_menu(
         raise_error(ErrCode.INVALID_PARAM, "路径必须以 / 开头")
     if db.query(Menu).filter(Menu.path == path).first():
         raise_error(ErrCode.INVALID_PARAM, "菜单路径已存在")
+    parent_id = _validate_parent(db, req.parent_id, None)
     menu = Menu(
+        parent_id=parent_id,
         title=req.title.strip()[:60] or path,
         path=path[:255],
         icon=req.icon.strip()[:60],
@@ -112,6 +118,7 @@ async def update_menu(
         menu.title = req.title.strip()[:60]
     if req.icon is not None:
         menu.icon = req.icon.strip()[:60]
+    menu.parent_id = _validate_parent(db, req.parent_id, menu_id)
     menu.sort_order = req.sort_order
     menu.is_enabled = 1 if req.is_enabled else 0
     db.commit()
@@ -121,6 +128,21 @@ async def update_menu(
         detail=f"更新菜单 {menu.title}({menu.path})",
     )
     return ResponseBase(data=_menu_to_dict(menu), msg="更新成功")
+
+
+def _validate_parent(db: Session, parent_id: int, self_id: Optional[int]) -> int:
+    """校验并规范化父菜单：仅支持一级(0) / 二级(parent>0)，父菜单本身必须是一级模块。"""
+    parent_id = parent_id or 0
+    if parent_id == 0:
+        return 0
+    if parent_id == self_id:
+        raise_error(ErrCode.INVALID_PARAM, "不能选择自身作为上级模块")
+    parent = db.query(Menu).filter(Menu.id == parent_id).first()
+    if not parent:
+        raise_error(ErrCode.INVALID_PARAM, "上级模块不存在")
+    if parent.parent_id != 0:
+        raise_error(ErrCode.INVALID_PARAM, "仅支持一级/二级模块：上级模块须为一级模块")
+    return parent_id
 
 
 @router.delete("/menus/{menu_id}", response_model=ResponseBase)
@@ -134,6 +156,8 @@ async def delete_menu(
         raise_error(ErrCode.INVALID_PARAM, "菜单不存在")
     if menu.is_builtin:
         raise_error(ErrCode.AUTH_PERMISSION_DENIED, "内置菜单不可删除")
+    if db.query(Menu).filter(Menu.parent_id == menu_id).first():
+        raise_error(ErrCode.INVALID_PARAM, "该模块下存在二级模块，请先删除或转移后再删")
     log_action(
         db, current_user["user_id"], "delete",
         target_type="menu", target_id=menu_id,

@@ -4,12 +4,12 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.common import ResponseBase, UserCreateRequest, UserUpdateRequest
+from app.schemas.common import ResponseBase, UserCreateRequest, UserUpdateRequest, validate_password
 from app.schemas.errors import ErrCode, raise_error
 from app.services.log_service import log_action
 from app.utils.security import get_password_hash, require_super_admin
@@ -20,6 +20,15 @@ router = APIRouter(prefix="/api/admin", tags=["管理员-用户"])
 class UserRoleUpdateRequest(BaseModel):
     role: str
     is_super_admin: Optional[int] = None
+
+
+class UserPasswordResetRequest(BaseModel):
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def password_check(cls, v):
+        return validate_password(v)
 
 
 @router.post("/users", response_model=ResponseBase)
@@ -186,6 +195,26 @@ async def update_user_role(
         detail=f"更新用户 {user.email} 角色为 {req.role}",
     )
     return ResponseBase(msg="角色更新成功")
+
+
+@router.post("/users/{user_id}/reset-password", response_model=ResponseBase)
+async def reset_user_password(
+    user_id: int,
+    req: UserPasswordResetRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_super_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise_error(ErrCode.AUTH_USER_NOT_EXIST)
+    user.password_hash = get_password_hash(req.password)
+    db.commit()
+    log_action(
+        db, current_user["user_id"], "reset_password",
+        target_type="user", target_id=user_id,
+        detail=f"重置用户 {user.email} 密码",
+    )
+    return ResponseBase(msg="密码重置成功")
 
 
 @router.delete("/users/{user_id}", response_model=ResponseBase)

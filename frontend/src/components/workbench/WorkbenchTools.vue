@@ -2,6 +2,7 @@
   <section class="wt-section">
     <header class="wt-head">
       <div class="wt-title-block">
+        <span class="wt-seal" aria-hidden="true"><i style="--rune: '器'"></i></span>
         <h2 class="wt-title">常用工具</h2>
         <span class="wt-sub">工具与快捷动作 · 一处直达</span>
       </div>
@@ -79,6 +80,17 @@ onMounted(() => { toolStore.fetchList({ enabled_only: 1, size: 100 }).catch(() =
 <style scoped>
 .wt-section { margin-bottom: 28px; }
 .wt-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.wt-title-block { display: flex; align-items: center; }
+/* 题头印章角标：方形淡墨底 + 朱砂印边 + 小篆字 */
+.wt-seal {
+  flex: none; width: 20px; height: 20px; margin-right: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--lj-seal); border-radius: 5px;
+  background: linear-gradient(180deg, rgba(181,90,72,.10), rgba(181,90,72,.04));
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
+}
+.wt-seal i { font-style: normal; font-size: 12px; line-height: 1; color: var(--lj-seal); }
+.wt-seal i::before { content: var(--rune); }
 .wt-title { margin: 0; font-size: 18px; letter-spacing: .12em; color: var(--lj-text); }
 .wt-sub { margin-left: 12px; font-size: 12px; color: var(--lj-text-2); letter-spacing: .08em; }
 
