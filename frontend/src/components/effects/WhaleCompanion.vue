@@ -1,8 +1,5 @@
 <template>
-  <div class="whale-stage" ref="stageEl" :class="{ hidden, recede }">
-    <button v-if="hidden" class="whale-summon" @click="revealPet" title="召唤桌宠" aria-label="召唤桌宠">🐋</button>
-
-    <template v-if="!hidden">
+  <div class="whale-stage" ref="stageEl" :class="{ recede }">
     <div
       ref="frameEl"
       class="whale-frame"
@@ -12,12 +9,11 @@
       <video :ref="el => vEls[1].value = el" class="whale-video" muted loop playsinline autoplay></video>
     </div>
 
-    <!-- 唯一可交互命中区：小"抓手"角标（鲸鱼本体 pointer-events:none 完全点击穿透，不再遮挡下层入口）
-         按住拖动移动桌宠，单击打开设置面板 -->
+    <!-- 唯一可交互命中区：小"抓手"角标（鲸鱼本体 pointer-events:none 完全点击穿透，不再遮挡下层入口）按住即可拖动桌宠 -->
     <div
       ref="handleEl"
       class="whale-handle"
-      title="拖动桌宠 · 单击设置"
+      title="拖动桌宠"
       @pointerdown="onHandlePointerDown"
     >
       <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
@@ -31,22 +27,6 @@
         </g>
       </svg>
     </div>
-
-    <Transition name="panel">
-      <div v-if="showPanel" class="whale-panel" @pointerdown.stop>
-        <button class="panel-close" @click="closePanel" aria-label="关闭">✕</button>
-        <div class="panel-title">桌宠设置</div>
-
-        <label class="opt walk-opt" :class="{ on: walkRunning }">
-          <input type="checkbox" :checked="walkRunning" @change="onWalkToggle" />
-          <span class="opt-radio"></span>
-          <span class="opt-body"><b>散步模式</b><small>在页面底部来回走动</small></span>
-        </label>
-
-        <button class="panel-hide" :class="{ armed: hideArmed }" @click="hidePet">{{ hideArmed ? '再次点击确认隐藏桌宠' : '隐藏桌宠' }}</button>
-      </div>
-    </Transition>
-    </template>
   </div>
 </template>
 
@@ -77,8 +57,7 @@ const WALK_POOL = [['moves', 'floating_steps'], ['moves', 'running_trip'], ['mov
 
 const dragging = ref(false)
 const flipped = ref(false)
-const showPanel = ref(false)
-const walkRunning = ref(false)
+const recede = ref(false)
 
 let current = null
 let autoTimer = null
@@ -90,41 +69,12 @@ let walk = null
 let hintTimer = null
 let activeIdx = 0
 let fadeToken = 0
-
-const HIDE_KEY = 'whale-pet-hidden'
-const FADE_MS = 380
-
-const hidden = ref(false)
-const recede = ref(false)
-const hideArmed = ref(false)
 let recedeTimer = null
-let hideArmedTimer = null
 
-function loadBool(key) { try { return localStorage.getItem(key) === '1' } catch (e) { return false } }
-function saveBool(key, v) { try { localStorage.setItem(key, v ? '1' : '0') } catch (e) {} }
-
-// “隐藏桌宠”需要二次确认，避免用户误点面板时桌宠直接消失
-function hidePet() {
-  if (!hideArmed.value) {
-    hideArmed.value = true
-    clearTimeout(hideArmedTimer)
-    hideArmedTimer = setTimeout(() => { hideArmed.value = false }, 3000)
-    return
-  }
-  clearTimeout(hideArmedTimer)
-  hideArmed.value = false
-  hidden.value = true
-  closePanel()
-  saveBool(HIDE_KEY, true)
-}
-function revealPet() {
-  hidden.value = false
-  saveBool(HIDE_KEY, false)
-}
+const FADE_MS = 380
 
 // 滚动时让位：桌宠短暂淡出/缩小，停止滚动后恢复，避免压在内容上
 function onScrollRecede() {
-  if (hidden.value) return
   recede.value = true
   clearTimeout(recedeTimer)
   recedeTimer = setTimeout(() => { recede.value = false }, 500)
@@ -222,18 +172,17 @@ function currentX() {
   return stageEl.value.getBoundingClientRect().left
 }
 
-// 统一横向移动：从当前位置出发，左右边界内来回，到边界镜像调头（正脸朝前，非倒退）
-// mode='autoRun' 自动跑步限时后自然停下；mode='manual' 散步持续直到手动停
-function startWalk(dir, speed, mode) {
+// 横向移动：从当前位置出发，左右边界内来回，到边界镜像调头（正脸朝前，非倒退）
+// 自动跑步限时后自然停下；手动拖拽到任意位置则停在该处
+function startWalk(dir, speed) {
   crossSwitch(pick(WALK_POOL), true)
   walk = {
     x: clampX(currentX()),
     dir,
     speed,
-    stopAt: mode === 'autoRun' ? performance.now() + (9000 + Math.random() * 7000) : null
+    stopAt: performance.now() + (9000 + Math.random() * 7000)
   }
   flipped.value = dir > 0   // 素材面朝左：向右跑镜像成面右
-  walkRunning.value = true
   tick()
 }
 
@@ -241,12 +190,11 @@ function startWalk(dir, speed, mode) {
 function runAcross() {
   const maxX = Math.max(0, window.innerWidth - visibleSize().w)
   const dir = currentX() >= maxX - 10 ? -1 : 1
-  startWalk(dir, 3.4, 'autoRun')
+  startWalk(dir, 3.4)
 }
 
 function endAutoWalk() {
   walk = null
-  walkRunning.value = false
   if (autoTimer) clearTimeout(autoTimer)
   crossSwitch(pickRnd())
   scheduleAuto()
@@ -284,52 +232,9 @@ function onHandlePointerUp() {
   document.removeEventListener('pointermove', onPointerMove)
   draggingState = false
   dragging.value = false
-  if (!moved) { togglePanel(); return }
+  if (!moved) return
   stopWalk()
   crossSwitch(pickRnd())
-}
-
-function togglePanel() {
-  showPanel.value = !showPanel.value
-  if (showPanel.value) {
-    // 面板打开时监听全局点击，点击非面板区域即关闭面板并复位二次确认
-    document.addEventListener('pointerdown', onPanelOutsideDown)
-  } else {
-    document.removeEventListener('pointerdown', onPanelOutsideDown)
-  }
-}
-
-function onPanelOutsideDown(e) {
-  const panel = document.querySelector('.whale-panel')
-  const handle = handleEl.value
-  if (panel && panel.contains(e.target)) return
-  if (handle && handle.contains(e.target)) return
-  showPanel.value = false
-  hideArmed.value = false
-  clearTimeout(hideArmedTimer)
-  document.removeEventListener('pointerdown', onPanelOutsideDown)
-}
-
-function closePanel() {
-  showPanel.value = false
-  hideArmed.value = false
-  clearTimeout(hideArmedTimer)
-  document.removeEventListener('pointerdown', onPanelOutsideDown)
-}
-
-function onWalkToggle() {
-  toggleWalk()
-}
-
-function toggleWalk() {
-  if (walk) {
-    stopWalk()
-    crossSwitch(pickRnd())
-    return
-  }
-  const maxX = Math.max(0, window.innerWidth - visibleSize().w)
-  const dir = currentX() >= maxX - 10 ? -1 : 1
-  startWalk(dir, 1.4, 'manual')
 }
 
 function tick() {
@@ -349,9 +254,7 @@ function tick() {
 }
 
 function stopWalk() {
-  if (!walk) return
   walk = null
-  walkRunning.value = false
   // 停在当前位置，不再归位右下角
 }
 
@@ -364,27 +267,22 @@ function showHint() {
 }
 
 onMounted(() => {
-  hidden.value = loadBool(HIDE_KEY)
   setAction(pickRnd(), true)
-  if (!hidden.value) {
-    scheduleAuto()
-    const hintId = setInterval(() => { if (!draggingState) showHint() }, 12000)
-    const firstHint = setTimeout(showHint, 1500)
-    window.addEventListener('scroll', onScrollRecede, { passive: true })
-    onBeforeUnmount(() => {
-      fadeToken++
-      clearInterval(hintId)
-      clearTimeout(firstHint)
-      if (autoTimer) clearTimeout(autoTimer)
-      if (hintTimer) clearTimeout(hintTimer)
-      if (recedeTimer) clearTimeout(recedeTimer)
-      document.removeEventListener('pointermove', onPointerMove)
-      document.removeEventListener('pointerup', onHandlePointerUp)
-      document.removeEventListener('pointerdown', onPanelOutsideDown)
-      window.removeEventListener('scroll', onScrollRecede)
-    })
-  }
-  onBeforeUnmount(() => window.removeEventListener('scroll', onScrollRecede))
+  scheduleAuto()
+  const hintId = setInterval(() => { if (!draggingState) showHint() }, 12000)
+  const firstHint = setTimeout(showHint, 1500)
+  window.addEventListener('scroll', onScrollRecede, { passive: true })
+  onBeforeUnmount(() => {
+    fadeToken++
+    clearInterval(hintId)
+    clearTimeout(firstHint)
+    if (autoTimer) clearTimeout(autoTimer)
+    if (hintTimer) clearTimeout(hintTimer)
+    if (recedeTimer) clearTimeout(recedeTimer)
+    document.removeEventListener('pointermove', onPointerMove)
+    document.removeEventListener('pointerup', onHandlePointerUp)
+    window.removeEventListener('scroll', onScrollRecede)
+  })
 })
 </script>
 
@@ -406,7 +304,7 @@ onMounted(() => {
   pointer-events: none;
   transition: filter 0.4s ease;
 }
-/* 唯一可交互命中区：小“抓手”角标，用于按住拖动桌宠 / 单击打开设置面板 */
+/* 唯一可交互命中区：小"抓手"角标，用于按住拖动桌宠 */
 .whale-handle {
   position: absolute;
   top: 50%;
@@ -440,7 +338,7 @@ onMounted(() => {
   opacity: 1;
 }
 .whale-frame.hint::after {
-  content: '按住“抓手”可拖动 · 单击抓手设置';
+  content: '按住抓手可拖动';
   position: absolute;
   left: 50%;
   bottom: calc(100% + 8px);
@@ -458,134 +356,8 @@ onMounted(() => {
   pointer-events: none;
 }
 
-.whale-panel {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 10px);
-  width: 232px;
-  max-height: calc(100dvh - 220px);
-  overflow-y: auto;
-  padding: 14px 14px 12px;
-  pointer-events: auto;
-  font-family: var(--font-serif, 'Noto Serif SC', serif);
-  color: var(--ls-text, #ecf1f4);
-  background: linear-gradient(165deg, rgba(255,255,255,.06), rgba(255,255,255,0) 48%), var(--ls-glass, rgba(32,42,51,.62));
-  border: 1px solid var(--ls-line, rgba(206,220,226,.10));
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 var(--ls-highlight, rgba(255,255,255,.08)), var(--ls-shadow, 0 18px 46px rgba(0,0,0,.35));
-  backdrop-filter: saturate(160%) blur(16px);
-  user-select: none;
-}
-.panel-enter-active, .panel-leave-active { transition: opacity .2s ease, transform .2s ease; }
-.panel-enter-from, .panel-leave-to { opacity: 0; transform: translateY(6px); }
-.panel-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  border: none;
-  background: transparent;
-  color: var(--ls-text-3, #7f8d94);
-  font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 4px;
-}
-.panel-close:hover { color: var(--ls-ochre, #c2a26b); }
-.panel-title {
-  font-size: 14px;
-  letter-spacing: 2px;
-  color: var(--ls-ochre, #c2a26b);
-  margin: 0 0 8px;
-}
-.panel-label {
-  font-size: 11px;
-  color: var(--ls-text-2, #abb7be);
-  margin: 6px 0 4px;
-  letter-spacing: 1px;
-}
-.opt {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 7px 8px;
-  margin-bottom: 5px;
-  border: 1px solid var(--ls-line, rgba(206,220,226,.10));
-  border-radius: 8px;
-  cursor: pointer;
-  transition: border-color .2s ease, background .2s ease;
-}
-.opt.on { border-color: var(--ls-dai, #5f9499); background: rgba(95,148,153,.10); }
-.opt input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-.opt-radio {
-  flex: 0 0 auto;
-  margin-top: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1.5px solid var(--ls-text-3, #7f8d94);
-  box-sizing: border-box;
-  position: relative;
-}
-.opt.on .opt-radio { border-color: var(--ls-dai, #5f9499); }
-.opt.on .opt-radio::after {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border-radius: 50%;
-  background: var(--ls-dai, #5f9499);
-}
-.opt-body { display: flex; flex-direction: column; gap: 1px; }
-.opt-body b { font-size: 13px; font-weight: 600; color: var(--ls-text, #ecf1f4); }
-.opt.on .opt-body b { color: var(--ls-dai, #5f9499); }
-.opt-body small { font-size: 11px; color: var(--ls-text-3, #7f8d94); line-height: 1.35; }
-.walk-opt { margin-top: 4px; }
-
-/* 隐藏桌宠：只剩一个小召唤按钮 */
-.whale-stage.hidden { right: 18px; bottom: 18px; }
-.whale-summon {
-  pointer-events: auto;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--ls-line, rgba(206,220,226,.14));
-  background: var(--ls-glass, rgba(32,42,51,.55));
-  color: var(--ls-dai, #5f9499);
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(0,0,0,.3);
-  opacity: .8;
-  transition: opacity .2s ease, transform .2s ease;
-}
-.whale-summon:hover { opacity: 1; transform: translateY(-1px); }
-
 /* 滚动让位：淡出缩小 */
 .whale-stage.recede { opacity: .35; }
 .whale-frame { transition: filter .4s ease, opacity .25s ease, transform .25s ease; }
 .whale-stage.recede .whale-frame { transform: scale(.6); }
-
-/* 隐藏桌宠按钮 */
-.panel-hide {
-  margin-top: 6px;
-  width: 100%;
-  border: 1px solid rgba(170,96,84,.35);
-  background: rgba(170,96,84,.10);
-  color: var(--ls-ochre, #c2a26b);
-  font-family: var(--font-serif, 'Noto Serif SC', serif);
-  font-size: 12px;
-  letter-spacing: 2px;
-  padding: 7px 0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background .2s ease;
-}
-.panel-hide:hover { background: rgba(170,96,84,.2); }
 </style>
