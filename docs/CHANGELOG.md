@@ -28,6 +28,12 @@
 - 前端 `npx vite build --outDir dist2 --emptyOutDir false` 构建通过（AdminView 63.85 kB → 64.77 kB）
 - `npx eslint` 改动文件无新增 error（AdminView 现存 2 条 `no-unused-vars`：`allIslands`、`formatPerms`，经 `git show HEAD` 确认改动前即存在）
 
+### 部署（已上线现网）
+- **前端**：`frontend/dist` 与 `dist2` 因 `whale-pet` 目录被占用无法清空/重建（`EPERM dist/index.html`、`prepareOutDir` 拷贝失败），且 `dist` 已处混合脏状态（新 sw.js + 旧 index.html + 新旧 chunk 并存）→ 改构建到全新目录 `dist-deploy`（197 文件，与上次部署数量一致）后整体上传；远端 `rm -rf dist` → 全量上传 → **SW v94→v95**、home=200
+- **后端**：`scripts/deploy_backend.py` 白名单已含 `admin_users.py` 与 `schemas/common.py`，无需改脚本；上传 → pip → `alembic upgrade k2l3m4n5o6p7`（幂等 code 0）→ `pm2 startOrReload` 重启 → **`yexingchen-backend` online、ENV=production 保留、health=200**
+- **生产取证（非破坏性探针，未创建任何账号）**：① 超管登录 200（登录口未被改坏）；② 建号口 `爸爸+空密码` → **400「密码不能为空」**（旧代码为 422 `Invalid email: 爸爸`）——**证明免校验通道生效**；③ 空账号 → 400「账号不能为空」；④ `strict_validation=True`+非邮箱 → 400「账号格式不正确」；⑤ 改密口 `strict_validation=True`+弱密码 → 400「密码至少 8 位」（用真实用户 id，校验失败故未产生任何修改）；⑥ **公开注册口非邮箱仍 422 `Invalid email`（公网规则未被削弱）**；⑦ 登录口非邮箱 → 401（格式拦截已移除，进入查库阶段）
+- 前端产物核验：首页入口 `assets/index-CaXoA1X-.js` 与本地新构建一致；生产 `AdminView-mvC0E3Kb.js`（66 KB）含「启用严格校验 / strict_validation / 邮箱或任意账号」
+
 ---
 
 ## [v2.18.0] - 2026-09-16
