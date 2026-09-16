@@ -1,10 +1,10 @@
 ## [v2.22.3] - 2026-09-16
 
-### 修复：工作台工具入口 BUILTIN_SLOT 不足
+### 修复：工作台工具入口 BUILTIN_SLOT 限制
 
-**根因**：`WorkbenchTools.vue` 硬编码 `BUILTIN_SLOT=4`，builtin 工具从 4 个增到 5 个（加倒计时）后，倒计时 sort_order=4，被 `slice(0,4)` 截断不显示。
+**根因**：`WorkbenchTools.vue` 硬编码 `BUILTIN_SLOT=4`，builtin 工具从 4 个增到 5 个（加倒计时）后被截断不显示。
 
-**修法**：`BUILTIN_SLOT=6`（注释更新说明当前 builtin 工具数）。
+**修法**：移除 `BUILTIN_SLOT` 硬限制，builtin 工具全部展示。
 
 ### 修复：run.py sys.path Bug（严重）
 
