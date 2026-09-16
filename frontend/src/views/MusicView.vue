@@ -1,10 +1,12 @@
 <template>
   <IslandInnerBase type="music" title="音乐" subtitle="音律飘渺">
     <template #toolbar>
-      <el-button :type="manage ? 'primary' : 'default'" size="small" plain @click="manage = !manage">
-        {{ manage ? '返回卡片' : '管理' }}
-      </el-button>
-      <el-button v-if="manage" type="primary" size="small" @click="openUpload">上传</el-button>
+      <span class="mu-admin-tools">
+        <el-button :type="manage ? 'primary' : 'default'" size="small" plain @click="manage = !manage">
+          {{ manage ? '返回卡片' : '管理' }}
+        </el-button>
+        <el-button v-if="manage" type="primary" size="small" @click="openUpload">上传</el-button>
+      </span>
     </template>
 
     <MusicInner v-show="!manage" />

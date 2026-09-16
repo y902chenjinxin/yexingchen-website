@@ -1,3 +1,16 @@
+## [v2.26.0] - 2026-09-17
+
+### 手机端 P3 打磨：播放器主页 / 工具浏览 / 我的纯个性化（SW `xuanhuang-v107`）
+
+承接 v2.25.0，把「一个页面一个焦点」推到子页。纯 CSS（`#app.is-mobile` 门控、桌面零影响）+ 极少量模板包裹类（`MusicView.vue`/`ToolView.vue` 顶栏）。
+
+- **音乐 `/music`**：新增 `.mu-admin-tools` 包裹顶栏「管理/上传」，`.manage-pane` 兜底隐藏 → 进页即**播放器主视图**，拿掉「曲库管理/上传」
+- **工具 `/tool`**：`.tl-admin-tools` 隐藏「管理/添加」→ 纯工具卡片浏览；`.tool-icon` 琥珀→蓝紫强调
+- **我的 `/profile`（纯个性化）**：标题金渐变→无衬线纯色、卡片古金边→玻璃+`--ls-line`、隐藏角色行/「修改密码」/「←返回工作台」、主题分段 active 金→蓝紫强调
+- **部署/验证**：全新 `vite build --outDir dist2` → 核验 CSS 选择器 + 按路由拆分的 `.vue` chunk 含包裹类 → 替换 dist → `deploy_frontend.py` 217 文件 home=200、**SW v106→v107**。本地浏览器 DOM 实测：音乐管理钮/我的角色/改密/返回全 `display:none`、播放器可见、标题去金转无衬线、分段蓝紫 PASS；账本 `.fin-io` 防回归 `none` PASS。真路由注意：工具页为 `/tool`（非 `/tools`）。
+
+---
+
 ## [v2.25.0] - 2026-09-17
 
 ### 手机端简化收尾 · P0 骨架 + P1/P2 下去古风（SW `xuanhuang-v106`）

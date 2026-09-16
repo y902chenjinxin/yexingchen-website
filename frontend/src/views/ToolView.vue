@@ -1,10 +1,12 @@
 <template>
   <IslandInnerBase type="tool" title="工具" subtitle="机关百变">
     <template #toolbar>
-      <el-button :type="manage ? 'primary' : 'default'" size="small" plain @click="manage = !manage">
-        {{ manage ? '返回卡片' : '管理' }}
-      </el-button>
-      <el-button v-if="manage" type="primary" size="small" @click="openDialog()">添加</el-button>
+      <span class="tl-admin-tools">
+        <el-button :type="manage ? 'primary' : 'default'" size="small" plain @click="manage = !manage">
+          {{ manage ? '返回卡片' : '管理' }}
+        </el-button>
+        <el-button v-if="manage" type="primary" size="small" @click="openDialog()">添加</el-button>
+      </span>
     </template>
 
     <!-- 浏览模式：工具卡片列表 -->

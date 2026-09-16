@@ -61,3 +61,64 @@
 @media (max-width: 767px) {
   #app.is-mobile:not(.login-page) .el-dialog:not([style*="width: 90%"]) { width: 90% !important; border-radius: 20px; }
 }
+
+/* =====================================================================
+ * P3 · 播放器主页/工具浏览/我的纯个性化（MOBILE_SIMPLIFY §9/§11 P3）
+ * ===================================================================== */
+
+/* ---- 音乐 /music → 进去即播放器主视图，隐曲库管理/上传（拿掉「曲库管理/上传」） ---- */
+#app.is-mobile .mu-admin-tools { display: none !important; }
+/* 兜底：即便 manage 状态被带到移动端，也不渲染管理面板，只留播放器 */
+#app.is-mobile .manage-pane { display: none !important; }
+
+/* ---- 工具 /tools → 纯工具卡片浏览，隐管理/添加 ---- */
+#app.is-mobile .tl-admin-tools { display: none !important; }
+/* 工具图标：去琥珀古风 → 蓝紫强调（亮/暗通用） */
+#app.is-mobile .tool-icon {
+  background: linear-gradient(135deg, rgba(91,106,224,.85), rgba(139,92,246,.75)) !important;
+  color: #fff;
+}
+
+/* ---- 我的 /profile → 纯个性化，现代无金古风 ---- */
+#app.is-mobile .profile-page { font-family: var(--font-serif); }
+/* 标题：金渐变古字 → 无衬线纯色大标题，去书法/描金 */
+#app.is-mobile .profile-page .page-title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  background: none; -webkit-background-clip: initial; background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  filter: none;
+  color: var(--ls-text);
+}
+/* 卡片与分隔线：古风金边 → 玻璃 + 主题线 */
+#app.is-mobile .profile-page .info-card {
+  background: var(--ls-glass);
+  backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--ls-line);
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  border-radius: 20px;
+}
+#app.is-mobile .profile-page .info-card::before { display: none; }
+#app.is-mobile .profile-page .card-header { border-bottom-color: var(--ls-line); }
+#app.is-mobile .profile-page .info-item { border-bottom-color: var(--ls-line); }
+#app.is-mobile .profile-page .info-label { color: var(--ls-text-2); }
+#app.is-mobile .profile-page .info-value { color: var(--ls-text); }
+/* 角色行：后台感弱化，移动端隐藏 */
+#app.is-mobile .profile-page .info-item:has(.role-tag) { display: none; }
+/* 「修改密码」后台操作移回桌面 */
+#app.is-mobile .profile-page .card-footer .el-button:last-child { display: none; }
+#app.is-mobile .profile-page .card-footer .el-button { flex: 1; }
+/* 主题分段：去金 → 主强调色 */
+#app.is-mobile .profile-page .theme-seg {
+  background: var(--ls-glass-2, rgba(127,168,163,.10));
+  border-color: var(--ls-line);
+}
+#app.is-mobile .profile-page .theme-seg-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--ls-accent, #5b6ae0), rgba(139,92,246,.85));
+  box-shadow: 0 4px 12px rgba(91,106,224,.3);
+}
+/* 返回：戳「← 返回工作台」文本，保留紧凑 BackButton 走系统返回栈 */
+#app.is-mobile .profile-page .back-btn { display: none; }
