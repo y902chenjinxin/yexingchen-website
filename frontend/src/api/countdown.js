@@ -3,7 +3,7 @@
 
 import api from './index'
 
-const BASE = '/countdowns'
+const BASE = '/api/countdowns'
 
 export const listCountdowns = ({ includeArchived = false } = {}) =>
   api.get(`${BASE}?include_archived=${includeArchived ? 'true' : 'false'}`)

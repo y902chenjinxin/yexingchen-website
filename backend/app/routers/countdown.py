@@ -19,7 +19,7 @@ from app.services.log_service import log_action
 from app.utils.file_utils import save_upload_file
 from app.utils.security import get_current_user
 
-router = APIRouter(tags=["工具岛-倒计时"])
+router = APIRouter(prefix="/api", tags=["工具岛-倒计时"])
 
 # ---- 上传：通用图片（jgp/png/webp/gif）----
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
