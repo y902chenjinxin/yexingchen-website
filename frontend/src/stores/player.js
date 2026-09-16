@@ -16,7 +16,9 @@ export const usePlayerStore = defineStore('player', () => {
   const rejectedOnce = ref(false)
   // BGM 总开关：关闭时彻底停播且不再自动拉起（含自动播放被拦后的恢复句柄）；
   // 状态持久化到 localStorage，下次进站保持用户上次的选择。
-  const bgmEnabled = ref(localStorage.getItem('bgm_enabled') !== '0')
+  // 默认关闭（v2.22.3+）：未显式开启过的用户进站不会再自动播放音乐；
+  // 顶栏音频开关开启后才播放。
+  const bgmEnabled = ref(localStorage.getItem('bgm_enabled') === '1')
   const shows = computed(() => mode.value === 'playlist' && !!curItem.value)
 
   audio.volume = volume.value

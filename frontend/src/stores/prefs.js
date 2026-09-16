@@ -4,12 +4,13 @@ import { defineStore } from 'pinia'
 /**
  * 界面偏好（按用户隔离，存 localStorage）。
  *
- * 目前只有「桌宠是否展示」一项：需求是默认展示，可在个人中心关掉，
- * 关掉后刷新/换页都不再出现（此前只有「音乐页隐藏」这种按路由的硬编码规则）。
+ * 目前只有「桌宠是否展示」一项：
+ * - 默认不展示，需要在个人中心开关开启后才显示（v2.22.3 起，默认值由 true 改 false）
+ * - 已手动开过的用户行为不变（按存的走），新用户/未登录默认 false
  *
  * 为什么按用户分键：这是个人口味，家里成员共用一台设备时不该互相覆盖。
- * 为什么在模块加载时就同步 hydrate：避免「关了桌宠的人每次进站先闪一下鲸鱼」，
- * 期间先用「上次登录的用户」的偏好顶着，bindUser 拿到真实 uid 后再归位。
+ * 为什么在模块加载时就同步 hydrate：避免「已开桌宠的人每次进站先闪一下鲸鱼，
+ * 或关了桌宠的人先闪一下再消失」，期间先用「上次登录的用户」的偏好顶着。
  */
 
 const KEY_PREFIX = 'xh_ui_prefs_v1'
@@ -35,14 +36,15 @@ function write(uid, data) {
 }
 
 export const usePrefsStore = defineStore('prefs', () => {
-  // 默认展示
-  const petVisible = ref(true)
+  // 默认不展示（v2.22.3+）
+  const petVisible = ref(false)
   // 当前偏好归属的用户 id（null = 尚未绑定 / 未登录）
   const boundUid = ref(null)
 
   function applyPrefs(uid) {
     const saved = read(uid)
-    petVisible.value = saved?.petVisible !== false
+    // 只有显式存过 true 才显示；新用户/未登录默认 false
+    petVisible.value = saved?.petVisible === true
   }
 
   // 模块加载即同步 hydrate：先用上次登录用户的偏好，避免桌宠闪现
