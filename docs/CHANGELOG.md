@@ -1,3 +1,25 @@
+## [v2.25.0] - 2026-09-17
+
+### 手机端简化收尾 · P0 骨架 + P1/P2 下去古风（SW `xuanhuang-v106`）
+
+承接 v2.24.0 的手机端双套样式，本轮把「做减法 + 换新视觉」一次性收尾上线。全部门控 `#app.is-mobile`（`useIsMobile` ≤767px），桌面水墨国风零回归。
+
+**P0 骨架**
+- 新增 `mobile-ab-theme.css`：在 `#app.is-mobile` 内重映射 core/lj/ls token 的 **A（白天液态玻璃）+ B（夜间深空极简）** 双套
+- 重建 `MobileWorkbenchHome`：弃玉简/篆字/搜索条 → 几何 Logo + 玄黄 + AI 胶囊、今日速览数据卡、线性图标快捷入口（含证件照/倒计时）
+- 底部 Tab 收为**两 Tab（主页/我的）** + `keep-alive` 缓存
+
+**P1 去古风**
+- 新增 `mobile-deink.css`：隐藏宣纸噪点 `.lj-paper-texture`；`--font-serif` 移动端全局切现代无衬线
+
+**P2 数据视图去「管理后台感」（一个页面一个焦点）**
+- 账本：隐藏 `.fin-io`（导出/导入）、`.fin-filters`（筛选）、`.fin-row-ops`（行内编辑删除）；放大 KPI 大数、玻璃化图表/列表，保留「+ 记一笔」
+- 股票：隐藏 `.st-td-edit` 与移动卡删除 `.st-card-h .st-btn.danger`；KPI 两列
+
+**部署/验证**：全新 `vite build --outDir dist2` → 核验产物 `.css` 含 `#app.is-mobile …` 精确选择器 → 替换 dist → `deploy_frontend.py`（保留 `download/.well-known`）→ 217 文件 home=200、**SW v105→v106**（升版刷新 PWA 缓存）。生产浏览器 DOM 实测：账本 `.fin-io/.fin-filters/.fin-row-ops/.lj-paper-texture` 全 `display:none`、「记一笔」可见；`#app` 含 `is-mobile`、股票 KPI 两列、合成 DOM 下删除按钮 `display:none` —— PASS。仅前端改动，后端无源码变更。
+
+---
+
 ## [v2.24.0] - 2026-09-16
 
 ### 手机端独立样式全案（P0–P2）落地 + App 图标重做（SW `xuanhuang-v105`）
