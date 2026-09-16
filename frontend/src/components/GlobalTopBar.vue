@@ -169,6 +169,18 @@
         </template>
       </el-dropdown>
 
+      <!-- 下载 App 入口：新窗口打开 /download/。
+           桌面端用于扫码装到手机；移动端直接下载 APK（target=_blank 避免 SPA 路由冲突） -->
+      <a
+        class="tb-icon-btn"
+        href="/download/"
+        target="_blank"
+        rel="noopener"
+        title="下载安卓 App"
+      >
+        <el-icon><Cellphone /></el-icon>
+      </a>
+
       <!-- 用户区 -->
       <el-dropdown trigger="click" @command="onCommand">
         <div class="tb-user">
@@ -199,7 +211,7 @@ import {
   User, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
   Document, Check, Notebook, VideoPlay, MagicStick, Reading, HomeFilled,
   Collection, TrendCharts, MapLocation, VideoCamera, ChatDotRound, Setting,
-  Tickets, Wallet, Money, DataAnalysis, DataBoard, Grid
+  Tickets, Wallet, Money, DataAnalysis, DataBoard, Grid, Cellphone
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
