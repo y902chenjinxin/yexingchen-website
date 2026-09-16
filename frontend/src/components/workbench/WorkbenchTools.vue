@@ -40,7 +40,7 @@ const actionDefs = [
   { key: 'book',  name: '记一笔',  desc: '快速记账',           tone: 'book',  to: '/finance',   icon: '💰' },
   { key: 'flash', name: '闪念速记', desc: '随手记 · 日记',      tone: 'flash', to: '/diary',     icon: '✍️' }
 ]
-const BUILTIN_SLOT = 4 // 固定 6 - 2 动作
+const BUILTIN_SLOT = 6 // 固定展示数（当前 builtin 工具已有 5 个：视频去水印/PDF/AI封面/像素压缩/音色克隆/证件照/倒计时）
 
 // 工具 + 动作混排：内置工具置顶（取前 BUILTIN_SLOT 个），再接固定动作
 const quickList = computed(() => {
