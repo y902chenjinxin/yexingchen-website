@@ -9,18 +9,19 @@
 
 ## v2.22.2 新发现与遗留（2026-09-16）
 
+> 完整路径/凭证见 `.secrets/apk-build.local.env`（脚本也从这里读）。
+
 | ID | 问题 | 类别 | 状态 |
 |----|------|------|------|
-| V22-201 | sw-register.js 自首提交起就**从未被任何地方调用**——SW 在生产从未注册过，v97/v98 版本号全是「纸面升级」 | 历史 Bug | ✅ 已修复（v2.22.1 hotfix） |
-| V22-202 | bubblewrap init 是 inquirer.js 交互式，CI 不可用，必须走 `TwaGenerator` 程序化 API | 流程 | ✅ 已记录 |
-| V22-203 | Gradle wrapper 走 services.gradle.org 国内极慢，首次需要用户手动下放服务器 wrapper 路径 + 建 `.ok` | 网络 | ✅ 已记录 |
-| V22-204 | AGP/transitive 依赖卡顿用 `~/.gradle/init.d/aliyun-mirror.gradle` 加阿里云镜像 | 网络 | ✅ 已配 |
-| V22-205 | TWA assetlinks.json 第一次错用了 APK 字节 SHA256（应是用证书 SHA256 指纹）——已修 | 经验 | ✅ 已记录 |
-| V22-206 | 鸿蒙 4 装第三方 APK 默认禁止，需要「外部来源应用下载」开权限 | 部署 | ✅ 已写入下载页 |
-| V22-207 | 用户决策变更：PWA 用不习惯，直接做 APK；后续 PWA 入口保留但不作为主推 | 产品 | ✅ 已实现 |
-| V22-208 | iOS 装机方案未做（用户只提安卓需求） | 功能 | 📋 计划中（按需开工） |
-
----
+| V22-201 | `sw-register.js` 自首提交起从未被调用——SW 从未注册，v97/v98 是「纸面升级」 | 历史 Bug | ✅ 已修复 |
+| V22-202 | bubblewrap init 是 inquirer.js 交互式，CI 不可用 → 走 `TwaGenerator` 程序化 API | 流程 | ✅ |
+| V22-203 | Gradle wrapper 走 services.gradle.org 国内极慢 → 手动下放服务器 wrapper 路径 | 网络 | ✅ |
+| V22-204 | AGP/transitive 卡 → `~/.gradle/init.d/aliyun-mirror.gradle` 走阿里云镜像 | 网络 | ✅ |
+| V22-205 | assetlinks.json 第一次错用 APK 字节 SHA（应用证书指纹），已修 | 经验 | ✅ |
+| V22-206 | 鸿蒙 4 装第三方 APK 默认禁止，需开「外部来源应用下载」权限 | 部署 | ✅ 已写入下载页 |
+| V22-207 | 用户决策变更：PWA 用不习惯，直接做 APK；PWA 入口保留作 iOS/Chrome fallback | 产品 | ✅ |
+| V22-208 | iOS 装机方案未做（用户只提安卓需求） | 功能 | 📋 计划中 |
+| V22-209 | secrets 文件含明文密码，靠 `.secrets/` 目录不进 git 兜底；上线前应考虑加密/纳入密码管理工具 | 安全 | 📋 待评估 |
 
 ## v2.22.0 新发现与遗留（2026-09-16）
 
