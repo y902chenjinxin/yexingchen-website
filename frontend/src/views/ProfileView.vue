@@ -46,6 +46,25 @@
         <div class="card-body">
           <div class="info-item">
             <div class="pref-text">
+              <span class="info-label">主题外观</span>
+              <span class="pref-hint">白天 / 夜间固定外观，或自动跟随时间切换</span>
+            </div>
+            <div class="theme-seg" role="tablist" aria-label="主题外观">
+              <button
+                v-for="opt in themeOptions"
+                :key="opt.value"
+                class="theme-seg-btn"
+                :class="{ active: themeOverride === opt.value }"
+                role="tab"
+                :aria-selected="themeOverride === opt.value"
+                @click="prefs.setTheme(opt.value)"
+              >{{ opt.label }}</button>
+            </div>
+          </div>
+
+          <!-- 桌宠展示 -->
+          <div class="info-item">
+            <div class="pref-text">
               <span class="info-label">桌宠展示</span>
               <span class="pref-hint">关闭后全站不再出现右下角的鲸鱼；设置只对当前账号生效</span>
             </div>
@@ -144,6 +163,14 @@ const petVisible = computed({
   get: () => prefs.petVisible,
   set: (v) => prefs.setPetVisible(v),
 })
+
+// 主题外观
+const themeOverride = computed(() => prefs.themeOverride)
+const themeOptions = [
+  { value: 'auto', label: '自动' },
+  { value: 'day', label: '白天' },
+  { value: 'night', label: '夜间' },
+]
 
 // 用户信息
 const userInfo = ref({
@@ -373,6 +400,33 @@ async function savePassword() {
 .pref-switch {
   flex: none;
 }
+
+/* 主题外观分段控件 */
+.theme-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(127, 168, 163, 0.12);
+  border: 1px solid rgba(127, 168, 163, 0.22);
+  flex: none;
+}
+.theme-seg-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.theme-seg-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-gold), #b8894a);
+  box-shadow: 0 4px 12px rgba(201, 169, 107, 0.35);
+}
+.theme-seg-btn:focus-visible { outline: var(--focus-outline); outline-offset: 2px; }
 
 .header-with-back {
   display: flex;

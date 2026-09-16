@@ -1,8 +1,8 @@
 <template>
   <transition name="npbar">
     <div v-if="player.shows && player.curItem" class="npbar" ref="barRef">
-      <!-- 曲目信息 -->
-      <div class="np-info">
+      <!-- 曲目信息（点击展开全屏播放器，仅移动端生效） -->
+      <div class="np-info" @click="onInfoClick">
         <div class="np-cover">
           <span class="np-note">♪</span>
           <span class="np-badge" :class="{ live: player.isPlaying }"></span>
@@ -64,6 +64,15 @@ import { usePlayerStore } from '@/stores/player'
 
 const player = usePlayerStore()
 const barRef = ref(null)
+const emit = defineEmits(['open-full'])
+
+const isTouchDevice = typeof window !== 'undefined' &&
+  window.matchMedia('(pointer: coarse)').matches
+
+function onInfoClick() {
+  if (!isTouchDevice) return
+  emit('open-full')
+}
 
 const ratio = computed(() => (player.duration ? player.progress / player.duration : 0))
 const volProxy = ref(player.volume)
@@ -250,6 +259,7 @@ function fmt(sec) {
   .npbar {
     width: calc(100% - 20px);
     left: 10px;
+    bottom: calc(16px + var(--safe-bottom));
   }
   .np-volume { display: none; }
   .np-meta { max-width: 110px; }

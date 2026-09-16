@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- 墨玉磨砂底：深墨玉青黑对角渐变 -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0"   stop-color="#1b312b"/>
+      <stop offset="0.5" stop-color="#14241f"/>
+      <stop offset="1"   stop-color="#0c1a15"/>
+    </linearGradient>
+    <!-- 径向暗角，增加景深 -->
+    <radialGradient id="vig" cx="0.5" cy="0.42" r="0.9">
+      <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1"    stop-color="#000" stop-opacity="0.42"/>
+    </radialGradient>
+    <!-- 琥珀金字：香槟金线性 -->
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"   stop-color="#e6c387"/>
+      <stop offset="0.5" stop-color="#c9a35f"/>
+      <stop offset="1"   stop-color="#a97e44"/>
+    </linearGradient>
+    <!-- 顶部发丝高光 -->
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe7b0" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#b08a55" stop-opacity="0"/>
+    </linearGradient>
+    <!-- 文字内发光 -->
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="moonGlow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <!-- 主体：圆角肩形（iOS squircle，约 22% 圆角） -->
+  <rect x="0" y="0" width="1024" height="1024" rx="229" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="229" fill="url(#vig)"/>
+
+  <!-- 顶部玻璃发丝高光（Apple hairline） -->
+  <path d="M192 96 Q512 -36 832 96 L832 118 Q512 -12 192 118 Z" fill="url(#hair)"/>
+
+  <!-- 底部沉深刻线：凹陷层次 -->
+  <path d="M224 966 Q512 1006 800 966 L800 992 Q512 1032 224 992 Z" fill="#000" opacity="0.18"/>
+
+  <!-- 月牙装饰（玄字左上角） -->
+  <g transform="translate(356,300)">
+    <circle cx="70" cy="90" r="74" fill="#c9a35f" opacity="0.16" filter="url(#moonGlow)"/>
+    <path fill-rule="evenodd" d="
+      M 0 90
+      A 70 70 0 1 1 140 90 A 70 70 0 1 1 0 90
+      M 46 90 A 62 62 0 1 0 134 90 A 62 62 0 1 0 46 90
+    " fill="url(#gold)"/>
+  </g>
+
+  <!-- 玄字 -->
+  <text x="512" y="612" text-anchor="middle"
+        font-family="'Noto Serif SC','Songti SC','STSong','SimSun',serif"
+        font-size="470" font-weight="600" fill="url(#gold)" filter="url(#glow)">玄</text>
+</svg>

@@ -38,6 +38,8 @@ function write(uid, data) {
 export const usePrefsStore = defineStore('prefs', () => {
   // 默认不展示（v2.22.3+）
   const petVisible = ref(false)
+  // 主题覆盖：'auto'（跟随时间） | 'day'（恒亮） | 'night'（恒暗）
+  const themeOverride = ref('auto')
   // 当前偏好归属的用户 id（null = 尚未绑定 / 未登录）
   const boundUid = ref(null)
 
@@ -45,6 +47,7 @@ export const usePrefsStore = defineStore('prefs', () => {
     const saved = read(uid)
     // 只有显式存过 true 才显示；新用户/未登录默认 false
     petVisible.value = saved?.petVisible === true
+    themeOverride.value = saved?.theme || 'auto'
   }
 
   // 模块加载即同步 hydrate：先用上次登录用户的偏好，避免桌宠闪现
@@ -52,7 +55,7 @@ export const usePrefsStore = defineStore('prefs', () => {
   applyPrefs(lastUid ? Number(lastUid) : null)
 
   function persist() {
-    write(boundUid.value, { petVisible: petVisible.value })
+    write(boundUid.value, { petVisible: petVisible.value, theme: themeOverride.value })
     try {
       localStorage.setItem(LAST_UID_KEY, boundUid.value == null ? '' : String(boundUid.value))
     } catch {
@@ -83,5 +86,24 @@ export const usePrefsStore = defineStore('prefs', () => {
     setPetVisible(!petVisible.value)
   }
 
-  return { petVisible, boundUid, bindUser, setPetVisible, togglePet }
+  function setTheme(mode) {
+    themeOverride.value = mode
+    persist()
+    applyTheme(mode)
+  }
+
+  return { petVisible, themeOverride, boundUid, bindUser, setPetVisible, togglePet, setTheme }
 })
+
+/** 按主题覆盖/时间应用 day|night 到 <html data-theme> */
+export function applyTheme(mode = 'auto') {
+  const root = document.documentElement
+  let theme
+  if (mode === 'day' || mode === 'night') {
+    theme = mode
+  } else {
+    const h = new Date().getHours()
+    theme = h >= 6 && h < 18 ? 'day' : 'night'
+  }
+  if (root.dataset.theme !== theme) root.dataset.theme = theme
+}

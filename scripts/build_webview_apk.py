@@ -415,24 +415,21 @@ print("上传 %d 个源码文件完成" % len(files))
 print("== 2/6 复用 gradle wrapper（从 TWA 工程）==")
 print(cexec("cp %s/gradlew %s/gradlew && cp -r %s/gradle/wrapper/. %s/gradle/wrapper/ && chmod +x %s/gradlew" % (TWA, PROJ, TWA, PROJ, PROJ))[1])
 
-print("== 3/6 生成 launcher 图标（本地 PIL：棕色圆角 + 白「玄」）==")
+print("== 3/6 生成 launcher 图标（本地烘焙 app-icon 设计稿 → 各密度 mipmap）==")
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
-_icon_size = 192
-_icon = Image.new("RGBA", (_icon_size, _icon_size), (0, 0, 0, 0))
-_d = ImageDraw.Draw(_icon)
-_d.rounded_rectangle([0, 0, _icon_size - 1, _icon_size - 1], radius=int(_icon_size * 0.22),
-                     fill=(142, 106, 44, 255))
-_fp = next((p for p in [r"C:\Windows\Fonts\msyh.ttc", r"C:\Windows\Fonts\msyhbd.ttc",
-                        r"C:\Windows\Fonts\simsun.ttc"] if os.path.exists(p)), None)
-_font = ImageFont.truetype(_fp, int(_icon_size * 0.62))
-_bb = _d.textbbox((0, 0), "玄", font=_font)
-_tw, _th = _bb[2] - _bb[0], _bb[3] - _bb[1]
-_d.text(((_icon_size - _tw) / 2 - _bb[0], (_icon_size - _th) / 2 - _bb[1]), "玄", font=_font, fill=(255, 255, 255, 255))
-_buf = BytesIO(); _icon.save(_buf, "PNG")
-with sftp.open("%s/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" % PROJ, "wb") as _f:
-    _f.write(_buf.getvalue())
-print("icon bytes:", len(_buf.getvalue()))
+from PIL import Image
+_icon_src = os.path.join(os.path.dirname(__file__), "apk-icon", "app-icon-1024.png")
+# Android res 各密度图标规格（px）：mdpi48 / hdpi72 / xhdpi96 / xxhdpi144 / xxxhdpi192
+_dens = {"mipmap-mdpi": 48, "mipmap-hdpi": 72, "mipmap-xhdpi": 96,
+         "mipmap-xxhdpi": 144, "mipmap-xxxhdpi": 192}
+for _d_res, _d_px in _dens.items():
+    _icon = Image.open(_icon_src).convert("RGBA").resize((_d_px, _d_px), Image.LANCZOS)
+    _buf = BytesIO(); _icon.save(_buf, "PNG")
+    _dir = "%s/app/src/main/res/%s" % (PROJ, _d_res)
+    cexec("mkdir -p %s" % _dir)
+    with sftp.open("%s/ic_launcher.png" % _dir, "wb") as _f:
+        _f.write(_buf.getvalue())
+print("icon baked from %s" % _icon_src)
 
 print("== 4/6 gradle assembleRelease ==")
 code, out = cexec(

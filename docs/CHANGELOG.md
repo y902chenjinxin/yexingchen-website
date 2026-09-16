@@ -1,3 +1,29 @@
+## [v2.24.0] - 2026-09-16
+
+### 手机端独立样式全案（P0–P2）落地 + App 图标重做（SW `xuanhuang-v105`）
+
+**方向**：网页版与手机版做成两种样式——手机端走 **iOS 原生浅/深色玻璃**（跟随 day/night 昼夜），沉浸式 + 底部三 Tab（工具/工作台/我的）+ 系统性收走重交互，桌面水墨国风零回归。
+
+**P0 全局框架**
+- App 内嵌 `MobileTabBar`（三 Tab：工具/工作台/我的，激活琥珀 + 点击轻震动）；`App.vue` 桌面隐藏顶栏、移动端仅显底栏；`useIsMobile()`（`(max-width:767px)`）贯穿
+- 数据模块/全端沉浸式：`100svh`、`mobile-list.css` 移动覆盖样
+- **App 图标重做**：由 PIL 棕底白「玄」升级为墨玉·琥珀·雾玻璃 `app-icon-1024.png`（`scripts/apk-icon/`），`build_webview_apk.py` 改为本地按 mdpi→xxxhdpi 烘焙设计稿写 mipmap；APK 重建 `cn.yexingchen.app` v2.0.0（同 keystore 签名 SHA-256 `3add…df14b` 可覆盖安装）+ `/download/` 更新 200
+
+**P1 工作台 + 玉简全息卡**
+- `MobileJadeCard.vue`：凹陷层次全息玉片（内阴影 + 琥珀描边 + 表面 foil 分层），首页 Hero 左右滑切 + 长按扇形彩蛋（`vibrate` 触感）
+- `MobileWorkbenchHome.vue`：搜索条固定（`MobileSearchBar`）+ 玉简 Hero（占半屏）+ 快捷宫格收纳全部模块 + `MobileSkeleton`/`MobileEmpty` 加载/空态
+
+**P2 全模块手机化**
+- 工具/音乐/视频/小说列表改**2 列大卡片磁贴**（`mobile-list.css`）
+- 迷你播放条 + 全屏播放页 `MobileFullPlayer`（点迷你条展开）
+- 账本/股票/旅行/倒计时/笔记数据密集模块移动适配：`TrendChart` 增触摸 tooltip（`touchstart/move/end`）、全局输入控件 `font-size≥16px` 防 iOS 缩放、全屏容器 `100svh`、触控 `touch-action:manipulation`、`.tc-tip` 触控点按态
+- 登录页「记住我」（`LoginView` 勾选 + localStorage 自动填充账号）；个人中心「主题外观」`自动/白天/夜间` 分段切换（`prefs.setTheme` + `applyTheme` 写 `<html data-theme>`）
+- 子页返回：`MobilePage`（iOS 大标题 + 左缘侧滑返回 + `history.back`）可复用外壳；`StockDetail` 等详情页自带 `BackButton` 导航
+
+**部署/验证**：`vite build --outDir dist2` 全标记命中（MobileTabBar/JadeCard/记住我/主题外观/tc-tip/SW v105）→ 替换 dist → `deploy_frontend.py`（219 文件 home=200）→ `build_webview_apk.py` BUILD SUCCESSFUL（new_apk/download 200）。浏览器取证：桌面根页正常、移动视口(≤767px)登录页玻璃质感无横向溢出、输入 ≥16px、SW v105 生效。
+
+---
+
 ## [v2.23.0] - 2026-09-16
 
 ### APK 由 TWA 改为原生 WebView 壳（`yexingchen-2.0.0.apk`，作为独立软件运行）

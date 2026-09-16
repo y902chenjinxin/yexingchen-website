@@ -1,7 +1,7 @@
 <template>
   <div class="tc">
     <div class="tc-wrap">
-      <svg :viewBox="`0 0 ${W} ${H}`" class="tc-svg" role="img" aria-label="本月收支趋势" ref="svgEl" @mousemove="onMove" @mouseleave="onLeave">
+      <svg :viewBox="`0 0 ${W} ${H}`" class="tc-svg" role="img" aria-label="本月收支趋势" ref="svgEl" @mousemove="onMove" @mouseleave="onLeave" @touchstart.passive="onTapStart" @touchmove.passive="onTapMove" @touchend.passive="onTapEnd">
         <!-- 网格线 -->
         <g v-for="i in gridLines" :key="i" class="tc-grid">
           <line :x1="pad.l" :x2="W - pad.r" :y1="gridY(i)" :y2="gridY(i)" />
@@ -145,6 +145,15 @@ function onMove(e) {
 function onLeave() {
   hover.value = null
 }
+
+// 触控端：把 mousemove hover 改为"点按/拖动"显示数值，松开消失（触控命中 ≥44px）
+function onTapStart(e) {
+  if (e.touches && e.touches[0]) onMove({ clientX: e.touches[0].clientX })
+}
+function onTapMove(e) {
+  if (e.touches && e.touches[0]) onMove({ clientX: e.touches[0].clientX })
+}
+function onTapEnd() { hover.value = null }
 
 function fmt(v) { return Number(v || 0).toFixed(1).replace(/\.0$/, '') }
 </script>

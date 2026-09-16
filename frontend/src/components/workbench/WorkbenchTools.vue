@@ -117,6 +117,10 @@ onMounted(() => { toolStore.fetchList({ enabled_only: 1, size: 100 }).catch(() =
 .tone-book .wt-icon  { color: #6d9a6b;             border-color: rgba(109,154,107,.28); background: rgba(109,154,107,.12); }
 
 @media (max-width: 600px) {
+  /* 窄屏（≤380px）：2 列放大卡片，避免单卡 126px 过窄；宽屏手机（380–600px）：3 列 */
+  .wt-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 381px) and (max-width: 600px) {
   .wt-grid { grid-template-columns: repeat(3, 1fr); }
 }
 </style>

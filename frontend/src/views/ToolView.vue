@@ -9,26 +9,30 @@
 
     <!-- 浏览模式：工具卡片列表 -->
     <div v-show="!manage" class="tool-cards">
-      <div
-        v-for="item in toolStore.list"
-        :key="item.id"
-        class="tool-card"
-        @click="go(item)"
-      >
-        <div class="tool-icon">{{ item.icon || '🔧' }}</div>
-        <div class="tool-info">
-          <span class="tool-name">{{ item.title || '无名工具' }}</span>
-          <span class="tool-desc">{{ item.description || '暂无描述' }}</span>
+      <MobileSkeleton v-if="toolStore.loading" :rows="0" :grid="6" />
+      <template v-else>
+        <div
+          v-for="item in toolStore.list"
+          :key="item.id"
+          class="tool-card"
+          @click="go(item)"
+        >
+          <div class="tool-icon">{{ item.icon || '🔧' }}</div>
+          <div class="tool-info">
+            <span class="tool-name">{{ item.title || '无名工具' }}</span>
+            <span class="tool-desc">{{ item.description || '暂无描述' }}</span>
+          </div>
+          <div class="tool-actions">
+            <el-button size="small" type="primary" @click.stop="go(item)">使用</el-button>
+          </div>
         </div>
-        <div class="tool-actions">
-          <el-button size="small" type="primary" @click.stop="go(item)">使用</el-button>
-        </div>
-      </div>
 
-      <div v-if="!toolStore.loading && toolStore.list.length === 0" class="tool-empty">
-        <span class="empty-icon">⚙️</span>
-        <span class="empty-text">暂无可用的工具</span>
-      </div>
+        <MobileEmpty
+          v-if="toolStore.list.length === 0"
+          title="暂无可用的工具"
+          desc="到工具管理页添加，或稍后刷新看看"
+        />
+      </template>
     </div>
 
     <!-- 管理模式：表格（统一分页 10/20/50） -->
@@ -149,6 +153,8 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import MobileSkeleton from '@/components/mobile/MobileSkeleton.vue'
+import MobileEmpty from '@/components/mobile/MobileEmpty.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useToolStore } from '@/stores/tool'

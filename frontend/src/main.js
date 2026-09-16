@@ -7,6 +7,7 @@ import { registerServiceWorker } from './sw-register'
 import { usePwaInstall } from './composables/usePwaInstall'
 import './assets/styles/main.css'
 import './assets/styles/xiuxian-theme.css'
+import './assets/styles/mobile-list.css'
 
 const app = createApp(App)
 
@@ -19,7 +20,8 @@ app.use(router)
 registerServiceWorker()
 usePwaInstall()
 
-// 昼夜自适应主题（TIME_THEME_20260908）：本地时间 6:00–18:00 → day，其余 night
+// 昼夜自适应主题（TIME_THEME_20260908）：本地时间 6:00–18:00 → day，其余 night。
+// 仅作首帧预热；用户若在个人中心设置了固定主题，App.vue 挂载后会覆盖为本偏好。
 function applyDayTheme() {
   const h = new Date().getHours()
   const next = h >= 6 && h < 18 ? 'day' : 'night'
@@ -27,6 +29,5 @@ function applyDayTheme() {
   if (root.dataset.theme !== next) root.dataset.theme = next
 }
 applyDayTheme()
-setInterval(applyDayTheme, 60000)
 
 app.mount('#app')

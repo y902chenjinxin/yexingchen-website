@@ -29,6 +29,15 @@
           </el-input>
         </el-form-item>
         <el-form-item>
+          <div class="login-options">
+            <label class="remember-label">
+              <input v-model="rememberMe" type="checkbox" class="remember-check" />
+              <span>记住我</span>
+            </label>
+            <span class="remember-hint">下次自动填充账号</span>
+          </div>
+        </el-form-item>
+        <el-form-item>
           <el-button type="primary" size="large" style="width: 100%" :loading="loading" native-type="submit" aria-label="登录按钮">
             登 录
           </el-button>
@@ -147,6 +156,7 @@ const auth = useAuthStore()
 
 const route = useRoute()
 const loginForm = ref({ email: '', password: '' })
+const rememberMe = ref(false)
 const registerForm = ref({ email: '', code: '', password: '', confirmPassword: '' })
 const isRegistering = ref(false)
 const registerStep = ref(1)
@@ -154,6 +164,29 @@ const loading = ref(false)
 const passwordVisible = ref(false)
 const confirmPasswordVisible = ref(false)
 
+const REMEMBER_KEY = 'remember_credentials'
+
+function loadRemembered() {
+  try {
+    const raw = localStorage.getItem(REMEMBER_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data && data.email) {
+      loginForm.value.email = data.email
+      loginForm.value.password = data.password || ''
+      rememberMe.value = true
+    }
+  } catch { /* ignore */ }
+}
+loadRemembered()
+
+function saveRemembered(email, password) {
+  if (rememberMe.value) {
+    localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, password }))
+  } else {
+    localStorage.removeItem(REMEMBER_KEY)
+  }
+}
 
 async function handleLogin() {
   if (!loginForm.value.email || !loginForm.value.password) {
@@ -163,6 +196,7 @@ async function handleLogin() {
   loading.value = true
   try {
     await auth.loginAction(loginForm.value.email, loginForm.value.password)
+    saveRemembered(loginForm.value.email, loginForm.value.password)
     ElMessage.success('登录成功')
     // 登录后默认进入工作台
     const next = (route.query.next && String(route.query.next)) || '/workbench'
@@ -303,6 +337,24 @@ function resetRegister() {
 .login-form {
   margin-top: 20px;
 }
+
+/* 记住我 */
+.login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 2px;
+}
+.remember-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--color-text-secondary); cursor: pointer;
+}
+.remember-check {
+  width: 16px; height: 16px; accent-color: var(--color-gold);
+  cursor: pointer;
+}
+.remember-hint { font-size: 12px; color: rgba(200, 214, 208, 0.45); }
 
 .password-toggle {
   cursor: pointer;

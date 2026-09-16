@@ -1,0 +1,228 @@
+/* ============================================================
+   #app.is-mobile 移动端列表覆盖样式（P2a）
+   - 将 音乐/小说/视频/工具 列表从「竖排行」改为「2 列大卡片磁贴」
+   - 桌面端（无 is-mobile）完全不受影响（零回归）
+   - 触控端加大命中区、启用快捷按压反馈
+   ============================================================ */
+
+#app.is-mobile .music-items,
+#app.is-mobile .novel-items,
+#app.is-mobile .video-items,
+#app.is-mobile .tool-items {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding-right: 0 !important;
+}
+
+/* 每个 item 变成竖向大卡片磁贴 */
+#app.is-mobile .music-item,
+#app.is-mobile .novel-item,
+#app.is-mobile .video-item,
+#app.is-mobile .tool-item {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  min-height: 132px;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .2s !important;
+}
+#app.is-mobile .music-item:active,
+#app.is-mobile .novel-item:active,
+#app.is-mobile .video-item:active,
+#app.is-mobile .tool-item:active {
+  transform: scale(.965) !important;
+}
+
+/* 小说封面：置顶，方形磁贴头 */
+#app.is-mobile .novel-cover {
+  display: flex; align-items: center; justify-content: center;
+  height: 96px; width: 100% !important;
+  border-radius: 12px;
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.16), transparent 55%), linear-gradient(160deg, rgba(176,128,90,.32), rgba(176,128,90,.06));
+  border: 1px solid var(--ls-line, rgba(127,168,163,.24));
+  margin-bottom: 2px;
+}
+#app.is-mobile .novel-cover .cover-icon { font-size: 34px; }
+
+/* 小说信息置底语义化 */
+#app.is-mobile .novel-info {
+  display: flex; flex-direction: column; gap: 3px;
+}
+#app.is-mobile .novel-title {
+  font-size: 15px; font-weight: 600; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#app.is-mobile .novel-author { font-size: 12px; }
+#app.is-mobile .novel-chapter { font-size: 11.5px; }
+
+/* 视频：缩略图磁贴头 */
+#app.is-mobile .video-thumbnail {
+  height: 84px; width: 100% !important;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(91,107,122,.4), rgba(91,107,122,.08));
+}
+#app.is-mobile .video-thumbnail .play-icon { font-size: 26px; }
+#app.is-mobile .video-info {
+  display: flex; flex-direction: column; gap: 3px;
+}
+#app.is-mobile .video-title {
+  font-size: 14.5px; font-weight: 600;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#app.is-mobile .video-meta { font-size: 11.5px; }
+
+/* 工具：图标置顶 + 说明两行截断 */
+#app.is-mobile .tool-item { align-items: center !important; }
+#app.is-mobile .tool-icon {
+  width: 46px; height: 46px; font-size: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 14px;
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.18), transparent 60%), rgba(127,168,163,.14);
+}
+#app.is-mobile .tool-info { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+#app.is-mobile .tool-name { font-size: 14.5px; font-weight: 600; }
+#app.is-mobile .tool-desc {
+  font-size: 11.5px; text-align: center;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ToolView（/tool 浏览模式）使用 .tool-cards/.tool-card */
+#app.is-mobile .tool-cards {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px !important;
+}
+#app.is-mobile .tool-cards:has(> .mempty) { display: flex !important; }
+#app.is-mobile .tool-card {
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 18px 12px !important;
+  border-radius: 18px !important;
+  min-height: 132px;
+  text-align: center;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1) !important;
+}
+#app.is-mobile .tool-card:active { transform: scale(.965) !important; }
+#app.is-mobile .tool-card .tool-actions { margin-top: 2px; }
+
+/* 音乐：名称居中、操作行贴底横排 */
+#app.is-mobile .music-item { align-items: center !important; }
+#app.is-mobile .music-info {
+  display: flex; flex-direction: column; gap: 4px; align-items: center; width: 100%;
+}
+#app.is-mobile .music-name {
+  font-size: 15px; font-weight: 600; text-align: center;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#app.is-mobile .music-artist { font-size: 12px; }
+#app.is-mobile .music-actions {
+  display: flex; gap: 8px; justify-content: center; width: 100%;
+}
+#app.is-mobile .music-ops { margin-right: 0; }
+
+/* 触摸命中区（≥44px） */
+#app.is-mobile .mini-btn,
+#app.is-mobile .ops-btn,
+#app.is-mobile .note { touch-action: manipulation; }
+
+/* 列表卡片区：去掉内衬大留白，铺满 */
+#app.is-mobile .music-list-area,
+#app.is-mobile .novel-list-area,
+#app.is-mobile .video-list-area,
+#app.is-mobile .tool-list-area {
+  padding: 14px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 加载/空态：移动端品牌化 */
+#app.is-mobile .loading-state,
+#app.is-mobile .empty-state {
+  padding: 48px 16px !important;
+}
+#app.is-mobile .loading-text,
+#app.is-mobile .empty-text {
+  font-size: 13.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app.is-mobile .music-item,
+  #app.is-mobile .novel-item,
+  #app.is-mobile .video-item,
+  #app.is-mobile .tool-item { transition: none !important; }
+}
+
+/* ============================================================
+   #app.is-mobile 数据密集模块移动适配（P2c）
+   - 防 iOS 输入聚焦自动缩放：触摸端输入控件字号强制 ≥16px
+   - 全屏容器统一 100svh，规避移动端动态地址栏跳动
+   - 数据模块页内边距收窄（移动端无桌面顶栏，96px 顶部留白过大）
+   - 图表/可点元素触控命中与 tooltip 优化
+   ============================================================ */
+
+/* 1) 防缩放：任何会被 iOS 自动放大的输入，字号提到 16px */
+#app.is-mobile input,
+#app.is-mobile select,
+#app.is-mobile textarea,
+#app.is-mobile .el-input__inner,
+#app.is-mobile .el-textarea__inner {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 2) 全屏容器 svh 化（兼容 100vh 的桌面写法） */
+@supports (height: 100svh) {
+  #app.is-mobile .finance-page,
+  #app.is-mobile .fin-page,
+  #app.is-mobile .st-page,
+  #app.is-mobile .tv-page,
+  #app.is-mobile .countdown-page,
+  #app.is-mobile .count-page,
+  #app.is-mobile .cdd-page,
+  #app.is-mobile .notes-page,
+  #app.is-mobile .note-page { min-height: 100svh; }
+}
+
+/* 3) 数据模块页内边距：移动端收拢顶部、侧边留白收窄 */
+#app.is-mobile .finance-page,
+#app.is-mobile .fin-page,
+#app.is-mobile .st-page,
+#app.is-mobile .tv-page,
+#app.is-mobile .countdown-page,
+#app.is-mobile .count-page,
+#app.is-mobile .cdd-page,
+#app.is-mobile .notes-page,
+#app.is-mobile .note-page {
+  padding: 18px 14px calc(72px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) !important;
+}
+#app.is-mobile .finance-page .fin-inner,
+#app.is-mobile .fin-page .fin-inner { padding-left: 0; padding-right: 0; }
+
+/* 4) 触控命中：可点/可拖元素统一 manipulation，指标卡点击不放触摸态 */
+#app.is-mobile .tc-svg,
+#app.is-mobile .dc-svg,
+#app.is-mobile .kc-svg,
+#app.is-mobile [class$="-item"] { touch-action: manipulation; }
+
+/* 5) 图表悬浮数值提示：移动端改点按态，命中区加宽避免误触 */
+#app.is-mobile .tc-tip {
+  top: auto;
+  bottom: 26px;
+  transform: translateX(-100%) !important;
+  right: 10px;
+  left: auto !important;
+  min-width: 118px;
+}
+
+/* 6) 移动端固定弹层/底部操作条安全区 */
+#app.is-mobile .el-message-box,
+#app.is-mobile .el-dialog { --el-dialog-margin-top: 8vh !important; }

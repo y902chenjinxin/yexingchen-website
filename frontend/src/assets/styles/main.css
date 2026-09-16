@@ -17,6 +17,29 @@ body {
   transition: background-color .45s ease, color .45s ease;
 }
 
+/* ========== 安全区 + 移动端触控 ==========
+   viewport-fit=cover 下用 env(safe-area-inset-*) 避开刘海屏/挖孔屏/手势条 */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* 防移动端自动放大文字导致错位 */
+html {
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+/* 交互元素：去点击高亮 + 禁用双击/长按缩放延迟，提升点按响应 */
+a, button, [role="button"], input, select, textarea, label, .el-button, .el-input__inner,
+.lj-island, .tb-search-input, .tb-ai-entry, .manage-toolbar .el-button, [class*="card"],
+[class*="island"], [class*="cell"], [class*="item"], [class*="entry"], [class*="tool"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 /* ========== Accessibility: 键盘焦点可见 ========== */
 :focus-visible {
   outline: 2px solid var(--lj-dai, #5f9499);

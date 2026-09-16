@@ -1,5 +1,8 @@
 <template>
-  <div class="workbench-page">
+  <!-- 移动端：独立沉浸式工作台首页 -->
+  <MobileWorkbenchHome v-if="isMobile" />
+
+  <div v-else class="workbench-page">
     <!-- 浅底留白背景：宣纸纹理 + 极淡云雾 + 淡墨山峦卷轴收束 -->
     <div class="lj-bg" aria-hidden="true">
       <div class="lj-paper-texture"></div>
@@ -53,6 +56,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import MobileWorkbenchHome from '@/components/mobile/MobileWorkbenchHome.vue'
+import { useIsMobile } from '@/composables/useIsMobile'
 import JadeCarousel from '@/components/JadeCarousel.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import WorkbenchTools from '@/components/workbench/WorkbenchTools.vue'
@@ -62,6 +67,8 @@ import { financeApi } from '@/api/finance'
 import { feedsApi } from '@/api/feeds'
 import { stocksApi } from '@/api/stocks'
 import { listTravels } from '@/api/travels'
+
+const { isMobile } = useIsMobile()
 
 const empty = ref(true)
 const finance = ref({})

@@ -453,6 +453,10 @@ onUnmounted(() => {
 }
 .lj-topbar.collapsed { transform: translateY(-100%); }
 .lj-topbar.expanding { transform: translateY(0); }
+/* 刘海屏/独立 PWA：顶栏整体下移避开系统状态栏，内容带仍保持 60px（safe-top 在普通浏览器为 0，不产生位移） */
+@media (max-width: 767px) {
+  .lj-topbar { height: calc(var(--tb-h) + var(--safe-top)); padding-top: var(--safe-top); }
+}
 
 .tb-brand { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: none; color: var(--lj-dai); transition: all 0.25s; }
 .tb-brand:hover { color: var(--lj-seal); }
@@ -566,6 +570,10 @@ onUnmounted(() => {
 }
 .tb-audio-dot.off { background: var(--lj-vermilion); }
 
+@media (max-width: 767px) {
+  /* 触控目标 ≥44px（WCAG）：移动端顶栏图标按钮加大命中区，顶栏高度仍容纳得下 */
+  .tb-icon-btn { width: 40px; height: 44px; }
+}
 /* 音频面板 */
 .tb-audio-panel { width: 240px; padding: 14px 16px; }
 .tb-panel-title { font-size: 13px; color: var(--lj-text); font-weight: 600; margin-bottom: 12px; letter-spacing: 0.05em; }
