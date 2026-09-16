@@ -422,9 +422,6 @@ async function toggleHome(item) {
 function goDetail(item) {
   router.push(`/tool/countdown/${item.id}`)
 }
-function goDetail(item) {
-  router.push(`/tool/countdown/${item.id}`)
-}
 
 onMounted(load)
 </script>
