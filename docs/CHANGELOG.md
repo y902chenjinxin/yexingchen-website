@@ -1,3 +1,36 @@
+## [v2.22.3] - 2026-09-16
+
+### 新增：倒计时模块（Days Matter 风格）
+
+#### 后端
+
+- 新表 `xuanhuang_countdowns`（id / user_id / title / target_date / is_lunar / lunar_month / lunar_day / lunar_leap / direction / repeat_type / in_home / pinned / sort_order / is_archived / icon / color / bg_image / memo）
+- 新路由 `backend/app/routers/countdown.py`（CRUD + 图片上传）
+- 支持公历/农历模式（农历模式下 target_date 存占位值，lunar_month/day 驱动显示）
+- `days_left` 计算字段（direction=count_up 时返回已过天数绝对值）
+- `repeat_type` 支持 yearly/monthly/weekly，`next_occurrence` 字段返回下次到期公历日期
+- `CountdownIn` schema：`target_date` 改为 Optional（农历模式不传）；边界校验 direction/repeat_type/color/lunar_month/day
+- 8 个 pytest 测试（全部通过）
+
+#### 前端
+
+- `CountdownsView.vue`：玉简卡片列表（背景图/渐变/微光动画）、新建/编辑对话框（公历/农历切换/重复/置顶/首页展示）、归档分组
+- `CountdownDetailView.vue`：全屏 Days Matter 大图风格（背景图/大数字/标签/编辑/删除）
+- 路由注册：`/tool/countdown`（列表）+ `/tool/countdown/:id`（详情）
+- API：`listCountdowns` / `createCountdown` / `updateCountdown` / `deleteCountdown` / `uploadImage`
+
+### 优化：证件照抠图（智能换底 v2）
+
+**根因**：v1 用 BFS flood fill 直接将匹配背景色的像素 alpha=0，边缘硬截断导致锯齿。
+
+**修法**：
+
+1. **鲁棒背景采样**：从四边密集采样，中位数（而非均值）作为基准背景色，抗噪能力更强
+2. **BFS 边界检测**：遍历全图建立背景 mask
+3. **边缘抗锯齿（Soft Matting）**：对 mask 边界像素做曼哈顿距离加权 alpha 羽化——距前景 0px → alpha=0（纯透明），距 3px → alpha≈191（近半透），距 >3px → alpha=255（完全不透明）
+
+效果：发丝/耳廓等细节处不再有硬锯齿，与背景交界处自然过渡。
+
 ## [v2.22.2] - 2026-09-16
 
 ### 用户决策变更：PWA → 安卓 APK + 顶栏入口（v2.22.1 PWA hotfix 同日）

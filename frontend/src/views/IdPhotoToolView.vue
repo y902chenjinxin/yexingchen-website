@@ -313,35 +313,104 @@ function onDrop(e) {
 }
 
 // ---- 图像处理（纯前端，零网络） ----
+/**
+ * 智能换底 v2：边缘抗锯齿版。
+ * 思路：
+ * 1. 采样四边求背景色（比 v1 更鲁棒）
+ * 2. BFS flood fill 建 mask（全透明=背景）
+ * 3. 对 mask 边界像素做 alpha 羽化（soft matting），消除锯齿
+ * 4. 仅对边缘 3px 范围做加权混合，人物主体保持原样
+ */
 function removeUniformBg(ctx, w, h, tol) {
   const im = ctx.getImageData(0, 0, w, h)
   const d = im.data
-  let r = 0, g = 0, b = 0, n = 0
-  const add = (x, y) => { const i = (y * w + x) * 4; r += d[i]; g += d[i + 1]; b += d[i + 2]; n++ }
-  const step = Math.max(1, w >> 3)
-  for (let x = 0; x < w; x += step) { add(x, 0); add(x, h - 1) }
-  for (let y = 0; y < h; y += step) { add(0, y); add(w - 1, y) }
-  const br = r / n, bg = g / n, bb = b / n
-  const tol2 = tol * tol * 3
+
+  // Step 1：采样四边，取中位数作为背景色（比均值更抗噪）
+  const samples = []
+  const step = Math.max(1, (w * h > 250000) ? 8 : 4)
+  for (let x = 0; x < w; x += step) {
+    // 顶行
+    samples.push({ r: d[x * 4], g: d[x * 4 + 1], b: d[x * 4 + 2] })
+    // 底行
+    const bi = ((h - 1) * w + x) * 4
+    samples.push({ r: d[bi], g: d[bi + 1], b: d[bi + 2] })
+  }
+  for (let y = 0; y < h; y += step) {
+    // 左列
+    samples.push({ r: d[y * w * 4], g: d[y * w * 4 + 1], b: d[y * w * 4 + 2] })
+    // 右列
+    const ri = (y * w + w - 1) * 4
+    samples.push({ r: d[ri], g: d[ri + 1], b: d[ri + 2] })
+  }
+  // 中位数（样本不够时用均值兜底）
+  const med = (arr, k) => {
+    if (arr.length === 0) return 0
+    arr.sort((a, b) => a - b)
+    return arr[Math.floor(arr.length * k)]
+  }
+  const rr = med(samples.map(s => s.r), 0.5)
+  const rg = med(samples.map(s => s.g), 0.5)
+  const rb = med(samples.map(s => s.b), 0.5)
+
+  const tol2 = tol * tol * 3  // RGB 欧氏距离阈值
+
+  // Step 2：BFS flood fill（仅标记，不改 alpha）
   const visited = new Uint8Array(w * h)
   const queue = new Array(w * h)
   let qi = 0, qe = 0
   const push = (i) => { if (!visited[i]) { visited[i] = 1; queue[qe++] = i } }
+  // 从四边入队（已知的背景起点）
   for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x) }
   for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1) }
+
+  const isBg = (i) => {
+    const p = i * 4
+    const dr = d[p] - rr, dg = d[p + 1] - rg, db = d[p + 2] - rb
+    return dr * dr + dg * dg + db * db <= tol2
+  }
+
   while (qi < qe) {
     const idx = queue[qi++]
-    const p = idx * 4
-    const dr = d[p] - br, dg = d[p + 1] - bg, db = d[p + 2] - bb
-    if (dr * dr + dg * dg + db * db <= tol2) {
-      d[p + 3] = 0
-      const x = idx % w
-      const y = (idx - x) / w
-      if (y > 0) push(idx - w)
-      if (y < h - 1) push(idx + w)
-      if (x > 0) push(idx - 1)
-      if (x < w - 1) push(idx + 1)
+    if (!isBg(idx)) continue  // 该像素不是背景色，不扩展
+    const x = idx % w, y = (idx - x) / w | 0
+    if (y > 0) push(idx - w)
+    if (y < h - 1) push(idx + w)
+    if (x > 0) push(idx - 1)
+    if (x < w - 1) push(idx + 1)
+  }
+
+  // Step 3：构建 alpha map（0=确定背景，1=确定前景，中间值=边界）
+  const alpha = new Uint8ClampedArray(w * h)
+  const EDGE_R = 3  // 边缘羽化半径（px）
+  for (let i = 0; i < w * h; i++) alpha[i] = visited[i] ? 0 : 255
+
+  // 对边界像素做羽化：找每个背景像素到最近前景像素的曼哈顿距离
+  const dist = new Int16Array(w * h)
+  dist.fill(9999)
+  const fq = []
+  for (let i = 0; i < w * h; i++) {
+    if (alpha[i] > 0) { dist[i] = 0; fq.push(i) }
+  }
+  // 多源 BFS 计算到前景的距离
+  for (let s = 0; s < fq.length; s++) {
+    const i = fq[s]
+    const x = i % w, y = (i - x) / w
+    const nd = dist[i] + 1
+    if (y > 0 && dist[i - w] > nd) { dist[i - w] = nd; fq.push(i - w) }
+    if (y < h - 1 && dist[i + w] > nd) { dist[i + w] = nd; fq.push(i + w) }
+    if (x > 0 && dist[i - 1] > nd) { dist[i - 1] = nd; fq.push(i - 1) }
+    if (x < w - 1 && dist[i + 1] > nd) { dist[i + 1] = nd; fq.push(i + 1) }
+  }
+  // 在 EDGE_R 范围内用距离加权 alpha
+  for (let i = 0; i < w * h; i++) {
+    if (dist[i] <= EDGE_R) {
+      alpha[i] = Math.round((dist[i] / (EDGE_R + 1)) * 255)
     }
+  }
+
+  // Step 4：应用 alpha 到图像数据
+  for (let i = 0; i < w * h; i++) {
+    d[i * 4 + 3] = alpha[i]
   }
   ctx.putImageData(im, 0, 0)
 }

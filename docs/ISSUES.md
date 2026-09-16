@@ -18,6 +18,7 @@
 | V22-203 | Gradle wrapper 走 services.gradle.org 国内极慢 → 手动下放服务器 wrapper 路径 | 网络 | ✅ |
 | V22-204 | AGP/transitive 卡 → `~/.gradle/init.d/aliyun-mirror.gradle` 走阿里云镜像 | 网络 | ✅ |
 | V22-205 | assetlinks.json 第一次错用 APK 字节 SHA（应用证书指纹），已修 | 经验 | ✅ |
+| V22-206 | 证件照换底 v1：BFS flood fill 直接 alpha=0，边缘硬截断有锯齿 | 体验 Bug | ✅ 已优化为边缘抗锯齿版（soft matting 羽化） |
 | V22-206 | 鸿蒙 4 装第三方 APK 默认禁止，需开「外部来源应用下载」权限 | 部署 | ✅ 已写入下载页 |
 | V22-207 | 用户决策变更：PWA 用不习惯，直接做 APK；PWA 入口保留作 iOS/Chrome fallback | 产品 | ✅ |
 | V22-208 | iOS 装机方案未做（用户只提安卓需求） | 功能 | 📋 计划中 |

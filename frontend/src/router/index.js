@@ -121,6 +121,19 @@ const routes = [
     component: () => import('@/views/VoiceCloneView.vue'),
     meta: { requiresAuth: true }
   },
+  // 倒计时（Days Matter 风格）
+  {
+    path: '/tool/countdown',
+    name: 'CountdownList',
+    component: () => import('@/views/CountdownsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/tool/countdown/:id',
+    name: 'CountdownDetail',
+    component: () => import('@/views/CountdownDetailView.vue'),
+    meta: { requiresAuth: true, hideGlobalTopBar: true }
+  },
   // 个人记账（真实页面）
   {
     path: '/finance',
