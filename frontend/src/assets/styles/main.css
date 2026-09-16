@@ -1,6 +1,12 @@
 /* ========== Import Design Tokens ========== */
 @import './variables.css';
 
+/* 手机端 A+B 亮暗双套 token 覆盖（仅 #app.is-mobile，桌面不受影响） */
+@import './mobile-ab-theme.css';
+
+/* 手机端 P1 去古风 + P2 数据视图去「管理后台感」（仅 #app.is-mobile） */
+@import './mobile-deink.css';
+
 /* ========== Reset ========== */
 *, *::before, *::after {
   margin: 0;

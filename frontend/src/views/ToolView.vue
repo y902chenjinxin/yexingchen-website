@@ -150,6 +150,7 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'ToolView' })
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'

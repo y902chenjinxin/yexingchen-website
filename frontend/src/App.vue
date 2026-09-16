@@ -4,13 +4,17 @@
     <!-- Skip Link键盘导航 -->
     <a href="#main-content" class="skip-link">跳转到内容</a>
 
-    <!-- 路由视图 -->
-    <router-view v-if="!showInitialLoading" id="main-content" />
+    <!-- 路由视图：移动端缓存三个底部 Tab 首页，切 Tab 不再重挂载而闪白；桌面不缓存维持现状 -->
+    <router-view v-if="!showInitialLoading" id="main-content" v-slot="{ Component }">
+      <keep-alive :include="keepAliveNames">
+        <component :is="Component" />
+      </keep-alive>
+    </router-view>
 
     <!-- 登录后全站常驻：桌面顶栏（悬浮）；移动端用独立沉浸式外壳，不显示 ✓ -->
     <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
 
-    <!-- 登录后移动端：底部三 Tab 主导航 -->
+    <!-- 登录后移动端：底部两 Tab 主导航（主页/我的） -->
     <MobileTabBar v-if="!showInitialLoading && auth.isLoggedIn && isMobile" />
 
     <!-- 登录后全站常驻桌宠（音乐岛内容列表页隐藏：桌宠固定右下会压住列表行/最后一张卡片） -->
@@ -49,6 +53,9 @@ const route = useRoute()
 const auth = useAuthStore()
 const prefs = usePrefsStore()
 const { isMobile } = useIsMobile()
+
+// 移动端缓存底部两 Tab 首页组件（切 Tab 不重挂载、不闪白）；桌面 include 为空 → 不缓存
+const keepAliveNames = computed(() => isMobile.value ? ['WorkbenchView', 'ProfileView'] : [])
 
 // 移动端全屏播放器开关
 const fullPlayer = ref(false)
@@ -128,18 +135,18 @@ onMounted(async () => {
   background: var(--color-bg);
 }
 
-/* ========== 移动端（沉浸式 + 底部三 Tab）：内容整体垫高，避免被 Tab 栏遮挡 ========== */
+/* ========== 移动端（沉浸式 + 底部两 Tab）：内容整体垫高，避免被 Tab 栏遮挡 ========== */
 #app.is-mobile {
   padding-bottom: calc(72px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
 }
-/* 播放条在移动端悬浮于三 Tab 栏之上 */
+/* 播放条在移动端悬浮于两 Tab 栏之上 */
 #app.is-mobile .npbar {
   bottom: calc(84px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
 }
 /* 移动端桌宠：上移到 Tab 栏之上并适度缩小，避免压住导航/内容 */
 #app.is-mobile .whale-stage {
   right: 14px;
-  bottom: calc(84px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+  bottom: calc(70px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
   transform: scale(.78);
   transform-origin: bottom right;
 }

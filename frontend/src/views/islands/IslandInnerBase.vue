@@ -40,9 +40,11 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useParticleSystem } from '@/composables/useParticleSystem'
+import { useIsMobile } from '@/composables/useIsMobile'
 import SiteFooter from '@/components/SiteFooter.vue'
 
 const router = useRouter()
+const { isMobile } = useIsMobile()
 
 const props = defineProps({
   type: {
@@ -60,6 +62,10 @@ const props = defineProps({
 })
 
 function goBack() {
+  // 手机上优先走浏览器/系统返回栈，保持 iOS 互动：直接从列表页进来说明有历史，
+  // 只有直接落地该页（无历史）时才回退到工作台。
+  if (window.history.length > 1 && !isMobile.value) { router.push('/workbench'); return }
+  if (window.history.length > 1) { try { window.history.back(); return } catch { /* fallthrough */ } }
   router.push('/workbench')
 }
 
@@ -311,5 +317,49 @@ onUnmounted(() => {
   .inner-footer { padding: 10px 16px 12px; }
   .island-title { font-size: 24px; }
   .island-subtitle { font-size: 13px; }
+}
+
+/* ---------- 手机端：iOS 大标题外壳（隐藏桌面『返回工作台』大按钮 → 紧凑返回章） ---------- */
+@media (max-width: 767px) {
+  .island-inner { background: var(--ls-bg, #0d1a15); }
+  .island-inner::before { opacity: .55; }
+
+  .inner-header {
+    position: sticky; top: 0; z-index: 10;
+    flex-direction: row; flex-wrap: wrap; align-items: center;
+    gap: 6px 10px;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 12px;
+    border-bottom: 1px solid transparent;
+  }
+
+  /* 返回 = 紧凑圆角返回章，仅图标 */
+  .back-btn {
+    padding: 10px; margin-right: 4px;
+    width: 40px; height: 40px; flex: none;
+    justify-content: center;
+    border-radius: 12px;
+  }
+  .back-text { display: none; }
+  .back-icon { font-size: 20px; line-height: 1; }
+
+  .island-title {
+    margin: 0; flex: 1; min-width: 0;
+    font-size: clamp(22px, 6vw, 30px);
+    letter-spacing: .04em;
+    background: linear-gradient(180deg, #eef4f6 30%, var(--ls-ochre) 115%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .island-subtitle { flex-basis: 100%; margin: 0; font-size: 13px; }
+
+  .inner-toolbar { flex-basis: 100%; margin: 2px 0 0; gap: 8px; }
+
+  .inner-main { padding: 16px 16px 28px; }
+
+  /* 页脚（备案/网安）在手机上收敛为极简单行，避免抢占竖屏空间 */
+  .inner-footer { padding: 8px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+  /* 弱化装饰光斑，避免玻璃糊成一团 */
+  .floating-element { opacity: .16; filter: blur(14px); }
 }
 </style>

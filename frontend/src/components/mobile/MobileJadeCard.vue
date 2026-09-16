@@ -29,9 +29,9 @@
         </div>
         <!-- 全息箔面（原位点亮） -->
         <div class="mj-face__foil"></div>
-        <!-- 标签托片 -->
-        <div class="mj-face__tag">{{ c.rune }}</div>
-        <!-- 底部标签名 -->
+        <!-- 中央大字（辨识主力，取代细碎符号） -->
+        <div class="mj-face__glyph">{{ c.rune }}</div>
+        <!-- 底部模块名（激活态常显，高对比药丸） -->
         <div class="mj-face__name">{{ c.label }}</div>
       </div>
       <!-- 页码指示 -->
@@ -52,7 +52,7 @@
             v-for="(c,i) in cards"
             :key="c.key"
             class="mj-fan__chip"
-            :style="{ '--chip-d': (i*40)+'deg' }"
+            :style="{ '--chip-d': (i*40)+'deg', '--chip-bg': c.color+'40' }"
             @click="go(c)"
           >
             <span class="mj-fan__chip-ico">{{ c.rune }}</span>
@@ -96,6 +96,7 @@ const fanOpen = ref(false)
 const dragging = ref(false)
 let startX = 0, startY = 0, dx = 0, dy = 0, tracking = false, panT = null, fanT = null
 let cardAnim = false
+let panLong = false // 本次手势是否已判定为长按（长按展开扇形，避免误跳转）
 
 function faceStyle(i) {
   const off = i - index.value
@@ -115,10 +116,11 @@ function onFaceStart(i) {
 function onTouchStart(e) {
   const t = e.touches[0]
   startX = t.clientX; startY = t.clientY; dx = 0; dy = 0
-  tracking = true; cardAnim = false
+  tracking = true; cardAnim = false; panLong = false
   clearTimeout(panT); clearTimeout(fanT)
   panT = setTimeout(() => {
     if (tracking && Math.abs(dx) < 6 && Math.abs(dy) < 8) {
+      panLong = true
       fanOpen.value = true
     }
   }, 560)
@@ -146,6 +148,10 @@ function onTouchEnd(e) {
       const delta = dx < 0 ? 1 : -1
       index.value = (index.value + delta + n) % n
     }
+  } else if (!cardAnim && !fanOpen.value && !panLong) {
+    // 轻点当前玉简 → 直达该模块：此前"点了毫无反应"，仅长按出小格可点，交互欠缺
+    const c = displayCards.value[index.value]
+    if (c) { buzz(); router.push(c.path) }
   }
 }
 
@@ -189,7 +195,7 @@ onUnmounted(() => { clearTimeout(panT); clearTimeout(fanT) })
 /* ===== 主卡舞台：近全幅、深景深舞台 ===== */
 .mj-hero {
   position: relative;
-  height: 240px;
+  height: 252px;
   perspective: 1100px;
   perspective-origin: 50% 42%;
   display: flex; align-items: center; justify-content: center;
@@ -244,29 +250,41 @@ onUnmounted(() => { clearTimeout(panT); clearTimeout(fanT) })
     repeating-linear-gradient(-45deg, rgba(74,95,99,.02) 0 1px, transparent 1px 9px);
 }
 .mj-face__sigil {
-  position: absolute; left: 50%; top: 38%; width: 56px; height: 56px;
+  position: absolute; left: 50%; top: 34%; width: 64px; height: 64px;
   transform: translate(-50%,-50%);
-  filter: drop-shadow(0 2px 5px rgba(0,0,0,.28));
+  opacity: .5;
+  filter: drop-shadow(0 3px 7px rgba(0,0,0,.32));
 }
-/* 标签托片 */
-.mj-face__tag {
-  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
-  font-family: var(--font-serif, serif);
-  font-size: 12px; letter-spacing: .4em; text-indent: .4em;
-  padding: 4px 13px 3px; border-radius: 999px;
-  color: var(--lj-text-2, rgba(190,205,200,.78));
-  background: rgba(12,20,16,.5);
-  border: 1px solid var(--lj-line, rgba(127,168,163,.3));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+/* 中央大字：辨识主力，高对比琥珀渐变 */
+.mj-face__glyph {
+  position: absolute; left: 50%; top: 38%; transform: translate(-50%,-50%);
+  font-family: var(--font-serif, "Songti SC", "Noto Serif CJK SC", serif);
+  font-size: clamp(38px, 12vw, 46px);
+  font-weight: 700; line-height: 1;
+  letter-spacing: .04em;
+  background: linear-gradient(178deg, #fff7e8 12%, #f2d9a0 45%, #d9a85c 78%, #c8913f 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  text-shadow: 0 3px 10px rgba(0,0,0,.4);
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.3));
 }
+/* 底部模块名：激活态常显，药丸衬底高对比 */
 .mj-face__name {
-  position: absolute; left: 0; right: 0; bottom: -30px;
-  text-align: center; font-size: 14px; font-weight: 600;
-  color: var(--lj-text, #dfebe5); letter-spacing: .14em;
-  opacity: 0; transform: translateY(4px);
-  transition: opacity .4s ease, transform .4s ease;
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  padding: 5px 16px;
+  border-radius: 999px;
+  font-family: var(--font-serif, serif);
+  font-size: 15px; font-weight: 600; letter-spacing: .18em; text-indent: .18em;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(8,14,12,.82), rgba(8,14,12,.68));
+  border: 1px solid rgba(222,196,150,.4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 4px 12px rgba(0,0,0,.34);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  opacity: .9; transform: translateX(-50%) translateY(3px);
+  transition: opacity .35s ease, transform .35s ease;
+  white-space: nowrap;
 }
-.mj-face.active .mj-face__name { opacity: 1; transform: translateY(0); }
+.mj-face.active .mj-face__name { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* 全息箔面：琥珀金斜条 + 扫光 */
 .mj-face__foil {
@@ -330,29 +348,33 @@ onUnmounted(() => { clearTimeout(panT); clearTimeout(fanT) })
 }
 .mj-fan__title { font-family: var(--font-serif, serif); font-size: 15px; letter-spacing: .5em; text-indent: .5em; color: var(--lj-amber, #caa466); }
 .mj-fan__row {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
-  max-width: 86%; padding: 6px 0;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
+  max-width: 88%; padding: 6px 0;
 }
 .mj-fan__chip {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 10px 6px 8px; width: 62px;
-  border-radius: 18px;
-  background: var(--lj-glass, rgba(30,42,50,.6));
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border: 1px solid var(--lj-line, rgba(127,168,163,.22));
-  color: var(--lj-text, #dfebe5);
-  box-shadow: 0 10px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08);
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 12px 10px 10px; width: 70px;
+  border-radius: 22px;
+  background: linear-gradient(168deg, rgba(34,46,54,.92), rgba(20,28,34,.86));
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid rgba(222,196,150,.28);
+  color: var(--lj-text, #f2eee6);
+  box-shadow: 0 12px 26px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.14), inset 0 -10px 18px rgba(0,0,0,.16);
   animation: chipIn .45s cubic-bezier(.2,.8,.2,1) backwards;
   animation-delay: calc(var(--chip-d) * .004s);
-  transition: transform .2s, border-color .2s;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
 }
-.mj-fan__chip:active { transform: scale(.93); border-color: var(--lj-amber,#caa466); }
+.mj-fan__chip:active { transform: translateY(2px) scale(.95); border-color: var(--lj-amber,#e0b36b); box-shadow: 0 6px 14px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.2); }
 .mj-fan__chip-ico {
-  font-family: var(--font-serif, serif); font-size: 20px; color: var(--lj-amber, #caa466);
-  width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
-  background: rgba(201,163,95,.14);
+  font-family: var(--font-serif, serif); font-size: 24px; font-weight: 600;
+  color: #f5e3bc;
+  width: 44px; height: 44px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.22), transparent 46%), var(--chip-bg, rgba(201,163,95,.2));
+  border: 1px solid rgba(232,206,160,.35);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.18), 0 3px 9px rgba(0,0,0,.28);
 }
-.mj-fan__chip-lab { font-size: 11px; letter-spacing: .08em; opacity: .9; }
+.mj-fan__chip-lab { font-size: 12px; letter-spacing: .08em; opacity: .95; font-weight: 500; }
 .mj-fan__hint { font-size: 11px; letter-spacing: .12em; opacity: .5; }
 @keyframes chipIn { from { opacity: 0; transform: translateY(14px) scale(.92); } to { opacity: 1; transform: none; } }
 

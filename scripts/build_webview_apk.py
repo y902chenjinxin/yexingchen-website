@@ -360,12 +360,14 @@ STRINGS = r'''<resources>
 
 THEMES = r'''<resources>
     <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:colorPrimary">#8E6A2C</item>
-        <item name="android:colorPrimaryDark">#8E6A2C</item>
-        <item name="android:colorAccent">#8E6A2C</item>
-        <item name="android:windowBackground">#F6F4EE</item>
-        <item name="android:statusBarColor">#8E6A2C</item>
-        <item name="android:navigationBarColor">#8E6A2C</item>
+        <item name="android:colorPrimary">#10140F</item>
+        <item name="android:colorPrimaryDark">#10140F</item>
+        <item name="android:colorAccent">#caa466</item>
+        <item name="android:windowBackground">#10140F</item>
+        <item name="android:statusBarColor">#10140F</item>
+        <item name="android:navigationBarColor">#10140F</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
 '''

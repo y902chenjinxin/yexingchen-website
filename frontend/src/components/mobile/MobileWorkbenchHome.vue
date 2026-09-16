@@ -1,195 +1,222 @@
 <template>
-  <section class="mwb" aria-label="工作台首页">
-    <!-- 顶层：iOS 大标题 -->
-    <header class="mwb-top">
-      <div class="mwb-brand">玄 黄</div>
-      <button class="mwb-ai" @click="go('/assistant')" aria-label="AI 对话">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg>
+  <section class="abb" aria-label="主页">
+    <!-- 顶部：几何 Logo + 品牌 + AI 胶囊 -->
+    <header class="abb-top">
+      <div class="abb-brand" @click="go('/workbench')" aria-label="玄黄">
+        <span class="abb-logo" aria-hidden="true">
+          <span class="abb-logo__l"></span>
+          <span class="abb-logo__r"></span>
+        </span>
+        <span class="abb-title">玄黄</span>
+      </div>
+      <button class="abb-ai" @click="go('/assistant')" aria-label="AI 对话">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>
         <span>AI</span>
       </button>
     </header>
 
-    <!-- 固定搜索条：全局搜索 + AI 入口 -->
-    <MobileSearchBar class="mwb-search" @go="go" />
+    <!-- 今日速览 Hero -->
+    <div class="abb-hero glass-card" aria-label="今日速览">
+      <div class="abb-hero__lab">本月结余</div>
+      <div class="abb-hero__num">{{ fmtMoney(balance) }}</div>
+      <div class="abb-hero__sub">
+        <span>支出 <b class="dn">{{ fmtMoney(expense) }}</b></span>
+        <span>持仓 <b class="up">{{ fmtPnl(stockPnl) }}</b></span>
+      </div>
+    </div>
 
-    <!-- 玉简 Hero（近半屏沉浸） -->
-    <MobileJadeCard class="mwb-hero" :cards="heroCards" />
-
-    <!-- 快捷宫格：收纳全部可达模块 -->
-    <div class="mwb-section">
-      <h2 class="mwb-sec-title">诸界轻舟</h2>
-      <MobileSkeleton v-if="menus.loading" :rows="0" :grid="8" />
-      <div v-else class="mwb-grid">
+    <!-- 快捷入口 -->
+    <div class="abb-sec">
+      <h2 class="abb-sec__title">快捷入口</h2>
+      <div class="abb-grid">
         <button
-          v-for="(m, i) in moduleGrid"
+          v-for="(m, i) in quick"
           :key="m.path"
-          class="mwb-cell"
-          :style="{ '--d': (i % 4) + 'ms' }"
+          class="abb-cell"
+          :style="{ '--c': 'var(' + m.acc + ')', '--d': (i % 4) + 'ms' }"
           @click="go(m.path)"
-          :aria-label="m.title"
+          :aria-label="m.label"
         >
-          <span class="mwb-cell-ico" :style="{ color: m.color }">
-            <svg v-if="m.icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="m.icon"></svg>
-            <span v-else>{{ m.rune }}</span>
-          </span>
-          <span class="mwb-cell-lab">{{ m.title }}</span>
+          <span class="abb-cell__ico" aria-hidden="true" v-html="m.icon"></span>
+          <span class="abb-cell__lab">{{ m.label }}</span>
         </button>
+      </div>
+    </div>
 
-        <MobileEmpty
-          v-if="moduleGrid.length === 0"
-          title="暂无可用模块"
-          desc="到管理后台分配菜单权限后再来看看"
-        />
+    <!-- 本月趋势（轻量占位数据带） -->
+    <div class="abb-trend glass-card">
+      <div class="abb-trend__lab">本月趋势</div>
+      <div class="abb-trend__right">
+        <span class="abb-trend__val">{{ trendVal }}</span>
+        <span class="abb-trend__bar" aria-hidden="true">
+          <i v-for="(h, i) in bars" :key="i" :style="{ height: h + '%', '--bd': 'calc(' + (i % 4) + 'ms)' }"></i>
+        </span>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMenusStore } from '@/stores/menus'
-import MobileJadeCard from './MobileJadeCard.vue'
-import MobileSearchBar from './MobileSearchBar.vue'
-import MobileSkeleton from './MobileSkeleton.vue'
-import MobileEmpty from './MobileEmpty.vue'
+import { financeApi } from '@/api/finance'
+import { stocksApi } from '@/api/stocks'
 
 const router = useRouter()
-const menus = useMenusStore()
 
-/* 玉简 Hero 卡片（与 MobileJadeCard 主卡一致） */
-const heroCards = [
-  { key:'music', rune:'音', label:'宫商流转', path:'/music', color:'#4a5f63', quote:'一曲清商，万般心绪皆化入弦。' },
-  { key:'novel', rune:'書', label:'卷帙浩繁', path:'/novel', color:'#b0805a', quote:'一盏灯，一卷书，一段不眠的长夜。' },
-  { key:'video', rune:'影', label:'光影交织', path:'/video', color:'#5b6b7a', quote:'光影之间，藏了百态人生。' },
-  { key:'log',   rune:'墨', label:'翰墨丹青', path:'/log', color:'#4a6a56', quote:'把今日，留一盏墨香。' },
-  { key:'tool',  rune:'器', label:'机关百变', path:'/tool', color:'#6a7a6a', quote:'七十二般兵器，皆备于匣。' },
-  { key:'notes', rune:'記', label:'笔记云台', path:'/notes', color:'#55706b', quote:'所思所记，皆有归处。' },
-  { key:'contacts', rune:'家', label:'骨肉亲缘', path:'/contacts', color:'#a06a4a', quote:'念念不忘，四时有回响。' },
-  { key:'tasks',  rune:'待', label:'诸事待理', path:'/tasks',  color:'#5a6f5f', quote:'一日之计，在晨昏之间。' },
-  { key:'subs',   rune:'费', label:'细水长流', path:'/subscriptions', color:'#6a6a8a', quote:'涓滴成流，常在常新。' },
-]
-
-/* 快捷宫格：玉简已覆盖的 + 数据密集模块，汇总成宫格；按角色过滤可达性 */
-const GRID_ICONS = {
-  '/finance':  'M4 6h16v12H4z M4 10h16 M8 6V4h8v2 M8 14h3 M15 14h1 M8 17h3',
-  '/stocks':   'M4 17l5-6 3 3 7-8 M14 6h4v4 M4 7v13h16',
-  '/travels':  'M18 8a4 4 0 0 1-8 0c0-2 1-3 2-4l2-2 2 2c1 1 2 2 2 4z M8 21h8 M12 12v9',
-  '/feeds':    'M3 8h13 M3 12h9 M3 16h6 M18 10l3 3-3 3 M18 10v6h-3',
-  '/datahub':  'M4 5h16v14H4z M4 13h16 M8 10v6 M12 9v7 M16 11v5',
-  '/diary':    'M5 5h14v15H5z M9 5V3h6v2 M8 10h8 M8 14h5',
-  '/tool/countdown': 'M12 5v7l4 2 M21 12a9 9 0 1 1-2.6-6.4',
-  '/trash':    'M4 7h16 M9 7V5h6v2 M7 7l1 14h8l1-14 M10 11v6 M14 11v6',
+/* 快捷入口：线性描边图标 + 模块语义色（工具已含：证件照/倒计时） */
+const ICONS = {
+  music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><path d="M9.5 9.5 14.5 12l-5 2.5z"/></svg>',
+  notes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
+  finance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 5V3.5A1 1 0 0 1 9 2.5h6a1 1 0 0 1 1 1V5"/><path d="M8 12h8M8 16h5"/></svg>',
+  stocks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18l5-6 3 3 8-9"/><path d="M15 6h5v5"/></svg>',
+  travels: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 2 6 5 6 9a6 6 0 0 1-12 0c0-4 2.5-7 6-9z"/><path d="M9.5 19h5"/></svg>',
+  contacts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a7 7 0 0 1 14 0c0 5.5-7 10-7 10z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+  idphoto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M8.5 18c.8-2.3 2.2-3.4 3.5-3.4s2.7 1.1 3.5 3.4"/></svg>',
+  countdown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.6 1.5"/><path d="M9 3h6M12 3v1.5"/></svg>',
 }
-const MODULES = [
-  { path:'/notes', rune:'記', title:'笔记' },
-  { path:'/finance', rune:'账', title:'记账' },
-  { path:'/stocks', rune:'股', title:'股票' },
-  { path:'/travels', rune:'迹', title:'足迹' },
-  { path:'/feeds', rune:'讯', title:'资讯' },
-  { path:'/datahub', rune:'览', title:'数据纵览' },
-  { path:'/diary', rune:'速', title:'闪念·日记' },
-  { path:'/tool/countdown', rune:'时', title:'倒计时' },
-  { path:'/tasks', rune:'待', title:'待办' },
-  { path:'/contacts', rune:'家', title:'通讯录' },
-  { path:'/subscriptions', rune:'费', title:'订阅' },
-  { path:'/music', rune:'音', title:'音乐' },
-]
-const PALETTE = ['#4a6a56','#b0805a','#5b6b7a','#6a7a6a','#55706b','#a06a4a','#5a6f5f','#6a6a8a']
-function colorFor(p, i) { return PALETTE[i % PALETTE.length] }
 
-const moduleGrid = computed(() =>
-  MODULES.map((m, i) => ({
-    ...m,
-    color: colorFor(m.path, i),
-    icon: GRID_ICONS[m.path] || '',
-  })).filter(m => menus.isPathAllowed(m.path))
-)
+/* 快捷宫格（3 列），带可达性过滤；工具以证件照/倒计时独立暴露 */
+const QUICK = [
+  { label:'音乐',   path:'/music',   acc:'--ab-blu', icon:ICONS.music },
+  { label:'笔记',   path:'/notes',   acc:'--ab-pur', icon:ICONS.notes },
+  { label:'记账',   path:'/finance', acc:'--ab-grn', icon:ICONS.finance },
+  { label:'股票',   path:'/stocks',  acc:'--ab-cor', icon:ICONS.stocks },
+  { label:'足迹',   path:'/travels', acc:'--ab-cyn', icon:ICONS.travels },
+  { label:'通讯录', path:'/contacts',acc:'--ab-amb', icon:ICONS.contacts },
+  { label:'证件照', path:'/tool/idphoto', acc:'--ab-cyn', icon:ICONS.idphoto },
+  { label:'倒计时', path:'/tool/countdown', acc:'--ab-vio', icon:ICONS.countdown },
+]
+const quick = QUICK
+
+const balance = ref(null)
+const expense = ref(null)
+const stockPnl = ref(null)
+
+const fmtMoney = (v) => v === null || v === undefined ? '—' : '¥ ' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+const fmtPnl = (v) => v === null || v === undefined ? '—' : (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2) + '%'
+
+const trendVal = computed(() => stockPnl.value === null ? '—' : fmtPnl(stockPnl.value))
+const bars = [38, 55, 46, 72, 64, 100, 82]
 
 function go(path) {
   try { if (navigator && navigator.vibrate) navigator.vibrate(6) } catch {}
   router.push(path)
 }
 
-onMounted(() => { menus.load() })
+onMounted(async () => {
+  try {
+    const res = await financeApi.summary()
+    const d = res?.data
+    if (d) {
+      balance.value = d.balance ?? null
+      expense.value = d.this_month_expense ?? d.month_expense ?? d.expense ?? null
+    }
+  } catch { /* 未就绪保持占位 */ }
+  try {
+    const res = await stocksApi.dashboard()
+    const t = res?.data?.today_pnl
+    if (typeof t === 'number') stockPnl.value = t
+  } catch { /* 未就绪保持占位 */ }
+})
 </script>
 
 <style scoped>
-.mwb {
+.abb {
   position: relative;
   min-height: 100svh;
-  padding: calc(env(safe-area-inset-top, 0px) + 6px) 0 calc(40px + env(safe-area-inset-bottom, 0px));
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(40px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   overflow-x: hidden;
+  background:
+    radial-gradient(120% 72% at 18% 0%, rgba(124, 141, 255, 0.14), transparent 58%),
+    radial-gradient(90% 56% at 88% 24%, rgba(139, 92, 246, 0.10), transparent 55%);
 }
 
-/* 顶层大标题 + AI 胶囊 */
-.mwb-top {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 20px 2px;
+/* 顶部品牌行 */
+.abb-top { display: flex; align-items: center; justify-content: space-between; padding: 6px 2px 2px; }
+.abb-brand { display: flex; align-items: center; gap: 10px; border: none; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.abb-logo {
+  position: relative; width: 28px; height: 28px; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 6px 14px rgba(80, 95, 200, 0.30), inset 0 1px 0 rgba(255,255,255,.4);
 }
-.mwb-brand {
-  font-family: var(--font-serif, serif);
-  font-size: 26px; font-weight: 700; letter-spacing: .34em; text-indent: .34em;
-  color: var(--lj-text, #dfebe5);
+.abb-logo__l { position: absolute; inset: 0; transform: skewX(-18deg); transform-origin: top left; left: -4%; width: 115%;
+  background: linear-gradient(150deg, var(--lj-dai, #5b6ae0), var(--lj-seal, #8b5cf6)); }
+.abb-logo__r { position: absolute; inset: 0; transform: skewX(18deg); transform-origin: top right; right: -10%; width: 118%;
+  background: linear-gradient(150deg, var(--lj-ochre, #5b6ae0), var(--color-accent, #8b5cf6)); opacity: .9; }
+.abb-title {
+  font-size: 20px; font-weight: 800; letter-spacing: .16em; color: var(--lj-text, #0f1530);
 }
-.mwb-ai {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 7px 14px; border-radius: 999px;
-  border: 1px solid var(--lj-line-strong, rgba(127,168,163,.34));
-  background: linear-gradient(135deg, var(--lj-seal,#c96b58), var(--lj-seal-hover,#e0a26b));
-  color: #fff; font-size: 13px; font-weight: 600; letter-spacing: .08em;
-  box-shadow: 0 8px 18px rgba(217,138,118,.28), inset 0 1px 0 rgba(255,255,255,.25);
-  transition: transform .2s;
+
+.abb-ai {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 15px; border-radius: 999px; border: none; cursor: pointer;
+  color: #fff; font-size: 13px; font-weight: 600;
+  background: linear-gradient(135deg, var(--lj-dai, #5b6ae0), var(--color-accent, #8b5cf6));
+  box-shadow: 0 8px 18px rgba(100, 110, 230, 0.28), inset 0 1px 0 rgba(255,255,255,.28);
+  transition: transform .18s;
   -webkit-tap-highlight-color: transparent;
 }
-.mwb-ai:active { transform: scale(.94); }
-.mwb-ai svg { width: 16px; height: 16px; }
+.abb-ai:active { transform: scale(.94); }
+.abb-ai svg { width: 15px; height: 15px; }
 
-.mwb-search { padding: 10px 16px 2px; }
-
-/* 玉简 Hero */
-.mwb-hero { margin-top: 6px; }
-
-/* 快捷宫格 */
-.mwb-section { padding: 26px 16px 6px; }
-.mwb-sec-title {
-  margin: 0 0 14px; font-size: 13px; font-weight: 600; letter-spacing: .28em; text-indent: .2em;
-  color: var(--lj-text-3, rgba(200,215,220,.55));
-  display: flex; align-items: center; gap: 10px;
+/* 今日速览 Hero */
+.abb-hero {
+  margin-top: 22px; padding: 20px 18px; border-radius: 24px;
+  animation: rise .5s cubic-bezier(.2,.8,.2,1) both;
+  transition: transform .18s;
 }
-.mwb-sec-title::after { content: ''; height: 1px; flex: 1; background: linear-gradient(90deg, var(--lj-line,rgba(127,168,163,.2)), transparent); }
-
-.mwb-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+.abb-hero:active { transform: scale(.98); }
+.abb-hero__lab { font-size: 12px; letter-spacing: .06em; color: var(--ls-text-2, #5b6b8a); }
+.abb-hero__num {
+  margin-top: 6px; font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums;
+  letter-spacing: .01em; color: var(--ls-text, #0f1530);
 }
-.mwb-cell {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 14px 4px 10px;
-  border-radius: 18px;
-  background: var(--lj-glass, rgba(30,42,50,.42));
-  -webkit-backdrop-filter: var(--lj-glass-blur, blur(16px));
-  backdrop-filter: var(--lj-glass-blur, blur(16px));
-  border: 1px solid var(--lj-line, rgba(127,168,163,.16));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-  color: var(--lj-text, #dfebe5);
-  animation: cellIn .4s cubic-bezier(.2,.8,.2,1) backwards;
-  animation-delay: calc(var(--d) * 0.04s);
-  transition: transform .18s, border-color .18s;
+.abb-hero__sub { display: flex; gap: 18px; margin-top: 8px; font-size: 12.5px; color: var(--ls-text-3, #8a8f98); }
+.abb-hero__sub b { font-weight: 700; }
+.abb-hero__sub .up { color: var(--pnl-up, #e5484d); }
+.abb-hero__sub .dn { color: var(--pnl-down, #1aa86a); }
+
+/* 快捷入口 */
+.abb-sec { margin-top: 28px; }
+.abb-sec__title {
+  margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: .12em;
+  color: var(--ls-text-3, #8a8f98);
+}
+.abb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.abb-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  padding: 18px 4px 13px; border-radius: 20px; border: 1px solid transparent;
+  background: var(--lj-glass, rgba(255,255,255,.66));
+  -webkit-backdrop-filter: var(--lj-glass-blur, saturate(180%) blur(20px));
+  backdrop-filter: var(--lj-glass-blur, saturate(180%) blur(20px));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+  cursor: pointer;
+  animation: rise .45s cubic-bezier(.2,.8,.2,1) both;
+  animation-delay: calc(var(--d) * 0.03s);
+  transition: transform .16s, box-shadow .2s;
   -webkit-tap-highlight-color: transparent;
 }
-@media (prefers-reduced-motion: reduce) { .mwb-cell { animation: none; } }
-@keyframes cellIn { from { opacity: 0; transform: translateY(12px) scale(.94); } to { opacity: 1; transform: none; } }
-.mwb-cell:active { transform: scale(.93); border-color: var(--lj-amber,#caa466); }
+@media (prefers-reduced-motion: reduce) { .abb-cell { animation: none; } }
+.abb-cell:active { transform: scale(.96); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 16px rgba(80,95,200,.14); }
+.abb-cell__ico { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--c); }
+.abb-cell__ico svg { width: 26px; height: 26px; }
+.abb-cell__lab { font-size: 12px; font-weight: 500; color: var(--lj-text-2, #5b6b8a); letter-spacing: .01em; }
 
-.mwb-cell-ico {
-  width: 44px; height: 44px; border-radius: 15px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(127,168,163,.1);
-  font-family: var(--font-serif, serif); font-size: 18px;
+/* 本月趋势数据带 */
+.abb-trend {
+  margin-top: 22px; padding: 14px 16px; border-radius: 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
 }
-.mwb-cell-ico svg { width: 24px; height: 24px; }
-.mwb-cell-lab { font-size: 12px; letter-spacing: .02em; opacity: .9; white-space: nowrap; }
+.abb-trend__lab { font-size: 12px; color: var(--ls-text-3, #8a8f98); }
+.abb-trend__right { display: flex; align-items: center; gap: 14px; }
+.abb-trend__val { font-size: 15px; font-weight: 700; color: var(--lj-dai, #5b6ae0); font-variant-numeric: tabular-nums; }
+.abb-trend__bar { display: flex; align-items: flex-end; gap: 5px; height: 26px; }
+.abb-trend__bar i {
+  flex: 1; width: 2px; border-radius: 2px;
+  background: linear-gradient(180deg, var(--lj-dai, #5b6ae0), var(--color-accent, #8b5cf6));
+  opacity: .85;
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 </style>

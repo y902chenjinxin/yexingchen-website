@@ -1,0 +1,63 @@
+/* =====================================================================
+ * 手机端 P1 去古风 + P2 数据视图去「管理后台感」（MOBILE_SIMPLIFY §7/§9）
+ * ---------------------------------------------------------------------
+ * 仅作用于 #app.is-mobile（移动端 ≤767px），桌面端一律不动。
+ * 做两件事：
+ *   1) P1：移除纸纹/古风噪点，强制现代无衬线（兜底 var(--font-serif) 之外的残留）
+ *   2) P2：各子页把「管理后台」元素（导入导出/表格筛选/行内编辑删除）在移动端收掉，
+ *         只留「添加 + 大数视图 + 大列表」，一个页面一个焦点。
+ * ===================================================================== */
+
+/* ---------- P1 · 去古风/纸纹/书法 ---------- */
+/* 宣纸噪点纹理：移动端移除 */
+#app.is-mobile .lj-paper-texture { display: none !important; }
+/* 山顶/仙居等纯装饰背景不做标记时，压低调门避免古风噪感（保留颜色氛围） */
+#app.is-mobile .lj-wash { opacity: .26; }
+
+/* 兜底：任何仍指向衬线书法的移动端子页标题/按钮，一律转现代无衬线 */
+#app.is-mobile :is(.font-serif, [class~='font-serif'], [class*='-serif'], [class*='_serif']),
+#app.is-mobile .fin-title,
+#app.is-mobile .fin-sub {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Source Han Sans CN", "Microsoft YaHei", sans-serif;
+  letter-spacing: .02em;
+}
+
+/* ---------- P2 · 账本 /finance ---------- */
+/* 页头批量操作（导出/导入）→ 桌面端保留，移动端收掉 */
+#app.is-mobile .fin-io { display: none !important; }
+/* 流水筛选工具栏（类型/搜索/查询）→ 移动端收掉，保留分页浏览 */
+#app.is-mobile .fin-filters { display: none !important; }
+/* 行内编辑/删除按钮 → 移动端收掉（管理操作移回桌面），流水只读浏览 */
+#app.is-mobile .fin-row-ops { display: none !important; }
+/* 列表容错：隐藏 ops 后行高需重新平衡，避免右侧空占位 */
+#app.is-mobile .fin-row { padding-right: 2px; }
+#app.is-mobile .fin-row-amt { font-size: 17px; }
+
+/* KPI 大数：移动端放大、简化副文案，突出「这一个焦点」 */
+#app.is-mobile .fin-kpi { padding: 18px 16px; border-radius: 20px; }
+#app.is-mobile .fin-kpi-val { font-size: 22px; font-weight: 800; }
+#app.is-mobile .fin-kpi-sub { display: none; }
+
+/* 面板玻璃化与留白（依赖已 remap 的 A/B 玻璃 token） */
+#app.is-mobile .fin-chart { padding: 16px; border-radius: 20px; }
+#app.is-mobile .fin-chart-title { font-size: 14px; font-weight: 600; letter-spacing: .04em; }
+#app.is-mobile .fin-ledger { padding: 6px 14px 14px; border-radius: 20px; }
+#app.is-mobile .fin-row { padding: 13px 4px; }
+
+/* 顶部工具条的导入/导出在移动端消失后，工具条与日期选择有留白 */
+#app.is-mobile .fin-toolbar { flex-wrap: wrap; gap: 10px; }
+
+/* ---------- P2 · 股票 /stocks（已是 KPI+趋势+列表，仅收行内编辑/删除） ---------- */
+#app.is-mobile .st-td-edit { display: none !important; }
+/* 移动卡片每行右上角的「删除」→ 管理操作移回桌面，只留查看 + 加自选 */
+#app.is-mobile .st-card-h .st-btn.danger { display: none !important; }
+#app.is-mobile .st-card-h { justify-content: flex-start; }
+#app.is-mobile .st-kpi-card { padding: 16px 14px; border-radius: 20px; }
+#app.is-mobile .st-kpi-v { font-size: 20px; font-weight: 800; }
+#app.is-mobile .st-kpi-s { font-size: 10.5px; }
+#app.is-mobile .st-kpi { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+/* ---------- 桌面管理类对话框在移动端若被误触发，改为占满全屏更亲近 ---------- */
+@media (max-width: 767px) {
+  #app.is-mobile:not(.login-page) .el-dialog:not([style*="width: 90%"]) { width: 90% !important; border-radius: 20px; }
+}

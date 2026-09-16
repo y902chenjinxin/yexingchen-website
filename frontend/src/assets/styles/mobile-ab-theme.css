@@ -1,0 +1,261 @@
+/* =====================================================================
+ * 手机端视觉换新 · A+B 亮暗双套（MOBILE_SIMPLIFY_20260916）
+ * ---------------------------------------------------------------------
+ * 目标：手机端(≤767px)从「水墨国风/墨玉琥珀」改造成现代原生 App 质感：
+ *   白天 A —— 液态玻璃（通透、亮底、蓝紫强调）
+ *   夜间 B —— 深空极简（近纯黑、发丝边框、薰衣草强调）
+ * 机制：仅覆盖既有 core / lj / ls / yq / xiu token 的「值」，各组件
+ *   var() 引用自动跟随，无需逐页改样式。所有选择器都挂在 #app.is-mobile
+ *   下，桌面端(#app 无 is-mobile)与占位主题均不受影响。
+ * 依据：docs/ai/MOBILE_SIMPLIFY_20260916.md §3-§7
+ * ===================================================================== */
+
+/* ---------- 夜间 B · 深空极简 (#app.is-mobile，缺省即为夜间) ---------- */
+#app.is-mobile {
+  /* 移动端去衬线/书法：现代无衬线 */
+  --font-serif: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Source Han Sans CN", "Microsoft YaHei", sans-serif;
+  --font-sans: var(--font-serif);
+
+  /* 背景：近纯黑 OLED 友好 */
+  --yq-bg0: #0a0b12;
+  --yq-bg1: #0a0b12;
+  --yq-bg2: #10111a;
+  --color-bg: var(--yq-bg1);
+  --color-bg-dark: #07080d;
+  --color-bg-elevated: var(--yq-bg2);
+  --color-bg-glass: rgba(16, 17, 26, 0.72);
+  --ink-black: var(--yq-bg0);
+  --ink-dark: var(--yq-bg1);
+  --ink-medium: var(--yq-bg2);
+  --ink-light: #171820;
+  --bg-deep: var(--yq-bg0);
+  --bg-indigo: var(--yq-bg1);
+  --bg-night: var(--yq-bg2);
+
+  /* 文字 */
+  --color-text: #eef0f4;
+  --color-text-secondary: #8a8f98;
+  --color-text-muted: #62666d;
+  --color-text-light: rgba(238, 240, 244, 0.92);
+  --xiu-text: #eef0f4;
+  --xiu-text-2: #8a8f98;
+  --xiu-text-3: #62666d;
+
+  /* 主色：薰衣草 */
+  --yq-rain: #5e6ad2;
+  --yq-rain-bright: #828fff;
+  --yq-rain-deep: #3f4aa8;
+  --yq-gold: var(--yq-rain-bright);
+  --color-primary: var(--yq-rain);
+  --color-secondary: var(--yq-rain-deep);
+  --color-accent: var(--yq-rain-bright);
+  --color-qi-primary: var(--yq-rain);
+  --color-qi-green: var(--yq-rain-deep);
+  --color-gold: var(--yq-rain-bright);
+  --color-gold-dark: #7b86e8;
+
+  /* 工作台(浅 lj) → 深空面 */
+  --lj-bg: var(--yq-bg1);
+  --lj-bg-deep: var(--yq-bg2);
+  --lj-paper: #13141d;
+  --lj-ink: var(--color-text);
+  --lj-dai: var(--yq-rain);
+  --lj-dai-deep: var(--yq-rain-deep);
+  --lj-mist: var(--color-text-secondary);
+  --lj-ochre: var(--yq-rain-bright);
+  --lj-vermilion: #e5484d;
+  --lj-seal: var(--yq-rain-bright);
+  --lj-seal-hover: #9aa5ff;
+  --lj-line: rgba(255, 255, 255, 0.07);
+  --lj-line-strong: rgba(255, 255, 255, 0.12);
+  --lj-text: var(--color-text);
+  --lj-text-2: var(--color-text-secondary);
+  --lj-text-3: var(--color-text-muted);
+  --lj-glass: rgba(16, 17, 26, 0.72);
+  --lj-glass-blur: saturate(180%) blur(24px);
+  --lj-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* 岛屿/子页(ls) → 深空面 */
+  --ls-bg0: var(--yq-bg0);
+  --ls-bg1: var(--yq-bg1);
+  --ls-bg-glow: rgba(94, 106, 210, 0.08);
+  --ls-paper: #10111a;
+  --ls-paper-2: #161722;
+  --ls-glass: rgba(16, 17, 26, 0.72);
+  --ls-line: rgba(255, 255, 255, 0.07);
+  --ls-line-strong: rgba(255, 255, 255, 0.12);
+  --ls-highlight: rgba(255, 255, 255, 0.05);
+  --ls-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --ls-dai: var(--yq-rain);
+  --ls-dai-deep: var(--yq-rain-deep);
+  --ls-ochre: var(--yq-rain-bright);
+  --ls-jade: #1aa86a;
+  --ls-text: var(--color-text);
+  --ls-text-2: var(--color-text-secondary);
+  --ls-text-3: var(--color-text-muted);
+
+  /* 苹果玻璃（B：发丝边框，几无阴影） */
+  --glass-blur: saturate(185%) blur(24px);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 2px 2px rgba(0, 0, 0, 0.08), 0 10px 26px rgba(0, 0, 0, 0.32);
+
+  /* 圆角/阴影：B 比 A 略克制 */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow: var(--glass-shadow);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.42);
+  --shadow-xl: 0 22px 54px rgba(0, 0, 0, 0.48);
+
+  /* 数据语义色（B）—— 仅股市/账本用红绿，其余克制 */
+  --pnl-up: #e5484d;
+  --pnl-down: #1aa86a;
+  --pnl-up-soft: rgba(229, 72, 77, 0.16);
+  --pnl-down-soft: rgba(26, 168, 106, 0.16);
+  --pnl-up-line: rgba(229, 72, 77, 0.35);
+  --pnl-down-line: rgba(26, 168, 106, 0.35);
+  --color-danger: #e5484d;
+  --color-success: #1aa86a;
+
+  /* 快捷入口语义色（B 亮阶） */
+  --ab-blu: #7f8dff;
+  --ab-pur: #9a8cff;
+  --ab-grn: #2fd58a;
+  --ab-cor: #ff8f6e;
+  --ab-cyn: #49c6e6;
+  --ab-amb: #f4b36a;
+  --ab-vio: #a69bff;
+}
+
+/* 深空卡：顶缘微高光，几乎不发白 */
+#app.is-mobile .glass-card,
+#app.is-mobile .ls-card {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 46%), #10111a;
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+
+/* ---------- 白天 A · 液态玻璃 (html[data-theme="day"] #app.is-mobile) ---------- */
+html[data-theme="day"] #app.is-mobile {
+  /* 背景：浅灰蓝 + 顶部蓝白 radial */
+  --yq-bg0: #e9eef9;
+  --yq-bg1: #eef2fb;
+  --yq-bg2: #e2e9f5;
+  --color-bg: var(--yq-bg1);
+  --color-bg-dark: var(--yq-bg0);
+  --color-bg-elevated: #ffffff;
+  --color-bg-glass: rgba(255, 255, 255, 0.66);
+  --ink-black: var(--yq-bg0);
+  --ink-dark: var(--yq-bg1);
+  --ink-medium: var(--yq-bg2);
+  --ink-light: #e4eaf5;
+  --bg-deep: var(--yq-bg0);
+  --bg-indigo: var(--yq-bg1);
+  --bg-night: var(--yq-bg2);
+
+  /* 文字：墨蓝近黑 */
+  --color-text: #0f1530;
+  --color-text-secondary: #5b6b8a;
+  --color-text-muted: #8a8f98;
+  --color-text-light: rgba(15, 21, 48, 0.92);
+  --xiu-text: #0f1530;
+  --xiu-text-2: #5b6b8a;
+  --xiu-text-3: #8a8f98;
+
+  /* 主色：蓝 + AI 紫 */
+  --yq-rain: #5b6ae0;
+  --yq-rain-bright: #8b5cf6;
+  --yq-rain-deep: #3f4aa8;
+  --yq-gold: var(--yq-rain);
+  --color-primary: var(--yq-rain);
+  --color-secondary: var(--yq-rain-deep);
+  --color-accent: var(--yq-rain-bright);
+  --color-qi-primary: var(--yq-rain);
+  --color-qi-green: var(--yq-rain-deep);
+  --color-gold: var(--yq-rain);
+  --color-gold-dark: #6a4fd0;
+
+  /* 工作台(浅 lj) → 白玻璃 */
+  --lj-bg: var(--yq-bg1);
+  --lj-bg-deep: var(--yq-bg2);
+  --lj-paper: rgba(255, 255, 255, 0.82);
+  --lj-ink: var(--color-text);
+  --lj-dai: var(--yq-rain);
+  --lj-dai-deep: var(--yq-rain-deep);
+  --lj-mist: var(--color-text-secondary);
+  --lj-ochre: var(--yq-rain);
+  --lj-vermilion: #d92d20;
+  --lj-seal: var(--yq-rain);
+  --lj-seal-hover: var(--yq-rain-bright);
+  --lj-line: rgba(15, 40, 70, 0.14);
+  --lj-line-strong: rgba(15, 40, 70, 0.24);
+  --lj-text: var(--color-text);
+  --lj-text-2: var(--color-text-secondary);
+  --lj-text-3: var(--color-text-muted);
+  --lj-glass: rgba(255, 255, 255, 0.72);
+  --lj-glass-blur: saturate(200%) blur(20px);
+  --lj-shadow: 0 10px 30px rgba(70, 95, 180, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+  /* 岛屿/子页(ls) → 白玻璃 */
+  --ls-bg0: var(--yq-bg0);
+  --ls-bg1: var(--yq-bg1);
+  --ls-bg-glow: rgba(91, 106, 224, 0.1);
+  --ls-paper: rgba(255, 255, 255, 0.82);
+  --ls-paper-2: rgba(255, 255, 255, 0.92);
+  --ls-glass: rgba(255, 255, 255, 0.72);
+  --ls-line: rgba(15, 40, 70, 0.14);
+  --ls-line-strong: rgba(15, 40, 70, 0.24);
+  --ls-highlight: rgba(255, 255, 255, 0.7);
+  --ls-shadow: 0 12px 30px rgba(70, 95, 180, 0.12), 0 2px 8px rgba(70, 95, 180, 0.08);
+  --ls-dai: var(--yq-rain);
+  --ls-dai-deep: var(--yq-rain-deep);
+  --ls-ochre: var(--yq-rain);
+  --ls-jade: #0fa07f;
+  --ls-text: var(--color-text);
+  --ls-text-2: var(--color-text-secondary);
+  --ls-text-3: var(--color-text-muted);
+
+  /* 苹果玻璃（A：通透亮边带蓝紫阴影） */
+  --glass-blur: saturate(200%) blur(20px);
+  --glass-border: rgba(255, 255, 255, 0.92);
+  --glass-highlight: inset 1px 1px 0 rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 2px 6px rgba(70, 95, 180, 0.06), 0 12px 30px rgba(70, 95, 180, 0.14);
+
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow: var(--glass-shadow);
+  --shadow-sm: 0 2px 10px rgba(70, 95, 180, 0.08);
+  --shadow-lg: 0 16px 40px rgba(70, 95, 180, 0.16);
+  --shadow-xl: 0 22px 54px rgba(70, 95, 180, 0.20);
+
+  /* 数据语义色（A） */
+  --pnl-up: #e5484d;
+  --pnl-down: #1aa86a;
+  --pnl-up-soft: rgba(229, 72, 77, 0.14);
+  --pnl-down-soft: rgba(26, 168, 106, 0.14);
+  --pnl-up-line: rgba(229, 72, 77, 0.32);
+  --pnl-down-line: rgba(26, 168, 106, 0.32);
+  --color-danger: #d92d20;
+  --color-success: #0fa07f;
+
+  /* 快捷入口语义色（A 蓝紫家族） */
+  --ab-blu: #5b6ae0;
+  --ab-pur: #8b5cf6;
+  --ab-grn: #0fa07f;
+  --ab-cor: #f0643c;
+  --ab-cyn: #2a9ece;
+  --ab-amb: #e08a3a;
+  --ab-vio: #7a5ce8;
+}
+
+html[data-theme="day"] #app.is-mobile .glass-card,
+html[data-theme="day"] #app.is-mobile .ls-card {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66) 46%);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+}

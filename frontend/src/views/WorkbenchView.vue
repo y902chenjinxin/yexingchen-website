@@ -55,6 +55,7 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'WorkbenchView' })
 import { ref, onMounted } from 'vue'
 import MobileWorkbenchHome from '@/components/mobile/MobileWorkbenchHome.vue'
 import { useIsMobile } from '@/composables/useIsMobile'
