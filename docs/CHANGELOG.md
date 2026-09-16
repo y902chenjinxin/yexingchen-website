@@ -1,5 +1,19 @@
 ## [v2.22.3] - 2026-09-16
 
+### 修复：run.py sys.path Bug（严重）
+
+**根因**：`backend/run.py` 中 `os.path.dirname(os.path.dirname(__file__))` 套了两层 dirname，`__file__`=run.py 时，路径指向 `/var/www/yexingchen/`（而非 `/var/www/yexingchen/backend/`），导致 uvicorn 加载的 `app` 来自错误目录，新增路由虽然被 `main.py` 注册但部分请求 405。
+
+**修法**：改为单层 `dirname(os.path.abspath(__file__))`，`reload=False`（PM2 管进程）。
+
+**生产取证**：重启后 `GET /api/countdowns` ✅ `POST /api/countdowns` ✅ `DELETE` ✅（探针已清理）。
+
+### 修复：countdown 路由前缀不一致
+
+**根因**：`countdown.router` 创建时未设 `prefix="/api"`，但前端 `api.get('/countdowns')` 经 `baseURL: '/api'` 拼接后实际发 `/api/countdowns`，全链路 404。
+
+**修法**：`router = APIRouter(prefix="/api", ...)` + 前端 `BASE = '/api/countdowns'`。
+
 ### 新增：倒计时模块（Days Matter 风格）
 
 #### 后端
