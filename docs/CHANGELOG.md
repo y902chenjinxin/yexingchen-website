@@ -1,3 +1,79 @@
+## [v2.22.2] - 2026-09-16
+
+### 用户决策变更：PWA → 安卓 APK（Server TWA + 一键重打脚本）
+
+用户试用 PWA 后明确反馈「PWA 我用不习惯，直接做成 APK」。本版本提供：
+- 服务端 TWA（Trusted Web Activity）打包：基于站点 manifest + SW 的真实 APK，
+  **APK 内嵌站点 URL，站点更新无需重装**（已是 v2.22.0 PWA 合规的现成成果）
+- 一键重打脚本 `scripts/build_apk.py`，后续每次站点大版本更新都可秒出新 APK
+
+#### 1. 服务端 TWA 构建
+
+- 服务器 `203.195.208.25` 上装：JDK 17 + Android SDK（cmdline-tools / build-tools 34.0.0 /
+  platforms android-34 / platform-tools，约 600MB，落在 `/opt/android-build/`）+ `@bubblewrap/cli`
+  + 2GB swap（内存 3.6G 兜底 Gradle 构建）
+- keystore `/opt/android-build/yexingchen.keystore`：RSA-2048 / 100 年有效期，
+  alias `androidkey` / 密码 `yexingchen2026`（生产用途，长期保存）
+- twa-manifest.json：packageId `cn.yexingchen.app`、host `yexingchen.cn`、
+  startUrl `/workbench`、display `standalone`、fallbackType `customtabs`
+- 关键改动：**放弃 `bubblewrap init` 交互式 CLI**，改用 `@bubblewrap/core` 的程序化 API
+  `TwaManifest.fromWebManifest()` + `TwaGenerator.createTwaProject()`，Node 脚本 3 秒生成完整
+  Android 项目骨架；interactive 提问（install JDK? 等）会卡 stdin，不可控
+- Gradle 8.11.1 wrapper zip 走国际链路 9 分钟才下 27MB —— **手动从用户机下载放服务器 wrapper
+  路径（`~/.gradle/wrapper/dists/gradle-8.11.1-bin/<hash>/`，建 `.ok` 标记）**，
+  再 unzip；阿里云 maven mirror init 脚本避免 AGP/transitive 依赖再卡
+- `apksigner` 用 keystore 签名后取证书 SHA-256（**注意：assetlinks.json 要的是证书指纹，
+  不是 APK 字节 SHA256**，第一次错用了 APK 字节导致 PWA 关联失败——已修正）
+
+#### 2. assetlinks.json（数字资产链接）
+
+- 部署到 `https://yexingchen.cn/.well-known/assetlinks.json`
+- 内容：`namespace=android_app` / `package_name=cn.yexingchen.app` /
+  `sha256_cert_fingerprints=["3a:dd:0c:9c:76:75:8e:8f:7f:28:33:45:d9:c3:b3:ca:4b:64:db:fa:37:78:08:f5:4f:2d:6c:73:80:9d:f1:4b"]`
+- **作用**：让 Android 验证 APK 与站点绑定关系，打开 App 全屏无地址栏 / 无「在浏览器打开」
+  中间页；TWA 的核心配置，缺它体验直接劣化
+- 重打 APK 必须同步重算（脚本自动）
+
+#### 3. 一键重打脚本 `scripts/build_apk.py`
+
+```bash
+# 默认（沿用 twa-manifest.json 当前版本号 1.0.0）
+backend/.venv/Scripts/python.exe scripts/build_apk.py
+
+# 升版本号
+backend/.venv/Scripts/python.exe scripts/build_apk.py --version 1.1.0 --code 2
+```
+
+自动完成：改 twa-manifest → gradle assembleRelease → apksigner 签名 → 拷 APK 到
+`/var/www/yexingchen/dist/download/yexingchen-<ver>.apk` → 重算并部署 assetlinks.json →
+更新下载页 → 公网 200 校验。实测一轮 30-60 秒（首次构建 1m 28s 含依赖下载）。
+
+#### 4. 下载与首次安装
+
+- APK：`https://yexingchen.cn/download/yexingchen-1.0.0.apk`（1.1MB）
+- 下载页：`https://yexingchen.cn/download/`（含 SHA256 + 安装步骤 + 鸿蒙 4「外部来源应用下载」开关位置）
+- 鸿蒙 4 装 APK：设置 → 安全 → 「外部来源应用下载」/「未知来源应用」给浏览器开权限 → 微信/QQ 传 APK → 打开安装
+
+### 顺带 v2.22.1 hotfix（PWA 安装入口永远不显示）
+
+用户报「个人中心没有下载安装包」。两个根因叠加（均已修复）：
+- **` ` sw-register.js` 自 MVP 首提交起就**从未被任何地方调用**——SW 在生产从未注册，
+  之前 v97/v98 的 SW 版本号全是「纸面升级」。Chrome PWA 安装性检查要求「带 fetch handler 的
+  已激活 SW」，」所以 beforeinstallprompt 永不派发，入口 v-if 恒 false
+- `usePwaInstall` 监听器挂在 ProfileView 挂载时（懒加载页面），事件在页面加载后几秒就派发——
+  晚进个人中心会错过
+- 修法：`src/main.js` 应用启动即调用 `registerServiceWorker()` + `usePwaInstall()`，
+  监听与页面导航解耦。SW v98 → v99
+
+### 经验（同时记入 SKILL）
+
+- **写完注册函数必须用 grep -r 确认有调用方**，否则就是「纸面功能」——历史上踩过两次
+- **bubblewrap init 是 inquirer.js 交互式**，CI 不可用；走程序化 API `TwaGenerator` 是正解
+- **Gradle wrapper 下载在国内走 services.gradle.org 极慢**，首次手动下放服务器 wrapper 路径
+- **AGP/transitive 依赖通过 `~/.gradle/init.d/aliyun-mirror.gradle` 加阿里云镜像**后秒下
+- **TWA 的 assetlinks.json 要的是证书 SHA256 指纹**（apksigner 输出的 `Signer #1 certificate
+  SHA-256 digest`），不是 APK 文件的 SHA256——混淆会让 TWA 退化成 Custom Tabs 全屏失败
+
 ## [v2.22.0] - 2026-09-16
 
 ### 数据一览菜单分组 + AI 封面 + 音色克隆 + PWA 可安装（User 需求 1/3/9）
