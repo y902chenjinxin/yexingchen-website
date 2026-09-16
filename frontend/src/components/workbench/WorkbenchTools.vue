@@ -34,20 +34,17 @@ import { useToolStore } from '@/stores/tool'
 const router = useRouter()
 const toolStore = useToolStore()
 
-// 混排：内置工具置顶 + 固定动作（AI 对话 / 记一笔 / 闪念速记）
+// 混排：内置工具全部展示 + 固定动作（AI 对话 / 记一笔 / 闪念速记）
 const actionDefs = [
   { key: 'ai',    name: 'AI 对话', desc: '问答 · 摘要 · 生成', tone: 'ai',    to: '/assistant', icon: '🧠' },
   { key: 'book',  name: '记一笔',  desc: '快速记账',           tone: 'book',  to: '/finance',   icon: '💰' },
   { key: 'flash', name: '闪念速记', desc: '随手记 · 日记',      tone: 'flash', to: '/diary',     icon: '✍️' }
 ]
-const BUILTIN_SLOT = 6 // 固定展示数（当前 builtin 工具已有 5 个：视频去水印/PDF/AI封面/像素压缩/音色克隆/证件照/倒计时）
-
-// 工具 + 动作混排：内置工具置顶（取前 BUILTIN_SLOT 个），再接固定动作
+// 工具 + 动作混排：内置工具全部展示，再接固定动作
 const quickList = computed(() => {
   const tools = toolStore.list || []
   const builtinCards = tools
     .filter(t => t.kind === 'builtin')
-    .slice(0, BUILTIN_SLOT)
     .map(t => ({
       key: 'tool-' + t.id,
       name: t.title || '工具',
