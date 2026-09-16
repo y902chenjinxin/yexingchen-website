@@ -1,3 +1,15 @@
+## [v2.22.4] - 2026-09-16
+
+### 运维：生产全站白屏事故修复（SW `xuanhuang-v104`）
+
+**现象**：全站登录页/首页白屏，无任何 DOM 渲染。
+**根因**：服务器 `dist` 被多次部署叠加污染——`index.html→index-7gHseZyt.js` 正常返回，但它动态 `import` 的 `WorkbenchView-DxO5kJRe.js` **在服务器上不存在**，动态导入崩溃导致 Vue 挂载前异常 → 整页白屏。sw 一度达到 v103、assets 堆了 30+ 个 `index-*.js`，属并发部署未清空叠加脏化。
+**定位**：浏览器取证拿到 console `TypeError: Failed to fetch dynamically imported module: .../WorkbenchView-DxO5kJRe.js`；服务器 `ls` 证实该 chunk 缺失。
+**修复**：坏 dist 备份为 `/var/www/yexingchen/dist_broken_20260916`（可回滚）；用最新源码全新自洽构建（含并发会话的工作台/倒计时等改动），整体清空重传 + `nginx reload`；服务器关键文件（index-7gHseZyt.js / WorkbenchView-DxO5kJRe.js / index-*.css）与构建产物 **md5 逐字节一致**，workbench chunk 404→200，home/index/chunk 全 200。
+**验证**：浏览器实测首页正常渲染（导航/搜索/AI 入口/备案徽章俱在），不再白屏。经验：多会话同时部署同一服务器是事故高危，应收敛到单一部署通道。
+
+---
+
 ## [v2.22.3] - 2026-09-16
 
 ### 修复：工作台工具入口 BUILTIN_SLOT 限制
