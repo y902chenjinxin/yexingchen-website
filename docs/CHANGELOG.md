@@ -1,3 +1,15 @@
+## [v2.22.5] - 2026-09-16
+
+### 修复：/download/ 下载页被前端部署误删（APK 下载入口失效）
+
+**现象**：顶栏「下载安卓 App」入口（`href=/download/`）打开后显示的是「工作台」而非下载引导页。
+**根因**：APK 与下载引导页由 `build_apk.py` 生成到 **`/var/www/yexingchen/dist/download/`**（站点 dist 目录内、`WEB_APK_DIR`/`WEB_DOWNLOAD_PAGE` 配置），而它**不在 `frontend/dist` 构建产物里**。前端部署脚本 `deploy_frontend.py` 每次 `rm -rf /var/www/yexingchen/dist` 整体清空再上传，把 `download/` 子目录一并删掉且不重建 → nginx 无独立 location 时 `/download/` 回退 SPA 到工作台。
+**修复**：
+- 立即恢复——从事故备份 `dist_broken_20260916` 找回 `download/index.html`(下载引导页) 与 `yexingchen-1.0.0.apk`(1.1MB) 放回 `dist/download/`；已核验 `/download/` 200（含「下载 APK」+ APK 文件名）、`/download/yexingchen-1.0.0.apk` 200。
+- 根治——`deploy_frontend.py` 清空逻辑改为**先挪走保存 `dist/download`，清空后放回**，避免再次误删。
+
+---
+
 ## [v2.22.4] - 2026-09-16
 
 ### 运维：生产全站白屏事故修复（SW `xuanhuang-v104`）

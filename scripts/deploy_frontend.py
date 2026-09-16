@@ -31,9 +31,11 @@ def cexec(cmd, wait=True, timeout=120):
     code = ch.recv_exit_status(); ch.close(); return code, out
 
 
-print("== clean + upload dist ==")
-cexec(f"rm -rf {REMOTE_DIST}")
-cexec(f"mkdir -p {REMOTE_DIST}")
+print("== clean + upload dist (preserve download/) ==")
+# download/ 由 build_apk.py 服务端生成（下载引导页 + APK），不在 frontend/dist 里，
+# 整体 rm -rf 会把它误删导致 /download/ 回退 SPA。先挪走保存、清空再放回。
+cexec(f"mv {REMOTE_DIST}/download {REMOTE_DIST}.download.tmp >/dev/null 2>&1; rm -rf {REMOTE_DIST}; mkdir -p {REMOTE_DIST}")
+cexec(f"mv {REMOTE_DIST}.download.tmp {REMOTE_DIST}/download >/dev/null 2>&1")
 n = 0
 for root, _, files in os.walk(LOCAL_DIST):
     rel = os.path.relpath(root, LOCAL_DIST).replace("\\", "/")
