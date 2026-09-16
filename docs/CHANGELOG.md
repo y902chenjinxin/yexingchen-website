@@ -1,3 +1,18 @@
+## [v2.23.0] - 2026-09-16
+
+### APK 由 TWA 改为原生 WebView 壳（`yexingchen-2.0.0.apk`，作为独立软件运行）
+
+**背景**：TWA 版 APK（`1.0.0`）打开只停在启动图、进不去网页——TWA 需 Google Chrome / GMS 承载页面，国产安卓（鸿蒙/米UI/vivo/OPPO 等）普遍无 GMS，导致启动失败。
+**方案**：改为**原生 WebView 壳 App**，内置系统 WebView 直接加载 `https://yexingchen.cn/workbench`，完全脱离 Google 服务/Chrome 依赖，任何安卓设备都能独立打开进登录页。
+- 新 APK `cn.yexingchen.app` v2.0.0：零第三方依赖（仅 17KB）、同 keystore 签名（SHA-256 `3add…df14b` 与 1.0.0 一致）→ 已装 1.0.0 可直接覆盖升级；label「玄黄」，PIL 重新生成棕底圆角白「玄」launcher 图标
+- WebView 配置：JS/DOM Storage/混合内容、站内链接留 WebView、站外跳系统浏览器、`target=_blank` 回站内加载、返回键后退、`DownloadManager` 下载 APK/文件、`onShowFileChooser` 支持文件上传（账本导入）
+- **构建留档**：新增 `scripts/build_webview_apk.py`（读 `.secrets/apk-build.local.env`，上传源码→复用 TWA gradle wrapper→Gradle 签名构建→部署+更新下载页），可跨会话重建 APK
+- 部署：`/download/yexingchen-2.0.0.apk`、下载页 href 与 SHA-256 已指向 2.0.0，`/download/` 与 APK 均 200
+
+> 附带本次同类修复（已含于前几条）：`deploy_frontend.py` 保留 `dist/download` 与 `.well-known`（TWA assetlinks/index.html/APK 均在此，rm -rf 整体清空会误删）。
+
+---
+
 ## [v2.22.5] - 2026-09-16
 
 ### 修复：/download/ 下载页被前端部署误删（APK 下载入口失效）
