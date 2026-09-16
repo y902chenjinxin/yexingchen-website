@@ -1,5 +1,11 @@
 ## [v2.22.3] - 2026-09-16
 
+### 修复：工作台工具入口 BUILTIN_SLOT 不足
+
+**根因**：`WorkbenchTools.vue` 硬编码 `BUILTIN_SLOT=4`，builtin 工具从 4 个增到 5 个（加倒计时）后，倒计时 sort_order=4，被 `slice(0,4)` 截断不显示。
+
+**修法**：`BUILTIN_SLOT=6`（注释更新说明当前 builtin 工具数）。
+
 ### 修复：run.py sys.path Bug（严重）
 
 **根因**：`backend/run.py` 中 `os.path.dirname(os.path.dirname(__file__))` 套了两层 dirname，`__file__`=run.py 时，路径指向 `/var/www/yexingchen/`（而非 `/var/www/yexingchen/backend/`），导致 uvicorn 加载的 `app` 来自错误目录，新增路由虽然被 `main.py` 注册但部分请求 405。
