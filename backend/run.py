@@ -1,8 +1,8 @@
 import os
 import sys
 
-# 添加 backend 目录到 Python 路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 添加 backend 目录到 Python 路径（仅一层 dirname：run.py → backend/）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import uvicorn
 
@@ -11,5 +11,5 @@ if __name__ == "__main__":
         "app.main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True
+        reload=False
     )
