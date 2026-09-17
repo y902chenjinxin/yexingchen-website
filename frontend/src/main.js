@@ -8,6 +8,9 @@ import { usePwaInstall } from './composables/usePwaInstall'
 import './assets/styles/main.css'
 import './assets/styles/xiuxian-theme.css'
 import './assets/styles/mobile-list.css'
+// 手机端专属：A/B 亮暗双套 token + 去古风/去管理后台感（仅作用于 #app.is-mobile，桌面端零影响）
+import './assets/styles/mobile-ab-theme.css'
+import './assets/styles/mobile-deink.css'
 
 const app = createApp(App)
 

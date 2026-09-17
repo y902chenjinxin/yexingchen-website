@@ -79,8 +79,22 @@
   color: #fff;
 }
 
+/* ---- 子页标题：去金渐变 → 现代纯色大标题（顶部不再有黄色/渐变色横栏感） ---- */
+#app.is-mobile .island-title {
+  background: none;
+  -webkit-background-clip: initial; background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: var(--ls-text);
+  font-weight: 700;
+  filter: none;
+}
+/* 子页返回按钮：手机端整体隐藏，交给系统/原生返回栈 */
+#app.is-mobile .island-inner .back-btn { display: none !important; }
+
 /* ---- 我的 /profile → 纯个性化，现代无金古风 ---- */
 #app.is-mobile .profile-page { font-family: var(--font-serif); }
+/* 个人信息（基本信息卡片：邮箱/昵称/角色/注册时间/编辑/改密码）→ 移动端整块去除，仅保留界面偏好 */
+#app.is-mobile .profile-page .profile-content .info-card:first-child { display: none !important; }
 /* 标题：金渐变古字 → 无衬线纯色大标题，去书法/描金 */
 #app.is-mobile .profile-page .page-title {
   font-family: var(--font-serif);

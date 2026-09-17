@@ -1,3 +1,22 @@
+## [v2.27.0] - 2026-09-17
+
+### 手机端三处修复 + 接通丢失的移动端 CSS（SW `xuanhuang-v108`）
+
+User「1 头部和底部还是有黄色横栏，在手机端尤为明显；2 手机端不需要单独的返回按钮，可以用手机自带的；3 手机端个人中心中个人信息那块去除」。
+
+**根因（关键）**：`mobile-ab-theme.css`、`mobile-deink.css` 两个文件从未在 `main.js` 引入——此前 v2.24~v2.26 的整套手机端 A/B 主题 + 去古风 CSS 根本没打进 app，所以金黄/古风横栏在手机上一直压不掉。本轮在 `src/main.js` 补上两条 import（均 `#app.is-mobile` 门控、桌面零影响）修复。
+
+**三处改动**（均追加进 `mobile-deink.css`，仅 `#app.is-mobile` 生效）：
+- 子页标题去金渐变 → 现代纯色无衬线大标题（顶部金黄色横栏消失）
+- 手机端子页返回按钮整体隐藏，交给系统/原生返回栈（`.island-inner .back-btn`）
+- 个人中心隐藏整个「基本信息」卡片（邮箱/昵称/角色/注册时间 + 编辑/改密），只留「界面偏好」
+
+**构建链坑（顺带修正）**：`npm run build -- --outDir …` 转参失效产**不完整旧 bundle**（仅 70 模块）；正确做法是 `npx vite build --outDir <新目录>`（本次 1833 模块），核验 `index-*.css` 含 `island-title/profile-content/info-card:first-child/island-inner .back-btn` 后整体替换 `dist`。
+
+**部署/验证**：全新 `vite build --outDir dist5` → 核验 CSS 选择器 + SW `xuanhuang-v107→v108` → 替换 dist → `deploy_frontend.py` 217 文件 home=200。浏览器 DOM 实测（390px 手机视口）：音乐页顶/底金黄色消失、返回按钮隐藏 PASS；`/profile` 第一个 `.info-card` `display:none,height=0`（基本信息隐藏）、第二个界面偏好卡 height≈300px 可见 PASS。桌面回归：`useIsMobile`=`matchMedia('(max-width:767px)')`，≥768px 时 `#app` 不含 `is-mobile` ⇒ 全站 142 处 `#app.is-mobile` 规则天然失效、桌面水墨国风零回归（自动化环境 innerWidth 硬顶 444px，无法渲染 ≥768px 实证，靠 matchMedia + 选择器门控从构造上保证）。测试账号已清理，库归零。
+
+---
+
 ## [v2.26.0] - 2026-09-17
 
 ### 手机端 P3 打磨：播放器主页 / 工具浏览 / 我的纯个性化（SW `xuanhuang-v107`）
