@@ -11,6 +11,10 @@ import './assets/styles/mobile-list.css'
 // 手机端专属：A/B 亮暗双套 token + 去古风/去管理后台感（仅作用于 #app.is-mobile，桌面端零影响）
 import './assets/styles/mobile-ab-theme.css'
 import './assets/styles/mobile-deink.css'
+// 手机端 7 大模块「iOS 原生 · 极简毛玻璃」质感统一层
+import './assets/styles/mobile-native-glass.css'
+// 手机端 7 大模块「灵动卡片 · 独立渐变」品牌主题层（须在 native-glass 之后引入以逐模块接管配色）
+import './assets/styles/mobile-module-color.css'
 
 const app = createApp(App)
 

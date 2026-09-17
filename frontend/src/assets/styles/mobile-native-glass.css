@@ -1,0 +1,196 @@
+/* =====================================================================
+ * 手机端 7 大模块「iOS 原生 · 极简毛玻璃」质感统一层
+ * ---------------------------------------------------------------------
+ * 仅作用于 #app.is-mobile（本层在移动子页统一为一套蓝紫玻璃体系，
+ * 去掉古风残留（玉简箔面/琥珀橙/印章），补齐原生观感：
+ *   1) 统一强调色：任何模块的琥珀橙/琥珀金 → 蓝紫主色（--yq-rain）
+ *   2) 倒计时：去「玉简箔」古意、空态玻璃圆 + 蓝紫点缀、卡片玻璃化
+ *   3) 空态：统一「柔和圆形图标 + 主文案 + 次文案 + 主操作」原生排版
+ *   4) 列表/卡片：统一大圆角、发丝分隔、克制按压反馈
+ * 桌面端（#app 无 is-mobile）一律不动。
+ * ===================================================================== */
+
+/* ============ 0 · 全局基调：仅保留通用质感与 Element 主色 ============
+ * NOTE: 各模块专属配色由 mobile-module-color.css 逐模块接管（灵动渐变），
+ * 此处不再强改模块内 KPI/按钮/头像颜色，避免与新层冲突。*/
+#app.is-mobile {
+  /* ★ Element Plus 主色：珊瑚/琥珀 → 蓝紫（弹层/下拉等挂 body 控件主色） */
+  --el-color-primary: var(--yq-rain);
+  --el-color-primary-light-3: #7f8dff;
+  --el-color-primary-light-5: #9aa5ff;
+  --el-color-primary-light-7: #b8bfff;
+  --el-color-primary-light-8: #cfd3ff;
+  --el-color-primary-light-9: #e4e6ff;
+  --el-color-primary-dark-2: #3f4aa8;
+}
+html[data-theme="day"] #app.is-mobile {
+  --el-color-primary: #5b6ae0;
+  --el-color-primary-light-3: #8a96f2;
+  --el-color-primary-light-5: #a8b1f7;
+  --el-color-primary-light-7: #c6cbfa;
+  --el-color-primary-light-8: #d9ddfc;
+  --el-color-primary-light-9: #eceefe;
+  --el-color-primary-dark-2: #3f4aa8;
+}
+#app.is-mobile .cd-days { text-shadow: none; }
+
+/* ============ 0b · 岛屿(工具)壳页背景：墨玉绿 → A/B 液态玻璃面 ============ */
+#app.is-mobile .island-inner {
+  background: var(--color-bg) !important;
+}
+#app.is-mobile .island-inner::before,
+#app.is-mobile .island-inner::after { opacity: .18; }
+
+/* ============ 0d · Element 输入/选择/分页：墨玉深底 → 移动端玻璃 ============ */
+#app.is-mobile :is(.el-input__wrapper, .el-select__wrapper, .el-textarea__inner, .el-select-dropdown__item) {
+  background: var(--ls-paper) !important;
+  box-shadow: 0 0 0 1px var(--ls-line) inset !important;
+}
+#app.is-mobile :is(.el-input__wrapper.is-focus, .el-select__wrapper.is-focused, .el-textarea__inner:focus) {
+  box-shadow: 0 0 0 1px var(--yq-rain) inset !important;
+}
+#app.is-mobile .el-input__inner, #app.is-mobile .el-select__selected-item,
+#app.is-mobile .el-textarea__inner { color: var(--ls-text) !important; }
+#app.is-mobile .el-input__inner::placeholder, #app.is-mobile .el-select__placeholder { color: var(--ls-text-3) !important; }
+#app.is-mobile :is(.el-select, .el-input, .el-pagination) .el-input__wrapper,
+#app.is-mobile .el-pagination { background: var(--ls-paper) !important; border-radius: 12px; }
+#app.is-mobile .el-pagination button:disabled, #app.is-mobile .el-pagination button {
+  background: transparent !important; color: var(--ls-text) !important;
+}
+#app.is-mobile .el-pagination .el-pager li {
+  background: transparent !important; color: var(--ls-text-2) !important; border-radius: 8px;
+}
+#app.is-mobile .el-pagination .el-pager li.is-active {
+  background: var(--yq-rain) !important; color: #fff !important;
+}
+#app.is-mobile .el-pagination .el-pagination__total { color: var(--ls-text-3) !important; }
+
+/* 笔记工具栏：移动端换行，搜索通栏、筛选并排两列 */
+#app.is-mobile .notes-toolbar { flex-wrap: wrap; gap: 8px; padding: 0 2px; }
+#app.is-mobile .notes-toolbar .el-input { max-width: 100% !important; flex: 1 1 100%; }
+#app.is-mobile .notes-toolbar .el-select { width: 48% !important; flex: 1 1 48%; }
+
+/* ============ 1 · 倒计时 /tool/countdown 全重排 ============ */
+/* 去玉简箔面古意：箔层隐藏 */
+#app.is-mobile .cd-card-foil { display: none !important; }
+/* 卡片：玻璃磁贴，去掉硬质 jade-card 古玉质感 */
+#app.is-mobile .cd-card.jade-card {
+  background: var(--ls-glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--ls-line);
+  box-shadow: var(--ls-highlight), var(--ls-shadow);
+  border-radius: 22px;
+  overflow: hidden;
+  position: relative;
+}
+/* 卡片自带背景图改为覆盖整卡（玻璃膜下方），统一光影 */
+#app.is-mobile .cd-card-bg {
+  filter: saturate(1.05) brightness(1.02);
+  opacity: .9;
+}
+#app.is-mobile .cd-card-body {
+  position: relative; z-index: 1;
+  padding: 16px 18px 14px;
+}
+/* 天数大字：主题强调色 + 克制的按压层次 */
+#app.is-mobile .cd-days {
+  font-size: 34px; font-weight: 800; line-height: 1;
+  letter-spacing: -.01em;
+}
+/* 标题/日期/标签：现代无衬线 */
+#app.is-mobile .cd-card-title { font-size: 16px; font-weight: 600; }
+#app.is-mobile .cd-card-date,
+#app.is-mobile .cd-card-meta { color: var(--ls-text-2); }
+/* 标签 pill：柔和底色 + 主题线 */
+#app.is-mobile .cd-tag {
+  background: rgba(91,106,224,.12);
+  color: var(--ls-text-2);
+  border: none; border-radius: 999px;
+  padding: 2px 9px; font-size: 11px;
+}
+#app.is-mobile .cd-tag.cd-pin { background: rgba(26,168,106,.16); color: var(--ls-jade); }
+#app.is-mobile .cd-tag.cd-arch { background: rgba(138,143,152,.18); }
+/* 分组标签：灰色细线 + 小戳 */
+#app.is-mobile .cd-group-label {
+  font-size: 12px; letter-spacing: .04em; color: var(--ls-text-3);
+  margin: 18px 4px 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+#app.is-mobile .cd-group-label::after { content: ""; flex: 1; height: 1px; background: var(--ls-line); }
+/* 卡片内操作按钮：圆角玻璃小圆钮，藏在角落 */
+#app.is-mobile .cd-card-actions {
+  position: absolute; right: 10px; top: 10px; z-index: 2;
+  display: flex; gap: 6px; opacity: .9;
+}
+#app.is-mobile .cd-card-actions .el-button {
+  width: 28px; height: 28px; padding: 0;
+  background: rgba(16,17,26,.5); border: 1px solid var(--ls-line);
+  color: var(--ls-text); border-radius: 999px; backdrop-filter: blur(10px);
+}
+/* 空态：玻璃圆图标 + 主次文案 + 主操作 */
+#app.is-mobile .cd-empty {
+  margin: 9vh 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 0 32px; text-align: center;
+}
+#app.is-mobile .cd-empty-icon {
+  width: 72px; height: 72px; border-radius: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 34px;
+  background: var(--ls-glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--ls-line);
+  box-shadow: var(--ls-highlight), var(--ls-shadow);
+  margin-bottom: 10px;
+}
+#app.is-mobile .cd-empty-text { font-size: 15px; font-weight: 600; color: var(--ls-text); }
+#app.is-mobile .cd-empty .el-button { border-radius: 999px; margin-top: 6px; }
+
+/* ============ 2 · 列表页统一 空态 ============ */
+#app.is-mobile :is(.st-empty, .notes-empty, .ct-empty, .tv-empty) {
+  padding: 40px 24px; text-align: center;
+  color: var(--ls-text-2); font-size: 14px; line-height: 1.7;
+}
+
+/* ============ 3 · 仪表/统计卡：统一玻璃 + 数字加重 ============ */
+#app.is-mobile :is(.fin-kpi-card, .st-kpi-card, .tv-kpi-card) {
+  background: var(--ls-glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--ls-line);
+  border-radius: 20px;
+}
+#app.is-mobile :is(.fin-kpi, .st-kpi, .tv-kpi) { gap: 10px; }
+
+/* ============ 4 · 记录/列表行：发丝分隔，去网格感 ============ */
+#app.is-mobile .fin-row,
+#app.is-mobile :is(.notes-item, .ct-list-row, .tv-item, .st-card) {
+  border-bottom: 1px solid var(--ls-line);
+  border-radius: 16px;
+  background: var(--ls-glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+
+/* ============ 5 · Form 玻璃化（行情加自选/通讯录新增等） ============ */
+#app.is-mobile :is(.st-form, .ct-form, .tv-form) {
+  background: var(--ls-glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--ls-line); border-radius: 20px;
+}
+#app.is-mobile .st-input,
+#app.is-mobile .ct-input { border-radius: 12px; }
+
+/* ============ 6 · 克制的按压反馈（只动机 transform/opacity） ============ */
+#app.is-mobile .cd-card.jade-card,
+#app.is-mobile :is(.notes-item, .ct-list-row, .tv-item, .st-card, .fin-row) {
+  transition: transform .16s ease, opacity .2s ease, box-shadow .22s ease;
+}
+#app.is-mobile .cd-card.jade-card:active,
+#app.is-mobile :is(.notes-item, .ct-list-row, .tv-item, .st-card):active {
+  transform: scale(.985); opacity: .86;
+}
+
+/* ============ 7 · 减弱动效偏好 ============ */
+@media (prefers-reduced-motion: reduce) {
+  #app.is-mobile :is(.cd-card.jade-card, .notes-item, .ct-list-row, .tv-item, .st-card):active {
+    transform: none; opacity: 1;
+  }
+}

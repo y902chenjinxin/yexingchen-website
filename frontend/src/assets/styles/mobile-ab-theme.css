@@ -132,10 +132,14 @@
 
 /* 深空卡：顶缘微高光，几乎不发白 */
 #app.is-mobile .glass-card,
-#app.is-mobile .ls-card {
+#app.is-mobile .ls-card,
+/* 各子页通用的 .glass 毛玻璃卡：补齐模糊/边框/高光（仅设了背景色，缺质感） */
+#app.is-mobile .glass {
   background: linear-gradient(165deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 46%), #10111a;
-  border-color: var(--glass-border);
+  border: 1px solid var(--glass-border);
   box-shadow: var(--glass-highlight), var(--glass-shadow);
+  -webkit-backdrop-filter: saturate(185%) blur(24px);
+  backdrop-filter: saturate(185%) blur(24px);
 }
 
 /* ---------- 白天 A · 液态玻璃 (html[data-theme="day"] #app.is-mobile) ---------- */
@@ -254,8 +258,12 @@ html[data-theme="day"] #app.is-mobile {
 }
 
 html[data-theme="day"] #app.is-mobile .glass-card,
-html[data-theme="day"] #app.is-mobile .ls-card {
+html[data-theme="day"] #app.is-mobile .ls-card,
+/* 白天 A 的 .glass 毛玻璃：通透亮边带蓝紫阴影 */
+html[data-theme="day"] #app.is-mobile .glass {
   background: linear-gradient(165deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66) 46%);
-  border-color: var(--glass-border);
+  border: 1px solid var(--glass-border);
   box-shadow: var(--glass-highlight), var(--glass-shadow);
+  -webkit-backdrop-filter: saturate(200%) blur(20px);
+  backdrop-filter: saturate(200%) blur(20px);
 }

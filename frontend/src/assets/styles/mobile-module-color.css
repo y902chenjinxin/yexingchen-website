@@ -1,0 +1,198 @@
+/* =====================================================================
+ * 手机端 7 大内容模块「灵动卡片 · 独立渐变」主题层
+ * ---------------------------------------------------------------------
+ * 设计依据：docs/ai/MOBILE_MODULE_VIBRANT_20260917.md
+ * 仅作用于 #app.is-mobile（移动端 ≤767px），桌面端一律不动。
+ * 思路：不再把全站统一成蓝紫，而是为每个模块注入一套**独立的高饱和
+ * 渐变品牌色**，作用于 KPI 数字 / 主按钮 / 图标块 / 空态 / 卡片氛围，
+ * 让每个页面「一眼可辨」、更灵动活泼。
+ *
+ * 兼容：Element 弹层/下拉在 body，本层固定在各模块作用域（.xx-page /
+ * .xx-inner / .island-inner-*）内，不污染弹层；弹层仍走 --el-color-primary。
+ * 依赖 mobile-ab-theme.css 的 A/B token（--ab-*、--ls-*、--glass-*）。
+ *
+ * 模块配色（A 亮昼 / B 深，双态用 same hue 微调亮度）：
+ *   记账   /finance         青绿  #0fa07f
+ *   行情   /stocks          蓝紫  #5b6ae0
+ *   足迹   /travels         天蓝  #2a9ece
+ *   通讯录 /contacts        珊瑚  #f0643c
+ *   笔记   /notes           品蓝  #7a5ce8
+ *   倒计时 /tool/countdown  琥珀  #e08a3a
+ *   音乐   /music           桃粉  #8b5cf6
+ *
+ * 每模块定义一个局部颜色作用域类 .mod-xxx，统一注入变量：
+ *   --mv-c1 / --mv-c2        渐变主攻色（亮）
+ *   --mv-c2-soft             渐变副色-透明度
+ *   --mv-text                数字/强调文字色（白天自动转深）
+ *   --mv-ink                 数字上的浅色文字（渐变底上）
+ * ===================================================================== */
+
+#app.is-mobile .fin-page,  #app.is-mobile .fin-inner,
+#app.is-mobile .st-page,   #app.is-mobile .st-inner,
+#app.is-mobile .tv-page,   #app.is-mobile .tv-inner,
+#app.is-mobile .ct-page,   #app.is-mobile .ct-inner,
+#app.is-mobile .notes-page,
+#app.is-mobile .island-inner-tool,   /* 倒计时 */
+#app.is-mobile .island-inner-music { /* 音乐 */
+  /* 先清掉 mobile-native-glass 的全站蓝紫强覆盖在模块作用域内的残留 */
+  --cd-red: var(--mv-c1);
+  --cd-teal: var(--mv-c1);
+  --ls-jade: var(--mv-c2);
+}
+
+/* =====================================================================
+ * 1 · 记账 —— 青绿
+ * ===================================================================== */
+#app.is-mobile .fin-page { --mv-c1: #0fa07f; --mv-c2: #2fd58a; --mv-c2-soft: rgba(47,213,138,.22); }
+html[data-theme="day"] #app.is-mobile .fin-page { --mv-c1: #089577; --mv-c2: #16a97b; }
+/* KPI 数字 → 渐变文字 */
+#app.is-mobile .fin-page .fin-kpi-val {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* KPI 卡顶部渐变光带 = 灵动卡片 */
+#app.is-mobile .fin-page .fin-kpi { position: relative; overflow: hidden; }
+#app.is-mobile .fin-page .fin-kpi::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 18px;
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2));
+  opacity: .85;
+}
+/* 主按钮 / 分段选中 */
+#app.is-mobile .fin-page .fin-btn.primary,
+#app.is-mobile .fin-page .fin-dim-btn.on {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  border-color: transparent !important; color: #fff !important;
+}
+
+/* =====================================================================
+ * 2 · 行情 —— 蓝紫
+ * ===================================================================== */
+#app.is-mobile .st-page { --mv-c1: #5b6ae0; --mv-c2: #8b5cf6; --mv-c2-soft: rgba(139,92,246,.22); }
+html[data-theme="day"] #app.is-mobile .st-page { --mv-c1: #4f5cd6; --mv-c2: #7a5ce8; }
+#app.is-mobile .st-page .st-kpi-v {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+#app.is-mobile .st-page .st-kpi-card { position: relative; overflow: hidden; }
+#app.is-mobile .st-page .st-kpi-card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 18px;
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2));
+  opacity: .85;
+}
+#app.is-mobile .st-page .st-btn.primary {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  border-color: transparent !important; color: #fff !important;
+}
+
+/* =====================================================================
+ * 3 · 足迹 —— 天蓝
+ * ===================================================================== */
+#app.is-mobile .tv-page { --mv-c1: #2a9ece; --mv-c2: #49c6e6; --mv-c2-soft: rgba(73,198,230,.22); }
+html[data-theme="day"] #app.is-mobile .tv-page { --mv-c1: #1f87b4; --mv-c2: #2aa8c9; }
+#app.is-mobile .tv-page .tv-kpi-v {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+#app.is-mobile .tv-page .tv-kpi-card { position: relative; overflow: hidden; }
+#app.is-mobile .tv-page .tv-kpi-card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 18px;
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2));
+  opacity: .85;
+}
+#app.is-mobile .tv-page .tv-btn.primary {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  border-color: transparent !important; color: #fff !important;
+}
+
+/* =====================================================================
+ * 4 · 通讯录 —— 珊瑚
+ * ===================================================================== */
+#app.is-mobile .ct-page { --mv-c1: #f0643c; --mv-c2: #ff8f6e; --mv-c2-soft: rgba(255,143,110,.22); }
+html[data-theme="day"] #app.is-mobile .ct-page { --mv-c1: #e0522a; --mv-c2: #f27448; }
+#app.is-mobile .ct-page .ct-avatar {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  color: #fff !important; border-color: transparent !important;
+  font-family: var(--font-serif);
+}
+#app.is-mobile .ct-page .ct-seg-btn.on {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  color: #fff !important;
+}
+#app.is-mobile .ct-page .ct-btn.primary {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  border-color: transparent !important; color: #fff !important;
+}
+#app.is-mobile .ct-page .ct-bday.is-today { background: var(--mv-c1) !important; color: #fff; }
+#app.is-mobile .ct-page .ct-pin { background: var(--mv-c2-soft); color: var(--mv-c1); }
+
+/* =====================================================================
+ * 5 · 笔记 —— 品蓝/幻紫
+ * ===================================================================== */
+#app.is-mobile .notes-page { --mv-c1: #7a5ce8; --mv-c2: #a69bff; --mv-c2-soft: rgba(166,155,255,.22); }
+html[data-theme="day"] #app.is-mobile .notes-page { --mv-c1: #6346d0; --mv-c2: #826bf0; }
+#app.is-mobile .notes-page .el-button--primary {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  border-color: transparent !important;
+}
+/* 笔记卡片左缘渐变竖条 = 灵动卡片 */
+#app.is-mobile .notes-page .notes-item { position: relative; overflow: hidden; }
+#app.is-mobile .notes-page .notes-item::before {
+  content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--mv-c1), var(--mv-c2));
+}
+
+/* =====================================================================
+ * 6 · 倒计时 —— 琥珀（沿用玉简暖金底蕴，去古风箔面后淡雅化）
+ * ===================================================================== */
+#app.is-mobile .island-inner-tool { --mv-c1: #e08a3a; --mv-c2: #f4b36a; --mv-c2-soft: rgba(244,179,106,.22); }
+html[data-theme="day"] #app.is-mobile .island-inner-tool { --mv-c1: #cd7a22; --mv-c2: #e69a52; }
+/* 天数大字 → 琥珀渐变 */
+#app.is-mobile .island-inner-tool .cd-days {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+/* 分组标签 + 空态 */
+#app.is-mobile .island-inner-tool .cd-group-label { color: var(--mv-c1); }
+#app.is-mobile .island-inner-tool .cd-empty-icon {
+  color: var(--mv-c1);
+  background: linear-gradient(135deg, var(--mv-c2-soft), transparent);
+}
+#app.is-mobile .island-inner-tool .el-button--primary {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  border-color: transparent !important;
+}
+/* 卡片氛围：天数色即用户自定义色（保留）；卡片体压暗便于琥珀文字浮现 */
+#app.is-mobile .island-inner-tool .cd-card-body {
+  background: linear-gradient(to bottom, rgba(0,0,0,.28) 0%, rgba(0,0,0,.6) 100%);
+}
+
+/* =====================================================================
+ * 7 · 音乐 —— 桃粉/洋红（灵动音律）
+ * ===================================================================== */
+#app.is-mobile .island-inner-music { --mv-c1: #8b5cf6; --mv-c2: #d94f9b; --mv-c2-soft: rgba(217,79,155,.22); }
+html[data-theme="day"] #app.is-mobile .island-inner-music { --mv-c1: #7a4add; --mv-c2: #c03d85; }
+/* 去古风残留：古琴虚影 / 音符飘带 / 浮动音符 移动端隐藏 */
+#app.is-mobile .island-inner-music .guqin-bg,
+#app.is-mobile .island-inner-music .music-ribbon,
+#app.is-mobile .island-inner-music .floating-notes { display: none !important; }
+/* 播放按钮渐变 */
+#app.is-mobile .island-inner-music .play-btn,
+#app.is-mobile .island-inner-music .bgm-btn.on {
+  background: linear-gradient(135deg, var(--mv-c1), var(--mv-c2)) !important;
+  color: #fff !important; border-color: transparent !important;
+}
+/* 曲目名 → 主题强调 */
+#app.is-mobile .island-inner-music .music-name { color: var(--mv-c1); font-family: var(--font-serif); }
+#app.is-mobile .island-inner-music .empty-text { color: var(--mv-c1); }
+
+/* =====================================================================
+ * 8 · 白天模式下 KPI 渐变数字可读性兜底（太浅时加深描边）
+ * ===================================================================== */
+html[data-theme="day"] #app.is-mobile :is(.fin-kpi-val, .st-kpi-v, .tv-kpi-v, .cd-days) {
+  -webkit-text-stroke: .3px rgba(255,255,255,.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  #app.is-mobile :is(.fin-kpi, .st-kpi-card, .tv-kpi-card)::before { display: none; }
+}

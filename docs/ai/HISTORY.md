@@ -40,6 +40,8 @@
 
 - **2026-09-17**：**手机端 P3 打磨 + 上线（SW `xuanhuang-v107`，方案同 `MOBILE_SIMPLIFY_20260916.md` §11 P3）**——把「播放器主页/工具浏览/我的纯个性化」落到子页，全 `#app.is-mobile` 门控、桌面零回归：音乐 `/music` 顶栏「管理/上传」用 `.mu-admin-tools` 包裹类隐掉、`.manage-pane` 兜底 → 进页即播放器主视图；工具 `/tool` `.tl-admin-tools` 隐「管理/添加」、`.tool-icon` 琥珀蓝紫化；我的 `/profile` 金渐变标题→无衬线纯色、古金卡片→玻璃，隐藏角色行/「修改密码」/「←返回工作台」，主题分段金→蓝紫。构建核验要点：**按路由拆分的 `.vue` chunk 才是模板字符串所在处**（主 `index-*.js` 搜不到包裹类是正常）。217 文件 home=200、SW v106→v107，本地浏览器 DOM 实测 PASS（详见 WORK_LOG/CHANGELOG v2.26.0）。
 
+- **2026-09-17**：**手机端 7 大模块「灵动卡片 · 独立渐变」重设计 + APK 深墨沉浸（SW `xuanhuang-v109`，方案 `MOBILE_MODULE_VIBRANT_20260917.md`，User「音乐/笔记/足迹/记账/行情/通讯录/倒计时的 UI 风格、框架、排版需要重新设计下，现在好丑」→ 灵动卡片+渐变）**——各模块内部此前只做了「隐藏管理控件」，仍残留古风/硬编码琥珀（KPI 卡、主按钮、倒计时玉简箔面、行情按钮、音乐古琴虚影/音符飘带），无统一视觉语言。本轮新增 `mobile-module-color.css`（`#app.is-mobile` 门控、桌面零回归）为 7 模块各注入**独立高饱和渐变**：记账青绿/行情蓝紫/足迹天蓝/通讯录珊瑚/笔记品蓝/倒计时琥珀/音乐桃粉，逐模块接管 KPI 渐变分割条+渐变数值+渐变主按钮+图标块+倒计时玉简箔面，并隐藏音乐古风残留；`mobile-native-glass.css` 删除全站统一蓝紫（避免冲突，Element 弹层/下拉仍蓝紫）。**APK 黄横栏兜底修复（User「顶部和底部有黄色横栏」）**：`build_webview_apk.py` 主题 statusBarColor/navigationBarColor/windowBackground 全设深墨 `#10140F`+`windowLightStatusBar=false` → 重打 v2.0.0，系统栏不再金黄。构建核验：清缓存 `vite build --outDir dist2`，CSS 含 `mv-c1/fin-kpi-val`、SW v108→v109，替换 dist 后 217 文件 home=200；390px 手机 A/B 双主题实测各模块渐变生效、返回钮隐藏 PASS、桌面零回归。**音乐页本地 dev 截图白屏系 vite `/music` proxy 遮蔽（整页 goto `/music` 被转发后端、后端无该页面路由→404 JSON），生产 nginx 走 SPA fallback 无此问题；截图脚本应经 SPA 客户端导航而非直接 goto `/music`**。APK `gradle assembleRelease` BUILD_CODE=0、同 keystore 签名 SHA-256 一致（可覆盖安装）、`yexingchen-2.0.0.apk` 部署、下载页 200。仅前端+APK，后端无源码变更。
+
 ## 关键踩坑与修复（务必记住）
 
 | # | 坑 | 症状 | 修复 |

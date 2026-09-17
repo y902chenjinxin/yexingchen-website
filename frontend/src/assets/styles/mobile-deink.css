@@ -136,3 +136,105 @@
 }
 /* 返回：戳「← 返回工作台」文本，保留紧凑 BackButton 走系统返回栈 */
 #app.is-mobile .profile-page .back-btn { display: none; }
+
+/* =====================================================================
+ * P4 · 手机端子页质感统一层 —— iOS 大标题 + sticky 毛玻璃头 + 克制动效
+ * ---------------------------------------------------------------------
+ * 目标：把各子页（记账/行情/足迹/通讯录/证件照/笔记等手写 header 页，
+ *       以及音乐/倒计时的 island 外壳页）统一成「一个页面一个焦点」的
+ *       现代原生质感：去掉管理后台感，只留「大标题 + 大列表 + 大操作」。
+ * 返回按钮：BackButton 组件加固定类 app-back-btn 后在此全局隐藏，
+ *          统一走系统/原生返回栈（APK WebView 已接 onBackPressed）。
+ * 依据：MOBILE_SIMPLIFY §11-§12（三处修复 + 交互质感）
+ * ===================================================================== */
+
+/* ---- B · 返回按钮：全局隐藏 BackButton 组件 ---- */
+#app.is-mobile .app-back-btn { display: none !important; }
+
+/* ---- A · 手写子页 header → iOS 大标题 + sticky 液态玻璃头 ---- */
+#app.is-mobile :is(.fin-head, .st-head, .tv-head, .ct-head, .idp-head) {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 0 !important;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px !important;
+  background: var(--color-bg-glass);
+  border-bottom: 1px solid var(--ls-line);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+}
+#app.is-mobile :is(.fin-titles, .st-titles, .tv-titles, .ct-titles, .idp-titles) { flex: 1; min-width: 0; }
+
+/* 大标题：去金渐变化 → 现代 iOS 大标题（纯色、粗、左对齐） */
+#app.is-mobile :is(.fin-title, .st-title, .tv-title, .ct-title, .idp-title) {
+  font-size: clamp(23px, 6.4vw, 30px) !important;
+  font-weight: 700 !important;
+  letter-spacing: .01em !important;
+  line-height: 1.15;
+  color: var(--ls-text) !important;
+  margin: 0 !important;
+  background: none; -webkit-background-clip: initial; background-clip: initial;
+  -webkit-text-fill-color: currentColor; filter: none;
+}
+#app.is-mobile :is(.fin-sub, .st-sub, .tv-sub, .ct-sub, .idp-sub) {
+  margin: 3px 0 0 !important;
+  font-size: 12px !important;
+  letter-spacing: .02em !important;
+  color: var(--ls-text-2) !important;
+}
+#app.is-mobile :is(.fin-head-right, .st-head-right, .tv-head-right, .ct-head-right) {
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ---- Notes 独特 header（h1 直接放 header 内）---- */
+#app.is-mobile .notes-header {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 !important;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px !important;
+  background: var(--color-bg-glass);
+  border-bottom: 1px solid var(--ls-line);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+}
+#app.is-mobile .notes-header h1 {
+  flex: 1; min-width: 0; margin: 0 !important;
+  font-size: clamp(23px, 6.4vw, 30px) !important; font-weight: 700;
+  color: var(--ls-text);
+  background: none; -webkit-background-clip: initial; background-clip: initial;
+  -webkit-text-fill-color: currentColor; filter: none;
+}
+
+/* ---- 移动端子页统一背景：去掉宣纸底噪，纯液态玻璃面 ---- */
+#app.is-mobile :is(.fin-page, .st-page, .tv-page, .idp-page, .ct-page, .notes-page) {
+  background: var(--color-bg) !important;
+}
+#app.is-mobile :is(.fin-inner, .st-inner, .tv-inner, .ct-inner, .idp-inner) {
+  max-width: none !important;
+  padding-left: 16px !important; padding-right: 16px !important;
+}
+
+/* ---- 通用卡片质感：大圆角 + 玻璃（依赖 P3 已 remap 的 A/B 液态玻璃 token）---- */
+#app.is-mobile :is(.fin-kpi-card, .st-kpi-card, .tv-kpi-card, .ct-card, .cd-card, .tool-card) {
+  border-radius: var(--radius-lg, 20px) !important;
+}
+#app.is-mobile :is(.fin-kpi-val, .st-kpi-v, .tv-kpi-v) { font-weight: 800 !important; line-height: 1.1; }
+#app.is-mobile :is(.fin-kpi-k, .st-kpi-k, .tv-kpi-k, .st-kpi-s, .tv-kpi-s, .fin-chart-title) { letter-spacing: .03em; }
+
+/* ---- 克制动效：按压反馈只动 transform/opacity，符合性能与克制偏好 ---- */
+#app.is-mobile .glass,
+#app.is-mobile :is(.fin-kpi-card, .st-kpi-card, .tv-kpi-card, .ct-card, .cd-card, .notes-item) {
+  transition: transform .18s ease, opacity .22s ease, box-shadow .25s ease;
+}
+#app.is-mobile :is(.fin-kpi-card, .st-kpi-card, .tv-kpi-card, .ct-card, .cd-card, .notes-item):active {
+  transform: scale(.985); opacity: .86;
+}
+#app.is-mobile :is(button, .fin-btn, .st-btn, .tv-btn, .ct-btn) { transition: transform .15s ease, opacity .2s ease; }
+#app.is-mobile :is(button, .fin-btn, .st-btn, .tv-btn, .ct-btn):active { transform: scale(.96); opacity: .82; }
+
+/* 减弱动效偏好 → 关动画 */
+@media (prefers-reduced-motion: reduce) {
+  #app.is-mobile * { animation: none !important; transition: none !important; }
+  #app.is-mobile :is(.fin-kpi-card, .st-kpi-card, .tv-kpi-card, .ct-card, .cd-card, .notes-item):active,
+  #app.is-mobile :is(button, .fin-btn, .st-btn, .tv-btn, .ct-btn):active { transform: none; opacity: 1; }
+}

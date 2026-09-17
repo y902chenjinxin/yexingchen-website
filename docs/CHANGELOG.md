@@ -1,3 +1,32 @@
+## [v2.28.0] - 2026-09-17
+
+### 手机端 7 大模块「灵动卡片 · 独立渐变」重设计 + APK 深墨沉浸状态栏/导航栏（SW `xuanhuang-v109`）
+
+User「音乐、笔记、足迹、记账、行情、通讯录、倒计时的 UI 风格、框架、排版需要重新设计下，现在好丑」→ 明确走「灵动卡片 + 渐变」：每模块一套独立高饱和渐变主题，像记账类 App 一样分区、活泼、有质感。仅手机端，桌面水墨国风零回归。
+
+**根因**：v2.24~v2.27 手机端只做了「去管理后台感（隐藏控件）+ 换 token」，但各模块内部仍残留古风/硬编码琥珀强调（KPI 卡、按钮、倒计时玉简箔面、行情按钮、音乐古琴虚影/音符飘带），模块间无统一视觉语言，显得「丑、散」。
+
+**改动（新增 2 个 CSS 层 + 精简原生层，全 `#app.is-mobile` 门控）**：
+- 新增 `mobile-module-color.css`：为 7 模块各定一套**独立高饱和渐变**——
+  | 模块 | 路由 | 渐变主色 | 气质 |
+  |------|------|---------|------|
+  | 记账 `/finance` | `#0fa07f→#2fd58a` 青绿 | 稳健生长 |
+  | 行情 `/stocks` | `#5b6ae0→#7f8dff` 蓝紫 | 理性科技 |
+  | 足迹 `/travels` | `#2a9ece→#49c6e6` 天蓝 | 辽阔远方 |
+  | 通讯录 `/contacts` | `#f0643c→#ff8f6e` 珊瑚 | 温暖家人 |
+  | 笔记 `/notes` | `#7a5ce8→#a69bff` 品蓝 | 沉静书写 |
+  | 倒计时 `/tool/countdown` | `#e08a3a→#f4b36a` 琥珀 | 翘首期盼 |
+  | 音乐 `/music` | `#8b5cf6→#d94f9b` 桃粉/洋红 | 律动浪漫 |
+  逐模块接管 KPI 卡顶部分割渐变条、数值渐变文字、主按钮渐变填充、图标块、倒计时玉简箔面等；隐藏音乐古琴虚影 `.guqin-bg`/`.music-ribbon`/`.floating-notes` 等古风残留。
+- 精简 `mobile-native-glass.css`：**删除全站统一蓝紫强覆盖**，只保留通用毛玻璃质感 + Element 主色，避免与新模块渐变层冲突（Element 弹层/下拉仍挂 body 控件，主色统一蓝紫）。
+- 倒计时玉简箔面金→琥珀渐变、玻璃化卡片；行情硬编码琥珀按钮→模块渐变。
+
+**APK 深墨系统栏（User「界面顶部和底部有黄色横栏」的根层修复）**：`build_webview_apk.py` 主题 `statusBarColor`/`navigationBarColor`/`windowBackground` 全设 **深墨 `#10140F`** + `windowLightStatusBar=false`（v2.0.0）→ 重打 APK，系统状态栏/导航栏不再金黄横栏。
+
+**构建/验证**：`npx vite build --outDir dist2`（清缓存全新构建）→ 核验 CSS 含 `mv-c1/fin-kpi-val` 标记 + SW `xuanhuang-v108→v109` → 整体替换 dist → `deploy_frontend.py` 217 文件 home=200。390px 手机双主题（A/B）实测：记账青绿渐变 KPI 卡、倒计时琥珀、各模块渐变大数/按钮生效 PASS；返回按钮 `display:none` 交系统 PASS；桌面端无 `is-mobile`、零回归。**音乐页本地 dev 截图白屏为 vite `/music` proxy 遮蔽/后端无页面路由所致，生产 nginx 走 SPA fallback 无此问题**。APK：`gradle assembleRelease` BUILD_CODE=0、同 keystore 签名 SHA-256 一致（可覆盖安装）、`yexingchen-2.0.0.apk` 部署 + 下载页更新 200。
+
+---
+
 ## [v2.27.0] - 2026-09-17
 
 ### 手机端三处修复 + 接通丢失的移动端 CSS（SW `xuanhuang-v108`）

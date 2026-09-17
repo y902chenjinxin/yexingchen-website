@@ -1,5 +1,5 @@
 <template>
-  <el-button :icon="ArrowLeft" size="default" @click="goBack">
+  <el-button :icon="ArrowLeft" size="default" class="app-back-btn" @click="goBack">
     返回
   </el-button>
 </template>
