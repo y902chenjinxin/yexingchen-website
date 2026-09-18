@@ -1,3 +1,22 @@
+## [v2.30.0] - 2026-09-18
+
+### 桌面端「深墨青玉 · Linear 产品风」收敛层（SW `xuanhuang-v115`）
+
+User「我不是要你把手机端复制到网页来，我要求的是按照这种风格去设计网页端的 UI，你去找下 github 找类似风格」→ 明确桌面端与手机端是**两种独立设计语言**：手机端是「灵动卡片 + 每模块渐变」的数据工具，桌面端重做为 **Linear 式深色产品风**（参考 Linear / shadcn dark / Supabase dark 等产品级审美），实色表面 + 发丝描边层级 + 多层淡阴影造深度，单一青玉 `#4fc6b8` 仅做克制点缀。
+
+**新增 `desktop-product.css`（作用域 `#app:not(.is-mobile)`，手机端与桌面互不干扰）**：
+
+- **表面阶梯用「边框亮度」而非色块层级**：`--dp-bg #0b0f14` / `--dp-bg2 #0f151b` / `--dp-surface #121820` / `--dp-surface2 #18212b`，发丝描边 `--dp-line rgba(220,235,246,.10)` 与 `--dp-line-strong .17` 区隔层级。
+- **Linear 式多层淡阴影**：`--dp-shadow = 0 1px 2px rgba(0,0,0,.38), 0 8px 24px rgba(0,0,0,.22)`（一层紧贴 + 一层远距柔化，尽量薄），hover 只聚焦描边不加位移/缩放。
+- **单一青玉克制点缀**：`--dp-accent #4fc6b8`，仅用于当前态、主按钮、焦点环、关键数字等精确定位处；工作台卡片、表格、表单统一收口为实色面 + 发丝框，去掉玻璃/霓虹/高饱和标签。
+- 接管工作台卡片、资讯条、顶栏入口等 Linear 组件态（hover 聚光 / active 压入 / 焦点描边）。
+
+**改动文件**：新增 `frontend/src/assets/styles/desktop-product.css`（471 行）；`main.js` 在 `mobile-product.css` 之后引入。SW `v110→v115`（本轮跳升清旧缓存，确保已装 App/PWA 拿到桌面新皮肤）。
+
+**构建/部署/验证**：`vite build dist2` 全新输出目录 → 核验 bundle 含 `--dp-bg`/`--dp-line`/`--dp-accent: #4fc6b8` 标记 + **SW `xuanhuang-v115`** → 整体替换 dist → `deploy_frontend.py`（保留 `download/`、`.well-known/`）。**生产核验 PASS**：服务器 sw.js `xuanhuang-v115`、desktop token 已进 `index-6eD2JQii.css`、`https://yexingchen.cn/` home=200。桌面 Playwright 1440×900 深/日双主题截图验收卡片/表格收口生效、手机端 `#app.is-mobile` 门控零回归。仅前端，后端无源码变更。
+
+---
+
 ## [v2.29.0] - 2026-09-18
 
 ### 审 Codex 新手机 UI 去坑 + 产品化收敛（SW `xuanhuang-v110`）
