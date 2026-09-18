@@ -1,3 +1,18 @@
+## [v2.29.0] - 2026-09-18
+
+### 审 Codex 新手机 UI 去坑 + 产品化收敛（SW `xuanhuang-v110`）
+
+对 Codex 交付的 `mobile-product.css`「产品化收敛层」（把各模块统一成可靠数据工具、去模块渐变/玻璃碎片）做全量核对，发现与既有 `mobile-module-color.css`「灵动·独立渐变」层同载存在**选择器特异性冲突**，**修复 3 处硬坑**：
+
+- **零值异色根治**：`mobile-module-color.css` 的 `.fin-page .fin-kpi-val`(1,3,0) 特异性高于收敛层 `.fin-kpi-val`(1,2,0)，即使后者后加载也被渐变压住 → 记账页零值仍被渐变/语义色渲染（本月支出 ¥0 呈现青绿渐变、流水笔数 0 也带色）。**删除 `mobile-module-color.css`**（main.js 引用 + 文件本体，同步清理 `mobile-native-glass.css` 失效注释）→ `mobile-product.css` 成为唯一收敛层。
+- **倒计时 API 回归**：`countdown.js` BASE 被误改 `/api/countdowns`→`/countdowns`（dev/prod 均无对应 rewrite）→ 修复为 `/api/countdowns`，否则倒计时全端请求 404。
+- **工作台流水笔数恒「—」**：`MobileWorkbenchHome.vue` 声明 `count` 但 `onMounted` 从未赋值 → 补 `d.month_count`。
+- **SW 升版** `v109→v110`：本 SW 为「版本号+静态缓存」模式，同版本不清旧缓存即拿旧 bundle，升版确保已装 App/PWA 用户拿到本次修复。
+
+**构建/部署/验证**：`npx vite build --outDir dist2` 核验（新文案「本月净流入/流水笔数」、`/api/countdowns`、`month_count` 在；`mobile-module-color` 不在）→ 整体替换 dist → `deploy_frontend.py` 217 文件、服务器 sw.js `xuanhuang-v110`、home=200。**生产浏览器取证 PASS**：记账页三个零值计算色 `rgb(240,245,248)=#f0f5f8` 中性正文（不再青绿渐变）、工作台零值收支已不带 `.up/.dn` 语义类、流水笔数由「—」→「0」、390px 手机 A/B 双主题截图布局干净、桌面零回归。全部前端改动，后端无源码变更不重部署。
+
+---
+
 ## [v2.28.0] - 2026-09-17
 
 ### 手机端 7 大模块「灵动卡片 · 独立渐变」重设计 + APK 深墨沉浸状态栏/导航栏（SW `xuanhuang-v109`）
