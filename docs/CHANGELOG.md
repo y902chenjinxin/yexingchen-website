@@ -1,3 +1,21 @@
+## [v2.32.0] - 2026-09-19
+
+### 修复：网页端返回按钮「消失 + 失效」双问题（SW `xuanhuang-v117`）
+
+User「有些页面的返回按钮失效效果了，有些页面的返回按钮消失了，你排查下吧（是网页的，手机端我不需要返回按钮）」。
+
+**根因两处**：
+1. **消失（被顶栏遮挡）**：桌面端 `GlobalTopBar` 为 60px 顶部固定悬浮层（z-index:1000），而岛屿/工具模块页共用 `IslandInnerBase` 外壳，其 `.inner-header` 顶部 no 顶栏避让（padding-top 仅 26px）→ 页首 `.back-btn`（←返回工作台）正落在顶栏之下被盖住；独立页 `ProfileView` 顶部 padding 40px 亦被盖。
+2. **失效（不回来源页）**：`IslandInnerBase.goBack()` 桌面端写死「`history.length>1 && !isMobile` → `router.push('/workbench')`」，完全忽略「返回上一页」；从 /stocks 进详情再点返回会硬跳工作台而非回 /stocks 列表。
+
+**修复**：
+- `IslandInnerBase.vue`：`.inner-header` 桌面默认 padding-top → `84px`（60px 顶栏 + 留白，1100px 断点同步 80px）；`goBack()` 简化为统一「回来源页优先」——有历史 `history.back()`，仅在无历史（直接落地）时回工作台，桌面/移动一致。
+- `ProfileView.vue`：删除重复的文字版「← 返回工作台」（保留 BackButton 组件唯一返回），`.profile-page` 顶部 padding 40→84px 避让顶栏。
+
+**构建/部署/验证**：`npx vite build --outDir dist2` 核验 `84px 40px 14px` 进 CSS、`history.back` 进 JS + SW `v116→v117` → 替换 dist → `deploy_frontend.py` 220 文件、服务器 sw.js `xuanhuang-v117`、home=200。**生产桌面浏览器取证 PASS**（Playwright 1440×900，真 chromium）：/music /tool /finance /stocks /profile /travels /contacts /notes /assistant 九个页返回按钮全部可见（rect 128×37 或 80×32，top≥84px 未被顶栏遮挡）、/profile 仅剩 1 个返回按钮（无重复文字版）；真实导航链：工作台→音乐→返回=工作台 ✓、/stocks→/stocks/600519→返回=**/stocks** ✓（旧逻辑会错跳工作台）、/finance→返回=工作台 ✓。**手机端零回归**（390×844）：上述页面 `.app-back-btn/.back-btn` 均 `display:none` 隐藏，符合「手机端不需返回按钮」。仅前端，后端无源码变更。
+
+---
+
 ## [v2.31.0] - 2026-09-18
 
 ### 修复：模块内页白天模式下仍是深灰（全站岛屿内页背景昼夜化，SW `xuanhuang-v116`）

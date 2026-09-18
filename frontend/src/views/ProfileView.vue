@@ -2,7 +2,6 @@
   <div class="profile-page">
     <div class="page-header">
       <div class="header-with-back">
-        <span class="back-btn" @click="router.push('/workbench')">← 返回工作台</span>
         <BackButton fallback="/workbench" style="margin-right: 12px;" />
         <h1 class="page-title font-serif">个人中心</h1>
       </div>
@@ -95,6 +94,22 @@
           </div>
         </div>
       </div>
+
+      <!-- 品牌意象 -->
+      <div class="info-card">
+        <div class="card-header">
+          <h2>玄黄 · 意象</h2>
+        </div>
+        <div class="card-body">
+          <p class="pref-hint brand-tip">三款玄黄意象标识：<b>琉璃 · 月光</b>为本应用 2.1.0 正式图标，曜变 / 玄黄为同期设计的蔚蓝备选。</p>
+          <div class="brand-grid">
+            <figure v-for="it in brandIcons" :key="it.tag" class="brand-cell" :class="{ current: it.tag === 'liuli' }">
+              <span class="brand-stage"><img :src="it.src" :alt="it.name" loading="lazy" /></span>
+              <figcaption>{{ it.name }}<em v-if="it.tag === 'liuli'">当前图标</em></figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 编辑信息对话框 -->
@@ -141,6 +156,15 @@ import { useAuthStore } from '@/stores/auth'
 import { usePrefsStore } from '@/stores/prefs'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 import { getMe, updateMe } from '@/api/auth'
+import iconLiuli from '@/assets/brand/icon-liuli.png'
+import iconYaobian from '@/assets/brand/icon-yaobian.png'
+import iconXuanhuang from '@/assets/brand/icon-xuanhuang.png'
+
+const brandIcons = [
+  { tag: 'yaobian', name: '曜变', src: iconYaobian },
+  { tag: 'liuli', name: '琉璃 · 月光', src: iconLiuli },
+  { tag: 'xuanhuang', name: '玄黄 · 辉光', src: iconXuanhuang },
+]
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -276,7 +300,8 @@ async function savePassword() {
 .profile-page {
   min-height: 100vh;
   background: var(--color-bg);
-  padding: 40px;
+  /* 顶部 84px 避让全局固定顶栏（60px + 留白），否则页头返回按钮被顶栏盖住 */
+  padding: 84px 40px 40px;
   font-family: var(--font-serif);
 }
 
@@ -436,15 +461,54 @@ async function savePassword() {
   gap: 10px;
 }
 
-.back-btn {
+/* 品牌意象 */
+.brand-tip { margin-bottom: 16px; }
+.brand-tip b { color: var(--color-gold); font-weight: 600; }
+
+.brand-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.brand-cell { margin: 0; text-align: center; }
+.brand-stage {
+  display: block;
+  aspect-ratio: 1 / 1;
+  border-radius: 22%;
+  padding: 10px;
+  background:
+    radial-gradient(120% 120% at 30% 20%, rgba(201, 169, 110, .14), transparent 55%),
+    var(--xiu-card-2, rgba(201, 169, 110, .06));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 8px 22px rgba(0, 0, 0, .18);
+  border: 1px solid var(--xiu-line);
+}
+.brand-stage img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.brand-cell.current .brand-stage {
+  border-color: rgba(201, 169, 110, .55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 0 1px rgba(201, 169, 110, .25), 0 10px 26px rgba(201, 169, 110, .16);
+}
+.brand-cell figcaption {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+.brand-cell figcaption em {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
   color: var(--color-gold);
-  cursor: pointer;
-  font-size: 14px;
-  align-self: flex-start;
-  margin-left: 20px;
+  margin-top: 2px;
+  letter-spacing: .05em;
 }
 
-.back-btn:hover {
-  color: var(--color-gold-light);
+@media (max-width: 520px) {
+  .brand-grid { gap: 10px; }
+  .brand-stage { border-radius: 20%; padding: 8px; }
+  .brand-cell figcaption { font-size: 11.5px; }
 }
 </style>

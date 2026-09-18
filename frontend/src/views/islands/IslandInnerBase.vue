@@ -62,9 +62,8 @@ const props = defineProps({
 })
 
 function goBack() {
-  // 手机上优先走浏览器/系统返回栈，保持 iOS 互动：直接从列表页进来说明有历史，
-  // 只有直接落地该页（无历史）时才回退到工作台。
-  if (window.history.length > 1 && !isMobile.value) { router.push('/workbench'); return }
+  // 统一「回来源页优先」：有浏览历史则返回上一页；直接落地（无历史）才回工作台。
+  // 桌面/移动一致走 history.back()，手机系统返回栈同样受用。
   if (window.history.length > 1) { try { window.history.back(); return } catch { /* fallthrough */ } }
   router.push('/workbench')
 }
@@ -191,7 +190,9 @@ onUnmounted(() => {
 }
 
 .inner-header {
-  padding: 26px 40px 14px;
+  /* 桌面端避让顶部 60px 全局固定顶栏（GlobalTopBar z-index:1000 悬浮其上），
+     否则页内 top 处的返回按钮被顶栏盖住表现为「返回按钮消失」 */
+  padding: 84px 40px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -308,7 +309,7 @@ onUnmounted(() => {
 
 /* 桌面缩放(>100%)或较窄视口时收敛留白与字号，避免破版/横向溢出 */
 @media (max-width: 1100px) {
-  .inner-header { padding: 22px 26px 12px; }
+  .inner-header { padding: 80px 26px 12px; }
   .inner-main { padding: 14px 26px 16px; }
   .inner-footer { padding: 10px 26px 12px; }
   .island-title { font-size: 30px; }
