@@ -109,7 +109,8 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* 墨青夜色背景：双层渐变 + 纸纹噪点 + 慢晕光斑（去平涂廉价感） */
+/* 墨青夜色背景：双层渐变 + 纸纹噪点 + 慢晕光斑（去平涂廉价感）。
+   底色渐变用 --li-sky* token（夜/日双套，variables.css），否则外部切白天时这里仍写死深灰。 */
 .island-inner::before {
   content: '';
   position: absolute;
@@ -117,7 +118,7 @@ onUnmounted(() => {
   background:
     radial-gradient(ellipse 70% 45% at 18% 12%, var(--ls-bg-glow), transparent 62%),
     radial-gradient(ellipse 55% 40% at 88% 78%, rgba(194, 162, 107, 0.05), transparent 60%),
-    linear-gradient(168deg, #1b262f 0%, #131b22 55%, #10161c 100%);
+    linear-gradient(168deg, var(--li-sky) 0%, var(--li-sky-mid) 55%, var(--li-sky-deep) 100%);
 }
 .island-inner::after {
   content: '';
@@ -231,7 +232,8 @@ onUnmounted(() => {
   font-size: 36px;
   font-weight: 600;
   letter-spacing: .08em;
-  background: linear-gradient(180deg, #f2f6f8 20%, var(--ls-ochre) 100%);
+  /* 标题渐变顶部用 --li-title-a（夜近白霜 / 日深墨），避免日间白字埋进亮底 */
+  background: linear-gradient(180deg, var(--li-title-a) 20%, var(--ls-ochre) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -346,7 +348,7 @@ onUnmounted(() => {
     margin: 0; flex: 1; min-width: 0;
     font-size: clamp(22px, 6vw, 30px);
     letter-spacing: .04em;
-    background: linear-gradient(180deg, #eef4f6 30%, var(--ls-ochre) 115%);
+    background: linear-gradient(180deg, var(--li-title-a) 30%, var(--ls-ochre) 115%);
     -webkit-background-clip: text;
     background-clip: text;
   }

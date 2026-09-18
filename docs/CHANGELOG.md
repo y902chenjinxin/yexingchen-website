@@ -1,3 +1,19 @@
+## [v2.31.0] - 2026-09-18
+
+### 修复：模块内页白天模式下仍是深灰（全站岛屿内页背景昼夜化，SW `xuanhuang-v116`）
+
+User「网页现在风格不统一，比如外面我用白天的样式，进入各个模块里面，依然是灰色的，这块要做风格统一，其他模块的也是一样的」。
+
+**根因**：所有岛屿/工具模块页（音乐/小说/视频/日志/工具/倒计时/音色克隆/水印……）共用 `IslandInnerBase.vue` 页面外壳，其 `.island-inner::before` 背景写死一段深色渐变 `linear-gradient(168deg, #1b262f 0%, #131b22 55%, #10161c 100%)`，**完全无视 `data-theme="day"`**；而工作台/登录页/岛屿主页(`.island-page`)此前已有日间覆盖。故外部切到白天后，进入任一模块仍是深灰冷色。
+
+**修复**：
+- `variables.css` 新增岛屿内页背景 token `--li-sky / --li-sky-mid / --li-sky-deep / --li-title-a`，并提供夜/日两套值（日间与 Linear 亮表面 `#eef1f3` 同族）。
+- `IslandInnerBase.vue`：`.island-inner::before` 背景渐变改用 `--li-sky*`；`.island-title` 大标题渐变顶部改 `--li-title-a`（夜近白霜 / 日深墨，避免白字埋进亮底），桌面与移动两处标题渐变同步。
+
+**构建/部署/验证**：`vite build --outDir dist2` 核验主 CSS 含 `--li-sky: #1d2830`(夜) 与 `--li-sky: #eef1f3`(日)、SW `v115→v116` → 替换 dist → `deploy_frontend.py`（保留 `download/.well-known`）220 文件 home=200。**生产浏览器取证 PASS**：登录后强制 `data-theme="day"`，实测 `--ls-bg1=#eef1f3 /--li-sky=#eef1f3 /--color-bg=#f6f7f8`，`/tool/countdown` 页面 shell 计算背景 `rgb(244,247,248)` 浅色、截图呈浅灰白、文字深色；切回 night 仍为深色，昼夜均可正常切换。仅前端，后端无源码变更。
+
+---
+
 ## [v2.30.0] - 2026-09-18
 
 ### 桌面端「深墨青玉 · Linear 产品风」收敛层（SW `xuanhuang-v115`）
