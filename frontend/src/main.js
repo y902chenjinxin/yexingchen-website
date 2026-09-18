@@ -15,6 +15,8 @@ import './assets/styles/mobile-deink.css'
 import './assets/styles/mobile-native-glass.css'
 // 手机端产品化收敛层：统一页面基线，覆盖历史模块主题，不影响桌面端
 import './assets/styles/mobile-product.css'
+// 桌面端产品化收敛层（深墨青玉·产品风）：作用域 #app:not(.is-mobile)，与移动端互不干扰
+import './assets/styles/desktop-product.css'
 
 const app = createApp(App)
 

@@ -10,7 +10,7 @@
  * 不缓存：跨源资源（CDN/字体/统计）。
  * 注册失败不应阻塞应用启动（main.js 中已 try/catch）。
  */
-const VERSION = 'xuanhuang-v110'
+const VERSION = 'xuanhuang-v115'
 const STATIC_CACHE = `${VERSION}-static`
 
 self.addEventListener('install', (event) => {
@@ -59,21 +59,25 @@ self.addEventListener('fetch', (event) => {
 
   if (!isStaticAsset) return
 
+  // 首帧壳（/ 与 index.html）网络优先：每次导航都必须拿到最新入口，避免旧壳残影
+  const isShell = url.pathname === '/' || url.pathname === '/index.html'
+
   event.respondWith(
-    caches.open(STATIC_CACHE).then((cache) =>
-      cache.match(req).then((cached) => {
-        const fetchPromise = fetch(req)
+    caches.open(STATIC_CACHE).then((cache) => {
+      const networkFirst = () =>
+        fetch(req)
           .then((response) => {
-            // 仅缓存同源 200 basic 响应，避免 opaque/重定向污染
             if (response && response.status === 200 && response.type === 'basic') {
               cache.put(req, response.clone()).catch(() => {})
             }
             return response
           })
-          .catch(() => cached)
-        return cached || fetchPromise
-      })
-    )
+          .catch(() => cache.match(req))
+      if (isShell) {
+        return networkFirst()
+      }
+      return cache.match(req).then((cached) => (cached || networkFirst()))
+    })
   )
 })
 
