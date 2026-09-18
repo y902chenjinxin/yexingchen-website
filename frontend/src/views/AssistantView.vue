@@ -6,6 +6,7 @@
         <span class="header-sub">独立对话 · 流式回答 · 可总结 / 生成笔记</span>
       </div>
       <div class="header-actions">
+        <el-button class="assistant-mobile-new-chat" type="primary" @click="newConversation">＋ 新对话</el-button>
         <span class="kb-toggle">
           <el-switch v-model="knowledgeEnabled" size="small" style="--el-switch-on-color:#d98a76; --el-switch-off-color:#8a9aa0" />
           <span class="kb-label">知识库</span>
@@ -496,6 +497,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.assistant-mobile-new-chat { display: none; }
 .assistant-page {
   max-width: 1120px; margin: 0 auto; padding: 84px 16px 80px;
   font-family: var(--font-serif); color: var(--xiu-text);

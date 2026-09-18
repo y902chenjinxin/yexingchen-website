@@ -213,8 +213,27 @@
         </section>
       </transition>
 
-      <!-- KPI 卡片 -->
-      <section class="fin-kpis">
+      <!-- 手机端数据视图：净流入是主指标，避免四张等权卡片挤占首屏 -->
+      <section class="fin-kpis fin-kpis-mobile" aria-label="账本数据概览">
+        <div class="fin-kpi glass">
+          <span class="fin-kpi-label">{{ unitLabel }}净流入</span>
+          <span class="fin-kpi-val">{{ periodNet >= 0 ? '+' : '−' }} ¥ {{ money(Math.abs(periodNet)) }}</span>
+          <span class="fin-kpi-sub">收入减支出</span>
+        </div>
+        <div class="fin-kpi glass">
+          <span class="fin-kpi-label">{{ unitLabel }}支出</span>
+          <span class="fin-kpi-val" :class="summary.expense ? 'expense' : ''">¥ {{ money(summary.expense) }}</span>
+          <span class="fin-kpi-sub">消费总额</span>
+        </div>
+        <div class="fin-kpi glass">
+          <span class="fin-kpi-label">流水笔数</span>
+          <span class="fin-kpi-val">{{ summary.count }}</span>
+          <span class="fin-kpi-sub">笔记录</span>
+        </div>
+      </section>
+
+      <!-- 桌面端保持原数据布局 -->
+      <section class="fin-kpis fin-kpis-desktop">
         <div class="fin-kpi glass">
           <span class="fin-kpi-label">{{ unitLabel }}收入</span>
           <span class="fin-kpi-val income">+ ¥ {{ money(summary.income) }}</span>
@@ -461,6 +480,7 @@ const isNowPeriod = computed(() => {
   return month.value === `${now.getFullYear()}-${pad(now.getMonth() + 1)}`
 })
 const unitLabel = computed(() => (dim.value === 'day' ? '今日' : (dim.value === 'year' ? '本年' : '本月')))
+const periodNet = computed(() => Number(summary.value.income || 0) - Number(summary.value.expense || 0))
 
 const ddOpen = ref(false)
 const ddYear = ref(now.getFullYear())
@@ -1005,6 +1025,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fd-enter-from,.fd-leave-to { opacity: 0; transform: translateY(-10px); }
 
 /* KPI */
+.fin-kpis-mobile { display: none; }
 .fin-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
 .fin-kpi { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 16px; position: relative; overflow: hidden; }
 .fin-kpi::after { content: ""; position: absolute; top: 0; left: 14%; right: 14%; height: 1px;

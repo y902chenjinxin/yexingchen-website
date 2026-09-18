@@ -13,8 +13,8 @@ import './assets/styles/mobile-ab-theme.css'
 import './assets/styles/mobile-deink.css'
 // 手机端 7 大模块「iOS 原生 · 极简毛玻璃」质感统一层
 import './assets/styles/mobile-native-glass.css'
-// 手机端 7 大模块「灵动卡片 · 独立渐变」品牌主题层（须在 native-glass 之后引入以逐模块接管配色）
-import './assets/styles/mobile-module-color.css'
+// 手机端产品化收敛层：统一页面基线，覆盖历史模块主题，不影响桌面端
+import './assets/styles/mobile-product.css'
 
 const app = createApp(App)
 

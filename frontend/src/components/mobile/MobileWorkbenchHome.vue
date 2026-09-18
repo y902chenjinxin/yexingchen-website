@@ -15,13 +15,31 @@
       </button>
     </header>
 
-    <!-- 今日速览 Hero -->
-    <div class="abb-hero glass-card" aria-label="今日速览">
-      <div class="abb-hero__lab">本月结余</div>
-      <div class="abb-hero__num">{{ fmtMoney(balance) }}</div>
+    <!-- 数据总览：首屏只放可行动的数据，不放装饰性趋势占位 -->
+    <div class="abb-hero glass-card" aria-label="数据总览">
+      <div class="abb-hero__lab">本月净流入</div>
+      <div class="abb-hero__num">{{ fmtMoney(monthNet) }}</div>
       <div class="abb-hero__sub">
-        <span>支出 <b class="dn">{{ fmtMoney(expense) }}</b></span>
-        <span>持仓 <b class="up">{{ fmtPnl(stockPnl) }}</b></span>
+        <span>本月收入 <b :class="income > 0 ? 'up' : undefined">{{ fmtMoney(income) }}</b></span>
+        <span>本月支出 <b :class="expense > 0 ? 'dn' : undefined">{{ fmtMoney(expense) }}</b></span>
+      </div>
+    </div>
+
+    <div class="abb-stats" aria-label="关键数据">
+      <div class="abb-stat">
+        <span class="abb-stat__label">流水笔数</span>
+        <strong>{{ count ?? '—' }}</strong>
+        <small>本月记录</small>
+      </div>
+      <div class="abb-stat">
+        <span class="abb-stat__label">持仓盈亏</span>
+        <strong :class="{ positive: stockPnl > 0, negative: stockPnl < 0 }">{{ fmtPnl(stockPnl) }}</strong>
+        <small>今日变化</small>
+      </div>
+      <div class="abb-stat">
+        <span class="abb-stat__label">已接入</span>
+        <strong>8</strong>
+        <small>个功能模块</small>
       </div>
     </div>
 
@@ -43,16 +61,7 @@
       </div>
     </div>
 
-    <!-- 本月趋势（轻量占位数据带） -->
-    <div class="abb-trend glass-card">
-      <div class="abb-trend__lab">本月趋势</div>
-      <div class="abb-trend__right">
-        <span class="abb-trend__val">{{ trendVal }}</span>
-        <span class="abb-trend__bar" aria-hidden="true">
-          <i v-for="(h, i) in bars" :key="i" :style="{ height: h + '%', '--bd': 'calc(' + (i % 4) + 'ms)' }"></i>
-        </span>
-      </div>
-    </div>
+
   </section>
 </template>
 
@@ -89,15 +98,14 @@ const QUICK = [
 ]
 const quick = QUICK
 
-const balance = ref(null)
+const income = ref(null)
 const expense = ref(null)
+const count = ref(null)
 const stockPnl = ref(null)
 
+const monthNet = computed(() => income.value === null || expense.value === null ? null : income.value - expense.value)
 const fmtMoney = (v) => v === null || v === undefined ? '—' : '¥ ' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
 const fmtPnl = (v) => v === null || v === undefined ? '—' : (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2) + '%'
-
-const trendVal = computed(() => stockPnl.value === null ? '—' : fmtPnl(stockPnl.value))
-const bars = [38, 55, 46, 72, 64, 100, 82]
 
 function go(path) {
   try { if (navigator && navigator.vibrate) navigator.vibrate(6) } catch {}
@@ -109,8 +117,9 @@ onMounted(async () => {
     const res = await financeApi.summary()
     const d = res?.data
     if (d) {
-      balance.value = d.balance ?? null
-      expense.value = d.this_month_expense ?? d.month_expense ?? d.expense ?? null
+      income.value = d.month_income ?? d.income ?? null
+      expense.value = d.month_expense ?? d.expense ?? null
+      count.value = d.month_count ?? d.count ?? null
     }
   } catch { /* 未就绪保持占位 */ }
   try {
