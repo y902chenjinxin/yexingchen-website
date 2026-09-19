@@ -1,6 +1,6 @@
 <template>
   <section class="abb" aria-label="主页">
-    <!-- 顶部：几何 Logo + 品牌 + AI 胶囊 -->
+    <!-- 顶部：几何 Logo + 品牌 -->
     <header class="abb-top">
       <div class="abb-brand" @click="go('/workbench')" aria-label="玄黄">
         <span class="abb-logo" aria-hidden="true">
@@ -34,7 +34,7 @@
       </div>
       <div class="abb-stat">
         <span class="abb-stat__label">已接入</span>
-        <strong>8</strong>
+        <strong>{{ quick.length }}</strong>
         <small>个功能模块</small>
       </div>
     </div>
@@ -79,10 +79,14 @@ const ICONS = {
   contacts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a7 7 0 0 1 14 0c0 5.5-7 10-7 10z"/><circle cx="12" cy="10" r="2.4"/></svg>',
   idphoto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M8.5 18c.8-2.3 2.2-3.4 3.5-3.4s2.7 1.1 3.5 3.4"/></svg>',
   countdown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.6 1.5"/><path d="M9 3h6M12 3v1.5"/></svg>',
+  ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.6c0 3.4-3.6 6.2-8 6.2-.9 0-1.7-.1-2.5-.3L5.5 20l1.1-3.1A6.6 6.6 0 0 1 4 11.6C4 8.2 7.6 5.4 12 5.4s8 2.8 8 6.2z"/><path d="M12 8.6v3.6M10.2 10.4h3.6"/></svg>',
 }
 
-/* 快捷宫格（3 列），带可达性过滤；工具以证件照/倒计时独立暴露 */
+/* 快捷宫格（3 列），带可达性过滤；工具以证件照/倒计时独立暴露；
+   AI 对话放首位（手机端此前没有任何 AI 入口，桌面端是悬浮球，移动端没有对应位）。
+   注：手机端 product 收敛层已把所有宫格图标统一成 --m-accent，acc 仅作语义标记保留。 */
 const QUICK = [
+  { label:'AI 对话', path:'/assistant', acc:'--ab-vio', icon:ICONS.ai },
   { label:'音乐',   path:'/music',   acc:'--ab-blu', icon:ICONS.music },
   { label:'笔记',   path:'/notes',   acc:'--ab-pur', icon:ICONS.notes },
   { label:'记账',   path:'/finance', acc:'--ab-grn', icon:ICONS.finance },

@@ -119,7 +119,7 @@
           </div>
         </template>
         <div v-else class="placeholder">
-          <p>点击左侧「新对话」或选择一个历史对话开始。</p>
+          <p>点击「新对话」开始，或从历史记录里选一个继续。</p>
         </div>
       </main>
     </div>
