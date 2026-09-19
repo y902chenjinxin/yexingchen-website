@@ -205,29 +205,154 @@ def write_assetlinks(t: paramiko.Transport, cert_sha: str, cfg: dict) -> None:
 
 
 def write_download_page(t: paramiko.Transport, apk_filename: str, sha256: str, cfg: dict) -> None:
-    page = (
-        "<!DOCTYPE html>\n<html lang=\"zh-CN\"><head>\n"
-        "<meta charset=\"UTF-8\">\n"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-        f"<title>{cfg['app_label']} · 安卓 APK 下载</title>\n"
-        "<style>body{font-family:-apple-system,\"PingFang SC\",sans-serif;max-width:480px;margin:40px auto;padding:24px;background:#f6f4ee;color:#2c2c2a}"
-        "h1{color:#8e6a2c;font-size:22px;margin:0 0 8px}"
-        ".box{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:20px;margin:16px 0}"
-        ".btn{display:block;background:#8e6a2c;color:#fff;text-align:center;padding:14px;border-radius:8px;text-decoration:none;font-weight:500}"
-        ".note{font-size:13px;color:#5f5e5a;line-height:1.7}.warn{background:#fbe8d4;padding:12px;border-radius:8px;color:#7a4d10;font-size:13px;margin-top:12px}"
-        "small{font-size:11px;color:#888}</style></head><body>\n"
-        f"<h1>{cfg['app_label']} · 安卓 App</h1>\n"
-        f"<p class=\"note\">下载 APK 装到安卓手机（鸿蒙 4 兼容）。包名 <code>{cfg['package_id']}</code>。</p>\n"
-        "<div class=\"box\"><a href=\"/download/" + apk_filename + "\" class=\"btn\">下载 APK</a>\n"
-        f"<p class=\"note\" style=\"margin-top:10px\"><small>SHA-256: {sha256}</small></p></div>\n"
-        "<div class=\"box\"><p class=\"note\"><b>安装步骤：</b></p>"
-        "<p class=\"note\">1. 第一次下载需开启「外部来源应用下载」<br>"
-        "2. 打开 APK → 允许本次安装<br>"
-        f"3. 桌面出现「{cfg['app_label']}」图标</p></div>\n"
-        f"<div class=\"warn\"><b>提示：</b>App 实际打开的是 <a href=\"/\">{cfg['web_host']}</a>，"
-        "站点更新时不用重新装 APK。</div>\n"
-        "</body></html>\n"
-    )
+    """生成多平台下载页：Android 可下载；鸿蒙 / 苹果 先留入口（敬请期待）。
+
+    后续接入新平台时，只需把对应平台的 status 从 soon 改成 ready，
+    并补上 href / 版本 / 校验值即可。
+    """
+    platforms = [
+        {
+            "key": "android",
+            "name": "Android",
+            "desc": "安卓手机 / 平板",
+            "status": "ready",
+            "href": f"/download/{apk_filename}",
+            "version": apk_filename.replace(".apk", "").split("yexingchen-")[-1],
+            "extra": sha256,
+            "note": "兼容鸿蒙 4（APK 方式安装）",
+        },
+        {
+            "key": "harmony",
+            "name": "HarmonyOS",
+            "desc": "鸿蒙 NEXT（HAP 包）",
+            "status": "soon",
+            "href": "",
+            "version": "",
+            "extra": "",
+            "note": "正在适配，敬请期待",
+        },
+        {
+            "key": "ios",
+            "name": "iOS",
+            "desc": "iPhone / iPad",
+            "status": "soon",
+            "href": "",
+            "version": "",
+            "extra": "",
+            "note": "正在适配，敬请期待",
+        },
+    ]
+
+    cards = []
+    for p in platforms:
+        ready = p["status"] == "ready"
+        if ready:
+            action = (
+                f'<a class="dl-btn" href="{p["href"]}">立即下载</a>'
+                f'<div class="dl-hash">SHA-256 {p["extra"]}</div>'
+            )
+            badge = '<span class="badge badge-ok">可下载</span>'
+        else:
+            action = '<span class="dl-btn dl-btn-disabled">敬请期待</span>'
+            badge = '<span class="badge badge-soon">即将上线</span>'
+        ver = f'<span class="dl-ver">v{p["version"]}</span>' if p["version"] else ''
+        cards.append(
+            f'<section class="card{" card-ready" if ready else ""}">'
+            f'<header class="card-head">'
+            f'<span class="p-name">{p["name"]}</span>{badge}{ver}'
+            f'</header>'
+            f'<p class="p-desc">{p["desc"]}</p>'
+            f'<p class="p-note">{p["note"]}</p>'
+            f'{action}'
+            f'</section>'
+        )
+
+    page = f"""<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{cfg['app_label']} · 手机软件下载</title>
+<style>
+  :root {{
+    --bg: #fafafa; --surface: #ffffff; --line: rgba(24,24,27,.10);
+    --text: #18181b; --text2: #52525b; --text3: #a1a1aa;
+    --accent: #5b6ae0; --accent-faint: rgba(91,106,224,.10);
+    --danger: #dc2626;
+  }}
+  @media (prefers-color-scheme: dark) {{
+    :root {{
+      --bg: #0b0b12; --surface: #161326; --line: rgba(167,139,250,.18);
+      --text: #f5f3ff; --text2: #a8a3c2; --text3: #6e698a;
+      --accent: #a78bfa; --accent-faint: rgba(167,139,250,.14);
+    }}
+  }}
+  * {{ box-sizing: border-box; }}
+  body {{
+    margin: 0; padding: 40px 20px 56px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+  }}
+  .wrap {{ max-width: 720px; margin: 0 auto; }}
+  h1 {{ font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }}
+  .sub {{ color: var(--text2); font-size: 13px; margin: 0 0 28px; }}
+  .card {{
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px 20px; margin-bottom: 14px;
+  }}
+  .card-ready {{ box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px rgba(0,0,0,.06); }}
+  .card-head {{ display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }}
+  .p-name {{ font-size: 16px; font-weight: 650; }}
+  .badge {{ font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }}
+  .badge-ok {{ background: var(--accent-faint); color: var(--accent); }}
+  .badge-soon {{ background: rgba(150,150,150,.14); color: var(--text3); }}
+  .dl-ver {{ font-size: 11px; color: var(--text3); margin-left: auto; font-variant-numeric: tabular-nums; }}
+  .p-desc {{ font-size: 13px; color: var(--text2); margin: 0 0 2px; }}
+  .p-note {{ font-size: 12px; color: var(--text3); margin: 0 0 14px; }}
+  .dl-btn {{
+    display: block; text-align: center; padding: 12px; border-radius: 10px;
+    background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 600; font-size: 14px; transition: opacity .15s;
+  }}
+  .dl-btn:hover {{ opacity: .9; }}
+  .dl-btn-disabled {{
+    background: transparent; color: var(--text3);
+    border: 1px dashed var(--line); cursor: not-allowed; font-weight: 500;
+  }}
+  .dl-hash {{
+    font-size: 10px; color: var(--text3); word-break: break-all;
+    margin-top: 8px; font-family: ui-monospace, Menlo, Consolas, monospace;
+  }}
+  .steps {{ margin-top: 28px; }}
+  .steps h2 {{ font-size: 13px; color: var(--text2); font-weight: 600; margin: 0 0 8px; }}
+  .steps ol {{ margin: 0; padding-left: 20px; color: var(--text2); font-size: 13px; }}
+  .steps li {{ margin-bottom: 4px; }}
+  .tip {{
+    margin-top: 20px; padding: 12px 14px; border-radius: 10px;
+    background: var(--accent-faint); color: var(--text2); font-size: 12.5px;
+  }}
+  .tip a {{ color: var(--accent); }}
+</style></head><body>
+<div class="wrap">
+  <h1>{cfg['app_label']} · 手机软件</h1>
+  <p class="sub">选择你的设备平台下载安装。包名 <code>{cfg['package_id']}</code></p>
+
+  {''.join(cards)}
+
+  <div class="steps">
+    <h2>安装步骤（Android）</h2>
+    <ol>
+      <li>首次下载需在系统设置中允许「外部来源应用」安装</li>
+      <li>打开下载好的 APK，按提示允许本次安装</li>
+      <li>桌面出现「{cfg['app_label']}」图标即安装完成</li>
+    </ol>
+  </div>
+
+  <div class="tip">
+    App 打开的就是 <a href="/">{cfg['web_host']}</a>，站点更新无需重装客户端。
+  </div>
+</div>
+</body></html>
+"""
     write_remote(t, page, cfg["web_download_page"])
 
 

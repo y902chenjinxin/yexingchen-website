@@ -1,0 +1,167 @@
+/*
+ * 桌面端 · 白天主题 token（极简白 · Zenith 风格）
+ * 作用域：:root[data-theme="day"]  → 全局生效，但所有桌面专属选择器由 desktop-product.css / desktop-theme-night.css 进一步收口
+ * 仅颜色/阴影 token；不写布局/几何样式（那些由 desktop-product.css 统一处理）
+ * 设计目标：极简白卡片 + 蓝紫克制点缀 + 极淡径向晕染背景
+ */
+
+/* A. 主题属性（白天：极简白 + 蓝紫克制点缀） */
+:root[data-theme="day"] {
+  /* 表面阶梯：白底 + 极浅灰分隔层级 */
+  --dp-bg: #fafafa;
+  --dp-bg2: #f4f4f5;
+  --dp-surface: #ffffff;
+  --dp-surface2: #f4f4f5;
+  /* 发丝描边层级 */
+  --dp-line: rgba(24, 24, 27, .08);
+  --dp-line-strong: rgba(24, 24, 27, .14);
+  /* 阴影：薄、近、克制 */
+  --dp-shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 8px 24px rgba(24, 24, 27, .06);
+  --dp-glow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 1px 2px rgba(24, 24, 27, .04), 0 12px 30px rgba(24, 24, 27, .08);
+  --dp-raised: 0 2px 6px rgba(24, 24, 27, .06), 0 20px 48px rgba(24, 24, 27, .10);
+  /* 文本：近黑三阶梯 */
+  --dp-text: #18181b;
+  --dp-text2: #52525b;
+  --dp-text3: #a1a1aa;
+  /* 强调主色：蓝紫（克制不抢戏），对应 Zenith 的灰白底 */
+  --dp-accent: #5b6ae0;
+  --dp-accent-hover: #4f5ed1;
+  --dp-accent-strong: #4f5ed1;
+  --dp-accent-faint: rgba(91, 106, 224, .10);
+  --dp-danger: #dc2626;
+  --dp-warning: #a16207;
+  /* 圆角 */
+  --dp-radius: 10px;
+  --dp-radius-sm: 6px;
+  /* 衬线仅留品牌 */
+  --dp-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", "Noto Sans SC", sans-serif;
+
+  /* ---- 全站映射 ---- */
+  --color-bg: var(--dp-bg);
+  --color-bg-dark: var(--dp-bg2);
+  --color-bg-elevated: var(--dp-surface);
+  --color-bg-glass: rgba(255, 255, 255, .72);
+  --color-text: var(--dp-text);
+  --color-text-secondary: var(--dp-text2);
+  --color-text-muted: var(--dp-text3);
+  --color-primary: var(--dp-accent);
+  --color-secondary: var(--dp-accent-strong);
+  --color-accent: var(--dp-warning);
+
+  --yq-bg0: var(--dp-bg);
+  --yq-bg1: var(--dp-bg2);
+  --yq-bg2: var(--dp-surface2);
+  --yq-rain: var(--dp-accent);
+  --yq-rain-bright: #6f7ce0;
+  --yq-rain-deep: var(--dp-accent-strong);
+  --yq-gold: var(--dp-warning);
+  --yq-gold-bright: #d97706;
+
+  /* 工作台 --lj-* */
+  --lj-bg: var(--dp-bg);
+  --lj-bg-deep: var(--dp-bg2);
+  --lj-paper: var(--dp-surface);
+  --lj-paper-2: var(--dp-surface2);
+  --lj-glass: rgba(255, 255, 255, .72);
+  --lj-glass-blur: saturate(160%) blur(18px);
+  --lj-panel: rgba(255, 255, 255, .96);
+  --lj-ink: var(--dp-text);
+  --lj-mist: var(--dp-text2);
+  --lj-dai: var(--dp-accent);
+  --lj-dai-deep: var(--dp-accent-strong);
+  --lj-ochre: var(--dp-warning);
+  --lj-vermilion: var(--dp-danger);
+  --lj-seal: var(--dp-accent);
+  --lj-seal-hover: var(--dp-accent-hover);
+  --lj-seal-soft: var(--dp-accent-faint);
+  --lj-line: var(--dp-line);
+  --lj-line-strong: var(--dp-line-strong);
+  --lj-text: var(--dp-text);
+  --lj-text-2: var(--dp-text2);
+  --lj-text-3: var(--dp-text3);
+  --lj-shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 12px 30px rgba(24, 24, 27, .08), inset 0 1px 0 rgba(255, 255, 255, .9);
+
+  /* 岛屿深色 --ls-* */
+  --ls-bg0: var(--dp-bg);
+  --ls-bg1: var(--dp-bg2);
+  --ls-paper: var(--dp-surface);
+  --ls-paper-2: var(--dp-surface2);
+  --ls-glass: rgba(255, 255, 255, .72);
+  --ls-line: var(--dp-line);
+  --ls-line-strong: var(--dp-line-strong);
+  --ls-highlight: rgba(255, 255, 255, .9);
+  --ls-shadow: var(--dp-shadow);
+  --ls-dai: var(--dp-accent);
+  --ls-dai-deep: var(--dp-accent-strong);
+  --ls-ochre: var(--dp-warning);
+  --ls-jade: #5b6ae0;
+  --ls-text: var(--dp-text);
+  --ls-text-2: var(--dp-text2);
+  --ls-text-3: var(--dp-text3);
+
+  /* 玻璃：浮层/抽屉/弹层 */
+  --glass-blur: blur(18px) saturate(160%);
+  --glass-border: var(--dp-line-strong);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .9);
+  --glass-shadow: 0 1px 1px rgba(24, 24, 27, .04), 0 8px 24px rgba(24, 24, 27, .08), 0 24px 60px rgba(24, 24, 27, .12);
+  --glow-rain: rgba(91, 106, 224, .04);
+  --glow-gold: rgba(217, 119, 6, .03);
+
+  --shadow-sm: 0 1px 3px rgba(24, 24, 27, .04), 0 4px 12px rgba(24, 24, 27, .04);
+  --shadow: var(--dp-shadow);
+  --shadow-lg: 0 2px 8px rgba(24, 24, 27, .08), 0 20px 44px rgba(24, 24, 27, .10);
+  --shadow-glass: var(--glass-highlight), var(--glass-shadow);
+
+  /* Element Plus 主色与表面（白天：蓝紫） */
+  --el-color-primary: var(--dp-accent-strong);
+  --el-color-primary-light-3: var(--dp-accent);
+  --el-color-primary-light-5: var(--dp-accent);
+  --el-color-primary-light-7: #b9c1ff;
+  --el-color-primary-light-8: #d4d8ff;
+  --el-color-primary-light-9: #e8ebff;
+  --el-color-primary-dark-2: #3f4aa8;
+  --el-color-success: #16a34a;
+  --el-color-warning: var(--dp-warning);
+  --el-color-danger: var(--dp-danger);
+  --el-color-error: var(--dp-danger);
+  --el-color-info: var(--dp-text2);
+
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+  --el-bg-color-page: #fafafa;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color: #f4f4f5;
+  --el-fill-color-light: #e4e4e7;
+  --el-fill-color-lighter: #f1f1f3;
+  --el-fill-color-extra-light: #f7f7f8;
+
+  --el-text-color-primary: #18181b;
+  --el-text-color-regular: #3f3f46;
+  --el-text-color-secondary: #52525b;
+  --el-text-color-placeholder: #a1a1aa;
+  --el-text-color-disabled: #d4d4d8;
+
+  --el-border-color: #e4e4e7;
+  --el-border-color-light: #e8e8eb;
+  --el-border-color-lighter: #ececee;
+  --el-border-color-extra-light: #f1f1f3;
+  --el-border-color-dark: #d4d4d8;
+
+  --el-box-shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 8px 24px rgba(24, 24, 27, .06), 0 0 0 1px rgba(91, 106, 224, .04) inset;
+  --el-box-shadow-light: 0 2px 8px rgba(24, 24, 27, .06), 0 12px 32px rgba(24, 24, 27, .08);
+
+  /* 主标题色（无衬线 + 蓝紫重染） */
+  --li-title-a: var(--dp-text);
+  --li-sky: var(--dp-bg);
+  --li-sky-mid: var(--dp-bg2);
+  --li-sky-deep: var(--dp-surface2);
+  --ls-bg-glow: var(--dp-accent-faint);
+
+  /* 兼容旧 token */
+  --xiu-primary: var(--dp-accent);
+  --xiu-primary-bright: var(--dp-accent-hover);
+  --xiu-text: var(--dp-text);
+  --color-qi-primary: var(--dp-accent);
+  --color-jade: var(--dp-accent);
+  --color-novel: #c4a57b;
+}

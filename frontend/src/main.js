@@ -15,7 +15,10 @@ import './assets/styles/mobile-deink.css'
 import './assets/styles/mobile-native-glass.css'
 // 手机端产品化收敛层：统一页面基线，覆盖历史模块主题，不影响桌面端
 import './assets/styles/mobile-product.css'
-// 桌面端产品化收敛层（深墨青玉·产品风）：作用域 #app:not(.is-mobile)，与移动端互不干扰
+// 桌面端主题 token：先于骨架层引入，保证变量定义在骨架层引用之前生效
+import './assets/styles/desktop-theme-night.css'
+import './assets/styles/desktop-theme-day.css'
+// 桌面端产品化骨架与组件层（不写颜色 token）：作用域 #app:not(.is-mobile)，与移动端互不干扰
 import './assets/styles/desktop-product.css'
 
 const app = createApp(App)
@@ -39,4 +42,7 @@ function applyDayTheme() {
 }
 applyDayTheme()
 
-app.mount('#app')
+// 挂载点必须是 #app-root（index.html），不能是 #app：
+// App.vue 根节点自己就是 <div id="app">，挂载点同名会造成两个 #app 嵌套，
+// 所有 `#app:not(.is-mobile)` 规则命中两层（侧栏让位 padding 被叠加，内容被推远一大截）。
+app.mount('#app-root')

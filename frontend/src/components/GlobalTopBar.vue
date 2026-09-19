@@ -1,112 +1,13 @@
 <template>
-  <header class="lj-topbar" :class="{ collapsed: collapsed }" ref="topbarRef">
-    <!-- 品牌 + 回工作台 -->
-    <div class="tb-brand" @click="go('/workbench')" title="返回工作台">
-      <svg class="tb-logo" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="3" y="2" width="18" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M12 6 L15 10 L12 14 L9 10 Z" fill="currentColor" opacity="0.85"/>
-      </svg>
-      <span class="tb-brand-text">玄 黄</span>
-    </div>
-
-    <!-- AI 对话常驻入口（桌面与移动端均可见） -->
-    <a
-      class="tb-ai-entry"
-      :class="{ active: route.path === '/assistant' }"
-      @click="go('/assistant')"
-      title="AI 对话"
-    >
-      <el-icon class="tb-ai-icon"><MagicStick /></el-icon>
-      <span>AI 对话</span>
-    </a>
-
-    <!-- 全局搜索（即时联想） -->
-    <div class="tb-search" :class="{ 'is-mobile': isMobileInput }">
-      <el-input
-        v-model="searchWord"
-        class="tb-search-input"
-        placeholder="搜索全站：笔记 · 音乐 · 小说 · 视频 · 工具"
-        clearable
-        :size="isMobile ? 'default' : 'large'"
-        @mousedown="searchFocus = true"
-        @focus="searchFocus = true"
-        @input="onSearchInput"
-        @keyup.enter="runSearch"
-      >
-        <template #prefix><el-icon><Search /></el-icon></template>
-        <template #suffix>
-          <VoiceInputButton @result="onVoiceSearch" />
-        </template>
-      </el-input>
-
-      <!-- 联想面板 -->
-      <transition name="fade-drop">
-        <div v-if="searchFocus && searchWord.trim()" class="tb-suggest">
-          <template v-for="(group, gkey) in suggestGroups" :key="gkey">
-            <div v-if="group.items.length" class="suggest-group">
-              <div class="suggest-head">{{ group.title }}</div>
-              <div
-                v-for="it in group.items"
-                :key="gkey + '-' + it.id"
-                class="suggest-item"
-                @mousedown.prevent="go(group.to(it))"
-              >
-                <el-icon class="suggest-icon"><component :is="group.icon" /></el-icon>
-                <span class="suggest-label">{{ group.label(it) }}</span>
-              </div>
-            </div>
-          </template>
-          <div v-if="!suggestions.count" class="suggest-empty">未找到相关结果，可直达下方模块</div>
-          <!-- 模块快捷入口：改为 DB 驱动（支持一级/二级分组，且已按角色过滤） -->
-          <div class="suggest-modules">
-            <div class="suggest-head">快速前往</div>
-
-            <!-- 无子项的一级菜单聚成一行 -->
-            <div v-if="menus.loose.length" class="suggest-mod-row">
-              <a
-                v-for="mod in menus.loose"
-                :key="'m' + mod.id"
-                class="suggest-mod"
-                @mousedown.prevent="go(mod.path)"
-              >
-                <el-icon class="suggest-icon"><component :is="menuIcon(mod.icon)" /></el-icon>
-                <span>{{ mod.title }}</span>
-              </a>
-            </div>
-
-            <!-- 分组：标题 + 其下二级菜单 -->
-            <div v-for="grp in menus.groups" :key="'g' + grp.id" class="suggest-mod-group">
-              <div class="suggest-subhead">
-                <el-icon class="suggest-icon"><component :is="menuIcon(grp.icon)" /></el-icon>
-                <span>{{ grp.title }}</span>
-              </div>
-              <div class="suggest-mod-row">
-                <a
-                  v-for="sub in grp.children"
-                  :key="'s' + sub.id"
-                  class="suggest-mod"
-                  :class="{ active: isActivePath(sub.path) }"
-                  @mousedown.prevent="go(sub.path)"
-                >
-                  <el-icon class="suggest-icon"><component :is="menuIcon(sub.icon)" /></el-icon>
-                  <span>{{ sub.title }}</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </div>
-
-    <!-- 右侧：移动搜索icon + 音频 + 用户区 -->
+  <!-- 桌面端顶栏已「去条化」：不再有整条背景/分隔线
+       玄黄品牌 + 全局搜索已迁入侧栏；AI 对话改为每页悬浮按钮
+       这里只保留右上角的悬浮按钮组（背景音乐 / 下载 App / 账号） -->
+  <div class="lj-topbar" ref="topbarRef">
+    <!-- 右侧：音频 + 下载 + 用户区 -->
     <div class="tb-right">
-      <button class="tb-icon-btn tb-search-toggle" @click="toggleMobileSearch" title="搜索">
-        <el-icon><Search /></el-icon>
-      </button>
-
       <!-- 音频控制（内联面板，不弹窗） -->
       <el-dropdown trigger="click" placement="bottom-end" :show-arrow="false">
-        <button class="tb-icon-btn" :title="player.isPlaying ? '音频（播放中）' : '音频'">
+        <button class="tb-icon-btn" :title="player.isPlaying ? '背景音乐（播放中）' : '背景音乐'">
           <el-icon><Headset /></el-icon>
           <span class="tb-audio-dot" :class="{ off: !player.isPlaying }"></span>
         </button>
@@ -169,14 +70,13 @@
         </template>
       </el-dropdown>
 
-      <!-- 下载 App 入口：新窗口打开 /download/。
-           桌面端用于扫码装到手机；移动端直接下载 APK（target=_blank 避免 SPA 路由冲突） -->
+      <!-- 下载 App 入口：新窗口打开 /download/（多平台下载页，含鸿蒙/苹果预留位） -->
       <a
         class="tb-icon-btn"
         href="/download/"
         target="_blank"
         rel="noopener"
-        title="下载安卓 App"
+        title="下载手机软件"
       >
         <el-icon><Cellphone /></el-icon>
       </a>
@@ -190,52 +90,31 @@
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item command="profile"><el-icon><User /></el-icon>个人中心</el-dropdown-item>
-            <el-dropdown-item v-if="auth.isSuperAdmin" divided command="admin"><el-icon><Tools /></el-icon>管理后台</el-dropdown-item>
+            <!-- 管理后台入口已迁移到侧栏「管理」分组（含用户 / 角色 / 菜单三个二级模块），顶栏不再单独入口 -->
             <el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出账号</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
     </div>
-
-    <!-- 收起态悬浮按钮 -->
-    <button v-if="collapsed" class="tb-mini" @click="expand" title="展开顶栏">
-      <el-icon><Expand /></el-icon>
-    </button>
-  </header>
+  </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
-  User, Tools, SwitchButton, Search, Headset, Expand, CaretBottom,
-  Document, Check, Notebook, VideoPlay, MagicStick, Reading, HomeFilled,
-  Collection, TrendCharts, MapLocation, VideoCamera, ChatDotRound, Setting,
-  Tickets, Wallet, Money, DataAnalysis, DataBoard, Grid, Cellphone
+  User, SwitchButton, Headset, CaretBottom, Check, Cellphone
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
-import { searchAll } from '@/api/search'
-import { useMenusStore } from '@/stores/menus'
-import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
 const router = useRouter()
-const route = useRoute()
 const auth = useAuthStore()
 const player = usePlayerStore()
-  const bgm = useBgmLibraryStore()
+const bgm = useBgmLibraryStore()
 
 const topbarRef = ref(null)
-const collapsed = ref(false)
-const searchWord = ref('')
-const searchFocus = ref(false)
-let suggestTimer = null
-
-/* ---- 导航：工作台/模块经搜索与玉简直达，顶栏仅保留 AI 助手 ---- */
-function go(path) {
-  router.push(path)
-}
 
 /* ---- 用户区 ---- */
 const userName = computed(() => auth.user?.nickname || auth.user?.name || auth.user?.email || '道友')
@@ -276,7 +155,6 @@ function startVolDrag(e) {
 function onCommand(cmd) {
   switch (cmd) {
     case 'profile': router.push('/profile'); break
-    case 'admin': router.push('/admin'); break
     case 'logout':
       auth.logoutAction()
       router.push('/login')
@@ -284,178 +162,32 @@ function onCommand(cmd) {
   }
 }
 
-/* ---- 全局搜索联想（全站） ---- */
-const suggestions = ref({ results: null, count: 0 })
-
-// 模块快捷入口：由数据库菜单驱动（见 stores/menus.js），支持一级/二级分组
-const menus = useMenusStore()
-
-// 菜单里的 icon 字段存的是 Element Plus 图标名；未知名字回落到 Grid，避免整块导航渲染不出来
-const ICON_MAP = {
-  Collection, TrendCharts, MapLocation, Tools, Headset, Reading, VideoCamera,
-  Document, ChatDotRound, Setting, User, Tickets, Wallet, Money, DataAnalysis, DataBoard,
-  MagicStick, VideoPlay, Notebook,
-}
-function menuIcon(name) {
-  return ICON_MAP[name] || Grid
-}
-
-/** 当前路由是否落在该菜单下（用于高亮，如 /stocks 与 /stocks/600519） */
-function isActivePath(path) {
-  if (!path) return false
-  const cur = route.path
-  return cur === path || cur.startsWith(path + '/')
-}
-
-const suggestGroups = computed(() => {
-  const r = suggestions.value.results || {}
-  return [
-    {
-      key: 'notes', title: '笔记', icon: Document,
-      items: r.notes || [],
-      label: (it) => it?.title || '（无标题）',
-      to: (it) => `/notes/${it?.id}`
-    },
-    {
-      key: 'music', title: '音乐', icon: Headset,
-      items: r.music || [],
-      label: (it) => it?.title || '（无标题）',
-      to: (it) => `/music`
-    },
-    {
-      key: 'novels', title: '小说', icon: Reading,
-      items: r.novels || [],
-      label: (it) => it?.title + (it?.author ? `　${it.author}` : ''),
-      to: (it) => `/novel`
-    },
-    {
-      key: 'videos', title: '视频', icon: VideoPlay,
-      items: r.videos || [],
-      label: (it) => it?.title || '（无标题）',
-      to: (it) => `/video`
-    },
-    {
-      key: 'tools', title: '工具', icon: Tools,
-      items: r.tools || [],
-      label: (it) => it?.title || it?.description || '（无标题）',
-      to: (it) => `/tool`
-    }
-  ]
-})
-
-function onSearchInput() {
-  clearTimeout(suggestTimer)
-  const q = (searchWord.value || '').trim()
-  if (!q) {
-    suggestions.value = { results: null, count: 0 }
-    return
-  }
-  suggestTimer = setTimeout(async () => {
-    try {
-      const res = await searchAll({ q, page: 1, size: 6 })
-      const data = res?.data || {}
-      const count = (data.notes?.length || 0) + (data.music?.length || 0) +
-        (data.novels?.length || 0) + (data.videos?.length || 0) + (data.tools?.length || 0)
-      suggestions.value = { results: data, count }
-    } catch {
-      suggestions.value = { results: null, count: 0 }
-    }
-  }, 260)
-}
-
-function runSearch() {
-  const q = (searchWord.value || '').trim()
-  searchFocus.value = false
-  if (!q) return
-  router.push({ path: '/notes', query: { q } })
-  suggestions.value = { results: null, count: 0 }
-}
-
-// 语音搜索结果并入搜索框，并展开联想下拉供选择（不直接跳转）
-function onVoiceSearch(text) {
-  const merged = searchWord.value.trim() ? `${searchWord.value.trim()} ${text}` : text
-  searchWord.value = merged
-  searchFocus.value = true
-  onSearchInput()
-}
-
-/* ---- 移动端 ---- */
-const isMobile = ref(false)
-const isMobileInput = ref(false)
-function checkMobile() { isMobile.value = window.innerWidth < 768 }
-function toggleMobileSearch() {
-  isMobileInput.value = true
-  // 聚焦输入框
-  setTimeout(() => topbarRef.value?.querySelector('input')?.focus(), 50)
-}
-
-/* ---- 滚动收起 ---- */
-let lastY = 0
-function onScroll() {
-  const y = window.scrollY
-  if (y > 160 && y > lastY) collapsed.value = true
-  else if (y < lastY || y < 200) collapsed.value = false
-  lastY = y
-}
-function expand() { collapsed.value = false }
-
 onMounted(async () => {
   await bgm.initBgm()
-  menus.load()
-  checkMobile()
-  window.addEventListener('scroll', onScroll, { passive: true })
-  window.addEventListener('resize', checkMobile)
-  document.addEventListener('mousedown', onDocDown)
 })
 
-function onDocDown(e) {
-  const inSearch = e.target?.closest?.('.tb-search') || e.target?.closest?.('.tb-suggest')
-  if (!topbarRef.value?.contains(e.target) && !inSearch) searchFocus.value = false
-}
-
-onUnmounted(() => {
-  clearTimeout(suggestTimer)
-  window.removeEventListener('scroll', onScroll)
-  window.removeEventListener('resize', checkMobile)
-  document.removeEventListener('mousedown', onDocDown)
-})
+onUnmounted(() => {})
 </script>
 
 <style scoped>
+/* 顶栏已「去条化」：不再是一条通栏，只有右上角悬浮按钮组
+   —— 品牌与搜索已迁入侧栏，AI 入口改为每页悬浮按钮 */
 .lj-topbar {
-  --tb-h: 60px;
   position: fixed;
-  top: 0; left: 0; right: 0;
-  height: var(--tb-h);
+  top: 12px;
+  right: 16px;
   z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 0 22px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0) 46%), var(--lj-glass);
-  -webkit-backdrop-filter: var(--lj-glass-blur);
-  backdrop-filter: var(--lj-glass-blur);
-  border-bottom: 1px solid transparent;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07),
-              inset 0 -1px 0 rgba(127, 168, 163, 0.08),
-              0 8px 28px rgba(0, 0, 0, 0.22);
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
   box-sizing: border-box;
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
 }
-/* 上缘高光细线（Apple 式玻璃发丝线） */
-.lj-topbar::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18) 20%, rgba(255,255,255,0.10) 80%, transparent);
-  pointer-events: none;
-}
-.lj-topbar.collapsed { transform: translateY(-100%); }
-.lj-topbar.expanding { transform: translateY(0); }
-/* 刘海屏/独立 PWA：顶栏整体下移避开系统状态栏，内容带仍保持 60px（safe-top 在普通浏览器为 0，不产生位移） */
 @media (max-width: 767px) {
-  .lj-topbar { height: calc(var(--tb-h) + var(--safe-top)); padding-top: var(--safe-top); }
+  .lj-topbar { top: calc(10px + var(--safe-top)); right: 10px; }
 }
 
 .tb-brand { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: none; color: var(--lj-dai); transition: all 0.25s; }
@@ -559,11 +291,14 @@ onUnmounted(() => {
 .tb-icon-btn {
   position: relative;
   width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--lj-line); border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01)), var(--lj-paper);
-  color: var(--lj-text-2); font-size: 16px; cursor: pointer; transition: all 0.25s;
+  border: none; border-radius: 10px;
+  background: transparent;
+  color: var(--dp-text2, var(--lj-text-2)); font-size: 17px; cursor: pointer; transition: all 0.18s;
 }
-.tb-icon-btn:hover { color: var(--lj-seal); border-color: var(--lj-line-strong); background: var(--lj-bg-deep); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.tb-icon-btn:hover {
+  color: var(--dp-accent, var(--lj-dai));
+  background: var(--dp-accent-faint, rgba(127, 168, 163, 0.12));
+}
 .tb-audio-dot {
   position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%;
   background: rgba(217, 138, 118, 0.75);
@@ -654,10 +389,11 @@ onUnmounted(() => {
 .tb-bgm-check { font-size: 14px; color: var(--lj-dai); }
 .tb-bgm-empty { padding: 10px 8px; color: var(--lj-text-2); font-size: 12px; text-align: center; }
 
-.tb-user { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 8px; border-radius: 10px; }
-.tb-user:hover { background: rgba(74, 95, 99, 0.06); }
-.tb-user-name { font-size: 13px; color: var(--lj-text); }
-.tb-caret { font-size: 12px; color: var(--lj-text-2); }
+.tb-user { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 6px 10px; border-radius: 10px; background: transparent; transition: all 0.18s; }
+.tb-user:hover { background: var(--dp-accent-faint, rgba(127, 168, 163, 0.12)); }
+.tb-user:hover .tb-user-name { color: var(--dp-accent, var(--lj-dai)); }
+.tb-user-name { font-size: 13px; color: var(--dp-text, var(--lj-text)); }
+.tb-caret { font-size: 12px; color: var(--dp-text3, var(--lj-text-2)); }
 
 /* 收起态悬浮按钮 */
 .tb-mini {

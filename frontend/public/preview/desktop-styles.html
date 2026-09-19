@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1280, initial-scale=1" />
+<title>桌面端样式预览 · 玄黄</title>
+<style>
+  /* ===== 顶部说明条 ===== */
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", Inter, Roboto, sans-serif;
+    background: #0c0f14;
+    color: #e7eaf0;
+  }
+  header.intro {
+    position: sticky; top: 0; z-index: 50;
+    padding: 14px 28px;
+    background: rgba(12, 15, 20, .88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    display: flex; align-items: center; gap: 18px;
+    flex-wrap: wrap;
+  }
+  header.intro h1 {
+    margin: 0; font-size: 16px; font-weight: 600;
+  }
+  header.intro p {
+    margin: 0; font-size: 12px; color: #9aa3b2; line-height: 1.55;
+  }
+  header.intro .links a {
+    margin-right: 12px; font-size: 12px; color: #7fd2c8; text-decoration: none;
+  }
+  header.intro .links a:hover { color: #b8f3eb; text-decoration: underline; }
+
+  main {
+    padding: 24px;
+    display: flex; flex-direction: column; gap: 32px;
+  }
+  .candidate {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .08);
+  }
+  .candidate-head {
+    padding: 14px 22px;
+    background: rgba(255, 255, 255, .03);
+    border-bottom: 1px solid rgba(255, 255, 255, .06);
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  .candidate-head .tag {
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: #6e7689; padding: 3px 8px; border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, .12);
+  }
+  .candidate-head h2 {
+    margin: 0; font-size: 15px; font-weight: 600;
+  }
+  .candidate-head .meta {
+    margin-left: auto; font-size: 11px; color: #7d869a;
+  }
+  .stage {
+    display: grid; grid-template-columns: 220px 1fr;
+    min-height: 540px;
+  }
+  /* === 侧栏通用 === */
+  .sidebar { padding: 14px 12px; font-size: 13px; }
+  .sidebar .brand { padding: 8px 10px 16px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .sidebar .nav-group { margin-bottom: 14px; }
+  .sidebar .nav-group-title {
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    padding: 6px 10px; opacity: .55;
+  }
+  .sidebar .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; border-radius: 7px; cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .sidebar .nav-item.on { font-weight: 600; }
+  .sidebar .nav-item .ic { width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; opacity: .9; }
+  .sidebar .nav-item .badge { margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px; }
+
+  .content { padding: 22px 26px; overflow: hidden; }
+  .content h3 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  .content .sub { font-size: 12px; opacity: .6; margin-bottom: 18px; }
+
+  /* 通用组件：卡片网格、表格、按钮、标签 */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .kpi { padding: 14px; border-radius: 12px; }
+  .kpi .label { font-size: 11px; opacity: .65; margin-bottom: 6px; }
+  .kpi .val { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .kpi .delta { font-size: 11px; margin-top: 4px; opacity: .75; }
+
+  .row-cards { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .panel { border-radius: 12px; padding: 14px 16px; }
+  .panel h4 { margin: 0 0 12px; font-size: 12px; font-weight: 600; opacity: .7; letter-spacing: .04em; }
+
+  .bar-list { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .bar-row .name { width: 70px; opacity: .8; }
+  .bar-row .track { flex: 1; height: 6px; border-radius: 999px; overflow: hidden; }
+  .bar-row .fill { display: block; height: 100%; }
+  .bar-row .pct { width: 40px; text-align: right; opacity: .7; }
+
+  table.demo { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.demo th, table.demo td { padding: 9px 10px; text-align: left; }
+  table.demo th { font-weight: 500; font-size: 11px; opacity: .65; letter-spacing: .04em; }
+  table.demo tbody tr { transition: background .15s; }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .btn { padding: 7px 14px; font-size: 12px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; font-weight: 500; }
+  .btn.primary { font-weight: 600; }
+  .btn.ghost {}
+
+  .tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 999px; margin-right: 4px; }
+
+  /* ===== 候选 ① shadcn-admin（深色 Linear 紫） ===== */
+  .c1 { background: #0A0A0A; color: #fafafa; }
+  .c1 .sidebar { background: #0e0e0e; border-right: 1px solid rgba(255, 255, 255, .06); }
+  .c1 .sidebar .nav-item:hover { background: rgba(255, 255, 255, .04); }
+  .c1 .sidebar .nav-item.on { background: rgba(94, 106, 210, .14); color: #b9c1ff; }
+  .c1 .sidebar .nav-item .badge { background: rgba(94, 106, 210, .2); color: #c1c8ff; }
+  .c1 .content { background: #0A0A0A; }
+  .c1 .kpi, .c1 .panel { background: #171717; border: 1px solid rgba(255, 255, 255, .06); }
+  .c1 .kpi .delta.up { color: #4ade80; }
+  .c1 .kpi .delta.dn { color: #f87171; }
+  .c1 .bar-row .track { background: rgba(255, 255, 255, .06); }
+  .c1 .bar-row .fill { background: linear-gradient(90deg, #5E6AD2, #8B5CF6); }
+  .c1 table.demo th { border-bottom: 1px solid rgba(255, 255, 255, .06); }
+  .c1 table.demo td { border-bottom: 1px solid rgba(255, 255, 255, .04); }
+  .c1 table.demo tbody tr:hover { background: rgba(255, 255, 255, .02); }
+  .c1 .btn { background: transparent; color: #fafafa; border-color: rgba(255, 255, 255, .12); }
+  .c1 .btn:hover { background: rgba(255, 255, 255, .05); }
+  .c1 .btn.primary { background: #5E6AD2; color: white; border-color: transparent; }
+  .c1 .btn.primary:hover { background: #6f7ce0; }
+  .c1 .tag { background: rgba(255, 255, 255, .06); color: #cfcfcf; }
+  .c1 .tag.pri { background: rgba(94, 106, 210, .18); color: #c2c8ff; }
+  .c1 .tag.ok { background: rgba(74, 222, 128, .15); color: #86efac; }
+
+  /* ===== 候选 ② Ant Design Pro v6（企业蓝） ===== */
+  .c2 { background: #f5f5f5; color: rgba(0, 0, 0, .88); font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .c2 .sidebar { background: #001529; color: rgba(255, 255, 255, .75); border-right: 1px solid #001529; }
+  .c2 .sidebar .nav-item:hover { background: rgba(255, 255, 255, .05); color: #fff; }
+  .c2 .sidebar .nav-item.on { background: #1677ff; color: #fff; }
+  .c2 .sidebar .nav-group-title { color: rgba(255, 255, 255, .45); }
+  .c2 .sidebar .brand { color: #fff; }
+  .c2 .sidebar .nav-item .badge { background: #1677ff; color: #fff; }
+  .c2 .content { background: #f5f5f5; }
+  .c2 .kpi, .c2 .panel { background: #fff; border: 1px solid #f0f0f0; }
+  .c2 .kpi .delta.up { color: #52C41A; }
+  .c2 .kpi .delta.dn { color: #FF4D4F; }
+  .c2 .bar-row .track { background: #f0f0f0; }
+  .c2 .bar-row .fill { background: #1677ff; }
+  .c2 table.demo th { border-bottom: 1px solid #f0f0f0; color: rgba(0, 0, 0, .65); }
+  .c2 table.demo td { border-bottom: 1px solid #f5f5f5; }
+  .c2 table.demo tbody tr:hover { background: #fafafa; }
+  .c2 .btn { background: #fff; color: rgba(0, 0, 0, .88); border-color: #d9d9d9; border-radius: 6px; }
+  .c2 .btn:hover { color: #1677ff; border-color: #1677ff; }
+  .c2 .btn.primary { background: #1677ff; color: #fff; border-color: #1677ff; }
+  .c2 .btn.primary:hover { background: #4096ff; border-color: #4096ff; }
+  .c2 .tag { background: #fafafa; color: rgba(0, 0, 0, .65); border: 1px solid #d9d9d9; }
+  .c2 .tag.pri { background: #e6f4ff; color: #1677ff; border-color: #91caff; }
+  .c2 .tag.ok { background: #f6ffed; color: #52C41A; border-color: #b7eb8f; }
+
+  /* ===== 候选 ③ vue-vben-admin（浅色中性） ===== */
+  .c3 { background: #f0f2f5; color: #000000d9; }
+  .c3 .sidebar { background: #001529; color: rgba(255, 255, 255, .65); border-right: 1px solid #001529; }
+  .c3 .sidebar .nav-item:hover { color: #fff; }
+  .c3 .sidebar .nav-item.on { background: #0960bd !important; color: #fff; }
+  .c3 .sidebar .brand { color: #fff; }
+  .c3 .sidebar .nav-item .badge { background: #0960bd; color: #fff; }
+  .c3 .content { background: #f0f2f5; }
+  .c3 .kpi, .c3 .panel { background: #fff; border: 1px solid #f0f0f0; box-shadow: 0 1px 2px rgba(0, 0, 0, .03); }
+  .c3 .kpi .delta.up { color: #52C41A; }
+  .c3 .kpi .delta.dn { color: #FF4D4F; }
+  .c3 .bar-row .track { background: #f5f5f5; }
+  .c3 .bar-row .fill { background: #0960bd; }
+  .c3 table.demo th { border-bottom: 1px solid #f0f0f0; color: #000000a6; }
+  .c3 table.demo td { border-bottom: 1px solid #f5f5f5; }
+  .c3 table.demo tbody tr:hover { background: #fafafa; }
+  .c3 .btn { background: #fff; color: #000000d9; border-color: #d9d9d9; border-radius: 4px; }
+  .c3 .btn:hover { color: #0960bd; border-color: #0960bd; }
+  .c3 .btn.primary { background: #0960bd; color: #fff; border-color: #0960bd; border-radius: 4px; }
+  .c3 .tag { background: #fafafa; color: #000000a6; border: 1px solid #d9d9d9; border-radius: 4px; }
+  .c3 .tag.pri { background: #e6f4ff; color: #0960bd; border-color: #91caff; }
+
+  /* ===== 候选 ④ Flux 玻璃拟态（紫罗兰 + frosted） ===== */
+  .c4 {
+    background:
+      radial-gradient(1200px 600px at 20% 10%, rgba(139, 92, 246, .35), transparent 60%),
+      radial-gradient(900px 500px at 80% 100%, rgba(236, 72, 153, .25), transparent 60%),
+      #0B0B12;
+    color: #fff;
+  }
+  .c4 .sidebar {
+    background: rgba(255, 255, 255, .04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-right: 1px solid rgba(255, 255, 255, .08);
+  }
+  .c4 .sidebar .nav-item:hover { background: rgba(255, 255, 255, .06); }
+  .c4 .sidebar .nav-item.on { background: linear-gradient(135deg, rgba(139, 92, 246, .35), rgba(236, 72, 153, .35)); box-shadow: 0 0 0 1px rgba(255, 255, 255, .12) inset; }
+  .c4 .sidebar .nav-item .badge { background: rgba(139, 92, 246, .5); color: #fff; }
+  .c4 .content { background: transparent; }
+  .c4 .kpi, .c4 .panel {
+    background: rgba(255, 255, 255, .06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, .1);
+    box-shadow: 0 8px 32px rgba(124, 58, 237, .15);
+    border-radius: 16px;
+  }
+  .c4 .kpi .delta.up { color: #34d399; }
+  .c4 .kpi .delta.dn { color: #f87171; }
+  .c4 .bar-row .track { background: rgba(255, 255, 255, .08); }
+  .c4 .bar-row .fill { background: linear-gradient(90deg, #8B5CF6, #EC4899); }
+  .c4 table.demo th { border-bottom: 1px solid rgba(255, 255, 255, .08); color: rgba(255, 255, 255, .6); }
+  .c4 table.demo td { border-bottom: 1px solid rgba(255, 255, 255, .04); }
+  .c4 table.demo tbody tr:hover { background: rgba(255, 255, 255, .04); }
+  .c4 .btn {
+    background: rgba(255, 255, 255, .06); color: #fff;
+    border: 1px solid rgba(255, 255, 255, .12); border-radius: 12px;
+    backdrop-filter: blur(8px);
+  }
+  .c4 .btn:hover { background: rgba(255, 255, 255, .1); }
+  .c4 .btn.primary {
+    background: linear-gradient(135deg, #7C3AED, #EC4899);
+    border: none;
+    box-shadow: 0 6px 24px rgba(124, 58, 237, .4);
+  }
+  .c4 .tag { background: rgba(255, 255, 255, .08); color: #e5e7eb; border-radius: 999px; }
+  .c4 .tag.pri { background: rgba(139, 92, 246, .25); color: #ddd6fe; }
+  .c4 .tag.ok { background: rgba(16, 185, 129, .2); color: #6ee7b7; }
+
+  /* ===== 候选 ⑤ Zenith 极简白卡片（追加对照组） ===== */
+  .c5 { background: #fafafa; color: #18181b; }
+  .c5 .sidebar { background: #ffffff; border-right: 1px solid #e5e5e5; }
+  .c5 .sidebar .nav-item:hover { background: #f4f4f5; }
+  .c5 .sidebar .nav-item.on { background: #18181b; color: #fff; }
+  .c5 .sidebar .nav-item.on .badge { background: rgba(255, 255, 255, .15); color: #fff; }
+  .c5 .sidebar .nav-group-title { color: #a1a1aa; }
+  .c5 .sidebar .brand { color: #18181b; }
+  .c5 .sidebar .nav-item .badge { background: #f4f4f5; color: #52525b; }
+  .c5 .content { background: #fafafa; }
+  .c5 .kpi, .c5 .panel { background: #ffffff; border: 1px solid #e5e5e5; box-shadow: 0 1px 0 rgba(0, 0, 0, .02); border-radius: 10px; }
+  .c5 .kpi .label, .c5 .panel h4 { color: #71717a; }
+  .c5 .kpi .delta.up { color: #16a34a; }
+  .c5 .kpi .delta.dn { color: #dc2626; }
+  .c5 .bar-row .track { background: #f4f4f5; }
+  .c5 .bar-row .fill { background: #18181b; }
+  .c5 table.demo th { border-bottom: 1px solid #e5e5e5; color: #71717a; }
+  .c5 table.demo td { border-bottom: 1px solid #f4f4f5; }
+  .c5 table.demo tbody tr:hover { background: #fafafa; }
+  .c5 .btn { background: #fff; color: #18181b; border: 1px solid #e5e5e5; border-radius: 8px; }
+  .c5 .btn:hover { background: #f4f4f5; }
+  .c5 .btn.primary { background: #18181b; color: #fff; border-color: #18181b; }
+  .c5 .tag { background: #f4f4f5; color: #52525b; border-radius: 6px; }
+  .c5 .tag.pri { background: #18181b; color: #fff; }
+  .c5 .tag.ok { background: #dcfce7; color: #15803d; }
+
+  /* 通用覆盖 */
+  .candidate .stage { background: inherit; }
+
+  .palette {
+    display: flex; gap: 6px; margin-top: 10px;
+  }
+  .palette span {
+    width: 22px; height: 22px; border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+    font-size: 0;
+  }
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div>
+    <h1>桌面端样式预览 · 玄黄</h1>
+    <p>从 GitHub 调研后挑出的 5 个候选，每个 section 都是「侧栏 + 工作台主区」的还原样式。请滚动对比。</p>
+  </div>
+  <div class="links">
+    <a href="https://github.com/satnaing/shadcn-admin" target="_blank">① shadcn-admin</a>
+    <a href="https://github.com/ant-design/ant-design-pro" target="_blank">② ant-design-pro</a>
+    <a href="https://github.com/vbenjs/vue-vben-admin" target="_blank">③ vue-vben-admin</a>
+    <a href="https://dashboardpack.com/product/flux-dashboard-nextjs/" target="_blank">④ Flux Dashboard</a>
+    <span style="color:#9aa3b2">⑤ Zenith 极简白（综合参考）</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===== ① shadcn-admin ===== -->
+  <section class="candidate c1">
+    <div class="candidate-head">
+      <span class="tag">① Deep · Linear vibe</span>
+      <h2>shadcn-admin · 深色克制产品风</h2>
+      <span class="meta">~14k stars · React 19 + shadcn/ui</span>
+    </div>
+    <div class="stage">
+      <aside class="sidebar">
+        <div class="brand">⌘ 玄黄</div>
+        <div class="nav-group">
+          <div class="nav-group-title">工作台</div>
+          <div class="nav-item on"><span class="ic">●</span> 总览 <span class="badge">3</span></div>
+          <div class="nav-item"><span class="ic">▤</span> 资讯</div>
+          <div class="nav-item"><span class="ic">◴</span> 倒计时</div>
+          <div class="nav-item"><span class="ic">◉</span> 足迹</div>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title">工具</div>
+          <div class="nav-item"><span class="ic">✎</span> 笔记</div>
+          <div class="nav-item"><span class="ic">♪</span> 音乐</div>
+          <div class="nav-item"><span class="ic">¥</span> 记账</div>
+          <div class="nav-item"><span class="ic">◧</span> 股票</div>
+        </div>
+      </aside>
+      <div class="content">
+        <h3>今日总览</h3>
+        <div class="sub">2026-09-19 · 星期四</div>
+        <div class="btn-row">
+          <button class="btn primary">新建倒计时</button>
+          <button class="btn">导入</button>
+          <button class="btn">导出</button>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="label">活跃倒计时</div><div class="val">12</div><div class="delta up">↑ 2 本周</div></div>
+          <div class="kpi"><div class="label">足迹省份</div><div class="val">18 / 34</div><div class="delta up">↑ 江苏</div></div>
+          <div class="kpi"><div class="label">本月支出</div><div class="val">¥ 4,820</div><div class="delta dn">↓ 12%</div></div>
+          <div class="kpi"><div class="label">笔记 / 视频</div><div class="val">236</div><div class="delta up">↑ 8</div></div>
+        </div>
+        <div class="row-cards">
+          <div class="panel">
+            <h4>近期倒计时</h4>
+            <table class="demo">
+              <thead><tr><th>名称</th><th>剩余</th><th>日期</th><th>状态</th></tr></thead>
+              <tbody>
+                <tr><td>结婚纪念日</td><td>14 天</td><td>10-03</td><td><span class="tag pri">置顶</span></td></tr>
+                <tr><td>季度回顾</td><td>42 天</td><td>10-31</td><td><span class="tag">活跃</span></td></tr>
+                <tr><td>换护照</td><td>68 天</td><td>11-26</td><td><span class="tag">提醒</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <h4>足迹进度</h4>
+            <div class="bar-list">
+              <div class="bar-row"><span class="name">华东</span><span class="track"><span class="fill" style="width:88%"></span></span><span class="pct">88%</span></div>
+              <div class="bar-row"><span class="name">华南</span><span class="track"><span class="fill" style="width:62%"></span></span><span class="pct">62%</span></div>
+              <div class="bar-row"><span class="name">华北</span><span class="track"><span class="fill" style="width:54%"></span></span><span class="pct">54%</span></div>
+              <div class="bar-row"><span class="name">西南</span><span class="track"><span class="fill" style="width:33%"></span></span><span class="pct">33%</span></div>
+              <div class="bar-row"><span class="name">西北</span><span class="track"><span class="fill" style="width:21%"></span></span><span class="pct">21%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ② ant-design-pro ===== -->
+  <section class="candidate c2">
+    <div class="candidate-head">
+      <span class="tag">② Light · Enterprise</span>
+      <h2>Ant Design Pro v6 · 企业级蓝</h2>
+      <span class="meta">~38k stars · React 19 + Ant Design 6</span>
+    </div>
+    <div class="stage">
+      <aside class="sidebar">
+        <div class="brand">⌘ 玄黄</div>
+        <div class="nav-group">
+          <div class="nav-group-title">工作台</div>
+          <div class="nav-item on"><span class="ic">●</span> 总览 <span class="badge">3</span></div>
+          <div class="nav-item"><span class="ic">▤</span> 资讯</div>
+          <div class="nav-item"><span class="ic">◴</span> 倒计时</div>
+          <div class="nav-item"><span class="ic">◉</span> 足迹</div>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title">工具</div>
+          <div class="nav-item"><span class="ic">✎</span> 笔记</div>
+          <div class="nav-item"><span class="ic">♪</span> 音乐</div>
+          <div class="nav-item"><span class="ic">¥</span> 记账</div>
+          <div class="nav-item"><span class="ic">◧</span> 股票</div>
+        </div>
+      </aside>
+      <div class="content">
+        <h3>今日总览</h3>
+        <div class="sub">2026-09-19 · 星期四</div>
+        <div class="btn-row">
+          <button class="btn primary">新建倒计时</button>
+          <button class="btn">导入</button>
+          <button class="btn ghost">导出</button>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="label">活跃倒计时</div><div class="val">12</div><div class="delta up">↑ 2 本周</div></div>
+          <div class="kpi"><div class="label">足迹省份</div><div class="val">18 / 34</div><div class="delta up">↑ 江苏</div></div>
+          <div class="kpi"><div class="label">本月支出</div><div class="val">¥ 4,820</div><div class="delta dn">↓ 12%</div></div>
+          <div class="kpi"><div class="label">笔记 / 视频</div><div class="val">236</div><div class="delta up">↑ 8</div></div>
+        </div>
+        <div class="row-cards">
+          <div class="panel">
+            <h4>近期倒计时</h4>
+            <table class="demo">
+              <thead><tr><th>名称</th><th>剩余</th><th>日期</th><th>状态</th></tr></thead>
+              <tbody>
+                <tr><td>结婚纪念日</td><td>14 天</td><td>10-03</td><td><span class="tag pri">置顶</span></td></tr>
+                <tr><td>季度回顾</td><td>42 天</td><td>10-31</td><td><span class="tag">活跃</span></td></tr>
+                <tr><td>换护照</td><td>68 天</td><td>11-26</td><td><span class="tag ok">提醒</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <h4>足迹进度</h4>
+            <div class="bar-list">
+              <div class="bar-row"><span class="name">华东</span><span class="track"><span class="fill" style="width:88%"></span></span><span class="pct">88%</span></div>
+              <div class="bar-row"><span class="name">华南</span><span class="track"><span class="fill" style="width:62%"></span></span><span class="pct">62%</span></div>
+              <div class="bar-row"><span class="name">华北</span><span class="track"><span class="fill" style="width:54%"></span></span><span class="pct">54%</span></div>
+              <div class="bar-row"><span class="name">西南</span><span class="track"><span class="fill" style="width:33%"></span></span><span class="pct">33%</span></div>
+              <div class="bar-row"><span class="name">西北</span><span class="track"><span class="fill" style="width:21%"></span></span><span class="pct">21%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ③ vue-vben-admin ===== -->
+  <section class="candidate c3">
+    <div class="candidate-head">
+      <span class="tag">③ Light · Vue 阵营</span>
+      <h2>vue-vben-admin · 浅色中性高级感</h2>
+      <span class="meta">~33k stars · Vue 3 + Vite</span>
+    </div>
+    <div class="stage">
+      <aside class="sidebar">
+        <div class="brand">⌘ 玄黄</div>
+        <div class="nav-group">
+          <div class="nav-group-title">工作台</div>
+          <div class="nav-item on"><span class="ic">●</span> 总览 <span class="badge">3</span></div>
+          <div class="nav-item"><span class="ic">▤</span> 资讯</div>
+          <div class="nav-item"><span class="ic">◴</span> 倒计时</div>
+          <div class="nav-item"><span class="ic">◉</span> 足迹</div>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title">工具</div>
+          <div class="nav-item"><span class="ic">✎</span> 笔记</div>
+          <div class="nav-item"><span class="ic">♪</span> 音乐</div>
+          <div class="nav-item"><span class="ic">¥</span> 记账</div>
+          <div class="nav-item"><span class="ic">◧</span> 股票</div>
+        </div>
+      </aside>
+      <div class="content">
+        <h3>今日总览</h3>
+        <div class="sub">2026-09-19 · 星期四</div>
+        <div class="btn-row">
+          <button class="btn primary">新建倒计时</button>
+          <button class="btn">导入</button>
+          <button class="btn">导出</button>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="label">活跃倒计时</div><div class="val">12</div><div class="delta up">↑ 2 本周</div></div>
+          <div class="kpi"><div class="label">足迹省份</div><div class="val">18 / 34</div><div class="delta up">↑ 江苏</div></div>
+          <div class="kpi"><div class="label">本月支出</div><div class="val">¥ 4,820</div><div class="delta dn">↓ 12%</div></div>
+          <div class="kpi"><div class="label">笔记 / 视频</div><div class="val">236</div><div class="delta up">↑ 8</div></div>
+        </div>
+        <div class="row-cards">
+          <div class="panel">
+            <h4>近期倒计时</h4>
+            <table class="demo">
+              <thead><tr><th>名称</th><th>剩余</th><th>日期</th><th>状态</th></tr></thead>
+              <tbody>
+                <tr><td>结婚纪念日</td><td>14 天</td><td>10-03</td><td><span class="tag pri">置顶</span></td></tr>
+                <tr><td>季度回顾</td><td>42 天</td><td>10-31</td><td><span class="tag">活跃</span></td></tr>
+                <tr><td>换护照</td><td>68 天</td><td>11-26</td><td><span class="tag">提醒</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <h4>足迹进度</h4>
+            <div class="bar-list">
+              <div class="bar-row"><span class="name">华东</span><span class="track"><span class="fill" style="width:88%"></span></span><span class="pct">88%</span></div>
+              <div class="bar-row"><span class="name">华南</span><span class="track"><span class="fill" style="width:62%"></span></span><span class="pct">62%</span></div>
+              <div class="bar-row"><span class="name">华北</span><span class="track"><span class="fill" style="width:54%"></span></span><span class="pct">54%</span></div>
+              <div class="bar-row"><span class="name">西南</span><span class="track"><span class="fill" style="width:33%"></span></span><span class="pct">33%</span></div>
+              <div class="bar-row"><span class="name">西北</span><span class="track"><span class="fill" style="width:21%"></span></span><span class="pct">21%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ④ Flux 玻璃拟态 ===== -->
+  <section class="candidate c4">
+    <div class="candidate-head">
+      <span class="tag">④ Vibrant · Frosted Glass</span>
+      <h2>Flux Dashboard · 紫罗兰 + 玻璃拟态</h2>
+      <span class="meta">商业模板 · 玻璃复兴代表</span>
+    </div>
+    <div class="stage">
+      <aside class="sidebar">
+        <div class="brand">⌘ 玄黄</div>
+        <div class="nav-group">
+          <div class="nav-group-title">工作台</div>
+          <div class="nav-item on"><span class="ic">●</span> 总览 <span class="badge">3</span></div>
+          <div class="nav-item"><span class="ic">▤</span> 资讯</div>
+          <div class="nav-item"><span class="ic">◴</span> 倒计时</div>
+          <div class="nav-item"><span class="ic">◉</span> 足迹</div>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title">工具</div>
+          <div class="nav-item"><span class="ic">✎</span> 笔记</div>
+          <div class="nav-item"><span class="ic">♪</span> 音乐</div>
+          <div class="nav-item"><span class="ic">¥</span> 记账</div>
+          <div class="nav-item"><span class="ic">◧</span> 股票</div>
+        </div>
+      </aside>
+      <div class="content">
+        <h3>今日总览</h3>
+        <div class="sub">2026-09-19 · 星期四</div>
+        <div class="btn-row">
+          <button class="btn primary">新建倒计时</button>
+          <button class="btn">导入</button>
+          <button class="btn">导出</button>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="label">活跃倒计时</div><div class="val">12</div><div class="delta up">↑ 2 本周</div></div>
+          <div class="kpi"><div class="label">足迹省份</div><div class="val">18 / 34</div><div class="delta up">↑ 江苏</div></div>
+          <div class="kpi"><div class="label">本月支出</div><div class="val">¥ 4,820</div><div class="delta dn">↓ 12%</div></div>
+          <div class="kpi"><div class="label">笔记 / 视频</div><div class="val">236</div><div class="delta up">↑ 8</div></div>
+        </div>
+        <div class="row-cards">
+          <div class="panel">
+            <h4>近期倒计时</h4>
+            <table class="demo">
+              <thead><tr><th>名称</th><th>剩余</th><th>日期</th><th>状态</th></tr></thead>
+              <tbody>
+                <tr><td>结婚纪念日</td><td>14 天</td><td>10-03</td><td><span class="tag pri">置顶</span></td></tr>
+                <tr><td>季度回顾</td><td>42 天</td><td>10-31</td><td><span class="tag">活跃</span></td></tr>
+                <tr><td>换护照</td><td>68 天</td><td>11-26</td><td><span class="tag ok">提醒</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <h4>足迹进度</h4>
+            <div class="bar-list">
+              <div class="bar-row"><span class="name">华东</span><span class="track"><span class="fill" style="width:88%"></span></span><span class="pct">88%</span></div>
+              <div class="bar-row"><span class="name">华南</span><span class="track"><span class="fill" style="width:62%"></span></span><span class="pct">62%</span></div>
+              <div class="bar-row"><span class="name">华北</span><span class="track"><span class="fill" style="width:54%"></span></span><span class="pct">54%</span></div>
+              <div class="bar-row"><span class="name">西南</span><span class="track"><span class="fill" style="width:33%"></span></span><span class="pct">33%</span></div>
+              <div class="bar-row"><span class="name">西北</span><span class="track"><span class="fill" style="width:21%"></span></span><span class="pct">21%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ⑤ Zenith 极简白 ===== -->
+  <section class="candidate c5">
+    <div class="candidate-head">
+      <span class="tag">⑤ Minimal · White card</span>
+      <h2>Zenith · 极简白卡片</h2>
+      <span class="meta">极简白 + 单强调色 · achromatic</span>
+    </div>
+    <div class="stage">
+      <aside class="sidebar">
+        <div class="brand">⌘ 玄黄</div>
+        <div class="nav-group">
+          <div class="nav-group-title">工作台</div>
+          <div class="nav-item on"><span class="ic">●</span> 总览 <span class="badge">3</span></div>
+          <div class="nav-item"><span class="ic">▤</span> 资讯</div>
+          <div class="nav-item"><span class="ic">◴</span> 倒计时</div>
+          <div class="nav-item"><span class="ic">◉</span> 足迹</div>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title">工具</div>
+          <div class="nav-item"><span class="ic">✎</span> 笔记</div>
+          <div class="nav-item"><span class="ic">♪</span> 音乐</div>
+          <div class="nav-item"><span class="ic">¥</span> 记账</div>
+          <div class="nav-item"><span class="ic">◧</span> 股票</div>
+        </div>
+      </aside>
+      <div class="content">
+        <h3>今日总览</h3>
+        <div class="sub">2026-09-19 · 星期四</div>
+        <div class="btn-row">
+          <button class="btn primary">新建倒计时</button>
+          <button class="btn">导入</button>
+          <button class="btn">导出</button>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="label">活跃倒计时</div><div class="val">12</div><div class="delta up">↑ 2 本周</div></div>
+          <div class="kpi"><div class="label">足迹省份</div><div class="val">18 / 34</div><div class="delta up">↑ 江苏</div></div>
+          <div class="kpi"><div class="label">本月支出</div><div class="val">¥ 4,820</div><div class="delta dn">↓ 12%</div></div>
+          <div class="kpi"><div class="label">笔记 / 视频</div><div class="val">236</div><div class="delta up">↑ 8</div></div>
+        </div>
+        <div class="row-cards">
+          <div class="panel">
+            <h4>近期倒计时</h4>
+            <table class="demo">
+              <thead><tr><th>名称</th><th>剩余</th><th>日期</th><th>状态</th></tr></thead>
+              <tbody>
+                <tr><td>结婚纪念日</td><td>14 天</td><td>10-03</td><td><span class="tag pri">置顶</span></td></tr>
+                <tr><td>季度回顾</td><td>42 天</td><td>10-31</td><td><span class="tag">活跃</span></td></tr>
+                <tr><td>换护照</td><td>68 天</td><td>11-26</td><td><span class="tag ok">提醒</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <h4>足迹进度</h4>
+            <div class="bar-list">
+              <div class="bar-row"><span class="name">华东</span><span class="track"><span class="fill" style="width:88%"></span></span><span class="pct">88%</span></div>
+              <div class="bar-row"><span class="name">华南</span><span class="track"><span class="fill" style="width:62%"></span></span><span class="pct">62%</span></div>
+              <div class="bar-row"><span class="name">华北</span><span class="track"><span class="fill" style="width:54%"></span></span><span class="pct">54%</span></div>
+              <div class="bar-row"><span class="name">西南</span><span class="track"><span class="fill" style="width:33%"></span></span><span class="pct">33%</span></div>
+              <div class="bar-row"><span class="name">西北</span><span class="track"><span class="fill" style="width:21%"></span></span><span class="pct">21%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>

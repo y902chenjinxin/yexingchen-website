@@ -1,15 +1,10 @@
 <template>
   <IslandInnerBase type="novel" title="小说" subtitle="书卷悠长">
     <template #toolbar>
-      <el-button :type="manage ? 'primary' : 'default'" size="small" plain @click="manage = !manage">
-        {{ manage ? '返回卡片' : '管理' }}
-      </el-button>
-      <el-button v-if="manage" type="primary" size="small" @click="openUpload">上传</el-button>
+      <el-button type="primary" size="small" @click="openUpload">上传小说</el-button>
     </template>
 
-    <NovelInner v-show="!manage" />
-
-    <div v-show="manage" class="manage-pane">
+    <div class="manage-pane">
       <div class="manage-toolbar">
         <el-input v-model="keyword" size="small" clearable placeholder="搜索标题/作者" style="width: 260px">
           <template #prefix><el-icon><Search /></el-icon></template>
@@ -17,7 +12,9 @@
         <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
         <span v-if="keyword" class="search-count">匹配 {{ novelStore.list.length }} 条</span>
         <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
-        <el-button v-if="selectedRows.length" type="danger" size="small" @click="handleBatchDelete">批量删除（{{ selectedRows.length }}）</el-button>
+        <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
+          批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
+        </el-button>
       </div>
       <el-table ref="tableRef" :data="pagedRows" v-loading="novelStore.loading" stripe style="width: 100%" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="48" />
@@ -118,14 +115,12 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
-import NovelInner from './islands/NovelIslandInner.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useNovelStore } from '@/stores/novel'
 
 const novelStore = useNovelStore()
 
-const manage = ref(false)
 const showUpload = ref(false)
 const keyword = ref('')
 const uploading = ref(false)

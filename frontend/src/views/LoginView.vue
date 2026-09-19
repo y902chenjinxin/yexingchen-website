@@ -1,5 +1,8 @@
 <template>
   <div class="login-page">
+    <!-- 雨青粒子网背景（原始实现：粒子漂移 + 连线 + 鼠标聚拢） -->
+    <canvas ref="particleCanvas" class="particle-bg" aria-hidden="true"></canvas>
+
     <!-- 登录卡片 -->
     <div class="login-card">
       <h1 class="site-title font-serif">叶兴辰的个人网站</h1>
@@ -151,6 +154,183 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { register as registerApi, verifyCode as verifyCodeApi } from '@/api/auth'
 
+/** ============ 雨青粒子网背景（原始实现，保留用户偏好的绿色调） ============ */
+const particleCanvas = ref(null)
+let pctx = null
+let particles = []
+let rafId = 0
+let resizeTimer = 0
+const pointer = { x: -9999, y: -9999 }
+let reduceMotion = false
+
+/**
+ * 雨青粒子网参数（依据 docs/ai/WORK_LOG.md 记录的 v2.x 原始实现复原）：
+ *   - 雨青粒子漂移：克制 0.32 速
+ *   - 粒子间距离 130px 内 连极细雨青线，透明度 (1 - d/130) × 0.15
+ *   - 鼠标 190px 影响半径内吸引粒子，并加亮连线向光标聚拢（α × 0.30）
+ *   - 粒子带径向微光晕，核为冷白青
+ *   - prefers-reduced-motion 时退化为静态帧
+ * 仅粒子数由原始 72 收敛到 40（反馈"太多"），其余参数与原始一致。
+ */
+const PARTICLE_COUNT = 40       // 粒子数量
+const LINK_DIST = 130           // 粒子间连线最大距离（原始值）
+const POINTER_DIST = 190        // 鼠标影响半径（原始值）
+const BASE_SPEED = 0.32         // 克制漂移速度（原始值）
+const MAX_SPEED = 0.9           // 速度上限（原始值）
+const PULL = 0.022              // 鼠标吸引力（原始值）
+
+const COL_LINE = '127, 168, 163'        // 雨青连线
+const COL_POINTER = '168, 211, 206'     // 鼠标连线偏亮
+const COL_HALO = '168, 211, 206'        // 粒子光晕
+const COL_CORE = '206, 226, 220'        // 粒子核
+
+function initParticles(w, h) {
+  particles = []
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 2 * BASE_SPEED,
+      vy: (Math.random() - 0.5) * 2 * BASE_SPEED,
+      r: 0.7 + Math.random() * 1.5
+    })
+  }
+}
+
+function setupCanvas() {
+  const canvas = particleCanvas.value
+  if (!canvas) return
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const w = canvas.clientWidth
+  const h = canvas.clientHeight
+  canvas.width = w * dpr
+  canvas.height = h * dpr
+  pctx = canvas.getContext('2d')
+  pctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  initParticles(w, h)
+}
+
+function draw() {
+  if (rafId) cancelAnimationFrame(rafId)
+  if (reduceMotion) return
+  rafId = requestAnimationFrame(draw)
+  const canvas = particleCanvas.value
+  if (!canvas || !pctx) return
+  const w = canvas.clientWidth
+  const h = canvas.clientHeight
+  if (!w || !h) return
+  pctx.clearRect(0, 0, w, h)
+
+  // 更新位置 + 鼠标吸引（与文档记录的原始实现一致）
+  for (const p of particles) {
+    const dxp = pointer.x - p.x
+    const dyp = pointer.y - p.y
+    const dp = Math.hypot(dxp, dyp)
+    if (dp < POINTER_DIST && dp > 0.5) {
+      const pull = (1 - dp / POINTER_DIST) * PULL
+      p.vx += (dxp / dp) * pull
+      p.vy += (dyp / dp) * pull
+    }
+    const sp = Math.hypot(p.vx, p.vy)
+    if (sp > MAX_SPEED) {
+      p.vx = (p.vx / sp) * MAX_SPEED
+      p.vy = (p.vy / sp) * MAX_SPEED
+    }
+    p.x += p.vx
+    p.y += p.vy
+    if (p.x < 0) { p.x = 0; p.vx *= -1 }
+    else if (p.x > w) { p.x = w; p.vx *= -1 }
+    if (p.y < 0) { p.y = 0; p.vy *= -1 }
+    else if (p.y > h) { p.y = h; p.vy *= -1 }
+  }
+
+  pctx.lineWidth = 1
+  // 粒子间连线
+  for (let i = 0; i < particles.length; i++) {
+    const a = particles[i]
+    for (let j = i + 1; j < particles.length; j++) {
+      const b = particles[j]
+      const dx = a.x - b.x
+      const dy = a.y - b.y
+      const d = Math.hypot(dx, dy)
+      if (d < LINK_DIST) {
+        const alpha = (1 - d / LINK_DIST) * 0.15
+        pctx.strokeStyle = `rgba(${COL_LINE}, ${alpha.toFixed(3)})`
+        pctx.beginPath()
+        pctx.moveTo(a.x, a.y)
+        pctx.lineTo(b.x, b.y)
+        pctx.stroke()
+      }
+    }
+    // 鼠标连线（指针周围线条聚拢）
+    if (pointer.x > -9000 && pointer.y > -9000) {
+      const dp = Math.hypot(a.x - pointer.x, a.y - pointer.y)
+      if (dp < POINTER_DIST) {
+        const alpha = (1 - dp / POINTER_DIST) * 0.30
+        pctx.strokeStyle = `rgba(${COL_POINTER}, ${alpha.toFixed(3)})`
+        pctx.beginPath()
+        pctx.moveTo(a.x, a.y)
+        pctx.lineTo(pointer.x, pointer.y)
+        pctx.stroke()
+      }
+    }
+  }
+
+  // 粒子（光晕 + 核）
+  for (const p of particles) {
+    const halo = pctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4)
+    halo.addColorStop(0, `rgba(${COL_HALO}, 0.50)`)
+    halo.addColorStop(1, `rgba(${COL_HALO}, 0)`)
+    pctx.fillStyle = halo
+    pctx.beginPath()
+    pctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2)
+    pctx.fill()
+    pctx.fillStyle = `rgba(${COL_CORE}, 0.9)`
+    pctx.beginPath()
+    pctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+    pctx.fill()
+  }
+}
+
+function onPointerMove(e) {
+  const canvas = particleCanvas.value
+  if (!canvas) return
+  const rect = canvas.getBoundingClientRect()
+  pointer.x = e.clientX - rect.left
+  pointer.y = e.clientY - rect.top
+}
+
+function onPointerLeave() {
+  pointer.x = -9999
+  pointer.y = -9999
+}
+
+function onResize() {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    setupCanvas()
+  }, 150)
+}
+
+onMounted(() => {
+  document.body.classList.add('login-route')
+  setupCanvas()
+  window.addEventListener('resize', onResize)
+  window.addEventListener('pointermove', onPointerMove, { passive: true })
+  window.addEventListener('pointerout', onPointerLeave)
+  draw()
+})
+
+onBeforeUnmount(() => {
+  if (rafId) cancelAnimationFrame(rafId)
+  clearTimeout(resizeTimer)
+  window.removeEventListener('resize', onResize)
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerout', onPointerLeave)
+  document.body.classList.remove('login-route')
+})
+
 const router = useRouter()
 const auth = useAuthStore()
 
@@ -270,13 +450,14 @@ function resetRegister() {
   overflow: hidden;
 }
 
-/* 雨青粒子网画布 */
+/* 雨青粒子网画布（固定铺满，不参与文档流） */
 .particle-bg {
-  position: absolute;
+  position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 0;
 }
 
 /* 登录卡片（克制淡入，无位移/无 blur 动画，避免逐帧重绘卡顿） */
@@ -384,11 +565,39 @@ function resetRegister() {
 }
 
 :deep(.el-input__inner) {
-  color: var(--color-text) !important;
+  color: #e8f4fc !important;
+  -webkit-text-fill-color: #e8f4fc;
+  caret-color: #e8f4fc;
+}
+
+/* 浏览器自动填充（记住我 / 密码管理器）：Chrome 会强制给 input 刷
+   浅蓝底 + 自带文字色，普通 CSS 覆盖不了，必须用 inset box-shadow 遮蔽，
+   并用 -webkit-text-fill-color 强制文字色 */
+:deep(input:-webkit-autofill),
+:deep(input:-webkit-autofill:hover),
+:deep(input:-webkit-autofill:focus),
+:deep(input:-webkit-autofill:active),
+:deep(input:autofill),
+:deep(input:autofill:hover),
+:deep(input:autofill:focus) {
+  -webkit-text-fill-color: #e8f4fc !important;
+  color: #e8f4fc !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(24, 32, 41, 0.94) inset !important;
+  box-shadow: 0 0 0 1000px rgba(24, 32, 41, 0.94) inset !important;
+  background-color: rgba(24, 32, 41, 0.94) !important;
+  transition: background-color 9999s ease-out 0s;
+  filter: none !important;
+  caret-color: #e8f4fc;
+}
+/* 自动填充时同步把外框描边维持雨青 */
+:deep(.el-input__wrapper:has(input:-webkit-autofill)),
+:deep(.el-input__wrapper:has(input:autofill)) {
+  background: rgba(24, 32, 41, 0.94) !important;
+  border-color: rgba(127, 168, 163, 0.45) !important;
 }
 
 :deep(.el-input__inner::placeholder) {
-  color: rgba(200, 214, 208, 0.5) !important;
+  color: rgba(200, 214, 208, 0.62) !important;
 }
 
 :deep(.el-input__suffix .el-icon),

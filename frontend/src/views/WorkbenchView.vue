@@ -3,216 +3,397 @@
   <MobileWorkbenchHome v-if="isMobile" />
 
   <div v-else class="workbench-page">
-    <!-- 浅底留白背景：宣纸纹理 + 极淡云雾 + 淡墨山峦卷轴收束 -->
-    <div class="lj-bg" aria-hidden="true">
-      <div class="lj-paper-texture"></div>
-      <div class="lj-wash w1"></div>
-      <div class="lj-wash w2"></div>
-      <div class="lj-wash w3"></div>
-      <!-- 江南山峦剪影（纯代码 SVG，克制的低透明卷轴收束层） -->
-      <svg class="lj-mountain lj-mountain--l" viewBox="0 0 640 200" preserveAspectRatio="xMidYMax slice">
-        <path d="M0 200 L0 120 L72 62 L138 118 L208 40 L286 120 L348 84 L428 148 L520 76 L640 150 L640 200 Z"
-              fill="currentColor" opacity=".5"/>
-      </svg>
-      <svg class="lj-mountain lj-mountain--r" viewBox="0 0 560 180" preserveAspectRatio="xMidYMax slice">
-        <path d="M0 180 L0 120 L96 70 L170 124 L244 62 L330 132 L404 96 L470 150 L560 96 L560 180 Z"
-              fill="currentColor" opacity=".42"/>
-      </svg>
-    </div>
-
-    <!-- 玉简轮播作为主角（岛屿导航核心） -->
+    <!-- 顶栏品牌条（替代旧的"玉简 hero"） -->
     <section class="wb-hero">
-      <div class="wb-eyebrow"><span>玄 黄 · 仙 府 一 隅</span></div>
-      <h1 class="wb-title">玄黄 · 工作台
-        <svg class="wb-seal" viewBox="0 0 32 32" aria-hidden="true">
-          <rect x="2.5" y="2.5" width="27" height="27" rx="5" fill="none" stroke="currentColor" stroke-width="1.6"/>
-          <rect x="7" y="7" width="18" height="7" rx="2.5" fill="currentColor" opacity=".9"/>
-          <path d="M7 17 q4 -3 8 0 q4 -3 8 0 v8 h-16 Z" fill="currentColor" opacity=".9"/>
-        </svg>
-      </h1>
-      <p class="wb-subtitle">把零散念头，沉淀为笔记、AI 与可执之事。</p>
-      <JadeCarousel class="wb-jade" />
+      <div class="wb-eyebrow"><span>玄 黄 · 工 作 台</span></div>
+      <h1 class="wb-title">把零散念头，沉淀为数据。</h1>
+      <p class="wb-subtitle">今日 · 本月 · 累计，一目了然。</p>
     </section>
 
-    <!-- 资讯横栏：玉简下 / 常用工具上，自动向上滚动，点击进入资讯页 -->
+    <!-- KPI 4 卡：倒计时 / 足迹 / 记账 / 笔记 -->
+    <section class="wb-kpi" v-if="loaded">
+      <KpiTile label="活跃倒计时" :val="kpi.countdown.active_count" sub="含纪念日" @click="$router.push('/tool/countdown')" clickable />
+      <KpiTile label="足迹省份" :val="kpi.travel.province_count" :unit="`/ 34`" :sub="`${kpi.travel.travel_count} 段旅程 · ${kpi.travel.city_count} 城`" @click="$router.push('/travels')" clickable />
+      <KpiTile label="本月净流入" :val="kpi.finance.net" unit="¥" :delta="`收 ${kpi.finance.month_income} / 支 ${kpi.finance.month_expense}`" :delta-tone="kpi.finance.net >= 0 ? 'up' : 'dn'" @click="$router.push('/finance')" clickable />
+      <KpiTile label="笔记" :val="kpi.note_count" sub="最近 5 篇可编辑" @click="$router.push('/notes')" clickable />
+    </section>
+    <section v-else class="wb-kpi">
+      <KpiTile label="活跃倒计时" val="—" />
+      <KpiTile label="足迹省份" val="—" />
+      <KpiTile label="本月净流入" val="—" />
+      <KpiTile label="笔记" val="—" />
+    </section>
+
+    <!-- 趋势图表 3 列：记账 30 天走势 + 倒计时 5 条 + 自选股 -->
+    <section class="wb-trend">
+      <!-- 记账 30 天 -->
+      <div class="trend-card">
+        <div class="trend-head">
+          <div class="trend-title">记账 · 最近 30 天</div>
+          <div class="trend-meta">
+            <span class="trend-meta-item"><i class="trend-dot dot-in"></i>收入</span>
+            <span class="trend-meta-item"><i class="trend-dot dot-out"></i>支出</span>
+            <RouterLink class="trend-link" to="/finance">详情 →</RouterLink>
+          </div>
+        </div>
+        <TrendBars :data="kpi.finance.trend" :height="140" mode="expense" />
+      </div>
+
+      <!-- 倒计时最近 5 条 -->
+      <div class="trend-card">
+        <div class="trend-head">
+          <div class="trend-title">即将到来</div>
+          <RouterLink class="trend-link" to="/tool/countdown">全部 →</RouterLink>
+        </div>
+        <ul class="cd-list">
+          <li v-for="cd in kpi.countdown.upcoming_top" :key="cd.id" @click="$router.push(`/tool/countdown/${cd.id}`)">
+            <span class="cd-dot" :style="{ background: cd.color || 'var(--dp-accent)' }"></span>
+            <span class="cd-title">{{ cd.title }}</span>
+            <span class="cd-days">{{ cd.days_left }} 天</span>
+          </li>
+          <li v-if="!kpi.countdown.upcoming_top.length" class="cd-empty">暂无即将到来的事件</li>
+        </ul>
+      </div>
+
+      <!-- 足迹简报 -->
+      <div class="trend-card">
+        <div class="trend-head">
+          <div class="trend-title">足迹 · 最近</div>
+          <RouterLink class="trend-link" to="/travels">详情 →</RouterLink>
+        </div>
+        <ul class="cd-list">
+          <li v-for="t in kpi.travel.recent" :key="t.id" @click="$router.push(`/travels`)">
+            <span class="cd-dot" style="background: var(--dp-accent)"></span>
+            <span class="cd-title">{{ t.title || `旅程 ${t.id}` }}</span>
+            <span class="cd-days">{{ t.city_count }} 城</span>
+          </li>
+          <li v-if="!kpi.travel.recent.length" class="cd-empty">还没有旅程记录</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 笔记 + 自选股 + 任务 三栏 -->
+    <section class="wb-row">
+      <div class="row-card">
+        <div class="trend-head">
+          <div class="trend-title">最近笔记</div>
+          <RouterLink class="trend-link" to="/notes">全部 →</RouterLink>
+        </div>
+        <ul class="note-list">
+          <li v-for="n in kpi.recent_notes" :key="n.id" @click="$router.push(`/notes/${n.id}`)">
+            <span class="note-title">{{ n.title || '（无标题）' }}</span>
+            <span class="note-meta">{{ formatDate(n.updated_at) }}</span>
+          </li>
+          <li v-if="!kpi.recent_notes.length" class="cd-empty">还没有笔记</li>
+        </ul>
+      </div>
+
+      <div class="row-card">
+        <div class="trend-head">
+          <div class="trend-title">自选股</div>
+          <RouterLink class="trend-link" to="/stocks">详情 →</RouterLink>
+        </div>
+        <ul class="note-list">
+          <li v-for="h in kpi.stocks.holdings.slice(0, 5)" :key="h.code" @click="$router.push('/stocks')">
+            <span class="note-title">{{ h.name }}</span>
+            <span class="note-meta">{{ h.shares }} 股 @ ¥{{ h.cost }}</span>
+          </li>
+          <li v-if="!kpi.stocks.holdings.length" class="cd-empty">暂无自选股</li>
+        </ul>
+      </div>
+
+      <div class="row-card">
+        <div class="trend-head">
+          <div class="trend-title">今日任务</div>
+          <RouterLink class="trend-link" to="/tasks">详情 →</RouterLink>
+        </div>
+        <ul class="note-list">
+          <li v-for="t in kpi.today_tasks" :key="t.id" @click="$router.push('/tasks')">
+            <span class="note-title">{{ t.title }}</span>
+            <span class="note-meta">{{ t.due_date?.slice(5) || '今日' }}</span>
+          </li>
+          <li v-if="kpi.overdue_tasks.length" class="note-overdue">
+            <i class="overdue-dot"></i>{{ kpi.overdue_tasks.length }} 项已逾期
+          </li>
+          <li v-if="!kpi.today_tasks.length && !kpi.overdue_tasks.length" class="cd-empty">今日无任务</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 资讯流（保留原 workbench 信息流） -->
     <div class="wb-body wb-feedsbar">
       <WorkbenchFeedsBar :feeds="feeds" />
     </div>
 
-    <!-- 常用工具区（工具 + 快捷动作混排） -->
-    <div class="wb-body">
-      <WorkbenchTools />
-    </div>
-
-    <!-- 大数据看板（账本 / 行情 / 足迹 三卡预览） -->
-    <div class="wb-body wb-dash">
-      <WorkbenchDashboard :empty="empty" :finance="finance" :stocks="stocks" :holdings="holdings" :travels="travels" />
-    </div>
-
-    <!-- 底部网安/备案标识（夜色页脚） -->
+    <!-- 底部网安/备案标识 -->
     <SiteFooter variant="dark" class="wb-footer" />
   </div>
 </template>
 
 <script setup>
 defineOptions({ name: 'WorkbenchView' })
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import MobileWorkbenchHome from '@/components/mobile/MobileWorkbenchHome.vue'
 import { useIsMobile } from '@/composables/useIsMobile'
-import JadeCarousel from '@/components/JadeCarousel.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
-import WorkbenchTools from '@/components/workbench/WorkbenchTools.vue'
-import WorkbenchDashboard from '@/components/workbench/WorkbenchDashboard.vue'
 import WorkbenchFeedsBar from '@/components/workbench/WorkbenchFeedsBar.vue'
-import { financeApi } from '@/api/finance'
+import KpiTile from '@/components/dashboard/KpiTile.vue'
+import TrendBars from '@/components/dashboard/TrendBars.vue'
+import { workbenchApi } from '@/api/workbench'
 import { feedsApi } from '@/api/feeds'
-import { stocksApi } from '@/api/stocks'
-import { listTravels } from '@/api/travels'
 
 const { isMobile } = useIsMobile()
 
-const empty = ref(true)
-const finance = ref({})
+const loaded = ref(false)
+const summary = ref({})
 const feeds = ref([])
-const stocks = ref({})
-const holdings = ref([])
-const travels = ref({})
+
+const kpi = computed(() => {
+  const d = summary.value || {}
+  const cd = d.countdown || {}
+  const tv = d.travel || {}
+  const fn = d.finance || {}
+  const st = d.stocks || { holdings: [] }
+  return {
+    countdown: {
+      active_count: cd.active_count ?? 0,
+      upcoming_count: cd.upcoming_count ?? 0,
+      upcoming_top: cd.upcoming_top || [],
+    },
+    travel: {
+      travel_count: tv.travel_count ?? 0,
+      province_count: tv.province_count ?? 0,
+      city_count: tv.city_count ?? 0,
+      recent: tv.recent || [],
+    },
+    finance: {
+      month_count: fn.month_count ?? 0,
+      month_income: fn.month_income ?? 0,
+      month_expense: fn.month_expense ?? 0,
+      net: fn.net ?? 0,
+      trend: fn.trend || [],
+    },
+    stocks: { symbol_count: st.symbol_count ?? 0, holdings: st.holdings || [] },
+    note_count: (d.recent_notes || []).length,
+    recent_notes: d.recent_notes || [],
+    today_tasks: d.today_tasks || [],
+    overdue_tasks: d.overdue_tasks || [],
+  }
+})
+
+function formatDate(s) {
+  if (!s) return ''
+  try {
+    const dt = new Date(s)
+    const m = (dt.getMonth() + 1).toString().padStart(2, '0')
+    const d = dt.getDate().toString().padStart(2, '0')
+    return `${m}-${d}`
+  } catch { return '' }
+}
 
 onMounted(async () => {
   try {
-    const res = await financeApi.summary()
-    if (res?.data?.total_count) {
-      empty.value = false
-      finance.value = res.data
-    }
-  } catch (e) {
-    /* 未就绪保持空态 */
-  }
+    const r = await workbenchApi.summary()
+    summary.value = r?.data || {}
+  } catch (e) { /* 静默 */ }
   try {
-    const res = await feedsApi.dashboard()
-    if (res?.data) {
-      feeds.value = res.data.recent || []
-    }
-  } catch (e) {
-    /* 资讯未就绪忽略 */
-  }
-  try {
-    const res = await stocksApi.dashboard()
-    if (res?.data) {
-      if (res.data.symbol_count) empty.value = false
-      stocks.value = { marketValue: res.data.market_value, profit: res.data.today_pnl }
-      holdings.value = res.data.holdings || []
-    }
-  } catch (e) {
-    /* 行情未就绪忽略 */
-  }
-  try {
-    const res = await listTravels()
-    if (res?.data?.total) {
-      travels.value = { travel_count: res.data.total, province_count: 0, city_count: 0 }
-      const prov = new Set(); const cty = new Set()
-      for (const it of res.data.list) {
-        ;(it.cities || []).forEach((c) => { if (c.province) prov.add(c.province); if (c.city) cty.add(c.city) })
-      }
-      travels.value = { travel_count: res.data.total, province_count: prov.size, city_count: cty.size }
-    }
-  } catch (e) {
-    /* 足迹未就绪忽略 */
-  }
+    const r = await feedsApi.dashboard()
+    feeds.value = r?.data?.recent || []
+  } catch { /* 静默 */ }
+  loaded.value = true
 })
 </script>
 
 <style scoped>
 .workbench-page {
   position: relative;
-  font-family: var(--font-serif);
-  /* 全宽浅底：收窄视口(桌面放大)或宽屏时，浅色宣纸底铺满视口，避免两侧露出深色产生黑边 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   width: 100%;
   padding: 96px 0 0;
   box-sizing: border-box;
-  color: var(--lj-text);
+  color: var(--dp-text);
   min-height: 100vh;
   overflow-x: hidden;
+  background: var(--dp-bg);
 }
-/* 内容块与页脚统一在 1200px 内居中，横向留白 24px 与旧版一致 */
-.wb-hero,
-.wb-body,
-.wb-footer {
-  width: 100%;
+
+/* ===== 顶部品牌条 ===== */
+.wb-hero {
+  text-align: center;
+  padding: 8px 0 24px;
   max-width: 1248px;
-  margin-left: auto;
-  margin-right: auto;
-  box-sizing: border-box;
+  margin: 0 auto;
+}
+.wb-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  letter-spacing: .5em;
+  color: var(--dp-text3);
+  margin-bottom: 10px;
+}
+.wb-eyebrow::before,
+.wb-eyebrow::after { content: ""; height: 1px; width: 52px; background: var(--dp-line-strong); }
+.wb-title { font-size: 28px; font-weight: 700; letter-spacing: -.01em; margin: 0; color: var(--dp-text); }
+.wb-subtitle { margin: 8px 0 0; font-size: 13px; color: var(--dp-text2); letter-spacing: .04em; }
+
+/* ===== KPI 行 ===== */
+.wb-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  max-width: 1248px;
+  margin: 0 auto;
   padding: 0 24px;
 }
+@media (max-width: 1100px) {
+  .wb-kpi { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ===== 趋势 3 列 ===== */
+.wb-trend {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 14px;
+  max-width: 1248px;
+  margin: 20px auto 0;
+  padding: 0 24px;
+}
+@media (max-width: 1100px) {
+  .wb-trend { grid-template-columns: 1fr; }
+}
+
+/* ===== 笔记 + 自选 + 任务 3 列 ===== */
+.wb-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  max-width: 1248px;
+  margin: 14px auto 0;
+  padding: 0 24px;
+}
+@media (max-width: 1100px) {
+  .wb-row { grid-template-columns: 1fr; }
+}
+
+.trend-card,
+.row-card {
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-line);
+  border-radius: var(--dp-radius);
+  padding: 14px 16px 12px;
+  box-shadow: var(--dp-shadow);
+}
+.trend-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.trend-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dp-text2);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.trend-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--dp-text3);
+  align-items: center;
+}
+.trend-meta-item { display: inline-flex; align-items: center; gap: 4px; }
+.trend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-in { background: #16a34a; }
+.dot-out { background: var(--dp-accent-strong); }
+:root[data-theme="night"] .dot-in { background: #34d399; }
+.trend-link {
+  font-size: 11px;
+  color: var(--dp-text3);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color .15s;
+}
+.trend-link:hover { color: var(--dp-accent); }
+
+/* ===== 列表 ===== */
+.cd-list,
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cd-list li,
+.note-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--dp-text);
+  transition: background .15s;
+}
+.cd-list li:hover,
+.note-list li:hover { background: var(--dp-surface2); }
+.cd-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cd-title,
+.note-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cd-days,
+.note-meta {
+  font-size: 11px;
+  color: var(--dp-text3);
+  font-variant-numeric: tabular-nums;
+}
+.cd-empty {
+  padding: 14px 6px;
+  color: var(--dp-text3);
+  font-size: 12px;
+  text-align: center;
+}
+.note-overdue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 6px;
+  font-size: 12px;
+  color: #dc2626;
+}
+:root[data-theme="night"] .note-overdue { color: #fb7185; }
+.overdue-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ===== 资讯 + 页脚 ===== */
+.wb-body { max-width: 1248px; margin: 18px auto 0; padding: 0 24px; }
+.wb-feedsbar { animation: fade-in .6s ease .15s both; }
 .wb-footer {
+  max-width: 1248px;
+  margin: 24px auto 0;
+  padding: 12px 24px 60px;
+  border-top: 1px solid var(--dp-line);
   position: relative;
   z-index: 1;
-  margin-top: 28px;
-  padding-bottom: 84px;
 }
-
-/* ===== 夜色玻璃底（向晚·雨青） ===== */
-.lj-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  background:
-    radial-gradient(ellipse 60% 40% at 20% 8%, var(--glow-rain), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 85% 30%, var(--glow-gold), transparent 60%),
-    var(--lj-bg);
-}
-.lj-paper-texture {
-  position: absolute; inset: 0; opacity: 0.55;
-  background:
-    repeating-linear-gradient(0deg, rgba(127, 168, 163, 0.02) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(90deg, rgba(127, 168, 163, 0.014) 0 1px, transparent 1px 7px);
-}
-.lj-wash { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4;
-  background: radial-gradient(circle, rgba(127, 168, 163, 0.14), transparent 70%); animation: lj-drift 30s ease-in-out infinite; }
-.lj-wash.w1 { width: 480px; height: 420px; top: 12%; left: -6%; }
-.lj-wash.w2 { width: 420px; height: 360px; bottom: 6%; right: -5%; animation-delay: 8s; }
-.lj-wash.w3 { width: 520px; height: 300px; top: 48%; left: 38%; opacity: 0.24; animation-delay: 16s; }
-@keyframes lj-drift { 0%,100% { transform: translate(0,0); } 50% { transform: translate(36px,-20px); } }
-@media (prefers-reduced-motion: reduce) { .lj-wash { animation: none; } }
-
-/* 淡墨山峦剪影：页底卷轴收束层（纯代码、低透明，昼夜自适应） */
-.lj-mountain { position: absolute; bottom: -1px; color: var(--lj-ink); pointer-events: none; z-index: 0; height: 200px; }
-.lj-mountain--l { left: -2vw; width: 46vw; max-width: 600px; opacity: .055; }
-.lj-mountain--r { right: -2vw; width: 40vw; max-width: 540px; height: 170px; opacity: .045; }
-
-.workbench-page > *:not(.lj-bg) { position: relative; z-index: 1; }
-
-/* ===== 主角区：玉简 ===== */
-.wb-hero { text-align: center; padding: 6px 0 8px; animation: lj-rise .8s cubic-bezier(.4,0,.2,1) both; }
-.wb-eyebrow { display: flex; align-items: center; justify-content: center; gap: 16px; font-size: 11px; letter-spacing: .5em; color: var(--lj-mist); margin-bottom: 12px; }
-.wb-eyebrow::before,
-.wb-eyebrow::after { content: ""; height: 1px; width: 52px; }
-.wb-eyebrow::before { background: linear-gradient(90deg, transparent, var(--lj-line-strong)); }
-.wb-eyebrow::after { background: linear-gradient(90deg, var(--lj-line-strong), transparent); }
-.wb-eyebrow span { letter-spacing: .5em; margin-right: -.5em; }
-.wb-title { display: inline-flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 600; letter-spacing: .1em; margin: 0; color: var(--lj-text); }
-.wb-seal { width: 21px; height: 21px; margin-top: 3px; color: var(--lj-seal); opacity: .88; filter: drop-shadow(0 0 4px rgba(181,90,72,.25)); }
-.wb-subtitle { margin: 10px 0 0; font-size: 13px; color: var(--lj-text-2); letter-spacing: .18em; }
-.wb-jade { margin-top: 8px; }
-@keyframes lj-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-
-/* ===== 数据区 ===== */
-.wb-body { padding-top: 10px; }
-.wb-body + .wb-body { margin-top: 20px; }
-/* 楼层式载入：资讯bar → 工具/数据 → 页脚 依次浮现 */
-.wb-feedsbar { animation: lj-rise .8s cubic-bezier(.4,0,.2,1) both; animation-delay: .15s; }
-.wb-body:not(.wb-feedsbar) { animation: lj-rise .8s cubic-bezier(.4,0,.2,1) both; animation-delay: .3s; }
-.wb-footer { animation: lj-rise .8s cubic-bezier(.4,0,.2,1) both; animation-delay: .45s;
-  border-top: 1px solid var(--lj-line); padding-top: 22px; }
-
-@media (prefers-reduced-motion: reduce) {
-  .workbench-page *, .workbench-page *::before, .workbench-page *::after { animation: none !important; transition: none !important; }
-}
-@media (max-width: 600px) {
-  .wb-title { font-size: 26px; }
-  .wb-actions { grid-template-columns: 1fr; }
-  .workbench-page { padding: 88px 0 8px; }
-  .wb-hero,
-  .wb-body,
-  .wb-footer { padding: 0 16px; }
-  .wb-footer { margin-top: 20px; padding-bottom: 80px; }
-}
+@keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 </style>

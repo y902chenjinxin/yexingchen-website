@@ -1,15 +1,10 @@
 <template>
   <div class="island-inner" :class="`island-inner-${type}`">
-    <!-- 背景层 -->
-    <div class="inner-background">
-      <div class="inner-stars"></div>
-      <div class="inner-qi"></div>
-    </div>
-
-    <!-- 内容区 -->
+    <!-- 内容区（背景/装饰由 desktop-product.css 主题化接管，避免重复渲染） -->
     <div class="inner-content">
       <header class="inner-header">
-        <button class="back-btn" @click="goBack">
+        <!-- 桌面端：侧栏已接管返回导航，不再显示「返回工作台」按钮；手机端保留（手机端无侧栏，靠此按钮返回） -->
+        <button v-if="isMobile" class="back-btn" @click="goBack">
           <span class="back-icon">←</span>
           <span class="back-text">返回工作台</span>
         </button>
@@ -22,26 +17,15 @@
         <slot></slot>
       </main>
 
-      <!-- 网安/备案标识：常驻可视区底部独立条，与滚动内容区解耦（绝不随列表滚动嵌进卡片间/盖住卡片） -->
+      <!-- 网安/备案标识：极简单行（白天浅 / 夜间紫玻璃） -->
       <SiteFooter variant="dark" class="inner-footer" />
     </div>
-
-    <!-- 装饰层 -->
-    <div class="inner-decorations">
-      <div class="floating-element" v-for="i in 5" :key="i" :class="`element-${i}`"></div>
-    </div>
-
-    <!-- 灵气粒子 -->
-    <canvas ref="particleCanvas" class="inner-particles"></canvas>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useParticleSystem } from '@/composables/useParticleSystem'
 import { useIsMobile } from '@/composables/useIsMobile'
-import SiteFooter from '@/components/SiteFooter.vue'
 
 const router = useRouter()
 const { isMobile } = useIsMobile()
@@ -63,38 +47,9 @@ const props = defineProps({
 
 function goBack() {
   // 统一「回来源页优先」：有浏览历史则返回上一页；直接落地（无历史）才回工作台。
-  // 桌面/移动一致走 history.back()，手机系统返回栈同样受用。
   if (window.history.length > 1) { try { window.history.back(); return } catch { /* fallthrough */ } }
   router.push('/workbench')
 }
-
-const particleCanvas = ref(null)
-let particleSystem = null
-
-onMounted(() => {
-  const accentColor = {
-    music: 'rgba(155, 141, 201, 0.5)',
-    novel: 'rgba(212, 196, 168, 0.5)',
-    video: 'rgba(168, 124, 156, 0.5)',
-    log: 'rgba(122, 155, 124, 0.5)',
-    tool: 'rgba(196, 154, 108, 0.5)'
-  }
-
-  particleSystem = useParticleSystem(particleCanvas, {
-    particleCount: 20,
-    colors: [accentColor[props.type] || 'rgba(201, 169, 98, 0.5)'],
-    lifetime: 2000,
-    speed: 0.5,
-    size: 2,
-    maxParticles: 30
-  })
-})
-
-onUnmounted(() => {
-  if (particleSystem) {
-    particleSystem.pause()
-  }
-})
 </script>
 
 <style scoped>
@@ -108,77 +63,28 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* 墨青夜色背景：双层渐变 + 纸纹噪点 + 慢晕光斑（去平涂廉价感）。
-   底色渐变用 --li-sky* token（夜/日双套，variables.css），否则外部切白天时这里仍写死深灰。 */
-.island-inner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 70% 45% at 18% 12%, var(--ls-bg-glow), transparent 62%),
-    radial-gradient(ellipse 55% 40% at 88% 78%, rgba(194, 162, 107, 0.05), transparent 60%),
-    linear-gradient(168deg, var(--li-sky) 0%, var(--li-sky-mid) 55%, var(--li-sky-deep) 100%);
+/* 桌面端：改为「文档流」布局 —— 整页随滚动一起移动，页脚在内容末尾
+   （旧实现是 fixed 容器 + 内部滚动，导致页脚被钉在视口底部、像固定条） */
+#app:not(.is-mobile) .island-inner {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
 }
-.island-inner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: .5;
-  background:
-    repeating-linear-gradient(0deg, rgba(206,220,226,.012) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(90deg, rgba(206,220,226,.008) 0 1px, transparent 1px 6px);
-  pointer-events: none;
+/* 内容列：至少占满首屏，页脚自然被推到最下方 */
+#app:not(.is-mobile) .inner-content {
+  height: auto;
+  min-height: 100vh;
+}
+/* 主区不再内部滚动，交还文档滚动 */
+#app:not(.is-mobile) .inner-main {
+  overflow: visible;
 }
 
-/* 各岛屿专属低饱和 accent（玄素琉璃同源，克制非鲜艳） */
-.island-inner-music {
-  --island-accent: var(--ls-dai, #5f9499);
-}
-.island-inner-novel {
-  --island-accent: var(--ls-ochre, #c2a26b);
-}
-.island-inner-video {
-  --island-accent: #8a6a86;
-}
-.island-inner-log {
-  --island-accent: var(--ls-jade, #6aa98f);
-}
-.island-inner-tool {
-  --island-accent: #a5825a;
-}
-
-.inner-background {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.inner-stars {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    circle at 20% 30%,
-    rgba(201, 169, 98, 0.05) 0%,
-    transparent 50%
-  );
-}
-
-.inner-qi {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse at 80% 70%,
-    var(--island-accent) 0%,
-    transparent 60%
-  );
-  opacity: 0.1;
-  animation: qi-pulse 8s ease-in-out infinite;
-}
-
-@keyframes qi-pulse {
-  0%, 100% { opacity: 0.1; transform: scale(1); }
-  50% { opacity: 0.2; transform: scale(1.1); }
-}
+/* 背景由 desktop-product.css J 段按 day/night 主题化接管（双晕染 / 纯色 + 单晕染），
+   这里不再写 ::before 渐变与 ::after 噪点，避免与主题层冲突。 */
 
 .inner-content {
   position: relative;
@@ -190,8 +96,7 @@ onUnmounted(() => {
 }
 
 .inner-header {
-  /* 桌面端避让顶部 60px 全局固定顶栏（GlobalTopBar z-index:1000 悬浮其上），
-     否则页内 top 处的返回按钮被顶栏盖住表现为「返回按钮消失」 */
+  /* 桌面端避让顶部 60px 全局固定顶栏（GlobalTopBar z-index:1000 悬浮其上） */
   padding: 84px 40px 14px;
   display: flex;
   flex-direction: column;
@@ -202,49 +107,43 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,0) 55%), var(--ls-glass);
-  border: 1px solid var(--ls-line);
-  border-radius: 20px;
-  color: var(--ls-text-2);
+  padding: 7px 14px;
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-line);
+  border-radius: 8px;
+  color: var(--dp-text2);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.18s ease;
   width: fit-content;
-  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
-  backdrop-filter: saturate(160%) blur(12px);
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 .back-btn:hover {
-  border-color: var(--ls-line-strong);
-  color: var(--ls-text);
-  transform: translateY(-1px);
+  border-color: var(--dp-accent);
+  color: var(--dp-accent);
+  background: var(--dp-accent-faint);
 }
 
-.back-icon {
-  font-size: 16px;
-}
+.back-icon { font-size: 14px; }
+.back-text { font-size: 13px; }
 
-.back-text {
-  font-size: 14px;
-}
-
+/* 标题：无衬线 + 主色重染（白天蓝紫、晚间紫罗兰，自动随主题） */
 .island-title {
-  font-family: var(--font-serif);
-  font-size: 36px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  /* 标题渐变顶部用 --li-title-a（夜近白霜 / 日深墨），避免日间白字埋进亮底 */
-  background: linear-gradient(180deg, var(--li-title-a) 20%, var(--ls-ochre) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  margin: 18px 0 4px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", "Noto Sans SC", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--dp-text);
+  margin: 14px 0 2px;
 }
 
 .island-subtitle {
-  font-size: 15px;
-  color: var(--ls-text-2);
-  letter-spacing: .06em;
+  font-size: 13px;
+  color: var(--dp-text2);
+  letter-spacing: 0;
+  font-weight: 400;
 }
 
 .inner-toolbar {
@@ -257,75 +156,43 @@ onUnmounted(() => {
 
 .inner-main {
   flex: 1;
-  /* 独立滚动内容区；页脚已在 .inner-main 之外作为底部独立条，二者互不重叠 */
   display: flex;
   flex-direction: column;
-  padding: 16px 40px 24px;
+  padding: 16px 40px 20px;
   overflow-y: auto;
 }
 
 .inner-footer {
   flex-shrink: 0;
-  padding: 10px 40px 12px;
-  border-top: 1px solid var(--ls-line);
-  background: rgba(16, 22, 28, 0.5);
-  backdrop-filter: saturate(140%) blur(8px);
-  -webkit-backdrop-filter: saturate(140%) blur(8px);
+  padding: 8px 40px 8px;
+  border-top: 1px solid var(--dp-line);
+  background: var(--dp-bg);
+  font-size: 11px;
 }
 
-.inner-decorations {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
+:root[data-theme="night"] .inner-footer {
+  background: rgba(11, 11, 18, .55);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 
-.floating-element {
-  position: absolute;
-  background: var(--island-accent);
-  border-radius: 50%;
-  opacity: 0.3;
-  filter: blur(20px);
-  animation: float-element 15s ease-in-out infinite;
-}
-
-.element-1 { width: 100px; height: 100px; top: 20%; left: 10%; animation-delay: 0s; }
-.element-2 { width: 150px; height: 150px; top: 60%; left: 70%; animation-delay: 3s; }
-.element-3 { width: 80px; height: 80px; top: 40%; left: 80%; animation-delay: 6s; }
-.element-4 { width: 120px; height: 120px; top: 70%; left: 20%; animation-delay: 9s; }
-.element-5 { width: 60px; height: 60px; top: 30%; left: 50%; animation-delay: 12s; }
-
-@keyframes float-element {
-  0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
-  50% { transform: translateY(-30px) scale(1.1); opacity: 0.5; }
-}
-
-.inner-particles {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-
-/* 桌面缩放(>100%)或较窄视口时收敛留白与字号，避免破版/横向溢出 */
+/* 桌面缩放(>100%)或较窄视口时收敛留白与字号 */
 @media (max-width: 1100px) {
   .inner-header { padding: 80px 26px 12px; }
   .inner-main { padding: 14px 26px 16px; }
-  .inner-footer { padding: 10px 26px 12px; }
-  .island-title { font-size: 30px; }
+  .inner-footer { padding: 8px 26px 8px; }
+  .island-title { font-size: 24px; }
 }
 @media (max-width: 760px) {
   .inner-header { padding: 18px 16px 10px; }
   .inner-main { padding: 12px 16px 12px; }
-  .inner-footer { padding: 10px 16px 12px; }
-  .island-title { font-size: 24px; }
+  .inner-footer { padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .island-title { font-size: 22px; }
   .island-subtitle { font-size: 13px; }
 }
 
-/* ---------- 手机端：iOS 大标题外壳（隐藏桌面『返回工作台』大按钮 → 紧凑返回章） ---------- */
+/* ---------- 手机端：iOS 大标题外壳（紧凑返回章，背景由 mobile-* 主题接管） ---------- */
 @media (max-width: 767px) {
   .island-inner { background: var(--ls-bg, #0d1a15); }
-  .island-inner::before { opacity: .55; }
 
   .inner-header {
     position: sticky; top: 0; z-index: 10;
@@ -345,24 +212,11 @@ onUnmounted(() => {
   .back-text { display: none; }
   .back-icon { font-size: 20px; line-height: 1; }
 
-  .island-title {
-    margin: 0; flex: 1; min-width: 0;
-    font-size: clamp(22px, 6vw, 30px);
-    letter-spacing: .04em;
-    background: linear-gradient(180deg, var(--li-title-a) 30%, var(--ls-ochre) 115%);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
+  .island-title { margin: 0; flex: 1; min-width: 0; font-size: clamp(22px, 6vw, 30px); }
   .island-subtitle { flex-basis: 100%; margin: 0; font-size: 13px; }
 
   .inner-toolbar { flex-basis: 100%; margin: 2px 0 0; gap: 8px; }
-
   .inner-main { padding: 16px 16px 28px; }
-
-  /* 页脚（备案/网安）在手机上收敛为极简单行，避免抢占竖屏空间 */
   .inner-footer { padding: 8px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
-
-  /* 弱化装饰光斑，避免玻璃糊成一团 */
-  .floating-element { opacity: .16; filter: blur(14px); }
 }
 </style>

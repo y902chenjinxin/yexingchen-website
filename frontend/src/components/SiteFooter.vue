@@ -21,57 +21,46 @@ defineProps({
 </script>
 
 <style scoped>
+/* 页脚：直接平铺展示备案信息，不再用玻璃胶囊把它「框住」
+   对比度问题改用主题文字色 + 极淡投影解决，视觉更干净 */
 .site-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 20px;
+  padding: 8px 20px;
   text-align: center;
 }
 
-/* 备案标识须始终清晰可辨：用「随昼夜主题自适应的玻璃徽章」承载，
-   自带底片 + backdrop 模糊，无论所在页面背景深浅、夜间/白昼，文字都有稳定对比，全站生效 */
 .sf-content {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  padding: 5px 14px;
-  border-radius: 999px;
-  background:
-    linear-gradient(165deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 48%),
-    var(--ls-glass);
-  border: 1px solid var(--ls-line);
-  box-shadow:
-    var(--glass-highlight, inset 0 1px 0 rgba(255, 255, 255, 0.06)),
-    0 6px 20px rgba(0, 0, 0, 0.18);
-  -webkit-backdrop-filter: saturate(160%) blur(16px);
-  backdrop-filter: saturate(160%) blur(16px);
 }
 
 .sf-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
   flex: none;
+  opacity: .9;
 }
 
 .sf-links {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 12px;
   flex-wrap: wrap;
   justify-content: center;
 }
 .sf-links a {
-  color: var(--ls-text);
+  color: var(--dp-text3, var(--ls-text-3));
   text-decoration: none;
   transition: color 0.2s;
   white-space: nowrap;
-  font-weight: 500;
 }
-.sf-links a:hover { color: var(--ls-dai); }
-.sf-divider { color: var(--ls-text-3, rgba(160, 170, 178, 0.85)); }
+.sf-links a:hover { color: var(--dp-accent, var(--ls-dai)); }
+.sf-divider { color: var(--dp-text3, var(--ls-text-3)); opacity: .6; }
 </style>

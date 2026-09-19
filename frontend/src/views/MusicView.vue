@@ -1,57 +1,103 @@
 <template>
-  <IslandInnerBase type="music" title="音乐" subtitle="音律飘渺">
+  <IslandInnerBase type="music" title="音乐" subtitle="音律飘渺 · 曲库管理">
     <template #toolbar>
-      <span class="mu-admin-tools">
-        <el-button :type="manage ? 'primary' : 'default'" size="small" plain @click="manage = !manage">
-          {{ manage ? '返回卡片' : '管理' }}
-        </el-button>
-        <el-button v-if="manage" type="primary" size="small" @click="openUpload">上传</el-button>
-      </span>
+      <el-button type="primary" size="small" @click="openUpload">上传音乐</el-button>
     </template>
 
-    <MusicInner v-show="!manage" />
-
-    <div v-show="manage" class="manage-pane">
+    <!-- 管理表格（默认进入即管理页） -->
+    <div class="manage-pane">
+      <!-- 工具条：搜索 / 筛选 / 批量 -->
       <div class="manage-toolbar">
-        <el-input v-model="keyword" size="small" clearable placeholder="搜索标题/作者" style="width: 260px">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
-        <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
-        <span v-if="keyword" class="search-count">匹配 {{ musicStore.list.length }} 条</span>
-        <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
-        <el-button v-if="selectedRows.length" type="danger" size="small" @click="handleBatchDelete">批量删除（{{ selectedRows.length }}）</el-button>
+        <div class="mt-left">
+          <el-input
+            v-model="keyword"
+            size="small"
+            clearable
+            placeholder="搜索标题 / 作者 / 标签"
+            class="mt-search"
+          >
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
+          <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
+          <el-button v-if="keyword" size="small" plain @click="resetSearch">清空筛选</el-button>
+          <span v-if="keyword" class="search-count">匹配 {{ musicStore.list.length }} 条</span>
+        </div>
+        <div class="mt-right">
+          <span class="mt-count">共 {{ musicStore.list.length }} 首</span>
+          <el-button
+            type="danger"
+            plain
+            size="small"
+            :disabled="!selectedRows.length"
+            @click="handleBatchDelete"
+          >
+            批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
+          </el-button>
+        </div>
       </div>
-      <el-table ref="tableRef" :data="pagedRows" v-loading="musicStore.loading" stripe style="width: 100%" @selection-change="onSelectionChange">
-        <el-table-column type="selection" width="48" :selectable="(row) => Number(row.is_default) !== 1" />
-        <el-table-column prop="title" label="标题" min-width="150" />
-        <el-table-column prop="artist" label="作者" width="110" />
-        <el-table-column prop="category" label="分类" width="100">
+
+      <el-table
+        ref="tableRef"
+        :data="pagedRows"
+        v-loading="musicStore.loading"
+        stripe
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
+        <el-table-column type="selection" width="46" :selectable="(row) => Number(row.is_default) !== 1" />
+
+        <!-- 标题：播放按钮内联，省一列 -->
+        <el-table-column label="曲目" min-width="220">
           <template #default="{ row }">
-            <el-tag v-if="row.category" size="small" type="info">{{ row.category }}</el-tag>
+            <div class="cell-title">
+              <button
+                class="mini-btn play-btn"
+                :class="{ playing: isCurPlaying(row) }"
+                :title="isCurPlaying(row) ? '暂停' : '播放'"
+                @click="handlePlay(row)"
+              >{{ isCurPlaying(row) ? '❚❚' : '▶' }}</button>
+              <span class="tt">{{ row.title || '未知曲目' }}</span>
+              <el-tag v-if="Number(row.is_default) === 1" size="small" type="warning">内置</el-tag>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="tags" label="标签" min-width="120" show-overflow-tooltip />
-        <el-table-column label="文件大小" width="100">
+
+        <el-table-column prop="artist" label="作者" width="116" show-overflow-tooltip />
+        <el-table-column prop="category" label="分类" width="96">
+          <template #default="{ row }">
+            <el-tag v-if="row.category" size="small" type="info">{{ row.category }}</el-tag>
+            <span v-else class="dim">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="tags" label="标签" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.tags">{{ row.tags }}</span>
+            <span v-else class="dim">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="大小" width="86">
           <template #default="{ row }">{{ formatSize(row.file_size) }}</template>
         </el-table-column>
-        <el-table-column label="时长" width="90">
+        <el-table-column label="时长" width="72">
           <template #default="{ row }">{{ formatDuration(row.duration) }}</template>
         </el-table-column>
-        <el-table-column label="上传时间" width="150">
-          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+
+        <!-- 操作：设为默认（背景乐） / 编辑 / 删除 —— 左对齐排布，保证各行按钮纵向对齐 -->
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
-            <template v-if="Number(row.is_default) === 1">
-              <el-tag size="small" type="warning">系统内置</el-tag>
-            </template>
-            <template v-else>
-              <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
-            </template>
+            <div class="row-ops">
+              <el-tag v-if="isCurBgm(row)" size="small" type="primary" effect="dark" class="bgm-on">默认中</el-tag>
+              <el-button v-else size="small" @click="setAsBg(row)">设为默认</el-button>
+
+              <template v-if="Number(row.is_default) !== 1">
+                <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
+                <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
+              </template>
+            </div>
           </template>
         </el-table-column>
       </el-table>
+
       <div v-if="!musicStore.loading && musicStore.list.length === 0" class="empty">暂无数据</div>
       <div v-else-if="!musicStore.loading" class="pager-wrap">
         <el-pagination
@@ -107,7 +153,6 @@
       </template>
     </el-dialog>
 
-    <!-- 删除确认（管理页内） -->
     <el-dialog v-model="showDelete" title="删除确认" width="360px" append-to-body>
       <p>确定删除「{{ deleteName }}」吗？</p>
       <template #footer>
@@ -116,7 +161,6 @@
       </template>
     </el-dialog>
 
-    <!-- 批量删除确认（管理页内） -->
     <el-dialog v-model="showBatchDelete" title="批量删除" width="360px" append-to-body>
       <p>确定删除选中的 <b>{{ selectedRows.length }}</b> 项吗？此操作不可恢复。</p>
       <template #footer>
@@ -130,7 +174,6 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
-import MusicInner from './islands/MusicIslandInner.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useMusicStore } from '@/stores/music'
@@ -139,9 +182,8 @@ import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 
 const musicStore = useMusicStore()
 const player = usePlayerStore()
-  const bgm = useBgmLibraryStore()
+const bgm = useBgmLibraryStore()
 
-const manage = ref(false)
 const showUpload = ref(false)
 const keyword = ref('')
 const uploading = ref(false)
@@ -177,6 +219,11 @@ function doSearch() {
   musicStore.page = 1
   page.value = 1
   fetchData()
+}
+
+function resetSearch() {
+  keyword.value = ''
+  doSearch()
 }
 
 function openUpload() {
@@ -306,6 +353,18 @@ async function confirmBatchDelete() {
   }
 }
 
+/* ---- 播放 / 背景乐 ---- */
+function handlePlay(item) {
+  player.playItem(item)
+}
+function setAsBg(item) {
+  bgm.setBackground(item, true)
+}
+function isCurBgm(item) { return String(item.id) === String(bgm.bgmChoiceId) }
+function isCurPlaying(item) {
+  return player.curItem && String(player.curItem.id) === String(item.id) && player.isPlaying
+}
+
 function formatSize(bytes) {
   if (bytes == null) return '-'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -318,59 +377,142 @@ function formatDuration(sec) {
   const s = Math.floor(sec % 60)
   return `${m}:${String(s).padStart(2, '0')}`
 }
-
-function formatTime(timeStr) {
-  if (!timeStr) return '-'
-  const d = new Date(timeStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 </script>
 
 <style scoped>
 .manage-pane {
-  background: var(--ls-glass);
-  backdrop-filter: saturate(160%) blur(14px);
-  -webkit-backdrop-filter: saturate(160%) blur(14px);
-  border: 1px solid var(--ls-line);
-  border-radius: var(--radius);
-  padding: 30px;
-  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-line);
+  border-radius: var(--dp-radius);
+  padding: 18px 20px;
+  box-shadow: var(--dp-shadow);
 }
 
+/* 工具条：左右两端分布，中间自动留白 */
 .manage-toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
+.mt-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.mt-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mt-search { width: 240px; }
+.mt-count {
+  font-size: 12px;
+  color: var(--dp-text3);
+  font-variant-numeric: tabular-nums;
+}
+.search-count {
+  font-size: 12px;
+  color: var(--dp-text3);
+}
+.dim { color: var(--dp-text3); font-size: 12px; }
 
-.manage-toolbar :deep(.el-input__wrapper) {
-  background: var(--ls-paper-2);
-  box-shadow: inset 0 0 0 1px var(--ls-line);
+/* 标题单元格：播放按钮 + 标题 + 内置标签 */
+.cell-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cell-title .tt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--dp-text);
 }
 
-.search-count {
-  color: var(--ls-text-3);
-  font-size: 13px;
+/* 表格：透明底 + 发丝线，列多时可横向滚动 */
+.manage-pane :deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: transparent;
+  --el-table-border-color: var(--dp-line);
+  --el-table-header-text-color: var(--dp-text2);
+  --el-table-text-color: var(--dp-text);
+}
+.manage-pane :deep(.el-table th.el-table__cell) {
+  background: var(--dp-surface2);
+  font-weight: 550;
 }
 
 .empty {
   text-align: center;
   padding: 40px;
-  color: var(--ls-text-3);
-  font-size: 14px;
+  color: var(--dp-text3);
+  font-size: 13px;
 }
 
-.pager-wrap { display: flex; justify-content: flex-end; margin-top: 18px; }
+.pager-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
 .pager-wrap :deep(.el-pagination) { --el-pagination-bg-color: transparent; }
 
-.manage-pane :deep(.el-table) {
-  --el-table-bg-color: transparent;
-  --el-table-tr-bg-color: transparent;
-  --el-table-header-bg-color: transparent;
-  --el-table-border-color: var(--ls-line);
-  --el-table-header-text-color: var(--ls-text-2);
-  --el-table-text-color: var(--ls-text);
+/* 操作列：左对齐排列，各行按钮纵向对齐不散乱 */
+.row-ops {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+/* 固定按钮宽度，避免「设为默认 / 默认中」宽度差异导致后续按钮错位 */
+.row-ops :deep(.el-button) { min-width: 56px; margin-left: 0 !important; }
+.row-ops .bgm-on { min-width: 56px; justify-content: center; }
+.bgm-on { flex-shrink: 0; }
+
+/* ---------- 行内播放圆按钮 ---------- */
+.mini-btn {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  transition: all .15s;
+  background: transparent;
+  color: var(--dp-text2);
+  border: 1px solid var(--dp-line);
+  padding: 0;
+}
+.mini-btn:hover {
+  background: var(--dp-surface2);
+  color: var(--dp-accent);
+  border-color: var(--dp-accent);
+}
+.mini-btn.play-btn {
+  background: var(--dp-accent-strong);
+  color: #fff;
+  border-color: var(--dp-accent-strong);
+}
+.mini-btn.play-btn:hover { background: var(--dp-accent); border-color: var(--dp-accent); }
+.mini-btn.play-btn.playing {
+  background: var(--dp-warning);
+  border-color: var(--dp-warning);
+  color: #241c00;
 }
 </style>

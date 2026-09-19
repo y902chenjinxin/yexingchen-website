@@ -14,8 +14,14 @@
     <!-- 登录后全站常驻：桌面顶栏（悬浮）；移动端用独立沉浸式外壳，不显示 ✓ -->
     <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
 
+    <!-- 登录后桌面端：左侧导航（默认展开，可收起，按玉简分组；顶栏不动） -->
+    <DesktopSidebar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
+
     <!-- 登录后移动端：底部两 Tab 主导航（主页/我的） -->
     <MobileTabBar v-if="!showInitialLoading && auth.isLoggedIn && isMobile" />
+
+    <!-- 登录后桌面端：AI 对话悬浮入口（每页常驻，替代原顶栏 AI 入口） -->
+    <FloatingAiButton v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
 
     <!-- 登录后全站常驻桌宠（音乐岛内容列表页隐藏：桌宠固定右下会压住列表行/最后一张卡片） -->
     <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn && showWhale" />
@@ -39,6 +45,8 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useAuthStore } from '@/stores/auth'
 import { usePrefsStore, applyTheme } from '@/stores/prefs'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
+import DesktopSidebar from '@/components/desktop/DesktopSidebar.vue'
+import FloatingAiButton from '@/components/desktop/FloatingAiButton.vue'
 import MobileTabBar from '@/components/MobileTabBar.vue'
 import MobileFullPlayer from '@/components/mobile/MobileFullPlayer.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'

@@ -2,43 +2,12 @@
   <IslandInnerBase type="tool" title="工具" subtitle="机关百变">
     <template #toolbar>
       <span class="tl-admin-tools">
-        <el-button :type="manage ? 'primary' : 'default'" size="small" plain @click="manage = !manage">
-          {{ manage ? '返回卡片' : '管理' }}
-        </el-button>
-        <el-button v-if="manage" type="primary" size="small" @click="openDialog()">添加</el-button>
+        <el-button type="primary" size="small" @click="openDialog()">添加工具</el-button>
       </span>
     </template>
 
-    <!-- 浏览模式：工具卡片列表 -->
-    <div v-show="!manage" class="tool-cards">
-      <MobileSkeleton v-if="toolStore.loading" :rows="0" :grid="6" />
-      <template v-else>
-        <div
-          v-for="item in toolStore.list"
-          :key="item.id"
-          class="tool-card"
-          @click="go(item)"
-        >
-          <div class="tool-icon">{{ item.icon || '🔧' }}</div>
-          <div class="tool-info">
-            <span class="tool-name">{{ item.title || '无名工具' }}</span>
-            <span class="tool-desc">{{ item.description || '暂无描述' }}</span>
-          </div>
-          <div class="tool-actions">
-            <el-button size="small" type="primary" @click.stop="go(item)">使用</el-button>
-          </div>
-        </div>
-
-        <MobileEmpty
-          v-if="toolStore.list.length === 0"
-          title="暂无可用的工具"
-          desc="到工具管理页添加，或稍后刷新看看"
-        />
-      </template>
-    </div>
-
-    <!-- 管理模式：表格（统一分页 10/20/50） -->
-    <div v-show="manage" class="manage-pane">
+    <!-- 管理表格（默认进入即管理页） -->
+    <div class="manage-pane">
       <div class="manage-toolbar">
         <el-input
           v-model="keyword"
@@ -52,7 +21,9 @@
         <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
         <span v-if="keyword" class="search-count">匹配 {{ filteredRows.length }} 条</span>
         <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
-        <el-button v-if="selectedRows.length" type="danger" size="small" @click="handleBatchDelete">批量删除（{{ selectedRows.length }}）</el-button>
+        <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
+          批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
+        </el-button>
       </div>
       <el-table
         ref="tableRef"
@@ -156,8 +127,6 @@ defineOptions({ name: 'ToolView' })
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
-import MobileSkeleton from '@/components/mobile/MobileSkeleton.vue'
-import MobileEmpty from '@/components/mobile/MobileEmpty.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useToolStore } from '@/stores/tool'
@@ -166,7 +135,6 @@ import { getToolList, createTool, updateTool, deleteTool } from '@/api/tool'
 const router = useRouter()
 const toolStore = useToolStore()
 
-const manage = ref(false)
 const showDialog = ref(false)
 const editId = ref(null)
 const keyword = ref('')

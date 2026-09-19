@@ -216,8 +216,24 @@ const routes = [
   { path: '/island/tool/inner', redirect: '/tool' },
   {
     path: '/admin',
-    name: 'Admin',
-    component: () => import('@/views/AdminView.vue'),
+    redirect: '/admin/users'
+  },
+  {
+    path: '/admin/users',
+    name: 'AdminUsers',
+    component: () => import('@/views/admin/AdminUsersView.vue'),
+    meta: { requiresAuth: true, role: 'super_admin' }
+  },
+  {
+    path: '/admin/roles',
+    name: 'AdminRoles',
+    component: () => import('@/views/admin/AdminRolesView.vue'),
+    meta: { requiresAuth: true, role: 'super_admin' }
+  },
+  {
+    path: '/admin/menus',
+    name: 'AdminMenus',
+    component: () => import('@/views/admin/AdminMenusView.vue'),
     meta: { requiresAuth: true, role: 'super_admin' }
   },
   {

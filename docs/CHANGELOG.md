@@ -1,3 +1,30 @@
+## [v2.35.3] - 2026-09-19
+
+### 桌面端两处真根因修复：`id="app"` 重复导致内容被推远 220px / 登录页输入框白底浅字（SW `xuanhuang-v137`）
+
+User 反馈两条：「登录页其他都行，就是输入框文字看不清，要优化下」「空白那个，我自己右键不显示手机端，但是我滑动不，这样吧，你自己拉浏览器验收下看吧」。两条都不是样式调参能解决的，各自有一个结构性根因。**本轮全部用真实浏览器实测取证（内置浏览器 + 同源 iframe 验收页）。**
+
+**① 内容区左侧多出 220px 空白 —— 真根因：`id="app"` 重复嵌套**
+- 现象：侧栏右缘到内容左缘之间空出一整条侧栏宽（User 描述「侧栏离右侧内容依然有很大空间」「偏右拥挤」）。此前多轮改 `max-width / margin / padding` 均无效。
+- 根因：`frontend/index.html` 的挂载点是 `<div id="app">`，而 `App.vue` 的模板根节点**也是** `<div id="app">` → DOM 里出现**两个同名 id 嵌套**（`div#app[data-v-app] > div#app`）。于是所有 `#app:not(.is-mobile)` 规则**命中两层**，侧栏让位 `padding-left: 220px` 被叠加成 **440px**。真实浏览器实测 1440px：`.dsb` 占 0~220，而 `.workbench-page.left = 440`、`.wb-kpi` 左缘 480 —— 中间 220px 就是那片「空白」。
+- 修复：挂载点改名 `#app-root`（`frontend/index.html` + `frontend/src/main.js` 的 `app.mount('#app-root')`），让 `#app` 全站唯一。移动端零回归：`#app.is-mobile` 系列选择器一直只挂在 `App.vue` 根节点上，class 归属未变。
+- 实测（内置浏览器 + 同源 iframe 验收页逐宽度采集几何）：1920/1680/1440/1366/1280 → 侧栏 `0~220`、内容 `220~右缘`、内容左右内边距各 40px **完全对称**；1100/1024 → 侧栏 200 + 让位 200；/workbench、/music（岛屿内页）、/admin/users（管理后台）三页一致；`querySelectorAll('[id]')` 再无重复 id。
+
+**② 登录页输入框文字看不清 —— 真根因：CSS 权重压制 + 日间 token 白底**
+- 根因：桌面端通用输入框皮肤 `#app:not(.is-mobile) .el-input__wrapper { background: var(--dp-surface) !important }` 带 **ID 权重 (1,2,1)**。两条规则同为 `!important` 时先比 ID，它压过登录页原有的 `html:root[data-theme="day"] .login-page .el-input__wrapper { background: rgba(24,32,41,.7) !important }`（**(0,4,1)**）。而日间主题 `--dp-surface = #ffffff` → 登录页（深墨青底、两套主题都是深色）里的输入框被刷成**白底**，文字却仍是 `#e8f4fc` 浅色 → 白底浅字，怎么都看不清。用同源复刻页（引用线上 CSS）复现：wrapper `#ffffff` + 文字 `rgb(232,244,252)`。
+- 修复：`desktop-product.css` 新增同等 ID 权重、选择器更长的 `#app:not(.is-mobile) .login-page .el-input__wrapper / .el-textarea__inner / .el-input__inner` 规则，把登录页输入框统一拉回深墨青底 `rgba(24,32,41,.72)` + 雨青描边 + 浅色文字（昼夜两套主题一致）。修后复测：wrapper `rgba(24,32,41,0.72)` + 文字 `rgb(232,244,252)`，对比度充足。
+- 顺带加固 Chrome 自动填充（记住我 / 密码管理器会强制刷浅蓝底 + 自带文字色）：补 `:autofill` 标准伪类、`-webkit-text-fill-color`、`background-color`、`inset box-shadow` 1000px 遮罩、`filter: none`，并让 `:has(input:-webkit-autofill)` 的 wrapper 同步保持深底。
+
+**③ 连带修复：≤900px 侧栏改为浮层抽屉**
+- 原 `@media (max-width: 900px)` 用 CSS 强制 `translateX(-100%) + opacity: 0` 隐藏侧栏，同时把浮动唤出按钮 `.dsb-open-fab` 一起 `display: none` → 在窄窗口/DevTools 停靠压缩视口时**完全没有导航入口**。
+- 改为：≤900px 内容 `padding-left: 0` 铺满，侧栏展开时以高 z-index 浮于内容之上（抽屉）；`DesktopSidebar.vue` 补「窄屏 + 无用户折叠偏好时默认折叠，展开后路由跳转自动收起」。
+
+**验收方式**：临时在 `/preview/vp.html` 部署一个同源 iframe 验收页（支持 `?w=&h=&path=`；同源→Cookie 不丢＝带登录态真实渲染，且 iframe 自身视口即目标宽度→媒体查询真实生效），用内置浏览器逐宽度 + 逐路由采集几何与截图；另用 `localhost` 静态复刻页引用线上 CSS 做 day/night 双主题级联取证。**验收完成后服务器上的 `/preview/vp.html` 已删除**。
+
+**部署**：SW `v135→v136→v137`、`npx vite build` + `deploy_frontend.py`（226 文件、home=200、服务端 `sw.js` = `xuanhuang-v137`）。仅前端；后端无源码变更不重部署。
+
+---
+
 ## [v2.35.2] - 2026-09-19
 
 ### 倒计时/足迹地图界面精简（SW `xuanhuang-v129`）

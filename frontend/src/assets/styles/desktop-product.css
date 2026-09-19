@@ -1,274 +1,17 @@
 /*
- * 玄黄桌面端产品化收敛层 —— Linear 式产品风 · 青玉克制点缀（仅桌面）
- * 依据 docs/ai/WEB_DESIGN_CONVERGE_20260918.md (§8.3)
- * 设计语言：发丝边框层级造深度 + 多层淡阴影 + 大留白多栏 + system 无衬线 + 单一青玉只做精确定位。
- * 与手机端（#app.is-mobile 独立收敛）互不干扰、零回归。交互逻辑零改动，只收敛视觉。
- * 故意放在 main.js 所有样式最末，作为桌面端最终覆盖层。
+ * 玄黄桌面端产品化收敛层 —— 骨架与组件层（不写颜色 token）
+ *
+ * 颜色 token 已拆分到：
+ *   - desktop-theme-night.css  :root / :root[data-theme="night"]  紫罗兰夜间
+ *   - desktop-theme-day.css    :root[data-theme="day"]            极简白白天
+ *
+ * 本文件仅写「骨架」：
+ *   - 字体（无衬线 + 品牌衬线）
+ *   - 工作台基线 / 顶栏 / 卡片 / 玉简 / 表格 / 按钮 / 输入 / 浮层 / 弹层覆盖
+ *   - 移动端零回归门控（#app:not(.is-mobile)）
+ *
+ * 设计语言：白天 Zenith 极简白 / 夜间 Flux 紫罗兰玻璃，依赖 token 切换。
  */
-
-/* =====================================================================
- * A. 收敛 Token（夜间缺省 + 日间双套）—— Linear 式：近黑藏青底、三层字重、淡多层阴影
- * ===================================================================== */
-:root {
-  /* 表面阶梯（用边框亮度而非色块区分层级） */
-  --dp-bg: #0b0f14;
-  --dp-bg2: #0f151b;
-  --dp-surface: #121820;
-  --dp-surface2: #18212b;
-  /* 发丝描边层级 */
-  --dp-line: rgba(220, 235, 246, .10);
-  --dp-line-strong: rgba(220, 235, 246, .17);
-  /* Linear 式多层淡阴影：一层紧贴 + 一层远距柔化，尽量薄 */
-  --dp-shadow: 0 1px 2px rgba(0, 0, 0, .38), 0 8px 24px rgba(0, 0, 0, .22);
-  --dp-glow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 1px 2px rgba(0, 0, 0, .38), 0 12px 32px rgba(0, 0, 0, .28);
-  --dp-raised: 0 2px 6px rgba(0, 0, 0, .32), 0 20px 48px rgba(0, 0, 0, .34);
-  /* 文本：三层字重（Linear） */
-  --dp-text: #e6edf3;
-  --dp-text2: #9aa7b2;
-  --dp-text3: #6d7a85;
-  --dp-weight-title: 600;
-  --dp-weight-body: 400;
-  --dp-weight-minor: 380;
-  /* 单一青玉（克制） */
-  --dp-accent: #4fc6b8;
-  --dp-accent-hover: #6fdccf;
-  --dp-accent-strong: #2b9c8c;
-  --dp-accent-faint: rgba(79, 198, 184, .14);
-  --dp-danger: #f07178;
-  --dp-warning: #d9b064;
-  /* 圆角：Linear 偏小、圆润但不夸张 */
-  --dp-radius: 12px;
-  --dp-radius-sm: 8px;
-  /* 衬线：唯一「东方记忆」，只给品牌区用 */
-  --dp-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'SimSun', serif;
-
-  /* ---- 映射核心/工作台/岛屿/Element token ---- */
-  --color-bg: var(--dp-bg);
-  --color-bg-dark: var(--dp-bg2);
-  --color-bg-elevated: var(--dp-surface);
-  --color-bg-glass: rgba(11, 15, 20, .72);
-  --color-text: var(--dp-text);
-  --color-text-secondary: var(--dp-text2);
-  --color-text-muted: var(--dp-text3);
-  --color-primary: var(--dp-accent);
-  --color-secondary: var(--dp-accent-deep);
-  --color-accent: var(--dp-warning);
-
-  --yq-bg0: var(--dp-bg);
-  --yq-bg1: var(--dp-bg2);
-  --yq-bg2: var(--dp-surface2);
-  --yq-rain: var(--dp-accent);
-  --yq-rain-bright: #9ae4da;
-  --yq-rain-deep: var(--dp-accent-strong);
-  --yq-gold: var(--dp-warning);
-  --yq-gold-bright: #e8d3a6;
-
-  /* 工作台(--lj-*) → 实色表面阶梯 */
-  --lj-bg: var(--dp-bg);
-  --lj-bg-deep: var(--dp-bg2);
-  --lj-paper: var(--dp-surface);
-  --lj-paper-2: var(--dp-surface2);
-  --lj-glass: rgba(18, 24, 32, .78);
-  --lj-glass-blur: saturate(160%) blur(18px);
-  --lj-panel: rgba(15, 21, 26, .96);
-  --lj-ink: var(--dp-text);
-  --lj-mist: var(--dp-text2);
-  --lj-dai: var(--dp-accent);
-  --lj-dai-deep: var(--dp-accent-strong);
-  --lj-ochre: var(--dp-warning);
-  --lj-vermilion: var(--dp-danger);
-  --lj-seal: var(--dp-accent);
-  --lj-seal-hover: var(--dp-accent-hover);
-  --lj-seal-soft: var(--dp-accent-faint);
-  --lj-line: var(--dp-line);
-  --lj-line-strong: var(--dp-line-strong);
-  --lj-text: var(--dp-text);
-  --lj-text-2: var(--dp-text2);
-  --lj-text-3: var(--dp-text3);
-  --lj-shadow: 0 1px 2px rgba(0, 0, 0, .38), 0 12px 32px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .05);
-
-  /* 岛屿深色(--ls-*) */
-  --ls-bg0: var(--dp-bg);
-  --ls-bg1: var(--dp-bg2);
-  --ls-paper: var(--dp-surface);
-  --ls-paper-2: var(--dp-surface2);
-  --ls-glass: rgba(18, 24, 32, .78);
-  --ls-line: var(--dp-line);
-  --ls-line-strong: var(--dp-line-strong);
-  --ls-highlight: rgba(255, 255, 255, .06);
-  --ls-shadow: var(--dp-shadow);
-  --ls-dai: var(--dp-accent);
-  --ls-dai-deep: var(--dp-accent-strong);
-  --ls-ochre: var(--dp-warning);
-  --ls-jade: #6fcdb9;
-  --ls-text: var(--dp-text);
-  --ls-text-2: var(--dp-text2);
-  --ls-text-3: var(--dp-text3);
-
-  /* 玻璃：仅顶栏/浮层/抽屉保留 */
-  --glass-blur: blur(18px) saturate(160%);
-  --glass-border: var(--dp-line-strong);
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .06);
-  --glass-shadow: 0 1px 1px rgba(0, 0, 0, .5), 0 6px 18px rgba(0, 0, 0, .16), 0 20px 50px rgba(0, 0, 0, .26);
-  --glow-rain: rgba(79, 198, 184, .045);
-  --glow-gold: rgba(217, 176, 100, .04);
-
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, .28), 0 4px 12px rgba(0, 0, 0, .16);
-  --shadow: var(--dp-shadow);
-  --shadow-lg: 0 2px 8px rgba(0, 0, 0, .32), 0 24px 60px rgba(0, 0, 0, .38);
-  --shadow-glass: var(--glass-highlight), var(--glass-shadow);
-
-  /* Element */
-  --el-color-primary: var(--dp-accent-strong);
-  --el-color-primary-light-3: var(--dp-accent-strong);
-  --el-color-primary-light-5: var(--dp-accent-strong);
-  --el-color-primary-light-7: var(--dp-accent-strong);
-  --el-color-primary-light-8: var(--dp-accent-strong);
-  --el-color-primary-light-9: var(--dp-accent-faint);
-  --el-color-primary-dark-2: var(--dp-accent-hover);
-  --el-color-success: #4cb58f;
-  --el-color-warning: var(--dp-warning);
-  --el-color-danger: var(--dp-danger);
-  --el-color-error: var(--dp-danger);
-  --el-color-info: var(--dp-text2);
-
-  --el-bg-color: #121820;
-  --el-bg-color-overlay: #18212b;
-  --el-bg-color-page: #0b0f14;
-  --el-fill-color-blank: #121820;
-  --el-fill-color: #1a2430;
-  --el-fill-color-light: #202b36;
-  --el-fill-color-lighter: #1c2731;
-  --el-fill-color-extra-light: #161e27;
-
-  --el-text-color-primary: #e6edf3;
-  --el-text-color-regular: #c3cdd4;
-  --el-text-color-secondary: #9aa7b2;
-  --el-text-color-placeholder: #6d7a85;
-  --el-text-color-disabled: #46535e;
-
-  --el-border-color: #26333f;
-  --el-border-color-light: #22303b;
-  --el-border-color-lighter: #1e2a35;
-  --el-border-color-extra-light: #1b2630;
-  --el-border-color-dark: #35424e;
-
-  --el-box-shadow: 0 1px 2px rgba(0,0,0,.38), 0 8px 24px rgba(0,0,0,.22), 0 0 0 1px rgba(79,198,184,.05) inset;
-  --el-box-shadow-light: 0 2px 8px rgba(0,0,0,.30), 0 12px 32px rgba(0,0,0,.30);
-}
-
-/* ---- 日间：冷灰亮底 + 深字 + 青玉深阶（Linear Research 风）---- */
-:root[data-theme="day"] {
-  --dp-bg: #f6f7f8;
-  --dp-bg2: #eef1f3;
-  --dp-surface: #ffffff;
-  --dp-surface2: #f2f4f6;
-  --dp-line: rgba(20, 40, 55, .12);
-  --dp-line-strong: rgba(20, 40, 55, .20);
-  --dp-shadow: 0 1px 2px rgba(20, 40, 55, .06), 0 10px 28px rgba(20, 40, 55, .08);
-  --dp-glow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 1px 2px rgba(20, 40, 55, .06), 0 12px 30px rgba(20, 40, 55, .10);
-  --dp-raised: 0 2px 6px rgba(20, 40, 55, .08), 0 20px 48px rgba(20, 40, 55, .12);
-  --dp-text: #16242c;
-  --dp-text2: #56666f;
-  --dp-text3: #84939b;
-  --dp-accent: #0f9385;
-  --dp-accent-hover: #0a7a6f;
-  --dp-accent-strong: #0d7f74;
-  --dp-accent-faint: rgba(15, 147, 133, .11);
-  --dp-danger: #d6535d;
-  --dp-warning: #a67b2f;
-
-  --color-bg: var(--dp-bg);
-  --color-bg-dark: var(--dp-bg2);
-  --color-bg-elevated: var(--dp-surface);
-  --color-bg-glass: rgba(255, 255, 255, .72);
-  --color-text: var(--dp-text);
-  --color-text-secondary: var(--dp-text2);
-  --color-text-muted: var(--dp-text3);
-  --color-primary: var(--dp-accent);
-  --color-secondary: var(--dp-accent-strong);
-  --color-accent: var(--dp-warning);
-
-  --yq-bg0: var(--dp-bg);
-  --yq-bg1: var(--dp-bg2);
-  --yq-bg2: var(--dp-surface2);
-  --yq-rain: var(--dp-accent);
-  --yq-rain-bright: #2fa997;
-  --yq-rain-deep: var(--dp-accent-strong);
-  --yq-gold: var(--dp-warning);
-  --yq-gold-bright: #c09a56;
-
-  --lj-bg: var(--dp-bg);
-  --lj-bg-deep: var(--dp-bg2);
-  --lj-paper: var(--dp-surface);
-  --lj-paper-2: var(--dp-surface2);
-  --lj-glass: rgba(255, 255, 255, .72);
-  --lj-glass-blur: saturate(160%) blur(18px);
-  --lj-panel: rgba(244, 246, 248, .96);
-  --lj-ink: var(--dp-text);
-  --lj-mist: var(--dp-text2);
-  --lj-dai: var(--dp-accent);
-  --lj-dai-deep: var(--dp-accent-strong);
-  --lj-ochre: var(--dp-warning);
-  --lj-vermilion: var(--dp-danger);
-  --lj-seal: var(--dp-accent);
-  --lj-seal-hover: var(--dp-accent-hover);
-  --lj-seal-soft: var(--dp-accent-faint);
-  --lj-line: var(--dp-line);
-  --lj-line-strong: var(--dp-line-strong);
-  --lj-text: var(--dp-text);
-  --lj-text-2: var(--dp-text2);
-  --lj-text-3: var(--dp-text3);
-  --lj-shadow: 0 1px 2px rgba(20, 40, 55, .06), 0 12px 30px rgba(20, 40, 55, .10), inset 0 1px 0 rgba(255, 255, 255, .5);
-
-  --ls-bg0: var(--dp-bg);
-  --ls-bg1: var(--dp-bg2);
-  --ls-paper: var(--dp-surface);
-  --ls-paper-2: var(--dp-surface2);
-  --ls-glass: rgba(255, 255, 255, .72);
-  --ls-line: var(--dp-line);
-  --ls-line-strong: var(--dp-line-strong);
-  --ls-highlight: rgba(255, 255, 255, .6);
-  --ls-shadow: var(--dp-shadow);
-  --ls-dai: var(--dp-accent);
-  --ls-dai-deep: var(--dp-accent-strong);
-  --ls-ochre: var(--dp-warning);
-  --ls-jade: #3f9a8a;
-  --ls-text: var(--dp-text);
-  --ls-text-2: var(--dp-text2);
-  --ls-text-3: var(--dp-text3);
-
-  --glass-blur: blur(18px) saturate(160%);
-  --glass-border: var(--dp-line-strong);
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .7);
-  --glass-shadow: 0 1px 1px rgba(20, 40, 55, .05), 0 8px 24px rgba(20, 40, 55, .10), 0 24px 60px rgba(20, 40, 55, .14);
-  --glow-rain: rgba(15, 147, 133, .04);
-  --glow-gold: rgba(166, 123, 47, .04);
-
-  --shadow-sm: 0 1px 3px rgba(20, 40, 55, .06), 0 4px 12px rgba(20, 40, 55, .06);
-  --shadow: var(--dp-shadow);
-  --shadow-lg: 0 2px 8px rgba(20, 40, 55, .10), 0 20px 44px rgba(20, 40, 55, .12);
-  --shadow-glass: var(--glass-highlight), var(--glass-shadow);
-
-  --el-bg-color: #ffffff;
-  --el-bg-color-overlay: #ffffff;
-  --el-bg-color-page: #f6f7f8;
-  --el-fill-color-blank: #ffffff;
-  --el-fill-color: #eef2f4;
-  --el-fill-color-light: #e8edf0;
-  --el-fill-color-lighter: #f1f4f6;
-  --el-fill-color-extra-light: #f7f9fa;
-  --el-text-color-primary: #16242c;
-  --el-text-color-regular: #3c4d56;
-  --el-text-color-secondary: #56666f;
-  --el-text-color-placeholder: #9aa6ad;
-  --el-text-color-disabled: #b7c1c6;
-  --el-border-color: #dfe6e9;
-  --el-border-color-light: #e3e9ec;
-  --el-border-color-lighter: #e8edef;
-  --el-border-color-extra-light: #eef1f3;
-  --el-border-color-dark: #d0d9dd;
-}
 
 /* =====================================================================
  * B. 字体：全站现代无衬线 + 三层字重；品牌区保留衬线（唯一东方记忆）
@@ -276,10 +19,10 @@
 #app:not(.is-mobile) {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", "Helvetica Neue", "Noto Sans SC", sans-serif;
-  --font-serif: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   letter-spacing: -.01em;
 }
-#app:not(.is-mobile) body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+#app:not(.is-mobile) body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
 
 /* 品牌区：顶栏名 + 工作台标题 + eyebrow —— 保留少量东方衬线反差 */
 #app:not(.is-mobile) .tb-brand-text,
@@ -301,26 +44,36 @@
 }
 
 /* =====================================================================
- * D. 顶栏：Linear 式——暗发丝底 + 极淡 blur，分隔线明确
+ * D. 顶栏：暗发丝底 + 极淡 blur，分隔线明确
  * ===================================================================== */
+/* 顶栏已去条化：不再有任何整条背景/边框/阴影/模糊
+   （这些规则此前残留，导致右上角按钮组外出现白色底框） */
 #app:not(.is-mobile) .lj-topbar {
-  background: rgba(11, 15, 20, .78) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  backdrop-filter: blur(18px) saturate(160%);
-  border-bottom: 1px solid var(--dp-line);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .16);
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
-#app:not(.is-mobile) .tb-search .el-input__wrapper,
-#app:not(.is-mobile) .tb-suggest,
-#app:not(.is-mobile) .tb-icon-btn {
-  background: var(--dp-surface2) !important;
-  box-shadow: inset 0 0 0 1px var(--dp-line) !important;
-  border-radius: 8px;
+:root[data-theme="night"] #app:not(.is-mobile) .lj-topbar {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
-#app:not(.is-mobile) .tb-search .el-input__wrapper:hover { box-shadow: inset 0 0 0 1px var(--dp-line-strong) !important; }
+/* 右上角悬浮按钮组：无底框（只留图标/文字，hover 才浮出浅色） */
+#app:not(.is-mobile) .lj-topbar .tb-icon-btn,
+#app:not(.is-mobile) .lj-topbar .tb-user {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+#app:not(.is-mobile) .lj-topbar .tb-icon-btn:hover,
+#app:not(.is-mobile) .lj-topbar .tb-user:hover {
+  background: var(--dp-accent-faint) !important;
+}
 
 /* =====================================================================
- * E. 工作台卡片：Linear 式——实色面 + 发丝框 + 多层淡阴影；hover 只聚焦描边不加位移
+ * E. 工作台卡片：Linear / Zenith 式——实色面 + 发丝框 + 多层淡阴影；hover 只聚焦描边不加位移
  * ===================================================================== */
 #app:not(.is-mobile) :is(.wd-card, .wt-card, .wfb) {
   background: var(--dp-surface) !important;
@@ -343,7 +96,7 @@
   border-radius: 999px;
 }
 #app:not(.is-mobile) .wd-bar { background: var(--dp-accent-faint) !important; }
-#app:not(.is-mobile) .wd-chip { background: rgba(150, 180, 190, .06) !important; }
+#app:not(.is-mobile) .wd-chip { background: rgba(150, 150, 170, .08) !important; }
 /* 数字排版：KPI / 表格数字等宽，显「产品」感 */
 #app:not(.is-mobile) .wd-v,
 #app:not(.is-mobile) .wd-foot b,
@@ -354,24 +107,24 @@
  * F. 玉简：只改视觉（底色/描边/标签/指示器聚焦），尺寸/位姿/拖拽一律不动
  * ===================================================================== */
 #app:not(.is-mobile) .jade-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, 0) 46%), var(--dp-surface2) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, 0) 46%), var(--dp-surface2) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   border: 1px solid var(--dp-line-strong) !important;
 }
 #app:not(.is-mobile) .jade-card.is-active {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 14px 34px rgba(0, 0, 0, .30), 0 0 0 1px var(--dp-accent) inset, inset 0 1px 0 rgba(255, 255, 255, .14) !important;
+  box-shadow: var(--dp-glow), 0 0 0 1px var(--dp-accent) inset !important;
 }
 #app:not(.is-mobile) .card-label {
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif !important;
   color: var(--dp-text2) !important;
-  background: rgba(11, 15, 20, .5) !important;
+  background: var(--dp-surface2) !important;
   border-color: var(--dp-line) !important;
 }
 #app:not(.is-mobile) .jade-card:hover .card-label,
-#app:not(.is-mobile) .jade-card.is-active .card-label { color: var(--dp-accent) !important; border-color: rgba(79, 198, 184, .55) !important; background: var(--dp-accent-faint) !important; }
+#app:not(.is-mobile) .jade-card.is-active .card-label { color: var(--dp-accent) !important; border-color: var(--dp-accent) !important; background: var(--dp-accent-faint) !important; }
 #app:not(.is-mobile) .carousel-dots {
-  background: rgba(11, 15, 20, .5) !important;
+  background: var(--dp-surface2) !important;
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
 
@@ -396,24 +149,132 @@
   --el-table-tr-bg-color: transparent;
   --el-table-row-hover-bg-color: var(--dp-accent-faint);
   --el-table-border-color: var(--dp-line);
-  --el-fill-color-lighter: rgba(150, 180, 190, .04);
+  --el-fill-color-lighter: rgba(150, 150, 170, .04);
   background: transparent;
 }
 #app:not(.is-mobile) .el-table th.el-table__cell {
-  background: rgba(150, 180, 190, .045);
+  background: var(--dp-surface2);
   font-weight: 520;
 }
 
-/* 主按钮：青玉深阶实心（克制），次按钮实色面 + 发丝 */
-#app:not(.is-mobile) .el-button--primary {
+/* ---- 固定列蒙版：不透明底 + 分隔阴影 ----
+   表格行背景是透明的，固定列（操作列）若不铺不透明底，横向滚动时其他列文字会"穿透"叠上来 */
+#app:not(.is-mobile) .el-table .el-table-fixed-column--right,
+#app:not(.is-mobile) .el-table .el-table-fixed-column--left {
+  background: var(--dp-surface) !important;
+}
+#app:not(.is-mobile) .el-table th.el-table-fixed-column--right,
+#app:not(.is-mobile) .el-table th.el-table-fixed-column--left {
+  background: var(--dp-surface2) !important;
+}
+/* 斑马纹行同步用略深一档的底，保证与相邻列观感一致 */
+#app:not(.is-mobile) .el-table .el-table__row--striped .el-table-fixed-column--right,
+#app:not(.is-mobile) .el-table .el-table__row--striped .el-table-fixed-column--left {
+  background: var(--dp-surface2) !important;
+}
+/* 固定列内层再铺一层实底，双保险（Element 会用 .cell 承载内容） */
+#app:not(.is-mobile) .el-table .el-table-fixed-column--right .cell,
+#app:not(.is-mobile) .el-table .el-table-fixed-column--left .cell {
+  background: transparent;
+}
+/* 固定列左缘竖向分隔线，强化层次 */
+#app:not(.is-mobile) .el-table .el-table-fixed-column--right.is-first-column::before,
+#app:not(.is-mobile) .el-table .el-table__fixed-right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--dp-line);
+}
+
+/* =====================================================================
+ * 按钮：显式给出「文字色 + 底色 + 边框」三件套
+ * ⚠️ 只改底色不改文字色会让 plain 按钮文字=底色 → 文字"消失"（历史 bug）
+ * ===================================================================== */
+/* 主按钮（实心） */
+#app:not(.is-mobile) .el-button--primary:not(.is-plain) {
+  --el-button-text-color: #ffffff;
   --el-button-bg-color: var(--dp-accent-strong);
   --el-button-border-color: var(--dp-accent-strong);
+  --el-button-hover-text-color: #ffffff;
   --el-button-hover-bg-color: var(--dp-accent);
   --el-button-hover-border-color: var(--dp-accent);
+  --el-button-active-text-color: #ffffff;
   --el-button-active-bg-color: var(--dp-accent-strong);
   --el-button-active-border-color: var(--dp-accent-strong);
-  --el-button-text-color: #05211e;
   font-weight: 560;
+}
+/* 主按钮（朴素/描边） */
+#app:not(.is-mobile) .el-button--primary.is-plain {
+  --el-button-text-color: var(--dp-accent);
+  --el-button-bg-color: var(--dp-accent-faint);
+  --el-button-border-color: var(--dp-accent);
+  --el-button-hover-text-color: #ffffff;
+  --el-button-hover-bg-color: var(--dp-accent-strong);
+  --el-button-hover-border-color: var(--dp-accent-strong);
+  --el-button-active-text-color: #ffffff;
+  --el-button-active-bg-color: var(--dp-accent-strong);
+  --el-button-active-border-color: var(--dp-accent-strong);
+  font-weight: 520;
+}
+/* 危险（实心 / 朴素） */
+#app:not(.is-mobile) .el-button--danger:not(.is-plain) {
+  --el-button-text-color: #ffffff;
+  --el-button-bg-color: var(--dp-danger);
+  --el-button-border-color: var(--dp-danger);
+  --el-button-hover-text-color: #ffffff;
+  --el-button-hover-bg-color: var(--dp-danger);
+  --el-button-hover-border-color: var(--dp-danger);
+  --el-button-active-text-color: #ffffff;
+}
+#app:not(.is-mobile) .el-button--danger.is-plain {
+  --el-button-text-color: var(--dp-danger);
+  --el-button-bg-color: transparent;
+  --el-button-border-color: var(--dp-danger);
+  --el-button-hover-text-color: #ffffff;
+  --el-button-hover-bg-color: var(--dp-danger);
+  --el-button-hover-border-color: var(--dp-danger);
+  --el-button-active-text-color: #ffffff;
+  --el-button-active-bg-color: var(--dp-danger);
+}
+/* 警告（实心 / 朴素） */
+#app:not(.is-mobile) .el-button--warning:not(.is-plain) {
+  --el-button-text-color: #241c00;
+  --el-button-bg-color: var(--dp-warning);
+  --el-button-border-color: var(--dp-warning);
+  --el-button-hover-text-color: #241c00;
+  --el-button-hover-bg-color: var(--dp-warning);
+}
+#app:not(.is-mobile) .el-button--warning.is-plain {
+  --el-button-text-color: var(--dp-warning);
+  --el-button-bg-color: transparent;
+  --el-button-border-color: var(--dp-warning);
+  --el-button-hover-text-color: #241c00;
+  --el-button-hover-bg-color: var(--dp-warning);
+  --el-button-hover-border-color: var(--dp-warning);
+}
+/* 成功 */
+#app:not(.is-mobile) .el-button--success:not(.is-plain) {
+  --el-button-text-color: #ffffff;
+  --el-button-bg-color: #16a34a;
+  --el-button-border-color: #16a34a;
+  --el-button-hover-text-color: #ffffff;
+  --el-button-hover-bg-color: #15803d;
+  --el-button-hover-border-color: #15803d;
+}
+/* 默认按钮（含 plain）：实色面 + 发丝 + 可读文字 */
+#app:not(.is-mobile) .el-button:not([class*="el-button--primary"]):not([class*="el-button--danger"]):not([class*="el-button--warning"]):not([class*="el-button--success"]):not([class*="el-button--info"]) {
+  --el-button-text-color: var(--dp-text);
+  --el-button-bg-color: var(--dp-surface);
+  --el-button-border-color: var(--dp-line-strong);
+  --el-button-hover-text-color: var(--dp-accent);
+  --el-button-hover-bg-color: var(--dp-surface2);
+  --el-button-hover-border-color: var(--dp-accent);
+  --el-button-active-text-color: var(--dp-accent);
+  --el-button-active-bg-color: var(--dp-surface2);
+  --el-button-active-border-color: var(--dp-accent);
 }
 #app:not(.is-mobile) .el-input__wrapper,
 #app:not(.is-mobile) .el-textarea__inner {
@@ -427,23 +288,24 @@
 /* 内容页 hero：实色 + 顶栏式浮层 */
 #app:not(.is-mobile) .island-page { background: var(--dp-bg2) !important; }
 #app:not(.is-mobile) .island-header {
-  background: rgba(11, 15, 20, .78) !important;
+  background: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--dp-line);
+}
+:root[data-theme="night"] #app:not(.is-mobile) .island-header {
+  background: rgba(11, 11, 18, .72) !important;
   -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
   border-bottom: 1px solid var(--dp-line);
 }
 #app:not(.is-mobile) .inner-footer {
-  background: rgba(11, 15, 20, .6) !important;
+  background: var(--dp-bg) !important;
+  border-top: 1px solid var(--dp-line);
+}
+:root[data-theme="night"] #app:not(.is-mobile) .inner-footer {
+  background: rgba(11, 11, 18, .55) !important;
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   border-top: 1px solid var(--dp-line);
 }
-
-/* 日间内容页/浮层微调 */
-:root[data-theme="day"] #app:not(.is-mobile) .island-page { background: var(--dp-bg2) !important; }
-:root[data-theme="day"] #app:not(.is-mobile) .island-header { background: rgba(255, 255, 255, .8) !important; }
-:root[data-theme="day"] #app:not(.is-mobile) .lj-topbar { background: rgba(255, 255, 255, .8) !important; }
-:root[data-theme="day"] #app:not(.is-mobile) .inner-footer { background: rgba(255, 255, 255, .6) !important; }
-:root[data-theme="day"] #app:not(.is-mobile) .card-label { background: rgba(20, 40, 55, .06) !important; }
-:root[data-theme="day"] #app:not(.is-mobile) .carousel-dots { background: rgba(20, 40, 55, .06) !important; }
 
 /* =====================================================================
  * H. 动效克制 + prefers-reduced-motion 全量降级
@@ -460,12 +322,259 @@
 }
 
 /* =====================================================================
- * I. 工作台辅助微降饱和/降对比（Linear 克制）：工具卡顶线、图标底、资讯徽标/小点
+ * I. 工作台辅助微降饱和/降对比：工具卡顶线、图标底、资讯徽标/小点
  * ===================================================================== */
 #app:not(.is-mobile) .wt-card::after { opacity: .22; }
-#app:not(.is-mobile) .wt-icon { background: rgba(150, 180, 190, .06) !important; }
-#app:not(.is-mobile) .tone-ai .wt-icon { color: var(--dp-warning); border-color: rgba(217, 176, 100, .18); background: rgba(217, 176, 100, .06); }
-#app:not(.is-mobile) .tone-book .wt-icon { color: #5f9070; border-color: rgba(95, 144, 112, .20); background: rgba(95, 144, 112, .06); }
+#app:not(.is-mobile) .wt-icon { background: var(--dp-surface2) !important; }
+#app:not(.is-mobile) .tone-ai .wt-icon { color: var(--dp-warning); border-color: var(--dp-warning); background: var(--dp-surface2); }
+#app:not(.is-mobile) .tone-book .wt-icon { color: var(--dp-accent); border-color: var(--dp-accent); background: var(--dp-surface2); }
 #app:not(.is-mobile) .wfb-badge { color: var(--dp-text2); }
 #app:not(.is-mobile) .wfb-dot { background: var(--dp-accent); opacity: .72; }
 #app:not(.is-mobile) .wfb-more { color: var(--dp-text3); }
+
+/* =====================================================================
+ * J. 桌面端内容页背景：日间纯色 / 夜间紫罗兰双晕染
+ * ===================================================================== */
+#app:not(.is-mobile) .island-inner {
+  background: var(--dp-bg2) !important;
+}
+:root[data-theme="night"] #app:not(.is-mobile) .island-inner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(1200px 600px at 18% 10%, rgba(139, 92, 246, .28), transparent 60%),
+    radial-gradient(900px 500px at 82% 90%, rgba(236, 72, 153, .18), transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+:root[data-theme="day"] #app:not(.is-mobile) .island-inner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(900px 400px at 18% 8%, rgba(91, 106, 224, .06), transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+/* 兼容老 ::after 噪点纸纹：夜间关掉 */
+:root[data-theme="night"] #app:not(.is-mobile) .island-inner::after { display: none; }
+:root[data-theme="day"] #app:not(.is-mobile) .island-inner::after { display: none; }
+
+/* =====================================================================
+ * L. 桌面端侧栏：展开 220px / 折叠完全隐藏（0px），内容区 + 顶栏自动让位
+ * ===================================================================== */
+#app:not(.is-mobile) {
+  padding-left: 220px;
+  transition: padding-left .24s cubic-bezier(.4, 0, .2, 1);
+}
+/* 折叠 = 侧栏完全隐藏 → 内容区占满全宽 */
+#app:not(.is-mobile):has(.dsb.collapsed) { padding-left: 0; }
+/* 登录页（#/login）是独立全屏页面，不需要左 padding */
+body.login-route #app:not(.is-mobile) { padding-left: 0 !important; }
+
+/* 顶栏已去条化（品牌/搜索入侧栏、AI 改悬浮按钮），不再需要整条让位规则 */
+
+/* 桌面端中等宽度（≤1100）：侧栏收窄到 200px，内容同步让位（保持"侧栏+内容"结构） */
+@media (max-width: 1100px) {
+  #app:not(.is-mobile) { padding-left: 200px; }
+  #app:not(.is-mobile) .dsb { width: 200px; }
+}
+
+/* 更窄（≤900）：侧栏不再挤占内容 —— 改为「浮层抽屉」，高 z-index 浮在内容之上，
+   开合完全由组件折叠状态控制（窄屏默认折叠、左上角浮动按钮唤出、跳转后自动收起）。
+   内容区 padding-left 归零，铺满可用宽度。 */
+@media (max-width: 900px) {
+  #app:not(.is-mobile) { padding-left: 0; }
+  #app:not(.is-mobile) .dsb {
+    z-index: 2600;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, .38);
+  }
+}
+
+/* ---------------------------------------------------------------
+ * 内容区布局：与侧栏严格对齐、左右完全对称
+ * 做法：把水平留白「上收」到页面级容器（40px），并把各 section 自身
+ *       的 padding / max-width / auto margin 全部清零 —— 避免多层叠加
+ *       造成左侧多出一段空档。
+ * --------------------------------------------------------------- */
+#app:not(.is-mobile) :is(.workbench-page, .island-inner, .admin-page) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 40px !important;
+  padding-right: 40px !important;
+  max-width: none !important;
+  width: auto !important;
+  box-sizing: border-box;
+}
+
+#app:not(.is-mobile) .workbench-page :is(.wb-hero, .wb-kpi, .wb-trend, .wb-row, .wb-body, .wb-footer) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+#app:not(.is-mobile) .island-inner :is(.inner-header, .inner-main, .inner-footer) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* 管理后台：水平留白同样上收到页面级 */
+#app:not(.is-mobile) .admin-page :is(.admin-header, .admin-nav, .admin-content) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: none !important;
+}
+
+/* =====================================================================
+ * M. Element Plus 弹层（dialog / drawer / popper）让位侧栏
+ *    弹层默认挂到 body 居中显示，会被 220px 侧栏遮挡一半，需向右偏移
+ * ===================================================================== */
+
+/* el-dialog / el-drawer 的蒙层让位侧栏（顶栏已去条化，纵向不再需要偏移） */
+#app:not(.is-mobile) .el-overlay,
+#app:not(.is-mobile) .el-overlay-dialog,
+#app:not(.is-mobile) .el-drawer__wrapper {
+  position: fixed !important;
+  left: 220px !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: calc(100vw - 220px) !important;
+  height: 100vh !important;
+}
+body:not(.login-route) #app:not(.is-mobile):has(.dsb.collapsed) .el-overlay,
+body:not(.login-route) #app:not(.is-mobile):has(.dsb.collapsed) .el-overlay-dialog,
+body:not(.login-route) #app:not(.is-mobile):has(.dsb.collapsed) .el-drawer__wrapper {
+  left: 0 !important;
+  width: 100vw !important;
+}
+
+/* popper 下拉（菜单 / select / 日期选择器 / tooltip） */
+#app:not(.is-mobile) .el-select__popper,
+#app:not(.is-mobile) .el-dropdown-menu,
+#app:not(.is-mobile) .el-popper,
+#app:not(.is-mobile) .el-picker__popper,
+#app:not(.is-mobile) .el-date-picker__popper,
+#app:not(.is-mobile) .el-tooltip__popper {
+  z-index: 3000 !important; /* 保证在顶栏 + 侧栏之上 */
+}
+
+/* 桌宠让位（z-index 1800 默认在右下，桌面端如有需要再调位置） */
+#app:not(.is-mobile) .whale-stage {
+  right: 20px;
+  bottom: 20px;
+}
+
+/* Element Plus el-table / el-form 等容器自动让位 padding-left 不需要它们再写 */
+
+/* 底部播放条让位侧栏（折叠时侧栏隐藏 → 靠左 16px） */
+#app:not(.is-mobile) .npbar {
+  left: calc(220px + 16px) !important;
+  width: calc(100% - 220px - 320px - 32px) !important;
+}
+body:not(.login-route) #app:not(.is-mobile):has(.dsb.collapsed) .npbar {
+  left: 16px !important;
+  width: calc(100% - 320px - 32px) !important;
+}
+
+/* =====================================================================
+ * K. 主题切换分段控件（ProfileView）适配：紫罗兰白天/夜间都和谐
+ * ===================================================================== */
+#app:not(.is-mobile) .theme-seg {
+  background: var(--dp-surface2) !important;
+  border: 1px solid var(--dp-line) !important;
+}
+#app:not(.is-mobile) .theme-seg-btn.active {
+  background: var(--dp-accent-strong) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px var(--dp-accent-faint) !important;
+}
+
+/* =====================================================================
+ * N. 登录页：始终使用「深墨青 · 雨青」配色（不受昼夜主题影响）
+ *     variables.css 里的 day 规则会把登录页整体反转为米黄亮底，
+ *     这里放在最后整体覆盖回来 —— 登录页是独立品牌门面页，保持绿色调。
+ * ===================================================================== */
+html:root[data-theme="day"] .login-page,
+html:root[data-theme="night"] .login-page {
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 12%, rgba(127, 168, 163, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.07), transparent 60%),
+    linear-gradient(180deg, #0a1218 0%, #111a22 52%, #0b1419 100%) !important;
+}
+html:root[data-theme="day"] .login-card {
+  background: rgba(20, 28, 36, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.10),
+    0 24px 60px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+html:root[data-theme="day"] .login-page .el-input__wrapper {
+  background: rgba(24, 32, 41, 0.7) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(127, 168, 163, 0.3) !important;
+}
+html:root[data-theme="day"] .login-page .el-input__inner {
+  color: #e8f4fc !important;
+}
+html:root[data-theme="day"] .login-page .el-input__inner::placeholder {
+  color: rgba(200, 214, 208, 0.5) !important;
+}
+html:root[data-theme="day"] .login-page .el-input__suffix .el-icon,
+html:root[data-theme="day"] .login-page .el-input__clear {
+  color: rgba(200, 214, 208, 0.7) !important;
+}
+html:root[data-theme="day"] .login-page .site-subtitle,
+html:root[data-theme="day"] .login-page .back-link,
+html:root[data-theme="day"] .login-page .text-secondary {
+  color: rgba(200, 214, 208, 0.62) !important;
+}
+html:root[data-theme="day"] .login-page .remember-hint {
+  color: rgba(200, 214, 208, 0.45) !important;
+}
+html:root[data-theme="day"] .login-page .filing-links a {
+  color: rgba(232, 244, 252, 0.6);
+}
+
+/* ---------------------------------------------------------------
+ * 登录页输入框「文字看不清」根因修复
+ *
+ * 桌面端通用输入框皮肤用的是 ID 权重：
+ *   #app:not(.is-mobile) .el-input__wrapper { background: var(--dp-surface) !important }
+ * 它比上面那条 `html:root[data-theme="day"] .login-page .el-input__wrapper` 权重更高，
+ * 且日间 token --dp-surface = #ffffff → 登录页（深墨青底）里的输入框被刷成白底，
+ * 而文字是 #e8f4fc 浅色 → 白底浅字，怎么都看不清。
+ * 这里用「同样带 ID、但选择器更长」的规则 + !important 把登录页输入框拉回深墨青底，
+ * 昼夜两套主题统一（登录页本身在两套主题下都是深墨青）。
+ * --------------------------------------------------------------- */
+#app:not(.is-mobile) .login-page .el-input__wrapper,
+#app:not(.is-mobile) .login-page .el-textarea__inner {
+  background: rgba(24, 32, 41, 0.72) !important;
+  box-shadow: inset 0 0 0 1px rgba(127, 168, 163, 0.32) !important;
+  border-radius: 8px;
+}
+#app:not(.is-mobile) .login-page .el-input__wrapper:hover,
+#app:not(.is-mobile) .login-page .el-input__wrapper.is-focus {
+  box-shadow: inset 0 0 0 1px rgba(127, 168, 163, 0.62) !important;
+}
+#app:not(.is-mobile) .login-page .el-input__inner {
+  color: #e8f4fc !important;
+  -webkit-text-fill-color: #e8f4fc !important;
+  caret-color: #e8f4fc;
+}
+#app:not(.is-mobile) .login-page .el-input__inner::placeholder {
+  color: rgba(200, 214, 208, 0.55) !important;
+}
+#app:not(.is-mobile) .login-page .el-input__suffix .el-icon,
+#app:not(.is-mobile) .login-page .el-input__clear,
+#app:not(.is-mobile) .login-page .el-input__password {
+  color: rgba(200, 214, 208, 0.72) !important;
+}

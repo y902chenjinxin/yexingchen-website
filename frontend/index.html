@@ -24,7 +24,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="app"></div>
+  <!-- 挂载点用 #app-root：App.vue 根节点自身才是 #app，
+       若挂载点也叫 #app 会出现两个同名 id，所有 #app 选择器命中两次
+       （例如 sidebar 让位 padding-left 被叠加成 220+220=440px） -->
+  <div id="app-root"></div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
