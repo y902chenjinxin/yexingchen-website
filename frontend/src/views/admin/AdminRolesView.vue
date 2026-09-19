@@ -21,21 +21,23 @@
           <template #default="{ row }">{{ formatMenuPerms(row) }}</template>
         </el-table-column>
         <el-table-column prop="sort_order" label="排序" width="80" />
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="openRoleForm(row)">编辑</el-button>
-            <el-popconfirm
-              v-if="!row.is_builtin"
-              title="确认删除该角色？"
-              confirm-button-text="删除"
-              cancel-button-text="取消"
-              width="210"
-              @confirm="handleDeleteRole(row)"
-            >
-              <template #reference>
-                <el-button size="small" type="danger" plain>删除</el-button>
-              </template>
-            </el-popconfirm>
+            <div class="row-ops">
+              <el-button size="small" @click="openRoleForm(row)">编辑</el-button>
+              <el-popconfirm
+                v-if="!row.is_builtin"
+                title="确认删除该角色？"
+                confirm-button-text="删除"
+                cancel-button-text="取消"
+                width="210"
+                @confirm="handleDeleteRole(row)"
+              >
+                <template #reference>
+                  <el-button size="small" type="danger" plain>删除</el-button>
+                </template>
+              </el-popconfirm>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -102,13 +104,28 @@ const roleMenuTreeRef = ref(null)
 const roleForm = ref({ id: null, name: '', code: '', description: '', menu_ids: [], sort_order: 0, is_builtin: false })
 const roleMenuTreeData = ref([])
 
+/* menu_ids 可能是数组，也可能是 JSON 字符串 / 逗号串（历史数据或旧接口）。
+   这里统一归一化：一旦出现非数组值，`.map` 会抛错 → 整个单元格渲染失败 →
+   后面的「排序 / 操作」列整体左移错位（本轮用户报的「角色管理操作栏错位」就是这个）。 */
+function normalizeMenuIds(raw) {
+  if (Array.isArray(raw)) {
+    return raw.map(x => Number(x)).filter(n => !Number.isNaN(n))
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed.map(x => Number(x)).filter(n => !Number.isNaN(n)) : []
+    } catch {
+      return raw.split(',').map(s => Number(s.trim())).filter(n => !Number.isNaN(n))
+    }
+  }
+  return []
+}
+
 function formatMenuPerms(row) {
-  if (!row.menu_ids || !row.menu_ids.length) return '全部启用菜单'
-  const ids = row.menu_ids
-  const names = ids.map(id => {
-    const m = menus.value.find(x => x.id === id)
-    return m ? m.title : `#${id}`
-  })
+  const ids = normalizeMenuIds(row.menu_ids)
+  if (!ids.length) return '全部启用菜单'
+  const names = ids.map(id => menus.value.find(x => x.id === id)?.title || `#${id}`)
   if (names.length <= 3) return names.join(' / ')
   return names.slice(0, 3).join(' / ') + ` 等 ${names.length} 项`
 }
@@ -145,7 +162,7 @@ function openRoleForm(row) {
       name: row.name || '',
       code: row.code || '',
       description: row.description || '',
-      menu_ids: Array.isArray(row.menu_ids) ? [...row.menu_ids] : (typeof row.menu_ids === 'string' && row.menu_ids ? JSON.parse(row.menu_ids) : []),
+      menu_ids: normalizeMenuIds(row.menu_ids),
       sort_order: row.sort_order || 0,
       is_builtin: !!row.is_builtin,
     }

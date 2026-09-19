@@ -34,21 +34,23 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="openMenuForm(row)">编辑</el-button>
-            <el-popconfirm
-              v-if="!row.is_builtin"
-              title="确认删除该菜单？"
-              confirm-button-text="删除"
-              cancel-button-text="取消"
-              width="210"
-              @confirm="handleDeleteMenu(row)"
-            >
-              <template #reference>
-                <el-button size="small" type="danger" plain>删除</el-button>
-              </template>
-            </el-popconfirm>
+            <div class="row-ops">
+              <el-button size="small" @click="openMenuForm(row)">编辑</el-button>
+              <el-popconfirm
+                v-if="!row.is_builtin"
+                title="确认删除该菜单？"
+                confirm-button-text="删除"
+                cancel-button-text="取消"
+                width="210"
+                @confirm="handleDeleteMenu(row)"
+              >
+                <template #reference>
+                  <el-button size="small" type="danger" plain>删除</el-button>
+                </template>
+              </el-popconfirm>
+            </div>
           </template>
         </el-table-column>
       </el-table>

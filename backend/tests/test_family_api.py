@@ -11,7 +11,7 @@ import os
 os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from sqlalchemy import create_engine
@@ -100,8 +100,12 @@ class TestContacts:
 
     def test_upcoming_filters_by_days(self, ctx):
         db, cu = ctx
-        create_contact(ContactIn(name="近的", birthday="09-18"), db, cu)
-        create_contact(ContactIn(name="远的", birthday="12-25"), db, cu)
+        # 日期必须相对「今天」算：写死 09-18 只有在 9/18 之前跑才通过，
+        # 之后必然落进「已过生日」→ upcoming 列表为空 → 假失败
+        near = (date.today() + timedelta(days=2)).strftime("%m-%d")
+        far = (date.today() + timedelta(days=200)).strftime("%m-%d")
+        create_contact(ContactIn(name="近的", birthday=near), db, cu)
+        create_contact(ContactIn(name="远的", birthday=far), db, cu)
         res = upcoming_birthdays(days=7, db=db, current_user=cu)
         names = [r["name"] for r in res["data"]["list"]]
         assert "近的" in names and "远的" not in names

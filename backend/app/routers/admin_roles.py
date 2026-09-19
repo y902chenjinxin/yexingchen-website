@@ -1,6 +1,9 @@
 """管理员 - 角色管理。"""
 from __future__ import annotations
 
+import json
+from typing import Any
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -15,6 +18,39 @@ from app.utils.security import require_super_admin
 router = APIRouter(prefix="/api/admin", tags=["管理员-角色"])
 
 
+def _parse_menu_ids(raw: Any) -> list[int]:
+    """menu_ids 在库里是 Text（JSON 字符串，如 "[1,2]"）；统一解析为整型数组返回。
+
+    前端「可见菜单」列需要数组才能渲染，直接回传字符串会导致前端 .map 报错、
+    整个单元格渲染失败（表格列错位），所以出口统一转成数组。
+    """
+    if raw is None:
+        return []
+    data = raw
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return []
+        try:
+            data = json.loads(s)
+        except (ValueError, TypeError):
+            data = [p for p in s.split(",") if p.strip()]
+    if not isinstance(data, (list, tuple, set)):
+        return []
+    out: list[int] = []
+    for x in data:
+        try:
+            out.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _dump_menu_ids(ids: Any) -> str:
+    """写库统一序列化为 JSON 字符串；同时兼容「数组 / JSON 字符串 / 逗号串」三种入参。"""
+    return json.dumps(_parse_menu_ids(ids))[:2000]
+
+
 def _role_to_dict(r: Role) -> dict:
     return {
         "id": r.id,
@@ -22,7 +58,7 @@ def _role_to_dict(r: Role) -> dict:
         "code": r.code,
         "description": r.description,
         "permissions": r.permissions,
-        "menu_ids": r.menu_ids,
+        "menu_ids": _parse_menu_ids(r.menu_ids),
         "sort_order": r.sort_order,
         "is_builtin": r.is_builtin,
         "created_at": str(r.created_at),
@@ -34,7 +70,8 @@ class RoleIn(BaseModel):
     code: str = ""
     description: str = ""
     permissions: str = "[]"
-    menu_ids: str = "[]"
+    # 兼容前端传数组 / JSON 字符串；None 表示本次不修改
+    menu_ids: Any = None
     sort_order: int = 0
 
 
@@ -63,7 +100,7 @@ async def create_role(
         code=code[:40],
         description=req.description.strip()[:255],
         permissions=req.permissions[:2000] or "[]",
-        menu_ids=req.menu_ids[:2000] or "[]",
+        menu_ids=_dump_menu_ids(req.menu_ids) or "[]",
         sort_order=req.sort_order,
         is_builtin=0,
     )
@@ -100,8 +137,9 @@ async def update_role(
         role.description = req.description.strip()[:255]
     if req.permissions:
         role.permissions = req.permissions[:2000]
-    if req.menu_ids:
-        role.menu_ids = req.menu_ids[:2000]
+    if req.menu_ids is not None:
+        # 允许清空（[]），所以用 is not None 判空而非真值判断
+        role.menu_ids = _dump_menu_ids(req.menu_ids)
     role.sort_order = req.sort_order
     db.commit()
     log_action(

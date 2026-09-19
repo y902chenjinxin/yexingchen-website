@@ -431,6 +431,22 @@ body.login-route #app:not(.is-mobile) { padding-left: 0 !important; }
   max-width: none !important;
 }
 
+/* 管理后台表格「操作」列：按钮常显、单行、居左。
+   不用 Flex + nowrap 的话，列宽一紧按钮会折成两行、行高被撑开，看起来像"错位"。
+   作用域限定 .admin-page，避免影响音乐等模块自己的 .row-ops。 */
+#app:not(.is-mobile) .admin-page .el-table .row-ops {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 8px;
+  white-space: nowrap;
+}
+/* Element Plus 默认给相邻按钮加 margin-left，这里统一交给 gap 控制 */
+#app:not(.is-mobile) .admin-page .el-table .row-ops > .el-button + .el-button {
+  margin-left: 0 !important;
+}
+
 /* =====================================================================
  * M. Element Plus 弹层（dialog / drawer / popper）让位侧栏
  *    弹层默认挂到 body 居中显示，会被 220px 侧栏遮挡一半，需向右偏移

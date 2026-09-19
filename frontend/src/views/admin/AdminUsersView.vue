@@ -33,7 +33,7 @@
         <el-table-column prop="allowed_islands" label="可访问模块" min-width="200">
           <template #default="{ row }">
             <div class="island-tags">
-              <el-tag v-for="island in row.allowed_islands.split(',')" :key="island" size="small" type="info">
+              <el-tag v-for="island in getIslandList(row)" :key="island" size="small" type="info">
                 {{ getIslandName(island) }}
               </el-tag>
             </div>
@@ -45,31 +45,20 @@
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="注册时间" width="160" />
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
-            <template v-if="row.status === 'pending'">
-              <el-dropdown trigger="click" @command="(cmd) => handleCommand(row.id, cmd)">
-                <el-button size="small">操作 <el-icon class="el-icon--right"><CaretBottom /></el-icon></el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="approve">审核通过</el-dropdown-item>
-                    <el-dropdown-item command="reject">审核不通过</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </template>
-            <template v-else>
-              <el-dropdown trigger="click" @command="(cmd) => handleCommand(row.id, cmd)">
-                <el-button size="small">编辑 <el-icon class="el-icon--right"><CaretBottom /></el-icon></el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="edit">修改</el-dropdown-item>
-                    <el-dropdown-item command="resetPwd">重置密码</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided style="color: #F56C6C;">删除</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </template>
+            <!-- 按钮全部常显、单行居左；不用下拉，避免二次点击与列宽挤压 -->
+            <div class="row-ops">
+              <template v-if="row.status === 'pending'">
+                <el-button size="small" type="primary" plain @click="handleCommand(row.id, 'approve')">审核通过</el-button>
+                <el-button size="small" type="danger" plain @click="handleCommand(row.id, 'reject')">审核不通过</el-button>
+              </template>
+              <template v-else>
+                <el-button size="small" @click="handleCommand(row.id, 'edit')">修改</el-button>
+                <el-button size="small" @click="handleCommand(row.id, 'resetPwd')">重置密码</el-button>
+                <el-button size="small" type="danger" plain @click="handleCommand(row.id, 'delete')">删除</el-button>
+              </template>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -155,7 +144,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search, CaretBottom } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getUserList, addUser, approveUser, rejectUser, updateUser, resetUserPassword, deleteUser,
@@ -202,6 +191,14 @@ function getStatusType(s) {
 
 const ISLAND_NAME = { music: '音乐', novel: '小说', video: '视频', diary: '日志', tools: '工具' }
 function getIslandName(k) { return ISLAND_NAME[k] || k }
+/* 容错：allowed_islands 理论上恒为字符串，但若为 null/非字符串，
+   直接在模板里 .split 会抛错 → 单元格渲染失败 → 整行列错位（同角色管理那次事故） */
+function getIslandList(row) {
+  const raw = row?.allowed_islands
+  if (Array.isArray(raw)) return raw.filter(Boolean)
+  if (typeof raw !== 'string') return []
+  return raw.split(',').map(s => s.trim()).filter(Boolean)
+}
 
 function formatTime(s) {
   if (!s) return '-'

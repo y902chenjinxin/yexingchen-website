@@ -1,3 +1,30 @@
+## [v2.35.4] - 2026-09-19
+
+### 管理后台操作列：用户管理按钮全部平铺居左 / 角色管理「操作栏错位」真根因修复（SW `xuanhuang-v138`）
+
+User 两条反馈：「用户管理操作栏里按钮都展示出来，居左展示」「角色管理操作栏这里错位了」。第二条不是样式问题，是一个**渲染崩溃导致的表格列错位**。
+
+**① 角色管理「操作栏错位」真根因：`menu_ids` 类型不匹配导致单元格渲染崩溃**
+- 现象（截图实证）：角色表里「编辑」独占一行、「删除」掉到第二行并溢出单元格，行高被撑到 68px；同时「可见菜单」表头下显示的是**排序值**（0）——整行从第 4 列开始左移了一格。
+- 排查（生产真实浏览器 DOM 取证）：表头 6 列、表体 `<tr>` 却只有 **5 个 `<td>`**，第 4 列位置是一个 `<!--comment-->` 占位；控制台报 **`TypeError: h.menu_ids.map is not a function`**。
+- 根因：`backend/app/routers/admin_roles.py` 里 `menu_ids` 在 DB 是 `Text`（存 JSON 字符串 `"[1,2]"`），接口**原样回传字符串**；而前端 `formatMenuPerms(row)` 写的是 `row.menu_ids.map(...)` —— 字符串有 `.length` 所以躲过了前置判空，`.map` 直接抛错 → 该单元格渲染失败 → 后面的「排序 / 操作」列整体左移一格，「操作」列继承了「排序」列的 80px 宽度 → 编辑/删除被挤成两行，看起来就是「错位」。
+- 修复（后端出口/入口统一收口，不需要数据迁移）：
+  - 新增 `_parse_menu_ids(raw)`：把「JSON 字符串 / 数组 / 逗号串 / None / 脏数据」统一解析为整型数组；`_role_to_dict` 改为返回数组。
+  - 新增 `_dump_menu_ids(ids)`：写库统一序列化为 JSON 字符串，兼容前端传数组（旧 `RoleIn.menu_ids: str` 会让数组 422）或旧页面传 JSON 字符串。
+  - `RoleIn.menu_ids` 由 `str` 改为 `Any = None`；更新接口判空由真值判断改为 `is not None`——顺带修掉「清空全部菜单（[]）保存不生效」（空数组为 falsy，旧逻辑会跳过更新）。
+- 修复（前端防御）：`AdminRolesView` 新增 `normalizeMenuIds()`（数组/JSON 串/逗号串通吃），`formatMenuPerms` 与 `openRoleForm` 都用它——后者原先内联 `JSON.parse` 遇到非 JSON 串会抛错导致弹窗打不开。`AdminUsersView` 的 `row.allowed_islands.split(',')` 同样加了 `getIslandList()` 容错（同类隐患）。
+- 修后实测（生产 1440px）：表头 6 列 / 表体 6 个 `<td>`、**0 个空占位**；三行行高统一 41px；「可见菜单」正确显示「全部启用菜单」「笔记 / 账本 / 旅行足迹 等 13 项」；排序回到自己列；操作列 180px，`编辑 1203~1251` + `删除 1259~1306` 同一行居左。
+
+**② 用户管理操作列：下拉 → 按钮全部平铺、居左**
+- 原设计把「修改 / 重置密码 / 删除」收进「编辑 ▾」下拉，待审批行收进「操作 ▾」，需要二次点击。现改为全部常显：待审批行 `审核通过 / 审核不通过`，其余行 `修改 / 重置密码 / 删除`；列宽 220 → 230。
+- 实测：每行 3 个按钮同一行、居左（起始 1153 = 单元格 +12px 内边距）、行高统一 63px、无下拉、无空占位。
+
+**③ 统一「操作列」排版规则**（`desktop-product.css`，作用域 `.admin-page`）：`.row-ops { display:flex; align-items:center; justify-content:flex-start; flex-wrap:nowrap; gap:8px; white-space:nowrap }` + 取消 Element Plus 相邻按钮的 `margin-left`。角色管理、菜单管理操作列宽度 160 → 180，三个管理页共用同一套规则，避免后续再被列宽挤成两行。
+
+**部署**：SW `v137→v138`；前端 `npx vite build` + `deploy_frontend.py`（home=200）；后端 `deploy_backend.py`（`admin_roles.py` 在白名单内，alembic 无新增、pm2 重启 `health=200`、`ENV=production` 保留）。验收用的临时 `/preview/vp.html` 已从服务器删除。
+
+---
+
 ## [v2.35.3] - 2026-09-19
 
 ### 桌面端两处真根因修复：`id="app"` 重复导致内容被推远 220px / 登录页输入框白底浅字（SW `xuanhuang-v137`）
