@@ -18,3 +18,4 @@ requests==2.34.2
 openpyxl==3.1.5  # 账本导入支持 Excel 表格(xlsx/xls)
 werkzeug>=3.0.0  # secure_filename（file_utils 导入），此前未显式声明
 lunardate==0.3.0  # 农历生日换算（纯 Python，无 C 扩展；覆盖 1900-2099）
+onnxruntime>=1.18.0  # 证件照 MODNet 服务端 CPU 推理（浏览器 wasm 对量化为全零，迁到后端）

@@ -74,6 +74,8 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "models", "family.py"),        f"{REMOTE_BASE}/backend/app/models/family.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "contacts.py"),     f"{REMOTE_BASE}/backend/app/routers/contacts.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "subscriptions.py"), f"{REMOTE_BASE}/backend/app/routers/subscriptions.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "idphoto.py"),       f"{REMOTE_BASE}/backend/app/routers/idphoto.py"),
+    (os.path.join(ROOT, "backend", "models", "modnet", "model-q.onnx"),    f"{REMOTE_BASE}/backend/models/modnet.onnx"),
     (os.path.join(ROOT, "backend", "app", "services", "family_reminder.py"), f"{REMOTE_BASE}/backend/app/services/family_reminder.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "m3n4o5p6q7r8_family_contacts_subscriptions.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/m3n4o5p6q7r8_family_contacts_subscriptions.py"),

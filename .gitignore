@@ -54,7 +54,6 @@ uploads/
 _ai_generated/
 frontend/public/_ai_generated/
 frontend/public/img/
-frontend/public/models/
 frontend/scripts/
 scripts/generate-*.js
 scripts/generate_*.py

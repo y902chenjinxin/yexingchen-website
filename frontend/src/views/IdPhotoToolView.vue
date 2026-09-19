@@ -171,10 +171,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
-import { segmentImage, warmupMatting, preloadMatting } from '@/utils/matting'
+import api from '@/api/index'
 
 const sizeOptions = [
   { key: 'c1', label: '一寸',       w: 295, h: 413 },
@@ -221,20 +221,42 @@ function resetMatte() {
   mattePromise = null
 }
 
+// 原图尺寸的 matte 取裁剪窗内对应区域（与 drawCrop 同一几何映射），逐像素写入 alpha
+// 服务端 CPU 跑 MODNet（浏览器 wasm 对动态量化为全零），返回全分辨率灰度 PNG，解码为 matte
+async function matteFromBackend() {
+  const img = srcImg.value
+  if (!img) return null
+  const iw = img.naturalWidth, ih = img.naturalHeight
+  const cv = document.createElement('canvas'); cv.width = iw; cv.height = ih
+  const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0)
+  const blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.92))
+  if (!blob) return null
+  const fd = new FormData()
+  fd.append('file', blob, 'photo.jpg')
+  // api 拦截器已 return response.data，这里拿到的就是 {code,msg,data:{w,h,b64}}
+  const body = await api.post('/idphoto/matte', fd)
+  if (!body || body.code !== 0 || !body.data) return null
+  const { w, h, b64 } = body.data
+  const pngBlob = await (await fetch(`data:image/png;base64,${b64}`)).blob()
+  const url = URL.createObjectURL(pngBlob)
+  const png = new Image()
+  await new Promise((res, rej) => { png.onload = res; png.onerror = rej; png.src = url })
+  URL.revokeObjectURL(url)
+  const c2 = document.createElement('canvas'); c2.width = w; c2.height = h
+  const cx2 = c2.getContext('2d', { willReadFrequently: true })
+  cx2.drawImage(png, 0, 0)
+  const id = cx2.getImageData(0, 0, w, h).data
+  const matte = new Uint8ClampedArray(w * h)
+  for (let i = 0; i < w * h; i++) matte[i] = id[i * 4]  // 灰度 PNG：R 通道即强度
+  return { matte, w }
+}
+
 // 取原图尺寸 matte；未缓存则异步分割（共享 in-flight promise）
 function getMatte() {
   if (matteCache) return Promise.resolve(matteCache)
   if (mattePromise) return mattePromise
-  const img = srcImg.value
-  if (!img) return Promise.resolve(null)
-  const iw = img.naturalWidth, ih = img.naturalHeight
-  const cv = document.createElement('canvas'); cv.width = iw; cv.height = ih
-  const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0)
-  let im
-  try { im = ctx.getImageData(0, 0, iw, ih) } catch { return Promise.resolve(null) }
-  mattePromise = warmupMatting()
-    .then(() => segmentImage(im))
-    .then((m) => { if (m) { matteCache = m; matteW = iw } return m || null })
+  mattePromise = matteFromBackend()
+    .then((r) => { if (r) { matteCache = r.matte; matteW = r.w } return r ? r.matte : null })
     .catch(() => null)
     .finally(() => { mattePromise = null })
   return mattePromise
@@ -312,8 +334,6 @@ function handleFile(f) {
     srcImg.value = img
     srcCy.value = img.naturalHeight / 2
     detectNewCanvas()
-    // 上传完成即后台预载模型，缩短点「生成」时的等待
-    preloadMatting()
   }
   img.onerror = () => { ElMessage.error('图片读取失败'); URL.revokeObjectURL(url) }
   img.src = url
@@ -567,8 +587,6 @@ function downloadTransparent() {
 
 // 首帧适配（若某尺寸被阅/相机拍出超大图则默认适中缩放）
 drawCrop()
-// 进入页面即后台预载人像分割模型
-onMounted(() => { preloadMatting() })
 </script>
 
 <style scoped>

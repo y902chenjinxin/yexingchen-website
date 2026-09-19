@@ -43,7 +43,9 @@ async def upload_image(
         rel_path, size = await save_upload_file(file, safe_sub, ALLOWED_IMAGE_EXT, MAX_IMAGE_SIZE)
     except ValueError as e:
         raise_error(ErrCode.INVALID_PARAM, str(e))
-    return ResponseBase(data={"url": rel_path, "size": size})
+    # save_upload_file 返回 /countdown/xxx；静态挂载点在 /uploads，需补前缀才能被 CSS <img> 访问
+    url = f"/uploads{rel_path}" if not rel_path.startswith("/uploads") else rel_path
+    return ResponseBase(data={"url": url, "size": size})
 
 
 # ---- Pydantic Schemas ----
@@ -302,9 +304,12 @@ def delete_countdown(
 ):
     c = _get_or_404(db, current_user["user_id"], cid)
     if c.bg_image:
-        # 顺手清理背景图（失败不阻断删除）
+        # 顺手清理背景图（失败不阻断删除）；bg_image 是 /uploads/countdown/xxx 形式，需剥掉挂载前缀
         try:
-            full = os.path.join(settings.UPLOAD_DIR, c.bg_image.lstrip("/"))
+            rel = c.bg_image.lstrip("/")
+            if rel.startswith("uploads/"):
+                rel = rel[len("uploads/"):]
+            full = os.path.join(settings.UPLOAD_DIR, rel)
             if os.path.isfile(full):
                 os.remove(full)
         except Exception:

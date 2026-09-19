@@ -5,7 +5,10 @@ import router from '@/router'
 const api = axios.create({
   baseURL: '/api',
   timeout: 30000,
-  headers: { 'Content-Type': 'application/json' }
+  // 注意：不要在此设置全局 Content-Type: application/json。
+  // axios v1 在请求已带 application/json 头时，会把 FormData 用 formDataToJSON
+  // 转成 JSON（file 字段变空对象），导致所有上传接口丢失文件 → 后端 422「file Field required」。
+  // 交 axios 自动判断：JSON 对象自动 application/json，FormData 自动 multipart/boundary。
 })
 
 // 请求拦截器：注入token

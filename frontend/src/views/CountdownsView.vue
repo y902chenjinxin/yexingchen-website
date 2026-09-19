@@ -267,11 +267,20 @@ const defaultForm = () => ({
 
 const form = ref(defaultForm())
 
-const rules = {
-  title: [{ required: true, message: '请输入名称', trigger: 'blur' }],
-  direction: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  target_date: [{ required: true, message: '请选择目标日期', trigger: 'change' }],
-}
+const rules = computed(() => {
+  const r = {
+    title: [{ required: true, message: '请输入名称', trigger: 'blur' }],
+    direction: [{ required: true, message: '请选择类型', trigger: 'change' }],
+  }
+  // 农历模式用农历月/日，公历日期不要求；反之必须选公历目标日期
+  if (form.value.is_lunar) {
+    r.lunar_month = [{ required: true, message: '请选择农历月', trigger: 'change' }]
+    r.lunar_day = [{ required: true, message: '请选择农历日', trigger: 'change' }]
+  } else {
+    r.target_date = [{ required: true, message: '请选择目标日期', trigger: 'change' }]
+  }
+  return r
+})
 
 // 分组：活跃 / 归档
 const groups = computed(() => {

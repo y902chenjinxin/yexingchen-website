@@ -25,20 +25,24 @@
             <stop offset="1" stop-color="#2fa08e" stop-opacity="1"/>
           </linearGradient>
           <linearGradient id="tm-footg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#67d8cb"/>
-            <stop offset="1" stop-color="#2f9d8e"/>
+            <stop offset="0" stop-color="#ffc25e"/>
+            <stop offset="1" stop-color="#ea8a1f"/>
           </linearGradient>
           <filter id="tm-glow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="3" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          <!-- 现代脚印标记（居中于原点，fill 用 currentColor 以便 hover/active 变色） -->
+          <!-- 城市标记：微光定位针。脚针体内渐变 teal、中心白点提亮；尺寸按 FOOT_SCALE 控制。
+               还原度的城市级小标记，缩放后依旧清晰锐利，不会像脚印那样变小后糊成一团。 -->
           <g id="tm-foot">
-            <ellipse cx="-4.6" cy="-11.2" rx="1.5" ry="2.2"/>
-            <ellipse cx="-1.5" cy="-12.4" rx="1.5" ry="2.4"/>
-            <ellipse cx="1.7" cy="-12.1" rx="1.5" ry="2.4"/>
-            <ellipse cx="4.5" cy="-10.8" rx="1.5" ry="2.1"/>
-            <path d="M-5.4-8.2C-8.4-3.6-7.2 2.6-3.2 6C-1.1 7.4 1.1 7.4 3.2 6C7.2 2.6 8.4-3.6 5.4-8.2C3.6-10.6-3.6-10.6-5.4-8.2Z"/>
+            <!-- 白色描边光环：把琥珀标记与同色省份/底色隔开，城市级小标记依然清晰 -->
+            <circle cx="0" cy="-1.6" r="2.35" fill="#fff" opacity=".96"/>
+            <path
+              d="M0 1.85 C0 1.85 -2.35 -0.75 -2.35 -2.35 A2.35 2.35 0 1 1 2.35 -2.35 C2.35 -0.75 0 1.85 0 1.85 Z"
+              filter="url(#tm-glow)"
+            />
+            <circle cx="0" cy="-2.35" r="0.98" fill="rgba(80,42,0,.5)"/>
+            <circle cx="0" cy="-2.35" r="0.36" fill="#fff7e6"/>
           </g>
         </defs>
 
@@ -157,9 +161,8 @@ const reduced = typeof window !== 'undefined' && window.matchMedia && window.mat
 
 const W = ref(600)
 const H = ref(540)
-// 脚印图标缩小系数：地图 viewBox 约 50×36 单位，原始脚印 glyph ~17×20 会盖住整个地图，
-// 缩放后约 2.5×3 单位，正好作为单城市小标记
-const FOOT_SCALE = 0.15
+// 城市标记缩放：白环定位针 glyph 约 4.7 单位宽，缩到约 0.47 地图单位，属于清晰的小标记
+const FOOT_SCALE = 0.10
 let K = 1
 let minLon = 73, maxLon = 135, minLat = 18, maxLat = 54
 function project(lon, lat) { return [(lon - minLon) * K, (maxLat - lat) * 1] }
@@ -467,7 +470,8 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 @keyframes flow { to { stroke-dashoffset: -11; } }
 
 /* 脚印标记 */
-.tm-dot { fill: url(#tm-footg); cursor: pointer; transform-origin: 0 0; transition: fill .25s, filter .25s; }
+.tm-dot { fill: url(#tm-footg); cursor: pointer; transform-origin: 0 0; transition: fill .25s, filter .25s;
+  stroke: rgba(10,15,21,.55); stroke-width: .7; paint-order: stroke; }
 .tm-dot:hover, .tm-dot.on { filter: drop-shadow(0 0 7px rgba(103,216,203,.95)); }
 .tm-dot.on { fill: url(#tm-provg-hot); }
 .tm-dot.pulse .tm-dot__glyph { animation: footpulse .9s ease-out 1; transform-box: fill-box; transform-origin: center; }

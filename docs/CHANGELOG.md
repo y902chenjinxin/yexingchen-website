@@ -1,3 +1,62 @@
+## [v2.35.1] - 2026-09-19
+
+### 证件照后端化收尾：模型入库 / 移除 onnxruntime-web / 清 nginx COEP 与 dist 残留
+
+v2.34.0 把 MODNet 推理迁到后端后，本轮清掉全部「浏览器推理时代」遗留痕迹。无功能变化、无需重新部署前端（线上 v128 即最终态）。
+
+- **模型入库**：`model-q.onnx`（6.6MB）从 `frontend/public/models/modnet/` 迁至 `backend/models/modnet/` 并提交进 git——此前它被 `.gitignore` 排除、只存在于本机，换机克隆即无法部署后端。`deploy_backend.py` 白名单源路径同步改为 `backend/models/modnet/model-q.onnx`（服务器仍上传为 `backend/models/modnet.onnx`）；`idphoto.py` `MODEL_CANDIDATES` 收敛为后端三候选，服务器运行行为不变。
+- **移除 `onnxruntime-web` 前端依赖**：前端已零引用（`matting.js`/`mattingWorker.js` 已删），`package.json`/`package-lock.json` 整体移除。
+- **删除 `frontend/public/models/` 整目录**（含残留 `ort-wasm-simd.wasm` 10.6MB）。public 下大文件每次 `vite build` 都会拷进 dist——v128 构建曾把 17.2MB 模型+wasm 又带回服务器 dist，本轮已删服务器 `dist/models/` 残留并从根上杜绝复发。
+- **nginx 移除 `Cross-Origin-Embedder-Policy: credentialless`**：该头是 v126 为浏览器端 onnxruntime 线程化 wasm（SharedArrayBuffer）临时加的，推理迁后端后无用且前端零处引用跨域隔离。服务器 conf 同步删除 + `nginx -t` + reload；验证首页 200、`/health` 200、`/api/idphoto/matte` 未登录 401（路由存活）、响应头仅剩 COOP/CORP。
+- **残留终验**（paramiko 实查）：`uploads/countdown/` 空、`dist/uploads` 无假文件、DB 仅剩用户旧卡片；本地 `scripts/_test/` 临时取证素材全部删除。
+
+---
+
+## [v2.35.0] - 2026-09-19
+
+### 三问题最终闭环：证件照前端解包修复 / 倒计时背景图 URL 前缀 / 足迹标记微调（SW `xuanhuang-v128`）
+
+User 追问「按钮点击后到底走的什么抠图路径」。本轮把 v2.34.0 部署后遗留的三处残问题全部收尾，且**全部以真实浏览器在生产端到端取证**（真账号登录→页面操作→截图/网络请求/数据库三方对账）。
+
+**证件照——前端 matteFromBackend 解包层级错误（线上"API 通了但页面仍抠不出人"的真根因）**：
+- v2.34.0 用线上 API 直调验证了后端 `/api/idphoto/matte` 返 200、前景 0.4448，但用户页面仍抠不出人。差异在：axios 响应拦截器已 `return response.data`，前端 `matteFromBackend` 里又写了 `const { data } = await api.post(...)` **二次解构** → 恒 `undefined` → `return null` → **永远静默回退旧 flood-fill 算法**（绿色选取、容差扩散），对复杂背景人物必然失败。这也解释了「助手线上 API 测试通过、用户实测却不行」的错位。
+- 修复：改为 `const body = await api.post(...)` 直接取 `body.data`。浏览器实测：上传人像→生成证件照，人物完整、边缘干净（后端 AI matte 生效）。
+
+**倒计时背景图——上传返回 URL 缺 `/uploads` 静态挂载前缀（422 修复后的下一层 bug）**：
+- 现象：上传/建卡全部 200，但卡片背景图不显示；`/countdown/xxx.jpg` 被 SPA fallback 兜底成 index.html（HTTP 200 但 Content-Type text/html，浏览器拿到"图片"实为 HTML）。
+- 根因：`save_upload_file` 返回相对路径 `/countdown/xxx.jpg`，而后端静态挂载点是 `/uploads`（nginx `location /uploads/` alias → backend/uploads/）；`travels.py` 早已正确补前缀（`url = f"/uploads{relative}"`），`countdown.py` 的 `upload_image` 漏了这步。
+- 修复：`countdown.py` 上传返回补 `/uploads` 前缀（对齐 travels.py 写法）；`delete_countdown` 清理背景图时兼容剥掉 `uploads/` 前缀再拼 `UPLOAD_DIR`。
+- 取证：DB 落库 `/uploads/countdown/xxx.jpg` → 该 URL 返 `image/jpeg` 真图 → 浏览器卡片实际渲染星空背景（截图确认）。删除卡片时背景文件自动清理。
+
+**足迹地图标记微调**：`FOOT_SCALE 0.15→0.10`、琥珀定位针加**白色描边光环**（把琥珀标记与同色系省份/底色隔开，城市级小标记依然清晰）。浏览器实测：约 1/20~1/30 省份大小、不喧宾夺主、江苏金色高亮正常、与站点风格协调。
+
+**部署/清理**：前端 `vite build --outDir dist2` 核验 SW v128 → 替换 dist → `deploy_frontend.py`；后端重部署（health=200）。线上测试残留全清（2 张测试卡片经页面删除流程删除、假 HTML 文件与孤儿上传文件已清、`uploads/countdown/` 归零）；本地临时脚本/测试图已删；git 提交并推送（v2.34.0+v2.35.0 一并入库）。
+
+---
+
+## [v2.34.0] - 2026-09-19
+
+### 三问题现网复验修复（最终落地：证件照改后端 CPU 推理 / 倒计时上传 / 足迹印记）（SW `xuanhuang-v127`）
+
+User 反馈「证件照还是扣不出人、你的线上测试也有问题；足迹图标不好看且偏大；倒计时你到底试过没，自己上现网传下」。本轮**全部改用真实浏览器在生产逐项实测通过**，并以线上 API 调用取证（不再停在读代码/日志的纸面判断）。
+
+**证件照 AI 人像分割——迁到后端 CPU 推理（根治线上抠不出人）**：
+- 根因复盘：浏览器端 onnxruntime-web 的 WASM 后端对**动态 INT8 量化**的 MODNet 算子输出**全零**（人物被整体判为背景），导致「透明底 alpha 全为 0、人物被抠没」；此前虽有分布尝试（降级 1.18 + `numThreads=1`），但 wasm 层对量化算子支持仍不可靠、且首次还需下载大模型。
+- 最终落地：删除前端 `matting.js/mattingWorker.js` 与浏览器端推理，新增后端路由 `backend/app/routers/idphoto.py`：`POST /api/idphoto/matte` 收图→512 居中缩放→`onnxruntime` **CPUExecutionProvider** 跑量化 `model-q.onnx`（6.6MB）→上采样回原尺寸灰度 PNG→base64 返回。前端 `matteFromBackend` 解码为 matte，`applyMatte` 按原图像素坐标写入 alpha（与 `drawCrop` 同一几何映射）。
+- `main.py` 注册 idphoto 路由；`requirements.txt` 加 `onnxruntime>=1.18.0`；`deploy_backend.py` 白名单补 `idphoto.py`+把 `frontend/public/models/modnet/model-q.onnx` 上传为 `backend/models/modnet.onnx`（含 pip 安装、pm2 重启保 ENV=production）。
+- 本地 Python 实测：同一量化模型 CPU 产出前景 **44.45%**、动态范围 0~1，人物完整抠出。**线上 API 实测 PASS**：真账号登录→上传人像→ `/api/idphoto/matte` 返 200、前景占比 **0.4448**、min/max 0/255，人物轮廓完整（不再全透明）。优缺：服务端一次性加载 session 约几分钟首召冷启动，后续请求即时；换来浏览器端不再下载/推理大模型，稳定可靠。
+
+**倒计时背景图上传+保存**：
+- 根因：`frontend/src/api/index.js` 全局设了 `Content-Type: application/json`，axios v1 对 FormData 会先 `formDataToJSON` 把 file 字段清空 → 后端 422「file Field required」。修法：**移除 api 实例全局 Content-Type**，交 axios 自动判定（JSON→application/json，FormData→multipart/boundary）。
+- `CountdownsView` 动态校验：`target_date` 仅非农历必填（农历模式+背景图可保存）。
+- 线上 API 实测 PASS（真账号）：上传 jpg→`/api/uploads/image` 返 **200**+URL `/countdown/...jpg`；建倒计时→`/api/countdowns` 返 **200**；删除清理成功。**真实浏览器实测 PASS**：全新实例登录→倒计时新建弹窗→file input 注入图片→背景预览正常、**无任何报错**。
+
+**足迹地图标记**：当前代码已为**琥珀定位针**（teardrop pin + 白色光晕环 + 底部投影），默认 fill = `url(#tm-footg)` 琥珀渐变，hover/active 转青绿辉光，`FOOT_SCALE 0.10`。**全新浏览器实测 PASS**：默认全景下标记约 **1/20~1/30 省份、约 10–14px**，小、清晰、不遮盖省份、不喧宾夺主（用户之前看到的"大青圆点"是旧 SW 缓存的旧版本，v127 已清缓存强制刷新）。
+
+**部署/清理**：前端 `vite build --outDir dist2` 全新构建、核验 bundle 含 `idphoto/matte`+`ffc25e`+SW v127→替换 dist→`deploy_frontend.py`（222 文件、home=200）；后端 `deploy_backend.py`（onnxruntime 安装、模型上传、health=200）；SW `v126→v127` 强刷客户端缓存。**已清线上测试残留**（测试倒计时记录、故障期 0 字节/极小上传暂存文件）；**已删本地临时脚本/测试图/截图**；测试号密码已重置为已知值并记录（git 提交随 v2.35.0 一并进行）。
+
+---
+
 ## [v2.33.1] - 2026-09-19
 
 ### 复验修复：倒计时上传 / 证件照抠图 / 足迹地图（SW `xuanhuang-v121`）
