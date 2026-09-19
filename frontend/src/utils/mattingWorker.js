@@ -27,7 +27,7 @@ async function ensureSession() {
   }
 }
 
-// 保持比例缩放到 512×512 居中黑边，RGB 归一化 [0,1]
+// 保持比例缩放到 512×512 居中黑边，RGB 归一化 [-1,1]（与模型训练一致；仅 /255 会把人物误判为背景）
 function preprocess(imageData, W, H) {
   const sw = imageData.width, sh = imageData.height
   const ratio = Math.min(W / sw, H / sh)
@@ -44,9 +44,9 @@ function preprocess(imageData, W, H) {
       const sx = Math.min(sw - 1, Math.floor(x * sw / nw))
       const si = (sy * sw + sx) * 4
       const di = ((oy + y) * W + (ox + x)) * 3
-      inArr[di] = src[si] / 255
-      inArr[di + 1] = src[si + 1] / 255
-      inArr[di + 2] = src[si + 2] / 255
+      inArr[di] = src[si] / 127.5 - 1
+      inArr[di + 1] = src[si + 1] / 127.5 - 1
+      inArr[di + 2] = src[si + 2] / 127.5 - 1
     }
   }
   return new ort.Tensor('float32', inArr, [1, 3, W, H])

@@ -25,8 +25,9 @@ export const uploadImage = (file, subDir = 'countdown') => {
   const fd = new FormData()
   fd.append('file', file)
   fd.append('sub_dir', subDir)
+  // 不手写 Content-Type：由浏览器自动生成 multipart/form-data; boundary=...，
+  // 否则部分环境不追加 boundary 导致后端解析失败返回 400
   return api.post('/uploads/image', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 60000,
   })
 }

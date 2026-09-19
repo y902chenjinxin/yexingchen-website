@@ -1,3 +1,19 @@
+## [v2.33.1] - 2026-09-19
+
+### 复验修复：倒计时上传 / 证件照抠图 / 足迹地图（SW `xuanhuang-v121`）
+
+User「倒计时上传背景照还是有问题；你自己看这个合适吗去 github 找方案（足迹地图）；证件照还是不行找解决方案」。
+
+**证件照 AI 抠图失效——根因输入归一化错误**：`mattingWorker.js` 用 `[0,1]`（`/255`）归一化输入像素，而 MODNet 训练用的是 `[-1,1]`（`/127.5 - 1`），导致人物被误判为背景、mask 出力极低。Python 复算对比：`/255` 时人物 mask 占比仅 7.6%、`/127.5-1` 时达 61% → 改三通道 `/127.5-1`，人物完整抠出。
+
+**倒计时背景图上传 400**：上轮已定位 `countdown.py` 扩展名带点，但部署白名单 `deploy_backend.py` 漏传 `countdown.py/file_utils.py` 致线上仍跑旧代码；且前端 `countdown.js` 手写 `Content-Type: multipart/form-data` 未带 boundary 可能致解析失败。本轮白名单补两文件重部署、删手写 Content-Type（交浏览器自动生成 boundary）。线上 API 实测上传 jpg 回 200 PASS，测试图已清理。
+
+**足迹地图图标**：`TravelMap.vue` 加 `FOOT_SCALE=0.15` 压脚印（原 glyph 盖全图）、删空 `.tm-dot__tip`，城市级小标记对齐省市，浏览器截图 PASS。
+
+**部署**：前端构建核验 + SW `v120→v121` → 替换 dist → `deploy_frontend.py`；后端同步。文档已更新、测试图与临时脚本已清理、git 已提交推送。
+
+---
+
 ## [v2.33.0] - 2026-09-19
 
 ### 证件照 AI 人像分割 + 倒计时上传修复 + 快捷入口精简 + 足迹地图优化（SW `xuanhuang-v118→v119`）

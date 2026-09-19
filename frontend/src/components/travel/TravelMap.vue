@@ -71,19 +71,18 @@
             <path class="tm-line" :class="{ on: activeTripId === l.id }" :d="l.d"/>
           </template>
 
-          <!-- 城市脚印标记 -->
+          <!-- 城市脚印标记（缩小到与城市对齐的小图标，避免盖住省份） -->
           <g v-for="pt in dots" :key="pt.key">
             <g
               class="tm-dot"
               :class="{ on: pt.tripId === activeTripId, pulse: pt.tripId === activeTripId }"
-              :transform="`translate(${pt.x} ${pt.y})`"
+              :transform="`translate(${pt.x} ${pt.y}) scale(${FOOT_SCALE})`"
               :data-city="pt.city"
               :data-trip="pt.tripId"
               @mouseenter="onDotHover($event, pt)"
               @mouseleave="onDotLeave"
             >
               <use href="#tm-foot" class="tm-dot__glyph"/>
-              <circle class="tm-dot__tip" cy="6.2" r="1.5"/>
               <title>{{ pt.city }} · {{ pt.tripTitle }}</title>
             </g>
           </g>
@@ -158,6 +157,9 @@ const reduced = typeof window !== 'undefined' && window.matchMedia && window.mat
 
 const W = ref(600)
 const H = ref(540)
+// 脚印图标缩小系数：地图 viewBox 约 50×36 单位，原始脚印 glyph ~17×20 会盖住整个地图，
+// 缩放后约 2.5×3 单位，正好作为单城市小标记
+const FOOT_SCALE = 0.15
 let K = 1
 let minLon = 73, maxLon = 135, minLat = 18, maxLat = 54
 function project(lon, lat) { return [(lon - minLon) * K, (maxLat - lat) * 1] }
@@ -466,10 +468,8 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 
 /* 脚印标记 */
 .tm-dot { fill: url(#tm-footg); cursor: pointer; transform-origin: 0 0; transition: fill .25s, filter .25s; }
-.tm-dot__tip { fill: #ffffff; opacity: .9; pointer-events: none; }
 .tm-dot:hover, .tm-dot.on { filter: drop-shadow(0 0 7px rgba(103,216,203,.95)); }
 .tm-dot.on { fill: url(#tm-provg-hot); }
-.tm-dot.on .tm-dot__tip { fill: #0b0f14; opacity: .85; }
 .tm-dot.pulse .tm-dot__glyph { animation: footpulse .9s ease-out 1; transform-box: fill-box; transform-origin: center; }
 @keyframes footpulse {
   0% { transform: scale(.4); opacity: .4; }

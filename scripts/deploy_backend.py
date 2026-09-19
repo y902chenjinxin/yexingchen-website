@@ -10,6 +10,8 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "config.py"),                 f"{REMOTE_BASE}/backend/app/config.py"),
     (os.path.join(ROOT, "backend", "app", "models", "user.py"),         f"{REMOTE_BASE}/backend/app/models/user.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "music.py"),       f"{REMOTE_BASE}/backend/app/routers/music.py"),
+    (os.path.join(ROOT, "backend", "app", "utils", "file_utils.py"),   f"{REMOTE_BASE}/backend/app/utils/file_utils.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "countdown.py"),  f"{REMOTE_BASE}/backend/app/routers/countdown.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "settings.py"),    f"{REMOTE_BASE}/backend/app/routers/settings.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "video.py"),       f"{REMOTE_BASE}/backend/app/routers/video.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "video_parse.py"), f"{REMOTE_BASE}/backend/app/routers/video_parse.py"),
