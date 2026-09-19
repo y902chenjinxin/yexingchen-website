@@ -9,10 +9,6 @@
         </span>
         <span class="abb-title">玄黄</span>
       </div>
-      <button class="abb-ai" @click="go('/assistant')" aria-label="AI 对话">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>
-        <span>AI</span>
-      </button>
     </header>
 
     <!-- 数据总览：首屏只放可行动的数据，不放装饰性趋势占位 -->

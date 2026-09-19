@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
         s.setSupportMultipleWindows(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        s.setUserAgentString(s.getUserAgentString() + " XuanHuangApp/2.0.0");
+        s.setUserAgentString(s.getUserAgentString() + " XuanHuangApp/2.1.0");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -272,8 +272,8 @@ android {
         applicationId 'cn.yexingchen.app'
         minSdkVersion 21
         targetSdkVersion 36
-        versionCode 2
-        versionName '2.0.0'
+        versionCode 3
+        versionName '2.1.0'
     }
     signingConfigs {
         release {
@@ -448,7 +448,7 @@ print(cexec("ls -la %s 2>&1; %s/aapt dump badging %s 2>&1 | grep -E 'package:|sd
              apk_env["JDK17_HOME"], apk_env["APKSIGNER_JAR"], outapk))[1])
 
 print("== 6/6 部署新 APK + 更新下载页 ==")
-VER = "yexingchen-2.0.0.apk"
+VER = "yexingchen-2.1.0.apk"
 print(cexec("cp %s /var/www/yexingchen/dist/download/%s && "
             "chmod 644 /var/www/yexingchen/dist/download/%s && "
             "python3 - <<'PY'\n"

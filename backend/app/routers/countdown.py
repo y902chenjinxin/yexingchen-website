@@ -21,8 +21,10 @@ from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api", tags=["工具岛-倒计时"])
 
-# ---- 上传：通用图片（jgp/png/webp/gif）----
-ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+# ---- 上传：通用图片（jpg/png/webp/gif）----
+# 注意：save_upload_file 的 allowed_file 取的是「不带点」的扩展名（"jpg"），
+# 因此这里的集合必须也不带点，否则任何文件都校验失败 → 400「不支持的文件格式」
+ALLOWED_IMAGE_EXT = {"jpg", "jpeg", "png", "webp", "gif"}
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
 
 

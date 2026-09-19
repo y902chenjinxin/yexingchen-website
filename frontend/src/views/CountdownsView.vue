@@ -1,5 +1,5 @@
 <template>
-  <IslandInnerBase type="tool" title="倒计时" subtitle="记录每一个值得期待的日子">
+  <IslandInnerBase type="tool" title="倒计时" subtitle="倒计时与纪念日 · 记录期待的日子，也记录走过的时光">
     <template #toolbar>
       <el-button size="small" plain @click="showArchived = !showArchived">
         {{ showArchived ? '隐藏归档' : '显示归档' }}
@@ -52,8 +52,12 @@
                   {{ formatTarget(item) }}
                 </div>
                 <div class="cd-card-meta">
-                  <span v-if="item.direction === 'count_up'" class="cd-tag cd-up">已过</span>
-                  <span v-else class="cd-tag cd-down">还剩</span>
+                  <span v-if="item.direction === 'count_up'" class="cd-tag cd-up">
+                    已过 {{ humanDuration(item.days_left) }}
+                  </span>
+                  <span v-else class="cd-tag cd-down">
+                    {{ item.days_left < 0 ? '逾期 ' + Math.abs(item.days_left) + ' 天' : '还剩 ' + humanDuration(item.days_left) }}
+                  </span>
                   <span v-if="item.pinned" class="cd-tag cd-pin">置顶</span>
                   <span v-if="item.is_archived" class="cd-tag cd-arch">归档</span>
                 </div>
@@ -97,33 +101,30 @@
           <el-input v-model="form.title" maxlength="40" placeholder="如：结婚纪念日" />
         </el-form-item>
 
-        <!-- 图标/颜色 -->
+        <!-- 外观颜色 -->
         <el-form-item label="外观">
           <div class="cd-look-row">
-            <div class="cd-look-fields">
-              <el-input v-model="form.icon" placeholder="emoji 或图标名" style="width:100px" />
-              <el-input
-                v-model="form.color"
-                placeholder="#3db8b0"
-                style="width:120px"
-                maxlength="10"
-              >
-                <template #prepend>
-                  <div
-                    class="cd-color-swatch"
-                    :style="{ background: form.color || '#3db8b0' }"
-                  ></div>
-                </template>
-              </el-input>
-            </div>
+            <el-input
+              v-model="form.color"
+              placeholder="#3db8b0"
+              style="width:140px"
+              maxlength="10"
+            >
+              <template #prepend>
+                <div
+                  class="cd-color-swatch"
+                  :style="{ background: form.color || '#3db8b0' }"
+                ></div>
+              </template>
+            </el-input>
           </div>
         </el-form-item>
 
         <!-- 方向 -->
         <el-form-item label="类型" prop="direction">
           <el-radio-group v-model="form.direction">
-            <el-radio value="count_down">倒数（还剩 N 天）</el-radio>
-            <el-radio value="count_up">正数（已过 N 天）</el-radio>
+            <el-radio value="count_down">倒计时 · 还剩 N 天（如：高考、发工资）</el-radio>
+            <el-radio value="count_up">纪念日 · 已过 N 天（如：认识多久、在一起）</el-radio>
           </el-radio-group>
         </el-form-item>
 
@@ -299,6 +300,17 @@ function formatTarget(item) {
   return item.target_date
 }
 
+// 把天数格式化成更人性化的"X 年 X 个月 X 天"
+function humanDuration(days) {
+  const d = Math.abs(Number(days) || 0)
+  const years = Math.floor(d / 365)
+  const months = Math.floor((d % 365) / 30)
+  const rem = d - years * 365 - months * 30
+  if (years > 0) return months > 0 ? `${years} 年 ${months} 个月` : `${years} 年`
+  if (months > 0) return months > 3 ? `${months} 个月` : `${months} 个月 ${rem} 天`
+  return `${d} 天`
+}
+
 // 加载数据
 async function load() {
   loading.value = true
@@ -348,6 +360,17 @@ function onLunarChange() {
 
 // 背景图选择
 function onBgChange({ raw }) {
+  const allow = /^image\/(jpeg|png|webp|gif)$/i
+  if (!allow.test((raw && raw.type) || '')) {
+    ElMessage.error('仅支持 JPG / PNG / WEBP / GIF 图片')
+    bgFile.value = null
+    return
+  }
+  if (raw.size > 10 * 1024 * 1024) {
+    ElMessage.error('图片超过 10MB，请压缩后重试')
+    bgFile.value = null
+    return
+  }
   bgFile.value = raw
   bgPreview.value = URL.createObjectURL(raw)
 }

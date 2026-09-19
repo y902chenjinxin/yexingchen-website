@@ -45,12 +45,15 @@
         <span class="cdd-number" :style="{ color: item.color || 'var(--yq-rain-bright)' }">
           {{ item.days_left }}
         </span>
-        <span class="cdd-unit">{{ item.direction === 'count_up' ? '天' : '天' }}</span>
+        <span class="cdd-unit">天</span>
+      </div>
+      <div class="cdd-human">
+        {{ humanNote(item) }}
       </div>
 
       <!-- 标签行 -->
       <div class="cdd-tags">
-        <span v-if="item.direction === 'count_up'" class="cdd-tag cdd-up">已过</span>
+        <span v-if="item.direction === 'count_up'" class="cdd-tag cdd-up">纪念日</span>
         <span v-else class="cdd-tag cdd-down">倒计时</span>
         <span v-if="item.repeat_type !== 'none'" class="cdd-tag cdd-repeat">
           🔁 {{ repeatLabel(item.repeat_type) }}
@@ -72,10 +75,10 @@
       <!-- 备注 -->
       <div v-if="item.memo" class="cdd-memo">{{ item.memo }}</div>
 
-      <!-- 历史记录（count_up 模式） -->
-      <div v-if="item.direction === 'count_up' && item.days_left > 0" class="cdd-history">
-        <div class="cdd-history-label">去年的今天</div>
-        <div class="cdd-history-num">{{ item.days_left - 365 }} 天</div>
+      <!-- 周年里程碑（count_up 模式） -->
+      <div v-if="item.direction === 'count_up' && item.days_left >= 365" class="cdd-history">
+        <div class="cdd-history-label">🎉 周年里程碑</div>
+        <div class="cdd-history-num">已共同走过 {{ Math.floor(item.days_left / 365) }} 个整年</div>
       </div>
     </div>
 
@@ -103,8 +106,8 @@
         </el-form-item>
         <el-form-item label="类型" prop="direction">
           <el-radio-group v-model="form.direction">
-            <el-radio value="count_down">倒数</el-radio>
-            <el-radio value="count_up">正数</el-radio>
+            <el-radio value="count_down">倒计时 · 还剩 N 天</el-radio>
+            <el-radio value="count_up">纪念日 · 已过 N 天</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="农历">
@@ -215,6 +218,24 @@ function formatTarget(i) {
 function repeatLabel(r) {
   const map = { none: '无', yearly: '每年', monthly: '每月', weekly: '每周' }
   return map[r] || r
+}
+
+// 把天数格式化成更人性化的"X 年 X 个月 X 天"
+function humanDuration(days) {
+  const d = Math.abs(Number(days) || 0)
+  const years = Math.floor(d / 365)
+  const months = Math.floor((d % 365) / 30)
+  const rem = d - years * 365 - months * 30
+  if (years > 0) return months > 0 ? `${years} 年 ${months} 个月` : `${years} 年`
+  if (months > 0) return months > 3 ? `${months} 个月` : `${months} 个月 ${rem} 天`
+  return `${d} 天`
+}
+
+// 详情页大数字下方的人性化表述
+function humanNote(i) {
+  if (i.direction === 'count_up') return `已走过 ${humanDuration(i.days_left)}`
+  if (i.days_left < 0) return `已逾期 ${Math.abs(i.days_left)} 天`
+  return `还差 ${humanDuration(i.days_left)}`
 }
 
 async function load() {
@@ -451,6 +472,16 @@ onMounted(load)
   font-size: 28px;
   color: rgba(255,255,255,0.7);
   font-family: var(--font-serif);
+}
+
+/* 大数字下方人性化表述 */
+.cdd-human {
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.78);
+  font-family: var(--font-serif);
+  margin-bottom: 20px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.35);
 }
 
 /* 标签 */

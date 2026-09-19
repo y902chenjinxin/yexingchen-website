@@ -1,3 +1,21 @@
+## [v2.33.0] - 2026-09-19
+
+### 证件照 AI 人像分割 + 倒计时上传修复 + 快捷入口精简 + 足迹地图优化（SW `xuanhuang-v118→v119`）
+
+User 一次性提 7 项修复/精简需求（证件照提取人物 · 足迹地图太灰 · 倒计时上传 jpg 报错/去图标字段 · 快捷入口隐藏 · 工作区闭环 · 整理提交 · 扫代码精简）。
+
+**证件照 AI 人像分割**：`IdPhotoToolView.vue` 引入浏览器本地 MODNet 分割（自托管 `public/models/modnet/model.onnx` FP32 25MB + onnxruntime-web 1.30 `ort-wasm-simd-threaded`，WebWorker `mattingWorker.js` 隔离推理），缩放 512×512 → 原图尺寸 matte 逐像素写 alpha。复杂背景（室外树影）也能完整抠出人物（此前纯算法只留轮廓）。踩坑：FP16 onnx 跑 wasm 报错 → 换 FP32；Nginx `.mjs` MIME 错 → 加 `types{application/javascript mjs; application/wasm wasm;}`；首次需下载 ~39MB 模型较慢 → 加 `preloadMatting()`（进页面/上传即后台建 session）化简等待。生产取证：复杂背景抠出透明底 `alphaMax=255`、有效像素 17.9%，成功。
+
+**倒计时背景图上传 400**（jpg 被拒）：后端 `ALLOWED_IMAGE_EXT` 带点(".jpg") 与判不带点的扩展名不一致 → 改不带点；前端补友好格式/大小校验；新建/编辑弹窗删除用途不明的「图标/emoji」字段，仅保留颜色输入。
+
+**快捷入口精简**：隐藏「音色克隆 / AI封面」（内置工具 URL 过滤）与「AI对话 / 记一笔」（固定动作移除）。
+
+**足迹地图**：未访省份填充基础色（不再描边显灰）、鼠标移入高亮、黄点改脚印/现代标记贴合水墨风。
+
+**部署**：倒计时+快捷+地图 → SW v118；证件照 → SW v119。`npx vite build --outDir dist2` 核验 → 替换 dist → `deploy_frontend.py` 225 文件、服务器 sw.js `xuanhuang-v119`、home=200。生产浏览器实测复杂背景证件照 AI 抠图成功。
+
+---
+
 ## [v2.32.0] - 2026-09-19
 
 ### 修复：网页端返回按钮「消失 + 失效」双问题（SW `xuanhuang-v117`）

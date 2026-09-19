@@ -171,9 +171,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import { segmentImage, warmupMatting, preloadMatting } from '@/utils/matting'
 
 const sizeOptions = [
   { key: 'c1', label: '一寸',       w: 295, h: 413 },
@@ -207,6 +208,37 @@ const srcCy = ref(0)
 const panning = ref(false)
 const result = ref({ show: false, coloredUrl: '', transparentUrl: '' })
 const cropCanvas = ref(null)
+
+// ---- MODNet 人像分割 matte 缓存与状态机 ----
+// matteCache/宽度为原图尺寸的 alpha（0-255），推理在 WebWorker，不阻塞 UI。
+let matteCache = null
+let matteW = 0
+let mattePromise = null
+
+function resetMatte() {
+  matteCache = null
+  matteW = 0
+  mattePromise = null
+}
+
+// 取原图尺寸 matte；未缓存则异步分割（共享 in-flight promise）
+function getMatte() {
+  if (matteCache) return Promise.resolve(matteCache)
+  if (mattePromise) return mattePromise
+  const img = srcImg.value
+  if (!img) return Promise.resolve(null)
+  const iw = img.naturalWidth, ih = img.naturalHeight
+  const cv = document.createElement('canvas'); cv.width = iw; cv.height = ih
+  const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0)
+  let im
+  try { im = ctx.getImageData(0, 0, iw, ih) } catch { return Promise.resolve(null) }
+  mattePromise = warmupMatting()
+    .then(() => segmentImage(im))
+    .then((m) => { if (m) { matteCache = m; matteW = iw } return m || null })
+    .catch(() => null)
+    .finally(() => { mattePromise = null })
+  return mattePromise
+}
 
 const curSize = computed(() => {
   if (custom.on) return { label: `${custom.w}×${custom.h}`, w: custom.w, h: custom.h }
@@ -280,6 +312,8 @@ function handleFile(f) {
     srcImg.value = img
     srcCy.value = img.naturalHeight / 2
     detectNewCanvas()
+    // 上传完成即后台预载模型，缩短点「生成」时的等待
+    preloadMatting()
   }
   img.onerror = () => { ElMessage.error('图片读取失败'); URL.revokeObjectURL(url) }
   img.src = url
@@ -291,6 +325,7 @@ function resetUpload() {
   srcImg.value = null
   result.value.show = false
   zoom.value = 1.25
+  resetMatte()
 }
 let picker = null
 function ensurePicker() {
@@ -426,21 +461,39 @@ function brightenCtx(ctx, w, h) {
   ctx.putImageData(im, 0, 0)
 }
 
-function generate() {
+async function generate() {
   const srcCv = cropCanvas.value
   if (!srcCv) return
   drawCrop()
   const { w, h } = curSize.value
   if (!w || !h || w < 100 || h < 100) { ElMessage.error('请填写正确的宽高（≥100px）'); return }
+  if (busy.value) return
   busy.value = true
   try {
     const snapshot = srcCv.getContext('2d').getImageData(0, 0, w, h)
 
+    // 优先用 AI 人像分割（复杂背景也能抠净）；获取不到时回退算法
+    let matte = null
+    let usedAI = false
+    if (removeBg.value) {
+      matte = await getMatte()
+      usedAI = !!matte
+    }
+
     // 透明底图
+    const data = new Uint8ClampedArray(snapshot.data)
+    if (usedAI) applyMatte(data, w, h, matte)
+    else if (removeBg.value) {
+      const tc0 = document.createElement('canvas'); tc0.width = w; tc0.height = h
+      const t0 = tc0.getContext('2d', { willReadFrequently: true })
+      t0.putImageData(new ImageData(data, w, h), 0, 0)
+      removeUniformBg(t0, w, h, tolerance.value)
+      const im = t0.getImageData(0, 0, w, h)
+      for (let i = 0; i < data.length; i++) data[i] = im.data[i]
+    }
     const tc = document.createElement('canvas'); tc.width = w; tc.height = h
     const tctx = tc.getContext('2d', { willReadFrequently: true })
-    tctx.putImageData(new ImageData(new Uint8ClampedArray(snapshot.data), w, h), 0, 0)
-    if (removeBg.value) removeUniformBg(tctx, w, h, tolerance.value)
+    tctx.putImageData(new ImageData(data, w, h), 0, 0)
     if (enhance.value) brightenCtx(tctx, w, h)
 
     // 标准照（合成底色）
@@ -461,9 +514,30 @@ function generate() {
     result.value.coloredUrl = cc.toDataURL('image/png')
     result.value.transparentUrl = removeBg.value ? tc.toDataURL('image/png') : ''
     result.value.show = true
-    ElMessage.success('已生成，可切换底色后重新生成或下载')
+    ElMessage.success(usedAI ? '已用 AI 人像分割抠净背景，可切换底色后重新生成或下载' : '已生成，可切换底色后重新生成或下载')
   } finally {
     busy.value = false
+  }
+}
+
+// 原图尺寸的 matte 取裁剪窗内对应区域（与 drawCrop 同一几何映射），逐像素写入 alpha
+function applyMatte(data, w, h, matte) {
+  const img = srcImg.value
+  if (!img) return
+  const iw = img.naturalWidth, ih = img.naturalHeight
+  const sc = Math.max(w / iw, h / ih) * zoom.value
+  const cw = w / sc, chh = h / sc
+  const sx = (iw - cw) / 2
+  const cy = clamp(srcCy.value, chh / 2, ih - chh / 2)
+  const srcW = matteW || iw
+  for (let py = 0; py < h; py++) {
+    const sy = ((cy - chh / 2) + chh * (py + 0.5) / h) | 0
+    if (sy < 0 || sy >= ih) continue
+    for (let px = 0; px < w; px++) {
+      const sxSrc = (sx + cw * (px + 0.5) / w) | 0
+      if (sxSrc < 0 || sxSrc >= iw) continue
+      data[(py * w + px) * 4 + 3] = matte[sy * srcW + sxSrc]
+    }
   }
 }
 
@@ -493,6 +567,8 @@ function downloadTransparent() {
 
 // 首帧适配（若某尺寸被阅/相机拍出超大图则默认适中缩放）
 drawCrop()
+// 进入页面即后台预载人像分割模型
+onMounted(() => { preloadMatting() })
 </script>
 
 <style scoped>

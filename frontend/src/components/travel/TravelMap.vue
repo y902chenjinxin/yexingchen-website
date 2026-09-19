@@ -17,21 +17,29 @@
       >
         <defs>
           <linearGradient id="tm-provg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#7fa8a3" stop-opacity=".72"/>
-            <stop offset="1" stop-color="#4c7f7b" stop-opacity=".9"/>
+            <stop offset="0" stop-color="#57b8c4" stop-opacity=".85"/>
+            <stop offset="1" stop-color="#2f8f9f" stop-opacity=".95"/>
           </linearGradient>
           <linearGradient id="tm-provg-hot" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#d9c8a0" stop-opacity=".95"/>
-            <stop offset="1" stop-color="#c7a96b" stop-opacity="1"/>
+            <stop offset="0" stop-color="#54c6b6" stop-opacity=".95"/>
+            <stop offset="1" stop-color="#2fa08e" stop-opacity="1"/>
           </linearGradient>
-          <radialGradient id="tm-dotg" cx=".5" cy=".5" r=".5">
-            <stop offset="0" stop-color="#c7f0ea"/>
-            <stop offset="1" stop-color="#7fa8a3"/>
-          </radialGradient>
+          <linearGradient id="tm-footg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#67d8cb"/>
+            <stop offset="1" stop-color="#2f9d8e"/>
+          </linearGradient>
           <filter id="tm-glow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="3" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
+          <!-- 现代脚印标记（居中于原点，fill 用 currentColor 以便 hover/active 变色） -->
+          <g id="tm-foot">
+            <ellipse cx="-4.6" cy="-11.2" rx="1.5" ry="2.2"/>
+            <ellipse cx="-1.5" cy="-12.4" rx="1.5" ry="2.4"/>
+            <ellipse cx="1.7" cy="-12.1" rx="1.5" ry="2.4"/>
+            <ellipse cx="4.5" cy="-10.8" rx="1.5" ry="2.1"/>
+            <path d="M-5.4-8.2C-8.4-3.6-7.2 2.6-3.2 6C-1.1 7.4 1.1 7.4 3.2 6C7.2 2.6 8.4-3.6 5.4-8.2C3.6-10.6-3.6-10.6-5.4-8.2Z"/>
+          </g>
         </defs>
 
         <g :transform="viewTransform">
@@ -63,20 +71,21 @@
             <path class="tm-line" :class="{ on: activeTripId === l.id }" :d="l.d"/>
           </template>
 
-          <!-- 城市打点 -->
+          <!-- 城市脚印标记 -->
           <g v-for="pt in dots" :key="pt.key">
-            <circle
+            <g
               class="tm-dot"
               :class="{ on: pt.tripId === activeTripId, pulse: pt.tripId === activeTripId }"
-              :cx="pt.x" :cy="pt.y"
-              :r="pt.r"
+              :transform="`translate(${pt.x} ${pt.y})`"
               :data-city="pt.city"
               :data-trip="pt.tripId"
               @mouseenter="onDotHover($event, pt)"
               @mouseleave="onDotLeave"
             >
+              <use href="#tm-foot" class="tm-dot__glyph"/>
+              <circle class="tm-dot__tip" cy="6.2" r="1.5"/>
               <title>{{ pt.city }} · {{ pt.tripTitle }}</title>
-            </circle>
+            </g>
           </g>
         </g>
       </svg>
@@ -435,36 +444,37 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 .tm-loading { padding: 60px 0; text-align: center; color: var(--lj-text-3); font-size: 13px; }
 .tm-svg { display: block; width: 100%; height: auto; user-select: none; touch-action: none; }
 
-/* 省份 */
-.tm-prov { transition: color .3s, opacity .3s, filter .25s; }
-.tm-prov:not([fill*="url"]) { fill: rgba(120,135,145,.10); }
-.tm-prov.visited { stroke: rgba(127,168,163,.5); stroke-width: .5; vector-effect: non-scaling-stroke; }
-.tm-prov:not(.visited) { stroke: rgba(120,135,145,.5); stroke-width: .45; vector-effect: non-scaling-stroke; }
-.tm-prov:hover { filter: brightness(1.45) drop-shadow(0 0 6px rgba(127,168,163,.5)); }
-.tm-prov.dim { opacity: .14; filter: none; }
-.tm-prov.on { filter: drop-shadow(0 0 10px rgba(199,169,107,.85)); }
+/* 省份：未去过给底色陆地感，避免一片灰 */
+.tm-prov { transition: color .3s, opacity .3s, filter .25s, fill .3s; }
+.tm-prov:not([fill*="url"]) { fill: #2b3a46; }
+.tm-prov.visited { stroke: rgba(87,184,196,.55); stroke-width: .6; vector-effect: non-scaling-stroke; }
+.tm-prov:not(.visited) { stroke: rgba(120,140,150,.5); stroke-width: .45; vector-effect: non-scaling-stroke; }
+.tm-prov:hover { filter: brightness(1.55) drop-shadow(0 0 7px rgba(87,184,196,.65)); stroke: rgba(103,216,203,.85); }
+.tm-prov.dim { opacity: .16; filter: none; }
+.tm-prov.on { stroke: rgba(103,216,203,.95); stroke-width: .9; filter: drop-shadow(0 0 11px rgba(84,198,182,.8)); }
 .tm-prov.jd { filter: none; }
 
 /* 连线 */
-.tm-line-glow { fill: none; stroke: rgba(127,168,163,.35); stroke-width: 3.2; filter: blur(3px);
+.tm-line-glow { fill: none; stroke: rgba(87,184,196,.35); stroke-width: 3.2; filter: blur(3px);
   opacity: .5; transition: opacity .3s; vector-effect: non-scaling-stroke; }
-.tm-line-glow.on { opacity: .85; stroke: rgba(199,169,107,.7); }
-.tm-line { fill: none; stroke: rgba(127,168,163,.85); stroke-width: 1.2; vector-effect: non-scaling-stroke;
+.tm-line-glow.on { opacity: .85; stroke: rgba(103,216,203,.7); }
+.tm-line { fill: none; stroke: rgba(87,184,196,.85); stroke-width: 1.2; vector-effect: non-scaling-stroke;
   stroke-dasharray: 5 6; opacity: .75; transition: opacity .3s, stroke .3s; }
-.tm-line.on { opacity: 1; stroke: #e4cd9a; }
+.tm-line.on { opacity: 1; stroke: #54c6b6; }
 .tm-line:not(.on) { animation: flow 1.1s linear infinite; }
 @keyframes flow { to { stroke-dashoffset: -11; } }
 
-/* 打点 */
-.tm-dot { fill: url(#tm-dotg); stroke: rgba(255,255,255,.85); stroke-width: .6;
-  cursor: pointer; transition: all .25s; vector-effect: non-scaling-stroke; }
-.tm-dot:hover, .tm-dot.on { stroke-width: 1.1; filter: drop-shadow(0 0 5px rgba(199,169,107,.9)); }
-.tm-dot.on { fill: #c7a96b; }
-.tm-dot.pulse { animation: pulse .9s ease-out 1; }
-@keyframes pulse {
-  0% { r: 1.5; opacity: 1; }
-  70% { opacity: .5; }
-  100% { r: 10; opacity: 0; }
+/* 脚印标记 */
+.tm-dot { fill: url(#tm-footg); cursor: pointer; transform-origin: 0 0; transition: fill .25s, filter .25s; }
+.tm-dot__tip { fill: #ffffff; opacity: .9; pointer-events: none; }
+.tm-dot:hover, .tm-dot.on { filter: drop-shadow(0 0 7px rgba(103,216,203,.95)); }
+.tm-dot.on { fill: url(#tm-provg-hot); }
+.tm-dot.on .tm-dot__tip { fill: #0b0f14; opacity: .85; }
+.tm-dot.pulse .tm-dot__glyph { animation: footpulse .9s ease-out 1; transform-box: fill-box; transform-origin: center; }
+@keyframes footpulse {
+  0% { transform: scale(.4); opacity: .4; }
+  55% { opacity: 1; }
+  100% { transform: scale(1.25); opacity: .85; }
 }
 
 /* mini-map */

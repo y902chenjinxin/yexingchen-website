@@ -3,7 +3,9 @@
 
 import api from './index'
 
-const BASE = '/api/countdowns'
+// 注意：api 实例 baseURL 已是 '/api'，这里必须用相对路径 '/countdowns'，
+// 否则会拼出双 /api/api/countdowns → nginx 404。
+const BASE = '/countdowns'
 
 export const listCountdowns = ({ includeArchived = false } = {}) =>
   api.get(`${BASE}?include_archived=${includeArchived ? 'true' : 'false'}`)

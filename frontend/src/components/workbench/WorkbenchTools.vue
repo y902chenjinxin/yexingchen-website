@@ -34,10 +34,9 @@ import { useToolStore } from '@/stores/tool'
 const router = useRouter()
 const toolStore = useToolStore()
 
-// 混排：内置工具全部展示 + 固定动作（AI 对话 / 记一笔 / 闪念速记）
+// 混排：内置工具（去「AI 封面/音色克隆」）全部展示 + 固定动作（仅 闪念速记）
+const HIDDEN_BUILTIN_URLS = ['/tool/cover', '/tool/voice']  // AI 封面 / 音色克隆：不进首页快捷入口
 const actionDefs = [
-  { key: 'ai',    name: 'AI 对话', desc: '问答 · 摘要 · 生成', tone: 'ai',    to: '/assistant', icon: '🧠' },
-  { key: 'book',  name: '记一笔',  desc: '快速记账',           tone: 'book',  to: '/finance',   icon: '💰' },
   { key: 'flash', name: '闪念速记', desc: '随手记 · 日记',      tone: 'flash', to: '/diary',     icon: '✍️' }
 ]
 // 工具 + 动作混排：内置工具全部展示，再接固定动作
@@ -45,6 +44,7 @@ const quickList = computed(() => {
   const tools = toolStore.list || []
   const builtinCards = tools
     .filter(t => t.kind === 'builtin')
+    .filter(t => !HIDDEN_BUILTIN_URLS.includes(t.url))
     .map(t => ({
       key: 'tool-' + t.id,
       name: t.title || '工具',
@@ -113,8 +113,7 @@ onMounted(() => { toolStore.fetchList({ enabled_only: 1, size: 100 }).catch(() =
 .wt-name { font-size: 14px; letter-spacing: .04em; color: var(--lj-text); }
 .wt-desc { font-size: 11px; color: var(--lj-text-3); }
 
-.tone-ai .wt-icon    { color: var(--lj-ochre);     border-color: rgba(199,169,107,.28); background: rgba(199,169,107,.12); }
-.tone-book .wt-icon  { color: #6d9a6b;             border-color: rgba(109,154,107,.28); background: rgba(109,154,107,.12); }
+.tone-flash .wt-icon { color: var(--lj-dai);        border-color: rgba(127,168,163,.28); background: rgba(127,168,163,.14); }
 
 @media (max-width: 600px) {
   /* 窄屏（≤380px）：2 列放大卡片，避免单卡 126px 过窄；宽屏手机（380–600px）：3 列 */
