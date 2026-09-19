@@ -7,6 +7,18 @@
 
 ---
 
+## v2.37.0 新发现与遗留（2026-09-20）
+
+| ID | 问题 | 类别 | 状态 |
+|----|------|------|------|
+| V237-001 | 鸿蒙 NEXT 客户端工程已就绪（`harmony/`），但**尚未构建出 HAP**：需本地装 DevEco Studio + 注册华为开发者账号（个人免费）走自动签名。下载页鸿蒙卡片当前显示「待构建」 | 功能 | 📋 待构建 |
+| V237-002 | 鸿蒙壳**未在本机编译验证**：本机无 HarmonyOS SDK，`Index.ets` 按 API 12 文档书写；`onWindowNew` 的 `event.handler.setWebController(null)` 可能需按 DevEco 提示微调 | 技术债 | ⚠️ 首次编译确认 |
+| V237-003 | 鸿蒙壳缺三项安卓已有能力：① 文件下载接管（安卓用 DownloadManager）② UA 追加 `XuanHuangApp/x.y.z` 标识 ③ URL 唤起 App（Deep Link）。均不影响主流程，补法见 `docs/HARMONYOS_BUILD.md` 第 8 节 | 功能 | 📋 计划中 |
+| V237-004 | iOS 无 IPA：无 Apple 开发者账号（$99/年）+ Mac 无法分发；免费 Apple ID 仅能单设备签 7 天。现走 PWA「添加到主屏幕」 | 产品决策 | ✅ 已用 PWA 覆盖 |
+| V237-005 | `harmony/`（ArkTS）与安卓壳（Java）是两套独立实现，**行为靠人工对齐**。以后改交互规则（如站外跳转判定）需**两边同时改**，否则两端口径漂移 | 维护风险 | ⚠️ 需留意 |
+
+---
+
 ## v2.22.2 新发现与遗留（2026-09-16）
 
 > 完整路径/凭证见 `.secrets/apk-build.local.env`（脚本也从这里读）。

@@ -1,0 +1,24 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "XuanHuang entry module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "XuanHuang · Personal Workbench"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "XuanHuang"
+    },
+    {
+      "name": "reason_camera",
+      "value": "Used for ID photos and document scanning"
+    },
+    {
+      "name": "reason_microphone",
+      "value": "Used for audio recording and voice features"
+    }
+  ]
+}

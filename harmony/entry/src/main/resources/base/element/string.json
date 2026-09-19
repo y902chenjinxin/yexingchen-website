@@ -1,0 +1,24 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "玄黄客户端入口模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "玄黄 · 个人工作台"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "玄黄"
+    },
+    {
+      "name": "reason_camera",
+      "value": "用于拍摄证件照、扫描文档"
+    },
+    {
+      "name": "reason_microphone",
+      "value": "用于录音、语音相关功能"
+    }
+  ]
+}

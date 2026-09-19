@@ -1,0 +1,4 @@
+# 玄黄客户端混淆规则
+#
+# release 构建当前未开启混淆（entry/build-profile.json5 里 enable = false），
+# 此文件仅作占位，保持与 DevEco 模板一致。后续要开混淆时把 enable 改为 true 再按需加规则。

@@ -204,80 +204,152 @@ def write_assetlinks(t: paramiko.Transport, cert_sha: str, cfg: dict) -> None:
     write_remote(t, assetlinks, cfg["web_assetlinks_path"])
 
 
+def _version_of(filename: str) -> str:
+    """从文件名取版本号：yexingchen-2.1.0.apk -> 2.1.0"""
+    stem = os.path.splitext(filename)[0]
+    return stem.split("-")[-1] if "-" in stem else stem
+
+
+def _human_size(n: int) -> str:
+    """字节数转可读体积。"""
+    if n >= 1024 * 1024:
+        return f"{n / 1024 / 1024:.1f} MB"
+    return f"{max(1, round(n / 1024))} KB"
+
+
+def _size_of(t: paramiko.Transport, path: str) -> str:
+    """取远端文件体积；取不到返回空串（页面上就不显示体积）。"""
+    raw = run(t, f"stat -c %s {path} 2>/dev/null")
+    try:
+        return _human_size(int(raw))
+    except (ValueError, TypeError):
+        return ""
+
+
+def find_hap(t: paramiko.Transport, download_dir: str) -> tuple[str, str]:
+    """取下载目录里最新的 .hap，返回 (文件名, SHA-256)；没有则返回两个空串。"""
+    listing = run(t, f"ls -1t {download_dir}/*.hap 2>/dev/null")
+    haps = [p.strip() for p in listing.splitlines() if p.strip().endswith(".hap")]
+    if not haps:
+        return "", ""
+    return os.path.basename(haps[0]), run(t, f"sha256sum {haps[0]}").split()[0]
+
+
+def _steps(summary: str, items: list) -> str:
+    """原生 <details> 折叠步骤块，不依赖 JS。"""
+    lis = "".join(f"<li>{i}</li>" for i in items)
+    return (
+        f'<details class="dl-steps"><summary>{summary}</summary>'
+        f'<ol class="dl-ol">{lis}</ol></details>'
+    )
+
+
 def write_download_page(t: paramiko.Transport, apk_filename: str, sha256: str, cfg: dict) -> None:
-    """生成多平台下载页：Android 可下载；鸿蒙 / 苹果 先留入口（敬请期待）。
+    """生成多平台下载页。
 
-    后续接入新平台时，只需把对应平台的 status 从 soon 改成 ready，
-    并补上 href / 版本 / 校验值即可。
+    - Android / 鸿蒙 4 及以下 → 直接下 APK。
+    - 鸿蒙 NEXT → 下载目录里存在 .hap 就显示下载按钮，否则给「待构建」+ 浏览器添加到桌面的过渡用法。
+    - iOS → 无 Apple 开发者账号无法分发 IPA，统一走 Safari「添加到主屏幕」。
+
+    接鸿蒙包时**不需要改这里**：把 .hap 丢进下载目录，本函数会自动识别并把它变成「可下载」。
     """
-    platforms = [
-        {
-            "key": "android",
-            "name": "Android",
-            "desc": "安卓手机 / 平板",
-            "status": "ready",
-            "href": f"/download/{apk_filename}",
-            "version": apk_filename.replace(".apk", "").split("yexingchen-")[-1],
-            "extra": sha256,
-            "note": "兼容鸿蒙 4（APK 方式安装）",
-        },
-        {
-            "key": "harmony",
-            "name": "HarmonyOS",
-            "desc": "鸿蒙 NEXT（HAP 包）",
-            "status": "soon",
-            "href": "",
-            "version": "",
-            "extra": "",
-            "note": "正在适配，敬请期待",
-        },
-        {
-            "key": "ios",
-            "name": "iOS",
-            "desc": "iPhone / iPad",
-            "status": "soon",
-            "href": "",
-            "version": "",
-            "extra": "",
-            "note": "正在适配，敬请期待",
-        },
-    ]
+    download_dir = os.path.dirname(cfg["web_download_page"])
+    label = cfg["app_label"]
+    host = cfg["web_host"]
 
-    cards = []
-    for p in platforms:
-        ready = p["status"] == "ready"
-        if ready:
-            action = (
-                f'<a class="dl-btn" href="{p["href"]}">立即下载</a>'
-                f'<div class="dl-hash">SHA-256 {p["extra"]}</div>'
-            )
-            badge = '<span class="badge badge-ok">可下载</span>'
-        else:
-            action = '<span class="dl-btn dl-btn-disabled">敬请期待</span>'
-            badge = '<span class="badge badge-soon">即将上线</span>'
-        ver = f'<span class="dl-ver">v{p["version"]}</span>' if p["version"] else ''
-        cards.append(
-            f'<section class="card{" card-ready" if ready else ""}">'
-            f'<header class="card-head">'
-            f'<span class="p-name">{p["name"]}</span>{badge}{ver}'
-            f'</header>'
-            f'<p class="p-desc">{p["desc"]}</p>'
-            f'<p class="p-note">{p["note"]}</p>'
-            f'{action}'
-            f'</section>'
+    hap_filename, hap_sha = find_hap(t, download_dir)
+    apk_version = _version_of(apk_filename)
+    apk_size = _size_of(t, f"{download_dir}/{apk_filename}")
+    apk_suffix = f"（{apk_size}）" if apk_size else ""
+
+    # ---------------- 卡片 1：Android · 鸿蒙 4 ----------------
+    android_steps = _steps("查看安装步骤", [
+        "在系统设置里允许「外部来源应用」安装（鸿蒙 4 的路径是 设置 → 安全）",
+        "打开下载好的 APK，按提示允许本次安装",
+        f"桌面出现「{label}」图标即完成",
+    ])
+    android_card = (
+        '<section class="card card-ready">'
+        '<header class="card-head"><span class="p-name">Android · 鸿蒙 4</span>'
+        '<span class="badge badge-ok">可下载</span>'
+        f'<span class="dl-ver">v{apk_version}</span></header>'
+        '<p class="p-desc">安卓手机 / 平板</p>'
+        '<p class="p-note">鸿蒙 4 及以下内核同为 AOSP，装这个 APK 即可</p>'
+        f'<a class="dl-btn" href="/download/{apk_filename}">下载 APK{apk_suffix}</a>'
+        f'<div class="dl-hash">SHA-256 {sha256}</div>'
+        f'{android_steps}'
+        '</section>'
+    )
+
+    # ---------------- 卡片 2：鸿蒙 NEXT ----------------
+    if hap_filename:
+        hap_version = _version_of(hap_filename)
+        hap_size = _size_of(t, f"{download_dir}/{hap_filename}")
+        hap_suffix = f"（{hap_size}）" if hap_size else ""
+        harmony_steps = _steps("查看安装步骤", [
+            "在手机上打开下载好的 HAP 文件",
+            "按提示允许安装来自此来源的应用",
+            f"桌面出现「{label}」图标即完成",
+        ])
+        harmony_card = (
+            '<section class="card card-ready">'
+            '<header class="card-head"><span class="p-name">HarmonyOS NEXT</span>'
+            '<span class="badge badge-ok">可下载</span>'
+            f'<span class="dl-ver">v{hap_version}</span></header>'
+            '<p class="p-desc">鸿蒙 5.0+（纯血鸿蒙）</p>'
+            '<p class="p-note">专用 HAP 安装包，鸿蒙 4 请勿使用</p>'
+            f'<a class="dl-btn" href="/download/{hap_filename}">下载 HAP{hap_suffix}</a>'
+            f'<div class="dl-hash">SHA-256 {hap_sha}</div>'
+            f'{harmony_steps}'
+            '</section>'
         )
+    else:
+        harmony_fallback = _steps("查看临时用法", [
+            f'用鸿蒙自带浏览器打开 <b>{host}</b>',
+            '点右上角菜单 →「添加到桌面」',
+            f'桌面出现「{label}」图标，点击即进入',
+        ])
+        harmony_card = (
+            '<section class="card">'
+            '<header class="card-head"><span class="p-name">HarmonyOS NEXT</span>'
+            '<span class="badge badge-soon">待构建</span></header>'
+            '<p class="p-desc">鸿蒙 5.0+（纯血鸿蒙）</p>'
+            '<p class="p-note">鸿蒙 NEXT 不再兼容 APK，需要单独的 HAP 包，目前尚未构建</p>'
+            f'{harmony_fallback}'
+            '</section>'
+        )
+
+    # ---------------- 卡片 3：iOS ----------------
+    ios_steps = _steps("查看安装步骤", [
+        f'用 <b>Safari</b> 打开 <b>{host}</b>（微信内置浏览器不行）',
+        '点屏幕底部中间的「分享」按钮',
+        '在列表里选「添加到主屏幕」',
+        f'点右上角「添加」→ 桌面出现「{label}」图标',
+    ])
+    ios_card = (
+        '<section class="card card-ready">'
+        '<header class="card-head"><span class="p-name">iOS</span>'
+        '<span class="badge badge-ok">添加到主屏幕</span></header>'
+        '<p class="p-desc">iPhone / iPad</p>'
+        '<p class="p-note">免 App Store，加进主屏幕后全屏运行，与 App 无异</p>'
+        f'{ios_steps}'
+        '<p class="p-tiny">iOS 分发 IPA 需要 Apple 开发者账号（$99/年）与 Mac 打包，'
+        '故未提供安装包；用「添加到主屏幕」即可获得同样的体验。</p>'
+        '</section>'
+    )
+
+    cards = android_card + harmony_card + ios_card
 
     page = f"""<!DOCTYPE html>
 <html lang="zh-CN"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{cfg['app_label']} · 手机软件下载</title>
+<title>{label} · 手机软件下载</title>
 <style>
   :root {{
     --bg: #fafafa; --surface: #ffffff; --line: rgba(24,24,27,.10);
     --text: #18181b; --text2: #52525b; --text3: #a1a1aa;
     --accent: #5b6ae0; --accent-faint: rgba(91,106,224,.10);
-    --danger: #dc2626;
   }}
   @media (prefers-color-scheme: dark) {{
     :root {{
@@ -295,6 +367,7 @@ def write_download_page(t: paramiko.Transport, apk_filename: str, sha256: str, c
   .wrap {{ max-width: 720px; margin: 0 auto; }}
   h1 {{ font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }}
   .sub {{ color: var(--text2); font-size: 13px; margin: 0 0 28px; }}
+  .sub code {{ font-size: 12px; }}
   .card {{
     background: var(--surface); border: 1px solid var(--line);
     border-radius: 14px; padding: 18px 20px; margin-bottom: 14px;
@@ -302,30 +375,33 @@ def write_download_page(t: paramiko.Transport, apk_filename: str, sha256: str, c
   .card-ready {{ box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px rgba(0,0,0,.06); }}
   .card-head {{ display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }}
   .p-name {{ font-size: 16px; font-weight: 650; }}
-  .badge {{ font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }}
+  .badge {{ font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; white-space: nowrap; }}
   .badge-ok {{ background: var(--accent-faint); color: var(--accent); }}
   .badge-soon {{ background: rgba(150,150,150,.14); color: var(--text3); }}
   .dl-ver {{ font-size: 11px; color: var(--text3); margin-left: auto; font-variant-numeric: tabular-nums; }}
   .p-desc {{ font-size: 13px; color: var(--text2); margin: 0 0 2px; }}
   .p-note {{ font-size: 12px; color: var(--text3); margin: 0 0 14px; }}
+  .p-tiny {{ font-size: 11.5px; color: var(--text3); margin: 12px 0 0; }}
   .dl-btn {{
     display: block; text-align: center; padding: 12px; border-radius: 10px;
     background: var(--accent); color: #fff; text-decoration: none;
     font-weight: 600; font-size: 14px; transition: opacity .15s;
   }}
   .dl-btn:hover {{ opacity: .9; }}
-  .dl-btn-disabled {{
-    background: transparent; color: var(--text3);
-    border: 1px dashed var(--line); cursor: not-allowed; font-weight: 500;
-  }}
   .dl-hash {{
     font-size: 10px; color: var(--text3); word-break: break-all;
     margin-top: 8px; font-family: ui-monospace, Menlo, Consolas, monospace;
   }}
-  .steps {{ margin-top: 28px; }}
-  .steps h2 {{ font-size: 13px; color: var(--text2); font-weight: 600; margin: 0 0 8px; }}
-  .steps ol {{ margin: 0; padding-left: 20px; color: var(--text2); font-size: 13px; }}
-  .steps li {{ margin-bottom: 4px; }}
+  .dl-steps {{ margin-top: 14px; }}
+  .dl-steps summary {{
+    font-size: 12.5px; color: var(--accent); cursor: pointer;
+    list-style: none; user-select: none;
+  }}
+  .dl-steps summary::-webkit-details-marker {{ display: none; }}
+  .dl-steps summary::before {{ content: "▸ "; }}
+  .dl-steps[open] summary::before {{ content: "▾ "; }}
+  .dl-ol {{ margin: 8px 0 0; padding-left: 20px; color: var(--text2); font-size: 12.5px; }}
+  .dl-ol li {{ margin-bottom: 3px; }}
   .tip {{
     margin-top: 20px; padding: 12px 14px; border-radius: 10px;
     background: var(--accent-faint); color: var(--text2); font-size: 12.5px;
@@ -333,22 +409,13 @@ def write_download_page(t: paramiko.Transport, apk_filename: str, sha256: str, c
   .tip a {{ color: var(--accent); }}
 </style></head><body>
 <div class="wrap">
-  <h1>{cfg['app_label']} · 手机软件</h1>
-  <p class="sub">选择你的设备平台下载安装。包名 <code>{cfg['package_id']}</code></p>
+  <h1>{label} · 手机软件</h1>
+  <p class="sub">按设备选择对应方式安装。包名 <code>{cfg['package_id']}</code></p>
 
-  {''.join(cards)}
-
-  <div class="steps">
-    <h2>安装步骤（Android）</h2>
-    <ol>
-      <li>首次下载需在系统设置中允许「外部来源应用」安装</li>
-      <li>打开下载好的 APK，按提示允许本次安装</li>
-      <li>桌面出现「{cfg['app_label']}」图标即安装完成</li>
-    </ol>
-  </div>
+  {cards}
 
   <div class="tip">
-    App 打开的就是 <a href="/">{cfg['web_host']}</a>，站点更新无需重装客户端。
+    App 打开的就是 <a href="/">{host}</a>，站点更新无需重装客户端。
   </div>
 </div>
 </body></html>
