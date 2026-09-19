@@ -18,9 +18,6 @@
         <span>返回</span>
       </button>
       <div class="cdd-top-actions">
-        <el-button size="small" circle :type="item?.in_home ? 'primary' : 'default'" @click="toggleHome" title="首页展示">
-          🏠
-        </el-button>
         <el-button size="small" circle @click="openEdit" title="编辑">✏️</el-button>
         <el-button size="small" circle type="danger" @click="doDelete" title="删除">🗑️</el-button>
       </div>
@@ -33,9 +30,6 @@
 
     <!-- 主内容 -->
     <div v-else-if="item" class="cdd-content">
-      <!-- 图标 -->
-      <div class="cdd-icon">{{ item.icon || '📅' }}</div>
-
       <!-- 标题 -->
       <h1 class="cdd-title">{{ item.title }}</h1>
 
@@ -96,7 +90,6 @@
         </el-form-item>
         <el-form-item label="外观">
           <div style="display:flex;gap:8px">
-            <el-input v-model="form.icon" placeholder="emoji" style="width:100px" />
             <el-input v-model="form.color" placeholder="#3db8b0" style="width:120px">
               <template #prepend>
                 <div class="cdd-color-swatch" :style="{ background: form.color || '#3db8b0' }"></div>
@@ -249,12 +242,6 @@ async function load() {
   } finally {
     loaded.value = true
   }
-}
-
-async function toggleHome() {
-  await updateCountdown(item.value.id, { in_home: !item.value.in_home })
-  item.value.in_home = !item.value.in_home
-  ElMessage.success(item.value.in_home ? '已加入首页' : '已从首页移除')
 }
 
 function openEdit() {
@@ -433,11 +420,6 @@ onMounted(load)
   to { opacity: 1; transform: translateY(0); }
 }
 
-.cdd-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
-}
 .cdd-title {
   font-size: 22px;
   font-weight: 600;

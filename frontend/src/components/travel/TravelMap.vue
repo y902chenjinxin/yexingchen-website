@@ -69,12 +69,6 @@
           <!-- 九段线 / 南海主体内 -->
           <path v-if="jdD" class="tm-prov jd" :d="jdD" fill="none" stroke="rgba(127,168,163,.35)" stroke-width="1"/>
 
-          <!-- 同程连线（辉光先、核心后） -->
-          <template v-for="l in tripLines" :key="l.id">
-            <path class="tm-line-glow" :class="{ on: activeTripId === l.id }" :d="l.d"/>
-            <path class="tm-line" :class="{ on: activeTripId === l.id }" :d="l.d"/>
-          </template>
-
           <!-- 城市脚印标记（缩小到与城市对齐的小图标，避免盖住省份） -->
           <g v-for="pt in dots" :key="pt.key">
             <g
@@ -93,19 +87,11 @@
         </g>
       </svg>
 
-      <!-- 南海诸岛 mini-map（右下角玻璃窗） -->
-      <div class="tm-mini" :aria-hidden="true" :style="{ transform: `translate(-12px,-12px) scale(${view.s})` }">
-        <svg :viewBox="`0 0 ${mW} ${mH}`" class="tm-mini-svg">
-          <path v-for="d in miniD" :key="d" :d="d" fill="none" stroke="rgba(127,168,163,.6)" stroke-width="1"/>
-        </svg>
-      </div>
-
       <!-- 图例 -->
       <div class="tm-legend">
         <span class="tl-k"><i class="tl-sq on"></i>足迹省份</span>
         <span class="tl-k"><i class="tl-sq"></i>未去过</span>
         <span class="tl-k"><i class="tl-dot"></i>城市足迹</span>
-        <span class="tl-k"><i class="tl-line-ic"></i>行程连线</span>
       </div>
 
       <!-- 省份筛选 chip -->
@@ -354,49 +340,6 @@ const dots = computed(() => {
     return t && t.cities && t.cities.some((c) => c.province === dr)
   })
 })
-const tripLines = computed(() => {
-  if (!geo.value) return []
-  const dr = props.drillProvince
-  const groups = {}
-  for (const p of props.points) {
-    if (p.lon == null || p.lat == null) continue
-    if (dr) {
-      const t = props.travels.find((x) => x.id === p.tripId)
-      if (!(t && t.cities && t.cities.some((c) => c.province === dr))) continue
-    }
-    (groups[p.tripId] = groups[p.tripId] || []).push({ seq: p.seq, lon: p.lon, lat: p.lat })
-  }
-  const lines = []
-  for (const [id, arr] of Object.entries(groups)) {
-    arr.sort((a, b) => a.seq - b.seq)
-    if (arr.length < 2) continue
-    const pts = arr.map((c) => project(c.lon, c.lat))
-    lines.push({ id: Number(id), d: smoothD(pts) })
-  }
-  return lines
-})
-function smoothD(pts) {
-  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1], mx = ((a[0] + b[0]) / 2).toFixed(1), my = ((a[1] + b[1]) / 2).toFixed(1)
-    d += ` Q${a[0].toFixed(1)} ${a[1].toFixed(1)} ${mx} ${my}`
-  }
-  const l = pts[pts.length - 1]
-  d += ` L${l[0].toFixed(1)} ${l[1].toFixed(1)}`
-  return d
-}
-
-/* ---------- 南海 mini-map ---------- */
-const mW = 96, mH = 84
-const MINI = { minLon: 108, maxLon: 124, minLat: 2, maxLat: 28 }
-const miniD = computed(() => {
-  if (!geo.value || !geo.value.jd.length) return []
-  const mproj = (lo, la) => [((lo - MINI.minLon) / (MINI.maxLon - MINI.minLon)) * mW, ((MINI.maxLat - la) / (MINI.maxLat - MINI.minLat)) * mH]
-  return geo.value.jd.map((rings) => rings.map((ring) => ring.map(([lo, la], i) => {
-    const [x, y] = mproj(lo, la)
-    return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1)
-  }).join(' ') + ' Z').join(' '))
-})
 
 /* ---------- Hover 浮卡 ---------- */
 const card = reactive({ x: 0, y: 0 })
@@ -459,16 +402,6 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 .tm-prov.on { stroke: rgba(103,216,203,.95); stroke-width: .9; filter: drop-shadow(0 0 11px rgba(84,198,182,.8)); }
 .tm-prov.jd { filter: none; }
 
-/* 连线 */
-.tm-line-glow { fill: none; stroke: rgba(87,184,196,.35); stroke-width: 3.2; filter: blur(3px);
-  opacity: .5; transition: opacity .3s; vector-effect: non-scaling-stroke; }
-.tm-line-glow.on { opacity: .85; stroke: rgba(103,216,203,.7); }
-.tm-line { fill: none; stroke: rgba(87,184,196,.85); stroke-width: 1.2; vector-effect: non-scaling-stroke;
-  stroke-dasharray: 5 6; opacity: .75; transition: opacity .3s, stroke .3s; }
-.tm-line.on { opacity: 1; stroke: #54c6b6; }
-.tm-line:not(.on) { animation: flow 1.1s linear infinite; }
-@keyframes flow { to { stroke-dashoffset: -11; } }
-
 /* 脚印标记 */
 .tm-dot { fill: url(#tm-footg); cursor: pointer; transform-origin: 0 0; transition: fill .25s, filter .25s;
   stroke: rgba(10,15,21,.55); stroke-width: .7; paint-order: stroke; }
@@ -481,14 +414,6 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
   100% { transform: scale(1.25); opacity: .85; }
 }
 
-/* mini-map */
-.tm-mini { position: absolute; right: 0; top: 0; z-index: 3; transform-origin: top right;
-  padding: 6px; border-radius: 12px;
-  background: rgba(16,22,29,.72); backdrop-filter: blur(8px);
-  border: 1px solid rgba(127,168,163,.35); opacity: .85; transition: opacity .25s; }
-.tm-mini:hover { opacity: 1; }
-.tm-mini-svg { display: block; width: 96px; height: 84px; }
-
 /* 图例 */
 .tm-legend { position: absolute; left: 12px; bottom: 10px; z-index: 3; display: flex; flex-wrap: wrap; gap: 12px;
   padding: 7px 14px; border-radius: 999px;
@@ -498,8 +423,6 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 .tl-sq { width: 10px; height: 10px; border-radius: 3px; background: rgba(120,135,145,.16); border: 1px solid rgba(127,168,163,.5); }
 .tl-sq.on { background: rgba(127,168,163,.7); box-shadow: 0 0 5px rgba(127,168,163,.7); }
 .tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lj-dai, #7FA8A3); box-shadow: 0 0 4px var(--lj-dai, #7FA8A3); }
-.tl-line-ic { width: 16px; height: 3px; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, rgba(127,168,163,.9), transparent); }
 
 /* 筛选 chip */
 .tm-chip { position: absolute; right: 120px; bottom: 14px; z-index: 3; display: inline-flex; align-items: center; gap: 8px;
@@ -525,7 +448,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 .tc-trip i { width: 5px; height: 5px; border-radius: 50%; background: var(--lj-ochre, #C7A96B); flex: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .tm-line:not(.on), .tm-dot.pulse { animation: none; }
+  .tm-dot.pulse { animation: none; }
   .tm-card { animation: none; }
 }
 </style>

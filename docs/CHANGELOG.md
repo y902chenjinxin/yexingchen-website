@@ -1,3 +1,23 @@
+## [v2.35.2] - 2026-09-19
+
+### 倒计时/足迹地图界面精简（SW `xuanhuang-v129`）
+
+User 集中反馈三项视觉冗余，本轮一并精简：**① 倒计时卡片隐藏📅日历图标与🏠"取消首页展示"按钮**（卡片左上角的日历图与悬停时右上角出现的房子图均遮视线、多余），并把卡片上的天数数字改为**垂直居中显示**（之前紧贴顶部，与右上角按钮区上下交叠）；**② 倒计时详情页同步隐藏日历图标**，只保留标题/大数字/返回/编辑/删除；**③ 足迹地图删除行程连线与右上角小地图**——连线只是同色细线、辅助信息量为零反而遮盖城市标记；小地图是冗余缩略图，遮挡地图右上方视野。地图图例同步收敛为三项（足迹省份/未去过/城市足迹）。
+
+**实现要点**：
+- `frontend/src/views/CountdownsView.vue`：删 `.cd-icon` 模板与对应 CSS；删 `.cd-card-actions` 内🏠按钮及 `toggleHome()` 函数；改 `.cd-card-body` `justify-content: space-between`→`flex-end`，`.cd-card-top` 加 `flex:1` + `align-items:center` + `justify-content:center` 让数字占据剩余高度并居中。`.cd-days` 字号 28→34px 与桌面更协调。
+- `frontend/src/views/CountdownDetailView.vue`：删 `.cdd-icon`（顶部📅）模板与孤儿 CSS；同步移除顶部操作栏的🏠按钮与 `toggleEdit()` 外多余的 `toggleHome()`。**手机端** `.cd-card-body` 在 `mobile-native-glass.css` 改为 `position: absolute; inset: 0` 以继承桌面 Flexbox 居中布局（避免移动端数字贴底/不居中）。
+- `frontend/src/components/travel/TravelMap.vue`：删 `tm-line`/`tm-line-glow` 两个 `<path>`、`<defs>` 内连线渐变；删 `tm-mini` 整个右上角小地图 SVG 与对应 `miniD` 计算属性；删 `tripLines` 计算属性与 `smoothD` 工具函数；图例 DOM 收敛为三项。CSS 删除连线动画 `tm-line-pulse` 与小地图 `tm-mini*` 样式块。
+
+**部署/验证**：
+- SW `v128→v129`；`npx vite build --outDir dist2` 全新构建核验 bundle 已不含 `取消首页展示/行程连线` 字符串、保留 `足迹省份/cd-card-top` 结构 → 替换 dist → `deploy_frontend.py`（220 文件、home=200、服务端 sw.js 已 `xuanhuang-v129`）。
+- **真实浏览器取证 PASS**（Playwright 真 chromium、admin@yexingchen.cn 登录、清除旧 SW 后再访问）：倒计时列表 `countdown-new.png` 卡顶无📅、卡内数字垂直居中；hover `countdown-new-hover.png` 右上角仅显示✏️+🗑️两按钮无🏠；详情 `countdown-detail-new.png` 仅标题+大数字+返回/编辑/删除；足迹 `travels-new.png` 城市标记之间无连线、右上角无小地图、左下图例三项；`navigator.serviceWorker.controller?.scriptURL = https://yexingchen.cn/sw.js`、SW 状态 activated。
+- 经验：服务器实际分发新代码（curl 已验），但浏览器代理首次仍显示旧界面——根因是旧 SW 缓存未失效；规范流程应是「先在 DevTools 调 `unregister()`+`caches.delete()` 再访问」。
+
+无后端变更；测试/凭证临时文件（`%TEMP%\cd_verify_note.txt` 等）已清；git 提交并推送。
+
+---
+
 ## [v2.35.1] - 2026-09-19
 
 ### 证件照后端化收尾：模型入库 / 移除 onnxruntime-web / 清 nginx COEP 与 dist 残留

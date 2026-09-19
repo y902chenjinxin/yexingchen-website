@@ -42,7 +42,6 @@
               <!-- 内容 -->
               <div class="cd-card-body">
                 <div class="cd-card-top">
-                  <span class="cd-icon">{{ item.icon || '📅' }}</span>
                   <span class="cd-days" :style="{ color: item.color || 'var(--xiu-primary)' }">
                     {{ item.days_left }}
                   </span>
@@ -65,15 +64,6 @@
 
               <!-- 操作按钮 -->
               <div class="cd-card-actions" @click.stop>
-                <el-button
-                  size="small"
-                  circle
-                  :type="item.in_home ? 'primary' : 'default'"
-                  :title="item.in_home ? '取消首页展示' : '首页展示'"
-                  @click.stop="toggleHome(item)"
-                >
-                  🏠
-                </el-button>
                 <el-button size="small" circle title="编辑" @click.stop="openDialog(item)">
                   ✏️
                 </el-button>
@@ -444,12 +434,6 @@ async function doDelete(item) {
   await load()
 }
 
-// 首页展示切换
-async function toggleHome(item) {
-  await updateCountdown(item.id, { in_home: !item.in_home })
-  await load()
-}
-
 // 跳转详情
 function goDetail(item) {
   router.push(`/tool/countdown/${item.id}`)
@@ -552,22 +536,21 @@ onMounted(load)
   z-index: 2;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 14px;
   background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.55) 100%);
 }
 
+/* 数字独占剩余空间并居中，避开右上角操作按钮 */
 .cd-card-top {
+  flex: 1;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-.cd-icon {
-  font-size: 20px;
-  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
 }
 .cd-days {
-  font-size: 28px;
+  font-size: 34px;
   font-weight: 700;
   font-family: var(--font-serif);
   line-height: 1;
