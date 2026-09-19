@@ -468,15 +468,8 @@ function formatDuration(sec) {
 .pager-wrap :deep(.el-pagination) { --el-pagination-bg-color: transparent; }
 
 /* 操作列：左对齐排列，各行按钮纵向对齐不散乱 */
-.row-ops {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-/* 固定按钮宽度，避免「设为默认 / 默认中」宽度差异导致后续按钮错位 */
+/* 布局（flex/nowrap/gap/左对齐）由 desktop-product.css 的 `.el-table .row-ops` 统一提供；
+   这里只保留乐库特有的：固定按钮宽度，避免「设为默认 / 默认中」宽度差异导致后续按钮错位 */
 .row-ops :deep(.el-button) { min-width: 56px; margin-left: 0 !important; }
 .row-ops .bgm-on { min-width: 56px; justify-content: center; }
 .bgm-on { flex-shrink: 0; }

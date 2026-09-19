@@ -431,10 +431,10 @@ body.login-route #app:not(.is-mobile) { padding-left: 0 !important; }
   max-width: none !important;
 }
 
-/* 管理后台表格「操作」列：按钮常显、单行、居左。
-   不用 Flex + nowrap 的话，列宽一紧按钮会折成两行、行高被撑开，看起来像"错位"。
-   作用域限定 .admin-page，避免影响音乐等模块自己的 .row-ops。 */
-#app:not(.is-mobile) .admin-page .el-table .row-ops {
+/* 表格「操作」列：按钮常显、单行、居左。
+   不用 Flex + nowrap 的话，列宽一紧按钮会折成两行、行高被撑开，看起来像"错位"
+   （管理后台角色表、音乐库、工具列表共用同一套）。 */
+#app:not(.is-mobile) .el-table .row-ops {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -443,7 +443,7 @@ body.login-route #app:not(.is-mobile) { padding-left: 0 !important; }
   white-space: nowrap;
 }
 /* Element Plus 默认给相邻按钮加 margin-left，这里统一交给 gap 控制 */
-#app:not(.is-mobile) .admin-page .el-table .row-ops > .el-button + .el-button {
+#app:not(.is-mobile) .el-table .row-ops > .el-button + .el-button {
   margin-left: 0 !important;
 }
 

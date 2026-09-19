@@ -64,10 +64,15 @@
         <el-table-column label="上传时间" width="130">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" plain @click="openDialog(row)">编辑</el-button>
-            <el-button size="small" type="danger" :disabled="row.kind === 'builtin'" @click="handleDelete(row)">删除</el-button>
+            <!-- 使用＝打开工具本体（内置走模块路由 / 外链走站内详情内嵌页），
+                 与「编辑」区分开：以前只有编辑删除，没有任何使用入口 -->
+            <div class="row-ops">
+              <el-button size="small" type="primary" plain @click="go(row)">使用</el-button>
+              <el-button size="small" plain @click="openDialog(row)">编辑</el-button>
+              <el-button size="small" type="danger" plain :disabled="row.kind === 'builtin'" @click="handleDelete(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -175,9 +180,17 @@ async function doSearch() {
   page.value = 1
 }
 
+/* 使用（操作列入口）：
+   - 内置工具：url 就是站内路径（如 /finance），直接 push 对应模块
+   - 外链工具：进站内详情页 /tool/:id（详情页内嵌 iframe，并留「在新标签打开」兜底） */
 function go(item) {
-  if (item.kind === 'builtin') router.push(item.url)
-  else router.push('/tool/' + item.id)
+  if (item.kind === 'builtin') {
+    if (!item.url) { ElMessage.warning('该内置工具未配置路径'); return }
+    router.push(item.url)
+    return
+  }
+  if (!item.url) { ElMessage.warning('该工具未配置链接，先「编辑」补上'); return }
+  router.push('/tool/' + item.id)
 }
 
 function openDialog(item) {

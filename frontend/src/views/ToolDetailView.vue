@@ -31,21 +31,34 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import { useToolStore } from '@/stores/tool'
+import { getToolList } from '@/api/tool'
 
 const route = useRoute()
 const toolStore = useToolStore()
 
 const loaded = ref(false)
+const tool = ref(null)
 
-const tool = computed(() =>
-  toolStore.list.find((t) => String(t.id) === String(route.params.id))
-)
+async function resolveTool() {
+  await toolStore.fetchList({ enabled_only: 1, size: 100 })
+  let found = toolStore.list.find(t => String(t.id) === String(route.params.id))
+  if (!found) {
+    /* 兜底：管理页「使用」按钮可能指向已下架工具，而 store 里只有上架工具，
+       否则点使用会落到「工具不存在或不开放」。后端 /tools 对已登录用户本就返回全量
+       （含下架），所以这里不会引入额外的越权面。 */
+    try {
+      const res = await getToolList({ size: 500 })
+      found = (res.data?.list || []).find(t => String(t.id) === String(route.params.id))
+    } catch { /* 静默：确实不存在时仍展示「工具不存在或不开放」 */ }
+  }
+  tool.value = found || null
+}
 
-onMounted(() => { toolStore.fetchList({ enabled_only: 1, size: 100 }) })
+onMounted(resolveTool)
 </script>
 
 <style scoped>
