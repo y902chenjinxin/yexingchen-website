@@ -1,3 +1,19 @@
+## [v2.39.9] - 2026-09-21
+
+### 移除 AI 简报功能（反复报错且用户不需要）
+
+User：「点击刷新AI简报，报错，不行去除吧，我也不需要这个」。
+
+**改动**：
+- 从工作台移除 `<AiBriefCard>` 整段（原 Bento S3 独占块）
+- 删除组件文件 `src/components/workbench/AiBriefCard.vue`
+- 清理相关 import 与 CSS（`.bento-s3` / `.ai-brief` 样式块）
+- 前后端均无 brief 残留引用
+
+SW `v159→v160`
+
+---
+
 ## [v2.39.2] - 2026-09-21
 
 ### 修复：AI 工具抽屉「退不出去了」

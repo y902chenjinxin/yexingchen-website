@@ -114,12 +114,7 @@
       </div>
     </section>
 
-    <!-- ============ Bento S3：AI 简报（独占大块）+ 自适应 ============ -->
-    <section v-if="moduleVisible.brief" class="bento-s3">
-      <AiBriefCard :summary="summary" />
-    </section>
-
-    <!-- ============ S4：资讯流 ============ -->
+    <!-- ============ S4：资讯流（v2.39.9 移除 AI 简报独占块，刷新反复报错）============ -->
     <div v-if="moduleVisible.feeds" class="wb-feedsbar">
       <WorkbenchFeedsBar :feeds="feeds" />
     </div>
@@ -131,7 +126,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MobileWorkbenchHome from '@/components/mobile/MobileWorkbenchHome.vue'
 import TrendBars from '@/components/dashboard/TrendBars.vue'
-import AiBriefCard from '@/components/workbench/AiBriefCard.vue'
 import WeatherCard from '@/components/workbench/WeatherCard.vue'
 import WorkbenchFeedsBar from '@/components/workbench/WorkbenchFeedsBar.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
@@ -414,14 +408,7 @@ onMounted(async () => {
 .tag-chip:hover { background: var(--dp-accent); color: var(--dp-bg, #000); }
 .tag-empty { color: var(--dp-text3); font-size: 12px; padding: 6px 0; }
 
-/* ===== S3：AI 简报独占大块 ===== */
-.bento-s3 { margin-bottom: 16px; }
-.bento-s3 :deep(.ai-brief) {
-  background: var(--dp-surface); border: 1px solid var(--dp-line); border-radius: 20px;
-  padding: 18px 22px; min-height: 110px; box-shadow: var(--dp-shadow);
-}
-
-/* ===== S4：资讯流 ===== */
+/* ===== S4：资讯流（v2.39.9 移除 AI 简报块）===== */
 .wb-feedsbar {}
 
 /* ===== 自适应 ===== */
