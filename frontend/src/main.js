@@ -23,6 +23,27 @@ import './assets/styles/desktop-product.css'
 
 const app = createApp(App)
 
+// 全局指令：v-click-outside="handler"
+// 点击绑定元素外部时触发 handler；忽略元素本身及其后代的事件。
+// 用于下拉菜单/弹层关闭；handler 仅在打开状态被调用即可（调用方自行判断当前是否打开）。
+app.directive('click-outside', {
+  mounted(el, binding) {
+    el.__clickOutsideHandler = (event) => {
+      if (!el.contains(event.target)) {
+        try { binding.value?.(event) } catch { /* swallow */ }
+      }
+    }
+    // 下一拍再挂监听，避免同一次点击「先 inside 再 outside」的竞态
+    setTimeout(() => document.addEventListener('pointerdown', el.__clickOutsideHandler, true), 0)
+  },
+  unmounted(el) {
+    if (el.__clickOutsideHandler) {
+      document.removeEventListener('pointerdown', el.__clickOutsideHandler, true)
+      delete el.__clickOutsideHandler
+    }
+  },
+})
+
 app.use(createPinia())
 app.use(router)
 

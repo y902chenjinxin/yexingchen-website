@@ -57,27 +57,71 @@
           </button>
         </div>
 
-        <!-- 第二排：模式 / 静音 / 关闭 -->
+        <!-- 第二排：模式（下拉）/ 静音 / 关闭 -->
         <div class="mfp-controls-2">
-          <button class="mfp-mode" @click="player.cyclePlayMode()" :title="modeTitle" :aria-label="`播放模式：${modeTitle}`">
-            <svg v-if="player.playMode === 'list'" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 7h10M7 12h10M7 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M17.5 7l2.2-2.2M19.7 4.8v2.2M17.5 17l2.2 2.2M19.7 19.2v-2.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
-            <svg v-else-if="player.playMode === 'single'" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 7h10M7 12h7M7 17h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              <circle cx="17.5" cy="12.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
-              <path d="M5 5l14 7-14 7z" fill="currentColor" opacity=".55"/>
-            </svg>
-            <svg v-else-if="player.playMode === 'shuffle'" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M16 4h4v4M20 4l-7 7M16 20h4v-4M20 20l-7-7M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-            </svg>
-            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 5v14l11-7z" fill="currentColor"/>
-              <path d="M5 5h2v14H5z" fill="currentColor"/>
-            </svg>
-            <span class="mfp-mode-label">{{ modeShort }}</span>
-          </button>
+          <div class="mfp-mode-wrap" v-click-outside="closeModeMenu">
+            <button
+              class="mfp-mode"
+              @click="toggleModeMenu"
+              :title="modeTitle"
+              :aria-label="`播放模式：${modeTitle}，点击选择`"
+              aria-haspopup="listbox"
+              :aria-expanded="modeMenuOpen"
+            >
+              <svg v-if="player.playMode === 'list'" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7h10M7 12h10M7 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M17.5 7l2.2-2.2M19.7 4.8v2.2M17.5 17l2.2 2.2M19.7 19.2v-2.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+              <svg v-else-if="player.playMode === 'single'" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7h10M7 12h7M7 17h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="17.5" cy="12.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M5 5l14 7-14 7z" fill="currentColor" opacity=".55"/>
+              </svg>
+              <svg v-else-if="player.playMode === 'shuffle'" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16 4h4v4M20 4l-7 7M16 20h4v-4M20 20l-7-7M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 5v14l11-7z" fill="currentColor"/>
+                <path d="M5 5h2v14H5z" fill="currentColor"/>
+              </svg>
+              <span class="mfp-mode-label">{{ modeShort }}</span>
+            </button>
+            <transition name="mfpmenu">
+              <ul v-if="modeMenuOpen" class="mfp-mode-menu" role="listbox" aria-label="选择播放模式">
+                <li
+                  v-for="m in player.PLAY_MODES"
+                  :key="m"
+                  role="option"
+                  :aria-selected="player.playMode === m"
+                  :class="{ active: player.playMode === m }"
+                  @click="pickMode(m)"
+                >
+                  <span class="mfpmenu-ic">
+                    <svg v-if="m === 'list'" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M7 7h10M7 12h10M7 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      <path d="M17.5 7l2.2-2.2M19.7 4.8v2.2M17.5 17l2.2 2.2M19.7 19.2v-2.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                    <svg v-else-if="m === 'single'" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M7 7h10M7 12h7M7 17h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      <circle cx="17.5" cy="12.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+                      <path d="M5 5l14 7-14 7z" fill="currentColor" opacity=".55"/>
+                    </svg>
+                    <svg v-else-if="m === 'shuffle'" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M16 4h4v4M20 4l-7 7M16 20h4v-4M20 20l-7-7M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M7 5v14l11-7z" fill="currentColor"/>
+                      <path d="M5 5h2v14H5z" fill="currentColor"/>
+                    </svg>
+                  </span>
+                  <span class="mfpmenu-text">{{ MODE_LABEL[m].title }}</span>
+                  <svg v-if="player.playMode === m" class="mfpmenu-check" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </li>
+              </ul>
+            </transition>
+          </div>
           <button class="mfp-btn mfp-side" @click="player.toggleMute()" :aria-label="player.volume > 0 ? '静音' : '恢复音量'">
             <svg v-if="player.volume > 0" viewBox="0 0 24 24" class="mfp-ic" aria-hidden="true"><path d="M3 10v4h4l5 5V5l-5 5H3z"/></svg>
             <svg v-else viewBox="0 0 24 24" class="mfp-ic" aria-hidden="true"><path d="M3 10v4h4l5 5V5l-5 5H3z"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -115,13 +159,22 @@ const modeLabel = computed(() => {
 })
 
 const MODE_LABEL = {
-  list: { short: '列表循环', title: '列表循环（点击切换模式）' },
-  single: { short: '单曲循环', title: '单曲循环（点击切换模式）' },
-  shuffle: { short: '随机播放', title: '随机播放（点击切换模式）' },
-  once: { short: '单曲一次', title: '单曲一次（点击切换模式）' },
+  list: { short: '列表循环', title: '列表循环' },
+  single: { short: '单曲循环', title: '单曲循环' },
+  shuffle: { short: '随机播放', title: '随机播放' },
+  once: { short: '单曲一次', title: '单曲一次' },
 }
 const modeShort = computed(() => MODE_LABEL[player.playMode]?.short || '列表循环')
 const modeTitle = computed(() => MODE_LABEL[player.playMode]?.title || '列表循环')
+
+/* ---------- 播放模式下拉菜单 ---------- */
+const modeMenuOpen = ref(false)
+function toggleModeMenu() { modeMenuOpen.value = !modeMenuOpen.value }
+function closeModeMenu() { modeMenuOpen.value = false }
+function pickMode(m) {
+  player.setPlayMode(m)
+  modeMenuOpen.value = false
+}
 
 function close() {
   emit('update:modelValue', false)
@@ -243,6 +296,7 @@ function fmt(sec) {
 .mfp-step svg { width: 22px; height: 22px; fill: currentColor; }
 .mfp-step:disabled { opacity: 0.32; }
 .mfp-side { width: 48px; height: 48px; }
+.mfp-mode-wrap { position: relative; }
 .mfp-mode {
   display: inline-flex; align-items: center; gap: 6px;
   height: 40px; padding: 0 14px; border-radius: 20px;
@@ -252,7 +306,41 @@ function fmt(sec) {
 }
 .mfp-mode svg { width: 18px; height: 18px; }
 .mfp-mode:active { background: rgba(255, 255, 255, 0.14); }
+.mfp-mode[aria-expanded="true"] { background: rgba(255, 255, 255, 0.2); color: #fff; }
 .mfp-mode-label { line-height: 1; }
+
+/* 模式下拉菜单（移动端从按钮上方展开） */
+.mfp-mode-menu {
+  position: absolute;
+  left: 50%; bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  margin: 0; padding: 6px;
+  min-width: 200px;
+  list-style: none;
+  background: linear-gradient(160deg, rgba(26, 36, 44, 0.98), rgba(16, 24, 32, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  z-index: 5;
+}
+.mfp-mode-menu li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: rgba(220, 230, 240, 0.85);
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mfp-mode-menu li:active { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.mfp-mode-menu li.active { background: rgba(61, 127, 214, 0.22); color: #fff; }
+.mfpmenu-ic { display: inline-flex; width: 18px; height: 18px; flex-shrink: 0; color: currentColor; }
+.mfpmenu-text { flex: 1; min-width: 0; white-space: nowrap; }
+.mfpmenu-check { width: 16px; height: 16px; color: #4ade80; flex-shrink: 0; }
+.mfpmenu-enter-active, .mfpmenu-leave-active { transition: opacity .14s ease, transform .14s ease; }
+.mfpmenu-enter-from, .mfpmenu-leave-to { opacity: 0; transform: translate(-50%, 6px); }
 .mfp-qmeta {
   margin-top: 14px;
   font-size: 12px;
