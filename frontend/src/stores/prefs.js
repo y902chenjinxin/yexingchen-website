@@ -40,6 +40,8 @@ export const usePrefsStore = defineStore('prefs', () => {
   const petVisible = ref(false)
   // 主题覆盖：'auto'（跟随时间） | 'day'（恒亮） | 'night'（恒暗）
   const themeOverride = ref('auto')
+  // 工作台模块显隐（缺省全开，新用户/未登录不会因缺字段被隐藏）
+  const moduleVisible = ref({ habits: true, weather: true, feeds: true, brief: true })
   // 当前偏好归属的用户 id（null = 尚未绑定 / 未登录）
   const boundUid = ref(null)
 
@@ -48,6 +50,11 @@ export const usePrefsStore = defineStore('prefs', () => {
     // 只有显式存过 true 才显示；新用户/未登录默认 false
     petVisible.value = saved?.petVisible === true
     themeOverride.value = saved?.theme || 'auto'
+    // 用默认值兜底，只覆盖已存在的 key
+    moduleVisible.value = {
+      habits: true, weather: true, feeds: true, brief: true,
+      ...(saved?.moduleVisible || {}),
+    }
   }
 
   // 模块加载即同步 hydrate：先用上次登录用户的偏好，避免桌宠闪现
@@ -55,7 +62,7 @@ export const usePrefsStore = defineStore('prefs', () => {
   applyPrefs(lastUid ? Number(lastUid) : null)
 
   function persist() {
-    write(boundUid.value, { petVisible: petVisible.value, theme: themeOverride.value })
+    write(boundUid.value, { petVisible: petVisible.value, theme: themeOverride.value, moduleVisible: moduleVisible.value })
     try {
       localStorage.setItem(LAST_UID_KEY, boundUid.value == null ? '' : String(boundUid.value))
     } catch {
@@ -92,7 +99,14 @@ export const usePrefsStore = defineStore('prefs', () => {
     applyTheme(mode)
   }
 
-  return { petVisible, themeOverride, boundUid, bindUser, setPetVisible, togglePet, setTheme }
+  /** 工作台模块显示/隐藏（habits/weather/feeds/brief） */
+  function setModuleVisible(key, visible) {
+    if (!(key in moduleVisible.value)) return
+    moduleVisible.value = { ...moduleVisible.value, [key]: !!visible }
+    persist()
+  }
+
+  return { petVisible, themeOverride, moduleVisible, boundUid, bindUser, setPetVisible, togglePet, setTheme, setModuleVisible }
 })
 
 /** 按主题覆盖/时间应用 day|night 到 <html data-theme> */

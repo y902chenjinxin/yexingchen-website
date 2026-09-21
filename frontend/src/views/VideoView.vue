@@ -44,7 +44,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="!videoStore.loading && videoStore.list.length === 0" class="empty">暂无数据</div>
+      <EmptyState v-if="!videoStore.loading && videoStore.list.length === 0" size="sm" title="暂无视频" description="到管理后台上传视频，或稍后刷新重试" />
     </div>
 
     <!-- 上传弹窗 -->
@@ -108,6 +108,7 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'

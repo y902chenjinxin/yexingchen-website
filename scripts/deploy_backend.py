@@ -70,11 +70,18 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "_kb.py"),        f"{REMOTE_BASE}/backend/app/routers/workbench/_kb.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "tasks.py"),      f"{REMOTE_BASE}/backend/app/routers/workbench/tasks.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "dashboard.py"),  f"{REMOTE_BASE}/backend/app/routers/workbench/dashboard.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "brief.py"),      f"{REMOTE_BASE}/backend/app/routers/workbench/brief.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "habits.py"),     f"{REMOTE_BASE}/backend/app/routers/workbench/habits.py"),
+    (os.path.join(ROOT, "backend", "app", "models", "habits.py"),                   f"{REMOTE_BASE}/backend/app/models/habits.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "s0t1u2v3w4x5_habits.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/s0t1u2v3w4x5_habits.py"),
     # ---- 家庭助理（通讯录 / 待办 / 订阅）----
     (os.path.join(ROOT, "backend", "app", "models", "family.py"),        f"{REMOTE_BASE}/backend/app/models/family.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "contacts.py"),     f"{REMOTE_BASE}/backend/app/routers/contacts.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "subscriptions.py"), f"{REMOTE_BASE}/backend/app/routers/subscriptions.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "idphoto.py"),       f"{REMOTE_BASE}/backend/app/routers/idphoto.py"),
+    # ---- v2.36 升级新增 RSS 公开订阅源（F9）----
+    (os.path.join(ROOT, "backend", "app", "routers", "rss.py"),           f"{REMOTE_BASE}/backend/app/routers/rss.py"),
     (os.path.join(ROOT, "backend", "models", "modnet", "model-q.onnx"),    f"{REMOTE_BASE}/backend/models/modnet.onnx"),
     (os.path.join(ROOT, "backend", "app", "services", "family_reminder.py"), f"{REMOTE_BASE}/backend/app/services/family_reminder.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "m3n4o5p6q7r8_family_contacts_subscriptions.py"),

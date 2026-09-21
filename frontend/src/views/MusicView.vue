@@ -98,7 +98,7 @@
         </el-table-column>
       </el-table>
 
-      <div v-if="!musicStore.loading && musicStore.list.length === 0" class="empty">暂无数据</div>
+      <EmptyState v-if="!musicStore.loading && musicStore.list.length === 0" size="sm" title="暂无歌曲" description="到管理后台上传音乐，或稍后刷新重试" />
       <div v-else-if="!musicStore.loading" class="pager-wrap">
         <el-pagination
           background
@@ -174,12 +174,15 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
+import { useIsMobile } from '@/composables/useIsMobile'
 import { useMusicStore } from '@/stores/music'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 
+const isMobile = useIsMobile()
 const musicStore = useMusicStore()
 const player = usePlayerStore()
 const bgm = useBgmLibraryStore()
@@ -192,12 +195,14 @@ const uploadFileList = ref([])
 const uploadFile = ref(null)
 const uploadForm = ref({ title: '', artist: '', category: '', tags: '' })
 
-/* ---- 管理分页（客户端，默认10条） ---- */
+/* ---- 管理分页（客户端，默认10条；手机端已隐藏分页控件，故一次展示全量） ---- */
 const page = ref(1)
 const pageSize = ref(10)
-const pagedRows = computed(() =>
-  musicStore.list.slice((page.value - 1) * pageSize.value, page.value * pageSize.value)
-)
+const pagedRows = computed(() => {
+  const size = isMobile.value ? Math.max(musicStore.list.length, 1) : pageSize.value
+  const start = isMobile.value ? 0 : (page.value - 1) * size
+  return musicStore.list.slice(start, start + size)
+})
 function onSizeChange(sz) { pageSize.value = sz; page.value = 1 }
 function onPageChange(p) { page.value = p }
 

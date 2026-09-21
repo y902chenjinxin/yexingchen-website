@@ -12,7 +12,7 @@
     </router-view>
 
     <!-- 登录后全站常驻：桌面顶栏（悬浮）；移动端用独立沉浸式外壳，不显示 ✓ -->
-    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
+    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" @open-command-palette="cmdRef?.open?.()" />
 
     <!-- 登录后桌面端：左侧导航（默认展开，可收起，按玉简分组；顶栏不动） -->
     <DesktopSidebar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
@@ -22,6 +22,9 @@
 
     <!-- 登录后桌面端：AI 对话悬浮入口（每页常驻，替代原顶栏 AI 入口） -->
     <FloatingAiButton v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
+
+    <!-- 全局命令面板 ⌘K / Ctrl+K（登录后可用；移动端隐藏以免误触） -->
+    <CommandPalette v-if="auth.isLoggedIn && !isMobile" ref="cmdRef" />
 
     <!-- 登录后全站常驻桌宠（音乐岛内容列表页隐藏：桌宠固定右下会压住列表行/最后一张卡片） -->
     <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn && showWhale" />
@@ -51,6 +54,7 @@ import MobileTabBar from '@/components/MobileTabBar.vue'
 import MobileFullPlayer from '@/components/mobile/MobileFullPlayer.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
+import CommandPalette from '@/components/CommandPalette.vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 // WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
@@ -95,7 +99,45 @@ const showWhale = computed(() => {
 // 阻止内容闪现的画布（净画布，无开场动画）
 const showInitialLoading = ref(true)
 
+// 命令面板实例引用（顶栏按钮点击触发其 open()）
+const cmdRef = ref(null)
+
+// F5 全局键盘快捷键：g+字母（仿 GitHub 路由跳转）
+// 触发序列：按 g 后 1.5s 内按下字母，否则取消
+let gPressedAt = 0
+const G_ROUTES = {
+  w: '/workbench', n: '/notes', f: '/finance', t: '/tasks', l: '/tool',
+  m: '/music', c: '/tool/countdown', s: '/stocks', p: '/profile', d: '/diary',
+  r: '/travels', e: '/feeds',
+}
+function onGlobalKey(e) {
+  const t = e.target
+  const inField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
+  // 排除命令面板已开启（由 CommandPalette 内部处理）；也排除在输入控件里
+  const cmdOpen = cmdRef.value && cmdRef.value.open && cmdRef.value.open.value
+  if (inField || cmdOpen || e.metaKey || e.ctrlKey || e.altKey) return
+
+  if (gPressedAt && Date.now() - gPressedAt < 1500) {
+    const k = e.key.toLowerCase()
+    if (G_ROUTES[k]) {
+      e.preventDefault()
+      router.push(G_ROUTES[k])
+      gPressedAt = 0
+      return
+    }
+    if (k !== 'g') gPressedAt = 0
+  }
+  if (e.key.toLowerCase() === 'g' && !e.shiftKey) { gPressedAt = Date.now(); return }
+  // #6 键盘速记：任意页按 N（非输入态）→ 新建笔记
+  if (e.key.toLowerCase() === 'n' && !e.shiftKey) {
+    e.preventDefault()
+    router.push('/notes/new')
+  }
+}
+
 onMounted(async () => {
+  // 绑定 F5 全局快捷键
+  window.addEventListener('keydown', onGlobalKey)
   // 应用用户主题覆盖（默认跟随时间）
   applyTheme(prefs.themeOverride)
   if (auth.token) {

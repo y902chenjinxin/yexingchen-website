@@ -3,11 +3,36 @@
   <MobileWorkbenchHome v-if="isMobile" />
 
   <div v-else class="workbench-page">
+    <!-- S1 高级感视觉锚点：背景细网格 + 浮动光斑（不影响阅读，纯装饰） -->
+    <div class="wb-bg" aria-hidden="true">
+      <div class="wb-bg-grid"></div>
+      <div class="wb-bg-blob wb-bg-blob-1"></div>
+      <div class="wb-bg-blob wb-bg-blob-2"></div>
+      <div class="wb-bg-blob wb-bg-blob-3"></div>
+      <svg class="wb-bg-dots" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice">
+        <g fill="currentColor">
+          <circle cx="120" cy="80" r="1.2" />
+          <circle cx="320" cy="40" r="1" />
+          <circle cx="540" cy="120" r="1.4" />
+          <circle cx="720" cy="60" r="1" />
+          <circle cx="80" cy="260" r="1.2" />
+          <circle cx="420" cy="320" r="1.4" />
+          <circle cx="640" cy="240" r="1" />
+          <circle cx="200" cy="360" r="1.2" />
+        </g>
+      </svg>
+    </div>
+
     <!-- 顶栏品牌条（替代旧的"玉简 hero"） -->
     <section class="wb-hero">
       <div class="wb-eyebrow"><span>玄 黄 · 工 作 台</span></div>
       <h1 class="wb-title">把零散念头，沉淀为数据。</h1>
       <p class="wb-subtitle">今日 · 本月 · 累计，一目了然。</p>
+    </section>
+
+    <!-- 天气小部件（纯前端 / Open-Meteo，独立加载不阻塞主内容） -->
+    <section v-if="moduleVisible.weather" class="wb-wx">
+      <WeatherCard />
     </section>
 
     <!-- KPI 4 卡：倒计时 / 足迹 / 记账 / 笔记 -->
@@ -18,10 +43,11 @@
       <KpiTile label="笔记" :val="kpi.note_count" sub="最近 5 篇可编辑" @click="$router.push('/notes')" clickable />
     </section>
     <section v-else class="wb-kpi">
-      <KpiTile label="活跃倒计时" val="—" />
-      <KpiTile label="足迹省份" val="—" />
-      <KpiTile label="本月净流入" val="—" />
-      <KpiTile label="笔记" val="—" />
+      <div class="kpi kpi-skel" v-for="i in 4" :key="i">
+        <Skeleton type="block" width="40%" height="10px" radius="3px" />
+        <Skeleton type="block" width="56%" height="26px" radius="6px" />
+        <Skeleton type="block" width="70%" height="10px" radius="3px" />
+      </div>
     </section>
 
     <!-- 趋势图表 3 列：记账 30 天走势 + 倒计时 5 条 + 自选股 -->
@@ -70,6 +96,16 @@
           <li v-if="!kpi.travel.recent.length" class="cd-empty">还没有旅程记录</li>
         </ul>
       </div>
+    </section>
+
+    <!-- F4 AI 简报卡：单卡横幅，占满首行宽 -->
+    <section v-if="moduleVisible.brief" class="wb-brief">
+      <AiBriefCard :summary="summary" />
+    </section>
+
+    <!-- 习惯打卡横幅卡 -->
+    <section v-if="moduleVisible.habits" class="wb-habits">
+      <HabitsCard />
     </section>
 
     <!-- 笔记 + 自选股 + 任务 三栏 -->
@@ -121,7 +157,7 @@
     </section>
 
     <!-- 资讯流（保留原 workbench 信息流） -->
-    <div class="wb-body wb-feedsbar">
+    <div v-if="moduleVisible.feeds" class="wb-body wb-feedsbar">
       <WorkbenchFeedsBar :feeds="feeds" />
     </div>
 
@@ -140,10 +176,19 @@ import SiteFooter from '@/components/SiteFooter.vue'
 import WorkbenchFeedsBar from '@/components/workbench/WorkbenchFeedsBar.vue'
 import KpiTile from '@/components/dashboard/KpiTile.vue'
 import TrendBars from '@/components/dashboard/TrendBars.vue'
+import Skeleton from '@/components/Skeleton.vue'
+import AiBriefCard from '@/components/workbench/AiBriefCard.vue'
+import WeatherCard from '@/components/workbench/WeatherCard.vue'
+import HabitsCard from '@/components/workbench/HabitsCard.vue'
+import { usePrefsStore } from '@/stores/prefs'
 import { workbenchApi } from '@/api/workbench'
 import { feedsApi } from '@/api/feeds'
 
 const { isMobile } = useIsMobile()
+
+// 工作台模块显隐（个人中心可开关）
+const prefs = usePrefsStore()
+const moduleVisible = computed(() => prefs.moduleVisible)
 
 const loaded = ref(false)
 const summary = ref({})
@@ -193,15 +238,37 @@ function formatDate(s) {
 }
 
 onMounted(async () => {
+  // F6 离线快照：先恢复上次成功的 summary 到 UI（≤10 分钟内），立刻可读，再后台拉新数据合并
+  try {
+    const cached = localStorage.getItem('yx_wb_summary')
+    if (cached) {
+      const { ts, data } = JSON.parse(cached)
+      if (ts && Date.now() - ts < 10 * 60 * 1000 && data) {
+        summary.value = data
+        loaded.value = true
+      }
+    }
+    const cachedFeeds = localStorage.getItem('yx_wb_feeds')
+    if (cachedFeeds) {
+      const { ts, data } = JSON.parse(cachedFeeds)
+      if (ts && Date.now() - ts < 10 * 60 * 1000 && data) feeds.value = data
+    }
+  } catch { /* localStorage 不可用或数据损坏，静默 */ }
+
   try {
     const r = await workbenchApi.summary()
     summary.value = r?.data || {}
-  } catch (e) { /* 静默 */ }
+    try { localStorage.setItem('yx_wb_summary', JSON.stringify({ ts: Date.now(), data: summary.value })) } catch {}
+  } catch (e) {
+    // 网络失败时若已有缓存就保留，无缓存则保持骨架
+    if (!loaded.value) loaded.value = false
+  }
   try {
     const r = await feedsApi.dashboard()
     feeds.value = r?.data?.recent || []
+    try { localStorage.setItem('yx_wb_feeds', JSON.stringify({ ts: Date.now(), data: feeds.value })) } catch {}
   } catch { /* 静默 */ }
-  loaded.value = true
+  if (!loaded.value) loaded.value = true
 })
 </script>
 
@@ -217,6 +284,63 @@ onMounted(async () => {
   overflow-x: hidden;
   background: var(--dp-bg);
 }
+
+/* S1 视觉锚点：背景细网格 + 三个柔和光斑 + 散布圆点 */
+.wb-bg {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 540px;
+  pointer-events: none;
+  z-index: 0;
+}
+.wb-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(126, 136, 243, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(126, 136, 243, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 90%);
+}
+.wb-bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  opacity: 0.55;
+  mix-blend-mode: screen;
+}
+.wb-bg-blob-1 { top: -120px; left: 8%; width: 360px; height: 360px; background: radial-gradient(circle, rgba(103, 232, 249, 0.55), transparent 70%); animation: wb-float-1 18s ease-in-out infinite; }
+.wb-bg-blob-2 { top: -40px; right: 12%; width: 280px; height: 280px; background: radial-gradient(circle, rgba(245, 182, 96, 0.45), transparent 70%); animation: wb-float-2 22s ease-in-out infinite; }
+.wb-bg-blob-3 { top: 200px; left: 40%; width: 220px; height: 220px; background: radial-gradient(circle, rgba(126, 136, 243, 0.35), transparent 70%); animation: wb-float-3 26s ease-in-out infinite; }
+
+.wb-bg-dots {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: rgba(126, 136, 243, 0.6);
+  animation: wb-fade-dots 8s ease-in-out infinite alternate;
+}
+
+@keyframes wb-float-1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(40px, 30px); } }
+@keyframes wb-float-2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-30px, 40px); } }
+@keyframes wb-float-3 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(20px, -25px); } }
+@keyframes wb-fade-dots { from { opacity: 0.5; } to { opacity: 0.85; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-bg-blob, .wb-bg-dots { animation: none; }
+}
+:root[data-theme="day"] .wb-bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(70, 100, 160, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(70, 100, 160, 0.07) 1px, transparent 1px);
+}
+:root[data-theme="day"] .wb-bg-blob { opacity: 0.35; mix-blend-mode: multiply; }
+:root[data-theme="day"] .wb-bg-dots { color: rgba(70, 100, 160, 0.5); }
+
+/* hero 区背景层压在 hero 之下，但 z-index 高于 .wb-bg；用 absolute 失效让内容自然排 */
+.wb-hero { position: relative; z-index: 1; }
 
 /* ===== 顶部品牌条 ===== */
 .wb-hero {
@@ -249,8 +373,28 @@ onMounted(async () => {
   margin: 0 auto;
   padding: 0 24px;
 }
+/* S6 中屏断点：1100-900 三列渐变收，避免 KPI 4 卡挤 */
+@media (max-width: 1280px) {
+  .wb-kpi { grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 20px; }
+}
 @media (max-width: 1100px) {
   .wb-kpi { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  .wb-kpi { grid-template-columns: 1fr; padding: 0 16px; }
+}
+
+/* 骨架占位 KPI：复用 KpiTile 视觉 */
+.kpi-skel {
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-line);
+  border-radius: var(--dp-radius);
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 92px;
+  box-shadow: var(--dp-shadow);
 }
 
 /* ===== 趋势 3 列 ===== */
@@ -262,9 +406,38 @@ onMounted(async () => {
   margin: 20px auto 0;
   padding: 0 24px;
 }
+@media (max-width: 1280px) {
+  .wb-trend { grid-template-columns: 1.6fr 1fr 1fr; padding: 0 20px; }
+}
 @media (max-width: 1100px) {
   .wb-trend { grid-template-columns: 1fr; }
 }
+
+/* ===== 天气小部件（顶置横幅卡） ===== */
+.wb-wx,
+.wb-habits {
+  max-width: 1248px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+}
+.wb-wx {
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-line);
+  border-radius: var(--dp-radius);
+  box-shadow: var(--dp-shadow);
+}
+.wb-wx :deep(.wx-card) { padding: 14px 18px 12px; }
+@media (max-width: 1280px) { .wb-wx, .wb-habits { padding-left: 20px; padding-right: 20px; } }
+@media (max-width: 720px)  { .wb-wx, .wb-habits { padding-left: 16px; padding-right: 16px; } }
+
+/* ===== AI 简报横幅 ===== */
+.wb-brief {
+  max-width: 1248px;
+  margin: 18px auto 0;
+  padding: 0 24px;
+}
+@media (max-width: 1280px) { .wb-brief { padding: 0 20px; } }
+@media (max-width: 720px)  { .wb-brief { padding: 0 16px; } }
 
 /* ===== 笔记 + 自选 + 任务 3 列 ===== */
 .wb-row {
@@ -274,6 +447,9 @@ onMounted(async () => {
   max-width: 1248px;
   margin: 14px auto 0;
   padding: 0 24px;
+}
+@media (max-width: 1280px) {
+  .wb-row { gap: 12px; padding: 0 20px; }
 }
 @media (max-width: 1100px) {
   .wb-row { grid-template-columns: 1fr; }

@@ -119,7 +119,14 @@
             </tbody>
           </table>
         </div>
-        <p v-if="!loading && !visible.length" class="sb-empty">暂无订阅记录</p>
+        <EmptyState
+          v-if="!loading && !visible.length"
+          size="sm"
+          title="暂无订阅记录"
+          description="点右上角「新增订阅」开始记账，到期前会自动生成待办提醒"
+          action-label="＋ 新增订阅"
+          @action="openCreate"
+        />
         <p v-else-if="loading" class="sb-empty">加载中…</p>
       </section>
 
@@ -181,6 +188,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
 import { subscriptionsApi, CYCLE_OPTIONS } from '@/api/family'
 

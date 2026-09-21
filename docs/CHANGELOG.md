@@ -1,3 +1,109 @@
+## [v2.38.0] - 2026-09-21
+
+### 工作台 8 项功能优化 + 修复「工作台 ability 必填」报错
+
+User：「进入工作台报错，处理下，另外再找找其他的可优化功能」「1-8 都做了吧」「弄完把代码优化下、补状态、提交 GitHub」。
+
+**先修工作台报错**：`AiBriefCard` 原来直接调 AI `preview` 接口但**缺 `ability` 字段→422「ability 必填」**。改为新增专用 `POST /api/workbench/dashboard/brief`（后端 `brief.py` 自动取近期笔记汇成 `summarize` 请求、失败降级返回空文本由前端兜底），前端改调新接口。
+
+#### ① 习惯打卡 + Streak（#1）
+
+- 后端 `xuanhuang_habits` / `xuanhuang_habit_checkins` 两表（Alembic 迁移 `s0t1u2v3w4x5_habits.py` 链到 head）+ `routers/workbench/habits.py`：CRUD、打卡/取消（同习惯同天唯一）、统计**连续天数 streak / 本周次数 / 最近 30 天热力图 / 总次数**
+- 前端 `HabitsCard.vue`：工作台横幅卡列出全部习惯，逐项「周进度 / 🔥连续天数 / 今日打卡开关」，内联「＋ 新建习惯」
+
+#### ② 实时天气小部件（#2）
+
+- `WeatherCard.vue` 纯前端走 **Open-Meteo**（免费无 Key）：IP 定位回退默认南京 + 手动城市选择 + localStorage 缓存当日数据；实时体感/湿度/风速 + 未来 5 天预报
+
+#### ③ 桌面日历联动倒计时 badge（#3）
+
+- `GlobalTopBar` 新增胶囊按钮：显示最近一条**未过期倒计时剩余天数**，点击/悬浮展开最近 5 条面板，点条目跳详情页
+
+#### ④ 资讯流已读/未读统计 + 智能滚动（#4）
+
+- `FeedsView`：顶部未读角标（未读总数）、筛选新增「未读」档位、翻页后自动滚动到第一条未读并短暂高亮
+
+#### ⑤ 空状态美化（#5）
+
+- 新增通用 `EmptyState` 组件（内联 SVG 水墨插画 + 标题/描述/CTA），统一应用到 TasksView / SubscriptionsView / QuickView / MusicView / VideoView / ToolView 的「暂无数据」场景
+
+#### ⑥ 键盘速记（#6）
+
+- 任意页、非输入态按 **`N`** 键直接跳转新建笔记（`App.vue` 全局监听，避开输入框/组合键/命令面板开启时）
+
+#### ⑦ 快捷面板模块显示/隐藏自定义（#7）
+
+- `prefs` store 新增 `moduleVisible`（习惯/天气/资讯/AI 简报，默认全开，按用户 localStorage 持久化）；`ProfileView` 增四个开关；工作台按开关用 `v-if` 渲染
+
+#### ⑧ 暗色 OLED 真黑（#8）
+
+- `desktop-theme-night.css`：夜间背景退纯黑 `#000`，表面保留极浅层次（`#08080f`/`#0d0d18`）以维持卡片立体感，发丝描边紫罗兰透明度
+
+#### 附带架构优化
+
+- `WorkbenchView` 内联空状态统一为 `EmptyState`（紧凑卡片仍保留轻量文案）；`vite.config.js` 增 **vendor 大包拆 chunk**（element-plus / icons / vue-vendor / axios / vendor + `chunkSizeWarningLimit:800`）；`deploy_backend.py` 白名单补 `brief.py` / `habits.py` / `models/habits.py` / 迁移 `s0t1u2v3w4x5`
+
+**验证**：前端 `vite build` 通过；后端迁移测试 `pytest tests/test_migrations.py` 3 例通过、`app.main` 导入 OK（33 路由）。SW 升 `xuanhuang-v146`。
+
+---
+
+## [v2.37.0] - 2026-09-20
+
+### 新增鸿蒙 NEXT 客户端工程 + 下载页改三平台（Android / 鸿蒙 / iOS）
+
+User：「目前项目已有安卓安装包，现在包装下，在下载页加上鸿蒙和 ios 系统的安装包」。
+
+**背景**：下载页早有「多平台」骨架，但鸿蒙与 iOS 都挂着「即将上线」。本轮把两条路各自落地——**鸿蒙出真包，iOS 走 PWA**。
+
+#### ① 鸿蒙 NEXT（HarmonyOS 5.0+）HAP 工程
+
+鸿蒙 4 及以下内核仍是 AOSP，现有 APK 直接可用；但**鸿蒙 NEXT 移除了 AOSP 兼容层，只认 `.hap`**，必须单独做一个包。
+
+- 新增 `harmony/`（DevEco Studio 工程根）：Stage 模型 + ArkTS，包名 `cn.yexingchen.app`，首屏 `https://yexingchen.cn/workbench`
+- 实质逻辑只有 `entry/src/main/ets/pages/Index.ets` 一个 WebView 壳页面，**行为逐条对齐安卓壳 `MainActivity.java`**：站内留 App / 站外跳系统浏览器、`target=_blank` 回站内加载、返回键优先 Web 后退、`<input type="file">` 走系统文件选择器、媒体免手势播放、混合内容放行
+- `module.json5` 只申请 4 个权限：INTERNET、GET_NETWORK_INFO（普通权限）+ CAMERA、MICROPHONE（用户授权，带中文理由）
+- 新增 `docs/HARMONYOS_BUILD.md`：华为开发者账号注册 → 装 DevEco Studio → 打开工程 → 自动/手动签名 → 出 HAP → 上传 → 下载页自动识别；含 7 类常见坑与「与安卓壳行为差异」对照表
+
+**未在本机编译验证**：本机无 HarmonyOS SDK（DevEco 是 Windows GUI 工具，需用户本地安装），`Index.ets` 按 API 12 文档书写。最可能因 SDK 小版本差异需微调的是 `onWindowNew` 的 `event.handler.setWebController(null)`，已在指南第 8 节标注。
+
+**已知差异（不影响主流程）**：文件下载接管（安卓用 DownloadManager）、UA 追加 App 标识、URL 唤起 App（Deep Link）三项暂未实现，补法见指南第 8 节。
+
+#### ② iOS：走 PWA「添加到主屏幕」
+
+**iOS 没有 Apple 开发者账号（$99/年）就做不出能装的 IPA**——免费 Apple ID 只能靠 Mac + Xcode 给单台设备签 7 天。站点 PWA 底子早已就绪（manifest + 192/512/maskable 图标 + apple-touch-icon 均 200、`display: standalone`、`start_url: /workbench`），故 iOS 走 Safari「添加到主屏幕」，体验与 App 一致，零成本、即时可用。
+
+#### ③ 下载页改成三平台并列
+
+`scripts/build_apk.py` 的 `write_download_page()` 重写：
+
+- **鸿蒙卡片自动探测**：生成页面前用新增的 `find_hap()` 扫下载目录里的 `*.hap`——有就显示「下载 HAP + 版本 + SHA-256」，没有就显示「待构建」+ 浏览器添加到桌面的过渡用法。**以后接鸿蒙包不用改代码**，把 `.hap` 丢进 `/var/www/yexingchen/dist/download/` 再跑一次 `deploy_download_page.py` 即可
+- **卡片重排**：`Android · 鸿蒙 4` / `HarmonyOS NEXT` / `iOS`，每张卡片带原生 `<details>` 折叠步骤（不依赖 JS）；顺带显示安装包体积
+- 旧模板里写死的「敬请期待 / 正在适配」占位文案全部清除
+
+**部署/验证**：`deploy_download_page.py` 重写生产下载页，`/download/` 与 `/download/yexingchen-2.1.0.apk` 均 200；真实浏览器（内置浏览器）取证——3 张卡片、3 个 `<details>`、桌面与 375px 移动视口下 `scrollWidth - clientWidth` 均为 0（无横向溢出）、按钮文案「下载 APK（136 KB）」、折叠标题「查看安装步骤 / 查看临时用法 / 查看安装步骤」全部符合预期。
+
+**遗留**：HAP 尚未构建（需用户本地装 DevEco Studio + 华为开发者账号），下载页鸿蒙卡片当前显示「待构建」。
+
+---
+
+## [v2.36.0] - 2026-09-20
+
+### 手机端音乐列表、AI 语音两处修复 + 桌面端语音不自动发送（SW `xuanhuang-v143`）
+
+User：「1 手机端不展示音乐列表；2 手机端AI对话音频无法使用；3 电脑端AI对话音频输入时没有在输入框停留，直接发送了，需要优化」。
+
+- **手机端音乐列表空白（真 bug）**：`mobile-deink.css` 曾写死 `#app.is-mobile .manage-pane { display:none }`。旧架构音乐页**内嵌迷你播放器**才「进去即播放器主视图」、隐藏曲库面板合理；但现在播放器已是**全局底栏**，`MusicView` 的 `.manage-pane` 就是唯一内容（歌曲列表表）——该规则把它整块隐藏，导致手机端进 `/music` 只剩空壳。修复：
+  - 把该隐藏改为 `#app.is-mobile .island-inner:not(.island-inner-music) .manage-pane`（仅对视频/小说/工具等仍按旧策略收掉，`island-inner-music` 命中 `:not()` 不成立故不再隐藏）；
+  - 新增 `#app.is-mobile .island-inner-music .manage-pane { display:block }`，并把列表玻璃卡片化（大圆角 + `--ls-glass`），手机端收掉「搜索/批量删除工具条 + 分页」；
+  - **`MusicView.vue`** 用 `useIsMobile()`，手机端绕过「每页 10 条」的分页切片逻辑一次展示全量（分页控件已隐藏，否则只能看到前 10 首）。
+- **手机端 AI 语音「无法使用」**：`VoiceInputButton` 在 `voice.supported.value === false`（APK WebView / iOS Safari 不支持 Web Speech API）时用 `v-if` **整按钮静默隐藏**——用户看不到入口也不明原因。改为**始终渲染**麦克风按钮：不支持时半透明 + `cursor:not-allowed` + hover 提示「当前设备/浏览器不支持语音输入」，点击弹 `ElMessage.warning('当前设备或浏览器不支持语音输入，请直接打字')`，避免无声消失；支持（桌面 Chrome/Edge、移动 Chrome）时行为不变。移动文案不就此隐藏管理入口。
+- **桌面端语音自动发送**：`AssistantView.onVoiceDraft` 把识别文本写入 `draft` 后立即 `send()`，语音一结束就发出、无审阅机会。改为**只把识别结果填入输入框**（多段识别用换行拼接）+ `nextTick` 后 `focus()` 到输入框，由用户按 Enter / 点「发送」手动发出（与全站其它搜索/记账/笔记语音输入「只填不自动发」的行为一致）。桌面/手机统一。
+- **桌面端回归**：`MusicView` 桌面端 `isMobile` 恒为 false，分页逻辑与原实现完全一致；`AssistantView` / `VoiceInputButton` 均不影响桌面正常语音。
+
+**部署/验证**：SW `v142→v143`、全新 `npx vite build --outDir dist2` 核验标记（CSS 含 `island-inner-music .manage-pane` 与 `:not(.island-inner-music)`、Assistant 含 `composerInputRef`、主包含「当前设备或浏览器不支持语音输入」、MusicView 含全量 `list.length` 逻辑）→ 整体替换 `dist` → `deploy_frontend.py` 226 文件、服务器 sw.js `xuanhuang-v143`、home=200。仅前端，后端无源码变更不重部署。真实浏览器取证：`/music` 的 `.manage-pane` 计算样式 `display:block / visibility:visible`、含 5 首歌行；`/assistant` 的 `.vib` 按钮存在且可见——均 PASS；移动端 is-mobile 分支按 CSS 特异性严格成立。临时验证图已清。
+
+---
+
 ## [v2.35.6] - 2026-09-19
 
 ### 手机端补上「AI 对话」入口（SW `xuanhuang-v142`）

@@ -77,6 +77,23 @@
             />
           </div>
 
+          <!-- 工作台模块显示/隐藏 -->
+          <div v-for="m in moduleOptions" :key="m.key" class="info-item">
+            <div class="pref-text">
+              <span class="info-label">{{ m.label }}</span>
+              <span class="pref-hint">{{ m.hint }}</span>
+            </div>
+            <el-switch
+              :model-value="moduleVisible[m.key]"
+              class="pref-switch"
+              inline-prompt
+              active-text="显示"
+              inactive-text="隐藏"
+              :aria-label="m.label"
+              @change="v => prefs.setModuleVisible(m.key, v)"
+            />
+          </div>
+
           <!-- 安装到主屏幕（PWA）：仅在可安装/需手动引导时出现，已安装则整块隐藏 -->
           <div v-if="showInstallRow" class="info-item">
             <div class="pref-text">
@@ -195,6 +212,15 @@ const themeOptions = [
   { value: 'auto', label: '自动' },
   { value: 'day', label: '白天' },
   { value: 'night', label: '夜间' },
+]
+
+// 工作台模块显隐
+const moduleVisible = computed(() => prefs.moduleVisible)
+const moduleOptions = [
+  { key: 'habits', label: '习惯打卡', hint: '工作台显示「习惯打卡」卡片' },
+  { key: 'weather', label: '天气', hint: '工作台顶置的天气小部件' },
+  { key: 'feeds', label: '资讯', hint: '工作台底部的资讯推送流' },
+  { key: 'brief', label: 'AI 简报', hint: '工作台的「今日简报」横幅' },
 ]
 
 // 用户信息

@@ -98,6 +98,8 @@ EXPECTED_TABLES = {
     "xuanhuang_travels",
     "voice_clones",
     "xuanhuang_countdowns",
+    "xuanhuang_habits",
+    "xuanhuang_habit_checkins",
     "token_blocklist",
 }
 

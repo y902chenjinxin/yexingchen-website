@@ -81,6 +81,43 @@
         <el-icon><Cellphone /></el-icon>
       </a>
 
+      <!-- 全局命令面板唤起（⌘K / Ctrl+K） -->
+      <button
+        type="button"
+        class="tb-icon-btn tb-cmd-btn"
+        :title="cmdKeyLabel + ' 打开命令面板'"
+        aria-label="打开命令面板"
+        @click="$emit('open-command-palette')"
+      >
+        <el-icon><Search /></el-icon>
+        <span class="tb-cmd-kbd">{{ cmdKeyLabel }} K</span>
+      </button>
+
+      <!-- 倒计时徽章：最近一条未过期倒计时，hover/点击展开面板 -->
+      <el-dropdown v-if="nearest" trigger="click" placement="bottom-end" :show-arrow="false">
+        <button class="tb-icon-btn tb-cd-btn" :title="`距 ${nearest.title} 还有 ${nearest.days_left} 天`">
+          <el-icon><Calendar /></el-icon>
+          <span class="tb-cd-text">距 {{ nearest.title }} {{ nearest.days_left }} 天</span>
+        </button>
+        <template #dropdown>
+          <div class="tb-cd-panel" @click.stop>
+            <div class="tb-panel-title">倒计时</div>
+            <div
+              v-for="it in top5"
+              :key="it.id"
+              class="tb-cd-item"
+              @click="goCountdown(it.id)"
+            >
+              <span class="tb-cd-dot" :style="{ background: it.color || 'var(--lj-dai)' }"></span>
+              <span class="tb-cd-name">{{ it.title }}</span>
+              <span class="tb-cd-date">{{ shortDate(it.target_date) }}</span>
+              <span class="tb-cd-days">{{ it.days_left }} 天</span>
+            </div>
+            <div v-if="!top5.length" class="tb-cd-empty">暂无进行中的倒计时</div>
+          </div>
+        </template>
+      </el-dropdown>
+
       <!-- 用户区 -->
       <el-dropdown trigger="click" @command="onCommand">
         <div class="tb-user">
@@ -102,12 +139,42 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+
+defineEmits(['open-command-palette'])
+
+const isMac = ref(false)
+onMounted(() => { isMac.value = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '') })
+const cmdKeyLabel = computed(() => isMac.value ? '⌘' : 'Ctrl')
+
+/* ---- 倒计时徽章（#3）：最近一条未过期的 count_down 倒计时 + 展开面板 ---- */
+const cdList = ref([])
+// 最近的（剩余天数最小）一条倒计时，作为按钮显示
+const nearest = computed(() => {
+  const cds = cdList.value.filter(c => c.direction === 'count_down' && c.days_left >= 0)
+  if (!cds.length) return null
+  return cds.sort((a, b) => a.days_left - b.days_left)[0]
+})
+// 面板：最近最多 5 条未过期
+const top5 = computed(() => {
+  const cds = cdList.value.filter(c => c.days_left >= 0)
+  cds.sort((a, b) => a.days_left - b.days_left)
+  return cds.slice(0, 5)
+})
+function goCountdown(id) { router.push(`/tool/countdown/${id}`) }
+function shortDate(dateStr) { return dateStr ? String(dateStr).slice(5) : '' }
+async function loadCountdowns() {
+  try {
+    const res = await listHomeCountdowns()
+    cdList.value = res?.data?.list || []
+  } catch { /* 未登录/网络失败则不显示徽章 */ }
+}
 import {
-  User, SwitchButton, Headset, CaretBottom, Check, Cellphone
+  User, SwitchButton, Headset, CaretBottom, Check, Cellphone, Calendar
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
+import { listHomeCountdowns } from '@/api/countdown'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -164,6 +231,7 @@ function onCommand(cmd) {
 
 onMounted(async () => {
   await bgm.initBgm()
+  loadCountdowns()
 })
 
 onUnmounted(() => {})
@@ -304,6 +372,57 @@ onUnmounted(() => {})
   background: rgba(217, 138, 118, 0.75);
 }
 .tb-audio-dot.off { background: var(--lj-vermilion); }
+
+/* 命令面板触发按钮（区别于普通 icon-btn：右侧带 ⌘K 提示 kbd） */
+.tb-cmd-btn {
+  width: auto;
+  padding: 0 10px 0 8px;
+  gap: 8px;
+  border: 1px solid var(--dp-line, rgba(126, 136, 243, 0.22));
+}
+.tb-cmd-btn:hover { border-color: var(--dp-accent, var(--lj-dai)); }
+.tb-cmd-kbd {
+  font-size: 10.5px;
+  font-family: var(--font-mono, ui-monospace, 'JetBrains Mono', monospace);
+  letter-spacing: 0.04em;
+  color: var(--dp-text3, var(--lj-text-2));
+  border-left: 1px solid var(--dp-line, rgba(126, 136, 243, 0.22));
+  padding-left: 8px;
+  line-height: 1;
+}
+.tb-cmd-btn:hover .tb-cmd-kbd { color: var(--dp-accent, var(--lj-dai)); }
+
+/* 倒计时徽章按钮（胶囊，贴合金辉玻璃按钮组） */
+.tb-cd-btn {
+  width: auto;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--dp-line, rgba(126, 136, 243, 0.22));
+}
+.tb-cd-btn:hover { border-color: var(--dp-accent, var(--lj-dai)); }
+.tb-cd-text {
+  font-size: 11.5px;
+  color: var(--dp-text2, var(--lj-text-2));
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.tb-cd-btn:hover .tb-cd-text { color: var(--dp-accent, var(--lj-dai)); }
+
+/* 倒计时展开面板 */
+.tb-cd-panel { width: 260px; padding: 10px 12px; }
+.tb-cd-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px; border-radius: 8px; cursor: pointer;
+}
+.tb-cd-item:hover { background: rgba(127, 168, 163, 0.1); }
+.tb-cd-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.tb-cd-name { flex: 1; min-width: 0; font-size: 13px; color: var(--lj-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-cd-date { font-size: 11px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
+.tb-cd-days { font-size: 12px; color: var(--lj-dai); font-variant-numeric: tabular-nums; flex: none; }
+.tb-cd-empty { padding: 12px 8px; text-align: center; font-size: 12px; color: var(--lj-text-3); }
 
 @media (max-width: 767px) {
   /* 触控目标 ≥44px（WCAG）：移动端顶栏图标按钮加大命中区，顶栏高度仍容纳得下 */

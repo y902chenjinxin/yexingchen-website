@@ -21,6 +21,11 @@
       </div>
     </div>
 
+    <div class="abb-habit glass-card" v-if="habitTotal !== null" aria-label="今日习惯打卡">
+      <span class="abb-habit__lab">今日习惯打卡</span>
+      <span class="abb-habit__num">{{ habitDone }}<small> / {{ habitTotal }} 项</small></span>
+    </div>
+
     <div class="abb-stats" aria-label="关键数据">
       <div class="abb-stat">
         <span class="abb-stat__label">流水笔数</span>
@@ -66,6 +71,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { financeApi } from '@/api/finance'
 import { stocksApi } from '@/api/stocks'
+import { workbenchApi } from '@/api/workbench'
 
 const router = useRouter()
 
@@ -102,6 +108,8 @@ const income = ref(null)
 const expense = ref(null)
 const count = ref(null)
 const stockPnl = ref(null)
+const habitDone = ref(null)
+const habitTotal = ref(null)
 
 const monthNet = computed(() => income.value === null || expense.value === null ? null : income.value - expense.value)
 const fmtMoney = (v) => v === null || v === undefined ? '—' : '¥ ' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
@@ -127,6 +135,12 @@ onMounted(async () => {
     const t = res?.data?.today_pnl
     if (typeof t === 'number') stockPnl.value = t
   } catch { /* 未就绪保持占位 */ }
+  try {
+    const res = await workbenchApi.habits.list()
+    const h = res?.data?.habits || []
+    habitTotal.value = h.length
+    habitDone.value = h.filter(x => x.checked_today).length
+  } catch { /* 未登录/失败则整块隐藏 */ }
 })
 </script>
 
@@ -185,6 +199,16 @@ onMounted(async () => {
 .abb-hero__sub b { font-weight: 700; }
 .abb-hero__sub .up { color: var(--pnl-up, #e5484d); }
 .abb-hero__sub .dn { color: var(--pnl-down, #1aa86a); }
+
+/* 习惯打卡小卡 */
+.abb-habit {
+  margin-top: 12px; padding: 14px 18px; border-radius: 18px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  animation: rise .5s cubic-bezier(.2,.8,.2,1) both .06s;
+}
+.abb-habit__lab { font-size: 12px; letter-spacing: .06em; color: var(--ls-text-2, #5b6b8a); }
+.abb-habit__num { font-size: 22px; font-weight: 800; color: var(--lj-dai, #5b6ae0); font-variant-numeric: tabular-nums; }
+.abb-habit__num small { font-size: 13px; font-weight: 600; color: var(--ls-text-3, #8a8f98); }
 
 /* 快捷入口 */
 .abb-sec { margin-top: 28px; }

@@ -66,10 +66,29 @@
  * P3 · 播放器主页/工具浏览/我的纯个性化（MOBILE_SIMPLIFY §9/§11 P3）
  * ===================================================================== */
 
-/* ---- 音乐 /music → 进去即播放器主视图，隐曲库管理/上传（拿掉「曲库管理/上传」） ---- */
+/* ---- 音乐 /music → 曲库列表清爽展示 ---- */
 #app.is-mobile .mu-admin-tools { display: none !important; }
-/* 兜底：即便 manage 状态被带到移动端，也不渲染管理面板，只留播放器 */
-#app.is-mobile .manage-pane { display: none !important; }
+/* 旧架构音乐页内嵌播放器才「进去即播放器主视图」；现播放器已是全局底栏，
+   曲库列表即唯一内容（manage-pane），不能整块隐藏，否则手机端空白。
+   其余用 manage-pane 的管理列表（视频/小说/工具）在移动端仍按旧策略收掉。 */
+#app.is-mobile .island-inner:not(.island-inner-music) .manage-pane { display: none !important; }
+
+/* 音乐列表 → 手机端玻璃卡片化，隐藏管理工具条/分页，只留大列表（一个页面一个焦点） */
+#app.is-mobile .island-inner-music .manage-pane {
+  display: block !important;
+  padding: 14px;
+  border-radius: var(--radius-lg, 20px);
+  border: 1px solid var(--ls-line);
+  background: var(--ls-glass);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
+}
+/* 管理工具条（搜索/批量删除）与分页在移动端收掉：全量列表一次拖完 */
+#app.is-mobile .island-inner-music .manage-pane .manage-toolbar,
+#app.is-mobile .island-inner-music .manage-pane .pager-wrap { display: none !important; }
+#app.is-mobile .island-inner-music .manage-pane .el-table .el-table__cell { padding: 8px 6px; }
+#app.is-mobile .island-inner-music .manage-pane .el-table__header-wrapper th.el-table__cell { padding: 6px; }
 
 /* ---- 工具 /tools → 纯工具卡片浏览，隐管理/添加 ---- */
 #app.is-mobile .tl-admin-tools { display: none !important; }

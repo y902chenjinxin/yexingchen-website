@@ -101,6 +101,7 @@
           <div class="fd-col-head">
             <h2 class="fd-col-title">{{ listTitle }}</h2>
             <div class="fd-list-filters">
+              <span v-if="unreadTotal > 0" class="fd-unread-badge">未读 {{ unreadTotal }}</span>
               <select v-model="filter" class="fd-select" @change="reload(1)">
                 <option value="all">全部</option>
                 <option value="unread">未读</option>
@@ -111,12 +112,12 @@
             </div>
           </div>
 
-          <div v-if="!loading" class="fd-article-list">
+          <div v-if="!loading" ref="listRef" class="fd-article-list">
             <button
               v-for="a in list"
               :key="a.id"
               class="fd-article"
-              :class="{ active: activeId === a.id, unread: !a.read }"
+              :class="{ active: activeId === a.id, unread: !a.read, 'fd-highlight': highlightId === a.id }"
               @click="openArticle(a)"
             >
               <span class="fd-a-dot" v-if="!a.read"></span>
@@ -259,7 +260,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { feedsApi } from '@/api/feeds'
@@ -282,6 +283,11 @@ const aiLoading = ref(false)
 const noteSaving = ref(false)
 const translating = ref(false)
 const zhMode = ref(false)
+// #4：全量未读数 + 智能滚动高亮
+const unreadTotal = ref(0)
+const listRef = ref(null)
+const highlightId = ref(null)
+let autoScroll = false
 
 const form = reactive({ id: null, feed_url: '', title: '', category: '综合' })
 const adding = ref(false)
@@ -354,14 +360,45 @@ async function loadList() {
     total.value = res.data.total || 0
   } finally {
     loading.value = false
+    maybeAutoScroll()
   }
 }
 
+// 全量未读数（不区分筛选、不分页）
+async function loadUnread() {
+  try {
+    const res = await feedsApi.list({ read: 0, size: 1 })
+    unreadTotal.value = res.data.total || 0
+  } catch { /* 静默 */ }
+}
+
+// #4 智能滚动：翻页后若已滚离顶部且存在未读，把第一条未读带高亮滚到可视区
+function maybeAutoScroll() {
+  if (!autoScroll) return
+  autoScroll = false
+  nextTick(() => {
+    const container = listRef.value
+    if (!container) return
+    const idx = list.value.findIndex(a => !a.read)
+    if (idx < 0) return
+    const el = container.querySelectorAll('.fd-article')[idx]
+    if (!el) return
+    // 已在顶部（第一页/手动滚回）则不打扰
+    if (container.scrollTop <= 0) return
+    container.scrollTo({ top: el.offsetTop - container.clientHeight / 2, behavior: 'smooth' })
+    highlightId.value = list.value[idx].id
+    setTimeout(() => { highlightId.value = null }, 1300)
+  })
+}
+
 function reload(p) {
+  autoScroll = true
   if (p) page.value = p
+  loadUnread()
   return loadList()
 }
 function onPage(p) {
+  autoScroll = true
   page.value = p
   loadList()
 }
@@ -385,6 +422,7 @@ async function openArticle(a) {
     const idx = list.value.findIndex(x => x.id === a.id)
     if (idx >= 0) list.value[idx].read = fresh.read
     if (!fresh.read) list.value[idx].read = 1
+    if (!fresh.read) loadUnread() // 已读降为未读 → 刷新未读数
     // 外文文章自动翻译为中文
     if (fresh.is_foreign) {
       if (fresh.content_zh) {
@@ -550,6 +588,7 @@ async function delArticle() {
 onMounted(() => {
   loadSources()
   loadList()
+  loadUnread()
 })
 </script>
 
@@ -652,6 +691,7 @@ onMounted(() => {
 
 /* 中栏 · 文章 */
 .fd-list-filters { display: flex; align-items: center; gap: 8px; }
+.fd-unread-badge { font-size: 11px; color: var(--lj-ochre); background: rgba(199,169,107,.16); padding: 2px 8px; border-radius: 999px; flex: none; font-variant-numeric: tabular-nums; }
 .fd-select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); font-size: 12px; outline: none; }
 .fd-search { width: 130px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); font-size: 12px; outline: none; }
 .fd-search:focus { border-color: var(--lj-seal); }
@@ -686,6 +726,13 @@ onMounted(() => {
 .fd-a-star { color: var(--lj-ochre); font-size: 12px; }
 .fd-a-excerpt { font-size: 13px; color: var(--lj-text-2); line-height: 1.7; text-align: justify;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* 智能滚动：标为未读的第一条短暂闪烁高亮 */
+.fd-highlight { animation: fd-flash 1.2s ease; }
+@keyframes fd-flash {
+  0% { background: rgba(199,169,107,.30); border-color: var(--lj-ochre); }
+  100% { background: var(--lj-glass); }
+}
 
 .fd-pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; }
 .fd-pager-info { font-size: 12px; color: var(--lj-text-3); }

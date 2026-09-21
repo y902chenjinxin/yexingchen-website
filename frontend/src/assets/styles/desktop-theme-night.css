@@ -7,11 +7,11 @@
 
 :root,
 :root[data-theme="night"] {
-  /* 表面阶梯：紫黑底 + 紫调玻璃 */
-  --dp-bg: #0B0B12;
-  --dp-bg2: #13111e;
-  --dp-surface: #161326;
-  --dp-surface2: #1f1a35;
+  /* OLED 真黑：背景退到纯黑 #000，减少夜览光晕；表面保留极浅层次以维持卡片立体感 */
+  --dp-bg: #000000;
+  --dp-bg2: #08080f;
+  --dp-surface: #0d0d18;
+  --dp-surface2: #141426;
   /* 发丝描边：紫罗兰透明度 */
   --dp-line: rgba(167, 139, 250, .16);
   --dp-line-strong: rgba(167, 139, 250, .30);
@@ -126,14 +126,14 @@
   --el-color-error: var(--dp-danger);
   --el-color-info: var(--dp-text2);
 
-  --el-bg-color: #161326;
-  --el-bg-color-overlay: #1f1a35;
-  --el-bg-color-page: #0B0B12;
-  --el-fill-color-blank: #161326;
-  --el-fill-color: #1f1a35;
-  --el-fill-color-light: #251f3f;
-  --el-fill-color-lighter: #1c1733;
-  --el-fill-color-extra-light: #181229;
+  --el-bg-color: #0d0d18;
+  --el-bg-color-overlay: #141426;
+  --el-bg-color-page: #000000;
+  --el-fill-color-blank: #0d0d18;
+  --el-fill-color: #141426;
+  --el-fill-color-light: #1a1a33;
+  --el-fill-color-lighter: #120f22;
+  --el-fill-color-extra-light: #0f0d1c;
 
   --el-text-color-primary: #f5f3ff;
   --el-text-color-regular: #c4c1de;

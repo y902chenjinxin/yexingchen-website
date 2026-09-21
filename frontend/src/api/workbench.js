@@ -58,6 +58,13 @@ export const workbenchApi = {
   // 工作台首页聚合
   summary: () => api.get('/workbench/summary'),
 
+  // 习惯打卡：返回 {code,msg,data:{habits:[...]}}，每条含 id/name/icon/color/weekly_goal/checked_today/streak/week_count/total_count/heat
+  habits: {
+    list: () => api.get('/habits'),
+    create: (data) => api.post('/habits', data),
+    toggle: (id, data) => api.post(`/habits/${id}/toggle`, data),
+  },
+
   // 笔记
   notes: {
     list: (params) => api.get('/workbench/notes', { params }),

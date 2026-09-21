@@ -46,22 +46,34 @@ a, button, [role="button"], input, select, textarea, label, .el-button, .el-inpu
   touch-action: manipulation;
 }
 
-/* ========== Accessibility: 键盘焦点可见 ========== */
+/* ========== Accessibility: 键盘焦点可见 (S4) ========== */
+/* 统一 focus-visible：双主题均用主青色，边框与阴影双重指示；
+   浅色主题下加 2px 反差背景，避免青色在浅色面被稀释 */
 :focus-visible {
-  outline: 2px solid var(--lj-dai, #5f9499);
+  outline: 2px solid var(--dp-accent, #67e8f9);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
-::selection { background: var(--lj-dai, #5f9499); color: #fff; }
+/* Element Plus 按钮焦点环：与原 outline 一致 */
+.el-button:focus-visible,
+.el-input__wrapper:focus-visible,
+.el-select__wrapper:focus-visible {
+  outline: 2px solid var(--dp-accent, #67e8f9);
+  outline-offset: 2px;
+}
+/* 隐藏鼠标点击时的浏览器默认环（保留键盘环） */
+:focus:not(:focus-visible) { outline: 0; }
+::selection { background: var(--dp-accent, #67e8f9); color: #0a0f20; }
 
-/* ========== 动效: 尊重用户「减少动态效果」偏好 ========== */
+/* ========== 动效: 尊重用户「减少动态效果」偏好 (S5) ========== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
   }
-  html { scroll-behavior: auto !important; }
+  /* shimmer 类骨架屏：去掉动画变灰底即可（.sk-anim） */
 }
 
 /* ========== Scrollbar - 深色风格 ========== */
@@ -186,9 +198,4 @@ a, button, [role="button"], input, select, textarea, label, .el-button, .el-inpu
 }
 
 /* ========== 动效克制 ========== */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .6s !important;
-    transition-duration: .15s !important;
-  }
-}
+/* 旧的 prefers-reduced-motion 已合并到上方 S5 收敛块；此处保留供旧调用兼容 */

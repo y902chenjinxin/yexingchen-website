@@ -21,6 +21,7 @@
       <!-- 速记输入 -->
       <section class="qk-capture glass">
         <textarea
+          ref="boxRef"
           v-model="draft"
           class="qk-capture-input"
           rows="2"
@@ -67,7 +68,14 @@
           </div>
         </div>
       </section>
-      <p v-else class="qk-empty">还没有记录，写点什么吧。</p>
+      <EmptyState
+        v-else
+        size="sm"
+        title="还没有记录"
+        description="随手记下琐事、灵感或待办，触手可及"
+        action-label="＋ 写一条"
+        @action="focusNew()"
+      />
     </div>
   </div>
 </template>
@@ -75,10 +83,13 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import BackButton from '@/components/BackButton.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 import { quickApi } from '@/api/quick'
 
 const draft = ref('')
+const boxRef = ref(null)
+function focusNew() { boxRef.value?.focus() }
 const saving = ref(false)
 const loading = ref(true)
 const timeline = ref([])

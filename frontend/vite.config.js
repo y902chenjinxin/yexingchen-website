@@ -47,6 +47,23 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src')
     }
   },
+  build: {
+    // E1+E2 vendor 拆包：把大块 vendor 拆为独立 chunk，便于浏览器长效缓存
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('element-plus')) return 'element-plus'
+            if (id.includes('@element-plus/icons-vue')) return 'element-plus-icons'
+            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vue-vendor'
+            if (id.includes('axios')) return 'axios'
+            return 'vendor'
+          }
+        }
+      }
+    },
+    chunkSizeWarningLimit: 800
+  },
   server: {
     port: 5173,
     proxy: {

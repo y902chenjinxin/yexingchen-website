@@ -76,7 +76,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="!loading && filteredRows.length === 0" class="empty">暂无数据</div>
+      <EmptyState v-if="!loading && filteredRows.length === 0" size="sm" title="暂无工具" description="调整筛选条件，或到管理后台添加工具" />
       <div v-else class="pager-wrap">
         <el-pagination
           background
@@ -132,6 +132,7 @@ defineOptions({ name: 'ToolView' })
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useToolStore } from '@/stores/tool'

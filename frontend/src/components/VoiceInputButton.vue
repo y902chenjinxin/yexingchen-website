@@ -1,9 +1,8 @@
 <template>
   <span
-    v-if="voice.supported.value"
     class="vib"
-    :class="{ listening: isListening }"
-    :title="isListening ? '点击结束录音' : '语音输入'"
+    :class="{ listening: isListening, unsupported: !voice.supported.value }"
+    :title="!voice.supported.value ? '当前设备/浏览器不支持语音输入' : (isListening ? '点击结束录音' : '语音输入')"
     @click.stop="onToggle"
   >
     <span v-if="isListening" class="vib-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
@@ -16,6 +15,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useVoiceInput } from '@/composables/useVoiceInput'
 
 const props = defineProps<{ lang?: string }>()
@@ -25,6 +25,12 @@ const voice = useVoiceInput({ lang: props.lang })
 const isListening = ref(false)
 
 function onToggle() {
+  // 当前环境（如 APK WebView / iOS Safari）可能不支持 Web Speech API：
+  // 明确告知用户按语音不可用的原因，而不是无声无息地消失
+  if (!voice.supported.value) {
+    ElMessage.warning('当前设备或浏览器不支持语音输入，请直接打字')
+    return
+  }
   if (voice.listening.value) {
     voice.stop()
     isListening.value = false
@@ -46,6 +52,8 @@ function onToggle() {
 }
 .vib:hover { color: var(--lj-seal, #d98a76); background: rgba(127,168,163,.10); }
 .vib.listening { color: #e06464; }
+.vib.unsupported { opacity: .5; cursor: not-allowed; }
+.vib.unsupported:hover { color: var(--lj-text-2, #9aa8ad); background: transparent; }
 .vib-mic { width: 16px; height: 16px; opacity: .9; }
 .vib-wave { display: inline-flex; align-items: center; gap: 2px; height: 16px; }
 .vib-wave i { width: 2.5px; height: 6px; border-radius: 2px; background: currentColor; animation: vib-beat 1s ease-in-out infinite; }

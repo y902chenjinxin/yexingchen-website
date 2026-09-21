@@ -163,6 +163,8 @@ app.include_router(quick.router)
 app.include_router(contacts.router)
 app.include_router(subscriptions.router)
 app.include_router(idphoto.router)
+from app.routers import rss as rss_router
+app.include_router(rss_router.router)
 
 
 @app.get("/")

@@ -65,9 +65,14 @@
         </article>
       </section>
 
-      <p v-if="!loading && !total" class="tk-empty">
-        暂无待办。手动加一条，或在「通讯录」记下家人生日、「订阅账单」记下到期日，系统会自动生成提醒。
-      </p>
+      <EmptyState
+        v-if="!loading && !total"
+        size="sm"
+        title="暂无待办"
+        description="手动加一条，或在「通讯录」记下家人生日、「订阅账单」记下到期日，系统会自动生成提醒"
+        action-label="＋ 新建待办"
+        @action="dialog = true"
+      />
       <p v-else-if="loading" class="tk-empty">加载中…</p>
     </div>
 
@@ -106,6 +111,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { workbenchApi } from '@/api/workbench'
 
 const TABS = [

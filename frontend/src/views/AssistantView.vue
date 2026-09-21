@@ -102,6 +102,7 @@
           <div class="composer">
             <div class="composer-input">
               <el-input
+                ref="composerInputRef"
                 v-model="draft"
                 type="textarea"
                 :rows="3"
@@ -223,6 +224,7 @@ const draft = ref('')
 const sending = ref(false)
 const streamError = ref('')
 const msgListRef = ref(null)
+const composerInputRef = ref(null)
 const streamController = ref(null)
 let seq = 0  // 防过期响应 / 限制并发
 
@@ -309,10 +311,10 @@ async function del(id) {
   loadConversations()
 }
 
-// 语音输入并入草稿后直接发送
+// 语音识别结果「先填入输入框」供确认/继续编辑，不自动发送（桌面+手机一致）
 function onVoiceDraft(text) {
   draft.value = draft.value.trim() ? `${draft.value.trim()}\n${text}` : text
-  send()
+  nextTick(() => { try { composerInputRef.value?.focus() } catch { /* noop */ } })
 }
 
 /* ---- 发送：原生流式对话 ---- */
