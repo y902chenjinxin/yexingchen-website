@@ -1,3 +1,15 @@
+## [v2.38.1] - 2026-09-21
+
+### 天气小部件数据源：Open-Meteo → 高德开放平台（后端代理）
+
+User：「我在秘密文件里放了高德的天气key，你调用下获取真实的，然后部署下」。`.secrets/local.env` 之高德 key `3d49545d...` 实测 geocode/regeo/weather(base+all) 均通。
+
+- **后端代理 `routers/workbench/weather.py`**（`GET /api/workbench/dashboard/weather?city=|lat&lon=`）：key 只存服务器 `backend/.env`（`AMAP_WEATHER_KEY`，config 增可选字段），不出客户端、不入 git；城市名→geocode / 经纬度→regeo 解析 adcode，拉实时 lives + 4 天预报，按 adcode 内存缓存 10 分钟，上游失败降级 502；`workbench/__init__.py` 注册
+- **前端 `WeatherCard.vue` 改调后端代理**：高德中文天气文本映射图标，保留定位/城市切换/坐标 1h 缓存
+- **`scripts/deploy_backend.py`**：新增 weather.py 上传 + 自动把 AMAP_WEATHER_KEY 写入远端 `.env`；**修复迁移目标 `k2l3m4n5o6p7` → `upgrade head`**（此前钉死在旧版本，导致 `schema_guard` 启动 fail-fast 崩溃：prod DB 停在 `r8s9t0u1v2w3` 而非 head `s0t1u2v3w4x5`，已 `upgrade head` 应用习惯打卡表并恢复 health=200）
+- SW `v146→v147`
+- **生产验证 PASS**：API 返回南京 阴 26℃/湿度75%/东南风≤3/4天预报；浏览器实测工作台天气卡渲染一致、无报错
+
 ## [v2.38.0] - 2026-09-21
 
 ### 工作台 8 项功能优化 + 修复「工作台 ability 必填」报错

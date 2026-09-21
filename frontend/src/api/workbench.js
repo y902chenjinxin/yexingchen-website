@@ -65,6 +65,9 @@ export const workbenchApi = {
     toggle: (id, data) => api.post(`/habits/${id}/toggle`, data),
   },
 
+  // 天气（后端代理高德，key 不出服务器）：{city} 或 {lat,lon}
+  weather: (params) => api.get('/workbench/dashboard/weather', { params }),
+
   // 笔记
   notes: {
     list: (params) => api.get('/workbench/notes', { params }),

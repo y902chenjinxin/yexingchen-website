@@ -1,13 +1,13 @@
 <!--
   WeatherCard.vue
-  玄黄・工作台天气小部件（#2）
-  - open-meteo.com 免费无 key：实时温度 / 天气码 / 3 日预报
-  - 地理位置：浏览器定位（地理权限）→ 失败则用可搜索城市（本地记忆）
-  - 1 小时 localStorage 缓存，避免频繁外呼
+  玄黄・工作台天气小部件（#2，高德后端代理）
+  - 高德天气 key 只存在服务器后端，前端经 /api/workbench/dashboard/weather 代理获取，不出服务器
+  - 地理位置：浏览器定位（经纬度→后端 regeo）→ 失败则用可搜索城市（本地记忆）
+  - 1 小时 localStorage 缓存坐标，避免每次重复定位；后端侧另有 10 分钟 adcode 缓存
   - 失败降级：显示「无法获取天气」占位，不阻塞工作台
 -->
 <template>
-  <div class="wx-card" :class="{ 'wx-card--err': error }">
+  <div class="wx-card" :class="{ 'wx-card--err': error && !current }">
     <!-- 头部：城市 + 操作 -->
     <div class="wx-head">
       <span class="wx-loc"><el-icon><Location /></el-icon>{{ cityLabel }}</span>
@@ -19,22 +19,22 @@
     <template v-if="current">
       <!-- 今日 -->
       <div class="wx-now">
-        <span class="wx-icon" aria-hidden="true">{{ iconFor(current.weathercode) }}</span>
+        <span class="wx-icon" aria-hidden="true">{{ iconFor(current.weather) }}</span>
         <span class="wx-temp">{{ current.temperature }}°</span>
-        <span class="wx-desc">{{ descFor(current.weathercode) }}</span>
+        <span class="wx-desc">{{ current.weather }}</span>
       </div>
       <div class="wx-meta">
-        <span>体感 {{ current.feelslike }}°</span>
         <span>湿度 {{ current.humidity }}%</span>
-        <span>风 {{ current.windspeed }}km/h</span>
+        <span>{{ windText(current) }}</span>
+        <span v-if="current.reporttime" class="wx-time">更新 {{ shortTime(current.reporttime) }}</span>
       </div>
       <!-- 3 日预报 -->
       <div class="wx-days">
         <div v-for="d in forecast" :key="d.date" class="wx-day">
-          <span class="wx-day-name">{{ d.week }}</span>
-          <span class="wx-day-icon" aria-hidden="true">{{ iconFor(d.weathercode) }}</span>
-          <span class="wx-day-hi">{{ d.max }}°</span>
-          <span class="wx-day-lo">{{ d.min }}°</span>
+          <span class="wx-day-name">{{ dayName(d.date, d.week) }}</span>
+          <span class="wx-day-icon" aria-hidden="true">{{ iconFor(d.weather) }}</span>
+          <span class="wx-day-hi">{{ d.temp_max }}°</span>
+          <span class="wx-day-lo">{{ d.temp_min }}°</span>
         </div>
       </div>
     </template>
@@ -62,45 +62,50 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Location, Setting } from '@element-plus/icons-vue'
+import { workbenchApi } from '@/api/workbench'
 
-const BASE = 'https://api.open-meteo.com/v1/forecast'
 const CACHE_KEY = 'yx_weather_v1'
 const CITY_KEY = 'yx_weather_city_v1'
 
-// 常用城市（经纬度）
+// 常用城市
 const SUGGEST = [
   { name: '定位', lat: 0, lon: 0, locate: true },
-  { name: '江苏 · 南京', lat: 32.06, lon: 118.79 },
-  { name: '江苏 · 苏州', lat: 31.3, lon: 120.62 },
-  { name: '上海', lat: 31.23, lon: 121.47 },
-  { name: '北京', lat: 39.9, lon: 116.4 },
-  { name: '广州', lat: 23.13, lon: 113.26 },
+  { name: '南京', city: '南京' },
+  { name: '苏州', city: '苏州' },
+  { name: '上海', city: '上海' },
+  { name: '北京', city: '北京' },
+  { name: '广州', city: '广州' },
 ]
 
-// 天气码 → 图标 & 描述（open-meteo WMO code）
-function iconFor(code) {
-  if (code === 0) return '☀️'
-  if (code <= 3) return '🌤️'
-  if (code <= 48) return '🌫️'
-  if (code >= 95) return '🌩️'
-  if (code >= 71) return '🌨️'
-  if (code >= 61) return '🌧️'
-  if (code >= 51) return '🌦️'
+// 高德中文天气文本 → 图标
+function iconFor(txt = '') {
+  if (/晴/.test(txt)) return '☀️'
+  if (/云/.test(txt)) return '🌤️'
+  if (/雷/.test(txt)) return '⛈️'
+  if (/雪/.test(txt)) return '🌨️'
+  if (/(霾|雾|沙|尘|霭)/.test(txt)) return '🌫️'
+  if (/雨/.test(txt)) return '🌧️'
+  if (/阴/.test(txt)) return '☁️'
   return '☁️'
 }
-function descFor(code) {
-  if (code === 0) return '晴朗'
-  if (code <= 3) return '多云'
-  if (code <= 48) return '雾'
-  if (code >= 95) return '雷雨'
-  if (code >= 71) return '雪'
-  if (code >= 61) return '雨'
-  if (code >= 51) return '细雨'
-  return '阴'
-}
+
 const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+function dayName(date, week) {
+  if (String(week) !== 'undefined' && week !== '' && week !== null) return '周' + { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '日' }[String(week)]
+  if (date) return WEEK[new Date(date + 'T00:00:00').getDay()]
+  return ''
+}
+function windText(c) {
+  const d = c.winddirection || ''
+  const p = c.windpower || ''
+  if (!d && !p) return '风 --'
+  return `${d}风 ${p}`
+}
+function shortTime(t) {
+  return t && t.length >= 16 ? t.slice(11, 16) : ''
+}
 
 const current = ref(null)
 const forecast = ref([])
@@ -111,8 +116,14 @@ const showPick = ref(false)
 const cityQuery = ref('')
 const locateMode = ref(false)
 
+function cachePos(lat, lon) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), lat, lon })) } catch {}
+}
+function readCache() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') } catch { return {} }
+}
+
 async function currentPos() {
-  if (!locateMode.value) return null
   if (!navigator.geolocation) return null
   try {
     const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000 }))
@@ -120,78 +131,57 @@ async function currentPos() {
   } catch { return null }
 }
 
-async function fetchWeather(lat, lon) {
-  const url = `${BASE}?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=3&timezone=auto`
-  const r = await fetch(url)
-  if (!r.ok) throw new Error('网络错误')
-  const j = await r.json()
-  const c = j.current || {}
-  const d = j.daily || {}
-  const days = (d.time || []).map((date, i) => ({
-    date,
-    week: WEEK[new Date(date + 'T00:00:00').getDay()],
-    max: Math.round((d.temperature_2m_max || [])[i]),
-    min: Math.round((d.temperature_2m_min || [])[i]),
-    weathercode: (d.weather_code || [])[i] ?? 0,
-  }))
-  current.value = {
-    temperature: Math.round(c.temperature_2m ?? 0),
-    feelslike: Math.round(c.apparent_temperature ?? 0),
-    humidity: Math.round(c.relative_humidity_2m ?? 0),
-    windspeed: Math.round(c.wind_speed_10m ?? 0),
-    weathercode: c.weather_code ?? 0,
-  }
-  forecast.value = days
-}
-
-function saveCache(lat, lon) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), lat, lon }))
-  } catch {}
-}
-
-function readCache() {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') } catch { return {} }
+async function fetchWeather(params) {
+  const res = await workbenchApi.weather(params)
+  const d = res?.data || {}
+  if (!d.current && !d.forecast?.length) throw new Error('empty')
+  current.value = d.current || null
+  forecast.value = (d.forecast || []).slice(0, 4)
+  if (d.city) cityLabel.value = d.city
 }
 
 async function refresh() {
-  // 1 小时内命中，用缓存坐标直接展示
   const cache = readCache()
   const fresh = cache.ts && Date.now() - cache.ts < 60 * 60 * 1000
-  const cityCache = JSON.parse(localStorage.getItem(CITY_KEY) || 'null')
-
-  let lat, lon
-  if (cityCache && !cityCache.locate) {
-    lat = cityCache.lat; lon = cityCache.lon; cityLabel.value = cityCache.label
-    locateMode.value = false
-  } else {
-    locateMode.value = true
-    const pos = await currentPos()
-    if (pos) { lat = pos.lat; lon = pos.lon; cityLabel.value = '当前定位' }
-    else if (fresh && cache.lat != null) { lat = cache.lat; lon = cache.lon; cityLabel.value = '当前定位' }
-    else { lat = 32.06; lon = 118.79; cityLabel.value = '江苏 · 南京'; locateMode.value = false }
-  }
+  let cityCache = null
+  try { cityCache = JSON.parse(localStorage.getItem(CITY_KEY) || 'null') } catch {}
 
   loading.value = true; error.value = ''
   try {
-    await fetchWeather(lat, lon)
-    saveCache(lat, lon)
-    if (locateMode.value && !cityCache) cityLabel.value = '当前定位'
+    if (cityCache && !cityCache.locate) {
+      await fetchWeather({ city: cityCache.city })
+    } else {
+      locateMode.value = true
+      const pos = await currentPos()
+      if (pos) {
+        await fetchWeather({ lat: pos.lat, lon: pos.lon })
+        cachePos(pos.lat, pos.lon)
+        cityLabel.value = cityLabel.value || '当前定位'
+      } else if (fresh && cache.lat != null) {
+        await fetchWeather({ lat: cache.lat, lon: cache.lon })
+      } else {
+        await fetchWeather({ city: '南京' })
+      }
+    }
   } catch (e) {
     error.value = '无法获取天气'
-    // 保留旧数据
-    if (!current.value) current.value = null
-  } finally { loading.value = false }
+    current.value = null
+  } finally {
+    loading.value = false
+  }
 }
 
 function pickCity() { showPick.value = !showPick.value }
 function applyCity() {
   const q = cityQuery.value.trim()
   if (!q) return
-  // 交给 reverse geocode 会引入额外 key；这里用中文名匹配不到就保留。简便：用腾讯定位开放接口需 key。
-  // 折中：把用户输入作为"定位"触发浏览器权限（已有城市则走建议）
   showPick.value = false
   cityQuery.value = ''
+  locateMode.value = false
+  current.value = null; forecast.value = []
+  localStorage.setItem(CITY_KEY, JSON.stringify({ ...SUGGEST.find(s => s.city === q) || {}, city: q, locate: false }))
+  cityLabel.value = q
+  refresh()
 }
 function chooseSuggest(c) {
   showPick.value = false
@@ -200,8 +190,8 @@ function chooseSuggest(c) {
     localStorage.removeItem(CITY_KEY)
   } else {
     locateMode.value = false
-    cityLabel.value = c.name
-    localStorage.setItem(CITY_KEY, JSON.stringify({ ...c, label: c.name }))
+    cityLabel.value = c.city
+    localStorage.setItem(CITY_KEY, JSON.stringify({ city: c.city, locate: false }))
   }
   current.value = null; forecast.value = []
   refresh()
@@ -222,6 +212,7 @@ onMounted(() => { refresh() })
 .wx-temp { font-size: 34px; font-weight: 700; color: var(--dp-text); font-variant-numeric: tabular-nums; }
 .wx-desc { font-size: 13px; color: var(--dp-text2); }
 .wx-meta { display: flex; gap: 12px; font-size: 11.5px; color: var(--dp-text3); margin-bottom: 12px; flex-wrap: wrap; }
+.wx-meta .wx-time { margin-left: auto; }
 .wx-days { display: flex; gap: 6px; }
 .wx-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; border-radius: 8px; background: var(--dp-accent-faint, rgba(167,139,250,.1)); }
 .wx-day-name { font-size: 11px; color: var(--dp-text3); }

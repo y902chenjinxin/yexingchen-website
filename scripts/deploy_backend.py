@@ -73,6 +73,7 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "brief.py"),      f"{REMOTE_BASE}/backend/app/routers/workbench/brief.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "habits.py"),     f"{REMOTE_BASE}/backend/app/routers/workbench/habits.py"),
     (os.path.join(ROOT, "backend", "app", "models", "habits.py"),                   f"{REMOTE_BASE}/backend/app/models/habits.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "weather.py"),    f"{REMOTE_BASE}/backend/app/routers/workbench/weather.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "s0t1u2v3w4x5_habits.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/s0t1u2v3w4x5_habits.py"),
     # ---- 家庭助理（通讯录 / 待办 / 订阅）----
@@ -103,6 +104,18 @@ def _load_password():
         if s.startswith("SSH_PASSWORD="):
             return s.split("=", 1)[1].strip()
     raise SystemExit("[ERR] no password")
+
+
+def _load_amap_key():
+    """从 .secrets/local.env 提取高德 key（32 位十六进制，即 apikey 那行）。"""
+    import re
+
+    p = os.path.join(os.path.dirname(ROOT), ".secrets", "local.env")
+    for line in open(p, encoding="utf-8"):
+        m = re.search(r"[0-9a-fA-F]{32}", line)
+        if m:
+            return m.group(0)
+    return ""
 
 
 PW = _load_password()
@@ -145,20 +158,32 @@ for local, remote in BACKEND_FILES:
     s.put(local, remote)
     print("  ->", remote)
 
-print("== 2/4 install deps from requirements.txt ==")
+print("== 2/5 install deps from requirements.txt ==")
 # 用 requirements.txt 而不是手写包名清单：手写清单会漏掉新增依赖
 # （v2.21.0 的 lunardate 就差点漏装，症状是线上 import 直接失败）
 code, out, err = cexec(f"cd {REMOTE_BASE}/backend && venv/bin/pip install -q -r requirements.txt 2>&1; echo DONE")
 print("  code:", code)
 print("  ", (out + err)[-500:])
 
-print("== 3/4 alembic upgrade k2l3m4n5o6p7 (role.menu_ids; explicit target due to FTS branch) ==")
+print("== 3/5 ensure AMAP_WEATHER_KEY in backend/.env ==")
+AMAP_KEY = _load_amap_key()
+if AMAP_KEY:
+    remote_env = f"{REMOTE_BASE}/backend/.env"
+    code, out, err = cexec(
+        f"grep -q '^AMAP_WEATHER_KEY=' {remote_env} 2>/dev/null && "
+        f"sed -i 's|^AMAP_WEATHER_KEY=.*|AMAP_WEATHER_KEY={AMAP_KEY}|' {remote_env} || "
+        f"echo 'AMAP_WEATHER_KEY={AMAP_KEY}' >> {remote_env}; echo done"
+    )
+    print("  key write:", code, (out + err)[-300:])
+else:
+    print("  !! no AMAP key found in .secrets/local.env — 天气接口将返回 503")
+print("== 4/5 alembic upgrade head (推进到最新 head，供 schema_guard 校验) ==")
 code, out, err = cexec(
-    f"cd {REMOTE_BASE}/backend && ENV=production venv/bin/alembic upgrade k2l3m4n5o6p7 2>&1 | tail -20"
+    f"cd {REMOTE_BASE}/backend && ENV=production venv/bin/alembic upgrade head 2>&1 | tail -20"
 )
 print("  code:", code)
 print("  ", (out + err)[-800:])
-print("== 4/4 clean pycache + restart via ecosystem (preserve ENV=production) ==")
+print("== 5/5 clean pycache + restart via ecosystem (preserve ENV=production) ==")
 code, out, err = cexec(
     f"find {REMOTE_BASE}/backend -name '__pycache__' -type d -exec rm -rf {{}} + 2>/dev/null; "
     f"pm2 startOrReload {REMOTE_BASE}/backend/ecosystem.config.cjs 2>&1 && pm2 save 2>&1 | tail -1 && sleep 4 && "

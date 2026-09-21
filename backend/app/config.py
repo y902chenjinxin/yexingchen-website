@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # 视频去水印解析服务（独立进程，同机 8070 端口）
     PARSE_SERVICE_URL: str = "http://127.0.0.1:8070"
 
+    # 高德开放平台天气 key（仅在服务器 backend/.env 配置，勿入 git / 前端）
+    AMAP_WEATHER_KEY: str = ""
+
     # 验证码（混合字母数字，4位约16万组合）
     VERIFY_CODE_EXPIRE_MINUTES: int = 5
     VERIFY_CODE_MAX_ATTEMPTS: int = 5
