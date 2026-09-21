@@ -1,11 +1,12 @@
 <template>
   <transition name="npbar">
     <!--
-      显示条件：playlist 模式有 curItem，或 BGM 模式有 BGM 项。
-      之前只看 player.shows（=mode==='playlist' && curItem），
-      会导致 BGM 模式下点击"设为默认"切到新曲后，播放栏继续显示旧 curItem（听觉与视觉不一致）。
+      显示条件：真正在播放或处于点播模式
+      - 之前用 player.shows || bgmItem：只要 BGM 库加载完就显示，会出现"没在播也占位"的空 bar
+      - 现在用 player.isPlaying || player.curItem：仅当有声时显示，避免空占位 + 与表格内容视觉重叠
+      - BGM 模式下若 autoplay 被拦，bar 会隐藏；用户主动点"设为默认"再点播放后会重新出现
     -->
-    <div v-if="player.shows || bgmItem" class="npbar" ref="barRef">
+    <div v-if="shouldShow" class="npbar" ref="barRef">
       <!-- 曲目信息（点击展开全屏播放器，仅移动端生效） -->
       <div class="np-info" @click="onInfoClick">
         <div class="np-cover">
@@ -169,6 +170,19 @@ const bgmItem = computed(() => {
 const displayItem = computed(() => {
   if (player.mode === 'playlist') return player.curItem
   return bgmItem.value
+})
+
+/* 是否显示 npbar：
+ *  - 点播模式（playlist）：有 curItem 就显示
+ *  - BGM 模式（bgm）：真正在播放或 BGM 已就绪且是用户的播放意图（bgmEnabled + bgmItem）
+ *  关键修复：之前用 "shows || bgmItem"，会出现 BGM 库加载完就显示一个空 bar 的情况
+ *  现在改为：用户明确表达了"在播"意图（isPlaying 或 playlist.curItem）才显示
+ */
+const shouldShow = computed(() => {
+  if (player.mode === 'playlist' && player.curItem) return true
+  // BGM 模式下：用户在播 或 BGM 已就绪（自动播放被拦时也算意图）
+  if (player.mode === 'bgm' && player.bgmEnabled && bgmItem.value) return true
+  return false
 })
 
 const ratio = computed(() => (player.duration ? player.progress / player.duration : 0))

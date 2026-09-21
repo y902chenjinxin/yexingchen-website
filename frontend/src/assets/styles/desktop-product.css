@@ -489,15 +489,10 @@ body:not(.login-route) #app:not(.is-mobile):has(.dsb.collapsed) .el-drawer__wrap
 
 /* Element Plus el-table / el-form 等容器自动让位 padding-left 不需要它们再写 */
 
-/* 底部播放条让位侧栏（折叠时侧栏隐藏 → 靠左 16px） */
-#app:not(.is-mobile) .npbar {
-  left: calc(220px + 16px) !important;
-  width: calc(100% - 220px - 320px - 32px) !important;
-}
-body:not(.login-route) #app:not(.is-mobile):has(.dsb.collapsed) .npbar {
-  left: 16px !important;
-  width: calc(100% - 320px - 32px) !important;
-}
+/* 底部播放条：位置/宽度由 NowPlayingBar.vue 统一接管（居中 + width:min(100%-32px,1200px)），
+   不再在此做「靠左让位侧栏」的覆盖 —— 旧的 calc(100% - 220px - 320px) 在 MusicView 这类
+   无侧栏全屏页面会算错宽度并把进度条/音量挤出视口。
+   居中布局天然平衡，不挡左右侧栏。 */
 
 /* =====================================================================
  * K. 主题切换分段控件（ProfileView）适配：紫罗兰白天/夜间都和谐
