@@ -42,6 +42,7 @@
         v-loading="musicStore.loading"
         stripe
         style="width: 100%"
+        :row-class-name="rowClassName"
         @selection-change="onSelectionChange"
       >
         <el-table-column type="selection" width="46" :selectable="(row) => Number(row.is_default) !== 1" />
@@ -371,6 +372,13 @@ function isCurPlaying(item) {
   return player.curItem && String(player.curItem.id) === String(item.id) && player.isPlaying
 }
 
+/* 行类名：当前点播 + 当前 BGM 高亮（视觉上一眼可见当前在听哪首） */
+function rowClassName({ row }) {
+  if (isCurPlaying(row)) return 'row-now-playing'
+  if (isCurBgm(row) && player.mode === 'bgm') return 'row-bgm-active'
+  return ''
+}
+
 function formatSize(bytes) {
   if (bytes == null) return '-'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -513,5 +521,25 @@ function formatDuration(sec) {
   background: var(--dp-warning);
   border-color: var(--dp-warning);
   color: #241c00;
+}
+
+/* ---------- 当前播放 / 当前 BGM 行高亮 ----------
+ * 左侧 3px 强色条 + 淡色底，让用户在十几行里一眼看到当前在听哪首
+ * 不依赖 el-table 默认的 stripe / hover，单独覆盖
+ */
+.manage-pane :deep(.el-table__row.row-now-playing > td),
+.manage-pane :deep(.el-table__row.row-bgm-active > td) {
+  background: rgba(61, 127, 214, 0.10) !important;
+}
+.manage-pane :deep(.el-table__row.row-now-playing > td:first-child) {
+  box-shadow: inset 3px 0 0 var(--dp-accent-strong, #3d7fd6);
+}
+.manage-pane :deep(.el-table__row.row-bgm-active > td:first-child) {
+  box-shadow: inset 3px 0 0 var(--dp-warning, #f59e0b);
+}
+/* hover 时不要把高亮行底色盖掉 */
+.manage-pane :deep(.el-table__row.row-now-playing:hover > td),
+.manage-pane :deep(.el-table__row.row-bgm-active:hover > td) {
+  background: rgba(61, 127, 214, 0.18) !important;
 }
 </style>

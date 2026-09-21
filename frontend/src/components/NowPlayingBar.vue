@@ -218,9 +218,13 @@ function fmt(sec) {
 .npbar {
   position: fixed;
   bottom: 14px;
-  left: 16px;
-  width: calc(100% - 320px);
-  max-width: 1200px;
+  /* 居中布局：不依赖任何侧栏宽度
+   * - 普通带侧栏的桌面页面：剩余宽度充足，居中靠下很自然
+   * - MusicView 等全屏 island 页面：没有侧栏，原本 calc(100% - 320px) 会溢出；现在用 min + 居中解决
+   */
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 32px), 1200px);
   height: 60px;
   z-index: 980;
   display: flex;
