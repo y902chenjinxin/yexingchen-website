@@ -80,12 +80,12 @@
       </div>
     </section>
 
-    <!-- ============ Bento S2：四个等宽卡片 ============ -->
+    <!-- ============ Bento S2：两卡（自选股 + 今日待办）============ -->
     <section class="bento-s2">
       <div class="bento-card">
         <div class="bento-card-head">
           <div class="bento-card-title">自选股</div>
-          <RouterLink class="bento-card-link" to="/stocks">详情 →</RouterLink>
+          <RouterLink class="bento-card-link" to="/stocks">管理 →</RouterLink>
         </div>
         <ul class="bento-card-list stock-list">
           <li v-for="h in kpi.stocks.holdings" :key="h.code">
@@ -94,21 +94,6 @@
             <span class="st-meta">{{ h.shares }} · ¥{{ h.cost }}</span>
           </li>
           <li v-if="!kpi.stocks.holdings.length" class="cd-empty">尚未添加</li>
-        </ul>
-      </div>
-
-      <div class="bento-card">
-        <div class="bento-card-head">
-          <div class="bento-card-title">最近笔记</div>
-          <RouterLink class="bento-card-link" to="/notes">全部 →</RouterLink>
-        </div>
-        <ul class="bento-card-list nt-list">
-          <li v-for="n in kpi.recent_notes" :key="n.id" @click="$router.push(`/notes/${n.id}`)">
-            <span class="nt-dot" :class="n.status === 'completed' ? 'on' : ''"></span>
-            <span class="nt-title">{{ n.title || '（无标题）' }}</span>
-            <span class="nt-meta">{{ shortTime(n.updated_at || n.created_at) }}</span>
-          </li>
-          <li v-if="!kpi.recent_notes.length" class="nt-empty">还没有笔记</li>
         </ul>
       </div>
 
@@ -126,22 +111,6 @@
           <li v-if="!kpi.today_tasks.length" class="ts-empty">今日无待办</li>
           <li v-if="kpi.overdue_tasks.length" class="ts-overdue">⚠ 逾期 {{ kpi.overdue_tasks.length }} 条</li>
         </ul>
-      </div>
-
-      <div class="bento-card">
-        <div class="bento-card-head">
-          <div class="bento-card-title">标签 · 主题</div>
-          <RouterLink class="bento-card-link" to="/notes">管理 →</RouterLink>
-        </div>
-        <div class="bento-tag-cloud">
-          <RouterLink
-            v-for="t in kpi.tag_cloud"
-            :key="t.name"
-            class="tag-chip"
-            :to="{ path: '/notes', query: { q: t.name } }"
-          >#{{ t.name }}</RouterLink>
-          <p v-if="!kpi.tag_cloud.length" class="tag-empty">还没有标签</p>
-        </div>
       </div>
     </section>
 
@@ -401,10 +370,10 @@ onMounted(async () => {
 .bento-wx :deep(.wx-meta) { font-size: 11px; margin-bottom: 4px; }
 .bento-wx :deep(.wx-day) { padding: 6px 2px; }
 
-/* ===== S2：四个等宽卡片（自选股 / 笔记 / 待办 / 标签） ===== */
+/* ===== S2：两卡（自选股 + 今日待办）v2.39.8 移除笔记/标签重复入口 ===== */
 .bento-s2 {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1.2fr;
+  grid-template-columns: 1fr 1.4fr;
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -458,12 +427,14 @@ onMounted(async () => {
 /* ===== 自适应 ===== */
 @media (max-width: 1280px) {
   .bento-s1 { grid-template-columns: 1fr 1.2fr; }
-  .bento-s2 { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 1024px) {
   .bento-s1 { grid-template-columns: 1fr; }
   .bento-s1-left, .bento-s1-right { min-height: 0; }
   .bento-s2 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .bento-s2 { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
   .workbench-page { padding: 80px 14px 40px; }

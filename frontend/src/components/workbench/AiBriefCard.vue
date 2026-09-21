@@ -36,6 +36,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/api/index'
 import Skeleton from '@/components/Skeleton.vue'
 import { Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   // 当前工作台 summary 对象
@@ -80,13 +81,21 @@ function saveCache(text) {
 async function refresh() {
   if (loading.value) return
   loading.value = true
+  // 强制最少显示 600ms loading，避免 fake/快响应"看起来没反应"
+  const minShow = new Promise((r) => setTimeout(r, 600))
   try {
-    // 用专用轻量端点：/api/workbench/dashboard/brief（不需要 ability/conversation_id）
-    // 后端会基于用户的近期笔记 + 默认 AI Provider 自动生成 ≤120 字简报
     const r = await api.get('/workbench/dashboard/brief')
+    await minShow
     const text = (r?.data?.text || '').trim()
-    if (text) saveCache(text)
+    if (text) {
+      saveCache(text)
+      ElMessage.success('已刷新')
+    } else {
+      ElMessage.warning('AI 未返回内容（可能未配置 Provider）')
+    }
   } catch (e) {
+    await minShow
+    ElMessage.error(e?.response?.data?.detail || e?.message || '刷新失败')
     // 失败时不覆盖缓存（保留旧的）
   } finally {
     loading.value = false

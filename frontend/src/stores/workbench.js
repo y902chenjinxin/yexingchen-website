@@ -11,6 +11,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     try {
       const res = await workbenchApi.summary()
       summary.value = res.data
+      return res.data
     } finally {
       loadingSummary.value = false
     }

@@ -20,8 +20,8 @@
     <!-- 登录后移动端：底部两 Tab 主导航（主页/我的） -->
     <MobileTabBar v-if="!showInitialLoading && auth.isLoggedIn && isMobile" />
 
-    <!-- 登录后桌面端：AI 对话悬浮入口（每页常驻，替代原顶栏 AI 入口） -->
-    <FloatingAiButton v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
+    <!-- 登录后桌面端：AI 入口改由顶栏 ✺ 按钮 + Cmd/Ctrl+Shift+A 全局快捷键直达（v2.39.8 移除右下角 FAB，避免右下角拥挤） -->
+    <!-- <FloatingAiButton v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" /> -->
 
     <!-- 全局命令面板 ⌘K / Ctrl+K（登录后可用；移动端隐藏以免误触） -->
     <CommandPalette v-if="auth.isLoggedIn && !isMobile" ref="cmdRef" />
