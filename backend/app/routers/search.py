@@ -15,14 +15,21 @@ router = APIRouter(prefix="/api/search", tags=["搜索"])
 
 @router.get("", response_model=ResponseBase)
 async def global_search(
-    q: str = Query(..., min_length=1),
+    q: str = Query("", description="搜索关键词；空字符串返回空集，不报错"),
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     uid = current_user["user_id"]
+    q = (q or "").strip()
     offset = (page - 1) * size
+    if not q:
+        # 空查询：直接返回空集，避免前端误触发 422 弹"请求失败"吐司
+        return ResponseBase(data={
+            "notes": [], "music": [], "novels": [], "videos": [], "tools": [],
+            "total": 0,
+        })
 
     music_results = db.query(Music).filter(Music.title.contains(q)).offset(offset).limit(size).all()
     novel_results = db.query(Novel).filter(Novel.title.contains(q)).offset(offset).limit(size).all()

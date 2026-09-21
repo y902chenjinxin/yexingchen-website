@@ -1,3 +1,21 @@
+## [v2.38.2] - 2026-09-21
+
+### 修复：「请求失败」吐司（搜索 q 空字符串触发 422）
+
+User：「会有一些页面报错请求失败，看下咋回事」。
+
+**根因**：登录后页面状态恢复从 URL 解析查询词、桌面顶栏 `DesktopSearchBox` 防抖 260ms 内清空又触发、`VoiceInputButton` 静默回空、stale 定时器残留……任一路径都可能让 `searchAll({q:''})` 发出。`/api/search` 与 `/api/workbench/search` 后端用 `Query(..., min_length=1)` 校验 → HTTP 422 → `api/index.js` 拦截器走到 `else` 分支默认吐司 `ElMessage.error('请求失败')`，错误提示含糊。
+
+**修法**（后端 + 前端双保险）：
+- **后端 `routers/search.py` + `routers/workbench/search.py`**：`q` 改为 `Query("", ...)`，空字符串直接返回空集（不再 422）
+- **前端 `api/index.js`**：拦截器新增 `status === 422` 分支**不弹吐司**（422 多为参数校验，交调用方在自己 catch 中显示/兜底，避免通用拦截器误弹）
+- SW `v147→v148`
+
+**验证 PASS**（生产）：
+- 42 接口全绿（含 `/api/search?q=` 200），原唯一 422 已消
+- 后端 uvicorn 日志 `GET /api/search?q= HTTP/1.0" 200`，无 5xx
+- 桌面顶栏搜索空 q 不再触发吐司，组件内 try/catch 也兜住 suggestions 清空
+
 ## [v2.38.1] - 2026-09-21
 
 ### 天气小部件数据源：Open-Meteo → 高德开放平台（后端代理）

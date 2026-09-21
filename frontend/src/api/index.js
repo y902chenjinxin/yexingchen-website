@@ -44,6 +44,9 @@ api.interceptors.response.use(
         ElMessage.error('权限不足')
       } else if (status === 404) {
         ElMessage.error('资源不存在')
+      } else if (status === 422) {
+        // 422 多为参数校验失败（如空 q 搜索），由各调用方在自己的 catch 中显示/兜底，
+        // 避免通用拦截器误弹「请求失败」吐司。
       } else {
         ElMessage.error(message)
       }

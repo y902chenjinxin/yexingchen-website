@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/workbench", tags=["工作台-搜索"])
 
 @router.get("/search")
 def global_search(
-    q: str = Query(..., min_length=1),
+    q: str = Query("", description="搜索关键词；空字符串返回空集，不报错"),
     type_filter: Optional[str] = Query(None, alias="type"),
     page: int = 1,
     size: int = 20,
@@ -39,7 +39,11 @@ def global_search(
     current_user: dict = Depends(get_current_user),
 ):
     uid = current_user["user_id"]
+    q = (q or "").strip()
     page, size = _paginate(page, size, max_size=50)
+    if not q:
+        # 空查询：直接返回空集，避免前端误触发 422 弹"请求失败"吐司
+        return ok({"q": "", "results": {"notes": [], "assets": [], "tasks": [], "tags": []}, "page": page, "size": size})
     results = {"notes": [], "assets": [], "tasks": [], "tags": []}
 
     if not type_filter or type_filter == "note":
