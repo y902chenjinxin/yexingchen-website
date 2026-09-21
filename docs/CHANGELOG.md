@@ -23,7 +23,27 @@ User：「退不出去了」「点击没有效果，再看下」。
   - 监听 `controllerchange`：新 SW 接管时 `location.reload()` 一次确保拿到最新资源
 - 效果：部署后用户**下次访问任意页面**自动硬刷一次到 v153，抽屉关闭按钮与 ESC 立即生效
 
-SW `v152→v153`
+## [v2.39.3] - 2026-09-21
+
+### 修复：AI 工具抽屉「点击没反应」真正根因（v-model emit 名错误）
+
+User：「退不出去了」「点击没有效果，再看下」「不行，三种方式都不行」。
+
+v152/v153 改对了 z-index + 关闭按钮文案 + SW 自动升级，但**真正根因遗漏了**：
+
+**根因**：AiToolsDrawer 里 `defineEmits(['close', 'apply'])` 用 `emit('close')`；而 App.vue 用 `<AiToolsDrawer v-model:open="aiToolsOpen" />`。Vue v-model 默认等价于 `:open` + `@update:open`——父组件**只监听 `update:open` 事件**，监听不到 `close`。所以点击关闭按钮、点遮罩、按 ESC 都触发了 emit('close')，**但 aiToolsOpen 永远没变 false**，抽屉始终打开。
+
+**修法**（v2.39.3，SW `v153→v154`）：
+- AiToolsDrawer 改为 `defineEmits(['update:open', 'apply'])`
+- `close()` 函数 `emit('update:open', false)` —— 与父 v-model:open 完全匹配
+- 三种关闭方式（按钮 / ESC / 遮罩点击）全部走 `close()` 函数
+- `sw.js v154`：再次触发新 SW 的 SKIP_WAITING 流程，让用户刷新后立即拿到新版
+
+**验证 PASS**：编译后 chunk `index-D5Uc3yjp.js` 含 `update:open`，v-model 链路完整。
+
+SW `v153→v154`
+
+
 
 ## [v2.39.1] - 2026-09-21
 

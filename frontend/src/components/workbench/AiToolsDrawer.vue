@@ -10,10 +10,16 @@
   - 自动任务（agent）：ReAct 循环执行多步工具调用
   - OCR（ocr）：图片→文字
   - 用量（usage）：当月 token 统计
+
+  关闭方式（v2.39.2 修复）：
+  - 右上角「✕ 关闭」按钮（深色边框，hover 红）
+  - ESC 键（遮罩 tabindex=-1 已就绪）
+  - 点遮罩空白处（@click.self）
+  - 全用 emit('update:open', false) 配合 App.vue 的 v-model:open
 -->
 <template>
   <transition name="ai-fade">
-    <div v-if="open" class="aid-mask" @click.self="$emit('close')" @keydown.esc="$emit('close')" tabindex="-1">
+    <div v-if="open" class="aid-mask" @click.self="close" @keydown.esc="close" tabindex="-1">
       <div class="aid-panel">
         <header class="aid-head">
           <div class="aid-title">
@@ -21,7 +27,7 @@
             <span>AI 高级工具</span>
             <span class="aid-tag">v2.39</span>
           </div>
-          <button class="aid-close" @click="$emit('close')" title="关闭（Esc）">✕ 关闭</button>
+          <button class="aid-close" @click="close" title="关闭（Esc）">✕ 关闭</button>
         </header>
 
         <nav class="aid-tabs">
@@ -244,7 +250,11 @@ const props = defineProps({
   defaultContent: { type: String, default: '' },
   defaultImageUrl: { type: String, default: '' },
 })
-const emit = defineEmits(['close', 'apply'])
+
+// 关键：emit 名必须与父 v-model 一致 —— v-model:open 期望 'update:open'
+// 之前误用 'close'，父组件监听不到 → 抽屉退不出去
+const emit = defineEmits(['update:open', 'apply'])
+function close() { emit('update:open', false) }
 
 const tabs = [
   { key: 'rewrite',   label: '改写',   icon: '✎' },
