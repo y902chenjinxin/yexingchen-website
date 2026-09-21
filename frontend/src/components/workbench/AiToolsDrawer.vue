@@ -13,7 +13,7 @@
 -->
 <template>
   <transition name="ai-fade">
-    <div v-if="open" class="aid-mask" @click.self="$emit('close')">
+    <div v-if="open" class="aid-mask" @click.self="$emit('close')" @keydown.esc="$emit('close')" tabindex="-1">
       <div class="aid-panel">
         <header class="aid-head">
           <div class="aid-title">
@@ -21,7 +21,7 @@
             <span>AI 高级工具</span>
             <span class="aid-tag">v2.39</span>
           </div>
-          <button class="aid-close" @click="$emit('close')" title="关闭">✕</button>
+          <button class="aid-close" @click="$emit('close')" title="关闭（Esc）">✕ 关闭</button>
         </header>
 
         <nav class="aid-tabs">
@@ -422,7 +422,7 @@ function copyText(s) {
 <style scoped>
 .ai-fade-enter-active, .ai-fade-leave-active { transition: opacity .2s ease }
 .ai-fade-enter-from, .ai-fade-leave-to { opacity: 0 }
-.aid-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(2px); z-index: 200; display: flex; justify-content: flex-end }
+.aid-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(2px); z-index: 2000; display: flex; justify-content: flex-end }
 .aid-panel {
   width: 460px; max-width: 100vw; height: 100%; background: var(--dp-surface, #141426);
   border-left: 1px solid var(--dp-line-strong); display: flex; flex-direction: column;
@@ -435,8 +435,8 @@ function copyText(s) {
 .aid-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px }
 .aid-mark { color: var(--dp-accent, #67e8f9); font-size: 16px }
 .aid-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--dp-accent-faint, rgba(167,139,250,.16)); color: var(--dp-accent); letter-spacing: .04em }
-.aid-close { background: transparent; border: 0; color: var(--dp-text3); cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 6px }
-.aid-close:hover { background: var(--dp-accent-faint) }
+.aid-close { background: var(--dp-surface2); border: 1px solid var(--dp-line); color: var(--dp-text); cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px; letter-spacing: .04em; position: relative; z-index: 2 }
+.aid-close:hover { background: var(--dp-danger, #ff6b6b); color: #fff; border-color: var(--dp-danger, #ff6b6b) }
 .aid-tabs { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--dp-line); overflow-x: auto }
 .aid-tab {
   background: transparent; border: 0; cursor: pointer; padding: 6px 10px; border-radius: 8px;
