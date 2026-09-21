@@ -11,7 +11,7 @@
       <p class="wb-subtitle">今日 · 本月 · 累计，一目了然。</p>
     </header>
 
-    <!-- S1：核心 KPI + 趋势并排（首屏上半） -->
+    <!-- S1：核心 KPI + 趋势 + 天气并排（首屏上半） -->
     <section class="wb-grid-top">
       <!-- 左列：4 个 KPI -->
       <div class="wb-kpi-col">
@@ -21,17 +21,23 @@
         <KpiTile label="笔记" :val="kpi.note_count" sub="最近 5 篇可编辑" @click="$router.push('/notes')" clickable />
       </div>
 
-      <!-- 中列：记账 30 天 -->
-      <div class="trend-card wb-trend-mid">
-        <div class="trend-head">
-          <div class="trend-title">记账 · 最近 30 天</div>
-          <div class="trend-meta">
-            <span class="trend-meta-item"><i class="trend-dot dot-in"></i>收入</span>
-            <span class="trend-meta-item"><i class="trend-dot dot-out"></i>支出</span>
-            <RouterLink class="trend-link" to="/finance">详情 →</RouterLink>
+      <!-- 中列：记账 30 天 + 天气（堆叠） -->
+      <div class="wb-mid-col">
+        <div class="trend-card wb-mid-card">
+          <div class="trend-head">
+            <div class="trend-title">记账 · 最近 30 天</div>
+            <div class="trend-meta">
+              <span class="trend-meta-item"><i class="trend-dot dot-in"></i>收入</span>
+              <span class="trend-meta-item"><i class="trend-dot dot-out"></i>支出</span>
+              <RouterLink class="trend-link" to="/finance">详情 →</RouterLink>
+            </div>
           </div>
+          <TrendBars :data="kpi.finance.trend" :height="150" mode="expense" />
         </div>
-        <TrendBars :data="kpi.finance.trend" :height="160" mode="expense" />
+        <!-- 天气（v2.39.5 整合进驾驶舱，不再单独 section） -->
+        <div v-if="moduleVisible.weather" class="trend-card wb-mid-card wb-mid-wx">
+          <WeatherCard />
+        </div>
       </div>
 
       <!-- 右列：倒计时 + 自选股 紧凑双段 -->
@@ -67,15 +73,12 @@
       </div>
     </section>
 
-    <!-- S2：核心信息一体化（笔记 / 任务 / 标签 / 习惯打卡 / AI 简报） -->
+    <!-- S2：核心信息一体化（笔记 / 任务 / 标签 + AI 简报） -->
     <section class="wb-grid-mid">
-      <!-- AI 简报 + 习惯打卡 横排（首屏关键行动） -->
+      <!-- AI 简报 横排（v2.39.5 移除习惯打卡，由个人中心控制） -->
       <div class="wb-action-row">
         <div v-if="moduleVisible.brief" class="wb-action-card">
           <AiBriefCard :summary="summary" />
-        </div>
-        <div v-if="moduleVisible.habits" class="wb-action-card">
-          <HabitsCard />
         </div>
       </div>
 
@@ -144,7 +147,6 @@ import MobileWorkbenchHome from '@/components/mobile/MobileWorkbenchHome.vue'
 import KpiTile from '@/components/dashboard/KpiTile.vue'
 import TrendBars from '@/components/dashboard/TrendBars.vue'
 import AiBriefCard from '@/components/workbench/AiBriefCard.vue'
-import HabitsCard from '@/components/workbench/HabitsCard.vue'
 import WorkbenchFeedsBar from '@/components/workbench/WorkbenchFeedsBar.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
@@ -284,6 +286,20 @@ onMounted(async () => {
 .wb-trend-mid { min-height: 200px; display: flex; flex-direction: column; }
 .wb-trend-mid :deep(.tb-bars) { flex: 1; }
 
+/* v2.39.5：中列由 trend-card 改成「记账 + 天气」堆叠两段 */
+.wb-mid-col { display: grid; grid-template-rows: 1.5fr 1fr; gap: 14px; min-height: 0; }
+.wb-mid-card { display: flex; flex-direction: column; }
+.wb-mid-card :deep(.tb-bars) { flex: 1; }
+/* 天气卡在中列时：缩小内部 padding 与字体，不抢记账图视觉 */
+.wb-mid-wx { padding: 10px 14px 8px; }
+.wb-mid-wx :deep(.wx-card) { padding: 0; }
+.wb-mid-wx :deep(.wx-head) { margin-bottom: 6px; }
+.wb-mid-wx :deep(.wx-now) { margin-bottom: 4px; }
+.wb-mid-wx :deep(.wx-temp) { font-size: 28px; }
+.wb-mid-wx :deep(.wx-icon) { font-size: 26px; }
+.wb-mid-wx :deep(.wx-meta) { font-size: 11px; margin-bottom: 6px; }
+.wb-mid-wx :deep(.wx-day) { padding: 6px 2px; }
+
 .wb-side-col { display: grid; grid-template-rows: 1fr 1fr; gap: 14px; }
 .wb-side-card { display: flex; flex-direction: column; }
 .cd-list, .stock-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -355,17 +371,17 @@ onMounted(async () => {
 @media (max-width: 1024px) {
   .wb-grid-top {
     grid-template-columns: 1fr 1fr;
-    grid-template-areas: "kpi trend" "side side";
+    grid-template-areas: "kpi mid" "side side";
   }
   .wb-kpi-col { grid-area: kpi; }
-  .wb-trend-mid { grid-area: trend; }
+  .wb-mid-col { grid-area: mid; }
   .wb-side-col { grid-area: side; grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
 }
 @media (max-width: 768px) {
   .workbench-page { padding: 80px 14px 40px; }
-  .wb-grid-top { grid-template-columns: 1fr; grid-template-areas: "kpi" "trend" "side"; }
+  .wb-grid-top { grid-template-columns: 1fr; grid-template-areas: "kpi" "mid" "side"; }
   .wb-kpi-col { grid-area: kpi; }
-  .wb-trend-mid { grid-area: trend; }
+  .wb-mid-col { grid-area: mid; }
   .wb-side-col { grid-area: side; grid-template-columns: 1fr; }
   .wb-action-row, .wb-row { grid-template-columns: 1fr; }
 }
