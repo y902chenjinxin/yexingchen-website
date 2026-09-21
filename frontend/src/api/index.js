@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
 import router from '@/router'
 
 const api = axios.create({
@@ -21,10 +20,14 @@ api.interceptors.request.use((config) => {
 })
 
 // 响应拦截器：统一处理错误
+//
+// 设计原则（v2.38.3）：通用拦截器**不再默认弹任何错误吐司**。
+// 业务方在各自的 catch 中按需提示（部分场景如 AI 简报、桌面搜索希望静默失败；
+// 一些必填校验希望保留 422 给业务弹窗，不被拦截器抢去）。
+// 仅 401（token 失效）这一**系统级**动作需要拦截器处理：清 token + 跳登录。
 api.interceptors.response.use(
   (response) => {
     if (response.data.code !== 0 && response.data.code !== 200) {
-      ElMessage.error(response.data.msg || '请求失败')
       return Promise.reject(response.data)
     }
     return response.data
@@ -32,30 +35,15 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       const status = error.response.status
-      const detail = error.response.data?.detail || '请求失败'
-      const message = typeof detail === 'string' ? detail : detail?.msg || '请求失败'
-
       if (status === 401) {
         localStorage.removeItem('token')
         if (router.currentRoute.value.path !== '/login') {
           router.push('/login')
         }
-      } else if (status === 403) {
-        ElMessage.error('权限不足')
-      } else if (status === 404) {
-        ElMessage.error('资源不存在')
-      } else if (status === 422) {
-        // 422 多为参数校验失败（如空 q 搜索），由各调用方在自己的 catch 中显示/兜底，
-        // 避免通用拦截器误弹「请求失败」吐司。
-      } else {
-        ElMessage.error(message)
       }
-    } else {
-      // 请求被主动取消（页面跳转、组件卸载、AbortController）不算错误，不弹提示
-      if (error.code !== 'ERR_CANCELED' && error.name !== 'CanceledError') {
-        ElMessage.error('网络错误，请检查连接')
-      }
+      // 其它状态码（400/403/404/422/5xx）一律交业务方 catch 处理
     }
+    // 网络层错误/取消：不弹（页面切换、组件卸载等也会产生这类错）
     return Promise.reject(error)
   }
 )
