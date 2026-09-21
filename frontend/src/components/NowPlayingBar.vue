@@ -9,13 +9,44 @@
         </div>
         <div class="np-meta">
           <span class="np-title">{{ player.curItem.title || '未知曲目' }}</span>
-          <span class="np-artist">{{ player.curItem.artist || '佚名' }}</span>
+          <span class="np-artist">
+            {{ player.curItem.artist || '佚名' }}
+            <span v-if="player.queue.length > 1" class="np-qmeta">{{ player.queueIndex + 1 }}/{{ player.queue.length }}</span>
+          </span>
         </div>
       </div>
 
+      <!-- 上一首 -->
+      <button class="np-btn np-step" :disabled="player.queue.length < 2" @click="player.prev()" title="上一首" aria-label="上一首">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z" fill="currentColor"/></svg>
+      </button>
       <!-- 播放/暂停 -->
       <button class="np-btn np-toggle" @click="player.togglePlay()" :title="player.isPlaying ? '暂停' : '播放'" aria-label="播放切换">
         <el-icon><VideoPause v-if="player.isPlaying" /><VideoPlay v-else /></el-icon>
+      </button>
+      <!-- 下一首 -->
+      <button class="np-btn np-step" :disabled="player.queue.length < 2" @click="player.next()" title="下一首" aria-label="下一首">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z" fill="currentColor"/></svg>
+      </button>
+      <!-- 播放模式切换 -->
+      <button class="np-btn np-mode" @click="player.cyclePlayMode()" :title="modeTitle" :aria-label="`播放模式：${modeTitle}`">
+        <svg v-if="player.playMode === 'list'" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 7h10M7 12h10M7 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M17.5 7l2.2-2.2M19.7 4.8v2.2M17.5 17l2.2 2.2M19.7 19.2v-2.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <svg v-else-if="player.playMode === 'single'" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 7h10M7 12h7M7 17h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="17.5" cy="12.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M5 5l14 7-14 7z" fill="currentColor" opacity=".55"/>
+        </svg>
+        <svg v-else-if="player.playMode === 'shuffle'" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16 4h4v4M20 4l-7 7M16 20h4v-4M20 20l-7-7M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 5v14l11-7z" fill="currentColor"/>
+          <path d="M5 5h2v14H5z" fill="currentColor"/>
+        </svg>
+        <span class="np-mode-label">{{ modeShort }}</span>
       </button>
 
       <!-- 进度条 -->
@@ -76,6 +107,15 @@ function onInfoClick() {
 
 const ratio = computed(() => (player.duration ? player.progress / player.duration : 0))
 const volProxy = ref(player.volume)
+
+const MODE_LABEL = {
+  list: { short: '列表', title: '列表循环（点击切换模式）' },
+  single: { short: '单曲', title: '单曲循环（点击切换模式）' },
+  shuffle: { short: '随机', title: '随机播放（点击切换模式）' },
+  once: { short: '一次', title: '单曲一次（点击切换模式）' },
+}
+const modeShort = computed(() => MODE_LABEL[player.playMode]?.short || '列表')
+const modeTitle = computed(() => MODE_LABEL[player.playMode]?.title || '列表循环')
 
 function onSeek(e) {
   player.seekByRatio(Number(e.target.value))
@@ -194,10 +234,30 @@ function fmt(sec) {
   transition: all 0.2s ease;
 }
 .np-btn:hover { background: rgba(255, 255, 255, 0.14); color: #fff; transform: scale(1.05); }
+.np-btn:disabled { opacity: 0.32; cursor: not-allowed; transform: none; }
 .np-toggle { background: linear-gradient(140deg, #3d7fd6, #2a5fa8); color: #fff; }
 .np-toggle:hover { background: linear-gradient(140deg, #4b8ce0, #326ab8); }
+.np-step { background: rgba(255, 255, 255, 0.05); width: 32px; height: 32px; }
+.np-step svg { width: 16px; height: 16px; }
+.np-mode {
+  display: inline-flex; align-items: center; gap: 4px;
+  width: auto; height: 32px; padding: 0 10px; border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05); font-size: 12px;
+}
+.np-mode svg { width: 16px; height: 16px; }
+.np-mode-label { line-height: 1; letter-spacing: .04em; }
+.np-mode:hover { background: rgba(255, 255, 255, 0.12); }
 .np-close { background: transparent; }
 .np-close:hover { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+.np-qmeta {
+  margin-left: 8px;
+  font-size: 11px;
+  color: rgba(200, 215, 230, 0.55);
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
 
 .np-progress {
   flex: 1 1 auto;

@@ -14,6 +14,21 @@ export const usePlayerStore = defineStore('player', () => {
   const isPlaying = ref(false)
   const volume = ref(Number(localStorage.getItem('bgm_volume') ?? 0.3))
   const rejectedOnce = ref(false)
+  /* ---------- 播放模式（仅在 playlist 模式下生效） ----------
+   *  list    : 列表循环 —— 按顺序播完全部后回到第一首继续循环
+   *  single  : 单曲循环 —— 当前曲目结束后重播这一首
+   *  shuffle : 随机播放 —— 从队列中随机抽下一首（已播过的短期不再抽，避免反复）
+   *  once    : 单曲一次 —— 播完即止，回到 BGM
+   * 持久化到 localStorage，便于多端保持
+   */
+  const PLAY_MODES = ['list', 'single', 'shuffle', 'once']
+  const storedPlayMode = localStorage.getItem('xh_play_mode')
+  const playMode = ref(PLAY_MODES.includes(storedPlayMode) ? storedPlayMode : 'list')
+  /* 播放队列：点播时由调用方传入（通常是 MusicView 当前列表） */
+  const queue = ref([])               // [{ id, title, artist, ... }]
+  const queueIndex = ref(-1)
+  /* shuffle 防重复：记录最近 8 首已播过的 id */
+  const shuffleRecent = ref([])
   // BGM 总开关：关闭时彻底停播且不再自动拉起（含自动播放被拦后的恢复句柄）；
   // 状态持久化到 localStorage，下次进站保持用户上次的选择。
   // 默认开启：仅显式关闭过（存 '0'）才停；未设置过统一播放背景音乐，
@@ -83,10 +98,9 @@ export const usePlayerStore = defineStore('player', () => {
   audio.addEventListener('pause', () => { isPlaying.value = false })
   audio.addEventListener('ended', () => {
     isPlaying.value = false
-    // 点播结束：自动恢复背景 BGM
+    // 点播结束：根据播放模式决定下一步
     if (mode.value === 'playlist') {
-      mode.value = 'idle'
-      playBgm()
+      handleTrackEnded()
     }
   })
   audio.addEventListener('error', () => {
@@ -94,19 +108,141 @@ export const usePlayerStore = defineStore('player', () => {
   })
 
 
-  // 点播曲目：硬停背景，播该曲（仅播一次，不循环）
-  function playItem(item) {
-    const url = resolveUrl(item)
+  // 点播曲目：硬停背景，播该曲（loop 由播放模式决定）
+  // queueList: 调用方传入当前可选列表（如 MusicView 当前页/搜索结果）；
+  //            不传则只播这一首（行为退化为「单曲一次」）
+  function playItem(item, queueList = null) {
+    if (!item) return
     curItem.value = item
     mode.value = 'playlist'
+    // 建立队列
+    if (Array.isArray(queueList) && queueList.length) {
+      queue.value = queueList.slice()
+      // 优先按 id 精确匹配；id 类型不一（数字 / 字符串 'default'）故统一转字符串
+      const targetId = String(item.id)
+      const idx = queue.value.findIndex(q => String(q.id) === targetId)
+      queueIndex.value = idx >= 0 ? idx : 0
+    } else {
+      queue.value = [item]
+      queueIndex.value = 0
+    }
+    shuffleRecent.value = []
+    startCurrent()
+  }
+
+  // 实际启动当前 queueIndex 的曲目（不切换队列/索引）
+  function startCurrent() {
+    const item = queue.value[queueIndex.value]
+    if (!item) return
+    const url = resolveUrl(item)
     hardStop()
-    audio.loop = false
+    audio.loop = playMode.value === 'single'   // 单曲循环：交给 audio.loop
     audio.volume = volume.value
     if (url) {
       audio.src = url
       audio.load()
     }
     audio.play().catch(() => {})
+  }
+
+  // 记录最近播放（用于 shuffle 短期去重）
+  function pushRecent(id) {
+    const key = String(id)
+    shuffleRecent.value = [key, ...shuffleRecent.value.filter(x => x !== key)].slice(0, 8)
+  }
+
+  // 选下一首（不含单曲循环那一支；shuffle 时排除最近 8 首）
+  function pickNextIndex() {
+    const n = queue.value.length
+    if (!n) return -1
+    if (n === 1) return 0
+    if (playMode.value === 'shuffle') {
+      const recent = new Set(shuffleRecent.value)
+      const candidates = []
+      for (let i = 0; i < n; i++) {
+        if (i === queueIndex.value) continue
+        if (recent.has(String(queue.value[i].id))) continue
+        candidates.push(i)
+      }
+      const pool = candidates.length ? candidates : queue.map((_, i) => i).filter(i => i !== queueIndex.value)
+      return pool[Math.floor(Math.random() * pool.length)]
+    }
+    // 列表循环：到末尾回到 0
+    return (queueIndex.value + 1) % n
+  }
+
+  function pickPrevIndex() {
+    const n = queue.value.length
+    if (!n) return -1
+    if (n === 1) return 0
+    if (playMode.value === 'shuffle') return pickNextIndex()  // shuffle 下上首=再随机一首
+    return (queueIndex.value - 1 + n) % n
+  }
+
+  function next() {
+    if (mode.value !== 'playlist' || !queue.value.length) return
+    const idx = pickNextIndex()
+    if (idx < 0) return
+    queueIndex.value = idx
+    pushRecent(queue.value[idx].id)
+    startCurrent()
+  }
+
+  function prev() {
+    // 习惯做法：超过 3 秒按 prev 回到曲首；否则才真正切上一首
+    if (audio.currentTime > 3) {
+      audio.currentTime = 0
+      return
+    }
+    if (mode.value !== 'playlist' || !queue.value.length) return
+    const idx = pickPrevIndex()
+    if (idx < 0) return
+    queueIndex.value = idx
+    pushRecent(queue.value[idx].id)
+    startCurrent()
+  }
+
+  // 曲目自然结束：根据播放模式决定下一步
+  function handleTrackEnded() {
+    if (playMode.value === 'single') {
+      // audio.loop=true 已经会自己重播；兜底再启动一次
+      audio.currentTime = 0
+      audio.play().catch(() => {})
+      return
+    }
+    if (playMode.value === 'once') {
+      // 播完即止：回到 BGM
+      mode.value = 'idle'
+      curItem.value = null
+      queue.value = []
+      queueIndex.value = -1
+      playBgm()
+      return
+    }
+    // list / shuffle 都走 next()
+    const n = queue.value.length
+    if (!n) {
+      mode.value = 'idle'
+      playBgm()
+      return
+    }
+    next()
+  }
+
+  // 切换播放模式：list → single → shuffle → once → list
+  function cyclePlayMode() {
+    const i = PLAY_MODES.indexOf(playMode.value)
+    playMode.value = PLAY_MODES[(i + 1) % PLAY_MODES.length]
+    localStorage.setItem('xh_play_mode', playMode.value)
+    // 同步 audio.loop
+    audio.loop = playMode.value === 'single'
+  }
+
+  function setPlayMode(m) {
+    if (!PLAY_MODES.includes(m)) return
+    playMode.value = m
+    localStorage.setItem('xh_play_mode', m)
+    audio.loop = m === 'single'
   }
 
   function togglePlay() {
@@ -121,6 +257,9 @@ export const usePlayerStore = defineStore('player', () => {
     hardStop()
     isPlaying.value = false
     mode.value = 'idle'
+    curItem.value = null
+    queue.value = []
+    queueIndex.value = -1
     if (bgmUrl.value) playBgm()
   }
 
@@ -202,6 +341,9 @@ export const usePlayerStore = defineStore('player', () => {
     playItem, togglePlay, stopAndHide, setVolume, toggleMute,
     setBgmEnabled, toggleBgm,
     seek, seekByRatio,
+    /* 播放模式 / 队列 */
+    playMode, queue, queueIndex, PLAY_MODES,
+    next, prev, cyclePlayMode, setPlayMode,
     get playing() { return isPlaying.value },
   }
 })

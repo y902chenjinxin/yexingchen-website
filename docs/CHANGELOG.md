@@ -1,3 +1,23 @@
+## [v2.40.0] - 2026-09-22
+
+### 音乐播放器：4 种播放模式 + 队列 + 上下首
+
+User：「音乐模块在播放音乐时，没有选择的播放模式」。
+
+**改动**：
+- `stores/player.js`：新增 4 种模式 `list / single / shuffle / once`（列表循环 / 单曲循环 / 随机播放 / 单曲一次），支持 `cyclePlayMode()` 与 `setPlayMode()`，持久化到 `localStorage('xh_play_mode')`
+- 队列与索引：`queue / queueIndex`，点播时由 `MusicView` 把当前可见列表传入；shuffle 模式下排除最近 8 首防重复
+- 新增 `next() / prev() / handleTrackEnded()`：自然结束时按模式决定下一步（单曲循环交给 `audio.loop`，单曲一次回到 BGM，列表/随机走 `next`）
+- `NowPlayingBar.vue`：增加「上一首 / 下一首 / 播放模式」按钮 + 队列位置 `n/total` + 模式短标签
+- `MobileFullPlayer.vue`：控制组改为「上 / 播 / 下」三按钮，第二排放「模式 / 静音 / 关闭」+ 队列 meta
+- `MusicView.vue`：`handlePlay` 传 `musicStore.list` 作为队列，让上下首/模式在当前列表内循环
+
+**向后兼容**：`playItem(item)` 仍可单参调用（退化为「单曲一次」）；`audio.loop` 初始 `false` 不破坏 BGM 模式。
+
+SW `v160→v161`
+
+---
+
 ## [v2.39.9] - 2026-09-21
 
 ### 移除 AI 简报功能（反复报错且用户不需要）

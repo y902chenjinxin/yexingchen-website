@@ -360,7 +360,8 @@ async function confirmBatchDelete() {
 
 /* ---- 播放 / 背景乐 ---- */
 function handlePlay(item) {
-  player.playItem(item)
+  // 把当前可见列表作为播放队列，让上下首/模式在当前列表里循环
+  player.playItem(item, musicStore.list)
 }
 function setAsBg(item) {
   bgm.setBackground(item, true)
