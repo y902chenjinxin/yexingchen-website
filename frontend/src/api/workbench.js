@@ -135,6 +135,27 @@ export const workbenchApi = {
 
   search: (q, params) => api.get('/workbench/search', { params: { q, ...params } }),
 
+  // ====== v2.39 AI 高级玩法 ======
+  aiAdv: {
+    // 通用入口：ability = rewrite | explain | extract_entities | memory_distill | agent_plan
+    invoke: (data) => api.post('/workbench/ai/advanced', data),
+    // 语义召回（GET）
+    semanticSearch: (q, topK = 8) => api.get('/workbench/ai/semantic_search', { params: { q, top_k: topK } }),
+    // 建立/重建嵌入
+    indexNote: (data) => api.post('/workbench/ai/index', data),
+    // Agent 自动任务
+    agentStart: (data) => api.post('/workbench/ai/agent/start', data),
+    agentRun: (data) => api.post('/workbench/ai/agent/run', data),
+    agentGet: (id) => api.get(`/workbench/ai/agent/${id}`),
+    // 长期记忆
+    memoryList: () => api.get('/workbench/ai/memory'),
+    memoryForget: (data) => api.post('/workbench/ai/memory/forget', data),
+    // 用量
+    usage: () => api.get('/workbench/ai/usage'),
+    // OCR
+    ocr: (data) => api.post('/workbench/ai/ocr', data),
+  },
+
   // AI
   ai: {
     // === Provider 配置（用户级，明文存储 Key） ===

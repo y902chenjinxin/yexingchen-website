@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.routers.workbench.ai import router as ai_router
+from app.routers.workbench.ai_advanced import router as ai_advanced_router
 from app.routers.workbench.assets import router as assets_router
 from app.routers.workbench.brief import router as brief_router
 from app.routers.workbench.dashboard import router as dashboard_router
@@ -31,6 +32,7 @@ router.include_router(tasks_router)
 router.include_router(search_router)
 router.include_router(trash_router)
 router.include_router(ai_router)
+router.include_router(ai_advanced_router)
 router.include_router(providers_router)
 router.include_router(import_export_router)
 

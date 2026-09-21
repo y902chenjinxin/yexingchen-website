@@ -60,11 +60,18 @@ def sanitize_payload(payload: Any) -> Any:
 class AiRequest:
     """单次 AI 调用的入参。"""
 
-    ability: str  # organize / summarize / suggest_tags / suggest_task / stock_analysis
+    ability: str  # organize / summarize / suggest_tags / suggest_task / stock_analysis / rewrite / explain / extract_entities / memory_distill / agent_plan / agent_step
     content: str
     options: Optional[Dict[str, Any]] = None
     # 可选：覆盖默认"笔记助手"系统提示，用于非笔记场景（如股票研判）
     system: Optional[str] = None
+    # 可选：OpenAI 兼容的 tools 列表（function calling schema）；后端会执行工具并二轮调用
+    tools: Optional[List[Dict[str, Any]]] = None
+    # 可选：内容是多模态 parts 列表（[{"type":"text","text":...},{"type":"image_url",...}]）
+    # 若提供此字段则忽略 content
+    content_parts: Optional[List[Dict[str, Any]]] = None
+    # 可选：覆盖模型默认温度
+    temperature: Optional[float] = None
 
 
 @dataclass
@@ -76,6 +83,8 @@ class AiResponse:
     data: Dict[str, Any]
     provider: str
     model: str
+    usage: Optional[Dict[str, int]] = None  # {"prompt_tokens":..,"completion_tokens":..,"total_tokens":..}
+    tool_calls: Optional[List[Dict[str, Any]]] = None  # 模型返回的工具调用（已在本轮被本地执行并回喂）
 
 
 class AiProvider(ABC):
@@ -123,6 +132,24 @@ class FakeProvider(AiProvider):
         elif req.ability == "finance_csv_import":
             text = "[fake] 已离线解析流水（未连接 AI Provider）"
             data = {"rows": [], "skipped": []}
+        elif req.ability == "rewrite":
+            text = "[fake] 已改写（未连接 AI Provider）"
+            data = {"text": snippet, "diff_ratio": 1.0}
+        elif req.ability == "explain":
+            text = "[fake] 这是占位解释（未连接 AI Provider）"
+            data = {"definition": title, "example": "略", "related": []}
+        elif req.ability == "extract_entities":
+            text = "[fake] 实体抽取占位（未连接 AI Provider）"
+            data = {"people": [], "places": [], "dates": [], "commitments": [], "todos": []}
+        elif req.ability == "memory_distill":
+            text = "[fake] 记忆蒸馏占位（未连接 AI Provider）"
+            data = {"facts": []}
+        elif req.ability == "agent_plan":
+            text = "[fake] 计划占位（未连接 AI Provider）"
+            data = {"steps": [{"id": 1, "intent": "无 AI", "tool": "none", "input": None}]}
+        elif req.ability == "agent_step":
+            text = "[fake] 一步占位（未连接 AI Provider）"
+            data = {"thought": "无", "action": "finish", "input": {}, "done": "true"}
         else:
             text = f"[fake] 未知能力 {req.ability}"
             data = {}
@@ -133,6 +160,8 @@ class FakeProvider(AiProvider):
             data=data,
             provider=self.name,
             model="fake-1",
+            usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            tool_calls=[],
         )
 
     async def stream_chat(self, messages: list, extra=None):
@@ -188,6 +217,49 @@ _ABILITY_SCHEMAS = {
         "level": "只填一个档位：up(强/偏多)/hold(持/中性偏多)/watch(观/中性)/down(减/偏空)/danger(避/空头)",
         "summary": "该股当日技术形态总结（中文，1~2句）",
         "suggestion": "具体可操作建议（中文，1~2句）",
+    },
+    # ====== v2.39 新增能力 ======
+    "rewrite": {
+        # style: casual / formal / concise / emoji / polish / critical
+        "reply": "改写后给用户的简短说明（一句话，说清改了什么风格）",
+        "text": "改写后的正文（保留原意，仅改变语气/长度/视角）",
+        "diff_ratio": "与原文长度的比值，保留 2 位小数（如 0.85）",
+    },
+    "explain": {
+        "reply": "面向用户的解释（自然、口语，3~6 句）",
+        "definition": "一句话精确定义（中文）",
+        "example": "一个通俗例子（中文，1~2 句）",
+        "related": ["相关概念数组，2~5 个"],
+    },
+    "extract_entities": {
+        "reply": "抽取结果简要说明（1~2句）",
+        "people": [{"name": "人名", "role": "与用户的关系/角色"}],
+        "places": [{"name": "地点"}],
+        "dates": [{"value": "YYYY-MM-DD 或自然语言", "context": "上下文"}],
+        "commitments": ["承诺/约定列表，2~6 条"],
+        "todos": ["待办列表，2~6 条"],
+    },
+    "memory_distill": {
+        # 从最近笔记/对话蒸馏稳定事实
+        "reply": "蒸馏简要说明（1~2句）",
+        "facts": [
+            {"category": "identity|habit|preference|relationship|project|other", "fact": "事实描述", "confidence": 80}
+        ],
+    },
+    "agent_plan": {
+        # Agent 第一步：把目标拆成步骤
+        "reply": "计划说明（1~2 句）",
+        "steps": [
+            {"id": 1, "intent": "这一步要做什么", "tool": "create_note|create_task|search_notes|log_finance|none", "input": "调用参数（可为 null）"}
+        ],
+    },
+    "agent_step": {
+        # Agent 单步：决定下一步行动
+        "reply": "这一步的思考说明",
+        "thought": "这一步的内部思考（中文）",
+        "action": "create_note|create_task|search_notes|log_finance|finish",
+        "input": {"key": "value"},
+        "done": "true/false（本步是否完成目标）",
     },
 }
 
@@ -303,13 +375,18 @@ class HttpProvider(AiProvider):
             f"待研判内容：\n{content}\n"
         )
 
-    def invoke(self, req: AiRequest) -> AiResponse:
+    def _build_messages(self, req: AiRequest, prompt: str):
+        """构造 OpenAI 兼容的 messages。支持 content_parts（多模态）。"""
+        if req.content_parts:
+            return [{"role": "user", "content": req.content_parts}]
+        return [{"role": "user", "content": prompt}]
+
+    def _post_chat(self, messages, *, tools=None, temperature=None):
+        """调一次 /v1/chat/completions，返回 (data_dict, last_err_str)。"""
         try:
-            import httpx  # 延迟导入
+            import httpx
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError("缺少 httpx，无法使用 HttpProvider") from exc
-
-        prompt = self._build_prompt(req)
         base = self.base_url.rstrip("/")
         if base.endswith("/v1"):
             base = base[:-3]
@@ -318,16 +395,17 @@ class HttpProvider(AiProvider):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        messages = [{"role": "user", "content": prompt}]
+        payload_base = {"model": self.model, "messages": messages}
+        if temperature is not None:
+            payload_base["temperature"] = temperature
+        if tools:
+            payload_base["tools"] = tools
+            payload_base["tool_choice"] = "auto"
 
-        # 优先请求仅 JSON 输出；部分 OpenAI 兼容端点不支持 response_format，则回退普通请求
         attempts = [
-            {
-                "model": self.model,
-                "messages": messages,
-                "response_format": {"type": "json_object"},
-            },
-            {"model": self.model, "messages": messages},
+            # 优先 JSON 模式
+            {**payload_base, "response_format": {"type": "json_object"}},
+            payload_base,
         ]
         data = None
         last_err = None
@@ -336,23 +414,30 @@ class HttpProvider(AiProvider):
                 with httpx.Client(timeout=self.timeout) as client:
                     r = client.post(url, json=payload, headers=headers)
                 if r.status_code < 400:
-                    data = r.json()
-                    break
+                    return r.json(), None
                 last_err = f"HTTP {r.status_code}: {r.text[:200]}"
             except Exception as exc:  # noqa: BLE001
                 last_err = str(exc)
-        if data is None:
-            raise RuntimeError(last_err or "AI provider 调用失败")
+        return None, last_err or "AI provider 调用失败"
 
-        message = (data.get("choices", [{}])[0].get("message", {}) or {})
-        content = (message.get("content") or "").strip()
-        # 推理模型可能把过程放在 reason_content / 或内联进 content，这里统一剥除，只留最终答案
+    def _extract_usage(self, data):
+        u = (data or {}).get("usage") or {}
+        try:
+            return {
+                "prompt_tokens": int(u.get("prompt_tokens", 0) or 0),
+                "completion_tokens": int(u.get("completion_tokens", 0) or 0),
+                "total_tokens": int(u.get("total_tokens", 0) or 0),
+            }
+        except Exception:
+            return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+    def _postprocess(self, content: str, ability: str):
+        """从模型输出里提 JSON 与最终给用户的文本。"""
         obj = _extract_json_object(content)
         scrubbed = _strip_reasoning(content)
         if isinstance(obj, dict):
             reply = obj.get("reply")
             if reply in (None, "") and obj:
-                # reply 缺失时，抓取任一可读字符串字段当作给用户的文本，避免把整个 JSON 结构漏给界面
                 reply = next(
                     (
                         str(v).strip()
@@ -370,16 +455,64 @@ class HttpProvider(AiProvider):
         else:
             text = scrubbed or "（AI 未返回有效结果）"
             structured = {}
-        # 兜底：剥掉可能内嵌在 reply 里的 JSON 块；若文本里仍残留 JSON 结构痕迹，转为可读摘要
         text = _remove_embedded_json(text)
         text = _polish_readable(text, scrubbed or content)
-        # 结构化结果解析失败时宁可为空（apply 会明确报缺字段），也不把原始文本回传污染界面
+        return text, structured
+
+    def invoke(self, req: AiRequest) -> AiResponse:
+        prompt = self._build_prompt(req)
+        messages = self._build_messages(req, prompt)
+        data, err = self._post_chat(messages, tools=req.tools, temperature=req.temperature)
+        if data is None:
+            raise RuntimeError(err or "AI provider 调用失败")
+        usage_total = dict(self._extract_usage(data))
+        tool_calls_done: list = []
+
+        # ---- 工具调用循环：模型若返回 tool_calls，本地执行后回喂 messages 再调一次 ----
+        # 最多 3 轮，防止无限循环。
+        for _ in range(3):
+            message = (data.get("choices", [{}])[0].get("message", {}) or {})
+            tcalls = message.get("tool_calls")
+            if not tcalls:
+                break
+            tool_msgs = []
+            for tc in tcalls:
+                fn = (tc.get("function") or {})
+                name = fn.get("name") or ""
+                args_raw = fn.get("arguments") or "{}"
+                try:
+                    args = json.loads(args_raw) if isinstance(args_raw, str) else (args_raw or {})
+                except Exception:
+                    args = {}
+                tool_calls_done.append({"name": name, "arguments": args})
+                # 真实执行委托给 _ToolExecutor；缺则返回友好提示
+                obs = _default_tool_executor(name, args)
+                tool_msgs.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id") or "",
+                    "content": json.dumps(obs, ensure_ascii=False),
+                })
+            # 把 assistant 决策 + tool 结果回喂
+            followup = list(messages) + [message] + tool_msgs
+            data, err = self._post_chat(followup, tools=req.tools, temperature=req.temperature)
+            if data is None:
+                raise RuntimeError(err or "AI provider 调用失败（tool followup）")
+            u = self._extract_usage(data)
+            for k in usage_total:
+                usage_total[k] += u.get(k, 0)
+
+        # ---- 后处理（取最终给用户的文本与结构化字段）----
+        message = (data.get("choices", [{}])[0].get("message", {}) or {})
+        content = (message.get("content") or "").strip()
+        text, structured = self._postprocess(content, req.ability)
         return AiResponse(
             ability=req.ability,
             text=text,
             data=structured,
             provider=self.name,
             model=self.model,
+            usage=usage_total,
+            tool_calls=tool_calls_done,
         )
 
     async def stream_chat(self, messages: list, extra=None):
@@ -454,6 +587,37 @@ def _polish_readable(candidate: str, fallback: str) -> str:
             if texts:
                 pieces.append("、".join(texts[:6]))
     return "；".join(pieces)[:800] or (fallback or "")
+
+
+# ============ 工具执行注册表 ============
+# 默认实现：注册一些开箱即用工具，路由层可覆写。
+# 入参：tool_name (str) + args (dict)；返回 dict（被 JSON 序列化进 messages.tool role）
+_TOOL_EXECUTORS: Dict[str, Any] = {}
+
+
+def register_tool_executor(name: str):
+    """装饰器：注册工具名 → 可调用对象 (args: dict) -> dict。"""
+
+    def deco(fn):
+        _TOOL_EXECUTORS[name] = fn
+        return fn
+
+    return deco
+
+
+def set_tool_executor(name: str, fn):
+    """运行时注入工具实现（路由层用）。"""
+    _TOOL_EXECUTORS[name] = fn
+
+
+def _default_tool_executor(name: str, args: dict) -> dict:
+    fn = _TOOL_EXECUTORS.get(name)
+    if fn is None:
+        return {"ok": False, "error": f"未知工具：{name}"}
+    try:
+        return fn(args or {})
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": str(exc)[:300]}
 
 
 # ============ Provider 工厂 ============

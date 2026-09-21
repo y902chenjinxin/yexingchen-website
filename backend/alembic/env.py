@@ -33,6 +33,12 @@ from app.models.tool import Tool  # noqa: F401,E402
 from app.models.log import OperationLog  # noqa: F401,E402
 from app.models.system import GlobalSetting  # noqa: F401,E402
 from app.models.habits import Habit, HabitCheckin  # noqa: F401,E402
+from app.models.ai_advanced import (  # noqa: F401,E402
+    NoteEmbedding,
+    UserFact,
+    AiUsage,
+    AgentJob,
+)
 from app.models.workbench import (  # noqa: F401,E402
     Note,
     Asset,

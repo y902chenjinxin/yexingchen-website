@@ -93,6 +93,18 @@
         <span class="tb-cmd-kbd">{{ cmdKeyLabel }} K</span>
       </button>
 
+      <!-- AI 高级工具（v2.39）：改写/解释/语义搜索/长期记忆/Agent/OCR/用量 -->
+      <button
+        type="button"
+        class="tb-icon-btn tb-ai-btn"
+        :title="'AI 高级工具'"
+        aria-label="AI 高级工具"
+        @click="$emit('open-ai-tools')"
+      >
+        <el-icon><MagicStick /></el-icon>
+        <span class="tb-ai-kbd">AI</span>
+      </button>
+
       <!-- 倒计时徽章：最近一条未过期倒计时，hover/点击展开面板 -->
       <el-dropdown v-if="nearest" trigger="click" placement="bottom-end" :show-arrow="false">
         <button class="tb-icon-btn tb-cd-btn" :title="`距 ${nearest.title} 还有 ${nearest.days_left} 天`">
@@ -139,8 +151,15 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  User, SwitchButton, Headset, CaretBottom, Check, Cellphone, Calendar, MagicStick
+} from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { usePlayerStore } from '@/stores/player'
+import { useBgmLibraryStore } from '@/stores/bgmLibrary'
+import { listHomeCountdowns } from '@/api/countdown'
 
-defineEmits(['open-command-palette'])
+defineEmits(['open-command-palette', 'open-ai-tools'])
 
 const isMac = ref(false)
 onMounted(() => { isMac.value = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '') })
@@ -148,13 +167,11 @@ const cmdKeyLabel = computed(() => isMac.value ? '⌘' : 'Ctrl')
 
 /* ---- 倒计时徽章（#3）：最近一条未过期的 count_down 倒计时 + 展开面板 ---- */
 const cdList = ref([])
-// 最近的（剩余天数最小）一条倒计时，作为按钮显示
 const nearest = computed(() => {
   const cds = cdList.value.filter(c => c.direction === 'count_down' && c.days_left >= 0)
   if (!cds.length) return null
   return cds.sort((a, b) => a.days_left - b.days_left)[0]
 })
-// 面板：最近最多 5 条未过期
 const top5 = computed(() => {
   const cds = cdList.value.filter(c => c.days_left >= 0)
   cds.sort((a, b) => a.days_left - b.days_left)
@@ -168,13 +185,6 @@ async function loadCountdowns() {
     cdList.value = res?.data?.list || []
   } catch { /* 未登录/网络失败则不显示徽章 */ }
 }
-import {
-  User, SwitchButton, Headset, CaretBottom, Check, Cellphone, Calendar
-} from '@element-plus/icons-vue'
-import { useAuthStore } from '@/stores/auth'
-import { usePlayerStore } from '@/stores/player'
-import { useBgmLibraryStore } from '@/stores/bgmLibrary'
-import { listHomeCountdowns } from '@/api/countdown'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -391,6 +401,18 @@ onUnmounted(() => {})
   line-height: 1;
 }
 .tb-cmd-btn:hover .tb-cmd-kbd { color: var(--dp-accent, var(--lj-dai)); }
+
+/* AI 高级工具触发按钮（与命令面板按钮同形，但图标为魔法棒） */
+.tb-ai-btn { color: var(--dp-accent, var(--lj-dai)); }
+.tb-ai-kbd {
+  font-size: 10.5px;
+  font-family: var(--font-mono, ui-monospace, 'JetBrains Mono', monospace);
+  letter-spacing: 0.04em;
+  color: var(--dp-accent, var(--lj-dai));
+  border-left: 1px solid var(--dp-line, rgba(126, 136, 243, 0.22));
+  padding-left: 8px;
+  line-height: 1;
+}
 
 /* 倒计时徽章按钮（胶囊，贴合金辉玻璃按钮组） */
 .tb-cd-btn {

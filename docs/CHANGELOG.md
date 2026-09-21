@@ -1,3 +1,43 @@
+## [v2.39.0] - 2026-09-21
+
+### AI 高级玩法（8 项 AI 深度扩展，参考 Khoj/Omi/Rowboat范式）
+
+User：「改写ability、解释、语义召回、长期记忆蒸馏、工具调用、图片理解、token用量监控、自动任务，这几个很不错，是我需要的」。
+
+#### 后端
+
+- **数据模型**：`xuanhuang_note_embeddings`(RAG嵌入) / `xuanhuang_user_facts`(长期记忆) / `xuanhuang_ai_usage`(用量) / `xuanhuang_agent_jobs`(自动任务) 四表
+- **AI Provider 增强**：
+  - `ai_providers.py` 新增 7 个能力 schema：`rewrite/explain/extract_entities/memory_distill/agent_plan/agent_step`
+  - `HttpProvider.invoke` 提取 `usage` 字段并支持 `tools`（OpenAI function calling）+ 多轮工具执行回喂，最多 3 轮防爆
+  - `HttpProvider._build_messages` 支持 `content_parts` 多模态（`text` + `image_url`）
+  - 工具注册表 `_TOOL_EXECUTORS` + `register_tool_executor/set_tool_executor`
+- **新服务**：
+  - `services/embedding.py`：OpenAI 兼容 `/v1/embeddings`，按 `(note_id, model)` 幂等 + content_hash 缓存 + 余弦相似度
+  - `services/ai_usage.py`：月 10w tokens 默认上限（`AI_MONTHLY_TOKEN_LIMIT` 可改）+ 月聚合查询 + 超限 429
+- **新路由 `/api/workbench/ai/advanced`**（11 端点）：
+  - `POST /ai/advanced` 通用入口（rewrite/explain/extract_entities/memory_distill/agent_plan）
+  - `GET  /ai/semantic_search?q=&top_k=8` 语义召回
+  - `POST /ai/index` 建立/重建笔记嵌入
+  - `POST /ai/agent/start` + `/ai/agent/run` + `GET /ai/agent/{id}` ReAct 循环（最多 8 步，工具：create_note/create_task/search_notes/log_finance）
+  - `GET /ai/memory` + `POST /ai/memory/forget` 长期记忆 CRUD
+  - `GET /ai/usage` 当月用量
+  - `POST /ai/ocr` 高德OCR+多模态vision双兜底
+- **修复**：迁移脚本中 `BIGINT` 在 SQLite + AUTOINCREMENT 不可用 → 改为 `Integer`，服务器上运行时改表
+
+#### 前端
+
+- **`components/workbench/AiToolsDrawer.vue`**：7 标签抽屉（改写/解释/语义搜索/长期记忆/Agent/OCR/用量），线性产品风
+- **`GlobalTopBar.vue`** 新增 `✺ AI` 按钮（顶栏右侧，与 `⌘K` 同列）
+- **`App.vue`** 全局热键 `Cmd/Ctrl+Shift+A` 打开 AI 工具抽屉
+- **`api/workbench.js`** 新增 `workbenchApi.aiAdv` 命名空间（10 个方法）
+
+#### 验证 PASS（生产）
+
+- 8 个端点全部 200（OCR BadGateway 因 PNG 图非文本，可接受）
+- 后端 health=200 / 前端 SW v150 / 迁移应用 `s0t1u2v3w4x5 → t0u1v2w3x4y5`
+- Agent 任务 `start/run/get` 端到端打通；embedding 幂等写入；用量按日聚合
+
 ## [v2.38.3] - 2026-09-21
 
 ### 修复：根除「请求失败」吐司（通用拦截器不再默认弹错）

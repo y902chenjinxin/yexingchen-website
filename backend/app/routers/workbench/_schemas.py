@@ -158,3 +158,46 @@ class AiChatStreamIn(BaseModel):
 class AiLinkIn(BaseModel):
     target_type: str  # note / asset / task
     target_id: int
+
+
+# ---------- v2.39 AI 高级玩法 ----------
+class AiAdvancedIn(BaseModel):
+    """AI 高级能力统一入参（rewrite / explain / extract_entities / memory_distill / agent_plan）。"""
+    ability: str
+    content: Optional[str] = None
+    note_id: Optional[int] = None
+    style: Optional[str] = None  # rewrite 用：casual/formal/concise/emoji/polish/critical
+    provider_id: Optional[int] = None
+    # 可选：图片 base64 / url（说明型 explain / 多模态描述）
+    image_url: Optional[str] = None
+
+
+class AiAgentStartIn(BaseModel):
+    """Agent 自动任务启动。"""
+    goal: str
+    title: Optional[str] = None
+    max_steps: int = 8
+    provider_id: Optional[int] = None
+
+
+class AiAgentRunIn(BaseModel):
+    """Agent 同步执行一步（前端调试 / 手动执行）。"""
+    job_id: int
+    provider_id: Optional[int] = None
+
+
+class AiForgetIn(BaseModel):
+    """AI 记忆「忘记」接口。"""
+    fact_id: int
+
+
+class AiSemanticIndexIn(BaseModel):
+    """语义索引（重建某条笔记的嵌入）。"""
+    note_id: int
+    force: bool = False
+
+
+class AiOcrIn(BaseModel):
+    """OCR 入参：图片 URL（站内 asset 或外链）。"""
+    image_url: str
+    prompt: Optional[str] = None

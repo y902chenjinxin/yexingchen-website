@@ -12,7 +12,7 @@
     </router-view>
 
     <!-- 登录后全站常驻：桌面顶栏（悬浮）；移动端用独立沉浸式外壳，不显示 ✓ -->
-    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" @open-command-palette="cmdRef?.open?.()" />
+    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" @open-command-palette="cmdRef?.open?.()" @open-ai-tools="aiToolsOpen = true" />
 
     <!-- 登录后桌面端：左侧导航（默认展开，可收起，按玉简分组；顶栏不动） -->
     <DesktopSidebar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
@@ -25,6 +25,9 @@
 
     <!-- 全局命令面板 ⌘K / Ctrl+K（登录后可用；移动端隐藏以免误触） -->
     <CommandPalette v-if="auth.isLoggedIn && !isMobile" ref="cmdRef" />
+
+    <!-- AI 高级工具抽屉（v2.39）：改写/解释/语义搜索/长期记忆/Agent/OCR/用量 -->
+    <AiToolsDrawer v-if="auth.isLoggedIn && !isMobile" v-model:open="aiToolsOpen" />
 
     <!-- 登录后全站常驻桌宠（音乐岛内容列表页隐藏：桌宠固定右下会压住列表行/最后一张卡片） -->
     <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn && showWhale" />
@@ -55,6 +58,7 @@ import MobileFullPlayer from '@/components/mobile/MobileFullPlayer.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+import AiToolsDrawer from '@/components/workbench/AiToolsDrawer.vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 // WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
@@ -102,6 +106,9 @@ const showInitialLoading = ref(true)
 // 命令面板实例引用（顶栏按钮点击触发其 open()）
 const cmdRef = ref(null)
 
+// AI 高级工具抽屉开关（顶栏 ✺ AI 按钮 + 全局热键触发）
+const aiToolsOpen = ref(false)
+
 // F5 全局键盘快捷键：g+字母（仿 GitHub 路由跳转）
 // 触发序列：按 g 后 1.5s 内按下字母，否则取消
 let gPressedAt = 0
@@ -132,6 +139,11 @@ function onGlobalKey(e) {
   if (e.key.toLowerCase() === 'n' && !e.shiftKey) {
     e.preventDefault()
     router.push('/notes/new')
+  }
+  // v2.39 AI 工具快捷键：Cmd/Ctrl + Shift + A 打开 AI 高级工具抽屉
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
+    e.preventDefault()
+    aiToolsOpen.value = true
   }
 }
 

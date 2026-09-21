@@ -74,6 +74,13 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "habits.py"),     f"{REMOTE_BASE}/backend/app/routers/workbench/habits.py"),
     (os.path.join(ROOT, "backend", "app", "models", "habits.py"),                   f"{REMOTE_BASE}/backend/app/models/habits.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "weather.py"),    f"{REMOTE_BASE}/backend/app/routers/workbench/weather.py"),
+    # ---- v2.39 AI 高级玩法（嵌入/RAG/记忆/Agent/OCR）----
+    (os.path.join(ROOT, "backend", "app", "services", "embedding.py"),             f"{REMOTE_BASE}/backend/app/services/embedding.py"),
+    (os.path.join(ROOT, "backend", "app", "services", "ai_usage.py"),               f"{REMOTE_BASE}/backend/app/services/ai_usage.py"),
+    (os.path.join(ROOT, "backend", "app", "models", "ai_advanced.py"),              f"{REMOTE_BASE}/backend/app/models/ai_advanced.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "ai_advanced.py"), f"{REMOTE_BASE}/backend/app/routers/workbench/ai_advanced.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "t0u1v2w3x4y5_ai_advanced.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/t0u1v2w3x4y5_ai_advanced.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "s0t1u2v3w4x5_habits.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/s0t1u2v3w4x5_habits.py"),
     # ---- 家庭助理（通讯录 / 待办 / 订阅）----

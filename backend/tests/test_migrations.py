@@ -100,6 +100,10 @@ EXPECTED_TABLES = {
     "xuanhuang_countdowns",
     "xuanhuang_habits",
     "xuanhuang_habit_checkins",
+    "xuanhuang_note_embeddings",
+    "xuanhuang_user_facts",
+    "xuanhuang_ai_usage",
+    "xuanhuang_agent_jobs",
     "token_blocklist",
 }
 
