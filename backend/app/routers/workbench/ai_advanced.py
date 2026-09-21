@@ -56,6 +56,7 @@ from app.routers.workbench._schemas import (
     AiAgentRunIn,
     AiAgentStartIn,
     AiForgetIn,
+    AiMemoryAddIn,
     AiOcrIn,
     AiSemanticIndexIn,
 )
@@ -410,6 +411,92 @@ def ai_memory_forget(
     row.active = False
     db.commit()
     return ok({"ok": True, "id": row.id})
+
+
+@router.post("/ai/memory/add")
+def ai_memory_add(
+    payload: AiMemoryAddIn,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """AI 记忆手动添加（v2.39 扩展）。
+
+    两种用法：
+    1) 直接给 fact：纯文本入库（不走 AI，最快）
+    2) 给 prompt：让 AI 把口语化表述整理成稳定事实（走 memory_distill 能力）
+    可选 category / confidence；source 标记 manual 或 ai_distill_from_prompt。
+    """
+    uid = current_user["user_id"]
+    category = (payload.category or "other").strip()[:32]
+    confidence = int(payload.confidence or 90)
+    saved: list = []
+
+    if payload.fact and payload.fact.strip():
+        row = UserFact(
+            user_id=uid,
+            category=category,
+            fact=payload.fact.strip()[:2000],
+            source="manual",
+            confidence=confidence,
+            active=True,
+        )
+        db.add(row); db.commit(); db.refresh(row)
+        saved.append({"id": row.id, "category": row.category, "fact": row.fact, "confidence": row.confidence, "source": row.source})
+
+    if payload.prompt and payload.prompt.strip():
+        # 让 AI 整理成事实（需要走 provider；没配就走 fake 兜底）
+        try:
+            check_quota(db, uid)
+        except RuntimeError as e:
+            raise_http(429, str(e), 429)
+        provider, cfg = _provider_or_fake(db, uid, None)
+        sys_prompt = (
+            "你是用户的「事实整理助理」：用户会给你一段口语化表述，"
+            "请把它拆成 1~3 条「稳定事实」（identity / habit / preference / relationship / project / other），"
+            "用 JSON 数组 [{category, fact, confidence}] 输出，confidence 0-100。"
+            "只输出稳定、长期适用的事实；不要写临时想法或命令。"
+        )
+        req = AiRequest(
+            ability="memory_distill",
+            content=sanitize_text(payload.prompt),
+            system=sys_prompt,
+            temperature=0.2,
+        )
+        try:
+            resp = provider.invoke(req)
+            record_usage(db, uid, "memory_distill", resp.usage)
+        except Exception as exc:  # noqa: BLE001
+            raise_http(502, f"AI 整理失败：{str(exc)[:200]}", 502)
+        data = resp.data or {}
+        for f in (data.get("facts") or []):
+            txt = (f.get("fact") or "").strip()
+            if not txt:
+                continue
+            row = UserFact(
+                user_id=uid,
+                category=(f.get("category") or category or "other").strip()[:32],
+                fact=txt[:2000],
+                source="ai_distill_from_prompt",
+                confidence=int(f.get("confidence") or confidence),
+                active=True,
+            )
+            db.add(row); saved.append({
+                "id": None, "category": row.category, "fact": row.fact,
+                "confidence": row.confidence, "source": row.source,
+            })
+        if saved:
+            db.commit()
+            # 重新查询以补 id
+            for i, item in enumerate(saved):
+                if item["id"] is None and i < len(saved):
+                    item["id"] = db.query(UserFact).filter(
+                        UserFact.user_id == uid,
+                        UserFact.fact == item["fact"],
+                    ).order_by(UserFact.id.desc()).first().id
+
+    if not saved:
+        raise_http(400, "fact 与 prompt 至少填一个", 400)
+    return ok({"saved": saved, "count": len(saved)})
 
 
 # ============ 用量 ============

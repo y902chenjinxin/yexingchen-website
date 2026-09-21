@@ -148,7 +148,6 @@ class AiMessageIn(BaseModel):
 
 class AiChatStreamIn(BaseModel):
     """独立原生对话流式请求。"""
-
     content: str
     conversation_id: int  # 必填，强制校验归属
     provider_id: Optional[int] = None  # 指定 provider；不传则用默认；都没则 fake
@@ -189,6 +188,20 @@ class AiAgentRunIn(BaseModel):
 class AiForgetIn(BaseModel):
     """AI 记忆「忘记」接口。"""
     fact_id: int
+
+
+class AiMemoryAddIn(BaseModel):
+    """AI 记忆「手动添加」接口（v2.39）。
+
+    支持两种填法：
+    - 直接给 fact（纯文本保存，不调用 AI）
+    - 给 prompt（让 AI 把口语化表述整理成稳定事实；走 ai_providers memory_distill）
+    至少填一个。
+    """
+    fact: Optional[str] = None
+    prompt: Optional[str] = None
+    category: Optional[str] = "other"  # identity/habit/preference/relationship/project/other
+    confidence: Optional[int] = 90
 
 
 class AiSemanticIndexIn(BaseModel):

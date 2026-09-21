@@ -1,7 +1,7 @@
 """AI 用量累计 + 月度限速（v2.39）。
 
 - 每次 AI 调用累计 prompt/completion/total tokens + call_count；
-- 默认月上限 100k tokens（可在 backend/.env 用 AI_MONTHLY_TOKEN_LIMIT 覆盖）；
+- 默认月上限 10 亿 tokens（v2.39 上调；个人工作台无需担心配额；可在 backend/.env 用 AI_MONTHLY_TOKEN_LIMIT 覆盖）；
 - 超限抛 429，由前端业务 catch 静默处理或提示。
 
 聚合粒度：(user_id, day, ability)，月总量 = 该月所有 day 之和。
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -20,7 +20,7 @@ from app.models.ai_advanced import AiUsage
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_MONTHLY_TOKEN_LIMIT = 100_000  # 默认 10w tokens / 月
+DEFAULT_MONTHLY_TOKEN_LIMIT = 1_000_000_000  # 默认 10 亿 tokens / 月（v2.39 上调）
 
 
 def _month_limit() -> int:

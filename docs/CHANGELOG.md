@@ -1,3 +1,25 @@
+## [v2.39.1] - 2026-09-21
+
+### 长期记忆手动添加 + 用量上限调整
+
+User：「1、长期记忆除了蒸馏笔记外，还要支持我输入promt，要保留或设定与我对话的记忆；2、用量改为10亿」。
+
+- **长期记忆手动添加**：
+  - 后端 `POST /api/workbench/ai/memory/add`（v2.39 增量）
+    - `fact` 直接入库 → `source='manual'`
+    - `prompt` 走 `memory_distill` 让 AI 整理成多条结构化事实 → `source='ai_distill_from_prompt'`
+  - 前端 `AiToolsDrawer.vue` 长期记忆 tab 加「手动添加 / AI 整理」`<details>` 折叠表单（类别 6 选 1 + 文本框 + 两按钮）
+  - 记忆项加 `aid-src` 角标显示来源：手动 / AI整理 / 蒸馏
+- **用量上限**：默认 `AI_MONTHLY_TOKEN_LIMIT` 由 100k 上调到 **10 亿**（个人工作台几乎不限），仍可通过 .env 覆盖
+- 修复部署中遗漏：`ai_usage.py` 重写时丢失函数体 → 重新写完整
+
+#### 验证 PASS
+
+- `POST /ai/memory/add` 直接 fact 返回 `{source: manual}`
+- `POST /ai/memory/add` prompt 蒸馏返回 4 条结构化事实（identity/habit/preference ×2）
+- `GET /ai/memory` 列表含全部 5 条
+- 8 个 AI 端点全部 200（OCR BadGateway 是图非文本，可接受）
+
 ## [v2.39.0] - 2026-09-21
 
 ### AI 高级玩法（8 项 AI 深度扩展，参考 Khoj/Omi/Rowboat范式）

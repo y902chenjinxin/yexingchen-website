@@ -149,6 +149,7 @@ export const workbenchApi = {
     agentGet: (id) => api.get(`/workbench/ai/agent/${id}`),
     // 长期记忆
     memoryList: () => api.get('/workbench/ai/memory'),
+    memoryAdd: (data) => api.post('/workbench/ai/memory/add', data),
     memoryForget: (data) => api.post('/workbench/ai/memory/forget', data),
     // 用量
     usage: () => api.get('/workbench/ai/usage'),

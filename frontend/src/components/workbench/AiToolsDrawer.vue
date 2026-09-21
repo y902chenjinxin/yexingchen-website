@@ -122,11 +122,48 @@
               </button>
               <button class="aid-btn ghost" :disabled="mem.loading" @click="loadMemory">刷新列表</button>
             </div>
+
+            <!-- 手动添加：直接给 fact 或给 prompt 让 AI 整理 -->
+            <details class="aid-add">
+              <summary>手动添加 / 让 AI 整理口语化表述</summary>
+              <div class="aid-add-body">
+                <textarea
+                  v-model="mem.addPrompt"
+                  class="aid-textarea"
+                  rows="3"
+                  placeholder="两种填法：(1) 直接写要保留的事实  (2) 用自然语言描述「我是一名产品经理，偏好极简风格」，点下方按钮让 AI 整理成事实"
+                ></textarea>
+                <div class="aid-row">
+                  <label class="aid-label">类别</label>
+                  <select v-model="mem.addCategory" class="aid-select">
+                    <option value="identity">身份 identity</option>
+                    <option value="habit">习惯 habit</option>
+                    <option value="preference">偏好 preference</option>
+                    <option value="relationship">人际关系 relationship</option>
+                    <option value="project">项目 project</option>
+                    <option value="other">其它 other</option>
+                  </select>
+                  <button class="aid-btn" :disabled="mem.adding || !mem.addPrompt.trim()" @click="addMemory">
+                    {{ mem.adding ? '添加中…' : '添加' }}
+                  </button>
+                </div>
+                <p class="aid-meta">⚡ 填进 prompt 框时，点「添加」会先保存原文；点下方「AI 整理」会调用模型蒸馏出稳定事实。</p>
+                <div class="aid-row">
+                  <button class="aid-btn ghost" :disabled="mem.adding || !mem.addPrompt.trim()" @click="addMemoryAi">
+                    {{ mem.adding ? 'AI 整理中…' : 'AI 整理成事实' }}
+                  </button>
+                </div>
+              </div>
+            </details>
+
             <ul v-if="mem.list.length" class="aid-mem">
               <li v-for="f in mem.list" :key="f.id">
                 <span class="aid-cat">{{ f.category }}</span>
                 <span class="aid-fact">{{ f.fact }}</span>
                 <span class="aid-cf">{{ f.confidence }}%</span>
+                <span v-if="f.source === 'manual'" class="aid-src">手动</span>
+                <span v-else-if="f.source === 'ai_distill_from_prompt'" class="aid-src">AI整理</span>
+                <span v-else-if="f.source === 'ai_distill'" class="aid-src">蒸馏</span>
                 <button class="aid-mini danger" @click="forgetFact(f.id)" title="让 AI 忘记">×</button>
               </li>
             </ul>
@@ -173,7 +210,7 @@
 
           <!-- ===== 用量 ===== -->
           <section v-if="active === 'usage'" class="aid-section">
-            <p class="aid-meta">当月 token 用量（默认上限 100,000，可在 .env 用 AI_MONTHLY_TOKEN_LIMIT 调整）</p>
+            <p class="aid-meta">当月 token 用量（默认上限 1,000,000,000 ≈ 10 亿，可在 .env 用 AI_MONTHLY_TOKEN_LIMIT 调整）</p>
             <div v-if="us.total_tokens != null" class="aid-usage">
               <div class="aid-usage-bar">
                 <div class="aid-usage-fill" :style="{ width: Math.min(100, (us.total_tokens / Math.max(us.limit, 1)) * 100) + '%' }"></div>
@@ -261,7 +298,10 @@ async function runSemantic() {
 }
 
 // ==== 长期记忆 ====
-const mem = ref({ list: [], loading: false, distilling: false })
+const mem = ref({
+  list: [], loading: false, distilling: false,
+  addPrompt: '', addCategory: 'other', adding: false,
+})
 async function loadMemory() {
   mem.value.loading = true
   try {
@@ -278,6 +318,39 @@ async function runDistill() {
     ElMessage.success('蒸馏完成')
   } catch (e) { ElMessage.error(e?.message || '蒸馏失败') }
   finally { mem.value.distilling = false }
+}
+async function addMemory() {
+  const text = mem.value.addPrompt.trim()
+  if (!text) return
+  mem.value.adding = true
+  try {
+    // 直接保存原文（不走 AI）
+    await workbenchApi.aiAdv.memoryAdd({
+      fact: text,
+      category: mem.value.addCategory,
+      confidence: 90,
+    })
+    mem.value.addPrompt = ''
+    await loadMemory()
+    ElMessage.success('已添加')
+  } catch (e) { ElMessage.error(e?.message || '添加失败') }
+  finally { mem.value.adding = false }
+}
+async function addMemoryAi() {
+  const text = mem.value.addPrompt.trim()
+  if (!text) return
+  mem.value.adding = true
+  try {
+    await workbenchApi.aiAdv.memoryAdd({
+      prompt: text,
+      category: mem.value.addCategory,
+      confidence: 80,
+    })
+    mem.value.addPrompt = ''
+    await loadMemory()
+    ElMessage.success('AI 已整理完成')
+  } catch (e) { ElMessage.error(e?.message || 'AI 整理失败') }
+  finally { mem.value.adding = false }
 }
 async function forgetFact(id) {
   try {
@@ -408,6 +481,12 @@ function copyText(s) {
 .aid-cat { padding: 1px 8px; background: var(--dp-accent-faint); color: var(--dp-accent); border-radius: 10px; font-size: 10.5px; letter-spacing: .08em }
 .aid-fact { flex: 1; color: var(--dp-text) }
 .aid-cf { color: var(--dp-text3); font-size: 11.5px; font-variant-numeric: tabular-nums }
+.aid-src { font-size: 10.5px; color: var(--dp-text3); padding: 1px 6px; border-radius: 8px; border: 1px solid var(--dp-line) }
+
+.aid-add { background: var(--dp-surface2); border: 1px solid var(--dp-line); border-radius: 8px; padding: 8px 10px; margin: 4px 0 }
+.aid-add summary { cursor: pointer; font-size: 12.5px; color: var(--dp-text2); user-select: none }
+.aid-add summary:hover { color: var(--dp-accent) }
+.aid-add-body { display: flex; flex-direction: column; gap: 8px; margin-top: 10px }
 .aid-meta { color: var(--dp-text3); font-size: 11.5px }
 .aid-empty { color: var(--dp-text3); font-size: 12px; padding: 8px 0 }
 .aid-steps summary { cursor: pointer; color: var(--dp-text2); padding: 6px 0; font-size: 12.5px }
