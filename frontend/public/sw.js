@@ -10,12 +10,18 @@
  * 不缓存：跨源资源（CDN/字体/统计）。
  * 注册失败不应阻塞应用启动（main.js 中已 try/catch）。
  */
-const VERSION = 'xuanhuang-v152'
+const VERSION = 'xuanhuang-v153'
 const STATIC_CACHE = `${VERSION}-static`
 
 self.addEventListener('install', (event) => {
   // 立即激活，无需等待
   self.skipWaiting()
+})
+
+self.addEventListener('message', (event) => {
+  if (event?.data?.type === 'SKIP_WAITING') {
+    try { self.skipWaiting() } catch {}
+  }
 })
 
 self.addEventListener('activate', (event) => {

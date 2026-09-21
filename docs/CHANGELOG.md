@@ -2,19 +2,28 @@
 
 ### 修复：AI 工具抽屉「退不出去了」
 
-User：「退不出去了」。截图显示抽屉打开后**找不到关闭按钮**，且点遮罩也没反应。
+User：「退不出去了」「点击没有效果，再看下」。
 
-**根因**：
+**第一轮根因（v152 已修）**：
 1. 抽屉 `.aid-mask` 设的 `z-index: 200`，但 `GlobalTopBar.lj-topbar` 是 `z-index: 1000`、下载页脚提示 `999`、桌宠/全屏播放器也都接近 1000。结果**抽屉被顶栏按钮组盖住**，右上角「✕ 关闭」按钮看不见
 2. 遮罩的 `v-if="open"` 写法与 transition 一起时，第一次 `.aid-mask` 节点未获焦点 → `@keydown.esc` 不触发
 
-**修法**：
+**第二轮根因（v153 修）**：用户复测仍说「点击没有效果」→ 真正问题是 **Service Worker 缓存**:旧 SW (v150/v151) 控制着当前页面，缓存了 `index.html` 与旧 chunk，新版本（v152 含 `z-index:2000`）根本没有接管页面。新 SW 在 `install → waiting` 阶段被浏览器卡住，不自动接管。
+
+**修法（v152）**：
 - 抽屉 z-index 2000（高于顶栏 1000 与全屏播放器 1800）
 - 遮罩加 `tabindex="-1"` + `@keydown.esc="close"`，ESC 一键关闭
-- 关闭按钮文案从 `✕` 改为 `✕ 关闭`，样式加深色背景边框，hover 变红色——视觉上明显是关闭入口
-- 遮罩点击（除面板自身）也关闭（原本已有，加 @keydown.esc 与 z-index 后体验完整）
+- 关闭按钮文案 `✕` → `✕ 关闭`，加深色背景边框，hover 红色
 
-SW `v151→v152`
+**修法（v153）**：
+- `sw.js` 新增 `message` 监听：`{type:'SKIP_WAITING'}` 立即 `self.skipWaiting()`
+- `sw-register.js`：
+  - 注册时若已有 waiting SW 立刻发 `SKIP_WAITING`
+  - 监听 `updatefound`：新 SW 一进 installed 立即激活
+  - 监听 `controllerchange`：新 SW 接管时 `location.reload()` 一次确保拿到最新资源
+- 效果：部署后用户**下次访问任意页面**自动硬刷一次到 v153，抽屉关闭按钮与 ESC 立即生效
+
+SW `v152→v153`
 
 ## [v2.39.1] - 2026-09-21
 
