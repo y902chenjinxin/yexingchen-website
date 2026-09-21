@@ -34,8 +34,8 @@ v152/v153 改对了 z-index + 关闭按钮文案 + SW 自动升级，但**真正
 **根因**：AiToolsDrawer 里 `defineEmits(['close', 'apply'])` 用 `emit('close')`；而 App.vue 用 `<AiToolsDrawer v-model:open="aiToolsOpen" />`。Vue v-model 默认等价于 `:open` + `@update:open`——父组件**只监听 `update:open` 事件**，监听不到 `close`。所以点击关闭按钮、点遮罩、按 ESC 都触发了 emit('close')，**但 aiToolsOpen 永远没变 false**，抽屉始终打开。
 
 **修法**（v2.39.3，SW `v153→v154`）：
-- AiToolsDrawer 改为 `defineEmits(['update:open', 'apply'])`
-- `close()` 函数 `emit('update:open', false)` —— 与父 v-model:open 完全匹配
+  - AiToolsDrawer 改为 `defineEmits(['update:open', 'apply'])`
+  - `close()` 函数 `emit('update:open', false)` —— 与父 v-model:open 完全匹配
 - 三种关闭方式（按钮 / ESC / 遮罩点击）全部走 `close()` 函数
 - `sw.js v154`：再次触发新 SW 的 SKIP_WAITING 流程，让用户刷新后立即拿到新版
 
@@ -44,6 +44,21 @@ v152/v153 改对了 z-index + 关闭按钮文案 + SW 自动升级，但**真正
 SW `v153→v154`
 
 
+
+## [v2.39.4] - 2026-09-21
+
+### 移除工作台背景网格 / 散布圆点 / 三个柔和光斑
+
+User：「把工作台的网格去掉」。
+
+工作台首页顶部的 `.wb-bg` 装饰层原本含细网格 + SVG 散布圆点 + 三个柔和光斑。保留它们会让首屏显得"花"，且桌面主题线性风收敛后与光斑的紫罗兰渐变不再协调。一并去掉装饰，让 Hero / KPI / 趋势三栏成为视觉主体。
+
+- 删 `<div class="wb-bg-grid">`、`<svg class="wb-bg-dots">`、三个 `.wb-bg-blob`
+- 删 `.wb-bg` 容器（无子元素）
+- 清理 `.wb-bg-grid / .wb-bg-blob / .wb-bg-dots` 全部 CSS 与日间主题变体
+- 工作台背景仅保留 `background: var(--dp-bg)` 的纯色，更符合 OLED 真黑/线性产品风
+
+SW `v154→v155`
 
 ## [v2.39.1] - 2026-09-21
 
