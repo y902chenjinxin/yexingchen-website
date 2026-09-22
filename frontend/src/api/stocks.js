@@ -54,6 +54,10 @@ export const stocksApi = {
   recordSnapshot: () => api.post('/snapshots/today'),
   analysis: (market, code, days) => api.get(`/analysis/${market}/${code}`, { params: { days } }),
   generateAnalysis: (market, code) => api.post(`/analysis/${market}/${code}`),
+  // 目标价预警
+  alerts: (params) => api.get('/alerts', { params }),
+  markAlertRead: (id) => api.post(`/alerts/${id}/read`),
+  markAllAlertsRead: () => api.post('/alerts/read-all'),
 }
 
 export default stocksApi

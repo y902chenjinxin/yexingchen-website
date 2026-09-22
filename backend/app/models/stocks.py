@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -88,4 +89,33 @@ class StockDailyAnalysis(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "code", "market", "date", name="uq_stock_daily_analysis_user_stock_date"),
         Index("ix_stock_daily_analysis_user_stock", "user_id", "code", "market"),
+    )
+
+
+class StockAlertLog(Base):
+    """目标价预警事件日志。
+
+    - 每次行情刷新若发现「现价 触达 目标价」（且上条 log 不是同一交易日/同一方向），则写入一条
+    - read_at 为非空时视为「已读」；前端可读 unread 计数与一键全部已读
+    - 唯一约束 (user_id, stock_id, kind, date) 防止重复打点
+    """
+
+    __tablename__ = "xuanhuang_stock_alert_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    stock_id = Column(Integer, ForeignKey("xuanhuang_stock_watchlist.id"), nullable=False, index=True)
+    code = Column(String(20), nullable=False)
+    market = Column(String(10), nullable=False, default="sh")
+    name = Column(String(100), nullable=False, default="")
+    kind = Column(String(10), nullable=False)  # up 涨破目标 / down 跌破目标
+    target_price = Column(Numeric(12, 4), nullable=False)
+    hit_price = Column(Numeric(14, 4), nullable=False)
+    date = Column(String(10), nullable=False)  # YYYY-MM-DD（命中当日）
+    read_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "stock_id", "kind", "date", name="uq_alert_user_stock_kind_date"),
+        Index("ix_alert_user_read", "user_id", "read_at"),
     )

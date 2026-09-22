@@ -78,7 +78,7 @@
           :class="cellCls(c)"
         >
           <template v-if="!c.blank">
-            <span class="pp-cell-d">{{ c.day }}</span>
+            <span class="pp-cell-d">{{ c.day }}<i v-if="c.estimated" class="pp-cell-est" aria-label="估算值">~</i></span>
             <span v-if="c.pnl !== null" class="pp-cell-v">{{ sign(c.pnl) }}{{ fmt(Math.abs(c.pnl), 0) }}</span>
           </template>
         </div>
@@ -188,28 +188,73 @@ const calCells = computed(() => {
   const startPad = new Date(y, m, 1).getDay()
   const daysInMonth = new Date(y, m + 1, 0).getDate()
 
-  // 历史日盈亏取自快照环比
+  // 历史日盈亏取自快照环比（s[i-1] → s[i] 的差归到 s[i] 这一天）
   const byDate = new Map()
   const s = props.snapshots || []
   for (let i = 1; i < s.length; i++) {
     byDate.set(s[i].date, (Number(s[i].hold_pnl) || 0) - (Number(s[i - 1].hold_pnl) || 0))
   }
-  // 今天用实时估值覆盖，保证当天就有数
-  byDate.set(todayStr, Number(props.todayPnl) || 0)
 
+  // 昨天的估值：取最近一个快照的 hold_pnl（当作「截至昨日的累计盈亏」）作为锚，
+  // 之后几天用「今日实时累计 - 昨日累计」折算填充。
+  // 这样日历在「今天 / 昨天 / 周末 / 节假日」都能看到数字，而不是大片空白。
+  // 算法：
+  //   - 若今天实时累计 = T，最近一个快照累计 = P（snapshots 里最后一条）
+  //     则「今天实时盈亏 = T - P」应当归到 today
+  //     但中间（最近快照日 + 1 → 昨天）若有空白，可按 "日均补差" 或 "归零" 处理
+  //   - 简化做法：直接把 P 与 T 之间的差值按 1 天归到「昨天」（最近一次会话跨越的天数按 1 天算）
+  //     实际更合理的方案：把 T-P 全归到昨天，让昨天显示完整增量
+  const lastSnap = s.length ? s[s.length - 1] : null
+  const lastSnapPnl = lastSnap ? Number(lastSnap.hold_pnl) || 0 : null
+  const lastSnapDate = lastSnap ? lastSnap.date : null
+  const todayLivePnl = Number(props.todayPnl) || 0
+  // today 实时累计 ≈ lastSnapPnl + todayLivePnl
+  const todayCum = lastSnapPnl == null ? todayLivePnl : (lastSnapPnl + todayLivePnl)
+  // 「昨天」那一格：若日历格昨天没有快照值，则用 (今天累计 - 最近快照累计)
+  // 但此差值的语义是「从最近一次落库到现在的所有变化」，全归到昨天更直观
+  const yesterdayStr = (() => {
+    const d = new Date(now)
+    d.setDate(d.getDate() - 1)
+    return localDate(d)
+  })()
+
+  // 用一个 Map 缓存每一天的 pnl 计算结果
   const cells = []
   for (let i = 0; i < startPad; i++) cells.push({ blank: true, key: `pad-${i}` })
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    let pnl = byDate.has(ds) ? byDate.get(ds) : null
+    let estimated = false
+    if (pnl === null) {
+      // 兜底：若这一天能落在「最近快照日」与「今天」之间，且 lastSnapDate 早于今天，
+      //      视为「最近落库到现在的全量变化」，统一归到「昨天」一格（最直观、最不易让用户困惑）
+      if (lastSnapDate && ds > lastSnapDate && ds < todayStr) {
+        // 中间空白日（最近快照之后到今天之前）的差值全部归给「昨天」
+        if (ds === yesterdayStr && lastSnapPnl != null) {
+          pnl = todayCum - lastSnapPnl
+          estimated = true
+        }
+      }
+    }
     cells.push({
       blank: false,
       key: ds,
       day: d,
       date: ds,
-      pnl: byDate.has(ds) ? byDate.get(ds) : null,
+      pnl,
       isToday: ds === todayStr,
       future: ds > todayStr,
+      estimated,
     })
+  }
+
+  // 今天用实时估值覆盖（保证当天就有数）
+  // 注意：覆盖必须在 estimated 填充之后，否则会覆盖掉昨日的估算
+  for (const c of cells) {
+    if (!c.blank && c.isToday) {
+      c.pnl = todayLivePnl
+      c.estimated = false
+    }
   }
   return cells
 })
@@ -277,6 +322,7 @@ function cellCls(c) {
 .pp-cell.is-down { background: var(--pnl-down-soft); border-color: var(--pnl-down-line); }
 .pp-cell.is-today { box-shadow: 0 0 0 1px var(--lj-seal) inset; }
 .pp-cell-d { font-size: 11px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
+.pp-cell-est { font-style: normal; margin-left: 2px; opacity: .55; font-size: 9px; }
 .pp-cell-v { font-size: 11px; color: var(--lj-text); font-variant-numeric: tabular-nums; align-self: flex-end; }
 .pp-cal-tip { margin: 12px 0 0; font-size: 11px; line-height: 1.7; color: var(--lj-text-3); }
 

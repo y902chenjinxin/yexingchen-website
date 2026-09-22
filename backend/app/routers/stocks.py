@@ -15,7 +15,7 @@ from sqlalchemy import or_
 
 from app.database import get_db
 from app.utils.security import get_current_user
-from app.models.stocks import StockWatchlist, PortfolioSnapshot, StockDailyAnalysis
+from app.models.stocks import StockWatchlist, PortfolioSnapshot, StockDailyAnalysis, StockAlertLog
 from app.services import stock_fetcher as sf
 from app.services.stock_analysis import analyze_stock
 from app.services.user_ai_provider import build_http_provider_from_config, resolve_user_provider
@@ -358,6 +358,132 @@ async def record_snapshot_today(db: Session = Depends(get_db), current_user=Depe
         "hold_pnl": s["hold_pnl"],
         "hold_pct": s["hold_pct"],
     })
+
+
+# ---------- 目标价预警 ----------
+def _scan_alerts_once(uid: int, db: Session) -> int:
+    """扫描当前自选股，对「现价触达目标价」的事件落 log（去重：同日/同方向不重复入库）。
+
+    返回本次新增的 alert 数（已存在的不会重复入库）。
+    """
+    today = datetime.now().strftime("%Y-%m-%d")
+    rows = (
+        db.query(StockWatchlist)
+        .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None))
+        .all()
+    )
+    inserted = 0
+    for w in rows:
+        if w.target_price is None:
+            continue
+        # 拉一次行情（失败跳过）
+        try:
+            q = sf.fetch_quote(w.market, w.code)
+        except RuntimeError:
+            continue
+        price = q.get("price")
+        if price is None:
+            continue
+        target = float(w.target_price)
+        cost = float(w.cost_price) if w.cost_price is not None else None
+        kind = None
+        # 涨破目标：当前 ≥ 目标，且（无成本）or 成本 < 目标（避免成本已高于目标时一进自选就提示）
+        if price >= target and (cost is None or cost < target):
+            kind = "up"
+        # 跌破目标：当前 ≤ 目标，且（无成本）or 成本 > 目标
+        elif price <= target and (cost is None or cost > target):
+            kind = "down"
+        if not kind:
+            continue
+        # 同日同方向已存在则跳过
+        exists = (
+            db.query(StockAlertLog)
+            .filter(
+                StockAlertLog.user_id == uid,
+                StockAlertLog.stock_id == w.id,
+                StockAlertLog.kind == kind,
+                StockAlertLog.date == today,
+            )
+            .first()
+        )
+        if exists:
+            continue
+        db.add(StockAlertLog(
+            user_id=uid, stock_id=w.id,
+            code=w.code, market=w.market, name=w.name,
+            kind=kind, target_price=target, hit_price=float(price),
+            date=today, created_at=datetime.now(),
+        ))
+        inserted += 1
+    if inserted:
+        db.commit()
+    return inserted
+
+
+@router.get("/alerts")
+async def list_alerts(
+    limit: int = Query(20, ge=1, le=100),
+    only_unread: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """获取目标价预警事件列表 + unread 计数。每次调用都会先扫描最新行情，再返回。"""
+    uid = current_user["user_id"]
+    _scan_alerts_once(uid, db)
+
+    q = db.query(StockAlertLog).filter(StockAlertLog.user_id == uid)
+    if only_unread:
+        q = q.filter(StockAlertLog.read_at.is_(None))
+    rows = q.order_by(StockAlertLog.date.desc(), StockAlertLog.id.desc()).limit(limit).all()
+    unread = db.query(StockAlertLog).filter(
+        StockAlertLog.user_id == uid, StockAlertLog.read_at.is_(None)
+    ).count()
+    items = [{
+        "id": r.id,
+        "stock_id": r.stock_id,
+        "code": r.code,
+        "market": r.market,
+        "name": r.name,
+        "kind": r.kind,
+        "target_price": float(r.target_price),
+        "hit_price": float(r.hit_price),
+        "date": r.date,
+        "read": r.read_at is not None,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in rows]
+    return ok({"unread": unread, "items": items})
+
+
+@router.post("/alerts/{alert_id}/read")
+async def mark_alert_read(alert_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """标记单条预警已读。"""
+    uid = current_user["user_id"]
+    r = (
+        db.query(StockAlertLog)
+        .filter(StockAlertLog.id == alert_id, StockAlertLog.user_id == uid)
+        .first()
+    )
+    if not r:
+        raise_http(404, "预警事件不存在", 404)
+    if r.read_at is None:
+        r.read_at = datetime.now()
+        db.commit()
+    return ok({"id": r.id, "read": True})
+
+
+@router.post("/alerts/read-all")
+async def mark_all_alerts_read(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """一键全部已读。"""
+    uid = current_user["user_id"]
+    now = datetime.now()
+    db.query(StockAlertLog).filter(
+        StockAlertLog.user_id == uid, StockAlertLog.read_at.is_(None)
+    ).update({StockAlertLog.read_at: now})
+    db.commit()
+    unread = db.query(StockAlertLog).filter(
+        StockAlertLog.user_id == uid, StockAlertLog.read_at.is_(None)
+    ).count()
+    return ok({"unread": unread})
 
 
 # ---------- 每日研判（AI，规则保底） ----------

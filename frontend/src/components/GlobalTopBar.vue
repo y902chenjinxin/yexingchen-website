@@ -130,6 +130,42 @@
         </template>
       </el-dropdown>
 
+      <!-- 目标价预警：右侧浮动按钮 + 角标 + 弹窗列表（v2.41 新增） -->
+      <el-dropdown trigger="click" placement="bottom-end" :show-arrow="false" @visible-change="onAlertPanelToggle">
+        <button class="tb-icon-btn tb-alert-btn" :title="alertTitle" aria-label="目标价预警">
+          <el-icon><Bell /></el-icon>
+          <span v-if="alertUnread > 0" class="tb-alert-dot">{{ alertUnread > 99 ? '99+' : alertUnread }}</span>
+        </button>
+        <template #dropdown>
+          <div class="tb-alert-panel" @click.stop>
+            <div class="tb-panel-title">
+              <span>目标价预警</span>
+              <button v-if="alertUnread > 0" class="tb-alert-clear" @click="markAllRead">全部已读</button>
+            </div>
+            <div v-if="!alertItems.length" class="tb-alert-empty">
+              暂无预警。在「行情」→ 点自选股的「✎」即可设置目标价。
+            </div>
+            <div
+              v-for="a in alertItems"
+              :key="a.id"
+              class="tb-alert-item"
+              :class="['kind-' + a.kind, { unread: !a.read }]"
+              @click="onAlertItemClick(a)"
+            >
+              <span class="tb-alert-kind" :class="'kind-' + a.kind">
+                {{ a.kind === 'up' ? '涨破' : '跌破' }}
+              </span>
+              <span class="tb-alert-name">{{ a.name }} <i>{{ a.code }}</i></span>
+              <span class="tb-alert-meta">
+                目标 ¥{{ fmtPrice(a.target_price) }} · 现价 ¥{{ fmtPrice(a.hit_price) }}
+              </span>
+              <span class="tb-alert-date">{{ shortDate(a.date) }}</span>
+              <span v-if="!a.read" class="tb-alert-newdot" aria-label="未读"></span>
+            </div>
+          </div>
+        </template>
+      </el-dropdown>
+
       <!-- 用户区 -->
       <el-dropdown trigger="click" @command="onCommand">
         <div class="tb-user">
@@ -151,13 +187,15 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElNotification } from 'element-plus'
 import {
-  User, SwitchButton, Headset, CaretBottom, Check, Cellphone, Calendar, MagicStick
+  User, SwitchButton, Headset, CaretBottom, Check, Cellphone, Calendar, MagicStick, Bell
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { listHomeCountdowns } from '@/api/countdown'
+import { stocksApi } from '@/api/stocks'
 
 defineEmits(['open-command-palette', 'open-ai-tools'])
 
@@ -184,6 +222,71 @@ async function loadCountdowns() {
     const res = await listHomeCountdowns()
     cdList.value = res?.data?.list || []
   } catch { /* 未登录/网络失败则不显示徽章 */ }
+}
+
+/* ---- 目标价预警 ---- */
+const alertItems = ref([])
+const alertUnread = ref(0)
+const ALERT_POLL_MS = 60 * 1000  // 1 分钟轮询一次
+let alertTimer = null
+let lastSeenIds = new Set()  // 用于「新出现的事件 → 弹通知」
+const alertTitle = computed(() =>
+  alertUnread.value > 0
+    ? `目标价预警：${alertUnread.value} 条未读`
+    : '目标价预警'
+)
+function fmtPrice(v) {
+  return v == null ? '--' : Number(v).toFixed(2)
+}
+async function loadAlerts(showNotifications = false) {
+  try {
+    const res = await stocksApi.alerts({ limit: 30 })
+    const data = res?.data || { unread: 0, items: [] }
+    const newItems = data.items || []
+    alertItems.value = newItems
+    alertUnread.value = data.unread || 0
+
+    // 首次出现 + 用户未读 → 弹通知（每条最多一次 / 会话内）
+    if (showNotifications) {
+      for (const it of newItems) {
+        if (it.read) continue
+        if (lastSeenIds.has(it.id)) continue
+        lastSeenIds.add(it.id)
+        const isUp = it.kind === 'up'
+        ElNotification({
+          title: isUp ? '🎯 涨破目标价' : '🔻 跌破目标价',
+          message: `${it.name || it.code} 触达目标价：现价 ¥${fmtPrice(it.hit_price)}（目标 ¥${fmtPrice(it.target_price)}）`,
+          type: isUp ? 'success' : 'warning',
+          duration: 6000,
+          position: 'top-right',
+        })
+      }
+    }
+  } catch { /* 静默 */ }
+}
+function startAlertPolling() {
+  if (alertTimer) return
+  alertTimer = setInterval(() => loadAlerts(true), ALERT_POLL_MS)
+}
+function stopAlertPolling() {
+  if (alertTimer) { clearInterval(alertTimer); alertTimer = null }
+}
+function onAlertPanelToggle(open) {
+  // 打开面板时立即刷一次，确保列表与角标同步
+  if (open) loadAlerts(false)
+}
+async function markAllRead() {
+  try {
+    await stocksApi.markAllAlertsRead()
+    await loadAlerts(false)
+  } catch { /* 静默 */ }
+}
+async function onAlertItemClick(a) {
+  // 点击跳转股票详情；若未读则顺手标记已读
+  try {
+    if (!a.read) await stocksApi.markAlertRead(a.id)
+  } catch { /* 静默 */ }
+  router.push({ path: `/stocks/${a.code}`, query: { market: a.market } })
 }
 
 const router = useRouter()
@@ -242,9 +345,17 @@ function onCommand(cmd) {
 onMounted(async () => {
   await bgm.initBgm()
   loadCountdowns()
+  // 目标价预警：首次进入拉一次（不弹通知，仅初始化 lastSeenIds），随后每分钟轮询触发通知
+  await loadAlerts(false)
+  for (const it of alertItems.value) {
+    if (!it.read) lastSeenIds.add(it.id)
+  }
+  startAlertPolling()
 })
 
-onUnmounted(() => {})
+onUnmounted(() => {
+  stopAlertPolling()
+})
 </script>
 
 <style scoped>
@@ -445,6 +556,83 @@ onUnmounted(() => {})
 .tb-cd-date { font-size: 11px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
 .tb-cd-days { font-size: 12px; color: var(--lj-dai); font-variant-numeric: tabular-nums; flex: none; }
 .tb-cd-empty { padding: 12px 8px; text-align: center; font-size: 12px; color: var(--lj-text-3); }
+
+/* ---- 目标价预警 ---- */
+.tb-alert-btn { position: relative; }
+.tb-alert-dot {
+  position: absolute;
+  top: 4px; right: 4px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #D8504F;
+  color: #fff;
+  font-size: 10px; font-weight: 600; line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--dp-bg, #0B0F14);
+}
+.tb-alert-panel {
+  width: 340px; max-height: 60vh; overflow-y: auto; padding: 12px 14px;
+}
+.tb-alert-panel .tb-panel-title {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.tb-alert-clear {
+  background: transparent; border: 1px solid var(--lj-line);
+  color: var(--lj-text-2); font-size: 11px;
+  padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  transition: all 0.18s;
+}
+.tb-alert-clear:hover { color: var(--lj-seal); border-color: var(--lj-seal); }
+.tb-alert-empty {
+  padding: 18px 4px;
+  text-align: center; font-size: 12px;
+  color: var(--lj-text-3); line-height: 1.7;
+}
+.tb-alert-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px dashed var(--lj-line);
+}
+.tb-alert-item:last-child { border-bottom: none; }
+.tb-alert-item:hover { background: rgba(127, 168, 163, 0.08); }
+.tb-alert-item.unread { background: rgba(216, 80, 79, 0.04); }
+.tb-alert-kind {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 22px; padding: 0 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+}
+.tb-alert-kind.kind-up { background: rgba(216, 80, 79, 0.12); color: #D8504F; }
+.tb-alert-kind.kind-down { background: rgba(63, 150, 142, 0.12); color: #3F968E; }
+.tb-alert-name {
+  font-size: 13px; color: var(--lj-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tb-alert-name i {
+  font-style: normal; font-size: 11px; color: var(--lj-text-3); margin-left: 4px;
+}
+.tb-alert-meta {
+  grid-column: 1 / -1;
+  font-size: 11px; color: var(--lj-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.tb-alert-date {
+  font-size: 11px; color: var(--lj-text-3);
+  font-variant-numeric: tabular-nums;
+  align-self: center;
+}
+.tb-alert-newdot {
+  position: absolute; top: 10px; right: 4px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #D8504F;
+}
 
 @media (max-width: 767px) {
   /* 触控目标 ≥44px（WCAG）：移动端顶栏图标按钮加大命中区，顶栏高度仍容纳得下 */

@@ -47,10 +47,17 @@
           <span class="st-kpi-v" :class="pnlCls(todayPct)">{{ todayPct == null ? '--' : sign(todayPct) + fmt(todayPct, 2) + '%' }}</span>
           <span class="st-kpi-s">按昨日市值折算</span>
         </div>
-        <div class="st-kpi-card glass">
+        <div class="st-kpi-card glass" :class="{ 'has-alert': summary.alerts > 0 }" @click="summary.alerts > 0 && goStocksAlerts()" role="button" :tabindex="summary.alerts > 0 ? 0 : -1" :title="summary.alerts > 0 ? '点击查看预警详情' : '在自选股上设置目标价后将自动提醒'">
           <span class="st-kpi-k">目标价预警</span>
           <span class="st-kpi-v" :class="{ down: summary.alerts > 0 }">{{ summary.alerts || 0 }}</span>
-          <span class="st-kpi-s">{{ summary.alerts ? '有股票触达目标价' : '暂无触达' }}</span>
+          <span class="st-kpi-s">
+            <template v-if="summary.alerts">
+              有股票触达目标价 · 点击查看
+            </template>
+            <template v-else>
+              暂无触达（点自选股 ✎ 设置目标价）
+            </template>
+          </span>
         </div>
       </section>
 
@@ -141,13 +148,14 @@
                   <template v-if="editingId === it.id">
                     <input v-model.number="editQty" class="st-cell-input" type="number" min="0" placeholder="股数" />
                     <input v-model.number="editCost" class="st-cell-input" type="number" min="0" step="0.01" placeholder="成本" />
+                    <input v-model.number="editTarget" class="st-cell-input" type="number" min="0" step="0.01" placeholder="目标价" title="设目标价后，触达时顶部会出现 🔔 提醒" />
+                    <button class="st-btn tiny" @click="saveEdit(it)">保存</button>
                   </template>
                   <template v-else>{{ it.quantity ? `${it.quantity}股` : '—' }}</template>
                 </td>
                 <td class="r" :class="pnlCls(it.hold_pnl)">
                   <template v-if="editingId === it.id">
-                    <input v-model.number="editTarget" class="st-cell-input" type="number" min="0" step="0.01" placeholder="目标价" />
-                    <button class="st-btn tiny" @click="saveEdit(it)">保存</button>
+                    <!-- 编辑态：编辑面板已包含目标价 + 保存按钮（持仓列内），此格不再重复 -->
                   </template>
                   <template v-else-if="it.quantity">{{ sign(it.hold_pnl) }}¥{{ fmt(Math.abs(it.hold_pnl ?? 0)) }}<br /><i class="st-sub-pct">{{ sign(it.hold_pct) }}{{ fmt(it.hold_pct, 2) }}%</i></template>
                   <template v-else>—</template>
@@ -239,6 +247,8 @@ async function loadAll(force = false) {
     const [wlr, sr] = await Promise.all([stocksApi.watchlist(), stocksApi.summary()])
     list.value = wlr.data?.list || []
     Object.assign(summary, sr.data || {})
+    // 同步刷新走势 / 日历快照数据（之前只刷 watchlist+summary，导致「刷新」按钮按了走势图不变）
+    await loadTrend()
   } catch (e) { /* 已在拦截器提示 */ }
   finally {
     loading.value = false
@@ -329,10 +339,22 @@ async function recordToday() {
 function goDetail(it) {
   router.push({ path: `/stocks/${it.code}`, query: { market: it.market } })
 }
+function goStocksAlerts() {
+  // 当前页就是 StocksView：滚动到目标价预警 KPI 区并触发一次刷新；可考虑后续弹浮层
+  ElMessage.info('顶部"🔔 目标价预警"按钮可查看全部预警与一键已读')
+}
 
-onMounted(() => {
-  loadAll()
-  loadTrend()
+onMounted(async () => {
+  await loadAll()
+  // 进入页面：若今日尚未落库快照，自动记录一次（页面刷新就同步，不再依赖用户主动点）
+  try {
+    const ss = (stocksApi.snapshots && (await stocksApi.snapshots(7)) || { data: [] }).data || []
+    const today = new Date().toISOString().slice(0, 10)
+    if (!ss.some(r => r.date === today)) {
+      await stocksApi.recordSnapshot()
+      await loadTrend()
+    }
+  } catch { /* 静默：若快照接口不在，按原行为即可 */ }
   window.addEventListener('resize', onResize)
 })
 onBeforeUnmount(() => window.removeEventListener('resize', onResize))
@@ -360,6 +382,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 
 .st-kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
 .st-kpi-card { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 16px; }
+.st-kpi-card.has-alert { cursor: pointer; transition: transform 0.18s, box-shadow 0.18s; }
+.st-kpi-card.has-alert:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(216, 80, 79, 0.18); }
 .st-kpi-k { font-size: 12px; color: var(--lj-text-2); letter-spacing: .08em; }
 .st-kpi-v { font-size: 26px; font-weight: 700; letter-spacing: .01em; }
 .st-kpi-s { font-size: 11px; color: var(--lj-text-3); }
