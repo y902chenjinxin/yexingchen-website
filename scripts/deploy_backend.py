@@ -74,6 +74,10 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "habits.py"),     f"{REMOTE_BASE}/backend/app/routers/workbench/habits.py"),
     (os.path.join(ROOT, "backend", "app", "models", "habits.py"),                   f"{REMOTE_BASE}/backend/app/models/habits.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "weather.py"),    f"{REMOTE_BASE}/backend/app/routers/workbench/weather.py"),
+    # ---- 历史上的今天：culture.py + 内置数据 + 离线烘焙的 Wiki 增强 JSON ----
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "culture.py"),   f"{REMOTE_BASE}/backend/app/routers/workbench/culture.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "_history_data.py"), f"{REMOTE_BASE}/backend/app/routers/workbench/_history_data.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "workbench", "_history_data_extra.json"), f"{REMOTE_BASE}/backend/app/routers/workbench/_history_data_extra.json"),
     # ---- v2.39 AI 高级玩法（嵌入/RAG/记忆/Agent/OCR）----
     (os.path.join(ROOT, "backend", "app", "services", "embedding.py"),             f"{REMOTE_BASE}/backend/app/services/embedding.py"),
     (os.path.join(ROOT, "backend", "app", "services", "ai_usage.py"),               f"{REMOTE_BASE}/backend/app/services/ai_usage.py"),

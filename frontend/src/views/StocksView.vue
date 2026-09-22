@@ -49,10 +49,13 @@
         </div>
         <div class="st-kpi-card glass" :class="{ 'has-alert': summary.alerts > 0 }" @click="summary.alerts > 0 && goStocksAlerts()" role="button" :tabindex="summary.alerts > 0 ? 0 : -1" :title="summary.alerts > 0 ? '点击查看预警详情' : '在自选股上设置目标价后将自动提醒'">
           <span class="st-kpi-k">目标价预警</span>
-          <span class="st-kpi-v" :class="{ down: summary.alerts > 0 }">{{ summary.alerts || 0 }}</span>
+          <span class="st-kpi-v" :class="summary.alerts > 0 ? 'down' : (readyTargets ? 'ready' : '')">{{ summary.alerts > 0 ? summary.alerts : (readyTargets || 0) }}</span>
           <span class="st-kpi-s">
             <template v-if="summary.alerts">
-              有股票触达目标价 · 点击查看
+              有 {{ summary.alerts }} 只触达目标价 · 点击查看
+            </template>
+            <template v-else-if="readyTargets">
+              {{ readyTargets }} 只已设目标价 · 触达后自动提醒
             </template>
             <template v-else>
               暂无触达（点自选股 ✎ 设置目标价）
@@ -138,7 +141,7 @@
               <tr v-for="it in list" :key="it.id">
                 <td>
                   <span class="st-td-name" @click="goDetail(it)">{{ it.name }}</span>
-                  <span v-if="it.target_alert" class="st-alert" :class="'a-' + it.target_alert">{{ it.target_alert === 'up' ? '涨破目标' : '跌破目标' }}</span>
+                  <span v-if="it.target_price" class="st-alert" :class="it.target_alert ? 'a-' + it.target_alert : 'a-set'">{{ it.target_alert === 'up' ? '涨破目标' : it.target_alert === 'down' ? '跌破目标' : '目标' }} {{ fmt(it.target_price) }}</span>
                   <span class="st-td-code">{{ it.market.toUpperCase() }} {{ it.code }}</span>
                   <span @click="toggleEdit(it)" class="st-td-edit">{{ editingId === it.id ? '收起' : '✎' }}</span>
                 </td>
@@ -182,6 +185,10 @@
             <div v-if="it.quantity" class="st-card-row">
               <span>持仓 {{ it.quantity }}股 · 成本{{ fmt(it.cost_price) }}</span>
               <span :class="pnlCls(it.hold_pnl)">{{ sign(it.hold_pnl) }}¥{{ fmt(Math.abs(it.hold_pnl ?? 0)) }}</span>
+            </div>
+            <div v-if="it.target_price" class="st-card-row">
+              <span>目标 {{ fmt(it.target_price) }}</span>
+              <span :class="it.target_alert ? pnlCls(it.hold_pnl) : 'flat'">{{ it.target_alert === 'up' ? '已涨破' : it.target_alert === 'down' ? '已跌破' : '待触达' }}</span>
             </div>
           </div>
         </div>
@@ -233,6 +240,9 @@ const todayPct = computed(() => {
   const base = mv - today
   return base ? (today / base) * 100 : null
 })
+
+// 已设置目标价的自选数（即使尚未触发，也让用户看到"已设目标价"被记录）
+const readyTargets = computed(() => (summary.holdings || []).filter(h => h.target_price != null && Number(h.target_price) > 0).length)
 
 const isMobile = ref(window.innerWidth < 760)
 function onResize() { isMobile.value = window.innerWidth < 760 }
@@ -317,6 +327,14 @@ async function saveEdit(it) {
     if (fresh.hold_pnl != null) { it.hold_pnl = fresh.hold_pnl; it.hold_pct = fresh.hold_pct }
     editingId.value = null
     ElMessage.success('持仓已更新')
+    // 目标价/持仓改动后：顶部 KPI 与「目标价预警」用的是 /summary，必须重拉才能反映到上方卡片
+    await Promise.all([
+      stocksApi.summary().then(s => Object.assign(summary, s.data || {})).catch(() => {}),
+      stocksApi.watchlist().then(wl => {
+        const it2 = (wl.data?.list || []).find(x => x.id === it.id)
+        if (it2) Object.assign(it, it2) // 同步刷新该行的 target_alert 徽标等
+      }).catch(() => {}),
+    ])
   } catch (e) { /* handled */ }
 }
 
@@ -390,6 +408,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .up { color: #D8504F; }
 .down { color: #3F968E; }
 .flat { color: var(--lj-text); }
+.ready { color: #D8A24A; }
 
 .st-form { margin-bottom: 16px; padding: 18px 20px; border-radius: 16px; }
 .st-form-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -416,6 +435,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
   font-size: 11px; color: #fff; vertical-align: 2px; }
 .st-alert.a-up { background: #D8504F; }
 .st-alert.a-down { background: #3F968E; }
+.st-alert.a-set { background: rgba(216, 162, 74, 0.18); color: #e2bb6f; border: 1px solid rgba(216, 162, 74, 0.35); }
 
 .st-list { border-radius: 16px; padding: 18px 20px; }
 .st-list-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }

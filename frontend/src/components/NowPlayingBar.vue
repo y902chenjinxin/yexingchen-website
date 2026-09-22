@@ -131,8 +131,8 @@
         />
       </div>
 
-      <!-- 关闭（仅在 playlist 模式下生效；BGM 模式下切到 idle 不需要关闭入口） -->
-      <button v-if="player.mode === 'playlist'" class="np-btn np-close" @click="player.stopAndHide()" title="关闭点播（回到 BGM）" aria-label="关闭">
+      <!-- 关闭：任何模式都可叉掉播放框，停止后自动恢复默认背景音乐 -->
+      <button class="np-btn np-close" @click="player.stopAndHide()" title="关闭播放（回到背景音乐）" aria-label="关闭播放">
         <svg viewBox="0 0 24 24" class="np-vol-ic" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -179,6 +179,7 @@ const displayItem = computed(() => {
  *  现在改为：用户明确表达了"在播"意图（isPlaying 或 playlist.curItem）才显示
  */
 const shouldShow = computed(() => {
+  if (player.dismissed) return false     // 用户已 ✕ 关闭播放框
   if (player.mode === 'playlist' && player.curItem) return true
   // BGM 模式下：用户在播 或 BGM 已就绪（自动播放被拦时也算意图）
   if (player.mode === 'bgm' && player.bgmEnabled && bgmItem.value) return true

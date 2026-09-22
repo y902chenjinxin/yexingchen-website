@@ -35,6 +35,8 @@ export const usePlayerStore = defineStore('player', () => {
   // 避免"背景音乐莫名消失"（用户以为丢失）。
   const bgmEnabled = ref(localStorage.getItem('bgm_enabled') !== '0')
   const shows = computed(() => mode.value === 'playlist' && !!curItem.value)
+  // 用户点 ✕ 关闭播放框：即便 BGM 仍在后台播放，也不再常驻显示播放条
+  const dismissed = ref(false)
 
   audio.volume = volume.value
 
@@ -113,6 +115,7 @@ export const usePlayerStore = defineStore('player', () => {
   //            不传则只播这一首（行为退化为「单曲一次」）
   function playItem(item, queueList = null) {
     if (!item) return
+    dismissed.value = false   // 用户主动点播：重新唤出播放框
     curItem.value = item
     mode.value = 'playlist'
     // 建立队列
@@ -262,6 +265,7 @@ export const usePlayerStore = defineStore('player', () => {
     curItem.value = null
     queue.value = []
     queueIndex.value = -1
+    dismissed.value = true     // 叉掉播放框：不再常驻显示（背景音乐仍保留）
     if (bgmUrl.value) playBgm()
   }
 
@@ -338,7 +342,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
   return {
     audio, mode, curItem, isPlaying, volume, shows, progress, duration, rejectedOnce, bgmUrl,
-    bgmEnabled,
+    bgmEnabled, dismissed,
     hardStop, switchSource, resolveUrl, armResume, disarmResume, playBgm, setBgmUrl,
     playItem, togglePlay, stopAndHide, setVolume, toggleMute,
     setBgmEnabled, toggleBgm,

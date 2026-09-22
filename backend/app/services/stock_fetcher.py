@@ -119,6 +119,15 @@ def fetch_quote(market: str, code: str, us_probe: bool = True) -> dict:
         except ValueError:
             last_err = "行情接口返回异常"
 
+    # 东财全挂 → 回退腾讯报价（与 K 线架构一致；服务器常被东财 push2 限流但腾讯可达）
+    try:
+        quote = _quote_tencent(market, code)
+        if quote.get("price") is not None:
+            _store(key, quote)
+            return dict(quote)
+    except (requests.RequestException, ValueError, RuntimeError) as e:
+        last_err = f"腾讯行情接口请求失败：{e}"
+
     # 顺序：stale 缓存 → 空 quote（不抛错）→ 失败信息
     # 让 _watchlist / _summary 在某个股票拉不到时仍能继续展示其它股票，而不是把整个列表都干掉
     stale = _cached_stale(key)
@@ -170,6 +179,53 @@ def _norm_market(market: str) -> str:
     if market.startswith("us"):
         return "us"
     return market
+
+
+# ---------- 报价回退（腾讯） ----------
+# 东财 push2 报价接口在部分机房会被限流/拒连，但行情/路径与 K 线同源，故给报价也加腾讯回退。
+# 返回格式示例：v_sh600519="1~贵州茅台~600519~1253.80~1252.57~1252.15~…~涨跌~涨跌%~最高~最低~…~成交量~成交额~…"
+# 字段（按 ~ 分隔）：[1]名称 [2]代码 [3]现价 [4]昨收 [5]今开 [31]涨跌 [32]涨跌% [33]最高 [34]最低 [36]成交量(手) [37]成交额(万)
+def _quote_tencent(market: str, code: str) -> dict:
+    sym = _sym_for(market, code)
+    resp = requests.get(
+        "https://qt.gtimg.cn/q=" + sym,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    txt = resp.text
+    eq = txt.find("=")
+    if eq < 0 or txt.find('"') < 0:
+        raise RuntimeError("腾讯行情返回异常")
+    body = txt.split('"', 2)[1]
+    f = body.split("~")
+    if len(f) < 36:
+        raise RuntimeError("腾讯行情字段不足")
+
+    price = _f2(f[3])
+    pre_close = _f2(f[4])
+    change = _f2(f[31]) if len(f) > 31 else None
+    pct = _f2(f[32]) if len(f) > 32 else None
+    # 腾讯的涨跌/涨跌% 若缺失，按 现价-昨收 推导
+    if change is None and price is not None and pre_close:
+        change = round(price - pre_close, 4)
+        if pre_close:
+            pct = round((price - pre_close) / pre_close * 100, 2)
+    return {
+        "code": str(code).upper(),
+        "market": _norm_market(market),
+        "name": str(f[1]),
+        "price": price,
+        "pre_close": pre_close,
+        "open": _f2(f[5]) if len(f) > 5 else None,
+        "high": _f2(f[33]) if len(f) > 33 else None,
+        "low": _f2(f[34]) if len(f) > 34 else None,
+        "change": change,
+        "pct": pct,
+        "volume": _f2(f[36]) if len(f) > 36 else None,
+        "amount": _f2(f[37]) if len(f) > 37 else None,
+        "ts": int(time.time()),
+    }
 
 
 # ---------- K 线（日） ----------

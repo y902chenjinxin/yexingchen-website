@@ -248,6 +248,13 @@ const routes = [
     component: () => import('@/views/ProfileView.vue'),
     meta: { requiresAuth: true }
   },
+  // 玄黄装饰组件预览（仅登录可见；用于在浏览器中预览 uiverse 改造后的 loader 效果）
+  {
+    path: '/decor-preview',
+    name: 'DecorPreview',
+    component: () => import('@/views/DecorPreviewView.vue'),
+    meta: { requiresAuth: true, hideGlobalTopBar: true }
+  },
   // 未匹配路径兜底：弃用 /home 等未知路由，统一回工作台（含未登录重定向）
   {
     path: '/:pathMatch(.*)*',

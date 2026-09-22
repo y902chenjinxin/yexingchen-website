@@ -87,7 +87,7 @@ watch(
 const showGlobalFooter = computed(() => {
   const p = route.path
   if (p === '/workbench') return false
-  if (/^\/(music|novel|video|log|tool)/.test(p)) return false
+  if (/^\/(music|novel|video|log|tool|history)/.test(p)) return false
   return true
 })
 
