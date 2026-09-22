@@ -54,15 +54,45 @@ const quote = ref(null)
 const loading = ref(true)
 const refreshing = ref(false)
 
+// 前端兜底金句：万一后端代理超时 / 跨域失败，6s 内一定要展示内容
+const FRONTEND_FALLBACK = [
+  { hitokoto: '万物皆有裂痕，那是光照进来的地方。', from_who: '莱昂纳德·科恩', from: 'Anthem', type: 'k' },
+  { hitokoto: '凡是过往，皆为序章。', from_who: '莎士比亚', from: '暴风雨', type: 'k' },
+  { hitokoto: '愿你成为自己的太阳，无需凭借谁的光。', from_who: '', from: '网络', type: 'f' },
+  { hitokoto: '慢慢来，比较快。', from_who: '', from: '网络', type: 'f' },
+  { hitokoto: '路虽远，行则将至；事虽难，做则必成。', from_who: '荀子', from: '劝学', type: 'i' },
+  { hitokoto: '且将新火试新茶，诗酒趁年华。', from_who: '苏轼', from: '望江南·超然台作', type: 'i' },
+  { hitokoto: '最清晰的脚印，踩在最泥泞的路上。', from_who: '', from: '网络', type: 'f' },
+]
+function pickFrontendFallback() {
+  const today = new Date().toISOString().slice(0, 10)
+  let h = 0
+  for (const c of today) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return { ...FRONTEND_FALLBACK[h % FRONTEND_FALLBACK.length], fallback: true, date: today }
+}
+
 async function load(refresh = false) {
   if (refresh) refreshing.value = true
   else loading.value = true
+  // 6s 兜底：超时直接展示前端内置，避免「今日一句准备中…」卡住
+  const timer = setTimeout(() => {
+    if (loading.value && !quote.value) {
+      quote.value = pickFrontendFallback()
+      loading.value = false
+    }
+  }, 6000)
   try {
     const res = await workbenchApi.dailyQuote(refresh ? { refresh: true } : {})
-    quote.value = res?.data?.data || null
+    const data = res?.data?.data
+    if (data && data.hitokoto) {
+      quote.value = data
+    } else if (!quote.value) {
+      quote.value = pickFrontendFallback()
+    }
   } catch {
-    /* 静默失败，模板显示 tip */
+    if (!quote.value) quote.value = pickFrontendFallback()
   } finally {
+    clearTimeout(timer)
     loading.value = false
     refreshing.value = false
   }
