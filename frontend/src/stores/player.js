@@ -130,10 +130,12 @@ export const usePlayerStore = defineStore('player', () => {
     startCurrent()
   }
 
-  // 实际启动当前 queueIndex 的曲目（不切换队列/索引）
+  // 实际启动当前 queueIndex 的曲目（不切换队列/索引）。
+  // 关键：同步更新 curItem，否则切歌后播放框标题 / 表格高亮仍停留在上一首
   function startCurrent() {
     const item = queue.value[queueIndex.value]
     if (!item) return
+    curItem.value = item
     const url = resolveUrl(item)
     hardStop()
     audio.loop = playMode.value === 'single'   // 单曲循环：交给 audio.loop
