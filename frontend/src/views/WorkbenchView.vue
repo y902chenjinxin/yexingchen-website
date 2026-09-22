@@ -114,6 +114,16 @@
       </div>
     </section>
 
+    <!-- ============ Bento S3：每日一言 + 历史上的今天（文化小卡） ============ -->
+    <section class="bento-s3">
+      <div class="bento-card bento-card--zero">
+        <DailyQuoteCard />
+      </div>
+      <div class="bento-card bento-card--zero">
+        <OnThisDayCard />
+      </div>
+    </section>
+
     <!-- ============ S4：资讯流（v2.39.9 移除 AI 简报独占块，刷新反复报错）============ -->
     <div v-if="moduleVisible.feeds" class="wb-feedsbar">
       <WorkbenchFeedsBar :feeds="feeds" />
@@ -127,6 +137,8 @@ import { useRouter } from 'vue-router'
 import MobileWorkbenchHome from '@/components/mobile/MobileWorkbenchHome.vue'
 import TrendBars from '@/components/dashboard/TrendBars.vue'
 import WeatherCard from '@/components/workbench/WeatherCard.vue'
+import DailyQuoteCard from '@/components/workbench/DailyQuoteCard.vue'
+import OnThisDayCard from '@/components/workbench/OnThisDayCard.vue'
 import WorkbenchFeedsBar from '@/components/workbench/WorkbenchFeedsBar.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
@@ -371,6 +383,17 @@ onMounted(async () => {
   gap: 16px;
   margin-bottom: 16px;
 }
+
+/* S3：文化小卡（每日一言 + 历史上的今天）—— 平衡 1fr 1.2fr，与 S2 错开节奏 */
+.bento-s3 {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+/* 让子卡片内的卡片自己撑满（去掉 bento-card 自带的 padding 冲突） */
+.bento-card--zero { padding: 0; }
+.bento-card--zero > :deep(*) { height: 100%; }
 .bento-card {
   background: var(--dp-surface); border: 1px solid var(--dp-line); border-radius: 16px;
   padding: 16px 18px 14px; box-shadow: var(--dp-shadow);
@@ -419,9 +442,11 @@ onMounted(async () => {
   .bento-s1 { grid-template-columns: 1fr; }
   .bento-s1-left, .bento-s1-right { min-height: 0; }
   .bento-s2 { grid-template-columns: 1fr 1fr; }
+  .bento-s3 { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 600px) {
   .bento-s2 { grid-template-columns: 1fr; }
+  .bento-s3 { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
   .workbench-page { padding: 80px 14px 40px; }
@@ -430,5 +455,6 @@ onMounted(async () => {
   .bento-hero-num { font-size: 36px; }
   .bento-cd { grid-column: span 1; }
   .bento-s2 { grid-template-columns: 1fr; }
+  .bento-s3 { grid-template-columns: 1fr; }
 }
 </style>

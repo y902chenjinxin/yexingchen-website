@@ -68,6 +68,12 @@ export const workbenchApi = {
   // 天气（后端代理高德，key 不出服务器）：{city} 或 {lat,lon}
   weather: (params) => api.get('/workbench/dashboard/weather', { params }),
 
+  // 每日一言（hitokoto 代理）：{refresh?:boolean}，返回 {hitokoto, from, from_who, type, uuid, date, fallback?}
+  dailyQuote: (params = {}) => api.get('/workbench/dashboard/daily-quote', { params }),
+
+  // 历史上的今天：{refresh?:boolean}，返回 {date, month, day, items:[{year,month,day,title,desc}]}
+  todayInHistory: (params = {}) => api.get('/workbench/dashboard/today-in-history', { params }),
+
   // 笔记
   notes: {
     list: (params) => api.get('/workbench/notes', { params }),
