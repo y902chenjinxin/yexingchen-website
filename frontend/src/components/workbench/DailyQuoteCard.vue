@@ -83,7 +83,8 @@ async function load(refresh = false) {
   }, 6000)
   try {
     const res = await workbenchApi.dailyQuote(refresh ? { refresh: true } : {})
-    const data = res?.data?.data
+    // workbenchApi 拦截器返回的 res 已经是 {code, msg, data: {...业务字段}}，直接读 res.data
+    const data = (res && typeof res === 'object' && 'data' in res) ? res.data : res
     if (data && data.hitokoto) {
       quote.value = data
     } else if (!quote.value) {

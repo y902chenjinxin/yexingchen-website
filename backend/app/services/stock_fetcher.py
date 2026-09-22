@@ -64,6 +64,14 @@ def _cached(key: str, ttl: int):
     return None
 
 
+def _cached_stale(key: str):
+    """返回可能已过期的缓存值（用于上游挂掉时的兜底，不抛错给前端）。"""
+    ent = _cache.get(key)
+    if ent:
+        return ent[1]
+    return None
+
+
 def _store(key: str, value):
     with _lock:
         _cache[key] = (time.time(), value)
@@ -111,6 +119,10 @@ def fetch_quote(market: str, code: str, us_probe: bool = True) -> dict:
         except ValueError:
             last_err = "行情接口返回异常"
 
+    # 上游全挂 / 找不到代码：返回旧缓存（哪怕已过期），避免前端报错
+    stale = _cached_stale(key)
+    if stale:
+        return dict(stale)
     raise RuntimeError(last_err)
 
 
@@ -174,6 +186,10 @@ def fetch_kline(market: str, code: str, lmt: int = 240) -> list:
                 return [dict(x) for x in out]
         except (requests.RequestException, ValueError, RuntimeError) as e:
             errs.append(f"{fn}: {e}")
+    # 上游全挂：返回旧 K 线缓存（哪怕已过期），避免前端报错
+    stale = _cached_stale(key)
+    if stale:
+        return [dict(x) for x in stale]
     raise RuntimeError("；".join(errs) or "无 K 线数据")
 
 

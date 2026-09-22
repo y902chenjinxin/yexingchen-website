@@ -30,11 +30,19 @@ api.interceptors.response.use(
         if (router.currentRoute.value.path !== '/login') router.push('/login')
       } else if (status === 403) {
         ElMessage.error('权限不足')
+      } else if (status === 404) {
+        // 行情类接口 404（上游东财抖动）改为静默：调用方会自己用旧缓存或占位
+        // 仅 console.warn 方便排查
+        if (typeof console !== 'undefined') console.warn('[stocks]', message)
+      } else if (status >= 500) {
+        // 上游故障 → 静默
+        if (typeof console !== 'undefined') console.warn('[stocks 5xx]', message)
       } else {
         ElMessage.error(message)
       }
     } else {
-      ElMessage.error('网络错误，请检查连接')
+      // 网络层错误（DNS/CORS/断连）→ 静默，不打扰用户
+      if (typeof console !== 'undefined') console.warn('[stocks network]', error.message || error)
     }
     return Promise.reject(error)
   }

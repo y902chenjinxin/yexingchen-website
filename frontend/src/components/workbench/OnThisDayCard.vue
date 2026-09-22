@@ -69,7 +69,8 @@ async function load(refresh = false) {
   else loading.value = true
   try {
     const res = await workbenchApi.todayInHistory(refresh ? { refresh: true } : {})
-    const data = res?.data?.data || {}
+    // workbenchApi 拦截器返回的 res 已经是 {code, msg, data: {...业务字段}}，直接读 res.data 拿业务对象
+    const data = (res && typeof res === 'object' && 'data' in res) ? (res.data || {}) : (res || {})
     items.value = Array.isArray(data.items) ? data.items : []
     if (data.date) date.value = new Date(data.date)
   } catch {
