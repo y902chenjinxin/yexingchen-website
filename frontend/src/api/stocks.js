@@ -66,6 +66,9 @@ export const stocksApi = {
   alerts: (params) => api.get('/alerts', { params }),
   markAlertRead: (id) => api.post(`/alerts/${id}/read`),
   markAllAlertsRead: () => api.post('/alerts/read-all'),
+  // 资讯 + AI 综合分析
+  news: (market, code, params) => api.get(`/news/${market}/${code}`, { params }),
+  insight: (market, code) => api.post(`/insight/${market}/${code}`),
 }
 
 export default stocksApi

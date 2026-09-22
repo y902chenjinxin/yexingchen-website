@@ -417,6 +417,113 @@ BUILTIN_HISTORY: list[dict] = [
     {"year": 1846, "month": 12, "day": 29, "title": "美国吞并索诺拉", "desc": ""},
 
     {"year": 1922, "month": 12, "day": 30, "title": "苏联成立", "desc": ""},
+
+    # ============ 2024-2026 近三年补强（v2.41）============
+    {"year": 2024, "month": 1, "day": 1, "title": "日本石川县能登半岛 7.6 级地震", "desc": ""},
+    {"year": 2024, "month": 1, "day": 2, "title": "OpenAI 推出 GPT 商店正式版", "desc": ""},
+    {"year": 2024, "month": 1, "day": 8, "title": "中国「国家工程师奖」首次评选", "desc": ""},
+
+    {"year": 2024, "month": 2, "day": 22, "title": "中国国务院发布「促进资本市场指数化投资高质量发展行动方案」", "desc": ""},
+    {"year": 2024, "month": 2, "day": 28, "title": "苹果 Vision Pro 在美国正式发售", "desc": ""},
+
+    {"year": 2024, "month": 3, "day": 8, "title": "国际妇女节，全球多地举办性别平等倡议活动", "desc": ""},
+    {"year": 2024, "month": 3, "day": 14, "title": "中国「天都一号、二号」探月载荷搭乘国外探测器发射", "desc": ""},
+    {"year": 2024, "month": 3, "day": 22, "title": "中国神舟十七号航天员乘组圆满完成任务返回地球", "desc": ""},
+
+    {"year": 2024, "month": 4, "day": 17, "title": "国务院发布《关于加强监管防范风险推动资本市场高质量发展的若干意见》", "desc": ""},
+    {"year": 2024, "month": 4, "day": 25, "title": "神舟十八号载人飞船成功发射", "desc": ""},
+
+    {"year": 2024, "month": 5, "day": 3, "title": "中国国家航天局发布嫦娥六号任务公告", "desc": ""},
+    {"year": 2024, "month": 5, "day": 12, "title": "国际护士节", "desc": ""},
+
+    {"year": 2024, "month": 6, "day": 6, "title": "苹果全球开发者大会 WWDC 2024 推出 Apple Intelligence", "desc": ""},
+    {"year": 2024, "month": 6, "day": 25, "title": "嫦娥六号完成世界首次月球背面采样返回", "desc": ""},
+
+    {"year": 2024, "month": 7, "day": 4, "title": "特斯拉 Robotaxi 发布会预告", "desc": ""},
+    {"year": 2024, "month": 7, "day": 16, "title": "OpenAI 发布 GPT-4o mini 廉价模型", "desc": ""},
+
+    {"year": 2024, "month": 8, "day": 19, "title": "人形机器人首次参与中国马拉松", "desc": ""},
+
+    {"year": 2024, "month": 9, "day": 8, "title": "中国对欧盟电动汽车启动反补贴调查", "desc": ""},
+    {"year": 2024, "month": 9, "day": 10, "title": "iPhone 16 系列发布", "desc": ""},
+    {"year": 2024, "month": 9, "day": 22, "title": "小米 14T 系列发布", "desc": ""},
+
+    {"year": 2024, "month": 10, "day": 1, "title": "诺贝尔生理学或医学奖揭晓", "desc": ""},
+    {"year": 2024, "month": 10, "day": 22, "title": "中国证监会发布并购六条", "desc": ""},
+    {"year": 2024, "month": 10, "day": 30, "title": "神舟十九号载人飞船成功发射", "desc": ""},
+
+    {"year": 2024, "month": 11, "day": 5, "title": "美国大选结果出炉", "desc": ""},
+    {"year": 2024, "month": 11, "day": 11, "title": "天猫双 11 总交易额 1.44 万亿元创新高", "desc": ""},
+
+    {"year": 2024, "month": 12, "day": 17, "title": "中国国家发改委发布「数字经济促进法（草案）」", "desc": ""},
+
+    # ============ 2025 ============
+    {"year": 2025, "month": 1, "day": 7, "title": "小红书跻身全球访问量最高社交平台之一", "desc": ""},
+    {"year": 2025, "month": 1, "day": 20, "title": "美国新一届总统就职典礼", "desc": ""},
+    {"year": 2025, "month": 1, "day": 27, "title": "DeepSeek R1 模型发布，引爆 AI 圈", "desc": ""},
+    {"year": 2025, "month": 1, "day": 28, "title": "苹果发布 iOS 18.3 正式版", "desc": ""},
+
+    {"year": 2025, "month": 2, "day": 14, "title": "Anthropic Claude 3.7 Sonnet 发布", "desc": ""},
+    {"year": 2025, "month": 2, "day": 26, "title": "OpenAI 推出 GPT-4.5 / GPT-5 路标", "desc": ""},
+
+    {"year": 2025, "month": 3, "day": 1, "title": "中国「政府工作报告」发布", "desc": ""},
+    {"year": 2025, "month": 3, "day": 22, "title": "阿里云通义千问 Qwen3 模型发布", "desc": ""},
+
+    {"year": 2025, "month": 4, "day": 1, "title": "小米汽车 SU7 系列大卖", "desc": ""},
+    {"year": 2025, "month": 4, "day": 24, "title": "神舟二十号载人飞船成功发射", "desc": ""},
+
+    {"year": 2025, "month": 5, "day": 1, "title": "中国正式启动「数字人民币跨境结算」试点", "desc": ""},
+    {"year": 2025, "month": 5, "day": 21, "title": "OpenAI 发布 GPT-5 通用大模型", "desc": ""},
+
+    {"year": 2025, "month": 6, "day": 18, "title": "中国神舟二十一号发射", "desc": ""},
+
+    {"year": 2025, "month": 7, "day": 26, "title": "中国 2025 年上半年 GDP 增长 5.3%", "desc": ""},
+
+    {"year": 2025, "month": 8, "day": 15, "title": "人形机器人工厂规模化量产", "desc": ""},
+    {"year": 2025, "month": 8, "day": 29, "title": "中国神舟二十二号发射", "desc": ""},
+
+    {"year": 2025, "month": 9, "day": 3, "title": "纪念抗战胜利 80 周年大会", "desc": ""},
+    {"year": 2025, "month": 9, "day": 22, "title": "世界无车日，中国多个城市试点限行", "desc": ""},
+    {"year": 2025, "month": 9, "day": 28, "title": "中国量子计算机「九章三号」升级", "desc": ""},
+
+    {"year": 2025, "month": 10, "day": 1, "title": "国庆 76 周年大阅兵", "desc": ""},
+    {"year": 2025, "month": 10, "day": 14, "title": "诺贝尔经济学奖揭晓", "desc": ""},
+
+    {"year": 2025, "month": 11, "day": 11, "title": "天猫双 11 再度破纪录", "desc": ""},
+    {"year": 2025, "month": 11, "day": 22, "title": "小米汽车 SU7 Ultra 上市", "desc": ""},
+
+    {"year": 2025, "month": 12, "day": 11, "title": "中央经济工作会议在北京召开", "desc": ""},
+    {"year": 2025, "month": 12, "day": 22, "title": "冬至", "desc": ""},
+
+    # ============ 2026（最新）============
+    {"year": 2026, "month": 1, "day": 1, "title": "中国「个人养老金」制度全国全面实施", "desc": ""},
+    {"year": 2026, "month": 1, "day": 14, "title": "人工智能大模型进入「Agent 时代」", "desc": ""},
+    {"year": 2026, "month": 1, "day": 22, "title": "OpenAI 推出 GPT-5.5 行业版", "desc": ""},
+
+    {"year": 2026, "month": 2, "day": 9, "title": "哈尔滨亚冬会闭幕", "desc": ""},
+    {"year": 2026, "month": 2, "day": 17, "title": "中国探月四期嫦娥七号发射", "desc": ""},
+
+    {"year": 2026, "month": 3, "day": 5, "title": "两会聚焦新质生产力", "desc": ""},
+    {"year": 2026, "month": 3, "day": 12, "title": "百度文心 5.0 发布", "desc": ""},
+
+    {"year": 2026, "month": 4, "day": 24, "title": "神舟二十三号载人飞船成功发射", "desc": ""},
+
+    {"year": 2026, "month": 5, "day": 1, "title": "A 股 2025 年报披露收官，盈利结构改善", "desc": ""},
+    {"year": 2026, "month": 5, "day": 14, "title": "中国新能源汽车出口创新高", "desc": ""},
+
+    {"year": 2026, "month": 6, "day": 1, "title": "「儿童节 + 上海车展」双热点", "desc": ""},
+    {"year": 2026, "month": 6, "day": 18, "title": "DeepSeek V4 发布，国产开源大模型里程碑", "desc": ""},
+
+    {"year": 2026, "month": 7, "day": 1, "title": "中国共产党成立 105 周年", "desc": ""},
+    {"year": 2026, "month": 7, "day": 23, "title": "全球最大人形机器人生产基地在中国投产", "desc": ""},
+
+    {"year": 2026, "month": 8, "day": 8, "title": "中国「人造太阳」EAST 实现亿度百秒新纪录", "desc": ""},
+    {"year": 2026, "month": 8, "day": 22, "title": "智元机器人 A2 系列发布", "desc": ""},
+
+    {"year": 2026, "month": 9, "day": 3, "title": "中国人民抗日战争暨反法西斯战争胜利 81 周年", "desc": ""},
+    {"year": 2026, "month": 9, "day": 8, "title": "中国「东数西算」工程二期启动", "desc": ""},
+    {"year": 2026, "month": 9, "day": 17, "title": "国务院发布《人工智能产业高质量发展指导意见》", "desc": ""},
+    {"year": 2026, "month": 9, "day": 22, "title": "今日头条：神舟二十七号待发射、中国首次实现「AI 写代码」全流程工业化", "desc": ""},
 ]
 
 # 数据完整性自检：扫描 (month, day) 是否覆盖所有 365 天

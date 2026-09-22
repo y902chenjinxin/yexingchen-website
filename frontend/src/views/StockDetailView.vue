@@ -105,18 +105,62 @@
         <div v-else class="sd-empty-row">该股未加入自选，无法展示持仓盈亏</div>
       </section>
 
-      <!-- 相关资讯（复用资讯模块搜索） -->
+      <!-- 相关资讯 + AI 综合分析 -->
       <section class="sd-news glass">
         <div class="sd-block-head">
           <span class="sd-block-title">相关资讯</span>
-          <span class="sd-block-sub">按名称聚合订阅内容</span>
+          <span class="sd-block-sub">RSSHub 财经要闻 · 财联社电报 · 新浪财经 · 自动聚合 {{ sourcesCount }} 个源</span>
+          <button class="sd-btn ghost small" :disabled="loadingNews" @click="loadNews(true)" style="margin-left: auto;">
+            {{ loadingNews ? '加载中…' : '⟳ 刷新资讯' }}
+          </button>
+          <button class="sd-btn primary small" :disabled="loadingInsight" @click="loadInsight">
+            {{ loadingInsight ? 'AI 分析中…' : (insight ? '重新生成' : 'AI 综合分析') }}
+          </button>
         </div>
-        <div v-if="news.length" class="sd-news-list">
-          <a v-for="n in news" :key="n.id" class="sd-news-item" :href="n.link || '#'" target="_blank" rel="noopener noreferrer">
-            <span class="sd-news-dot">→</span><span class="sd-news-txt">{{ n.title }}</span>
-          </a>
+
+        <!-- AI 综合结论 -->
+        <div v-if="insight" class="sd-insight" :class="'lv-' + insight.level">
+          <div class="sd-insight-row">
+            <span class="sd-insight-badge">{{ badgeTxt[insight.level] || '观' }}</span>
+            <span class="sd-insight-name">{{ insight.name || code }} AI 综合分析</span>
+            <span class="sd-insight-meta">
+              资讯 {{ insight.news_count }} 条
+              <i v-if="insight.model_name">· 模型 {{ insight.model_name }}</i>
+              <i v-else>· 规则保底</i>
+            </span>
+          </div>
+          <div class="sd-insight-sum">{{ insight.summary }}</div>
+          <div v-if="insight.suggestion" class="sd-insight-sug">
+            <span class="sd-insight-tag">操作</span>
+            {{ insight.suggestion }}
+          </div>
         </div>
-        <div v-else class="sd-empty-row">暂未聚合到「{{ quote.name }}」相关资讯</div>
+
+        <!-- 已聚合的相关资讯 -->
+        <div v-if="relatedNews.length" class="sd-news-group">
+          <div class="sd-news-group-title">📌 工作台已收录（按名称匹配）</div>
+          <div class="sd-news-list">
+            <a v-for="n in relatedNews" :key="'r-' + n.url + n.title" class="sd-news-item" :href="n.url || '#'" target="_blank" rel="noopener noreferrer">
+              <span class="sd-news-dot">→</span>
+              <span class="sd-news-txt">{{ n.title }}</span>
+              <span v-if="n.pub" class="sd-news-time">{{ shortDate(n.pub) }}</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 各 RSS 源列表 -->
+        <div v-for="src in newsSources" :key="src.key" class="sd-news-group">
+          <div class="sd-news-group-title">{{ src.label }} <span class="sd-news-group-count">({{ src.items.length }})</span></div>
+          <div v-if="src.items.length" class="sd-news-list">
+            <a v-for="it in src.items" :key="it.url + it.title" class="sd-news-item" :href="it.url || '#'" target="_blank" rel="noopener noreferrer">
+              <span class="sd-news-dot">·</span>
+              <span class="sd-news-txt">{{ it.title }}</span>
+            </a>
+          </div>
+          <div v-else class="sd-empty-row">该源暂未拉到内容</div>
+        </div>
+
+        <div v-if="!relatedNews.length && !newsSources.length" class="sd-empty-row">暂未聚合到「{{ quote.name || code }}」相关资讯</div>
       </section>
 
       <footer class="sd-risk">自用工具，数据仅供参考，不构成投资建议</footer>
@@ -145,9 +189,19 @@ const savingHold = ref(false)
 const editQty = ref(null)
 const editCost = ref(null)
 const news = ref([])
+const relatedNews = ref([])
+const newsSources = ref([])
+const loadingNews = ref(false)
+const insight = ref(null)
+const loadingInsight = ref(false)
 const analysis = ref({ period: '', list: [] })
 const aiList = ref([])
 const genBusy = ref(false)
+const sourcesCount = computed(() => newsSources.value.filter(s => s.items && s.items.length).length)
+function shortDate(s) {
+  if (!s) return ''
+  return String(s).slice(5, 16).replace('T', ' ')
+}
 
 const todayDate = new Date().toISOString().slice(0, 10)
 // AI 研判优先展示；无记录时回退 KlineChart 的盘中规则研判
@@ -215,13 +269,38 @@ async function loadAll() {
     if (watch.value) { editQty.value = watch.value.quantity; editCost.value = watch.value.cost_price }
   } catch (e) { /* ignore */ }
   if (quote.value.name) {
-    try {
-      const res = await fetch(`/api/feeds/articles?q=${encodeURIComponent(quote.value.name)}&size=4`)
-      const j = await res.json()
-      news.value = (j?.data?.list || []).slice(0, 4)
-    } catch (e) { news.value = [] }
+    loadNews(false)
   }
   await loadAnalysis()
+}
+
+async function loadNews(refresh = false) {
+  loadingNews.value = true
+  try {
+    const r = await stocksApi.news(market, code, refresh ? { refresh: true } : {})
+    const data = (r && typeof r === 'object' && 'data' in r) ? r.data : (r || {})
+    relatedNews.value = Array.isArray(data.related) ? data.related : []
+    newsSources.value = Array.isArray(data.sources) ? data.sources : []
+  } catch (e) {
+    relatedNews.value = []
+    newsSources.value = []
+  } finally {
+    loadingNews.value = false
+  }
+}
+
+async function loadInsight() {
+  loadingInsight.value = true
+  try {
+    const r = await stocksApi.insight(market, code)
+    const data = (r && typeof r === 'object' && 'data' in r) ? r.data : (r || {})
+    insight.value = data || null
+    ElMessage.success(data?.model_name ? 'AI 综合分析已生成' : '已生成综合分析（规则保底）')
+  } catch (e) {
+    /* 错误拦截器已提示 */
+  } finally {
+    loadingInsight.value = false
+  }
 }
 
 async function loadAnalysis() {
@@ -399,10 +478,52 @@ html[data-theme="night"] .sd-an-head { background: rgba(18, 24, 32, 0.7); }
 .sd-input { background: rgba(11,15,20,.35); border: 1px solid var(--lj-line); color: var(--lj-text); border-radius: 8px; padding: 6px 10px; width: 130px; }
 
 .sd-news-list { display: flex; flex-direction: column; gap: 8px; }
-.sd-news-item { display: flex; gap: 8px; font-size: 13px; color: var(--lj-text-2); text-decoration: none; }
+.sd-news-item { display: flex; gap: 8px; font-size: 13px; color: var(--lj-text-2); text-decoration: none; align-items: baseline; }
 .sd-news-item:hover { color: var(--lj-seal); }
 .sd-news-dot { color: var(--lj-dai); flex: none; }
-.sd-news-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-news-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-news-time { font-size: 11px; color: var(--lj-text-3); flex: none; font-variant-numeric: tabular-nums; }
+
+/* 资讯分组（多源） */
+.sd-news-group { margin-top: 14px; }
+.sd-news-group-title {
+  font-size: 12px; color: var(--lj-text-2); font-weight: 600;
+  letter-spacing: .04em; margin-bottom: 8px;
+}
+.sd-news-group-count { color: var(--lj-text-3); font-weight: 400; margin-left: 4px; }
+
+/* AI 综合分析 */
+.sd-insight {
+  margin: 12px 0 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--lj-line-strong);
+  background: linear-gradient(135deg, rgba(127, 168, 163, 0.06), rgba(199, 169, 107, 0.04));
+}
+.sd-insight.lv-up { background: linear-gradient(135deg, rgba(192, 57, 43, 0.08), rgba(216, 80, 79, 0.04)); }
+.sd-insight.lv-down, .sd-insight.lv-danger { background: linear-gradient(135deg, rgba(63, 150, 142, 0.08), rgba(91, 110, 225, 0.04)); }
+.sd-insight-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.sd-insight-badge {
+  font-size: 12px; font-weight: 700; padding: 0 8px; height: 22px; line-height: 22px;
+  border-radius: 7px; background: rgba(255,255,255,.18); color: #fff; flex: none;
+}
+.sd-insight-name { font-size: 14px; font-weight: 600; color: var(--lj-text); }
+.sd-insight-meta { font-size: 11px; color: var(--lj-text-3); margin-left: auto; }
+.sd-insight-meta i { font-style: normal; }
+.sd-insight-sum {
+  font-size: 13px; line-height: 1.65; color: var(--lj-text); margin: 6px 0;
+}
+.sd-insight-sug {
+  display: flex; gap: 8px; align-items: baseline;
+  font-size: 12.5px; line-height: 1.6; color: var(--lj-text-2);
+  padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, .04);
+}
+.sd-insight-tag {
+  flex: none; font-size: 10px; padding: 0 6px; height: 18px; line-height: 18px;
+  border-radius: 5px; background: var(--lj-dai); color: #fff; letter-spacing: .04em;
+}
 
 .sd-btn { border-radius: 9px; padding: 7px 14px; font-size: 13px; border: 1px solid transparent; cursor: pointer; transition: all .2s; }
 .sd-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #0B0F14; }

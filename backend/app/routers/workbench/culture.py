@@ -199,10 +199,17 @@ def _wiki_on_this_day(month: int, day: int) -> list[dict]:
 
 @router.get("/today-in-history")
 def today_in_history(
+    date: Optional[str] = Query(default=None, description="YYYY-MM-DD；默认今天"),
     refresh: bool = Query(default=False, description="用户主动刷新：强制重新拉 Wikipedia 补全"),
     current_user: dict = Depends(get_current_user),
 ):
-    today_obj = _date_cls.today()
+    if date:
+        try:
+            today_obj = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            raise_http(400, "日期格式应为 YYYY-MM-DD", 400)
+    else:
+        today_obj = _date_cls.today()
     month, day = today_obj.month, today_obj.day
     items = _builtin_today(month, day)
     # 用户主动刷新时尝试拉 Wikipedia 增强；失败/超时静默跳过
@@ -213,15 +220,8 @@ def today_in_history(
             if it["title"] not in existing_titles:
                 items.append(it)
                 existing_titles.add(it["title"])
-    # 同一天顺序稳定（hash 种子），主动刷新才打乱
-    seed = int(hashlib.md5(f"{today_obj.isoformat()}-xh".encode()).hexdigest()[:6], 16)
-    if refresh:
-        seed ^= int(time.time()) & 0xFFFF
-    if len(items) > 1:
-        import random
-        rng = random.Random(seed)
-        items = items[:]
-        rng.shuffle(items)
+    # 强制按年份降序展示（最近事件在前），同一天顺序完全固定（不洗牌）
+    items = sorted(items, key=lambda r: -r.get("year", 0))
     return ok({
         "date": today_obj.isoformat(),
         "month": month,

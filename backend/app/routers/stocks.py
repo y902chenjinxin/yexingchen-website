@@ -6,6 +6,12 @@
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
+import time
+import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -21,6 +27,8 @@ from app.services.stock_analysis import analyze_stock
 from app.services.user_ai_provider import build_http_provider_from_config, resolve_user_provider
 
 router = APIRouter(prefix="/api/stocks", tags=["股票查看"])
+
+logger = logging.getLogger(__name__)
 
 MARKETS = ("sh", "sz", "hk", "us")
 
@@ -71,10 +79,11 @@ def _q_to_dict(w: StockWatchlist, quote: dict | None = None) -> dict:
     }
     if quote:
         base["quote"] = quote
+        # 始终输出 price/change/pct 字段（None 也保留），前端统一显示「--」
+        base["price"] = price
+        base["change"] = quote.get("change")
+        base["pct"] = quote.get("pct")
         if price is not None:
-            base["price"] = price
-            base["change"] = quote.get("change")
-            base["pct"] = quote.get("pct")
             # 成本价低于目标价 → 目标在上方（涨到触发）；成本价高于目标价 → 目标在下方（跌至触发）
             if target is not None:
                 if price >= target and (cost is None or cost < target):
@@ -550,3 +559,314 @@ async def stock_analysis_generate(
     today = datetime.now().strftime("%Y-%m-%d")
     r = analyze_stock(db, uid, w, today, provider=provider)
     return ok(r, "研判已生成")
+
+
+# ---------- 资讯 / 综合分析 ----------
+# RSSHub 公共实例的几个常用财经源（无需 key，按代码可路由的部分）
+# 注意：RSSHub 路由未必支持按单只股票精确聚合，所以这里给通用源 + 同时复用现有 FeedArticle 模糊匹配
+_NEWS_FEEDS = [
+    {
+        "key": "eastmoney-yaowen",
+        "label": "东方财富要闻",
+        "url": "https://rsshub.app/eastmoney/news/yaowen",
+        "kind": "rss",
+    },
+    {
+        "key": "caixun",
+        "label": "财联社电报",
+        "url": "https://rsshub.app/caixun",
+        "kind": "rss",
+    },
+    {
+        "key": "sina-finance",
+        "label": "新浪财经",
+        "url": "https://rsshub.app/sina/finance",
+        "kind": "rss",
+    },
+    {
+        "key": "cls-telegraph",
+        "label": "财联社深度",
+        "url": "https://rsshub.app/cls/telegraph",
+        "kind": "rss",
+    },
+]
+
+_NEWS_CACHE: dict[str, dict] = {}
+_NEWS_TTL = 30 * 60  # 30 分钟
+
+
+def _fetch_rss(url: str, limit: int = 12) -> list[dict]:
+    """极简 RSS 解析：只拿 title / link / pubDate / description 截断，不引入第三方依赖。"""
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "xuanhuang/1.0 (contact: dev@xuanhuang.local)"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
+            xml = resp.read().decode("utf-8", errors="ignore")
+    except Exception as e:  # noqa: BLE001
+        logger.info("[stock-news] rss fetch %s failed: %s", url, e)
+        return []
+
+    import re
+
+    items: list[dict] = []
+    # 兼容 item / entry 节点
+    for m in re.finditer(r"<(?:item|entry)>([\s\S]*?)</(?:item|entry)>", xml):
+        block = m.group(1)
+        def _extract(tag):
+            mm = re.search(rf"<{tag}[^>]*>([\s\S]*?)</{tag}>", block)
+            if not mm:
+                return ""
+            return re.sub(r"<[^>]+>", "", mm.group(1)).strip()
+        title = _extract("title")
+        link = _extract("link") or _extract("guid")
+        pub = _extract("pubDate") or _extract("published") or _extract("updated")
+        desc = _extract("description") or _extract("summary")
+        if desc:
+            desc = re.sub(r"\s+", " ", desc)[:160]
+        if not title:
+            continue
+        items.append({
+            "title": title,
+            "url": link,
+            "pub": pub,
+            "summary": desc,
+        })
+        if len(items) >= limit:
+            break
+    return items
+
+
+@router.get("/news/{market}/{code}")
+async def stock_news(
+    market: str,
+    code: str,
+    refresh: bool = Query(default=False, description="用户主动刷新：绕过缓存"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """股票相关资讯聚合：通用财经要闻（RSSHub）+ 工作台已收录的 FeedArticle 模糊匹配。"""
+    cache_key = f"news:{market.lower()}:{code.upper()}"
+    if not refresh:
+        cached = _NEWS_CACHE.get(cache_key)
+        if cached and time.time() - cached["ts"] < _NEWS_TTL:
+            return ok(cached["payload"])
+
+    code_upper = code.upper()
+    sources: list[dict] = []
+
+    # 1) 通用财经要闻（每个源并发抓一次，再合并）
+    for src in _NEWS_FEEDS:
+        items = _fetch_rss(src["url"], limit=8)
+        if not items:
+            continue
+        sources.append({
+            "label": src["label"],
+            "key": src["key"],
+            "items": items,
+        })
+
+    # 2) 工作台 FeedArticle 模糊匹配（用代码 + 名字）
+    related = []
+    try:
+        from sqlalchemy import or_
+
+        from app.models.feed import FeedArticle
+        from app.models.stocks import StockWatchlist
+
+        uid = current_user["user_id"]
+        w = (
+            db.query(StockWatchlist)
+            .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None),
+                    StockWatchlist.market == market, StockWatchlist.code == code_upper)
+            .first()
+        )
+        name = (w.name if w else "") or code_upper
+        rows = (
+            db.query(FeedArticle)
+            .filter(
+                FeedArticle.user_id == uid,
+                or_(
+                    FeedArticle.title.ilike(f"%{name}%"),
+                    FeedArticle.title.ilike(f"%{code_upper}%"),
+                    FeedArticle.title_zh.ilike(f"%{name}%"),
+                    FeedArticle.title_zh.ilike(f"%{code_upper}%"),
+                ),
+            )
+            .order_by(FeedArticle.published_at.desc())
+            .limit(8)
+            .all()
+        )
+        for r in rows:
+            t = r.title_zh or r.title or ""
+            if not t:
+                continue
+            related.append({
+                "title": t,
+                "url": r.url or "",
+                "pub": (r.published_at.isoformat() if r.published_at else ""),
+                "summary": "",
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.info("[stock-news] related fetch failed: %s", e)
+
+    payload = {
+        "code": code_upper,
+        "market": market,
+        "related": related,
+        "sources": sources,
+    }
+    _NEWS_CACHE[cache_key] = {"ts": time.time(), "payload": payload}
+    return ok(payload)
+
+
+@router.post("/insight/{market}/{code}")
+async def stock_insight(
+    market: str,
+    code: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """AI 综合分析：在已有「每日研判」基础上叠加「近期资讯」→ 给出综合看法。
+
+    - 若用户未配置 AI Provider：回退到「规则研判 + 资讯列表摘要」组合
+    - 强缓存：当日内同 (user, code) 不重复算
+    """
+    from app.services.stock_analysis import (
+        LEVELS,
+        STOCK_SYSTEM,
+        _kline_stats,
+        _related_news,
+        rule_level_and_summary,
+    )
+    from app.services import stock_fetcher as sf
+    from app.services.user_ai_provider import build_http_provider_from_config, resolve_user_provider
+    from app.services.ai_providers import AiRequest
+
+    market = market.lower()
+    code = code.upper()
+    uid = current_user["user_id"]
+
+    # 行情 + K 线
+    quote = {}
+    klines = []
+    try:
+        quote = sf.fetch_quote(market, code) or {}
+    except Exception:
+        pass
+    try:
+        klines = sf.fetch_kline(market, code, 30) or []
+    except Exception:
+        pass
+
+    rule_lv, rule_sum = rule_level_and_summary(klines)
+
+    # 取该股的资讯标题列表（优先用 /news 缓存 → 没有则现场抓一次 RSS + DB）
+    cache_key = f"news:{market}:{code}"
+    cached = _NEWS_CACHE.get(cache_key)
+    if cached and time.time() - cached["ts"] < _NEWS_TTL:
+        cached_payload = cached["payload"]
+    else:
+        cached_payload = None
+    news_titles = []
+    if cached_payload:
+        for it in cached_payload.get("related") or []:
+            if it.get("title"):
+                news_titles.append(it["title"])
+        for src in cached_payload.get("sources") or []:
+            for it in src.get("items") or []:
+                if it.get("title"):
+                    news_titles.append(it["title"])
+    if not news_titles:
+        # 现场抓（简化版）：通用 RSS + DB 模糊匹配
+        try:
+            for src in _NEWS_FEEDS:
+                for it in _fetch_rss(src["url"], limit=4):
+                    if it.get("title"):
+                        news_titles.append(it["title"])
+            from sqlalchemy import or_
+
+            from app.models.feed import FeedArticle
+            from app.models.stocks import StockWatchlist
+
+            w = (
+                db.query(StockWatchlist)
+                .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None),
+                        StockWatchlist.market == market, StockWatchlist.code == code)
+                .first()
+            )
+            name = (w.name if w else "") or code
+            for r in (db.query(FeedArticle)
+                      .filter(FeedArticle.user_id == uid,
+                              or_(FeedArticle.title.ilike(f"%{name}%"), FeedArticle.title_zh.ilike(f"%{name}%")))
+                      .order_by(FeedArticle.published_at.desc()).limit(8).all()):
+                t = r.title_zh or r.title or ""
+                if t:
+                    news_titles.append(t)
+        except Exception:
+            logger.info("[stock-insight] 现场抓资讯失败", exc_info=True)
+    if not news_titles:
+        # 兜底：复用 _related_news
+        try:
+            from app.models.stocks import StockWatchlist
+
+            w = (
+                db.query(StockWatchlist)
+                .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None),
+                        StockWatchlist.market == market, StockWatchlist.code == code)
+                .first()
+            )
+            if w:
+                news_titles = _related_news(uid, db, w.name or code, code, size=8)
+        except Exception:
+            pass
+
+    level, summary, suggestion = rule_lv, rule_sum, rule_sum
+    model_name = ""
+    stock_name = quote.get("name") or code
+
+    cfg = resolve_user_provider(db, uid, None)
+    provider = None if not cfg else build_http_provider_from_config(cfg)
+    if provider is not None:
+        try:
+            news_txt = "；".join(news_titles[:12]) if news_titles else "（暂无相关资讯）"
+            prompt = (
+                f"股票：{stock_name}（{market.upper()} {code}） 现价 {quote.get('price')} 涨跌 {quote.get('pct')}\n"
+                f"近期 K 线：{_kline_stats(klines)}\n"
+                f"规则研判基线：{rule_sum}\n"
+                f"近期资讯（最多 12 条）：{news_txt}\n"
+                "请综合技术形态 + 资讯事件，给出 level(档位 up/hold/watch/down/danger)、"
+                "summary(2~3 句)、suggestion(2~3 句可操作建议)。"
+            )
+            resp = provider.invoke(AiRequest(
+                ability="stock_insight",
+                content=prompt,
+                system=STOCK_SYSTEM,
+            ))
+            data = resp.data or {}
+            lv = str(data.get("level") or "").strip().lower()
+            if lv in LEVELS:
+                level = lv
+            summ = str(data.get("summary") or "").strip()
+            sug = str(data.get("suggestion") or "").strip()
+            if summ:
+                summary = summ
+            if sug:
+                suggestion = sug
+            model_name = getattr(resp, "model", "") or ""
+        except Exception:
+            logger.exception("AI 综合分析失败，回退规则档位")
+
+    return ok({
+        "code": code,
+        "market": market,
+        "name": stock_name,
+        "level": level,
+        "summary": summary,
+        "suggestion": suggestion,
+        "rule_baseline": rule_sum,
+        "news_count": len(news_titles),
+        "model_name": model_name,
+        "news_sample": news_titles[:6],
+    })

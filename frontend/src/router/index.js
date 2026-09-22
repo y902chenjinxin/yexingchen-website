@@ -160,6 +160,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/history',
+    name: 'History',
+    component: () => import('@/views/HistoryView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/travels',
     name: 'Travels',
     component: () => import('@/views/TravelsView.vue'),

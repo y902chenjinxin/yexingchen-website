@@ -119,11 +119,23 @@ def fetch_quote(market: str, code: str, us_probe: bool = True) -> dict:
         except ValueError:
             last_err = "行情接口返回异常"
 
-    # 上游全挂 / 找不到代码：返回旧缓存（哪怕已过期），避免前端报错
+    # 顺序：stale 缓存 → 空 quote（不抛错）→ 失败信息
+    # 让 _watchlist / _summary 在某个股票拉不到时仍能继续展示其它股票，而不是把整个列表都干掉
     stale = _cached_stale(key)
     if stale:
         return dict(stale)
-    raise RuntimeError(last_err)
+    # 返回一个"空 quote"，字段都是 None，前端 list 显示「--」但不报错
+    empty = {
+        "market": market, "code": code, "name": "", "price": None,
+        "pre_close": None, "open": None, "high": None, "low": None,
+        "volume": None, "amount": None, "change": None, "pct": None,
+        "limit_up": None, "limit_down": None, "ts": int(time.time()),
+    }
+    # 仅当确实是网络层错误（而非代码无效）时才写空缓存，下次还会重试
+    if last_err.startswith("行情接口请求失败"):
+        _store(key, empty)
+        return dict(empty)
+    return empty
 
 
 def _build_quote(market: str, code: str, d: dict) -> dict:

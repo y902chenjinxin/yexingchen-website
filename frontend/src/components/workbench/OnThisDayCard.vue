@@ -16,12 +16,12 @@
         class="od-refresh"
         :class="{ spinning: refreshing }"
         :disabled="refreshing"
-        @click="refresh"
-        title="换一组"
-        aria-label="换一组"
+        @click="goHistory"
+        title="打开独立历史页面（带横向时间轴）"
+        aria-label="打开历史页面"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 17L17 7M17 7H8M17 7V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
     </header>
@@ -56,7 +56,10 @@ export default { name: 'OnThisDayCard' }
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { workbenchApi } from '@/api/workbench'
+
+const router = useRouter()
 
 const items = ref([])
 const loading = ref(true)
@@ -82,6 +85,9 @@ async function load(refresh = false) {
 }
 
 async function refresh() { await load(true) }
+function goHistory() {
+  router.push('/history')
+}
 
 const dateLabel = computed(() => {
   const d = date.value
