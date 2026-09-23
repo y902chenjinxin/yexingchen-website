@@ -346,16 +346,15 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   .vc-tool { grid-template-columns: 1fr; }
 }
 
-/* ============ 卡片：玻璃 + 玄黄 ============ */
+/* ============ 卡片：玻璃 + 主题感知 ============ */
 .vc-card {
   position: relative;
   padding: 22px 22px 20px;
   border-radius: 18px;
-  background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
-    var(--dp-glass, rgba(18, 26, 34, 0.55));
+  /* 玻璃底色：使用项目自带 --color-bg-glass（夜间极淡紫/白天 72% 白） */
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.06));
   border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.18));
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--dp-shadow, 0 6px 24px rgba(0, 0, 0, 0.18));
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -367,16 +366,18 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   padding-bottom: 12px;
   border-bottom: 1px solid var(--dp-line, rgba(127, 127, 127, 0.12));
 }
+/* 步骤徽章：鎏金→雨青渐变（两主题通用，文字色由主题感知决定） */
 .vc-card-step {
   flex: none;
-  width: 26px; height: 26px; border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #c7a96b, #7fa8a3);
-  color: #0b0f14; font-size: 13px; font-weight: 700;
-  box-shadow: 0 2px 8px rgba(199, 169, 107, 0.3);
+  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  color: var(--yq-gold-fg, #0b0f14);
+  font-size: 13px; font-weight: 700;
+  box-shadow: 0 2px 8px var(--yq-gold-glow, rgba(199, 169, 107, 0.3));
 }
 .vc-card-step--alt {
-  background: linear-gradient(135deg, #7fa8a3, #c7a96b);
+  background: linear-gradient(135deg, var(--yq-rain, #7fa8a3), var(--yq-gold, #c7a96b));
 }
 .vc-card-title { margin: 0; font-size: 16px; color: var(--lj-text); letter-spacing: .04em; font-weight: 600; }
 .vc-card-sub { margin: 2px 0 0; font-size: 12px; color: var(--lj-text-3); letter-spacing: .04em; }
@@ -391,43 +392,54 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 }
 .vc-dim { font-style: normal; font-size: 11px; color: var(--lj-text-3); letter-spacing: .04em; }
 
-/* ElementPlus 控件：玻璃态适配（覆盖 native-glass 的硬色） */
+/* ============ ElementPlus 控件：主题感知玻璃态 ============
+   关键：使用 --color-bg-glass（昼夜已不同），禁用硬色覆盖
+   夜间：透明深空；白天：浅米白玻璃，不再刺眼 */
 .vc-card :deep(.el-input__wrapper),
 .vc-card :deep(.el-textarea__inner) {
-  background: var(--dp-glass, rgba(255, 255, 255, 0.04)) !important;
-  box-shadow: 0 0 0 1px var(--dp-line, rgba(127, 127, 127, 0.22)) inset !important;
+  background: var(--color-bg-glass) !important;
+  box-shadow: 0 0 0 1px var(--dp-line) inset !important;
   border-radius: 10px !important;
   padding: 2px 12px !important;
 }
 .vc-card :deep(.el-input__wrapper.is-focus),
 .vc-card :deep(.el-textarea__inner:focus) {
-  box-shadow: 0 0 0 1px var(--yq-gold, #c7a96b) inset, 0 0 0 3px rgba(199, 169, 107, 0.18) !important;
+  box-shadow: 0 0 0 1px var(--yq-gold) inset, 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, 0.18)) !important;
 }
 .vc-card :deep(.el-input__inner),
-.vc-card :deep(.el-textarea__inner) { color: var(--lj-text) !important; }
+.vc-card :deep(.el-textarea__inner) {
+  color: var(--lj-text) !important;
+  -webkit-text-fill-color: var(--lj-text);
+}
 .vc-card :deep(.el-input__inner::placeholder),
-.vc-card :deep(.el-textarea__inner::placeholder) { color: var(--lj-text-3) !important; }
+.vc-card :deep(.el-textarea__inner::placeholder) {
+  color: var(--lj-text-3) !important;
+  -webkit-text-fill-color: var(--lj-text-3);
+}
 .vc-card :deep(.el-textarea__inner) { padding: 10px 12px !important; }
 .vc-card :deep(.el-select__wrapper) {
-  background: var(--dp-glass, rgba(255, 255, 255, 0.04)) !important;
-  box-shadow: 0 0 0 1px var(--dp-line, rgba(127, 127, 127, 0.22)) inset !important;
+  background: var(--color-bg-glass) !important;
+  box-shadow: 0 0 0 1px var(--dp-line) inset !important;
   border-radius: 10px !important;
 }
 .vc-card :deep(.el-select__wrapper.is-focused) {
-  box-shadow: 0 0 0 1px var(--yq-gold, #c7a96b) inset, 0 0 0 3px rgba(199, 169, 107, 0.18) !important;
+  box-shadow: 0 0 0 1px var(--yq-gold) inset, 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, 0.18)) !important;
 }
 .vc-card :deep(.el-select__placeholder),
 .vc-card :deep(.el-select__selected-item) { color: var(--lj-text) !important; }
+/* word-limit 计数颜色 */
+.vc-card :deep(.el-input__count .el-input__count-inner),
+.vc-card :deep(.el-textarea__count) { color: var(--lj-text-3) !important; background: transparent !important; }
 .vc-select-full { width: 100%; }
 
-/* ============ 上传区 ============ */
+/* ============ 上传区：玻璃底（昼夜不同） ============ */
 .vc-drop {
   position: relative;
   border: 1.5px dashed var(--dp-line-strong, rgba(127, 127, 127, 0.32));
   border-radius: 14px;
   padding: 22px 16px;
   text-align: center;
-  background: rgba(127, 168, 163, 0.04);
+  background: var(--yq-rain-faint, rgba(127, 168, 163, 0.04));
   cursor: pointer;
   transition: all .2s ease;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -435,19 +447,22 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 }
 .vc-drop:hover {
   border-color: var(--yq-gold, #c7a96b);
-  background: rgba(199, 169, 107, 0.06);
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
 }
 .vc-drop.has {
   border-style: solid;
   border-color: var(--yq-gold, #c7a96b);
-  background: rgba(199, 169, 107, 0.08);
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.12));
   padding: 14px 16px;
 }
 .vc-drop-icon {
   width: 36px; height: 36px; border-radius: 50%;
-  background: linear-gradient(135deg, rgba(199, 169, 107, .22), rgba(127, 168, 163, .22));
+  background: linear-gradient(135deg,
+    var(--yq-gold-faint, rgba(199, 169, 107, 0.22)),
+    var(--yq-rain-faint, rgba(127, 168, 163, 0.22)));
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 18px; color: var(--yq-gold, #c7a96b);
+  font-size: 18px;
+  color: var(--yq-gold, #c7a96b);
 }
 .vc-drop-text { font-size: 14px; color: var(--lj-text); letter-spacing: .04em; }
 .vc-drop-hint { font-size: 11px; color: var(--lj-text-3); letter-spacing: .06em; }
@@ -458,8 +473,8 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 .vc-file-icon {
   flex: none;
   width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(135deg, #c7a96b, #7fa8a3);
-  color: #0b0f14;
+  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  color: var(--yq-gold-fg, #0b0f14);
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 18px;
 }
@@ -479,10 +494,12 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   transition: all .15s;
 }
 .vc-file-remove:hover {
-  color: #ff6b6b; border-color: #ff6b6b; background: rgba(255, 107, 107, 0.06);
+  color: var(--dp-danger, #fb7185);
+  border-color: var(--dp-danger, #fb7185);
+  background: var(--dp-danger-faint, rgba(251, 113, 133, 0.08));
 }
 
-/* ============ 预设文本 chip ============ */
+/* ============ 预设 chip ============ */
 .vc-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .vc-chip {
   padding: 4px 10px;
@@ -514,15 +531,16 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   transition: all .18s ease;
   font-family: inherit;
 }
+/* 主按钮：金绿渐变 + 主题感知字色与光晕 */
 .vc-btn-primary {
-  background: linear-gradient(135deg, #c7a96b, #7fa8a3);
-  color: #0b0f14;
+  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  color: var(--yq-gold-fg, #0b0f14);
   font-weight: 600;
-  box-shadow: 0 4px 14px rgba(199, 169, 107, 0.28);
+  box-shadow: 0 4px 14px var(--yq-gold-glow, rgba(199, 169, 107, 0.28));
 }
 .vc-btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 22px rgba(199, 169, 107, 0.38);
+  box-shadow: 0 8px 22px var(--yq-gold-glow-strong, rgba(199, 169, 107, 0.42));
 }
 .vc-btn-primary:active:not(:disabled) { transform: translateY(0); }
 .vc-btn-primary:disabled {
@@ -537,8 +555,8 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 
 .vc-spin {
   width: 14px; height: 14px;
-  border: 2px solid rgba(11, 15, 20, 0.3);
-  border-top-color: #0b0f14;
+  border: 2px solid var(--yq-gold-fg-faint, rgba(11, 15, 20, 0.3));
+  border-top-color: var(--yq-gold-fg, #0b0f14);
   border-radius: 50%;
   animation: vc-rot .7s linear infinite;
 }
@@ -546,29 +564,29 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 
 .vc-progress {
   position: absolute; left: 0; bottom: -4px; height: 2px;
-  background: linear-gradient(90deg, #c7a96b, #7fa8a3);
+  background: linear-gradient(90deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
   border-radius: 2px;
   transition: width .2s ease;
-  box-shadow: 0 0 8px rgba(199, 169, 107, 0.5);
+  box-shadow: 0 0 8px var(--yq-gold-glow, rgba(199, 169, 107, 0.5));
 }
 
 .vc-notice { font-size: 11px; color: var(--lj-text-3); margin: -4px 0 0; line-height: 1.6; letter-spacing: .04em; }
-.vc-err { font-size: 12px; color: #ff6b6b; margin: 0; }
+.vc-err { font-size: 12px; color: var(--dp-danger, #fb7185); margin: 0; }
 
 /* ============ 播放器 ============ */
 .vc-player {
   position: relative;
   padding: 14px 16px;
   border-radius: 12px;
-  background: rgba(127, 168, 163, 0.06);
+  background: var(--yq-rain-faint, rgba(127, 168, 163, 0.06));
   border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.18));
 }
 .vc-player-badge {
   position: absolute; top: -8px; left: 14px;
   padding: 2px 10px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #c7a96b, #7fa8a3);
-  color: #0b0f14;
+  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  color: var(--yq-gold-fg, #0b0f14);
   font-size: 10px;
   letter-spacing: .08em;
 }
@@ -594,14 +612,14 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.18));
-  background: rgba(127, 168, 163, 0.04);
+  background: var(--yq-rain-faint, rgba(127, 168, 163, 0.04));
   display: flex; flex-direction: column; gap: 8px;
   transition: all .15s;
 }
 .vc-voice-card.active {
   border-color: var(--yq-gold, #c7a96b);
-  background: rgba(199, 169, 107, 0.08);
-  box-shadow: 0 2px 10px rgba(199, 169, 107, 0.18);
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.1));
+  box-shadow: 0 2px 10px var(--yq-gold-glow, rgba(199, 169, 107, 0.22));
 }
 .vc-voice-main {
   display: flex; justify-content: space-between; align-items: center;
@@ -623,11 +641,14 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 }
 .vc-voice-meta .vc-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: #7fa8a3;
-  box-shadow: 0 0 6px rgba(127, 168, 163, 0.6);
+  background: var(--yq-rain, #7fa8a3);
+  box-shadow: 0 0 6px var(--yq-rain-glow, rgba(127, 168, 163, 0.6));
 }
-.vc-voice-meta.expiring { color: #ff6b6b; }
-.vc-voice-meta.expiring .vc-dot { background: #ff6b6b; box-shadow: 0 0 6px rgba(255, 107, 107, 0.5); }
+.vc-voice-meta.expiring { color: var(--dp-danger, #fb7185); }
+.vc-voice-meta.expiring .vc-dot {
+  background: var(--dp-danger, #fb7185);
+  box-shadow: 0 0 6px var(--dp-danger-glow, rgba(251, 113, 133, 0.5));
+}
 
 .vc-voice-actions { display: flex; gap: 8px; }
 .vc-mini {
@@ -644,11 +665,11 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 }
 .vc-mini:hover {
   color: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b);
-  background: rgba(199, 169, 107, 0.06);
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.06));
 }
 .vc-mini.danger:hover {
-  color: #ff6b6b; border-color: #ff6b6b;
-  background: rgba(255, 107, 107, 0.06);
+  color: var(--dp-danger, #fb7185); border-color: var(--dp-danger, #fb7185);
+  background: var(--dp-danger-faint, rgba(251, 113, 133, 0.06));
 }
 
 /* ============ Provider 未就绪 ============ */

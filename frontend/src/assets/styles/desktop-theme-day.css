@@ -56,6 +56,16 @@
   --yq-rain-deep: var(--dp-accent-strong);
   --yq-gold: var(--dp-warning);
   --yq-gold-bright: #d97706;
+  /* 白天鎏金为深琥珀 (#a16207)；落在鎏金面上的字用白色才能看清 */
+  --yq-gold-fg: #ffffff;
+  --yq-gold-fg-faint: rgba(255, 255, 255, .35);
+  --yq-gold-faint: rgba(161, 98, 7, .14);
+  --yq-gold-glow: rgba(161, 98, 7, .28);
+  --yq-gold-glow-strong: rgba(161, 98, 7, .4);
+  --yq-rain-faint: rgba(79, 94, 209, .12);
+  --yq-rain-glow: rgba(79, 94, 209, .5);
+  --dp-danger-faint: rgba(229, 90, 105, .12);
+  --dp-danger-glow: rgba(229, 90, 105, .45);
 
   /* 工作台 --lj-* */
   --lj-bg: var(--dp-bg);
