@@ -19,43 +19,33 @@
     </template>
 
     <div class="ht-layout">
-      <!-- ============ 日历（左 / 约 1/3） ============ -->
+      <!-- ============ 日历（左 / 约 1/3） — 复用 ElementPlus el-calendar ============ -->
       <section class="ht-cal glass">
-        <header class="ht-cal-head">
-          <el-select
-            class="ht-sel ht-sel-y"
-            :model-value="viewDate.y"
-            size="small"
-            :teleported="false"
-            @change="onYearChange"
-          >
-            <el-option v-for="y in yearOptions" :key="y" :value="y" :label="`${y} 年`" />
-          </el-select>
-          <el-select
-            class="ht-sel ht-sel-m"
-            :model-value="viewDate.m + 1"
-            size="small"
-            :teleported="false"
-            @change="onMonthChange"
-          >
-            <el-option v-for="m in 12" :key="m" :value="m" :label="`${m} 月`" />
-          </el-select>
-        </header>
-
-        <div class="ht-cal-week" aria-hidden="true">
-          <span v-for="w in weekHead" :key="w" class="ht-cal-week-cell">{{ w }}</span>
-        </div>
-
-        <div class="ht-cal-grid" role="grid" aria-label="日期选择">
-          <button
-            v-for="c in cells"
-            :key="c.key"
-            class="ht-cal-cell"
-            :class="{ out: !c.inMonth, tdy: isTdy(c), sel: isSel(c) }"
-            :aria-label="dateKey(c.date)"
-            @click="pick(c)"
-          >{{ c.d }}</button>
-        </div>
+        <el-calendar v-model="viewDateDate">
+          <template #header="{ date }">
+            <div class="ht-cal-toolbar">
+              <el-select
+                class="ht-sel ht-sel-y"
+                :model-value="viewDate.y"
+                size="small"
+                :teleported="false"
+                @change="(y) => jumpYear(y, date)"
+              >
+                <el-option v-for="y in yearOptions" :key="y" :value="y" :label="`${y} 年`" />
+              </el-select>
+              <span class="ht-cal-toolbar-tip">点击日期查看历史事件</span>
+            </div>
+          </template>
+          <template #date-cell="{ data }">
+            <button
+              type="button"
+              class="ht-cell-btn"
+              :class="{ tdy: isTdyKey(data.day), sel: isSelKey(data.day) }"
+              @click="pickKey(data.day)"
+              :aria-label="data.day"
+            >{{ Number(data.day.split('-').slice(-1)[0]) }}</button>
+          </template>
+        </el-calendar>
 
         <div class="ht-cal-foot">
           <span class="ht-cal-today">{{ dateLabel }}</span>
@@ -93,7 +83,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElSelect, ElOption } from 'element-plus'
+import { ElSelect, ElOption, ElCalendar } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import { workbenchApi } from '@/api/workbench'
 
@@ -101,10 +91,14 @@ const pad = (n) => String(n).padStart(2, '0')
 const today = new Date()
 today.setHours(0, 0, 0, 0)
 
-const viewDate = ref({ y: today.getFullYear(), m: today.getMonth() })
+/* el-calendar 直接吃 Date，赋值即翻月；选择日期另存 */
+const viewDateDate = ref(new Date(today))
 const selectedDate = ref(new Date(today))
 
-/* 年下拉：1900 ~ 当前年 + 50（含未来时段） */
+/* 用于顶部 select 显示（同步 viewDateDate） */
+const viewDate = computed(() => ({ y: viewDateDate.value.getFullYear(), m: viewDateDate.value.getMonth() }))
+
+/* 年下拉：1900 ~ 当前年 + 50 */
 const yearOptions = computed(() => {
   const cur = today.getFullYear()
   const arr = []
@@ -115,87 +109,46 @@ const yearOptions = computed(() => {
 const items = ref([])
 const loading = ref(false)
 
-/* ---------- 日期工具 ---------- */
 function dateKey(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
-function daysIn(y, m) { return new Date(y, m + 1, 0).getDate() }
 
-const monthLabel = computed(() => `${viewDate.value.y} 年 ${viewDate.value.m + 1} 月`) // 供其他场景使用
 const dateLabel = computed(() =>
   `${selectedDate.value.getFullYear()} 年 ${selectedDate.value.getMonth() + 1} 月 ${selectedDate.value.getDate()} 日`
 )
 const isTodaySel = computed(() => dateKey(selectedDate.value) === dateKey(today))
 function dayQuery() { return dateKey(selectedDate.value) }
 
-/* ---------- 日历网格：周一开头 ---------- */
-const weekHead = ['一', '二', '三', '四', '五', '六', '日']
-const cells = computed(() => {
-  const { y, m } = viewDate.value
-  const startIdx = (new Date(y, m, 1).getDay() + 6) % 7
-  const dim = daysIn(y, m)
-  const pdim = daysIn(y, m - 1)
-  const list = []
-  for (let i = 0; i < startIdx; i++) {
-    const d = pdim - startIdx + 1 + i
-    list.push({ key: `p-${i}`, d, inMonth: false, date: new Date(y, m - 1, d) })
-  }
-  for (let d = 1; d <= dim; d++) {
-    list.push({ key: `c-${d}`, d, inMonth: true, date: new Date(y, m, d) })
-  }
-  const rem = list.length % 7
-  const extra = rem === 0 ? 0 : 7 - rem
-  for (let i = 0; i < extra; i++) {
-    list.push({ key: `n-${i}`, d: i + 1, inMonth: false, date: new Date(y, m + 1, i + 1) })
-  }
-  return list
-})
+function isTdyKey(day) { return day === dateKey(today) }
+function isSelKey(day) { return day === dateKey(selectedDate.value) }
 
-function isTdy(c) { return dateKey(c.date) === dateKey(today) }
-function isSel(c) { return dateKey(c.date) === dateKey(selectedDate.value) }
-
-/* ---------- 交互 ---------- */
-function onYearChange(y) {
-  const newY = Number(y)
-  const cur = viewDate.value
-  // 选中日期超出新月范围时夹紧到新月最后一天
-  let nextSel = new Date(selectedDate.value)
-  const dim = daysIn(newY, cur.m)
-  if (nextSel.getFullYear() !== newY || nextSel.getMonth() !== cur.m) {
-    nextSel = new Date(newY, cur.m, 1)
-  } else if (nextSel.getDate() > dim) {
-    nextSel = new Date(newY, cur.m, dim)
-  }
-  viewDate.value = { y: newY, m: cur.m }
-  if (dateKey(nextSel) !== dateKey(selectedDate.value)) {
-    selectedDate.value = nextSel
-    load(false)
-  }
-}
-function onMonthChange(m) {
-  const newM = Number(m) - 1
-  const cur = viewDate.value
-  let nextSel = new Date(selectedDate.value)
-  const dim = daysIn(cur.y, newM)
-  if (nextSel.getFullYear() !== cur.y || nextSel.getMonth() !== newM) {
-    nextSel = new Date(cur.y, newM, 1)
-  } else if (nextSel.getDate() > dim) {
-    nextSel = new Date(cur.y, newM, dim)
-  }
-  viewDate.value = { y: cur.y, m: newM }
-  if (dateKey(nextSel) !== dateKey(selectedDate.value)) {
-    selectedDate.value = nextSel
-    load(false)
-  }
-}
-function pick(c) {
-  selectedDate.value = new Date(c.date)
-  if (c.date.getFullYear() !== viewDate.value.y || c.date.getMonth() !== viewDate.value.m) {
-    viewDate.value = { y: c.date.getFullYear(), m: c.date.getMonth() }
-  }
+function pickKey(day) {
+  // day 形如 'YYYY-MM-DD'
+  const [y, m, d] = day.split('-').map(Number)
+  selectedDate.value = new Date(y, m - 1, d)
   load(false)
 }
+
+function jumpYear(y, _date) {
+  const newY = Number(y)
+  const cur = viewDateDate.value
+  // 选中日期超出新月范围则夹紧到新月最后一天
+  let nextSel = new Date(selectedDate.value)
+  const dim = new Date(newY, cur.getMonth() + 1, 0).getDate()
+  if (nextSel.getFullYear() !== newY || nextSel.getMonth() !== cur.getMonth()) {
+    nextSel = new Date(newY, cur.getMonth(), 1)
+  } else if (nextSel.getDate() > dim) {
+    nextSel = new Date(newY, cur.getMonth(), dim)
+  }
+  viewDateDate.value = new Date(newY, cur.getMonth(), 1)
+  if (dateKey(nextSel) !== dateKey(selectedDate.value)) {
+    selectedDate.value = nextSel
+    load(false)
+  }
+}
+
 function goToday() {
-  selectedDate.value = new Date(today)
-  viewDate.value = { y: today.getFullYear(), m: today.getMonth() }
+  const t = new Date(today)
+  viewDateDate.value = t
+  selectedDate.value = t
   load(false)
 }
 
@@ -241,25 +194,73 @@ onMounted(() => load())
 .ht-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ht-btn:focus-visible { outline: 2px solid #bfa05f; outline-offset: 2px; }
 
-/* ============ 日历 ============ */
+/* ============ 日历（复用 el-calendar） ============ */
 .ht-cal { padding: 0; border-radius: 16px; overflow: hidden; }
-.ht-cal-head {
-  display: flex; align-items: center; gap: 8px;
-  padding: 14px 14px 12px;
-  border-bottom: 1px solid var(--dp-line, rgba(127, 127, 127, 0.14));
+.ht-cal :deep(.el-calendar) { background: transparent; }
+.ht-cal :deep(.el-calendar__header) {
+  padding: 12px 14px; border-bottom: 1px solid var(--dp-line, rgba(127,127,127,0.14));
 }
-.ht-sel { flex: none; }
+.ht-cal :deep(.el-calendar__title) { color: var(--lj-text); font-family: var(--font-serif, serif); letter-spacing: .04em; }
+.ht-cal :deep(.el-calendar__button-group .el-button) {
+  background: transparent;
+  border: 1px solid var(--dp-line, rgba(127,127,127,0.2));
+  color: var(--lj-text-2);
+}
+.ht-cal :deep(.el-calendar__button-group .el-button.is-active),
+.ht-cal :deep(.el-calendar__button-group .el-button:hover) {
+  background: var(--dp-glass, rgba(127,127,127,0.1));
+  border-color: var(--dp-line-strong, rgba(127,127,127,0.35));
+  color: var(--lj-text);
+}
+.ht-cal :deep(.el-calendar__body) { padding: 0; }
+.ht-cal :deep(.el-calendar-day) {
+  padding: 6px 8px; min-height: 56px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: transparent;
+  box-sizing: border-box;
+}
+.ht-cal :deep(.el-calendar-day:hover) {
+  background: var(--dp-glass, rgba(255,255,255,0.06));
+}
+/* 把 el-calendar 的"今天"小蓝点 / 已选 默认态弱化，由我们自己标 */
+.ht-cal :deep(.el-calendar-day > div) { width: 100%; text-align: center; }
+
+/* 自定义日期按钮（覆盖默认 a） */
+.ht-cell-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  border: none; background: transparent;
+  color: var(--lj-text);
+  font-size: 13px; border-radius: 8px; cursor: pointer;
+  transition: all 0.16s ease;
+}
+.ht-cell-btn:hover { background: var(--dp-glass, rgba(255,255,255,0.1)); }
+.ht-cell-btn.tdy { box-shadow: inset 0 0 0 1px var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.ht-cell-btn.sel {
+  background: linear-gradient(135deg, #c7a96b, #7fa8a3);
+  color: #0b0f14; font-weight: 600;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.28);
+}
+.ht-cell-btn.sel.tdy { color: #0b0f14; box-shadow: 0 0 0 2px rgba(255,214,130,0.7), 0 3px 10px rgba(0,0,0,0.28); }
+.ht-cell-btn:focus-visible { outline: 2px solid #bfa05f; outline-offset: 1px; }
+
+/* 非本月日期弱化 */
+.ht-cal :deep(.el-calendar-table td.prev) .ht-cell-btn,
+.ht-cal :deep(.el-calendar-table td.next) .ht-cell-btn { color: var(--lj-text-3); opacity: .55; }
+
+.ht-cal-toolbar { display: flex; align-items: center; gap: 10px; }
+.ht-cal-toolbar-tip { font-size: 12px; color: var(--lj-text-3); letter-spacing: .04em; }
+.ht-sel-y :deep(.el-select__wrapper) { min-width: 96px; }
 .ht-sel :deep(.el-select__wrapper),
 .ht-sel :deep(.el-select__wrapper.is-default),
 .ht-sel :deep(.el-select__wrapper.is-hovering) {
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--dp-line, rgba(127, 127, 127, 0.2));
+  box-shadow: inset 0 0 0 1px var(--dp-line, rgba(127,127,127,0.2));
   font-family: var(--font-serif, serif);
-  padding-left: 10px; padding-right: 26px;
-  min-height: 28px;
+  min-height: 26px;
 }
 .ht-sel :deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
-  box-shadow: inset 0 0 0 1px var(--dp-line-strong, rgba(127, 127, 127, 0.35));
+  box-shadow: inset 0 0 0 1px var(--dp-line-strong, rgba(127,127,127,0.35));
 }
 .ht-sel :deep(.el-select__wrapper.is-focused) {
   box-shadow: inset 0 0 0 1px var(--yq-gold, #c7a96b) !important;
@@ -267,45 +268,12 @@ onMounted(() => load())
 .ht-sel :deep(.el-select__placeholder),
 .ht-sel :deep(.el-select__selected-item) { color: var(--lj-text); font-size: 13px; }
 .ht-sel :deep(.el-select__suffix) { color: var(--lj-text-2); }
-.ht-sel-y :deep(.el-select__wrapper) { min-width: 96px; }
-.ht-sel-m :deep(.el-select__wrapper) { min-width: 84px; }
 
-.ht-cal-week {
-  display: grid; grid-template-columns: repeat(7, 1fr);
-  gap: 4px; margin-bottom: 5px; padding: 10px 12px 0;
-}
-.ht-cal-week-cell {
-  text-align: center; font-size: 11px;
-  color: var(--lj-text-3); letter-spacing: .06em;
-}
-.ht-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 4px 12px 12px; }
-.ht-cal-cell {
-  position: relative; aspect-ratio: 1;
-  display: flex; align-items: center; justify-content: center;
-  border: none; background: transparent;
-  color: var(--lj-text);
-  font-size: 13px; border-radius: 9px; cursor: pointer;
-  transition: all 0.16s ease;
-}
-.ht-cal-cell:hover { background: var(--dp-glass, rgba(255, 255, 255, 0.1)); }
-.ht-cal-cell.out { color: var(--lj-text-3); opacity: .55; }
-.ht-cal-cell.tdy { box-shadow: inset 0 0 0 1px var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
-.ht-cal-cell.sel {
-  background: linear-gradient(135deg, #c7a96b, #7fa8a3);
-  color: #0b0f14; font-weight: 600;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
-}
-.ht-cal-cell.sel.tdy { color: #0b0f14; box-shadow: 0 0 0 2px rgba(255, 214, 130, 0.7), 0 3px 10px rgba(0, 0, 0, 0.28); }
-.ht-cal-cell:focus-visible { outline: 2px solid #bfa05f; outline-offset: 1px; }
-
-.ht-cal-foot { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 12px 14px; }
-.ht-cal-today {
-  font-family: var(--font-serif, serif); font-size: 12px;
-  letter-spacing: .03em; color: var(--lj-text);
-}
+.ht-cal-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 14px 12px; }
+.ht-cal-today { font-family: var(--font-serif, serif); font-size: 12px; letter-spacing: .03em; color: var(--lj-text); }
 .ht-cal-tag {
   font-size: 11px; padding: 2px 9px; border-radius: 999px;
-  background: var(--lj-seal-soft, rgba(255, 214, 130, 0.14)); color: var(--yq-gold, #b8860b);
+  background: var(--lj-seal-soft, rgba(255,214,130,0.14)); color: var(--yq-gold, #b8860b);
 }
 
 /* ============ 事件列表 ============ */
