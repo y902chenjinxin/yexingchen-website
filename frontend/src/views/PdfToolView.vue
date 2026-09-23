@@ -5,6 +5,12 @@
       <div class="pt-head">
         <span class="pt-badge">🔒 隐私保护：文件本地处理，即时销毁</span>
       </div>
+
+      <!-- 步骤指示器：上文件 → 设置参数 → 处理下载 -->
+      <div class="pt-stepper-wrap">
+        <StepIndicator :steps="pdfSteps" :current="pdfStepIndex" :compact="true" />
+      </div>
+
       <div class="pt-tabs">
         <button
           v-for="t in tabs"
@@ -136,6 +142,7 @@ import { ref, reactive, computed, onBeforeUnmount, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import PdfFileList from './pdftool/PdfFileList.vue'
+import StepIndicator from '@/components/common/StepIndicator.vue'
 
 /* 底部操作栏：固定在滚动容底，滚动后浮现（顶部时隐藏） */
 const actionbar = ref(null)
@@ -159,6 +166,18 @@ const dragging = ref(false)
 const processing = ref(false)
 const progress = ref(0)
 const statusText = ref('')
+
+/* 步骤指示器数据：上文件 → 设置参数 → 处理下载 */
+const pdfSteps = [
+  { key: 'upload', label: '选择文件' },
+  { key: 'config', label: '设置参数' },
+  { key: 'process', label: '处理下载' },
+]
+const pdfStepIndex = computed(() => {
+  if (processing.value) return 2
+  if (currentList.value && currentList.value.length) return 1
+  return 0
+})
 
 const aList = ref([])
 const bList = ref([])
@@ -585,6 +604,12 @@ onBeforeUnmount(() => {
 <style scoped>
 .pdf-tool { display: flex; flex-direction: column; gap: 18px; }
 .pt-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.pt-stepper-wrap {
+  padding: 10px 14px;
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.04));
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.2));
+  border-radius: var(--radius-md, 10px);
+}
 .pt-badge {
   font-size: 12px; color: #7fcfa3; background: rgba(80, 190, 130, 0.12);
   border: 1px solid rgba(80, 190, 130, 0.35); padding: 6px 14px; border-radius: 40px;

@@ -16,6 +16,11 @@
         </div>
       </header>
 
+      <!-- 步骤指示器：上传 → 裁剪设置 → 生成下载 -->
+      <div class="idp-stepper-wrap">
+        <StepIndicator :steps="idpSteps" :current="idpStepIndex" :compact="true" />
+      </div>
+
       <!-- 第一步：上传原图 -->
       <section v-if="!srcUrl" class="glass idp-upload">
         <div
@@ -174,6 +179,7 @@
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import StepIndicator from '@/components/common/StepIndicator.vue'
 import api from '@/api/index'
 
 const sizeOptions = [
@@ -203,6 +209,18 @@ const color = ref(colors[0])
 const removeBg = ref(true)
 const tolerance = ref(22)
 const enhance = ref(false)
+
+/* 步骤指示器：上传 → 裁剪设置 → 生成下载 */
+const idpSteps = [
+  { key: 'upload', label: '上传原图' },
+  { key: 'crop', label: '裁剪设置' },
+  { key: 'generate', label: '生成下载' },
+]
+const idpStepIndex = computed(() => {
+  if (busy.value) return 2
+  if (srcUrl.value) return 1
+  return 0
+})
 const zoom = ref(1.25)
 const srcCy = ref(0)
 const panning = ref(false)
@@ -617,6 +635,13 @@ drawCrop()
 
 .idp-head { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
 .idp-head-left { flex: none; }
+.idp-stepper-wrap {
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.04));
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.2));
+  border-radius: var(--radius-md, 10px);
+}
 .idp-titles { flex: 1; }
 .idp-title { margin: 0; font-size: 28px; letter-spacing: .12em; }
 .idp-sub { margin: 6px 0 0; font-size: 12px; color: var(--lj-text-2); letter-spacing: .18em; }

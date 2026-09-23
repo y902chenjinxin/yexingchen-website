@@ -5,10 +5,12 @@
     <a href="#main-content" class="skip-link">跳转到内容</a>
 
     <!-- 路由视图：移动端缓存三个底部 Tab 首页，切 Tab 不再重挂载而闪白；桌面不缓存维持现状 -->
-    <router-view v-if="!showInitialLoading" id="main-content" v-slot="{ Component }">
-      <keep-alive :include="keepAliveNames">
-        <component :is="Component" />
-      </keep-alive>
+    <router-view v-if="!showInitialLoading" id="main-content" v-slot="{ Component, route }">
+      <transition name="route-fade" mode="out-in">
+        <keep-alive :include="keepAliveNames">
+          <component :is="Component" :key="route.fullPath" />
+        </keep-alive>
+      </transition>
     </router-view>
 
     <!-- 登录后全站常驻：桌面顶栏（悬浮）；移动端用独立沉浸式外壳，不显示 ✓ -->
@@ -228,6 +230,48 @@ onMounted(async () => {
 }
 .skip-link:focus {
   top: 10px;
+}
+
+/* ========== 全局路由切换过渡（v195）：鎏金淡入 + 轻位移 ========== */
+.route-fade-enter-active {
+  transition:
+    opacity .28s cubic-bezier(.22, .61, .36, 1),
+    transform .34s cubic-bezier(.22, .61, .36, 1),
+    filter .28s ease;
+}
+.route-fade-leave-active {
+  transition:
+    opacity .18s ease,
+    transform .18s ease,
+    filter .18s ease;
+}
+.route-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px) scale(.992);
+  filter: blur(2px) saturate(.9);
+}
+.route-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px) scale(.998);
+  filter: blur(1px) saturate(.95);
+}
+.route-fade-enter-to,
+.route-fade-leave-from {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-fade-enter-active,
+  .route-fade-leave-active {
+    transition-duration: .01s;
+  }
+  .route-fade-enter-from,
+  .route-fade-leave-to {
+    transform: none;
+    filter: none;
+  }
 }
 </style>
 

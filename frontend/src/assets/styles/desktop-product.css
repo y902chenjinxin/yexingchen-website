@@ -785,6 +785,94 @@ html:root[data-theme="day"] .login-page .filing-links a {
   box-shadow: 0 12px 32px rgba(0, 0, 0, .16), 0 0 0 1px var(--yq-gold-glow, rgba(199, 169, 107, 0.2)) inset;
 }
 
+/* 所有 el-table 表格行：hover 时鎏金微高亮 */
+#app:not(.is-mobile) .el-table {
+  --el-table-row-hover-bg-color: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
+}
+#app:not(.is-mobile) .el-table__row {
+  transition: background-color .15s ease;
+}
+#app:not(.is-mobile) .el-table__row:hover > td {
+  background-color: var(--yq-gold-faint, rgba(199, 169, 107, 0.08)) !important;
+}
+/* 斑马纹行：更柔和的对比 */
+#app:not(.is-mobile) .el-table__row--striped td {
+  background: transparent !important;
+}
+#app:not(.is-mobile) .el-table__row--striped.is-striped td {
+  background: var(--dp-glass, rgba(127, 127, 127, 0.025)) !important;
+}
+
+/* ========== 管理后台表格：鎏金左侧亮条 + 行 hover 增强（v195） ========== */
+#app:not(.is-mobile) .el-table.admin-table {
+  border-radius: 12px;
+  overflow: hidden;
+}
+#app:not(.is-mobile) .el-table.admin-table .el-table__row {
+  position: relative;
+}
+#app:not(.is-mobile) .el-table.admin-table .el-table__row::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  opacity: 0;
+  transform: scaleY(.4);
+  transform-origin: center;
+  transition: opacity .22s ease, transform .28s cubic-bezier(.22, .61, .36, 1);
+}
+#app:not(.is-mobile) .el-table.admin-table .el-table__row:hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+#app:not(.is-mobile) .el-table.admin-table .el-table__row:hover > td {
+  background-color: var(--yq-gold-faint, rgba(199, 169, 107, 0.10)) !important;
+}
+#app:not(.is-mobile) .el-table.admin-table th.el-table__cell {
+  background: linear-gradient(180deg,
+    var(--color-bg-glass, rgba(127, 127, 127, 0.06)),
+    var(--color-bg-glass, rgba(127, 127, 127, 0.02)));
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* ========== 状态色：鎏金 / 雨青 / 危险 圆点（v195） ========== */
+.status-dot {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px;
+}
+.status-dot::before {
+  content: "";
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
+}
+.status-dot.is-gold { color: var(--yq-gold, #c7a96b); }
+.status-dot.is-rain { color: var(--yq-rain, #7fa8a3); }
+.status-dot.is-danger { color: var(--dp-danger, #e57373); }
+.status-dot.is-muted { color: var(--lj-text-3); }
+
+/* el-tag 在 admin 中以鎏金/雨青/危险三色为主 */
+.el-tag--success.admin-tag {
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.12));
+  border-color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold, #c7a96b);
+}
+.el-tag--info.admin-tag {
+  background: color-mix(in srgb, var(--yq-rain, #7fa8a3) 14%, transparent);
+  border-color: color-mix(in srgb, var(--yq-rain, #7fa8a3) 50%, transparent);
+  color: var(--yq-rain, #7fa8a3);
+}
+.el-tag--danger.admin-tag {
+  background: color-mix(in srgb, var(--dp-danger, #e57373) 14%, transparent);
+  border-color: color-mix(in srgb, var(--dp-danger, #e57373) 50%, transparent);
+  color: var(--dp-danger, #e57373);
+}
+
 /* 通用"可点击卡片"自动 hover：识别 button 元素（v-mouse-light 之外的兜底） */
 #app:not(.is-mobile) button.v-card,
 #app:not(.is-mobile) a.v-card,

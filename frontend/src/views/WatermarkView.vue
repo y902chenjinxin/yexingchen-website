@@ -1,5 +1,12 @@
 <template>
   <IslandInnerBase type="tool" title="视频去水印" subtitle="粘贴分享链接，去除水印并下载">
+    <div class="wt-stepper-wrap">
+      <StepIndicator :steps="[
+        { key: 'paste', label: '粘贴链接' },
+        { key: 'parse', label: '解析素材' },
+        { key: 'download', label: '下载保存' },
+      ]" :current="result ? 'download' : (parsing ? 'parse' : 'paste')" />
+    </div>
     <div class="parse-area">
       <div class="parse-head">
         <span class="parse-title">🎬 视频去水印</span>
@@ -50,6 +57,7 @@
 <script setup>
 import { ref } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import StepIndicator from '@/components/common/StepIndicator.vue'
 import { parseVideoUrl, parseErrorMsg } from '@/api/videoParse'
 import axios from 'axios'
 
@@ -115,6 +123,16 @@ async function downloadAudio() {
 </script>
 
 <style scoped>
+.wt-stepper-wrap {
+  padding: 16px 18px 14px;
+  margin-bottom: 16px;
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.04));
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.18));
+  border-radius: 14px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
 .parse-area {
   background: var(--ls-glass);
   backdrop-filter: saturate(160%) blur(14px);

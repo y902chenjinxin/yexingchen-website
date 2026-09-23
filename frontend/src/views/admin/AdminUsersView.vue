@@ -18,7 +18,7 @@
 
     <section class="section">
       <div class="section-tip">用户列表与审批：审批新注册、修改角色 / 状态、重置密码、删除用户。</div>
-      <el-table :data="filteredUsers" stripe style="width: 100%" v-loading="loading">
+      <el-table :data="filteredUsers" stripe class="admin-table" style="width: 100%" v-loading="loading">
         <el-table-column prop="email" label="邮箱" min-width="200" />
         <el-table-column prop="role" label="角色" width="120">
           <template #default="{ row }">

@@ -8,6 +8,11 @@
 <template>
   <IslandInnerBase type="tool" title="AI 封面" subtitle="输入标题，一键生成公众号 / 小红书 / 视频封面">
     <div class="cover-tool">
+      <!-- 步骤指示器：填信息 → 选风格 → 生成下载 -->
+      <div class="cv-stepper-wrap">
+        <StepIndicator :steps="cvSteps" :current="cvStepIndex" :compact="true" />
+      </div>
+
       <!-- 左：参数表单 -->
       <section class="cv-form cv-card">
         <div class="cv-field">
@@ -94,9 +99,10 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, onUnmounted } from 'vue'
+import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElInput } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import StepIndicator from '@/components/common/StepIndicator.vue'
 import { getCoverPresets, renderCover } from '@/api/cover'
 
 const title = ref('')
@@ -107,6 +113,18 @@ const theme = ref('ink')
 
 const presets = reactive({ sizes: [], layouts: [], themes: [] })
 const image = ref('')
+
+/* 步骤指示器：填信息 → 选风格 → 生成下载 */
+const cvSteps = [
+  { key: 'info', label: '填信息' },
+  { key: 'style', label: '选风格' },
+  { key: 'generate', label: '生成下载' },
+]
+const cvStepIndex = computed(() => {
+  if (rendering.value) return 2
+  if (title.value && theme.value) return 1
+  return 0
+})
 const rendering = ref(false)
 const errMsg = ref('')
 
@@ -173,6 +191,14 @@ onUnmounted(() => clearTimeout(timer))
   grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+}
+.cv-stepper-wrap {
+  grid-column: 1 / -1;
+  padding: 10px 14px;
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.04));
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.2));
+  border-radius: var(--radius-md, 10px);
+  margin-bottom: 4px;
 }
 @media (max-width: 900px) {
   .cover-tool { grid-template-columns: 1fr; }

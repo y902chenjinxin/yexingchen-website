@@ -6,6 +6,11 @@
         <span class="ct-badge">🔒 图片仅在浏览器本地处理，绝不经过服务器，处理完即刻销毁，请放心使用。</span>
       </div>
 
+      <!-- 步骤指示器：选模式/上文件 → 设置参数 → 压缩下载 -->
+      <div class="ct-stepper-wrap">
+        <StepIndicator :steps="compressSteps" :current="compressStepIndex" :compact="true" />
+      </div>
+
       <!-- 模式切换 -->
       <div class="ct-tabs">
         <button
@@ -131,6 +136,7 @@
 import { ref, reactive, computed, onBeforeUnmount, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import StepIndicator from '@/components/common/StepIndicator.vue'
 
 /* 底部操作栏：固定在滚动容底，滚动后浮现（顶部时隐藏） */
 const actionbar = ref(null)
@@ -153,6 +159,18 @@ const modes = [
 const mode = ref('smart')
 const custom = reactive({ targetType: 'size', targetKb: 250, quality: 80 })
 const resize = reactive({ scaleBy: 'long', longEdge: 1920, percent: 50 })
+
+/* ========== 步骤指示器：选模式 → 上文件 → 压缩下载 ========== */
+const compressSteps = [
+  { key: 'choose', label: '选模式' },
+  { key: 'upload', label: '上传图片' },
+  { key: 'compress', label: '压缩下载' },
+]
+const compressStepIndex = computed(() => {
+  if (processing.value) return 2
+  if (list.value.length) return 1
+  return 0
+})
 
 /* ========== 上传 ========== */
 const dragging = ref(false)
@@ -517,6 +535,12 @@ function loadZip() {
 <style scoped>
 .compress-tool { display: flex; flex-direction: column; gap: 18px; }
 .ct-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.ct-stepper-wrap {
+  padding: 10px 14px;
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.04));
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.2));
+  border-radius: var(--radius-md, 10px);
+}
 .ct-badge {
   font-size: 12px; color: #7fcfa3; background: rgba(80, 190, 130, 0.12);
   border: 1px solid rgba(80, 190, 130, 0.35); padding: 6px 14px; border-radius: 40px;

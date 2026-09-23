@@ -8,7 +8,7 @@
       <div class="section-tip">
         支持一级 / 二级模块：一二级模块展示为树状层级。控制全站顶栏导航入口的可见性、排序与启用状态。系统内置菜单不可删除。
       </div>
-      <el-table :data="menuTree" stripe style="width: 100%" v-loading="loading" row-key="id">
+      <el-table :data="menuTree" stripe class="admin-table" style="width: 100%" v-loading="loading" row-key="id">
         <el-table-column label="菜单名称" min-width="200">
           <template #default="{ row }">
             <span class="menu-level-indent" :style="{ paddingLeft: (6 + row.level * 22) + 'px' }">

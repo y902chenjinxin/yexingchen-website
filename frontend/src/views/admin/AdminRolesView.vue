@@ -8,7 +8,7 @@
       <div class="section-tip">
         角色与菜单绑定：在编辑弹窗中勾选该角色可见的菜单，决定其登录后「快速前往」导航能看到的模块。系统内置角色不可删除、不可修改标识。
       </div>
-      <el-table :data="roles" stripe style="width: 100%" v-loading="loading">
+      <el-table :data="roles" stripe class="admin-table" style="width: 100%" v-loading="loading">
         <el-table-column prop="name" label="角色名称" min-width="130">
           <template #default="{ row }">
             <span class="role-name">{{ row.name }}</span>
