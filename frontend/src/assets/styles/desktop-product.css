@@ -589,3 +589,113 @@ html:root[data-theme="day"] .login-page .filing-links a {
 #app:not(.is-mobile) .login-page .el-input__password {
   color: rgba(200, 214, 208, 0.72) !important;
 }
+
+/* ==============================================================
+ * 玄黄 · 全站控件统一层（v190）
+ * 作用：所有非 .is-mobile 页面，未单独覆写控件的，按下面规则自动适配。
+ * 仅作用于页面的 ElementPlus 输入/选择/原生 input 等通用控件；
+ * 不影响各页面自定义按钮/卡片等。
+ * ============================================================== */
+
+/* ----- 原生 <input> / <textarea> / <select>（iOS Safari 默认灰底圆角修复） ----- */
+#app:not(.is-mobile) input[type="text"]:not([class*="el-"]):not([class*="vc-"]):not([class*="cv-"]):not([class*="ht-"]),
+#app:not(.is-mobile) input[type="search"]:not([class*="el-"]):not([class*="vc-"]):not([class*="cv-"]):not([class*="ht-"]),
+#app:not(.is-mobile) input:not([type]):not([class*="el-"]):not([class*="vc-"]):not([class*="cv-"]):not([class*="ht-"]),
+#app:not(.is-mobile) textarea:not([class*="el-"]):not([class*="vc-"]):not([class*="cv-"]):not([class*="ht-"]),
+#app:not(.is-mobile) select:not([class*="el-"]):not([class*="vc-"]):not([class*="cv-"]):not([class*="ht-"]) {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.06)) !important;
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.22)) !important;
+  border-radius: 10px;
+  color: var(--lj-text) !important;
+  -webkit-text-fill-color: var(--lj-text);
+  padding: 9px 12px;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+#app:not(.is-mobile) input:focus:not([class*="el-"]),
+#app:not(.is-mobile) textarea:focus:not([class*="el-"]),
+#app:not(.is-mobile) select:focus:not([class*="el-"]) {
+  border-color: var(--yq-gold, #c7a96b) !important;
+  box-shadow: 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, 0.18));
+}
+#app:not(.is-mobile) input::placeholder:not([class*="el-"]),
+#app:not(.is-mobile) textarea::placeholder:not([class*="el-"]) {
+  color: var(--lj-text-3) !important;
+  -webkit-text-fill-color: var(--lj-text-3);
+}
+
+/* ----- ElementPlus：全局玻璃控件（不动已用 :deep 单独覆盖的视图） ----- */
+#app:not(.is-mobile) .el-input__wrapper,
+#app:not(.is-mobile) .el-textarea__inner {
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.06)) !important;
+  box-shadow: 0 0 0 1px var(--dp-line) inset !important;
+  border-radius: 10px !important;
+  padding: 2px 12px !important;
+}
+#app:not(.is-mobile) .el-input__wrapper.is-focus,
+#app:not(.is-mobile) .el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--yq-gold) inset, 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, 0.18)) !important;
+}
+#app:not(.is-mobile) .el-input__inner,
+#app:not(.is-mobile) .el-textarea__inner {
+  color: var(--lj-text) !important;
+  -webkit-text-fill-color: var(--lj-text);
+}
+#app:not(.is-mobile) .el-input__inner::placeholder,
+#app:not(.is-mobile) .el-textarea__inner::placeholder {
+  color: var(--lj-text-3) !important;
+  -webkit-text-fill-color: var(--lj-text-3);
+}
+#app:not(.is-mobile) .el-select__wrapper {
+  background: var(--color-bg-glass) !important;
+  box-shadow: 0 0 0 1px var(--dp-line) inset !important;
+  border-radius: 10px !important;
+}
+#app:not(.is-mobile) .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--yq-gold) inset, 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, 0.18)) !important;
+}
+#app:not(.is-mobile) .el-select__placeholder,
+#app:not(.is-mobile) .el-select__selected-item { color: var(--lj-text) !important; }
+
+/* ----- 按钮主色：仅作用于 el-button.type="primary"（其它 el-button 默认不动） ----- */
+#app:not(.is-mobile) .el-button--primary {
+  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3)) !important;
+  border-color: transparent !important;
+  color: var(--yq-gold-fg, #0b0f14) !important;
+  font-weight: 600;
+  box-shadow: 0 4px 14px var(--yq-gold-glow, rgba(199, 169, 107, 0.28)) !important;
+}
+#app:not(.is-mobile) .el-button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px var(--yq-gold-glow-strong, rgba(199, 169, 107, 0.42)) !important;
+}
+#app:not(.is-mobile) .el-button--primary:active { transform: translateY(0); }
+
+/* ----- ElementPlus 标签：去默认紫红，适配项目鎏金/雨青 ----- */
+#app:not(.is-mobile) .el-tag {
+  background: var(--yq-rain-faint, rgba(127, 168, 163, 0.12));
+  border-color: var(--dp-line, rgba(127, 127, 127, 0.18));
+  color: var(--lj-text-2);
+}
+#app:not(.is-mobile) .el-tag.el-tag--success {
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.18));
+  border-color: var(--yq-gold-glow, rgba(199, 169, 107, 0.35));
+  color: var(--yq-gold, #c7a96b);
+}
+#app:not(.is-mobile) .el-tag.el-tag--info {
+  background: var(--yq-rain-faint, rgba(127, 168, 163, 0.12));
+  border-color: var(--dp-line);
+  color: var(--lj-text-2);
+}
+
+/* ----- 通用 .glass 卡片：补默认玻璃外观 ----- */
+#app:not(.is-mobile) .glass {
+  background: var(--color-bg-glass, rgba(127, 127, 127, 0.06));
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.18));
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}

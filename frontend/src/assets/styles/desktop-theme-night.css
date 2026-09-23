@@ -72,24 +72,27 @@
   --lj-bg-deep: var(--dp-bg2);
   --lj-paper: var(--dp-surface);
   --lj-paper-2: var(--dp-surface2);
-  --lj-glass: rgba(167, 139, 250, .08);
+  /* 玄黄主题：玻璃、强调色统一走鎏金 + 雨青，不再用紫罗兰 */
+  --lj-glass: var(--color-bg-glass, rgba(167, 139, 250, .06));
   --lj-glass-blur: saturate(160%) blur(16px);
   --lj-panel: rgba(22, 19, 38, .78);
   --lj-ink: var(--dp-text);
   --lj-mist: var(--dp-text2);
-  --lj-dai: var(--dp-accent);
-  --lj-dai-deep: var(--dp-accent-strong);
-  --lj-ochre: var(--dp-warning);
+  --lj-dai: var(--yq-rain, var(--dp-accent));            /* 黛青→雨青 */
+  --lj-dai-deep: var(--yq-rain-deep, var(--dp-accent-strong));
+  --lj-ochre: var(--yq-gold, var(--dp-warning));
+  --lj-gold: var(--yq-gold, var(--dp-warning));
   --lj-vermilion: var(--dp-danger);
-  --lj-seal: var(--dp-accent);
-  --lj-seal-hover: var(--dp-accent-hover);
-  --lj-seal-soft: var(--dp-accent-faint);
+  --lj-cinnabar: var(--dp-danger);                       /* 朱砂：保留支出红语义 */
+  --lj-seal: var(--yq-gold, var(--dp-accent));           /* 印章红→鎏金 */
+  --lj-seal-hover: var(--yq-gold-bright, var(--dp-accent-hover));
+  --lj-seal-soft: var(--yq-gold-faint, var(--dp-accent-faint));
   --lj-line: var(--dp-line);
   --lj-line-strong: var(--dp-line-strong);
   --lj-text: var(--dp-text);
   --lj-text-2: var(--dp-text2);
   --lj-text-3: var(--dp-text3);
-  --lj-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px rgba(124, 58, 237, .28), inset 0 1px 0 rgba(255, 255, 255, .06);
+  --lj-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px var(--yq-gold-glow, rgba(124, 58, 237, .28)), inset 0 1px 0 rgba(255, 255, 255, .06);
 
   /* 岛屿深色 --ls-* */
   --ls-bg0: var(--dp-bg);
