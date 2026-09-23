@@ -158,7 +158,13 @@
     </el-dialog>
 
     <!-- 批量导入弹窗 -->
-    <el-dialog v-model="showBatch" title="批量导入音乐" width="640px" append-to-body>
+    <el-dialog
+      v-model="showBatch"
+      title="批量导入音乐"
+      width="640px"
+      append-to-body
+      @open="preventDialogDrop"
+    >
       <div class="batch-tip">
         <span>支持一次选择多个 MP3 / FLAC / WAV 文件，单个文件 ≤ 50 MB。</span>
         <el-link type="primary" :underline="false" @click="onDownloadTemplate">下载 CSV 导入模板</el-link>
@@ -192,7 +198,7 @@
         :file-list="batchFileList"
         :on-change="handleBatchFileChange"
         :on-remove="handleBatchFileRemove"
-        drag-area
+        drag
         class="batch-upload"
       >
         <div class="batch-drop">
@@ -284,7 +290,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -344,6 +350,23 @@ function openBatch() {
   batchForm.value = { artist: '', category: '', tags: '', titleMode: 'filename' }
   batchResult.value = null
   showBatch.value = true
+}
+
+// 阻止浏览器默认行为：拖拽到 dialog 时不会"打开"文件
+// Element Plus 的 el-upload drag 模式只接管了 .el-upload-dragger，
+// 弹窗其他位置仍可能冒泡到 document，需要手动拦下来
+function preventDialogDrop() {
+  // 下一帧再绑（el-dialog 还没渲染好）
+  nextTick(() => {
+    const root = document.querySelector('.el-dialog__wrapper')
+    if (!root) return
+    const stop = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    root.addEventListener('dragover', stop)
+    root.addEventListener('drop', stop)
+  })
 }
 
 function handleBatchFileChange(file) {
@@ -427,9 +450,8 @@ async function submitBatch() {
     if (data.success) {
       ElMessage.success(`批量导入完成：成功 ${data.success}` + (data.failed ? `，失败 ${data.failed}` : ''))
       fetchData() // 刷新列表
-      // 全部成功后保留弹窗 + 结果表格，便于用户查看；不自动关闭
       if (!data.failed) {
-        // 清空文件选择，但不关闭弹窗（用户可能还要继续）
+        // 全部成功后清空文件选择，便于继续
         batchFileList.value = []
         batchItems.value = []
       }
@@ -437,7 +459,10 @@ async function submitBatch() {
       ElMessage.warning('批量导入未成功，请检查文件或网络')
     }
   } catch (e) {
-    // axios 拦截器已显示具体错误
+    // 错误已由 axios 拦截器处理（仅 401 跳登录），但其他业务码/网络错需要在这里显式提示
+    const msg = e?.msg || e?.detail?.msg || e?.message || '批量导入失败，请稍后重试'
+    ElMessage.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    console.error('[music batchUpload] failed:', e)
   } finally {
     batchUploading.value = false
   }

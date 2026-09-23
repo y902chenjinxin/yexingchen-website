@@ -97,7 +97,13 @@
     </el-dialog>
 
     <!-- 批量导入弹窗 -->
-    <el-dialog v-model="showBatch" title="批量导入视频" width="680px" append-to-body>
+    <el-dialog
+      v-model="showBatch"
+      title="批量导入视频"
+      width="680px"
+      append-to-body
+      @open="preventDialogDrop"
+    >
       <div class="batch-tip">
         <span>支持一次选择多个 MP4 / WEBM，单个文件 ≤ 500 MB；视频较大，建议每批不超过 5 个。</span>
         <el-link type="primary" :underline="false" @click="onDownloadTemplate">下载 CSV 导入模板</el-link>
@@ -127,7 +133,7 @@
         :file-list="batchFileList"
         :on-change="handleBatchFileChange"
         :on-remove="handleBatchFileRemove"
-        drag-area
+        drag
         class="batch-upload"
       >
         <div class="batch-drop">
@@ -230,7 +236,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -284,6 +290,20 @@ function openBatch() {
   batchForm.value = { category: '', tags: '', titleMode: 'filename' }
   batchResult.value = null
   showBatch.value = true
+}
+
+// 阻止浏览器默认行为：拖拽到 dialog 时不会"打开"文件
+function preventDialogDrop() {
+  nextTick(() => {
+    const root = document.querySelector('.el-dialog__wrapper')
+    if (!root) return
+    const stop = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    root.addEventListener('dragover', stop)
+    root.addEventListener('drop', stop)
+  })
 }
 
 function handleBatchFileChange(file) {
@@ -379,8 +399,10 @@ async function submitBatch() {
     } else {
       ElMessage.warning('批量导入未成功，请检查文件或网络')
     }
-  } catch {
-    // 错误已由 axios 拦截器处理
+  } catch (e) {
+    const msg = e?.msg || e?.detail?.msg || e?.message || '批量导入失败，请稍后重试'
+    ElMessage.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    console.error('[video batchUpload] failed:', e)
   } finally {
     batchUploading.value = false
   }
@@ -390,8 +412,9 @@ async function onDownloadTemplate() {
   try {
     await downloadVideoTemplate()
     ElMessage.success('模板已下载')
-  } catch {
-    // 错误已由 axios 拦截器处理
+  } catch (e) {
+    const msg = e?.msg || e?.detail?.msg || e?.message || '下载模板失败'
+    ElMessage.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
   }
 }
 
