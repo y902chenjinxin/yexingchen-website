@@ -140,24 +140,25 @@ const isTodaySel = computed(() => dateKey(selectedDate.value) === dateKey(today)
 function dayQuery() { return dateKey(selectedDate.value) }
 
 /* 点击日历单元格：vue-cal payload 是 { e, date, events } */
-function onCellClick({ date }) {
-  selectedDate.value = new Date(date)
+function onCellClick(payload) {
+  if (!payload || !payload.date) return
+  const next = payload.date instanceof Date ? new Date(payload.date) : new Date(payload.date)
+  if (isNaN(next.getTime())) return
+  selectedDate.value = next
   load(false)
 }
 
-/* 跳年：通过实例 API 切换视图到对应年（vue-cal 会保持选中月份） */
+/* 收口：把日期变更 + 触发加载放在一起（避免双绑引发的多次触发） */
 const calRef = ref(null)
+let _loadToken = 0
 function jumpYear(y) {
   const newY = Number(y)
   const cur = selectedDate.value
   const dim = new Date(newY, cur.getMonth() + 1, 0).getDate()
-  let nextSel = new Date(cur)
-  if (nextSel.getFullYear() !== newY) {
-    nextSel = new Date(newY, cur.getMonth(), Math.min(cur.getDate(), dim))
-  }
+  const nextSel = new Date(newY, cur.getMonth(), Math.min(cur.getDate(), dim))
   selectedDate.value = nextSel
-  if (calRef.value?.goToDate) calRef.value.goToDate(nextSel)
-  if (dateKey(nextSel) !== dateKey(cur)) load(false)
+  /* selected-date prop 改变后 vue-cal 自己会跳月视图，goToDate 不再手动调 */
+  load(false)
 }
 function jumpMonth(m) {
   const newM = Number(m) - 1
@@ -165,44 +166,50 @@ function jumpMonth(m) {
   const dim = new Date(cur.getFullYear(), newM + 1, 0).getDate()
   const nextSel = new Date(cur.getFullYear(), newM, Math.min(cur.getDate(), dim))
   selectedDate.value = nextSel
-  if (calRef.value?.goToDate) calRef.value.goToDate(nextSel)
-  if (dateKey(nextSel) !== dateKey(cur)) load(false)
+  load(false)
 }
 function prevMonth() {
   const d = new Date(selectedDate.value)
-  const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1)
   const dim = new Date(d.getFullYear(), d.getMonth(), 0).getDate()
   selectedDate.value = new Date(d.getFullYear(), d.getMonth() - 1, Math.min(d.getDate(), dim))
-  if (calRef.value?.goToDate) calRef.value.goToDate(selectedDate.value)
+  load(false)
 }
 function nextMonth() {
   const d = new Date(selectedDate.value)
   const dim = new Date(d.getFullYear(), d.getMonth() + 2, 0).getDate()
   selectedDate.value = new Date(d.getFullYear(), d.getMonth() + 1, Math.min(d.getDate(), dim))
-  if (calRef.value?.goToDate) calRef.value.goToDate(selectedDate.value)
+  load(false)
 }
 
 function goToday() {
   const t = new Date(today)
   selectedDate.value = t
-  if (calRef.value?.goToDate) calRef.value.goToDate(t)
   load(false)
 }
 
 async function load(refresh = false) {
+  const token = ++_loadToken
+  const queryKey = dayQuery() + '|' + (refresh ? '1' : '0')
+  /* 同 key 同 refresh 且已有数据时跳过，避免 selected-date prop 触发多余请求 */
+  if (!refresh && _lastLoadKey === queryKey && items.value.length) return
   loading.value = true
   try {
     const res = await workbenchApi.todayInHistory(
       refresh ? { date: dayQuery(), refresh: true } : { date: dayQuery() }
     )
+    /* 若期间用户又改了日期，丢弃旧响应 */
+    if (token !== _loadToken) return
     const data = (res && typeof res === 'object' && 'data' in res) ? res.data : (res || {})
     items.value = Array.isArray(data.items) ? data.items : []
+    _lastLoadKey = queryKey
   } catch {
+    if (token !== _loadToken) return
     items.value = []
   } finally {
-    loading.value = false
+    if (token === _loadToken) loading.value = false
   }
 }
+let _lastLoadKey = ''
 
 onMounted(() => load())
 </script>
