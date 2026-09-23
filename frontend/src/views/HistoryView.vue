@@ -19,33 +19,38 @@
     </template>
 
     <div class="ht-layout">
-      <!-- ============ 日历（左 / 约 1/3） — 复用 ElementPlus el-calendar ============ -->
+      <!-- ============ 日历（左 / 约 1/3） — 复用 vue-cal（antoniandre/vue-cal） ============ -->
       <section class="ht-cal glass">
-        <el-calendar v-model="viewDateDate">
-          <template #header="{ date }">
-            <div class="ht-cal-toolbar">
-              <el-select
-                class="ht-sel ht-sel-y"
-                :model-value="viewDate.y"
-                size="small"
-                :teleported="false"
-                @change="(y) => jumpYear(y, date)"
-              >
-                <el-option v-for="y in yearOptions" :key="y" :value="y" :label="`${y} 年`" />
-              </el-select>
-              <span class="ht-cal-toolbar-tip">点击日期查看历史事件</span>
-            </div>
-          </template>
-          <template #date-cell="{ data }">
-            <button
-              type="button"
-              class="ht-cell-btn"
-              :class="{ tdy: isTdyKey(data.day), sel: isSelKey(data.day) }"
-              @click="pickKey(data.day)"
-              :aria-label="data.day"
-            >{{ Number(data.day.split('-').slice(-1)[0]) }}</button>
-          </template>
-        </el-calendar>
+        <div class="ht-cal-toolbar">
+          <el-select
+            class="ht-sel ht-sel-y"
+            :model-value="viewDate.y"
+            size="small"
+            :teleported="false"
+            @change="jumpYear"
+          >
+            <el-option v-for="y in yearOptions" :key="y" :value="y" :label="`${y} 年`" />
+          </el-select>
+          <span class="ht-cal-toolbar-tip">点击日期查看历史事件</span>
+        </div>
+
+        <VueCal
+          ref="calRef"
+          class="ht-vuecal"
+          :selected-date="selectedDate"
+          :view="calView"
+          :time="false"
+          :disable-views="['years', 'year']"
+          :events="[]"
+          :hide-weekends="false"
+          :today-button="false"
+          :view-selector="false"
+          :locale="zhLocale"
+          :disable-look-ahead="false"
+          active-view="month"
+          style="height: 320px;"
+          @cell-click="onCellClick"
+        />
 
         <div class="ht-cal-foot">
           <span class="ht-cal-today">{{ dateLabel }}</span>
@@ -83,7 +88,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElSelect, ElOption, ElCalendar } from 'element-plus'
+import { ElSelect, ElOption } from 'element-plus'
+import { VueCal } from 'vue-cal'
+import 'vue-cal/style'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import { workbenchApi } from '@/api/workbench'
 
@@ -91,12 +98,12 @@ const pad = (n) => String(n).padStart(2, '0')
 const today = new Date()
 today.setHours(0, 0, 0, 0)
 
-/* el-calendar 直接吃 Date，赋值即翻月；选择日期另存 */
-const viewDateDate = ref(new Date(today))
+/* vue-cal 直接吃 Date：selectedDate 即选中日期，calView 即当前视图标识 */
 const selectedDate = ref(new Date(today))
+const calView = ref('month')
 
-/* 用于顶部 select 显示（同步 viewDateDate） */
-const viewDate = computed(() => ({ y: viewDateDate.value.getFullYear(), m: viewDateDate.value.getMonth() }))
+/* 用于顶部 select 显示当前年（vue-cal 暴露 viewDateDate.getFullYear 不直观，用 selectedDate 推） */
+const viewDate = computed(() => ({ y: selectedDate.value.getFullYear(), m: selectedDate.value.getMonth() }))
 
 /* 年下拉：1900 ~ 当前年 + 50 */
 const yearOptions = computed(() => {
@@ -105,6 +112,9 @@ const yearOptions = computed(() => {
   for (let y = 1900; y <= cur + 50; y++) arr.push(y)
   return arr
 })
+
+/* zh-CN locale（vue-cal 内置） */
+const zhLocale = 'zh-CN'
 
 const items = ref([])
 const loading = ref(false)
@@ -117,38 +127,32 @@ const dateLabel = computed(() =>
 const isTodaySel = computed(() => dateKey(selectedDate.value) === dateKey(today))
 function dayQuery() { return dateKey(selectedDate.value) }
 
-function isTdyKey(day) { return day === dateKey(today) }
-function isSelKey(day) { return day === dateKey(selectedDate.value) }
-
-function pickKey(day) {
-  // day 形如 'YYYY-MM-DD'
-  const [y, m, d] = day.split('-').map(Number)
-  selectedDate.value = new Date(y, m - 1, d)
+/* 点击日历单元格：vue-cal payload 是 { e, date, events } */
+function onCellClick({ date }) {
+  selectedDate.value = new Date(date)
   load(false)
 }
 
-function jumpYear(y, _date) {
+/* 跳年：通过实例 API 切换视图到对应年（vue-cal 会保持选中月份） */
+const calRef = ref(null)
+function jumpYear(y) {
   const newY = Number(y)
-  const cur = viewDateDate.value
-  // 选中日期超出新月范围则夹紧到新月最后一天
-  let nextSel = new Date(selectedDate.value)
+  const cur = selectedDate.value
   const dim = new Date(newY, cur.getMonth() + 1, 0).getDate()
-  if (nextSel.getFullYear() !== newY || nextSel.getMonth() !== cur.getMonth()) {
-    nextSel = new Date(newY, cur.getMonth(), 1)
-  } else if (nextSel.getDate() > dim) {
-    nextSel = new Date(newY, cur.getMonth(), dim)
+  let nextSel = new Date(cur)
+  if (nextSel.getFullYear() !== newY) {
+    nextSel = new Date(newY, cur.getMonth(), Math.min(cur.getDate(), dim))
   }
-  viewDateDate.value = new Date(newY, cur.getMonth(), 1)
-  if (dateKey(nextSel) !== dateKey(selectedDate.value)) {
-    selectedDate.value = nextSel
-    load(false)
-  }
+  selectedDate.value = nextSel
+  // 让 vue-cal 立刻翻到新月份（避免停留在原月）
+  if (calRef.value?.goToDate) calRef.value.goToDate(nextSel)
+  if (dateKey(nextSel) !== dateKey(cur)) load(false)
 }
 
 function goToday() {
   const t = new Date(today)
-  viewDateDate.value = t
   selectedDate.value = t
+  if (calRef.value?.goToDate) calRef.value.goToDate(t)
   load(false)
 }
 
@@ -194,62 +198,15 @@ onMounted(() => load())
 .ht-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ht-btn:focus-visible { outline: 2px solid #bfa05f; outline-offset: 2px; }
 
-/* ============ 日历（复用 el-calendar） ============ */
+/* ============ 日历（复用 vue-cal） ============ */
 .ht-cal { padding: 0; border-radius: 16px; overflow: hidden; }
-.ht-cal :deep(.el-calendar) { background: transparent; }
-.ht-cal :deep(.el-calendar__header) {
-  padding: 12px 14px; border-bottom: 1px solid var(--dp-line, rgba(127,127,127,0.14));
+.ht-cal-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--dp-line, rgba(127,127,127,0.14));
 }
-.ht-cal :deep(.el-calendar__title) { color: var(--lj-text); font-family: var(--font-serif, serif); letter-spacing: .04em; }
-.ht-cal :deep(.el-calendar__button-group .el-button) {
-  background: transparent;
-  border: 1px solid var(--dp-line, rgba(127,127,127,0.2));
-  color: var(--lj-text-2);
-}
-.ht-cal :deep(.el-calendar__button-group .el-button.is-active),
-.ht-cal :deep(.el-calendar__button-group .el-button:hover) {
-  background: var(--dp-glass, rgba(127,127,127,0.1));
-  border-color: var(--dp-line-strong, rgba(127,127,127,0.35));
-  color: var(--lj-text);
-}
-.ht-cal :deep(.el-calendar__body) { padding: 0; }
-.ht-cal :deep(.el-calendar-day) {
-  padding: 6px 8px; min-height: 56px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: transparent;
-  box-sizing: border-box;
-}
-.ht-cal :deep(.el-calendar-day:hover) {
-  background: var(--dp-glass, rgba(255,255,255,0.06));
-}
-/* 把 el-calendar 的"今天"小蓝点 / 已选 默认态弱化，由我们自己标 */
-.ht-cal :deep(.el-calendar-day > div) { width: 100%; text-align: center; }
-
-/* 自定义日期按钮（覆盖默认 a） */
-.ht-cell-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; padding: 0;
-  border: none; background: transparent;
-  color: var(--lj-text);
-  font-size: 13px; border-radius: 8px; cursor: pointer;
-  transition: all 0.16s ease;
-}
-.ht-cell-btn:hover { background: var(--dp-glass, rgba(255,255,255,0.1)); }
-.ht-cell-btn.tdy { box-shadow: inset 0 0 0 1px var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
-.ht-cell-btn.sel {
-  background: linear-gradient(135deg, #c7a96b, #7fa8a3);
-  color: #0b0f14; font-weight: 600;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.28);
-}
-.ht-cell-btn.sel.tdy { color: #0b0f14; box-shadow: 0 0 0 2px rgba(255,214,130,0.7), 0 3px 10px rgba(0,0,0,0.28); }
-.ht-cell-btn:focus-visible { outline: 2px solid #bfa05f; outline-offset: 1px; }
-
-/* 非本月日期弱化 */
-.ht-cal :deep(.el-calendar-table td.prev) .ht-cell-btn,
-.ht-cal :deep(.el-calendar-table td.next) .ht-cell-btn { color: var(--lj-text-3); opacity: .55; }
-
-.ht-cal-toolbar { display: flex; align-items: center; gap: 10px; }
 .ht-cal-toolbar-tip { font-size: 12px; color: var(--lj-text-3); letter-spacing: .04em; }
+
 .ht-sel-y :deep(.el-select__wrapper) { min-width: 96px; }
 .ht-sel :deep(.el-select__wrapper),
 .ht-sel :deep(.el-select__wrapper.is-default),
@@ -269,7 +226,91 @@ onMounted(() => load())
 .ht-sel :deep(.el-select__selected-item) { color: var(--lj-text); font-size: 13px; }
 .ht-sel :deep(.el-select__suffix) { color: var(--lj-text-2); }
 
-.ht-cal-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 14px 12px; }
+/* vue-cal 主题覆盖 — 玄黄暗调，与项目卡片融合 */
+.ht-vuecal.vuecal {
+  --vuecal-primary-color: #c7a96b;
+  --vuecal-secondary-color: #7fa8a3;
+  --vuecal-base-color: transparent;
+  --vuecal-cell-border-color: rgba(127,127,127,0.12);
+  --vuecal-heading-color: rgba(127,127,127,0.45);
+  --vuecal-today-color: #c7a96b;
+  --vuecal-time-color: var(--lj-text-2);
+  background: transparent;
+  color: var(--lj-text);
+  border: 0;
+  border-radius: 0;
+  font-family: var(--font-serif, serif);
+  padding: 0;
+  margin: 0;
+}
+.ht-vuecal.vuecal :deep(.vuecal__title-bar) {
+  background: transparent;
+  padding: 6px 14px 4px;
+}
+.ht-vuecal.vuecal :deep(.vuecal__title-bar .vuecal__title) {
+  color: var(--lj-text);
+  font-size: 14px; letter-spacing: .08em;
+}
+.ht-vuecal.vuecal :deep(.vuecal__title-bar .vuecal__arrow) {
+  color: var(--lj-text-2);
+  background: transparent;
+  border: 1px solid var(--dp-line, rgba(127,127,127,0.2));
+  border-radius: 8px;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ht-vuecal.vuecal :deep(.vuecal__title-bar .vuecal__arrow:hover) {
+  background: var(--dp-glass, rgba(255,255,255,0.08));
+  border-color: var(--dp-line-strong, rgba(127,127,127,0.35));
+  color: var(--lj-text);
+}
+.ht-vuecal.vuecal :deep(.vuecal__heading) {
+  color: var(--lj-text-3);
+  font-size: 11px; letter-spacing: .1em;
+  padding: 4px 6px 6px;
+  text-align: center;
+}
+.ht-vuecal.vuecal :deep(.vuecal__body) { background: transparent; }
+.ht-vuecal.vuecal :deep(.vuecal__cell) {
+  background: transparent;
+  color: var(--lj-text);
+  border: 1px solid var(--dp-line, rgba(127,127,127,0.1));
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+.ht-vuecal.vuecal :deep(.vuecal__cell:hover) {
+  background: var(--dp-glass, rgba(255,255,255,0.06));
+}
+.ht-vuecal.vuecal :deep(.vuecal__cell-events) { display: none; }
+/* 今日：鎏金描边 + 金色 */
+.ht-vuecal.vuecal :deep(.vuecal__cell--today) {
+  background: rgba(199, 169, 107, 0.06);
+}
+.ht-vuecal.vuecal :deep(.vuecal__cell--today .vuecal__cell-date) {
+  color: var(--yq-gold, #c7a96b);
+  font-weight: 600;
+}
+/* 选中：金色渐变填充 */
+.ht-vuecal.vuecal :deep(.vuecal__cell--selected) {
+  background: linear-gradient(135deg, rgba(199,169,107,0.85), rgba(127,168,163,0.85)) !important;
+  color: #0b0f14;
+}
+.ht-vuecal.vuecal :deep(.vuecal__cell--selected .vuecal__cell-date) {
+  color: #0b0f14; font-weight: 700;
+}
+/* 非本月弱化 */
+.ht-vuecal.vuecal :deep(.vuecal__cell--out-of-scope) {
+  color: var(--lj-text-3);
+  opacity: .45;
+}
+.ht-vuecal.vuecal :deep(.vuecal__cell-date) {
+  font-size: 13px;
+  color: inherit;
+  padding: 4px 6px;
+  font-family: inherit;
+}
+
+.ht-cal-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px 12px; border-top: 1px solid var(--dp-line, rgba(127,127,127,0.1)); }
 .ht-cal-today { font-family: var(--font-serif, serif); font-size: 12px; letter-spacing: .03em; color: var(--lj-text); }
 .ht-cal-tag {
   font-size: 11px; padding: 2px 9px; border-radius: 999px;
