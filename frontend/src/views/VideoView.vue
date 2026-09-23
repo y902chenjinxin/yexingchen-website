@@ -2,6 +2,8 @@
   <IslandInnerBase type="video" title="视频" subtitle="光影流转">
     <template #toolbar>
       <el-button type="primary" size="small" @click="openUpload">上传视频</el-button>
+      <el-button size="small" plain @click="openBatch">批量导入</el-button>
+      <el-button size="small" plain @click="onDownloadTemplate">下载模板</el-button>
     </template>
 
     <div class="manage-pane">
@@ -94,6 +96,128 @@
       </template>
     </el-dialog>
 
+    <!-- 批量导入弹窗 -->
+    <el-dialog v-model="showBatch" title="批量导入视频" width="680px" append-to-body>
+      <div class="batch-tip">
+        <span>支持一次选择多个 MP4 / WEBM，单个文件 ≤ 500 MB；视频较大，建议每批不超过 5 个。</span>
+        <el-link type="primary" :underline="false" @click="onDownloadTemplate">下载 CSV 导入模板</el-link>
+      </div>
+
+      <el-form :model="batchForm" label-width="80px" class="batch-form">
+        <el-form-item label="批量分类">
+          <el-input v-model="batchForm.category" placeholder="应用到所有文件（可选）" clearable />
+        </el-form-item>
+        <el-form-item label="批量标签">
+          <el-input v-model="batchForm.tags" placeholder="应用到所有文件，多个用逗号分隔（可选）" clearable />
+        </el-form-item>
+        <el-form-item label="标题规则">
+          <el-radio-group v-model="batchForm.titleMode">
+            <el-radio-button value="filename">文件名（去后缀）</el-radio-button>
+            <el-radio-button value="custom">自定义（下方逐条编辑）</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+
+      <el-upload
+        ref="batchUploadRef"
+        :auto-upload="false"
+        :multiple="true"
+        :limit="5"
+        accept=".mp4,.webm"
+        :file-list="batchFileList"
+        :on-change="handleBatchFileChange"
+        :on-remove="handleBatchFileRemove"
+        drag-area
+        class="batch-upload"
+      >
+        <div class="batch-drop">
+          <div class="batch-drop-icon">🎬</div>
+          <div class="batch-drop-text">拖拽文件到这里，或<em>点击选择</em></div>
+          <div class="batch-drop-hint">MP4 / WEBM，单次最多 5 个</div>
+        </div>
+      </el-upload>
+
+      <div v-if="batchItems.length" class="batch-table-wrap">
+        <el-table :data="batchItems" size="small" max-height="240" empty-text="还没有文件">
+          <el-table-column label="#" width="46" type="index" />
+          <el-table-column label="文件名" min-width="160" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.filename }}</template>
+          </el-table-column>
+          <el-table-column label="标题" min-width="200">
+            <template #default="{ row }">
+              <el-input
+                v-if="batchForm.titleMode === 'custom'"
+                v-model="row.title"
+                size="small"
+                placeholder="必填"
+              />
+              <span v-else class="batch-auto-title">{{ row.title }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="COS 链接" min-width="200" show-overflow-tooltip>
+            <template #default="{ row }">
+              <el-input v-model="row.cos_url" size="small" placeholder="可选：留空用本地路径" />
+            </template>
+          </el-table-column>
+          <el-table-column label="封面" width="120">
+            <template #default="{ row }">
+              <span v-if="row.coverName" class="batch-cover-name" :title="row.coverName">{{ row.coverName }}</span>
+              <el-upload
+                v-else
+                :show-file-list="false"
+                :auto-upload="false"
+                accept=".jpg,.jpeg,.png,.webp"
+                :on-change="(file) => handleBatchCoverChange(row, file)"
+                class="batch-cover-pick"
+              >
+                <el-button size="small" plain>选择封面</el-button>
+              </el-upload>
+              <el-button v-if="row.coverName" size="small" link type="danger" @click="removeBatchCover(row)">移除</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column label="大小" width="80">
+            <template #default="{ row }">{{ formatSize(row.size) }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div v-if="batchResult" class="batch-result">
+        <div class="batch-result-summary">
+          <span class="status-dot is-gold">成功 {{ batchResult.success }} 条</span>
+          <span v-if="batchResult.failed" class="status-dot is-danger">失败 {{ batchResult.failed }} 条</span>
+        </div>
+        <el-table
+          v-if="batchResult.results && batchResult.results.length"
+          :data="batchResult.results"
+          size="small"
+          max-height="180"
+          class="batch-result-table"
+        >
+          <el-table-column prop="filename" label="文件" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
+          <el-table-column label="状态" width="84">
+            <template #default="{ row }">
+              <el-tag v-if="row.ok" size="small" type="success">成功</el-tag>
+              <el-tag v-else size="small" type="danger">失败</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="error" label="原因" min-width="160" show-overflow-tooltip />
+        </el-table>
+      </div>
+
+      <template #footer>
+        <el-button @click="showBatch = false" :disabled="batchUploading">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="batchUploading"
+          :disabled="!batchItems.length"
+          @click="submitBatch"
+        >
+          {{ batchUploading ? '导入中…' : `开始批量导入（${batchItems.length}）` }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 批量删除确认（管理页内） -->
     <el-dialog v-model="showBatchDelete" title="批量删除" width="360px" append-to-body>
       <p>确定删除选中的 <b>{{ selectedRows.length }}</b> 项吗？此操作不可恢复。</p>
@@ -106,12 +230,13 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'
+import { downloadVideoTemplate } from '@/api/video'
 
 const videoStore = useVideoStore()
 
@@ -139,6 +264,136 @@ const showEdit = ref(false)
 const saving = ref(false)
 const editId = ref(null)
 const editForm = ref({ title: '', cos_url: '', category: '', tags: '' })
+
+/* ========== 批量导入 ========== */
+const showBatch = ref(false)
+const batchUploading = ref(false)
+const batchUploadRef = ref(null)
+const batchFileList = ref([])
+const batchItems = ref([])
+const batchForm = ref({
+  category: '',
+  tags: '',
+  titleMode: 'filename', // filename | custom
+})
+const batchResult = ref(null)
+
+function openBatch() {
+  batchFileList.value = []
+  batchItems.value = []
+  batchForm.value = { category: '', tags: '', titleMode: 'filename' }
+  batchResult.value = null
+  showBatch.value = true
+}
+
+function handleBatchFileChange(file) {
+  if (!file || !file.raw) return
+  const raw = file.raw
+  if (batchItems.value.some((it) => it.filename === raw.name && it.size === raw.size)) return
+  batchItems.value.push({
+    raw,
+    filename: raw.name,
+    size: raw.size,
+    title: raw.name.replace(/\.[^.]+$/, ''),
+    cos_url: '',
+    category: batchForm.value.category || '',
+    tags: batchForm.value.tags || '',
+    coverRaw: null,
+    coverName: '',
+  })
+  applyBatchTitleMode()
+}
+
+function handleBatchFileRemove(file) {
+  if (!file || !file.raw) return
+  const raw = file.raw
+  batchItems.value = batchItems.value.filter(
+    (it) => !(it.filename === raw.name && it.size === raw.size),
+  )
+}
+
+function handleBatchCoverChange(row, file) {
+  if (!file || !file.raw) return
+  row.coverRaw = file.raw
+  row.coverName = file.raw.name
+}
+
+function removeBatchCover(row) {
+  row.coverRaw = null
+  row.coverName = ''
+}
+
+watch(
+  () => batchForm.value.titleMode,
+  () => applyBatchTitleMode(),
+)
+
+function applyBatchTitleMode() {
+  const mode = batchForm.value.titleMode
+  for (const it of batchItems.value) {
+    if (mode === 'filename') {
+      it.title = it.filename.replace(/\.[^.]+$/, '')
+    } else {
+      if (!it.title) it.title = it.filename.replace(/\.[^.]+$/, '')
+    }
+    it.category = batchForm.value.category || ''
+    it.tags = batchForm.value.tags || ''
+  }
+}
+
+async function submitBatch() {
+  if (!batchItems.value.length) return
+  if (batchForm.value.titleMode === 'custom') {
+    const empty = batchItems.value.filter((it) => !it.title || !it.title.trim())
+    if (empty.length) {
+      ElMessage.warning(`有 ${empty.length} 个文件未填写标题，请补齐后再导入`)
+      return
+    }
+  }
+  batchUploading.value = true
+  batchResult.value = null
+  try {
+    const files = batchItems.value.map((it) => it.raw)
+    const items = batchItems.value.map((it) => ({
+      title: it.title || it.filename.replace(/\.[^.]+$/, ''),
+      cos_url: it.cos_url || '',
+      category: batchForm.value.category || '',
+      tags: batchForm.value.tags || '',
+    }))
+    const covers = batchItems.value.map((it) => it.coverRaw || null)
+    const res = await videoStore.batchUpload({ files, items, covers })
+    const data = res?.data || {}
+    batchResult.value = {
+      success: data.success || 0,
+      failed: data.failed || 0,
+      total: data.total || files.length,
+      results: data.results || [],
+    }
+    if (data.success) {
+      ElMessage.success(`批量导入完成：成功 ${data.success}` + (data.failed ? `，失败 ${data.failed}` : ''))
+      fetchData()
+      if (!data.failed) {
+        batchFileList.value = []
+        batchItems.value = []
+      }
+    } else {
+      ElMessage.warning('批量导入未成功，请检查文件或网络')
+    }
+  } catch {
+    // 错误已由 axios 拦截器处理
+  } finally {
+    batchUploading.value = false
+  }
+}
+
+async function onDownloadTemplate() {
+  try {
+    await downloadVideoTemplate()
+    ElMessage.success('模板已下载')
+  } catch {
+    // 错误已由 axios 拦截器处理
+  }
+}
 
 onMounted(() => { fetchData() })
 
@@ -352,5 +607,95 @@ function formatTime(timeStr) {
   --el-table-border-color: var(--ls-line);
   --el-table-header-text-color: var(--ls-text-2);
   --el-table-text-color: var(--ls-text);
+}
+
+/* ========== 批量导入弹窗 ========== */
+.batch-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.10));
+  border: 1px solid var(--ls-line, rgba(127, 127, 127, 0.2));
+  border-radius: 8px;
+  color: var(--ls-text-2);
+  font-size: 12.5px;
+}
+.batch-tip .el-link {
+  font-size: 12.5px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.batch-form { margin-bottom: 8px; }
+.batch-form :deep(.el-form-item) { margin-bottom: 12px; }
+
+.batch-upload :deep(.el-upload) { width: 100%; }
+.batch-upload :deep(.el-upload-dragger) {
+  width: 100%;
+  padding: 22px 18px;
+  background: var(--ls-paper-2, rgba(127, 127, 127, 0.04));
+  border: 1.5px dashed var(--ls-line, rgba(127, 127, 127, 0.3));
+  border-radius: 10px;
+  transition: border-color .2s, background-color .2s, box-shadow .2s;
+}
+.batch-upload :deep(.el-upload-dragger:hover),
+.batch-upload :deep(.el-upload.is-dragover .el-upload-dragger) {
+  border-color: var(--yq-gold, #c7a96b);
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
+  box-shadow: 0 4px 16px var(--yq-gold-glow, rgba(199, 169, 107, 0.18));
+}
+.batch-drop { text-align: center; color: var(--ls-text-2); }
+.batch-drop-icon { font-size: 28px; line-height: 1; margin-bottom: 6px; }
+.batch-drop-text { font-size: 13px; }
+.batch-drop-text em { color: var(--yq-gold, #c7a96b); font-style: normal; margin: 0 4px; }
+.batch-drop-hint { font-size: 11.5px; color: var(--ls-text-3); margin-top: 4px; }
+
+.batch-table-wrap {
+  margin-top: 14px;
+  border: 1px solid var(--ls-line, rgba(127, 127, 127, 0.2));
+  border-radius: 8px;
+  overflow: hidden;
+}
+.batch-table-wrap :deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--ls-paper-2, rgba(127, 127, 127, 0.06));
+  --el-table-border-color: var(--ls-line, rgba(127, 127, 127, 0.2));
+  --el-table-text-color: var(--ls-text);
+}
+.batch-auto-title { color: var(--ls-text-2); font-size: 12.5px; }
+.batch-cover-name {
+  display: inline-block;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--yq-gold, #c7a96b);
+  font-size: 12.5px;
+  vertical-align: middle;
+}
+.batch-cover-pick { display: inline-block; }
+
+.batch-result {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--ls-paper-2, rgba(127, 127, 127, 0.04));
+  border: 1px solid var(--ls-line, rgba(127, 127, 127, 0.2));
+  border-radius: 8px;
+}
+.batch-result-summary {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+}
+.batch-result-table :deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: transparent;
+  --el-table-border-color: var(--ls-line, rgba(127, 127, 127, 0.18));
 }
 </style>

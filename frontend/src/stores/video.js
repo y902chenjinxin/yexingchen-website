@@ -1,12 +1,18 @@
 import { defineStore } from 'pinia'
 import { useCrudStore } from '@/composables/useCrudStore'
-import { getVideoList, uploadVideo, updateVideo, deleteVideo } from '@/api/video'
+import { getVideoList, uploadVideo, updateVideo, deleteVideo, batchUploadVideo } from '@/api/video'
 
-export const useVideoStore = defineStore('video', () =>
-  useCrudStore('video', {
+export const useVideoStore = defineStore('video', () => {
+  const base = useCrudStore('video', {
     getList: getVideoList,
     upload: uploadVideo,
     update: updateVideo,
-    delete: deleteVideo
+    delete: deleteVideo,
   })
-)
+
+  async function batchUpload(payload) {
+    return await batchUploadVideo(payload)
+  }
+
+  return { ...base, batchUpload }
+})
