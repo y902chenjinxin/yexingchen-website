@@ -699,3 +699,56 @@ html:root[data-theme="day"] .login-page .filing-links a {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
+
+/* ==============================================================
+ * 玄黄 · 鼠标聚光层（v191）
+ * 任何带 v-mouse-light 的元素自动获得：
+ *   - 鎏金聚光（跟随鼠标位置）
+ *   - 3D 微倾斜（已由指令 transform 实现）
+ *   - 提升阴影
+ * 卡片 hover 时通过 radial-gradient 显示鎏金光斑
+ * ============================================================== */
+#app:not(.is-mobile) [data-mouse-light],
+#app:not(.is-mobile) .mouse-light {
+  position: relative;
+  isolation: isolate;
+}
+#app:not(.is-mobile) [data-mouse-light]::after,
+#app:not(.is-mobile) .mouse-light::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s ease;
+  background: radial-gradient(
+    260px circle at var(--ml-x, 50%) var(--ml-y, 50%),
+    var(--yq-gold-faint, rgba(199, 169, 107, 0.22)),
+    transparent 65%
+  );
+  z-index: 0;
+}
+#app:not(.is-mobile) [data-mouse-light]:hover::after,
+#app:not(.is-mobile) .mouse-light:hover::after {
+  opacity: 1;
+}
+/* 确保卡片文字在聚光之上 */
+#app:not(.is-mobile) [data-mouse-light] > *,
+#app:not(.is-mobile) .mouse-light > * {
+  position: relative;
+  z-index: 1;
+}
+/* 鎏金渐变描边：仅 hover 时显示（用 inset box-shadow + mask 简化版） */
+#app:not(.is-mobile) [data-mouse-light],
+#app:not(.is-mobile) .mouse-light {
+  /* 用现有 border 颜色即可，鼠标移入由 transform 表现即可；这里不强制描边色 */
+}
+
+/* 减少动画偏好：禁用聚光与 3D 倾斜（transform 由 JS 指令本身检测） */
+@media (prefers-reduced-motion: reduce) {
+  #app:not(.is-mobile) [data-mouse-light]::after,
+  #app:not(.is-mobile) .mouse-light::after {
+    display: none;
+  }
+}

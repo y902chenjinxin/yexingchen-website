@@ -6,7 +6,7 @@
   - 折角信纸风格（柔和纸张色 + 折角 + 提引号），契合工作台古朴基调
 -->
 <template>
-  <div class="dq-card" :class="{ 'dq-card--loading': loading && !quote }">
+  <div v-mouse-light="{ tilt: 5 }" class="dq-card" :class="{ 'dq-card--loading': loading && !quote }">
     <header class="dq-head">
       <span class="dq-eyebrow">每日一言</span>
       <button
@@ -127,6 +127,7 @@ onMounted(load)
   width: 28px; height: 28px;
   background: linear-gradient(225deg, transparent 50%, var(--dp-surface2) 50%);
   border-bottom-left-radius: 6px;
+  z-index: 2;
 }
 
 .dq-head {

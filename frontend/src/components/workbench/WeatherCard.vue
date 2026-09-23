@@ -7,7 +7,7 @@
   - 失败降级：显示「无法获取天气」占位，不阻塞工作台
 -->
 <template>
-  <div class="wx-card" :class="{ 'wx-card--err': error && !current }">
+  <div v-mouse-light="{ tilt: 5 }" class="wx-card" :class="{ 'wx-card--err': error && !current }">
     <!-- 头部：城市 + 操作 -->
     <div class="wx-head">
       <span class="wx-loc"><el-icon><Location /></el-icon>{{ cityLabel }}</span>

@@ -6,7 +6,7 @@
   - 列表展开/收起，避免首屏过挤
 -->
 <template>
-  <div class="od-card" :class="{ 'od-card--loading': loading && !items.length }">
+  <div v-mouse-light="{ tilt: 5 }" class="od-card" :class="{ 'od-card--loading': loading && !items.length }">
     <header class="od-head">
       <div class="od-head-left">
         <span class="od-eyebrow">历史上的今天</span>

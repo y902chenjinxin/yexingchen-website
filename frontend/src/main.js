@@ -26,6 +26,13 @@ const app = createApp(App)
 // 全局指令：v-click-outside="handler"
 // 点击绑定元素外部时触发 handler；忽略元素本身及其后代的事件。
 // 用于下拉菜单/弹层关闭；handler 仅在打开状态被调用即可（调用方自行判断当前是否打开）。
+import mouseLight from './directives/mouseLight'
+
+// 全局指令：v-mouse-light="options"
+// 鼠标 hover 时元素获得 3D 微倾斜 + 鎏金聚光（参考 codefronts.com CSS Card Hover）
+// CSS 配合：在该元素的 hover 样式里用 var(--ml-x) var(--ml-y) 做 radial-gradient 光斑
+app.directive('mouse-light', mouseLight)
+
 app.directive('click-outside', {
   mounted(el, binding) {
     el.__clickOutsideHandler = (event) => {

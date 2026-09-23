@@ -16,6 +16,7 @@
       <div class="bento-s1-left">
         <!-- Hero KPI：净流入 -->
         <button
+          v-mouse-light
           class="bento-hero"
           :class="kpi.finance.net >= 0 ? 'up' : 'dn'"
           @click="$router.push('/finance')"
@@ -32,19 +33,19 @@
         </button>
 
         <!-- 小块：足迹 + 笔记 -->
-        <button class="bento-mini" @click="$router.push('/travels')">
+        <button v-mouse-light class="bento-mini" @click="$router.push('/travels')">
           <div class="bento-mini-eyebrow">足迹</div>
           <div class="bento-mini-num">{{ kpi.travel.province_count }}<span class="bento-mini-unit">/ 34 省</span></div>
           <div class="bento-mini-foot">{{ kpi.travel.travel_count }} 段旅程 · {{ kpi.travel.city_count }} 城</div>
         </button>
-        <button class="bento-mini" @click="$router.push('/notes')">
+        <button v-mouse-light class="bento-mini" @click="$router.push('/notes')">
           <div class="bento-mini-eyebrow">笔记</div>
           <div class="bento-mini-num">{{ kpi.note_count }}</div>
           <div class="bento-mini-foot">最近 5 篇可编辑</div>
         </button>
 
         <!-- 倒计时：横向列表 -->
-        <div class="bento-cd">
+        <div v-mouse-light class="bento-cd">
           <div class="bento-cd-head">
             <span class="bento-cd-title">即将到来</span>
             <RouterLink class="bento-cd-link" to="/tool/countdown">全部 →</RouterLink>
@@ -62,7 +63,7 @@
 
       <!-- 右列：记账 30 天（大块 2 行高）+ 天气（小块） -->
       <div class="bento-s1-right">
-        <div class="bento-trend">
+        <div v-mouse-light class="bento-trend">
           <div class="bento-trend-head">
             <div class="bento-trend-title">记账 · 最近 30 天</div>
             <div class="bento-trend-meta">
@@ -74,7 +75,7 @@
           <TrendBars :data="kpi.finance.trend" :height="200" mode="expense" />
         </div>
         <!-- 天气（v2.39.7 新增 Bento 内嵌） -->
-        <div v-if="moduleVisible.weather" class="bento-wx">
+        <div v-if="moduleVisible.weather" v-mouse-light class="bento-wx">
           <WeatherCard />
         </div>
       </div>
@@ -82,7 +83,7 @@
 
     <!-- ============ Bento S2：两卡（自选股 + 今日待办）============ -->
     <section class="bento-s2">
-      <div class="bento-card">
+      <div v-mouse-light class="bento-card">
         <div class="bento-card-head">
           <div class="bento-card-title">自选股</div>
           <RouterLink class="bento-card-link" to="/stocks">管理 →</RouterLink>
@@ -97,7 +98,7 @@
         </ul>
       </div>
 
-      <div class="bento-card">
+      <div v-mouse-light class="bento-card">
         <div class="bento-card-head">
           <div class="bento-card-title">今日 · 待办</div>
           <RouterLink class="bento-card-link" to="/tasks">全部 →</RouterLink>
@@ -116,10 +117,10 @@
 
     <!-- ============ Bento S3：每日一言 + 历史上的今天（文化小卡） ============ -->
     <section class="bento-s3">
-      <div class="bento-card bento-card--zero">
+      <div v-mouse-light class="bento-card bento-card--zero">
         <DailyQuoteCard />
       </div>
-      <div class="bento-card bento-card--zero">
+      <div v-mouse-light class="bento-card bento-card--zero">
         <OnThisDayCard />
       </div>
     </section>
@@ -266,7 +267,7 @@ onMounted(async () => {
 /* Hero 净流入块：横跨 2 列、占 2 行高——视觉焦点 */
 .bento-hero {
   grid-column: span 2;
-  background: var(--dp-surface);
+  background: var(--color-bg-glass, var(--dp-surface));
   border: 1px solid var(--dp-line);
   border-radius: 20px;
   padding: 22px 26px 20px;
@@ -277,7 +278,10 @@ onMounted(async () => {
   overflow: hidden;
   box-shadow: var(--dp-shadow);
 }
-.bento-hero:hover { border-color: var(--dp-accent); transform: translateY(-1px); }
+.bento-hero:hover {
+  border-color: var(--yq-gold, var(--dp-accent));
+  box-shadow: 0 22px 56px rgba(0,0,0,.32), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.35)) inset;
+}
 .bento-hero.up .bento-hero-sign { color: #34d399; }
 .bento-hero.dn .bento-hero-sign { color: #f87171; }
 .bento-hero-eyebrow {
@@ -301,16 +305,19 @@ onMounted(async () => {
 
 /* 小 KPI 块：足迹 / 笔记 */
 .bento-mini {
-  background: var(--dp-surface);
+  background: var(--color-bg-glass, var(--dp-surface));
   border: 1px solid var(--dp-line);
   border-radius: 16px;
   padding: 16px 18px 14px;
   text-align: left;
   cursor: pointer;
-  transition: border-color .2s;
+  transition: border-color .2s, box-shadow .2s;
   box-shadow: var(--dp-shadow);
 }
-.bento-mini:hover { border-color: var(--dp-accent); }
+.bento-mini:hover {
+  border-color: var(--yq-gold, var(--dp-accent));
+  box-shadow: 0 14px 36px rgba(0,0,0,.28), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.3)) inset;
+}
 .bento-mini-eyebrow { font-size: 11px; letter-spacing: .12em; color: var(--dp-text3); margin-bottom: 8px; }
 .bento-mini-num {
   font-size: 28px; font-weight: 700; line-height: 1.05; color: var(--dp-text);
@@ -322,11 +329,16 @@ onMounted(async () => {
 /* 倒计时：Bento 内嵌横排 */
 .bento-cd {
   grid-column: span 2;
-  background: var(--dp-surface);
+  background: var(--color-bg-glass, var(--dp-surface));
   border: 1px solid var(--dp-line);
   border-radius: 16px;
   padding: 14px 18px 12px;
   box-shadow: var(--dp-shadow);
+  transition: border-color .2s, box-shadow .2s;
+}
+.bento-cd:hover {
+  border-color: var(--yq-gold, var(--dp-accent));
+  box-shadow: 0 14px 36px rgba(0,0,0,.28), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.3)) inset;
 }
 .bento-cd-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .bento-cd-title { font-size: 12px; font-weight: 600; color: var(--dp-text); letter-spacing: .04em; }
@@ -351,9 +363,14 @@ onMounted(async () => {
   min-height: 460px;
 }
 .bento-trend {
-  background: var(--dp-surface); border: 1px solid var(--dp-line); border-radius: 20px;
+  background: var(--color-bg-glass, var(--dp-surface)); border: 1px solid var(--dp-line); border-radius: 20px;
   padding: 18px 22px 14px; box-shadow: var(--dp-shadow);
   display: flex; flex-direction: column;
+  transition: border-color .2s, box-shadow .2s;
+}
+.bento-trend:hover {
+  border-color: var(--yq-gold, var(--dp-accent));
+  box-shadow: 0 22px 56px rgba(0,0,0,.32), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.35)) inset;
 }
 .bento-trend-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .bento-trend-title { font-size: 14px; font-weight: 600; color: var(--dp-text); letter-spacing: .02em; }
@@ -365,8 +382,13 @@ onMounted(async () => {
 
 /* 天气在 Bento 右列下方 */
 .bento-wx {
-  background: var(--dp-surface); border: 1px solid var(--dp-line); border-radius: 16px;
+  background: var(--color-bg-glass, var(--dp-surface)); border: 1px solid var(--dp-line); border-radius: 16px;
   padding: 10px 16px 8px; box-shadow: var(--dp-shadow);
+  transition: border-color .2s, box-shadow .2s;
+}
+.bento-wx:hover {
+  border-color: var(--yq-gold, var(--dp-accent));
+  box-shadow: 0 14px 36px rgba(0,0,0,.28), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.3)) inset;
 }
 .bento-wx :deep(.wx-card) { padding: 0; }
 .bento-wx :deep(.wx-head) { margin-bottom: 4px; }
@@ -395,9 +417,14 @@ onMounted(async () => {
 .bento-card--zero { padding: 0; }
 .bento-card--zero > :deep(*) { height: 100%; }
 .bento-card {
-  background: var(--dp-surface); border: 1px solid var(--dp-line); border-radius: 16px;
+  background: var(--color-bg-glass, var(--dp-surface)); border: 1px solid var(--dp-line); border-radius: 16px;
   padding: 16px 18px 14px; box-shadow: var(--dp-shadow);
   display: flex; flex-direction: column;
+  transition: border-color .2s, box-shadow .2s;
+}
+.bento-card:hover {
+  border-color: var(--yq-gold, var(--dp-accent));
+  box-shadow: 0 14px 36px rgba(0,0,0,.28), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.3)) inset;
 }
 .bento-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .bento-card-title { font-size: 13px; font-weight: 600; color: var(--dp-text); letter-spacing: .02em; }
