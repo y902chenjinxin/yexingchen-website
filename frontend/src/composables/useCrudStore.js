@@ -15,7 +15,9 @@ export function useCrudStore(entityName, api) {
   async function fetchList(params = {}) {
     loading.value = true
     try {
-      const res = await api.getList({ page: page.value, size: size.value, ...params })
+      // 允许 params 覆盖内置的 page/size（前端组件可传 size=200 一次性拉全）
+      const reqParams = { page: page.value, size: size.value, ...params }
+      const res = await api.getList(reqParams)
       list.value = res.data.list
       total.value = res.data.total
       return res

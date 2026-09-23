@@ -482,7 +482,8 @@ onMounted(() => {
 })
 
 async function fetchData() {
-  const params = keyword.value ? { q: keyword.value } : {}
+  // size=200 一次性拉全（管理页用客户端分页），避免后端默认 20 条导致列表截断
+  const params = keyword.value ? { q: keyword.value } : { size: 200 }
   await musicStore.fetchList(params)
 }
 

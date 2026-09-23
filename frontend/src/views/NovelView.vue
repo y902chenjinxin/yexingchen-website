@@ -444,7 +444,8 @@ async function onDownloadTemplate() {
 onMounted(() => { fetchData() })
 
 async function fetchData() {
-  const params = keyword.value ? { q: keyword.value } : {}
+  // size=200 一次性拉全（管理页用客户端分页）
+  const params = keyword.value ? { q: keyword.value } : { size: 200 }
   await novelStore.fetchList(params)
 }
 
