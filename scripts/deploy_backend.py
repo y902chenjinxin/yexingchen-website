@@ -14,6 +14,7 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "countdown.py"),  f"{REMOTE_BASE}/backend/app/routers/countdown.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "settings.py"),    f"{REMOTE_BASE}/backend/app/routers/settings.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "video.py"),       f"{REMOTE_BASE}/backend/app/routers/video.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "novel.py"),       f"{REMOTE_BASE}/backend/app/routers/novel.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "video_parse.py"), f"{REMOTE_BASE}/backend/app/routers/video_parse.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "tool.py"),        f"{REMOTE_BASE}/backend/app/routers/tool.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "log.py"),          f"{REMOTE_BASE}/backend/app/routers/log.py"),
