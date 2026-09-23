@@ -752,3 +752,65 @@ html:root[data-theme="day"] .login-page .filing-links a {
     display: none;
   }
 }
+
+/* ==============================================================
+ * 玄黄 · 全站通用 hover 增强层（v193）
+ * 任何带 .glass 的卡片、所有 el-button、所有 el-card 在 hover 时
+ * 自动获得鎏金描边 + 阴影提升，无需逐文件改样式
+ * ============================================================== */
+
+/* 所有玻璃卡片：hover 时鎏金描边 + 大阴影 */
+#app:not(.is-mobile) .glass {
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+}
+#app:not(.is-mobile) .glass:hover {
+  border-color: var(--yq-gold, #c7a96b);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .18), 0 0 0 1px var(--yq-gold-glow, rgba(199, 169, 107, .25)) inset;
+}
+
+/* 所有 el-button：non-primary 类型 hover 时描边变鎏金（更克制） */
+#app:not(.is-mobile) .el-button:not(.el-button--primary):not(.is-disabled):hover {
+  border-color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold, #c7a96b);
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.06));
+}
+
+/* 所有 el-card：hover 时鎏金描边 */
+#app:not(.is-mobile) .el-card {
+  transition: border-color .2s, box-shadow .2s;
+  border-color: var(--dp-line, rgba(127, 127, 127, 0.18));
+}
+#app:not(.is-mobile) .el-card:hover {
+  border-color: var(--yq-gold, #c7a96b);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .16), 0 0 0 1px var(--yq-gold-glow, rgba(199, 169, 107, 0.2)) inset;
+}
+
+/* 通用"可点击卡片"自动 hover：识别 button 元素（v-mouse-light 之外的兜底） */
+#app:not(.is-mobile) button.v-card,
+#app:not(.is-mobile) a.v-card,
+#app:not(.is-mobile) [role="button"] {
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+}
+#app:not(.is-mobile) button.v-card:hover,
+#app:not(.is-mobile) a.v-card:hover,
+#app:not(.is-mobile) [role="button"]:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .14);
+}
+
+/* ===== 全站通用"可点击块"自动获得 hover 增强 ===== */
+/* 覆盖常见的卡片/条目/瓦片等结构：以 v-mouse-light 为首选，本段为兜底 */
+#app:not(.is-mobile) :where(.tile, [class$="-card"], [class$="-item"], [class$="-kpi"], [class$="-module"], [class$="-row"]) {
+  transition: border-color .2s, box-shadow .2s, transform .15s, background-color .2s;
+}
+/* 排除小元素和已是 glass 的（避免 hover 抖动） */
+#app:not(.is-mobile) :where(.glass, button, a, input, select, textarea, [role="button"]):hover {
+  /* 基类 hover 增强已在更具体规则中处理 */
+}
+
+/* 减少动画偏好下禁用增强 */
+@media (prefers-reduced-motion: reduce) {
+  #app:not(.is-mobile) .glass,
+  #app:not(.is-mobile) .el-card {
+    transition: none;
+  }
+}

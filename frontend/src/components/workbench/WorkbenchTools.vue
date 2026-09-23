@@ -12,6 +12,7 @@
       <a
         v-for="c in quickList"
         :key="c.key"
+        v-mouse-light
         class="wt-card"
         :class="`tone-${c.tone}`"
         @click.prevent="go(c)"

@@ -24,6 +24,7 @@
             <div
               v-for="item in group.items"
               :key="item.id"
+              v-mouse-light
               class="cd-card jade-card"
               :class="{ 'cd-pinned': item.pinned }"
               @click="goDetail(item)"
