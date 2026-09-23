@@ -21,7 +21,7 @@
     <div class="ht-layout">
       <!-- ============ 日历（左 / 约 1/3） ============ -->
       <section class="ht-cal glass">
-        <div class="ht-cal-head">
+        <header class="ht-cal-head">
           <el-select
             class="ht-sel ht-sel-y"
             :model-value="viewDate.y"
@@ -40,7 +40,7 @@
           >
             <el-option v-for="m in 12" :key="m" :value="m" :label="`${m} 月`" />
           </el-select>
-        </div>
+        </header>
 
         <div class="ht-cal-week" aria-hidden="true">
           <span v-for="w in weekHead" :key="w" class="ht-cal-week-cell">{{ w }}</span>
@@ -242,10 +242,11 @@ onMounted(() => load())
 .ht-btn:focus-visible { outline: 2px solid #bfa05f; outline-offset: 2px; }
 
 /* ============ 日历 ============ */
-.ht-cal { padding: 16px 18px; border-radius: 16px; }
+.ht-cal { padding: 0; border-radius: 16px; overflow: hidden; }
 .ht-cal-head {
   display: flex; align-items: center; gap: 8px;
-  margin-bottom: 12px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--dp-line, rgba(127, 127, 127, 0.14));
 }
 .ht-sel { flex: none; }
 .ht-sel :deep(.el-select__wrapper),
@@ -271,13 +272,13 @@ onMounted(() => load())
 
 .ht-cal-week {
   display: grid; grid-template-columns: repeat(7, 1fr);
-  gap: 4px; margin-bottom: 5px;
+  gap: 4px; margin-bottom: 5px; padding: 10px 12px 0;
 }
 .ht-cal-week-cell {
   text-align: center; font-size: 11px;
   color: var(--lj-text-3); letter-spacing: .06em;
 }
-.ht-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.ht-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 4px 12px 12px; }
 .ht-cal-cell {
   position: relative; aspect-ratio: 1;
   display: flex; align-items: center; justify-content: center;
@@ -297,7 +298,7 @@ onMounted(() => load())
 .ht-cal-cell.sel.tdy { color: #0b0f14; box-shadow: 0 0 0 2px rgba(255, 214, 130, 0.7), 0 3px 10px rgba(0, 0, 0, 0.28); }
 .ht-cal-cell:focus-visible { outline: 2px solid #bfa05f; outline-offset: 1px; }
 
-.ht-cal-foot { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ht-cal-foot { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 12px 14px; }
 .ht-cal-today {
   font-family: var(--font-serif, serif); font-size: 12px;
   letter-spacing: .03em; color: var(--lj-text);
