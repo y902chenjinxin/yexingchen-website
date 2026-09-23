@@ -3,8 +3,10 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from typing import Optional
+from typing import Optional, List
 import os
+import io
+import csv
 from app.schemas.common import *
 from app.database import get_db, SessionLocal
 from app.utils.security import get_current_user, check_owner_or_admin
@@ -221,5 +223,133 @@ async def delete_music(
     db.commit()
 
     return ResponseBase(msg="删除成功")
+
+
+# ========== 批量导入音乐（v2.13.1） ==========
+# - 一次请求可上传多个文件 + 对应元数据；失败单条不阻塞其他，最终返回每条结果
+# - 文件大小限制沿用单条 MAX_MUSIC_SIZE；总大小由 Nginx/FastAPI 上限控制
+# - 兼容前端：表单字段名 files / titles / artists / categories / tags 用复数
+@router.post("/batch", response_model=ResponseBase)
+async def batch_upload_music(
+    files: List[UploadFile] = File(..., description="音乐文件列表"),
+    titles: List[str] = Form(..., description="与文件一一对应的标题"),
+    artists: List[str] = Form(default_factory=list, description="与文件一一对应的作者（可选）"),
+    categories: List[str] = Form(default_factory=list, description="与文件一一对应的分类（可选）"),
+    tags: List[str] = Form(default_factory=list, description="与文件一一对应的标签（可选）"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not files:
+        raise_error(ErrCode.INVALID_PARAM, "请选择至少一个文件")
+    if not titles or len(titles) != len(files):
+        raise_error(ErrCode.INVALID_PARAM, "标题数量与文件数量不一致")
+
+    # 补齐到与 files 等长
+    def _pad(seq: List[str], default: str = "") -> List[str]:
+        if len(seq) >= len(files):
+            return list(seq[:len(files)])
+        return list(seq) + [default] * (len(files) - len(seq))
+
+    artists_p = _pad(artists)
+    categories_p = _pad(categories)
+    tags_p = _pad(tags)
+
+    results: List[dict] = []
+    success_count = 0
+
+    for idx, file in enumerate(files):
+        entry = {
+            "index": idx,
+            "filename": file.filename or "",
+            "title": titles[idx],
+            "ok": False,
+            "error": None,
+            "id": None,
+        }
+        try:
+            file_path, file_size = await save_upload_file(
+                file, "music", ALLOWED_MUSIC_EXTENSIONS, settings.MAX_MUSIC_SIZE
+            )
+        except ValueError as e:
+            entry["error"] = str(e)
+            results.append(entry)
+            continue
+        except Exception as e:  # noqa: BLE001
+            entry["error"] = f"保存文件失败：{e!s}"
+            results.append(entry)
+            continue
+
+        try:
+            music = Music(
+                title=titles[idx],
+                artist=artists_p[idx],
+                file_path=file_path,
+                original_filename=file.filename or "",
+                category=categories_p[idx],
+                tags=tags_p[idx],
+                uploader_id=current_user["user_id"],
+                file_size=file_size,
+            )
+            db.add(music)
+            db.flush()  # 先取 id，单条失败可回滚而不影响其他
+            entry["id"] = music.id
+            entry["ok"] = True
+            success_count += 1
+        except Exception as e:  # noqa: BLE001
+            # DB 失败：回滚单条 + 清理已落盘文件
+            db.rollback()
+            delete_file(file_path)
+            entry["error"] = f"写入数据库失败：{e!s}"
+
+        results.append(entry)
+
+    db.commit()
+
+    # 汇总日志（成功 N 条才写一条，避免无意义的批量空日志）
+    if success_count:
+        log_action(
+            db, current_user["user_id"], "upload", "music", 0,
+            detail=f"批量上传音乐：成功 {success_count}/{len(files)}", ip_address="",
+        )
+
+    failed = sum(1 for r in results if not r["ok"])
+    msg = f"批量导入完成：成功 {success_count}"
+    if failed:
+        msg += f"，失败 {failed}"
+
+    return ResponseBase(
+        msg=msg,
+        data={
+            "total": len(files),
+            "success": success_count,
+            "failed": failed,
+            "results": results,
+        },
+    )
+
+
+# ========== 下载导入模板（v2.13.1） ==========
+# 返回 CSV 模板（UTF-8 BOM，Excel 直接打开不乱码），字段：title/artist/category/tags
+@router.get("/template")
+async def download_music_template(current_user: dict = Depends(get_current_user)):
+    buf = io.StringIO()
+    # 写入 UTF-8 BOM（Excel 在 Windows 中文环境直接打开需要）
+    buf.write("\ufeff")
+    writer = csv.writer(buf)
+    writer.writerow(["title", "artist", "category", "tags"])
+    # 注释示例行（首字符 # 开头会被 Excel 当文本对待；用户复制自己的数据后删除即可）
+    writer.writerow(["示例：山月不知心底事", "佚名", "古风", "古筝,轻音乐"])
+    writer.writerow(["示例：渔舟唱晚", "佚名", "古风", "古筝,纯音乐"])
+
+    data = buf.getvalue().encode("utf-8")
+    return StreamingResponse(
+        iter([data]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="music_import_template.csv"',
+            "Content-Length": str(len(data)),
+            "Cache-Control": "no-cache",
+        },
+    )
 
 

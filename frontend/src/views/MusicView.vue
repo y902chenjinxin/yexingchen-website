@@ -2,6 +2,8 @@
   <IslandInnerBase type="music" title="音乐" subtitle="音律飘渺 · 曲库管理">
     <template #toolbar>
       <el-button type="primary" size="small" @click="openUpload">上传音乐</el-button>
+      <el-button size="small" plain @click="openBatch">批量导入</el-button>
+      <el-button size="small" plain @click="onDownloadTemplate">下载模板</el-button>
     </template>
 
     <!-- 管理表格（默认进入即管理页） -->
@@ -155,6 +157,114 @@
       </template>
     </el-dialog>
 
+    <!-- 批量导入弹窗 -->
+    <el-dialog v-model="showBatch" title="批量导入音乐" width="640px" append-to-body>
+      <div class="batch-tip">
+        <span>支持一次选择多个 MP3 / FLAC / WAV 文件，单个文件 ≤ 50 MB。</span>
+        <el-link type="primary" :underline="false" @click="onDownloadTemplate">下载 CSV 导入模板</el-link>
+      </div>
+
+      <el-form :model="batchForm" label-width="80px" class="batch-form">
+        <el-form-item label="批量作者">
+          <el-input v-model="batchForm.artist" placeholder="应用到所有文件（可选）" clearable />
+        </el-form-item>
+        <el-form-item label="批量分类">
+          <el-input v-model="batchForm.category" placeholder="应用到所有文件（可选）" clearable />
+        </el-form-item>
+        <el-form-item label="批量标签">
+          <el-input v-model="batchForm.tags" placeholder="应用到所有文件，多个用逗号分隔（可选）" clearable />
+        </el-form-item>
+        <el-form-item label="标题规则">
+          <el-radio-group v-model="batchForm.titleMode">
+            <el-radio-button value="filename">文件名（去后缀）</el-radio-button>
+            <el-radio-button value="filename-artist">文件名 - 批量作者</el-radio-button>
+            <el-radio-button value="custom">自定义（下方逐条编辑）</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+
+      <el-upload
+        ref="batchUploadRef"
+        :auto-upload="false"
+        :multiple="true"
+        :limit="20"
+        accept=".mp3,.flac,.wav"
+        :file-list="batchFileList"
+        :on-change="handleBatchFileChange"
+        :on-remove="handleBatchFileRemove"
+        drag-area
+        class="batch-upload"
+      >
+        <div class="batch-drop">
+          <div class="batch-drop-icon">📥</div>
+          <div class="batch-drop-text">拖拽文件到这里，或<em>点击选择</em></div>
+          <div class="batch-drop-hint">MP3 / FLAC / WAV，单次最多 20 个</div>
+        </div>
+      </el-upload>
+
+      <div v-if="batchItems.length" class="batch-table-wrap">
+        <el-table :data="batchItems" size="small" :show-header="true" max-height="220" empty-text="还没有文件">
+          <el-table-column label="#" width="46" type="index" />
+          <el-table-column label="文件名" min-width="160" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.filename }}</template>
+          </el-table-column>
+          <el-table-column label="标题" min-width="200">
+            <template #default="{ row }">
+              <el-input
+                v-if="batchForm.titleMode === 'custom'"
+                v-model="row.title"
+                size="small"
+                placeholder="必填"
+              />
+              <span v-else class="batch-auto-title">{{ row.title }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="作者" width="100">
+            <template #default="{ row }">{{ row.artist || '—' }}</template>
+          </el-table-column>
+          <el-table-column label="大小" width="84">
+            <template #default="{ row }">{{ formatSize(row.size) }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div v-if="batchResult" class="batch-result">
+        <div class="batch-result-summary">
+          <span class="status-dot is-gold">成功 {{ batchResult.success }} 条</span>
+          <span v-if="batchResult.failed" class="status-dot is-danger">失败 {{ batchResult.failed }} 条</span>
+        </div>
+        <el-table
+          v-if="batchResult.results && batchResult.results.length"
+          :data="batchResult.results"
+          size="small"
+          max-height="180"
+          class="batch-result-table"
+        >
+          <el-table-column prop="filename" label="文件" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
+          <el-table-column label="状态" width="84">
+            <template #default="{ row }">
+              <el-tag v-if="row.ok" size="small" type="success">成功</el-tag>
+              <el-tag v-else size="small" type="danger">失败</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="error" label="原因" min-width="160" show-overflow-tooltip />
+        </el-table>
+      </div>
+
+      <template #footer>
+        <el-button @click="showBatch = false" :disabled="batchUploading">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="batchUploading"
+          :disabled="!batchItems.length"
+          @click="submitBatch"
+        >
+          {{ batchUploading ? '导入中…' : `开始批量导入（${batchItems.length}）` }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="showDelete" title="删除确认" width="360px" append-to-body>
       <p>确定删除「{{ deleteName }}」吗？</p>
       <template #footer>
@@ -174,15 +284,16 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useMusicStore } from '@/stores/music'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
+import { downloadMusicTemplate } from '@/api/music'
 
 const isMobile = useIsMobile()
 const musicStore = useMusicStore()
@@ -212,6 +323,134 @@ const showEdit = ref(false)
 const editing = ref(false)
 const editId = ref(null)
 const editForm = ref({ title: '', artist: '', category: '', tags: '' })
+
+/* ========== 批量导入 ========== */
+const showBatch = ref(false)
+const batchUploading = ref(false)
+const batchUploadRef = ref(null)
+const batchFileList = ref([]) // el-upload 内部 file-list（保留 raw 文件）
+const batchItems = ref([])   // [{ raw: File, filename, size, title, artist, category, tags }]
+const batchForm = ref({
+  artist: '',
+  category: '',
+  tags: '',
+  titleMode: 'filename', // filename | filename-artist | custom
+})
+const batchResult = ref(null) // { success, failed, total, results }
+
+function openBatch() {
+  batchFileList.value = []
+  batchItems.value = []
+  batchForm.value = { artist: '', category: '', tags: '', titleMode: 'filename' }
+  batchResult.value = null
+  showBatch.value = true
+}
+
+function handleBatchFileChange(file) {
+  // el-upload 多文件模式下每次 change 都会被调用，需要去重（已存在 raw 同名则跳过）
+  if (!file || !file.raw) return
+  const raw = file.raw
+  if (batchItems.value.some((it) => it.filename === raw.name && it.size === raw.size)) return
+  batchItems.value.push({
+    raw,
+    filename: raw.name,
+    size: raw.size,
+    title: raw.name.replace(/\.[^.]+$/, ''),
+    artist: batchForm.value.artist || '',
+    category: batchForm.value.category || '',
+    tags: batchForm.value.tags || '',
+  })
+  applyBatchTitleMode() // 重新按当前模式刷新预览标题
+}
+
+function handleBatchFileRemove(file) {
+  if (!file || !file.raw) return
+  const raw = file.raw
+  batchItems.value = batchItems.value.filter(
+    (it) => !(it.filename === raw.name && it.size === raw.size),
+  )
+}
+
+watch(
+  () => [batchForm.value.titleMode, batchForm.value.artist],
+  () => applyBatchTitleMode(),
+)
+
+// 按"标题规则"刷新每条预览标题；同时把批量字段同步到 item
+function applyBatchTitleMode() {
+  const mode = batchForm.value.titleMode
+  const commonArtist = batchForm.value.artist || ''
+  for (const it of batchItems.value) {
+    if (mode === 'filename') {
+      it.title = it.filename.replace(/\.[^.]+$/, '')
+    } else if (mode === 'filename-artist') {
+      const base = it.filename.replace(/\.[^.]+$/, '')
+      it.title = commonArtist ? `${base} - ${commonArtist}` : base
+    } else {
+      // custom：保留用户已输入的标题，没有则用文件名兜底
+      if (!it.title) it.title = it.filename.replace(/\.[^.]+$/, '')
+    }
+    it.artist = commonArtist
+    it.category = batchForm.value.category || ''
+    it.tags = batchForm.value.tags || ''
+  }
+}
+
+async function submitBatch() {
+  if (!batchItems.value.length) return
+  // 校验：custom 模式下标题不能为空
+  if (batchForm.value.titleMode === 'custom') {
+    const empty = batchItems.value.filter((it) => !it.title || !it.title.trim())
+    if (empty.length) {
+      ElMessage.warning(`有 ${empty.length} 个文件未填写标题，请补齐后再导入`)
+      return
+    }
+  }
+  batchUploading.value = true
+  batchResult.value = null
+  try {
+    const files = batchItems.value.map((it) => it.raw)
+    const items = batchItems.value.map((it) => ({
+      title: it.title || it.filename.replace(/\.[^.]+$/, ''),
+      artist: batchForm.value.artist || '',
+      category: batchForm.value.category || '',
+      tags: batchForm.value.tags || '',
+    }))
+    const res = await musicStore.batchUpload({ files, items })
+    const data = res?.data || {}
+    batchResult.value = {
+      success: data.success || 0,
+      failed: data.failed || 0,
+      total: data.total || files.length,
+      results: data.results || [],
+    }
+    if (data.success) {
+      ElMessage.success(`批量导入完成：成功 ${data.success}` + (data.failed ? `，失败 ${data.failed}` : ''))
+      fetchData() // 刷新列表
+      // 全部成功后保留弹窗 + 结果表格，便于用户查看；不自动关闭
+      if (!data.failed) {
+        // 清空文件选择，但不关闭弹窗（用户可能还要继续）
+        batchFileList.value = []
+        batchItems.value = []
+      }
+    } else {
+      ElMessage.warning('批量导入未成功，请检查文件或网络')
+    }
+  } catch (e) {
+    // axios 拦截器已显示具体错误
+  } finally {
+    batchUploading.value = false
+  }
+}
+
+async function onDownloadTemplate() {
+  try {
+    await downloadMusicTemplate()
+    ElMessage.success('模板已下载')
+  } catch (e) {
+    // 错误已由 axios 拦截器处理
+  }
+}
 
 onMounted(() => {
   fetchData()
@@ -542,5 +781,86 @@ function formatDuration(sec) {
 .manage-pane :deep(.el-table__row.row-now-playing:hover > td),
 .manage-pane :deep(.el-table__row.row-bgm-active:hover > td) {
   background: rgba(61, 127, 214, 0.18) !important;
+}
+
+/* ========== 批量导入弹窗 ========== */
+.batch-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.10));
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.2));
+  border-radius: 8px;
+  color: var(--dp-text2);
+  font-size: 12.5px;
+}
+.batch-tip .el-link {
+  font-size: 12.5px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.batch-form { margin-bottom: 8px; }
+.batch-form :deep(.el-form-item) { margin-bottom: 12px; }
+
+/* el-upload 拖拽区：鎏金边框 + 玻璃感 */
+.batch-upload :deep(.el-upload) {
+  width: 100%;
+}
+.batch-upload :deep(.el-upload-dragger) {
+  width: 100%;
+  padding: 22px 18px;
+  background: var(--dp-surface2, rgba(127, 127, 127, 0.04));
+  border: 1.5px dashed var(--dp-line, rgba(127, 127, 127, 0.3));
+  border-radius: 10px;
+  transition: border-color .2s, background-color .2s, box-shadow .2s;
+}
+.batch-upload :deep(.el-upload-dragger:hover),
+.batch-upload :deep(.el-upload.is-dragover .el-upload-dragger) {
+  border-color: var(--yq-gold, #c7a96b);
+  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
+  box-shadow: 0 4px 16px var(--yq-gold-glow, rgba(199, 169, 107, 0.18));
+}
+.batch-drop { text-align: center; color: var(--dp-text2); }
+.batch-drop-icon { font-size: 28px; line-height: 1; margin-bottom: 6px; }
+.batch-drop-text { font-size: 13px; }
+.batch-drop-text em { color: var(--yq-gold, #c7a96b); font-style: normal; margin: 0 4px; }
+.batch-drop-hint { font-size: 11.5px; color: var(--dp-text3); margin-top: 4px; }
+
+.batch-table-wrap {
+  margin-top: 14px;
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.2));
+  border-radius: 8px;
+  overflow: hidden;
+}
+.batch-table-wrap :deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--dp-surface2, rgba(127, 127, 127, 0.06));
+  --el-table-border-color: var(--dp-line, rgba(127, 127, 127, 0.2));
+}
+.batch-auto-title { color: var(--dp-text2); font-size: 12.5px; }
+
+.batch-result {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--dp-surface2, rgba(127, 127, 127, 0.04));
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.2));
+  border-radius: 8px;
+}
+.batch-result-summary {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+}
+.batch-result-table :deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: transparent;
+  --el-table-border-color: var(--dp-line, rgba(127, 127, 127, 0.18));
 }
 </style>
