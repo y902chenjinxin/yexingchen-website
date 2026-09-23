@@ -248,10 +248,14 @@ onMounted(() => load())
   margin-bottom: 12px;
 }
 .ht-sel { flex: none; }
-.ht-sel :deep(.el-select__wrapper) {
+.ht-sel :deep(.el-select__wrapper),
+.ht-sel :deep(.el-select__wrapper.is-default),
+.ht-sel :deep(.el-select__wrapper.is-hovering) {
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--dp-line, rgba(127, 127, 127, 0.2));
   font-family: var(--font-serif, serif);
+  padding-left: 10px; padding-right: 26px;
+  min-height: 28px;
 }
 .ht-sel :deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
   box-shadow: inset 0 0 0 1px var(--dp-line-strong, rgba(127, 127, 127, 0.35));
@@ -262,8 +266,8 @@ onMounted(() => load())
 .ht-sel :deep(.el-select__placeholder),
 .ht-sel :deep(.el-select__selected-item) { color: var(--lj-text); font-size: 13px; }
 .ht-sel :deep(.el-select__suffix) { color: var(--lj-text-2); }
-.ht-sel-y :deep(.el-select__wrapper) { min-width: 92px; }
-.ht-sel-m :deep(.el-select__wrapper) { min-width: 78px; }
+.ht-sel-y :deep(.el-select__wrapper) { min-width: 96px; }
+.ht-sel-m :deep(.el-select__wrapper) { min-width: 84px; }
 
 .ht-cal-week {
   display: grid; grid-template-columns: repeat(7, 1fr);
