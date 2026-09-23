@@ -44,6 +44,7 @@
         style="width: 100%"
         :row-class-name="rowClassName"
         @selection-change="onSelectionChange"
+        empty-text="暂无音乐，点上方「导入」添加"
       >
         <el-table-column type="selection" width="46" :selectable="(row) => Number(row.is_default) !== 1" />
 

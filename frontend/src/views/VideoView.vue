@@ -16,7 +16,7 @@
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
       </div>
-      <el-table ref="tableRef" :data="pagedRows" v-loading="videoStore.loading" stripe style="width: 100%" @selection-change="onSelectionChange">
+      <el-table ref="tableRef" :data="pagedRows" v-loading="videoStore.loading" stripe style="width: 100%" @selection-change="onSelectionChange" empty-text="还没有视频，点「上传」添加">
         <el-table-column type="selection" width="48" />
         <el-table-column prop="title" label="标题" min-width="150" />
         <el-table-column prop="category" label="分类" width="100">

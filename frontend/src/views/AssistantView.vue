@@ -35,7 +35,7 @@
 
     <div class="assistant-body">
       <aside class="assistant-sidebar">
-        <button class="new-chat-btn" @click="newConversation">
+        <button v-mouse-light class="new-chat-btn" @click="newConversation">
           <el-icon style="font-size:15px"><Plus /></el-icon><span>新对话</span>
         </button>
         <h3>历史对话</h3>

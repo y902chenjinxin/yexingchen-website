@@ -39,7 +39,14 @@
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="!novelStore.loading && novelStore.list.length === 0" class="empty">暂无数据</div>
+      <EmptyState
+        v-if="!novelStore.loading && novelStore.list.length === 0"
+        tone="data"
+        title="还没有添加小说"
+        description="把读过的章节粘贴进来，系统帮你管理进度、收藏句子、生成摘要"
+        action-label="↑ 上传小说"
+        @action="openUpload"
+      />
       <div v-else-if="!novelStore.loading" class="pager-wrap">
         <el-pagination
           background
@@ -115,6 +122,7 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useNovelStore } from '@/stores/novel'

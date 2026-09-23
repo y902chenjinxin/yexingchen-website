@@ -55,10 +55,17 @@
             <button class="ct-btn ghost tiny danger" @click="remove(c)">删除</button>
           </div>
         </article>
-        <p v-if="!loading && !filtered.length" class="ct-empty">
-          还没有联系人。点右上角「新增」，把家里人的生日和电话记进来，临近生日会自动生成待办。
-        </p>
-        <p v-else-if="loading" class="ct-empty">加载中…</p>
+        <EmptyState
+          v-if="!loading && !filtered.length"
+          tone="data"
+          title="还没有联系人"
+          description="把家里人的生日和电话记进来，临近生日会自动生成待办"
+          action-label="＋ 新增联系人"
+          @action="openCreate"
+        />
+        <div v-else-if="loading" class="ct-skeleton">
+          <SkeletonBlock v-for="i in 4" :key="i" width="100%" height="64px" style="margin-bottom: 8px;" />
+        </div>
       </section>
 
       <!-- ============ 日历视图 ============ -->
@@ -165,6 +172,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { contactsApi, RELATION_OPTIONS } from '@/api/family'
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']

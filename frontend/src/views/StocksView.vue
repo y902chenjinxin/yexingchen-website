@@ -193,8 +193,20 @@
           </div>
         </div>
 
-        <div v-if="!loading && !list.length" class="st-empty">还没有自选股，点右上角「加自选」开始盯盘</div>
-        <div v-else-if="loading" class="st-empty">加载中…</div>
+        <EmptyState
+          v-if="!loading && !list.length"
+          tone="data"
+          title="还没有自选股"
+          description="添加几只关注的股票，工作台首页也能实时盯盘"
+          action-label="＋ 加自选"
+          @action="openAdd"
+        />
+        <div v-else-if="loading" class="st-skeleton">
+          <SkeletonBlock width="100%" height="42px" style="margin-bottom: 8px;" />
+          <SkeletonBlock width="100%" height="42px" style="margin-bottom: 8px;" />
+          <SkeletonBlock width="100%" height="42px" style="margin-bottom: 8px;" />
+          <SkeletonBlock width="60%" height="42px" />
+        </div>
       </section>
 
       <footer class="st-risk">自用工具，数据仅供参考，不构成投资建议 · 行情数据未实时持久化，仅供参考</footer>
@@ -208,6 +220,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import PortfolioPanel from '@/components/stocks/PortfolioPanel.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { stocksApi } from '@/api/stocks'
 
 const router = useRouter()
