@@ -115,9 +115,9 @@ const aiToolsOpen = ref(false)
 // 触发序列：按 g 后 1.5s 内按下字母，否则取消
 let gPressedAt = 0
 const G_ROUTES = {
-  w: '/workbench', n: '/notes', f: '/finance', t: '/tasks', l: '/tool',
-  m: '/music', c: '/tool/countdown', s: '/stocks', p: '/profile', d: '/diary',
-  r: '/travels', e: '/feeds',
+  w: '/workbench', n: '/notes', f: '/finance/overview', t: '/tasks', l: '/tool',
+  m: '/music', c: '/tool/countdown', s: '/finance/market', p: '/profile', d: '/diary',
+  r: '/travels', e: '/finance/news',
 }
 function onGlobalKey(e) {
   const t = e.target

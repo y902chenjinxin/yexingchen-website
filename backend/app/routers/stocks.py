@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 
 MARKETS = ("sh", "sz", "hk", "us")
 
+# v2.16：财经模块改为家庭共享（household-scoped），不再按 user_id 过滤
+HOUSEHOLD_ID = 1
+
 
 def ok(data=None, msg: str = "") -> dict:
     return {"code": 0, "msg": msg, "data": data}
@@ -101,10 +104,12 @@ def _q_to_dict(w: StockWatchlist, quote: dict | None = None) -> dict:
 # ---------- 自选股 CRUD ----------
 @router.get("/watchlist")
 async def list_watchlist(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     rows = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None))
         .order_by(StockWatchlist.sort_order.asc(), StockWatchlist.id.asc())
         .all()
     )
@@ -127,6 +132,8 @@ async def add_watch(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     code = body.code.strip().upper()
     market = (body.market or "sh").lower()
@@ -138,7 +145,7 @@ async def add_watch(
     # 已存在（含软删）则直接恢复
     exist = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.user_id == uid, StockWatchlist.code == code, StockWatchlist.market == market)
+        .filter(StockWatchlist.household_id == hid, StockWatchlist.code == code, StockWatchlist.market == market)
         .first()
     )
     if exist and exist.deleted_at is None:
@@ -165,7 +172,7 @@ async def add_watch(
         w = exist
     else:
         w = StockWatchlist(
-            user_id=uid, code=code, market=market, name=name,
+            user_id=uid, household_id=HOUSEHOLD_ID, code=code, market=market, name=name,
             cost_price=body.cost_price, quantity=body.quantity, notes=body.notes or "",
         )
         db.add(w)
@@ -181,10 +188,12 @@ async def update_watch(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     w = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.id == watch_id, StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.id == watch_id, StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None))
         .first()
     )
     if not w:
@@ -210,10 +219,12 @@ async def delete_watch(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     w = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.id == watch_id, StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.id == watch_id, StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None))
         .first()
     )
     if not w:
@@ -252,7 +263,7 @@ async def search(q: str = Query("", max_length=30), count: int = Query(8, ge=1, 
 def _summary(uid, db):
     rows = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None))
         .order_by(StockWatchlist.sort_order.asc(), StockWatchlist.id.asc())
         .all()
     )
@@ -297,12 +308,12 @@ def _summary(uid, db):
 
 @router.get("/summary")
 async def summary(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    return ok(_summary(current_user["user_id"], db))
+    return ok(_summary(HOUSEHOLD_ID, db))
 
 
 @router.get("/dashboard")
 async def dashboard(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    s = _summary(current_user["user_id"], db)
+    s = _summary(HOUSEHOLD_ID, db)
     return ok({
         "symbol_count": s["symbol_count"],
         "market_value": s["market_value"],
@@ -323,11 +334,13 @@ async def list_snapshots(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     since = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     rows = (
         db.query(PortfolioSnapshot)
-        .filter(PortfolioSnapshot.user_id == uid, PortfolioSnapshot.date >= since)
+        .filter(PortfolioSnapshot.household_id == hid, PortfolioSnapshot.date >= since)
         .order_by(PortfolioSnapshot.date.asc())
         .all()
     )
@@ -342,12 +355,14 @@ async def list_snapshots(
 @router.post("/snapshots/today")
 async def record_snapshot_today(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """记录今日持仓快照（同一交易日 EUPSERT，供盈亏趋势曲线）。"""
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     s = _summary(uid, db)
     today = datetime.now().strftime("%Y-%m-%d")
     row = (
         db.query(PortfolioSnapshot)
-        .filter(PortfolioSnapshot.user_id == uid, PortfolioSnapshot.date == today)
+        .filter(PortfolioSnapshot.household_id == hid, PortfolioSnapshot.date == today)
         .first()
     )
     if row:
@@ -356,7 +371,7 @@ async def record_snapshot_today(db: Session = Depends(get_db), current_user=Depe
         row.hold_pct = s["hold_pct"] or 0
     else:
         row = PortfolioSnapshot(
-            user_id=uid, date=today,
+            user_id=uid, household_id=HOUSEHOLD_ID, date=today,
             market_value=s["market_value"], hold_pnl=s["hold_pnl"], hold_pct=s["hold_pct"] or 0,
         )
         db.add(row)
@@ -378,7 +393,7 @@ def _scan_alerts_once(uid: int, db: Session) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     rows = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None))
         .all()
     )
     inserted = 0
@@ -408,7 +423,7 @@ def _scan_alerts_once(uid: int, db: Session) -> int:
         exists = (
             db.query(StockAlertLog)
             .filter(
-                StockAlertLog.user_id == uid,
+                StockAlertLog.household_id == hid,
                 StockAlertLog.stock_id == w.id,
                 StockAlertLog.kind == kind,
                 StockAlertLog.date == today,
@@ -418,7 +433,7 @@ def _scan_alerts_once(uid: int, db: Session) -> int:
         if exists:
             continue
         db.add(StockAlertLog(
-            user_id=uid, stock_id=w.id,
+            user_id=uid, household_id=HOUSEHOLD_ID, stock_id=w.id,
             code=w.code, market=w.market, name=w.name,
             kind=kind, target_price=target, hit_price=float(price),
             date=today, created_at=datetime.now(),
@@ -437,15 +452,17 @@ async def list_alerts(
     current_user=Depends(get_current_user),
 ):
     """获取目标价预警事件列表 + unread 计数。每次调用都会先扫描最新行情，再返回。"""
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     _scan_alerts_once(uid, db)
 
-    q = db.query(StockAlertLog).filter(StockAlertLog.user_id == uid)
+    q = db.query(StockAlertLog).filter(StockAlertLog.household_id == hid)
     if only_unread:
         q = q.filter(StockAlertLog.read_at.is_(None))
     rows = q.order_by(StockAlertLog.date.desc(), StockAlertLog.id.desc()).limit(limit).all()
     unread = db.query(StockAlertLog).filter(
-        StockAlertLog.user_id == uid, StockAlertLog.read_at.is_(None)
+        StockAlertLog.household_id == hid, StockAlertLog.read_at.is_(None)
     ).count()
     items = [{
         "id": r.id,
@@ -466,10 +483,12 @@ async def list_alerts(
 @router.post("/alerts/{alert_id}/read")
 async def mark_alert_read(alert_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """标记单条预警已读。"""
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     r = (
         db.query(StockAlertLog)
-        .filter(StockAlertLog.id == alert_id, StockAlertLog.user_id == uid)
+        .filter(StockAlertLog.id == alert_id, StockAlertLog.household_id == hid)
         .first()
     )
     if not r:
@@ -483,14 +502,16 @@ async def mark_alert_read(alert_id: int, db: Session = Depends(get_db), current_
 @router.post("/alerts/read-all")
 async def mark_all_alerts_read(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """一键全部已读。"""
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     now = datetime.now()
     db.query(StockAlertLog).filter(
-        StockAlertLog.user_id == uid, StockAlertLog.read_at.is_(None)
+        StockAlertLog.household_id == hid, StockAlertLog.read_at.is_(None)
     ).update({StockAlertLog.read_at: now})
     db.commit()
     unread = db.query(StockAlertLog).filter(
-        StockAlertLog.user_id == uid, StockAlertLog.read_at.is_(None)
+        StockAlertLog.household_id == hid, StockAlertLog.read_at.is_(None)
     ).count()
     return ok({"unread": unread})
 
@@ -517,11 +538,13 @@ async def stock_analysis_list(
     current_user=Depends(get_current_user),
 ):
     """查询单只自选股的每日研判历史（最新在前）。"""
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     rows = (
         db.query(StockDailyAnalysis)
         .filter(
-            StockDailyAnalysis.user_id == uid,
+            StockDailyAnalysis.household_id == hid,
             StockDailyAnalysis.market == market.lower(),
             StockDailyAnalysis.code == code.upper(),
         )
@@ -540,12 +563,14 @@ async def stock_analysis_generate(
     current_user=Depends(get_current_user),
 ):
     """立即为单只自选股生成今日研判（同日幂等覆盖；未配 AI 时降级规则保底）。"""
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
     mk, cd = market.lower(), code.strip().upper()
     w = (
         db.query(StockWatchlist)
         .filter(
-            StockWatchlist.user_id == uid,
+            StockWatchlist.household_id == hid,
             StockWatchlist.market == mk,
             StockWatchlist.code == cd,
             StockWatchlist.deleted_at.is_(None),
@@ -675,10 +700,12 @@ async def stock_news(
         from app.models.feed import FeedArticle
         from app.models.stocks import StockWatchlist
 
+        hid = HOUSEHOLD_ID
+
         uid = current_user["user_id"]
         w = (
             db.query(StockWatchlist)
-            .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None),
+            .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None),
                     StockWatchlist.market == market, StockWatchlist.code == code_upper)
             .first()
         )
@@ -746,6 +773,8 @@ async def stock_insight(
 
     market = market.lower()
     code = code.upper()
+    hid = HOUSEHOLD_ID
+
     uid = current_user["user_id"]
 
     # 行情 + K 线
@@ -792,7 +821,7 @@ async def stock_insight(
 
             w = (
                 db.query(StockWatchlist)
-                .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None),
+                .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None),
                         StockWatchlist.market == market, StockWatchlist.code == code)
                 .first()
             )
@@ -813,7 +842,7 @@ async def stock_insight(
 
             w = (
                 db.query(StockWatchlist)
-                .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None),
+                .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None),
                         StockWatchlist.market == market, StockWatchlist.code == code)
                 .first()
             )

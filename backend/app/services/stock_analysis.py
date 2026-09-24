@@ -128,7 +128,7 @@ def _upsert(db: Session, uid: int, market: str, code: str, name: str, date: str,
         .first()
     )
     if not row:
-        row = StockDailyAnalysis(user_id=uid, code=code.upper(), market=market, date=date)
+        row = StockDailyAnalysis(user_id=uid, household_id=1, code=code.upper(), market=market, date=date)
         db.add(row)
     row.name = name
     row.price = payload.get("price")

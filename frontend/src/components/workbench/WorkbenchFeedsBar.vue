@@ -1,5 +1,5 @@
 <template>
-  <section class="wfb" @click="$router.push('/feeds')">
+  <section class="wfb" @click="$router.push('/finance/news')">
     <span class="wfb-badge">📡 资讯</span>
     <div class="wfb-viewport">
       <ul class="wfb-track" :style="{ transform: `translateY(${-idx * rowH}px)` }">

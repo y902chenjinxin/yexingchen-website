@@ -25,6 +25,9 @@ from app.models.finance import FinanceCategory, FinanceTransaction
 
 router = APIRouter(prefix="/api/finance", tags=["个人记账"])
 
+# v2.16：财经模块家庭共享
+HOUSEHOLD_ID = 1
+
 # 收支分类（含 emoji 供前端展示）；未命中归「其他」
 EXPENSE_CATEGORIES = [
     {"key": "餐饮", "icon": "🍜"}, {"key": "交通", "icon": "🚇"}, {"key": "购物", "icon": "🛍️"},
@@ -50,12 +53,12 @@ def _builtin_pool(ttype: str) -> list:
     return EXPENSE_CATEGORIES if ttype == "expense" else INCOME_CATEGORIES
 
 
-def _custom_rows(db: Session, uid: int, ttype: str) -> list:
-    """该用户某方向的未删自定义分类，按排序值→id 稳定排列。"""
+def _custom_rows(db: Session, ttype: str) -> list:
+    """家庭共享：未删自定义分类，按排序值→id 稳定排列。"""
     return (
         db.query(FinanceCategory)
         .filter(
-            FinanceCategory.user_id == uid,
+            FinanceCategory.household_id == HOUSEHOLD_ID,
             FinanceCategory.type == ttype,
             FinanceCategory.deleted_at.is_(None),
         )
@@ -64,17 +67,17 @@ def _custom_rows(db: Session, uid: int, ttype: str) -> list:
     )
 
 
-def _category_pool(db: Session, uid: int, ttype: str) -> list:
-    """内置 + 自定义合并后的分类列表（内置在前，自定义按用户排序在后）。"""
+def _category_pool(db: Session, ttype: str) -> list:
+    """内置 + 自定义合并后的分类列表（内置在前，自定义按排序在后）。"""
     pool = [dict(c, is_custom=False) for c in _builtin_pool(ttype)]
     pool += [
         {"key": r.name, "icon": r.icon or DEFAULT_CUSTOM_ICON, "is_custom": True, "id": r.id}
-        for r in _custom_rows(db, uid, ttype)
+        for r in _custom_rows(db, ttype)
     ]
     return pool
 
 
-def _category_icon_map(db: Session, uid: int) -> dict:
+def _category_icon_map(db: Session) -> dict:
     """分类名 → 图标。含自定义，供流水序列化与统计复用。
 
     这里**不过滤软删**：分类被删后，历史流水仍引用那个名字，
@@ -83,7 +86,7 @@ def _category_icon_map(db: Session, uid: int) -> dict:
     icons = dict(CATEGORY_ICONS)
     rows = (
         db.query(FinanceCategory)
-        .filter(FinanceCategory.user_id == uid)
+        .filter(FinanceCategory.household_id == HOUSEHOLD_ID)
         .all()
     )
     for r in rows:
@@ -91,14 +94,14 @@ def _category_icon_map(db: Session, uid: int) -> dict:
     return icons
 
 
-def _all_categories(db: Session, uid: int) -> dict:
-    return {"expense": _category_pool(db, uid, "expense"), "income": _category_pool(db, uid, "income")}
+def _all_categories(db: Session) -> dict:
+    return {"expense": _category_pool(db, "expense"), "income": _category_pool(db, "income")}
 
 
-def _allowed_categories(db: Session, uid: int) -> dict:
-    """{"expense": {分类名...}, "income": {...}}：内置 + 该用户自定义，供导入校验。"""
+def _allowed_categories(db: Session) -> dict:
+    """{"expense": {分类名...}, "income": {...}}：内置 + 家庭共享自定义，供导入校验。"""
     return {
-        ttype: {c["key"] for c in _category_pool(db, uid, ttype)}
+        ttype: {c["key"] for c in _category_pool(db, ttype)}
         for ttype in ("expense", "income")
     }
 
@@ -130,8 +133,8 @@ def _valid_categories(ttype: str) -> set:
     return {c["key"] for c in _builtin_pool(ttype)}
 
 
-def _resolve_category(db: Session, uid: int, ttype: str, category: str) -> str:
-    """校验并归一化分类名：命中「内置或该用户自定义」则保留，否则归「其他」。
+def _resolve_category(db: Session, ttype: str, category: str) -> str:
+    """校验并归一化分类名：命中「内置或家庭共享自定义」则保留，否则归「其他」。
 
     自定义分类必须先在此通过，否则前端选了新分类、后端仍会把它写成「其他」。
     """
@@ -143,7 +146,7 @@ def _resolve_category(db: Session, uid: int, ttype: str, category: str) -> str:
     hit = (
         db.query(FinanceCategory)
         .filter(
-            FinanceCategory.user_id == uid,
+            FinanceCategory.household_id == HOUSEHOLD_ID,
             FinanceCategory.type == ttype,
             FinanceCategory.name == name,
             FinanceCategory.deleted_at.is_(None),
@@ -175,7 +178,7 @@ async def list_categories(
     current_user: dict = Depends(get_current_user),
 ):
     """内置分类 + 当前用户的自定义分类（is_custom=True 的可改可删）。"""
-    return ResponseBase(data=_all_categories(db, current_user["user_id"]))
+    return ResponseBase(data=_all_categories(db))
 
 
 class CategoryIn(BaseModel):
@@ -201,7 +204,7 @@ async def create_category(
     dup = (
         db.query(FinanceCategory)
         .filter(
-            FinanceCategory.user_id == uid,
+            FinanceCategory.household_id == HOUSEHOLD_ID,
             FinanceCategory.type == ttype,
             FinanceCategory.name == name,
             FinanceCategory.deleted_at.is_(None),
@@ -213,11 +216,12 @@ async def create_category(
 
     max_sort = (
         db.query(func.max(FinanceCategory.sort_order))
-        .filter(FinanceCategory.user_id == uid, FinanceCategory.type == ttype)
+        .filter(FinanceCategory.household_id == HOUSEHOLD_ID, FinanceCategory.type == ttype)
         .scalar()
     )
     row = FinanceCategory(
         user_id=uid,
+        household_id=HOUSEHOLD_ID,
         type=ttype,
         name=name,
         icon=(payload.icon or DEFAULT_CUSTOM_ICON).strip() or DEFAULT_CUSTOM_ICON,
@@ -241,15 +245,14 @@ async def update_category(
 ):
     """改自定义分类的名字/图标。
 
-    改名会**同步更新该用户的存量流水**——否则老流水会指向一个已不存在的分类名，
+    改名会**同步更新家庭内的存量流水**——否则老流水会指向一个已不存在的分类名，
     在统计里变成孤儿（既不在分类列表里、也不计入任何分类）。
     """
-    uid = current_user["user_id"]
     row = (
         db.query(FinanceCategory)
         .filter(
             FinanceCategory.id == category_id,
-            FinanceCategory.user_id == uid,
+            FinanceCategory.household_id == HOUSEHOLD_ID,
             FinanceCategory.deleted_at.is_(None),
         )
         .first()
@@ -266,7 +269,7 @@ async def update_category(
         dup = (
             db.query(FinanceCategory)
             .filter(
-                FinanceCategory.user_id == uid,
+                FinanceCategory.household_id == HOUSEHOLD_ID,
                 FinanceCategory.type == row.type,
                 FinanceCategory.name == new_name,
                 FinanceCategory.deleted_at.is_(None),
@@ -278,7 +281,7 @@ async def update_category(
             raise_error(ErrCode.INVALID_PARAM, f"已存在同名分类「{new_name}」")
         old_name = row.name
         db.query(FinanceTransaction).filter(
-            FinanceTransaction.user_id == uid,
+            FinanceTransaction.household_id == HOUSEHOLD_ID,
             FinanceTransaction.category == old_name,
         ).update({"category": new_name}, synchronize_session=False)
         row.name = new_name
@@ -300,12 +303,11 @@ async def delete_category(
     current_user: dict = Depends(get_current_user),
 ):
     """软删自定义分类。存量流水保留原名（不迁移成「其他」），只是下拉里不再出现。"""
-    uid = current_user["user_id"]
     row = (
         db.query(FinanceCategory)
         .filter(
             FinanceCategory.id == category_id,
-            FinanceCategory.user_id == uid,
+            FinanceCategory.household_id == HOUSEHOLD_ID,
             FinanceCategory.deleted_at.is_(None),
         )
         .first()
@@ -315,7 +317,7 @@ async def delete_category(
     used = (
         db.query(FinanceTransaction)
         .filter(
-            FinanceTransaction.user_id == uid,
+            FinanceTransaction.household_id == HOUSEHOLD_ID,
             FinanceTransaction.category == row.name,
             FinanceTransaction.deleted_at.is_(None),
         )
@@ -340,7 +342,7 @@ async def summary(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    uid = current_user["user_id"]
+    # v2.16：财经模块家庭共享
     now = datetime.now()
     dim = dim if dim in ("day", "month", "year") else "month"
 
@@ -375,7 +377,7 @@ async def summary(
         grain = "day"
 
     base = db.query(FinanceTransaction).filter(
-        FinanceTransaction.user_id == uid,
+        FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     )
 
@@ -393,13 +395,13 @@ async def summary(
 
     # 最早记账年份（前端用于下拉范围覆盖所有历史数据）
     first = db.query(func.min(FinanceTransaction.occurred_at)).filter(
-        FinanceTransaction.user_id == uid,
+        FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     ).scalar()
     min_year = first.year if first else now.year
 
     # 窗口内支出分类占比（自定义分类的图标由 _category_icon_map 提供）
-    icon_map = _category_icon_map(db, uid)
+    icon_map = _category_icon_map(db)
     cat_agg = defaultdict(int)
     for r in rows:
         if r.type == "expense":
@@ -469,7 +471,7 @@ async def list_transactions(
     current_user: dict = Depends(get_current_user),
 ):
     query = db.query(FinanceTransaction).filter(
-        FinanceTransaction.user_id == current_user["user_id"],
+        FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     )
     if type in ("income", "expense"):
@@ -491,7 +493,7 @@ async def list_transactions(
         .offset((page - 1) * size).limit(size).all()
     )
     return ResponseBase(data={
-        "list": [_to_dict(r, _category_icon_map(db, current_user["user_id"])) for r in rows],
+        "list": [_to_dict(r, _category_icon_map(db)) for r in rows],
         "total": total,
         "page": page,
         "size": size,
@@ -506,12 +508,12 @@ async def get_transaction(
 ):
     row = db.query(FinanceTransaction).filter(
         FinanceTransaction.id == t_id,
-        FinanceTransaction.user_id == current_user["user_id"],
+        FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     ).first()
     if not row:
         raise_error(ErrCode.NOT_FOUND)
-    return ResponseBase(data=_to_dict(row, _category_icon_map(db, current_user["user_id"])))
+    return ResponseBase(data=_to_dict(row, _category_icon_map(db)))
 
 
 @router.post("/transactions", response_model=ResponseBase)
@@ -525,16 +527,17 @@ async def create_transaction(
     uid = current_user["user_id"]
     row = FinanceTransaction(
         user_id=uid,
+        household_id=HOUSEHOLD_ID,
         type=ttype,
         amount_cents=abs(payload.amount_cents()),
-        category=_resolve_category(db, uid, ttype, payload.category),
+        category=_resolve_category(db, ttype, payload.category),
         note=(payload.note or "")[:255],
         occurred_at=occurred,
     )
     db.add(row)
     db.commit()
     db.refresh(row)
-    return ResponseBase(data=_to_dict(row, _category_icon_map(db, uid)))
+    return ResponseBase(data=_to_dict(row, _category_icon_map(db)))
 
 
 @router.put("/transactions/{t_id}", response_model=ResponseBase)
@@ -546,22 +549,21 @@ async def update_transaction(
 ):
     row = db.query(FinanceTransaction).filter(
         FinanceTransaction.id == t_id,
-        FinanceTransaction.user_id == current_user["user_id"],
+        FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     ).first()
     if not row:
         raise_error(ErrCode.NOT_FOUND)
     ttype = payload.type if payload.type in ("income", "expense") else "expense"
-    uid = current_user["user_id"]
     row.type = ttype
     row.amount_cents = abs(payload.amount_cents())
-    row.category = _resolve_category(db, uid, ttype, payload.category)
+    row.category = _resolve_category(db, ttype, payload.category)
     row.note = (payload.note or "")[:255]
     occurred = _parse_dt(payload.occurred_at) or row.occurred_at
     row.occurred_at = occurred
     db.commit()
     db.refresh(row)
-    return ResponseBase(data=_to_dict(row, _category_icon_map(db, uid)))
+    return ResponseBase(data=_to_dict(row, _category_icon_map(db)))
 
 
 @router.delete("/transactions/{t_id}", response_model=ResponseBase)
@@ -572,7 +574,7 @@ async def delete_transaction(
 ):
     row = db.query(FinanceTransaction).filter(
         FinanceTransaction.id == t_id,
-        FinanceTransaction.user_id == current_user["user_id"],
+        FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     ).first()
     if not row:
@@ -593,7 +595,7 @@ async def export_csv(
 ):
     """导出流水为 CSV（UTF-8 with BOM，可直接用 Excel 打开）。"""
     query = db.query(FinanceTransaction).filter(
-        FinanceTransaction.user_id == current_user["user_id"],
+        FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     )
     s_dt, e_dt = _parse_dt(start), _parse_dt(end)
@@ -862,6 +864,7 @@ def _insert_transactions(db: Session, uid: int, rows: list[dict]):
     for r in rows:
         db.add(FinanceTransaction(
             user_id=uid,
+            household_id=HOUSEHOLD_ID,
             type=r["type"],
             amount_cents=r["amount_cents"],
             category=r["category"],
@@ -956,7 +959,7 @@ def _analyze_table_text(db: Session, uid: int, text: str) -> dict:
     provider, is_fake = (FakeProvider(), True) if not cfg else (build_http_provider_from_config(cfg), False)
 
     rows, skipped, errors, summary = [], 0, [], ""
-    allowed = _allowed_categories(db, uid)
+    allowed = _allowed_categories(db)
     if not is_fake:
         try:
             ai_text = _trim_to_header(text)  # 去掉表头上方说明/元信息，减少 AI 干扰
@@ -1000,7 +1003,7 @@ async def import_confirm(
 ):
     """确认导入 AI 识别（或本地解析）出的结构化流水，直接落库。"""
     uid = current_user["user_id"]
-    rows = _normalize_rows(payload.rows, _allowed_categories(db, uid))
+    rows = _normalize_rows(payload.rows, _allowed_categories(db))
     imported = _insert_transactions(db, uid, rows)
     return ResponseBase(data={
         "imported": imported,
@@ -1020,6 +1023,6 @@ async def import_csv(
     每行字段顺序与表头对应，缺省取本站点导出顺序。金额支持正负号推断收支。
     """
     uid = current_user["user_id"]
-    rows, skipped, errors = _local_parse_csv(payload.csv, _allowed_categories(db, uid))
+    rows, skipped, errors = _local_parse_csv(payload.csv, _allowed_categories(db))
     imported = _insert_transactions(db, uid, rows)
     return ResponseBase(data={"imported": imported, "skipped": skipped, "errors": errors[:20]})

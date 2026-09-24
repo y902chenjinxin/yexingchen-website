@@ -22,6 +22,9 @@ from app.utils.file_utils import save_upload_file
 
 router = APIRouter(prefix="/api/travels", tags=["旅游足迹"])
 
+# v2.16：财经模块家庭共享
+HOUSEHOLD_ID = 1
+
 # 可选鉴权：无/失效 token 也放行（公开读），返回 None
 _security_opt = HTTPBearer(auto_error=False)
 _IMAGE_EXT = {"jpg", "jpeg", "png", "webp", "gif"}
@@ -131,10 +134,9 @@ def _travel_brief(t: Travel, cities: List[TravelCity]) -> dict:
 
 
 def _list_data(db: Session, user) -> dict:
-    q = db.query(Travel)
-    if user:
-        q = q.filter((Travel.user_id == user["user_id"]) | (Travel.is_public == 1))
-    else:
+    # v2.16：家庭共享，所有 household 内的行程对登录用户可见；未登录仅看公开
+    q = db.query(Travel).filter(Travel.household_id == HOUSEHOLD_ID)
+    if not user:
         q = q.filter(Travel.is_public == 1)
     travels = q.order_by(Travel.start_date.desc(), Travel.id.desc()).all()
     crows = {"cities": []}
@@ -184,10 +186,10 @@ async def get_travel(
     db: Session = Depends(get_db),
     user: dict = Depends(optional_user),
 ):
-    t = db.query(Travel).filter(Travel.id == travel_id).first()
+    t = db.query(Travel).filter(Travel.id == travel_id, Travel.household_id == HOUSEHOLD_ID).first()
     if not t:
         raise HTTPException(status_code=404, detail="行程不存在")
-    if t.is_public != 1 and (not user or user["user_id"] != t.user_id):
+    if t.is_public != 1 and not user:
         raise HTTPException(status_code=404, detail="行程不存在")
     cities = db.query(TravelCity).filter(TravelCity.travel_id == t.id).order_by(TravelCity.seq).all()
     photos = []
@@ -213,6 +215,7 @@ async def create_travel(
     photos = json.dumps(req.photos, ensure_ascii=False)
     t = Travel(
         user_id=current_user["user_id"],
+        household_id=HOUSEHOLD_ID,
         title=req.title,
         summary=req.summary or "",
         markdown=req.markdown or "",
@@ -259,8 +262,8 @@ async def update_travel(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    t = db.query(Travel).filter(Travel.id == travel_id).first()
-    if not t or t.user_id != current_user["user_id"]:
+    t = db.query(Travel).filter(Travel.id == travel_id, Travel.household_id == HOUSEHOLD_ID).first()
+    if not t:
         raise HTTPException(status_code=404, detail="行程不存在")
     if req.title is not None:
         t.title = req.title
@@ -298,8 +301,8 @@ async def delete_travel(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    t = db.query(Travel).filter(Travel.id == travel_id).first()
-    if not t or t.user_id != current_user["user_id"]:
+    t = db.query(Travel).filter(Travel.id == travel_id, Travel.household_id == HOUSEHOLD_ID).first()
+    if not t:
         raise HTTPException(status_code=404, detail="行程不存在")
     db.query(TravelCity).filter(TravelCity.travel_id == t.id).delete()
     db.delete(t)

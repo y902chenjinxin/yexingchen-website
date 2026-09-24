@@ -25,6 +25,8 @@ class FinanceTransaction(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # v2.16：家庭共账（user_id 保留作为录入人溯源）
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     type = Column(String(16), nullable=False, default="expense")  # income / expense
     amount_cents = Column(Integer, nullable=False, default=0)  # 金额（分），收入为正
     category = Column(String(32), nullable=False, default="其他")
@@ -35,7 +37,7 @@ class FinanceTransaction(Base):
     deleted_at = Column(DateTime, nullable=True, index=True)
 
     __table_args__ = (
-        Index("ix_xuanhuang_finance_user_occurred", "user_id", "occurred_at"),
+        Index("ix_xuanhuang_finance_household_occurred", "household_id", "occurred_at"),
     )
 
 
@@ -54,6 +56,8 @@ class FinanceCategory(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # v2.16：家庭共账分类也共享
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     type = Column(String(16), nullable=False, default="expense")  # income / expense
     name = Column(String(32), nullable=False)
     icon = Column(String(16), nullable=False, default="🧾")
@@ -63,5 +67,5 @@ class FinanceCategory(Base):
     deleted_at = Column(DateTime, nullable=True, index=True)
 
     __table_args__ = (
-        Index("ix_finance_cat_user_type", "user_id", "type", "deleted_at"),
+        Index("ix_finance_cat_household_type", "household_id", "type", "deleted_at"),
     )

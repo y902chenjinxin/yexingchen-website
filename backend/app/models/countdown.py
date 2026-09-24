@@ -18,6 +18,8 @@ class Countdown(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # v2.16：倒数日家庭共享（保留 user_id 作为录入人溯源）
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
 
     title = Column(String(64), nullable=False, comment="事件名，例如「结婚已经」")
     target_date = Column(Date, nullable=False, comment="目标日期（公历）")

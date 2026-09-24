@@ -94,8 +94,8 @@ const COMMANDS = [
 
   { group: '分组', name: '数据' },
   { key: 'g.travels', name: '足迹', desc: '旅行地图 / 城市', icon: '✈', keywords: 'travel map', action: () => router.push('/travels') },
-  { key: 'g.stocks', name: '自选股', icon: '↑', keywords: 'stock', action: () => router.push('/stocks') },
-  { key: 'g.feeds', name: '资讯流', icon: '☷', keywords: 'rss feed', action: () => router.push('/feeds') },
+  { key: 'g.stocks', name: '自选股', icon: '↑', keywords: 'stock', action: () => router.push('/finance/market') },
+  { key: 'g.feeds', name: '资讯流', icon: '☷', keywords: 'rss feed', action: () => router.push('/finance/news') },
   { key: 'g.countdowns', name: '倒计时', icon: '◷', keywords: 'countdown', action: () => router.push('/tool/countdown') },
   { key: 'g.datahub', name: '数据中心', icon: '◉', keywords: 'data hub', action: () => router.push('/datahub') },
 

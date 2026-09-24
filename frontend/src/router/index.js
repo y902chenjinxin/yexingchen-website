@@ -134,31 +134,45 @@ const routes = [
     component: () => import('@/views/CountdownDetailView.vue'),
     meta: { requiresAuth: true, hideGlobalTopBar: true }
   },
-  // 个人记账（真实页面）
+  // v2.16 财经模块：综合 / 行情 / 资讯 / 记账
   {
     path: '/finance',
-    name: 'Finance',
-    component: () => import('@/views/FinanceView.vue'),
+    redirect: '/finance/overview'
+  },
+  {
+    path: '/finance/overview',
+    name: 'FinanceOverview',
+    component: () => import('@/views/FinanceOverviewView.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/feeds',
-    name: 'Feeds',
-    component: () => import('@/views/FeedsView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/stocks',
-    name: 'Stocks',
+    path: '/finance/market',
+    name: 'FinanceMarket',
     component: () => import('@/views/StocksView.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/stocks/:code',
-    name: 'StockDetail',
+    path: '/finance/market/stock/:code',
+    name: 'FinanceStockDetail',
     component: () => import('@/views/StockDetailView.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/finance/news',
+    name: 'FinanceNews',
+    component: () => import('@/views/FeedsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/finance/book',
+    name: 'FinanceBook',
+    component: () => import('@/views/FinanceView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 旧路由重定向到新财经路径
+  { path: '/stocks', redirect: '/finance/market' },
+  { path: '/stocks/:code', redirect: '/finance/market/stock/:code' },
+  { path: '/feeds', redirect: '/finance/news' },
   {
     path: '/history',
     name: 'History',

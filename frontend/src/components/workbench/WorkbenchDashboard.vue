@@ -31,7 +31,7 @@
       </a>
 
       <!-- 行情卡 -->
-      <a class="wd-card" @click.prevent="$router.push('/stocks')">
+      <a class="wd-card" @click.prevent="$router.push('/finance/market')">
         <div class="wd-card-head">
           <span class="wd-card-name"><span class="wd-badge b-quote" aria-hidden="true">📈</span><span>行情</span></span>
           <span class="wd-more">查看全部 <i>→</i></span>

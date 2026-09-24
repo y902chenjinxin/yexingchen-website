@@ -369,7 +369,7 @@ async function recordToday() {
 }
 
 function goDetail(it) {
-  router.push({ path: `/stocks/${it.code}`, query: { market: it.market } })
+  router.push({ path: `/finance/market/stock/${it.code}`, query: { market: it.market } })
 }
 function goStocksAlerts() {
   // 当前页就是 StocksView：滚动到目标价预警 KPI 区并触发一次刷新；可考虑后续弹浮层

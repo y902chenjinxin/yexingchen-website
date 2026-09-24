@@ -25,6 +25,8 @@ class FeedSource(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # v2.16：财经模块家庭共享
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     title = Column(String(255), nullable=False, default="")
     feed_url = Column(String(2048), nullable=False)
     site_url = Column(String(2048), nullable=True, default="")
@@ -38,7 +40,7 @@ class FeedSource(Base):
     deleted_at = Column(DateTime, nullable=True, index=True)
 
     __table_args__ = (
-        Index("ix_feed_source_user", "user_id", "deleted_at"),
+        Index("ix_feed_source_household", "household_id", "deleted_at"),
     )
 
 
@@ -47,6 +49,8 @@ class FeedArticle(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # v2.16：财经模块家庭共享
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     source_id = Column(
         Integer,
         ForeignKey("xuanhuang_feed_sources.id", ondelete="CASCADE"),
@@ -73,6 +77,6 @@ class FeedArticle(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "source_id", "guid", name="uq_feed_article_guid"),
-        Index("ix_feed_article_user_pub", "user_id", "published_at"),
+        UniqueConstraint("household_id", "source_id", "guid", name="uq_feed_article_household_guid"),
+        Index("ix_feed_article_household_pub", "household_id", "published_at"),
     )

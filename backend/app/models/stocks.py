@@ -27,6 +27,8 @@ class StockWatchlist(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # v2.16：财经模块共用 household_id（自选股家庭共享）；保留 user_id 作为录入人溯源
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     code = Column(String(20), nullable=False)
     market = Column(String(10), nullable=False, default="sh")  # sh / sz / hk / us
     name = Column(String(100), nullable=False, default="")
@@ -39,8 +41,8 @@ class StockWatchlist(Base):
     deleted_at = Column(DateTime, nullable=True, index=True)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "code", "market", name="uq_stock_watch_user_code_market"),
-        Index("ix_stock_watch_user_deleted", "user_id", "deleted_at"),
+        UniqueConstraint("household_id", "code", "market", name="uq_stock_watch_household_code_market"),
+        Index("ix_stock_watch_household_deleted", "household_id", "deleted_at"),
     )
 
 
@@ -51,6 +53,7 @@ class PortfolioSnapshot(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     date = Column(String(10), nullable=False)  # YYYY-MM-DD
     market_value = Column(Numeric(14, 2), nullable=False, default=0)
     hold_pnl = Column(Numeric(14, 2), nullable=False, default=0)
@@ -58,8 +61,8 @@ class PortfolioSnapshot(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.now)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "date", name="uq_portfolio_snapshot_user_date"),
-        Index("ix_portfolio_user_date", "user_id", "date"),
+        UniqueConstraint("household_id", "date", name="uq_portfolio_snapshot_household_date"),
+        Index("ix_portfolio_household_date", "household_id", "date"),
     )
 
 
@@ -74,6 +77,7 @@ class StockDailyAnalysis(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     market = Column(String(10), nullable=False, default="sh")  # sh/sz/hk/us
     code = Column(String(20), nullable=False)
     name = Column(String(100), nullable=False, default="")
@@ -87,8 +91,8 @@ class StockDailyAnalysis(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.now)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "code", "market", "date", name="uq_stock_daily_analysis_user_stock_date"),
-        Index("ix_stock_daily_analysis_user_stock", "user_id", "code", "market"),
+        UniqueConstraint("household_id", "code", "market", "date", name="uq_stock_daily_analysis_household_stock_date"),
+        Index("ix_stock_daily_analysis_household_stock", "household_id", "code", "market"),
     )
 
 
@@ -104,6 +108,7 @@ class StockAlertLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     stock_id = Column(Integer, ForeignKey("xuanhuang_stock_watchlist.id"), nullable=False, index=True)
     code = Column(String(20), nullable=False)
     market = Column(String(10), nullable=False, default="sh")
@@ -116,6 +121,6 @@ class StockAlertLog(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.now)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "stock_id", "kind", "date", name="uq_alert_user_stock_kind_date"),
-        Index("ix_alert_user_read", "user_id", "read_at"),
+        UniqueConstraint("household_id", "stock_id", "kind", "date", name="uq_alert_household_stock_kind_date"),
+        Index("ix_alert_household_read", "household_id", "read_at"),
     )

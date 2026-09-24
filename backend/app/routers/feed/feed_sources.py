@@ -22,16 +22,18 @@ from app.routers.feed._fetch import _fetch_source_articles, _upsert_articles
 
 router = APIRouter(prefix="/api/feeds", tags=["资讯推送-源"])
 
+# v2.16：财经模块家庭共享（与 _common.HOUSEHOLD_ID 同源）
+HOUSEHOLD_ID = 1
+
 
 @router.get("/sources")
 def list_sources(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    uid = current_user["user_id"]
     rows = (
         db.query(FeedSource)
-        .filter(FeedSource.user_id == uid, FeedSource.deleted_at.is_(None))
+        .filter(FeedSource.household_id == HOUSEHOLD_ID, FeedSource.deleted_at.is_(None))
         .order_by(FeedSource.id.desc())
         .all()
     )
@@ -51,6 +53,7 @@ def create_source(
 
     source = FeedSource(
         user_id=uid,
+        household_id=HOUSEHOLD_ID,
         title=(payload.title or "").strip()[:255],
         feed_url=url[:MAX_FEED_URL_LEN],
         category=(payload.category or DEFAULT_CATEGORY).strip()[:32] or DEFAULT_CATEGORY,
@@ -132,11 +135,10 @@ def fetch_all(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """刷新当前用户所有订阅源。"""
-    uid = current_user["user_id"]
+    """刷新当前家庭所有订阅源（v2.16：家庭共享，全员可见）。"""
     rows = (
         db.query(FeedSource)
-        .filter(FeedSource.user_id == uid, FeedSource.deleted_at.is_(None))
+        .filter(FeedSource.household_id == HOUSEHOLD_ID, FeedSource.deleted_at.is_(None))
         .all()
     )
     results = []

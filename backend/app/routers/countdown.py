@@ -21,6 +21,9 @@ from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api", tags=["工具岛-倒计时"])
 
+# v2.16：财经模块家庭共享
+HOUSEHOLD_ID = 1
+
 # ---- 上传：通用图片（jpg/png/webp/gif）----
 # 注意：save_upload_file 的 allowed_file 取的是「不带点」的扩展名（"jpg"），
 # 因此这里的集合必须也不带点，否则任何文件都校验失败 → 400「不支持的文件格式」
@@ -193,8 +196,8 @@ def _next_occurrence(c: Countdown, today: date) -> Optional[str]:
 
 
 def _get_or_404(db: Session, uid: int, cid: int) -> Countdown:
-    c = db.query(Countdown).filter(Countdown.id == cid).first()
-    if not c or c.user_id != uid:
+    c = db.query(Countdown).filter(Countdown.id == cid, Countdown.household_id == HOUSEHOLD_ID).first()
+    if not c:
         raise_error(ErrCode.NOT_FOUND, "事件不存在或无权限")
     return c
 
@@ -207,9 +210,8 @@ def list_countdowns(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """当前用户全部倒计时。默认不含归档。"""
-    uid = current_user["user_id"]
-    q = db.query(Countdown).filter(Countdown.user_id == uid)
+    """家庭共享全部倒计时。默认不含归档。"""
+    q = db.query(Countdown).filter(Countdown.household_id == HOUSEHOLD_ID)
     if not include_archived:
         q = q.filter(Countdown.is_archived == False)  # noqa: E712
     rows = q.order_by(Countdown.pinned.desc(), Countdown.sort_order, Countdown.id).all()
@@ -222,11 +224,10 @@ def list_home_countdowns(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """玉简卡片用的：in_home=true 且未归档，按 pinned desc + sort_order 排序。"""
-    uid = current_user["user_id"]
+    """玉简卡片用的：家庭共享 in_home=true 且未归档，按 pinned desc + sort_order 排序。"""
     rows = (
         db.query(Countdown)
-        .filter(Countdown.user_id == uid, Countdown.in_home == True, Countdown.is_archived == False)  # noqa: E712
+        .filter(Countdown.household_id == HOUSEHOLD_ID, Countdown.in_home == True, Countdown.is_archived == False)  # noqa: E712
         .order_by(Countdown.pinned.desc(), Countdown.sort_order, Countdown.id)
         .all()
     )
@@ -245,6 +246,7 @@ def create_countdown(
         raise_error(ErrCode.NOT_FOUND, "用户不存在")
     c = Countdown(
         user_id=uid,
+        household_id=HOUSEHOLD_ID,
         title=payload.title.strip(),
         # 农历模式 target_date 为 None，DB 的 date 列非空，用 today 占位（实际日期由 lunar_month/day 驱动）
         target_date=payload.target_date or date.today(),

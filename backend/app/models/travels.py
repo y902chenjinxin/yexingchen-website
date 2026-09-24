@@ -27,6 +27,8 @@ class Travel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # v2.16：足迹家庭共享
+    household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
     title = Column(String(120), nullable=False, default="")
     summary = Column(String(300), nullable=False, default="")  # 时间线/卡片一句话摘要
     markdown = Column(Text, nullable=False, default="")  # Markdown 游记正文

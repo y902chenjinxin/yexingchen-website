@@ -10,7 +10,7 @@
       <!-- 返回 -->
       <div class="sd-topbar">
         <BackButton />
-        <span class="sd-crumb" @click="$router.push('/stocks')">行情</span>
+        <span class="sd-crumb" @click="$router.push('/finance/market')">行情</span>
       </div>
 
       <!-- 报价头 -->

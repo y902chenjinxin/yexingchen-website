@@ -89,12 +89,16 @@ def _article_to_dict(a: FeedArticle, *, full: bool = False) -> dict:
 
 
 # ---------- 守卫 ----------
+# v2.16：财经模块家庭共享，uid 仅用于接口调用合法性，查询改为按 household
+HOUSEHOLD_ID = 1
+
+
 def _guarded_source(db: Session, source_id: int, uid: int) -> FeedSource:
     s = (
         db.query(FeedSource)
         .filter(
             FeedSource.id == source_id,
-            FeedSource.user_id == uid,
+            FeedSource.household_id == HOUSEHOLD_ID,
             FeedSource.deleted_at.is_(None),
         )
         .first()
@@ -109,7 +113,7 @@ def _guarded_article(db: Session, article_id: int, uid: int) -> FeedArticle:
         db.query(FeedArticle)
         .filter(
             FeedArticle.id == article_id,
-            FeedArticle.user_id == uid,
+            FeedArticle.household_id == HOUSEHOLD_ID,
         )
         .first()
     )

@@ -23,6 +23,9 @@ from app.routers.feed._common import (
 
 router = APIRouter(prefix="/api/feeds", tags=["资讯推送-文章"])
 
+# v2.16：财经模块家庭共享
+HOUSEHOLD_ID = 1
+
 
 class ToNoteIn(BaseModel):
     with_summary: bool = True
@@ -40,14 +43,14 @@ def list_articles(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    uid = current_user["user_id"]
-    query = db.query(FeedArticle).filter(FeedArticle.user_id == uid)
+    # v2.16：财经模块家庭共享（household-scoped）
+    query = db.query(FeedArticle).filter(FeedArticle.household_id == HOUSEHOLD_ID)
     if source_id > 0:
         query = query.filter(FeedArticle.source_id == source_id)
     if category:
         ids = [
             sid for (sid,) in db.query(FeedSource.id).filter(
-                FeedSource.user_id == uid,
+                FeedSource.household_id == HOUSEHOLD_ID,
                 FeedSource.deleted_at.is_(None),
                 FeedSource.category == category,
             ).all()
@@ -72,7 +75,7 @@ def list_articles(
     source_map = {
         s.id: s
         for s in db.query(FeedSource).filter(
-            FeedSource.user_id == uid, FeedSource.deleted_at.is_(None)
+            FeedSource.household_id == HOUSEHOLD_ID, FeedSource.deleted_at.is_(None)
         ).all()
     }
     items = []
@@ -91,8 +94,7 @@ def get_article(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    uid = current_user["user_id"]
-    a = _guarded_article(db, article_id, uid)
+    a = _guarded_article(db, article_id, current_user["user_id"])
     if not a.read:
         a.read = 1
         db.commit()
@@ -100,7 +102,7 @@ def get_article(
     d = _article_to_dict(a, full=True)
     src = (
         db.query(FeedSource).filter(
-            FeedSource.id == a.source_id, FeedSource.user_id == uid
+            FeedSource.id == a.source_id, FeedSource.household_id == HOUSEHOLD_ID
         ).first()
     )
     d["source_title"] = src.title if src else ""

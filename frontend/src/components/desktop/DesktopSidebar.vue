@@ -86,6 +86,7 @@ import {
   MapLocation,
   Money,
   TrendCharts,
+  DataAnalysis,
   Notebook,
   List,
   Calendar,
@@ -159,9 +160,15 @@ const groups = computed(() => {
       items: [
         { path: '/tool/countdown', title: '时光痕迹', icon: Calendar },
         { path: '/travels', title: '足迹地图', icon: MapLocation },
-        { path: '/finance', title: '记账', icon: Money },
-        { path: '/stocks', title: '股票', icon: TrendCharts },
-        { path: '/feeds', title: '资讯', icon: Connection },
+      ],
+    },
+    {
+      label: '财经',  // v2.16 财经模块：综合 / 行情 / 资讯 / 记账
+      items: [
+        { path: '/finance/overview', title: '综合', icon: DataAnalysis },
+        { path: '/finance/market', title: '行情', icon: TrendCharts },
+        { path: '/finance/news', title: '资讯', icon: Connection },
+        { path: '/finance/book', title: '记账', icon: Money },
       ],
     },
     {
@@ -200,6 +207,10 @@ function isActive(path) {
   if (path === '/tool/countdown') return route.path.startsWith('/tool/countdown')
   if (path === '/tool') return route.path === '/tool' || (route.path.startsWith('/tool/') && !route.path.startsWith('/tool/countdown'))
   if (path === '/admin/users') return route.path === '/admin' || route.path === '/admin/users'
+  // v2.16 财经分组：四个子页互不抢占高亮（精确匹配）
+  if (path === '/finance/overview' || path === '/finance/market' || path === '/finance/news' || path === '/finance/book') {
+    return route.path === path
+  }
   return route.path === path || route.path.startsWith(path + '/')
 }
 
