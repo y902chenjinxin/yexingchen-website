@@ -104,7 +104,7 @@ class UserCreateRequest(BaseModel):
     password: str
     role: Optional[str] = "normal"
     status: Optional[str] = "approved"
-    allowed_islands: Optional[str] = "music,novel,video,diary,tools"
+    allowed_islands: Optional[str] = "music,novel,video,diary,tools,life"
     strict_validation: bool = False
 
 

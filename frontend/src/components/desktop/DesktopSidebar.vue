@@ -80,6 +80,7 @@ import {
   Headset,
   Reading,
   VideoPlay,
+  Apple,  // v2.15 生活模块（餐饮 emoji 替代：Apple 是苹果 logo 图标，简洁）
   EditPen,
   Bell,
   MapLocation,
@@ -147,6 +148,7 @@ const groups = computed(() => {
         { path: '/music', title: '音乐', icon: Headset },
         { path: '/novel', title: '小说', icon: Reading },
         { path: '/video', title: '视频', icon: VideoPlay },
+        { path: '/life', title: '生活', icon: Apple },  // v2.15 体重 / 三餐家人共享
         { path: '/log', title: '日志', icon: EditPen },
         { path: '/tool', title: '工具', icon: Bell },
         { path: '/notes', title: '笔记云台', icon: Notebook },

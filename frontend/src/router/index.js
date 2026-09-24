@@ -190,6 +190,13 @@ const routes = [
     component: () => import('@/views/ContactsView.vue'),
     meta: { requiresAuth: true }
   },
+  // v2.15 生活模块：家人共享的体重 / 三餐记录
+  {
+    path: '/life',
+    name: 'Life',
+    component: () => import('@/views/LifeView.vue'),
+    meta: { requiresAuth: true }
+  },
   {
     path: '/tasks',
     name: 'Tasks',

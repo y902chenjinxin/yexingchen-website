@@ -18,7 +18,7 @@ class User(Base):
     is_super_admin = Column(Integer, default=0)
     is_test_user = Column(Integer, default=0)
     status = Column(String(20), nullable=False, default="pending")
-    allowed_islands = Column(String(500), default="music,novel,video,diary,tools")
+    allowed_islands = Column(String(500), default="music,novel,video,diary,tools,life")
     last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
