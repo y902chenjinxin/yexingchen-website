@@ -130,37 +130,79 @@
         </template>
       </el-dropdown>
 
-      <!-- 目标价预警：右侧浮动按钮 + 角标 + 弹窗列表（v2.41 新增） -->
+      <!-- 提醒中心：目标价预警 + 待办提醒（v2.14.3 合并） -->
       <el-dropdown trigger="click" placement="bottom-end" :show-arrow="false" @visible-change="onAlertPanelToggle">
-        <button class="tb-icon-btn tb-alert-btn" :title="alertTitle" aria-label="目标价预警">
+        <button class="tb-icon-btn tb-alert-btn" :title="alertTitle" aria-label="提醒中心">
           <el-icon><Bell /></el-icon>
-          <span v-if="alertUnread > 0" class="tb-alert-dot">{{ alertUnread > 99 ? '99+' : alertUnread }}</span>
+          <span v-if="totalUnread > 0" class="tb-alert-dot">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
         </button>
         <template #dropdown>
           <div class="tb-alert-panel" @click.stop>
-            <div class="tb-panel-title">
-              <span>目标价预警</span>
-              <button v-if="alertUnread > 0" class="tb-alert-clear" @click="markAllRead">全部已读</button>
+            <!-- 段 1：待办提醒 -->
+            <div class="tb-alert-section">
+              <div class="tb-panel-title">
+                <span>
+                  <el-icon><List /></el-icon>
+                  待办提醒
+                  <span v-if="taskItems.length" class="tb-section-count">{{ taskItems.length }}</span>
+                </span>
+                <router-link to="/tasks" class="tb-alert-link" @click.stop>查看全部 →</router-link>
+              </div>
+              <div v-if="!taskItems.length" class="tb-alert-empty">
+                暂无待办。<router-link to="/tasks" class="tb-alert-link" @click.stop>去新建 →</router-link>
+              </div>
+              <div
+                v-for="t in taskItems.slice(0, 5)"
+                :key="'task-' + t.id"
+                class="tb-alert-item kind-task"
+                :class="['pri-' + (t.priority || 'medium'), { overdue: isOverdue(t.due_date) }]"
+                @click="onTaskItemClick(t)"
+              >
+                <span class="tb-alert-kind" :class="'pri-' + (t.priority || 'medium')">
+                  {{ priorityLabel(t.priority) }}
+                </span>
+                <span class="tb-alert-name">{{ t.title }}</span>
+                <span class="tb-alert-meta">
+                  <template v-if="isOverdue(t.due_date)">已逾期 {{ daysFromNow(t.due_date) }}</template>
+                  <template v-else-if="t.due_date">还剩 {{ daysFromNow(t.due_date) }} 天到期</template>
+                  <template v-else>无截止</template>
+                </span>
+              </div>
             </div>
-            <div v-if="!alertItems.length" class="tb-alert-empty">
-              暂无预警。在「行情」→ 点自选股的「✎」即可设置目标价。
-            </div>
-            <div
-              v-for="a in alertItems"
-              :key="a.id"
-              class="tb-alert-item"
-              :class="['kind-' + a.kind, { unread: !a.read }]"
-              @click="onAlertItemClick(a)"
-            >
-              <span class="tb-alert-kind" :class="'kind-' + a.kind">
-                {{ a.kind === 'up' ? '涨破' : '跌破' }}
-              </span>
-              <span class="tb-alert-name">{{ a.name }} <i>{{ a.code }}</i></span>
-              <span class="tb-alert-meta">
-                目标 ¥{{ fmtPrice(a.target_price) }} · 现价 ¥{{ fmtPrice(a.hit_price) }}
-              </span>
-              <span class="tb-alert-date">{{ shortDate(a.date) }}</span>
-              <span v-if="!a.read" class="tb-alert-newdot" aria-label="未读"></span>
+
+            <!-- 分隔线 -->
+            <div v-if="alertItems.length && taskItems.length" class="tb-alert-divider"></div>
+
+            <!-- 段 2：目标价预警 -->
+            <div class="tb-alert-section">
+              <div class="tb-panel-title">
+                <span>
+                  <el-icon><TrendCharts /></el-icon>
+                  目标价预警
+                  <span v-if="alertUnread > 0" class="tb-section-count tb-section-count--alert">{{ alertUnread }}</span>
+                </span>
+                <button v-if="alertUnread > 0" class="tb-alert-clear" @click="markAllRead">全部已读</button>
+              </div>
+              <div v-if="!alertItems.length" class="tb-alert-empty">
+                暂无预警。在「行情」→ 点自选股的「✎」即可设置目标价。
+              </div>
+              <div
+                v-for="a in alertItems"
+                :key="'alert-' + a.id"
+                class="tb-alert-item"
+                :class="['kind-' + a.kind, { unread: !a.read }]"
+                @click="onAlertItemClick(a)"
+              >
+                <span class="tb-alert-kind" :class="'kind-' + a.kind">
+                  {{ a.kind === 'up' ? '涨破' : '跌破' }}
+                </span>
+                <span class="tb-alert-name">{{ a.name }} <i>{{ a.code }}</i></span>
+                <span class="tb-alert-meta">
+                  目标 ¥{{ fmtPrice(a.target_price) }} · 现价 ¥{{ fmtPrice(a.hit_price) }}
+                </span>
+                <span class="tb-alert-date">{{ shortDate(a.date) }}</span>
+                <span v-if="!a.read" class="tb-alert-newdot" aria-label="未读"></span>
+              </div>
             </div>
           </div>
         </template>
@@ -189,13 +231,14 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElNotification } from 'element-plus'
 import {
-  User, SwitchButton, Headset, CaretBottom, Check, Cellphone, Calendar, MagicStick, Bell
+  User, SwitchButton, Headset, CaretBottom, Check, Cellphone, Calendar, MagicStick, Bell, List, TrendCharts
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { listHomeCountdowns } from '@/api/countdown'
 import { stocksApi } from '@/api/stocks'
+import { workbenchApi } from '@/api/workbench'
 
 defineEmits(['open-command-palette', 'open-ai-tools'])
 
@@ -230,11 +273,33 @@ const alertUnread = ref(0)
 const ALERT_POLL_MS = 60 * 1000  // 1 分钟轮询一次
 let alertTimer = null
 let lastSeenIds = new Set()  // 用于「新出现的事件 → 弹通知」
-const alertTitle = computed(() =>
-  alertUnread.value > 0
-    ? `目标价预警：${alertUnread.value} 条未读`
-    : '目标价预警'
-)
+
+/* ---- 待办提醒（v2.14.3 新增） ---- */
+// 只展示"未完成 + (高优先级 或 7 天内到期 或 已逾期)" 的任务，避免清单刷屏
+const taskItems = ref([])
+function isOverdue(due) {
+  if (!due) return false
+  return new Date(due).getTime() < Date.now() - 24 * 3600 * 1000  // 1 天宽限
+}
+function daysFromNow(due) {
+  if (!due) return 0
+  const d = Math.ceil((new Date(due).getTime() - Date.now()) / (24 * 3600 * 1000))
+  return d
+}
+function priorityLabel(p) {
+  if (p === 'high') return '高优'
+  if (p === 'low') return '低优'
+  return '中优'
+}
+
+const totalUnread = computed(() => alertUnread.value + taskItems.value.length)
+const alertTitle = computed(() => {
+  const parts = []
+  if (taskItems.value.length) parts.push(`待办 ${taskItems.value.length}`)
+  if (alertUnread.value) parts.push(`目标价预警 ${alertUnread.value}`)
+  if (parts.length) return `提醒：${parts.join(' · ')} 条`
+  return '提醒中心'
+})
 function fmtPrice(v) {
   return v == null ? '--' : Number(v).toFixed(2)
 }
@@ -266,14 +331,77 @@ async function loadAlerts(showNotifications = false) {
 }
 function startAlertPolling() {
   if (alertTimer) return
-  alertTimer = setInterval(() => loadAlerts(true), ALERT_POLL_MS)
+  alertTimer = setInterval(() => {
+    loadAlerts(true)
+    loadTasks(true)
+  }, ALERT_POLL_MS)
 }
 function stopAlertPolling() {
   if (alertTimer) { clearInterval(alertTimer); alertTimer = null }
 }
+
+/* ---- 待办提醒：拉未完成 + (高优先级 / 7天内到期 / 已逾期) ---- */
+async function loadTasks(showNotifications = false) {
+  try {
+    // size=200 一次性拿未完成任务，前端过滤避免后端多条件 query 复杂
+    const res = await workbenchApi.tasks.list({ size: 200 })
+    const all = res?.data?.list || []
+    const now = Date.now()
+    const SEVEN_DAYS = 7 * 24 * 3600 * 1000
+    const filtered = all
+      .filter((t) => t.status !== 'done')
+      .filter((t) => {
+        if (t.priority === 'high') return true
+        if (!t.due_date) return false
+        const dueTs = new Date(t.due_date).getTime()
+        return dueTs < now + SEVEN_DAYS  // 已逾期 或 7 天内到期
+      })
+      // 排序：已逾期 > 高优 > 7天内到期
+      .sort((a, b) => {
+        const aDue = a.due_date ? new Date(a.due_date).getTime() : Infinity
+        const bDue = b.due_date ? new Date(b.due_date).getTime() : Infinity
+        const aOver = aDue < now
+        const bOver = bDue < now
+        if (aOver !== bOver) return aOver ? -1 : 1
+        if (a.priority === 'high' && b.priority !== 'high') return -1
+        if (b.priority === 'high' && a.priority !== 'high') return 1
+        return aDue - bDue
+      })
+      .slice(0, 8)
+    const newItems = filtered
+    taskItems.value = newItems
+
+    // 首次出现 + 已逾期 → 弹通知
+    if (showNotifications && lastSeenTaskIds.size === 0) {
+      // 第一次只初始化 lastSeenTaskIds，不弹（避免刚登录就弹一串）
+    }
+    for (const it of newItems) {
+      if (!isOverdue(it.due_date)) continue
+      if (lastSeenTaskIds.has(it.id)) continue
+      lastSeenTaskIds.add(it.id)
+      ElNotification({
+        title: '⏰ 待办已逾期',
+        message: `${it.title}（截止 ${shortDate(it.due_date)}）`,
+        type: 'warning',
+        duration: 5000,
+        position: 'top-right',
+      })
+    }
+  } catch { /* 静默 */ }
+}
+let lastSeenTaskIds = new Set()
+
+function onTaskItemClick(t) {
+  // 跳转工作台任务页并定位到该任务
+  router.push({ path: '/tasks', query: { focus: String(t.id) } })
+}
+
 function onAlertPanelToggle(open) {
   // 打开面板时立即刷一次，确保列表与角标同步
-  if (open) loadAlerts(false)
+  if (open) {
+    loadAlerts(false)
+    loadTasks(false)
+  }
 }
 async function markAllRead() {
   try {
@@ -351,6 +479,11 @@ onMounted(async () => {
     if (!it.read) lastSeenIds.add(it.id)
   }
   startAlertPolling()
+  // 待办提醒：首次拉一次（初始化 lastSeenTaskIds，不弹通知避免初次登录刷屏）
+  await loadTasks(false)
+  for (const it of taskItems.value) {
+    if (isOverdue(it.due_date)) lastSeenTaskIds.add(it.id)
+  }
 })
 
 onUnmounted(() => {
@@ -572,7 +705,7 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px var(--dp-bg, #0B0F14);
 }
 .tb-alert-panel {
-  width: 340px; max-height: 60vh; overflow-y: auto; padding: 12px 14px;
+  width: 360px; max-height: 520px; overflow-y: auto; padding: 10px 14px 12px;
 }
 .tb-alert-panel .tb-panel-title {
   display: flex; justify-content: space-between; align-items: center;
@@ -633,6 +766,39 @@ onUnmounted(() => {
   width: 6px; height: 6px; border-radius: 50%;
   background: #D8504F;
 }
+
+/* ---- 待办提醒（v2.14.3 新增） ---- */
+.tb-alert-panel .tb-panel-title > span {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 600; font-size: 12.5px; color: var(--lj-text);
+}
+.tb-section-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 6px;
+  border-radius: 999px;
+  background: var(--lj-seal-soft, var(--yq-gold-faint));
+  color: var(--lj-seal, var(--yq-gold));
+  font-size: 10.5px; font-weight: 600;
+}
+.tb-section-count--alert { background: rgba(216, 80, 79, .12); color: #D8504F; }
+.tb-alert-link {
+  font-size: 11.5px; color: var(--lj-seal); text-decoration: none;
+  cursor: pointer;
+}
+.tb-alert-link:hover { text-decoration: underline; }
+.tb-alert-divider {
+  height: 1px; background: var(--lj-line); margin: 4px 0;
+}
+.tb-alert-item.kind-task { grid-template-columns: 44px 1fr; }
+.tb-alert-item.kind-task .tb-alert-name {
+  font-size: 12.5px;
+}
+.tb-alert-item.overdue {
+  background: rgba(216, 80, 79, .05);
+}
+.tb-alert-kind.pri-high { background: rgba(216, 80, 79, .14); color: #D8504F; }
+.tb-alert-kind.pri-medium { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold, #c7a96b); }
+.tb-alert-kind.pri-low { background: rgba(127, 168, 163, .14); color: var(--yq-rain, #7fa8a3); }
 
 @media (max-width: 767px) {
   /* 触控目标 ≥44px（WCAG）：移动端顶栏图标按钮加大命中区，顶栏高度仍容纳得下 */
