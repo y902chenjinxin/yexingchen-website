@@ -14,6 +14,34 @@
  */
 
 /* =====================================================================
+ * A. Motion tokens（v2.14 全站动效统一）—— 所有 transition/animation 都引用这组变量
+ *    原则（参考 2026 micro-interaction）：hover/feedback 100ms 内出现，状态切换 100-400ms，
+ *    强调性动效 400-600ms；统一 easing 优先 cubic-bezier(.22, .61, .36, 1)（standard）。
+ * ===================================================================== */
+:root,
+#app:not(.is-mobile) {
+  --motion-fast: 120ms;            /* hover/focus 反馈（100ms 阈内） */
+  --motion-med:  220ms;            /* 状态切换（按钮、卡片） */
+  --motion-slow: 380ms;            /* 入场/出场（弹层、列表 stagger） */
+  --motion-pulse: 1800ms;          /* 循环动效（呼吸、鎏金脉冲） */
+
+  --ease-standard: cubic-bezier(.22, .61, .36, 1);
+  --ease-emphasis: cubic-bezier(.16, 1, .3, 1);   /* 入场用：弹性更足 */
+  --ease-exit:     cubic-bezier(.55, 0, .65, .15); /* 离场用：稍快利落 */
+}
+
+/* prefers-reduced-motion 时把所有动效压成 0.01s（保留 transitionend 事件以免破坏逻辑） */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  #app:not(.is-mobile) {
+    --motion-fast: .01ms;
+    --motion-med:  .01ms;
+    --motion-slow: .01ms;
+    --motion-pulse: .01ms;
+  }
+}
+
+/* =====================================================================
  * B. 字体：全站现代无衬线 + 三层字重；品牌区保留衬线（唯一东方记忆）
  * ===================================================================== */
 #app:not(.is-mobile) {
@@ -597,6 +625,17 @@ html:root[data-theme="day"] .login-page .filing-links a {
  * 不影响各页面自定义按钮/卡片等。
  * ============================================================== */
 
+/* ----- el-table 自带 v-loading 旋转圈：换成鎏金色 ----- */
+#app:not(.is-mobile) .el-loading-mask {
+  background-color: var(--color-bg-glass, rgba(127, 127, 127, 0.04)) !important;
+}
+#app:not(.is-mobile) .el-loading-spinner .path {
+  stroke: var(--yq-gold, #c7a96b) !important;
+}
+#app:not(.is-mobile) .el-loading-spinner .el-loading-text {
+  color: var(--yq-gold, #c7a96b) !important;
+}
+
 /* ----- 原生 <input> / <textarea> / <select>（iOS Safari 默认灰底圆角修复） ----- */
 #app:not(.is-mobile) input[type="text"]:not([class*="el-"]):not([class*="vc-"]):not([class*="cv-"]):not([class*="ht-"]),
 #app:not(.is-mobile) input[type="search"]:not([class*="el-"]):not([class*="vc-"]):not([class*="cv-"]):not([class*="ht-"]),
@@ -614,7 +653,8 @@ html:root[data-theme="day"] .login-page .filing-links a {
   font-size: 13px;
   outline: none;
   box-sizing: border-box;
-  transition: border-color .15s, box-shadow .15s;
+  transition: border-color var(--motion-fast) var(--ease-standard),
+              box-shadow var(--motion-fast) var(--ease-standard);
 }
 #app:not(.is-mobile) input:focus:not([class*="el-"]),
 #app:not(.is-mobile) textarea:focus:not([class*="el-"]),
@@ -901,4 +941,30 @@ html:root[data-theme="day"] .login-page .filing-links a {
   #app:not(.is-mobile) .el-card {
     transition: none;
   }
+}
+
+/* =====================================================================
+ * 全局焦点环（v2.14 P0）：所有可交互元素的键盘焦点统一鎏金
+ * - 只在 :focus-visible 时显示（鼠标点击不触发，键盘 Tab 才显示）
+ * - 默认 2px solid + 3px faint 外光，与已有原生 input 焦点环保持一致
+ * - 排除 el-input / el-textarea / el-select 等已经走 Element Plus 主题的元素
+ * ===================================================================== */
+#app:not(.is-mobile) :focus-visible {
+  outline: 2px solid var(--yq-gold, #c7a96b);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--yq-gold-faint, rgba(199, 169, 107, 0.22));
+  transition: outline-color var(--motion-fast) var(--ease-standard),
+              box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+/* 覆盖浏览器默认 outline（仅在已自定义的组件里加防冲突） */
+#app:not(.is-mobile) a:focus:not(:focus-visible),
+#app:not(.is-mobile) button:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+/* 卡片类（点上去有 mouse-light 效果）—— 鼠标 hover 时不显示焦点环，仅键盘 tab 才显示 */
+#app:not(.is-mobile) [v-mouse-light]:focus-visible {
+  outline-color: var(--yq-gold, #c7a96b);
 }

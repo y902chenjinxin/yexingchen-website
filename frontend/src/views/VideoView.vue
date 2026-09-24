@@ -18,7 +18,11 @@
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
       </div>
-      <el-table ref="tableRef" :data="pagedRows" v-loading="videoStore.loading" stripe style="width: 100%" @selection-change="onSelectionChange" empty-text="还没有视频，点「上传」添加">
+      <!-- 加载中：鎏金光扫骨架行 -->
+      <div v-if="videoStore.loading" class="sk-skeleton-rows">
+        <SkeletonBlock v-for="i in 6" :key="i" width="100%" height="42px" style="margin-bottom: 8px;" />
+      </div>
+      <el-table ref="tableRef" :data="pagedRows" stripe class="admin-table" style="width: 100%" @selection-change="onSelectionChange" empty-text="还没有视频，点「上传」添加">
         <el-table-column type="selection" width="48" />
         <el-table-column prop="title" label="标题" min-width="150" />
         <el-table-column prop="category" label="分类" width="100">
@@ -242,6 +246,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'
+import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { downloadVideoTemplate } from '@/api/video'
 
 const videoStore = useVideoStore()
@@ -602,6 +607,10 @@ function formatTime(timeStr) {
 .search-count {
   color: var(--ls-text-3);
   font-size: 13px;
+}
+
+.sk-skeleton-rows {
+  padding: 4px 0 16px;
 }
 
 .empty {
