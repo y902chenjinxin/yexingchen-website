@@ -30,7 +30,14 @@
           <span class="tk-group-title" :class="{ urgent: g.urgent }">{{ g.title }}</span>
           <span class="tk-group-n">{{ g.items.length }}</span>
         </div>
-        <article v-for="t in g.items" :key="t.id" class="tk-item glass" :class="{ done: t.status === 'done' }">
+        <article
+          v-for="t in g.items"
+          :key="t.id"
+          :ref="(el) => setTaskRef(t.id, el)"
+          class="tk-item glass"
+          :class="{ done: t.status === 'done', 'is-focused': focusedId === t.id }"
+          :data-task-id="t.id"
+        >
           <button class="tk-check" :class="{ on: t.status === 'done' }" :title="t.status === 'done' ? '标记为未完成' : '标记完成'"
                   @click="toggleDone(t)">
             <svg v-if="t.status === 'done'" viewBox="0 0 16 16" aria-hidden="true">
@@ -108,7 +115,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -128,6 +136,37 @@ const keyword = ref('')
 const dialog = ref(false)
 const saving = ref(false)
 const form = reactive({ title: '', description: '', priority: 'medium', due_date: '' })
+
+/* ---- 来自顶栏提醒的「自动定位」 ---- */
+const route = useRoute()
+const focusedId = ref(null)
+const taskRefs = new Map()  // task.id -> HTMLElement
+function setTaskRef(id, el) {
+  if (el) taskRefs.set(id, el)
+  else taskRefs.delete(id)
+}
+async function scrollToTask(id) {
+  focusedId.value = Number(id)
+  await nextTick()
+  // 重试：万一 list 还没渲染好，最多 5 次 / 间隔 80ms
+  for (let i = 0; i < 5; i++) {
+    const el = taskRefs.get(Number(id))
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      break
+    }
+    await new Promise((r) => setTimeout(r, 80))
+  }
+  // 5s 后取消高亮
+  setTimeout(() => {
+    if (focusedId.value === Number(id)) focusedId.value = null
+  }, 5000)
+}
+function watchFocusQuery() {
+  const id = route.query.focus
+  if (id) scrollToTask(id)
+}
+watch(() => route.query.focus, watchFocusQuery)
 
 const autoCount = computed(() =>
   items.value.filter((t) => t.source_type && t.source_type !== 'manual' && t.status !== 'done').length)
@@ -230,7 +269,11 @@ async function reload() {
     items.value = rows
     total.value = rows.length
   } catch { /* 拦截器已提示 */ }
-  finally { loading.value = false }
+  finally {
+    loading.value = false
+    // reload 后重新触发自动定位（如果用户在别的标签页切回来）
+    watchFocusQuery()
+  }
 }
 
 async function toggleDone(t) {
@@ -282,7 +325,10 @@ async function remove(t) {
   } catch { /* 拦截器已提示 */ }
 }
 
-onMounted(reload)
+onMounted(async () => {
+  await reload()
+  watchFocusQuery()
+})
 </script>
 
 <style scoped>
@@ -319,8 +365,26 @@ onMounted(reload)
 .tk-group-n { font-size: 11px; color: var(--lj-text-3); }
 
 .tk-item { display: flex; align-items: flex-start; gap: 12px; border-radius: 14px;
-  padding: 13px 16px; margin-bottom: 8px; }
+  padding: 13px 16px; margin-bottom: 8px;
+  transition: box-shadow var(--motion-med, .22s) var(--ease-standard, ease),
+              border-color var(--motion-med) var(--ease-standard),
+              transform var(--motion-med) var(--ease-standard);
+}
 .tk-item.done { opacity: .6; }
+/* 自动定位高亮：来自顶栏提醒点击时短暂闪烁鎏金描边 */
+.tk-item.is-focused {
+  border: 1px solid var(--yq-gold, #c7a96b);
+  box-shadow: 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, .22)),
+              0 6px 20px var(--yq-gold-glow, rgba(199, 169, 107, .28));
+  transform: translateY(-1px);
+}
+@keyframes tk-focus-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, .22)),
+                       0 6px 20px var(--yq-gold-glow, rgba(199, 169, 107, .28)); }
+  50%      { box-shadow: 0 0 0 6px var(--yq-gold-faint, rgba(199, 169, 107, .35)),
+                       0 10px 28px var(--yq-gold-glow-strong, rgba(199, 169, 107, .45)); }
+}
+.tk-item.is-focused { animation: tk-focus-pulse 1.2s var(--ease-standard, ease) 3; }
 .tk-check { width: 22px; height: 22px; flex: none; margin-top: 1px; border-radius: 7px; cursor: pointer;
   border: 1px solid var(--lj-line-strong); background: transparent; color: #0B0F14;
   display: flex; align-items: center; justify-content: center; transition: all .2s; }

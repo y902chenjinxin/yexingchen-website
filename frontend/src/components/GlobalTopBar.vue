@@ -130,11 +130,16 @@
         </template>
       </el-dropdown>
 
-      <!-- 提醒中心：目标价预警 + 待办提醒（v2.14.3 合并） -->
+      <!-- 提醒中心：目标价预警 + 待办提醒（v2.14.3 合并；v2.14.4 角标分色） -->
       <el-dropdown trigger="click" placement="bottom-end" :show-arrow="false" @visible-change="onAlertPanelToggle">
         <button class="tb-icon-btn tb-alert-btn" :title="alertTitle" aria-label="提醒中心">
           <el-icon><Bell /></el-icon>
-          <span v-if="totalUnread > 0" class="tb-alert-dot">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
+          <!-- 任务 count 用鎏金；预警 count 用红；合并显示时取优先级：红 > 鎏金 -->
+          <span
+            v-if="totalUnread > 0"
+            class="tb-alert-dot"
+            :class="alertDotTone"
+          >{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
         </button>
         <template #dropdown>
           <div class="tb-alert-panel" @click.stop>
@@ -293,6 +298,11 @@ function priorityLabel(p) {
 }
 
 const totalUnread = computed(() => alertUnread.value + taskItems.value.length)
+// 角标分色：仅任务（无预警）→ 鎏金；含预警 → 红
+const alertDotTone = computed(() => {
+  if (alertUnread.value > 0) return 'is-alert'
+  return 'is-task'
+})
 const alertTitle = computed(() => {
   const parts = []
   if (taskItems.value.length) parts.push(`待办 ${taskItems.value.length}`)
@@ -692,18 +702,23 @@ onUnmounted(() => {
 
 /* ---- 目标价预警 ---- */
 .tb-alert-btn { position: relative; }
+/* 顶栏主铃铛角标（v2.14.4 分色）：
+   - 默认（仅有任务）→ 鎏金：与"待办"语义一致、品牌色
+   - 含目标价预警 → 红：警示色 */
 .tb-alert-dot {
   position: absolute;
   top: 4px; right: 4px;
   min-width: 16px; height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #D8504F;
   color: #fff;
   font-size: 10px; font-weight: 600; line-height: 16px;
   text-align: center;
   box-shadow: 0 0 0 2px var(--dp-bg, #0B0F14);
+  transition: background var(--motion-fast) var(--ease-standard);
 }
+.tb-alert-dot.is-task { background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-gold-bright, #d97706)); }
+.tb-alert-dot.is-alert { background: #D8504F; }
 .tb-alert-panel {
   width: 360px; max-height: 520px; overflow-y: auto; padding: 10px 14px 12px;
 }
