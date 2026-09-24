@@ -3,7 +3,6 @@
     <template #toolbar>
       <el-button type="primary" size="small" @click="openUpload">上传视频</el-button>
       <el-button size="small" plain @click="openBatch">批量导入</el-button>
-      <el-button size="small" plain @click="onDownloadTemplate">下载模板</el-button>
     </template>
 
     <div class="manage-pane">
