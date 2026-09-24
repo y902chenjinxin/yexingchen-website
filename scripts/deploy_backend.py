@@ -89,6 +89,8 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "ai_advanced.py"), f"{REMOTE_BASE}/backend/app/routers/workbench/ai_advanced.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "t0u1v2w3x4y5_ai_advanced.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/t0u1v2w3x4y5_ai_advanced.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "u1v2w3x4y5z6_life_module.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/u1v2w3x4y5z6_life_module.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "s0t1u2v3w4x5_habits.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/s0t1u2v3w4x5_habits.py"),
     # ---- 家庭助理（通讯录 / 待办 / 订阅）----
