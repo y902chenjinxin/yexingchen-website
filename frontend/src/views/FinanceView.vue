@@ -13,8 +13,8 @@
           <BackButton class="fin-back" />
         </div>
         <div class="fin-titles">
-          <h1 class="fin-title">个人账本</h1>
-          <p class="fin-sub">流水明账 · 一目了然</p>
+          <h1 class="fin-title">家庭账本</h1>
+          <p class="fin-sub">流水明账 · 家人共享</p>
         </div>
         <div class="fin-head-right">
           <button class="fin-btn primary" @click="openNew">＋ 记一笔</button>
