@@ -154,7 +154,7 @@
                 <router-link to="/tasks" class="tb-alert-link" @click.stop>查看全部 →</router-link>
               </div>
               <div v-if="!taskItems.length" class="tb-alert-empty">
-                暂无待办。<router-link to="/tasks" class="tb-alert-link" @click.stop>去新建 →</router-link>
+                暂无待办。
               </div>
               <div
                 v-for="t in taskItems.slice(0, 5)"
