@@ -29,6 +29,8 @@ class User(Base):
     videos = relationship("Video", back_populates="uploader", cascade="all, delete-orphan")
     tools = relationship("Tool", back_populates="uploader", cascade="all, delete-orphan")
     logs = relationship("OperationLog", back_populates="user", cascade="all, delete-orphan")
+    # v2.15 生活模块：每个账号对应一个 household_member 档案（一账号一成员）
+    household_member = relationship("HouseholdMember", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 
 class VerificationCode(Base):

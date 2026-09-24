@@ -7,7 +7,7 @@ import logging
 
 from app.database import engine, Base
 from app.routers import (
-    admin_menus, admin_roles, admin_users, auth, contacts, cover, countdown, datahub, finance, idphoto, log, music, novel,
+    admin_menus, admin_roles, admin_users, auth, contacts, cover, countdown, datahub, finance, idphoto, life, log, music, novel,
     quick, search, settings as settings_router, subscriptions,
     stocks, tool, travels, video, video_parse, voice_clone,
 )
@@ -19,6 +19,8 @@ from app.services import schema_guard
 from app.services.feed_sync import FEED_SYNC_INTERVAL, FEED_SYNC_WARMUP, sync_all_sources_once
 from app.services.stock_analysis import run_daily_scheduler_once
 from app.services.logging_config import configure_logging
+from app.services.life_bootstrap import bootstrap_life
+from app.database import SessionLocal
 
 configure_logging()
 
@@ -32,6 +34,10 @@ if schema_guard.is_production_env():
     logger.info("Production schema validated against Alembic head")
 else:
     Base.metadata.create_all(bind=engine)
+
+# v2.15 生活模块引导：保证全局 household + 每用户 member 档案存在
+# （Alembic migration 也已做同样的种子，这里是防御性兜底，覆盖 create_all 路径）
+bootstrap_life(SessionLocal)
 
 # 生产环境关闭交互式文档。注意 openapi_url 也要一起关：
 # FastAPI 只关 docs_url 时，/openapi.json 仍然可访问（会把全部接口结构暴露出去）。
@@ -165,6 +171,8 @@ app.include_router(subscriptions.router)
 app.include_router(idphoto.router)
 from app.routers import rss as rss_router
 app.include_router(rss_router.router)
+# v2.15 生活模块：家庭共享空间（体重 / 三餐）
+app.include_router(life.router)
 
 
 @app.get("/")

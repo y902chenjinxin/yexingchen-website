@@ -10,6 +10,8 @@ ALLOWED_MUSIC_EXTENSIONS = {"mp3", "flac", "wav"}
 ALLOWED_NOVEL_EXTENSIONS = {"epub", "pdf", "txt"}
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm"}
 ALLOWED_COVER_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+# v2.15 生活模块：体重无需文件；三餐图片沿用封面扩展名限制（jpg/jpeg/png/webp/gif）
+ALLOWED_MEAL_EXTENSIONS = ALLOWED_COVER_EXTENSIONS
 
 
 def allowed_file(filename: str, allowed_extensions: set) -> bool:
