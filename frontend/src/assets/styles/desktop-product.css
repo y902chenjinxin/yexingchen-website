@@ -247,6 +247,18 @@
   --el-button-active-border-color: var(--dp-accent-strong);
   font-weight: 520;
 }
+/* 白天 plain 主按钮：鎏金描边 + 极淡暖金底（v2.14.1） */
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary.is-plain {
+  --el-button-text-color: var(--yq-gold-deep, #92400e);
+  --el-button-bg-color: var(--yq-gold-faint, rgba(251, 191, 36, .14));
+  --el-button-border-color: var(--yq-gold, #fbbf24);
+  --el-button-hover-text-color: #ffffff;
+  --el-button-hover-bg-color: var(--yq-gold-bright, #f59e0b);
+  --el-button-hover-border-color: var(--yq-gold-bright, #f59e0b);
+  --el-button-active-text-color: #ffffff;
+  --el-button-active-bg-color: var(--yq-gold-bright, #f59e0b);
+  --el-button-active-border-color: var(--yq-gold-bright, #f59e0b);
+}
 /* 危险（实心 / 朴素） */
 #app:not(.is-mobile) .el-button--danger:not(.is-plain) {
   --el-button-text-color: #ffffff;
@@ -304,6 +316,18 @@
   --el-button-active-bg-color: var(--dp-surface2);
   --el-button-active-border-color: var(--dp-accent);
 }
+/* 白天默认按钮：hover 用鎏金描边 + 极淡暖金底（v2.14.1 方案 A） */
+:root[data-theme="day"] #app:not(.is-mobile) .el-button:not([class*="el-button--primary"]):not([class*="el-button--danger"]):not([class*="el-button--warning"]):not([class*="el-button--success"]):not([class*="el-button--info"]) {
+  --el-button-text-color: var(--dp-text);
+  --el-button-bg-color: var(--dp-surface);
+  --el-button-border-color: var(--dp-line-strong);
+  --el-button-hover-text-color: var(--yq-gold-deep, #92400e);
+  --el-button-hover-bg-color: var(--yq-gold-faint, rgba(251, 191, 36, .14));
+  --el-button-hover-border-color: var(--yq-gold, #fbbf24);
+  --el-button-active-text-color: var(--yq-gold-deep, #92400e);
+  --el-button-active-bg-color: rgba(251, 191, 36, .22);
+  --el-button-active-border-color: var(--yq-gold-bright, #f59e0b);
+}
 #app:not(.is-mobile) .el-input__wrapper,
 #app:not(.is-mobile) .el-textarea__inner {
   background: var(--dp-surface) !important;
@@ -312,6 +336,11 @@
 }
 #app:not(.is-mobile) .el-input__wrapper.is-focus,
 #app:not(.is-mobile) .el-input__wrapper:hover { box-shadow: inset 0 0 0 1px var(--dp-accent) !important; }
+/* 白天输入框 hover/focus 用鎏金 */
+:root[data-theme="day"] #app:not(.is-mobile) .el-input__wrapper.is-focus,
+:root[data-theme="day"] #app:not(.is-mobile) .el-input__wrapper:hover {
+  box-shadow: inset 0 0 0 1px var(--yq-gold, #fbbf24), 0 0 0 3px var(--yq-gold-faint, rgba(251, 191, 36, .14)) !important;
+}
 
 /* 内容页 hero：实色 + 顶栏式浮层 */
 #app:not(.is-mobile) .island-page { background: var(--dp-bg2) !important; }
@@ -701,8 +730,13 @@ html:root[data-theme="day"] .login-page .filing-links a {
 #app:not(.is-mobile) .el-select__placeholder,
 #app:not(.is-mobile) .el-select__selected-item { color: var(--lj-text) !important; }
 
-/* ----- 按钮主色：仅作用于 el-button.type="primary"（其它 el-button 默认不动） ----- */
+/* ----- 按钮主色：仅作用于 el-button.type="primary"（其它 el-button 默认不动） -----
+   设计原则：
+   - 夜间（Flux 紫罗兰）：深鎏金 → 雨青 渐变，深色字，强 glow，与玻璃面板有"光"
+   - 白天（Zenith 极简白）：极浅琥珀底 + 深棕字 + 实色鎏金描边，柔和阴影，与白底卡片"轻量点亮"
+   两套主题互不污染：用 :root[data-theme] 选择器区分 */
 #app:not(.is-mobile) .el-button--primary {
+  /* 默认（夜间）：鎏金 → 雨青 渐变 + 深字 + glow */
   background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3)) !important;
   border-color: transparent !important;
   color: var(--yq-gold-fg, #0b0f14) !important;
@@ -714,6 +748,30 @@ html:root[data-theme="day"] .login-page .filing-links a {
   box-shadow: 0 8px 22px var(--yq-gold-glow-strong, rgba(199, 169, 107, 0.42)) !important;
 }
 #app:not(.is-mobile) .el-button--primary:active { transform: translateY(0); }
+
+/* 白天：极浅琥珀底 + 鎏金描边 + 深棕字（v2.14.1 方案 A） */
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary {
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%) !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .7),
+    0 1px 2px rgba(217, 119, 6, .08),
+    0 4px 12px rgba(217, 119, 6, .14) !important;
+}
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary:hover {
+  background: linear-gradient(180deg, #fde68a 0%, #fcd34d 100%) !important;
+  border-color: #d97706 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .8),
+    0 2px 4px rgba(217, 119, 6, .12),
+    0 8px 20px rgba(217, 119, 6, .22) !important;
+}
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary:active {
+  background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%) !important;
+  box-shadow: inset 0 1px 2px rgba(146, 64, 14, .15) !important;
+}
 
 /* ----- ElementPlus 标签：去默认紫红，适配项目鎏金/雨青 ----- */
 #app:not(.is-mobile) .el-tag {

@@ -5,16 +5,16 @@
  * 设计目标：极简白卡片 + 蓝紫克制点缀 + 极淡径向晕染背景
  */
 
-/* A. 主题属性（白天：极简白 + 蓝紫克制点缀） */
+/* A. 主题属性（白天：极简白 + 鎏金轻量 + 蓝紫克制点缀） */
 :root[data-theme="day"] {
-  /* 表面阶梯：白底 + 极浅灰分隔层级 */
-  --dp-bg: #fafafa;
-  --dp-bg2: #f4f4f5;
+  /* 表面阶梯：暖白底（带 1% 暖意，避免纯冷灰）+ 极浅分隔层级 */
+  --dp-bg: #fbfaf7;
+  --dp-bg2: #f5f4ef;
   --dp-surface: #ffffff;
-  --dp-surface2: #f4f4f5;
-  /* 发丝描边层级 */
-  --dp-line: rgba(24, 24, 27, .08);
-  --dp-line-strong: rgba(24, 24, 27, .14);
+  --dp-surface2: #f7f6f1;
+  /* 发丝描边层级（白天要更可见一点，浅灰白卡片上 8% 太飘） */
+  --dp-line: rgba(24, 24, 27, .10);
+  --dp-line-strong: rgba(24, 24, 27, .18);
   /* 阴影：薄、近、克制 */
   --dp-shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 8px 24px rgba(24, 24, 27, .06);
   --dp-glow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 1px 2px rgba(24, 24, 27, .04), 0 12px 30px rgba(24, 24, 27, .08);
@@ -29,7 +29,7 @@
   --dp-accent-strong: #4f5ed1;
   --dp-accent-faint: rgba(91, 106, 224, .10);
   --dp-danger: #dc2626;
-  --dp-warning: #a16207;
+  --dp-warning: #c2410c;  /* 白天警示：深琥珀（橙红） */
   /* 圆角 */
   --dp-radius: 10px;
   --dp-radius-sm: 6px;
@@ -40,7 +40,7 @@
   --color-bg: var(--dp-bg);
   --color-bg-dark: var(--dp-bg2);
   --color-bg-elevated: var(--dp-surface);
-  --color-bg-glass: rgba(255, 255, 255, .72);
+  --color-bg-glass: rgba(255, 255, 255, .85);
   --color-text: var(--dp-text);
   --color-text-secondary: var(--dp-text2);
   --color-text-muted: var(--dp-text3);
@@ -54,15 +54,17 @@
   --yq-rain: var(--dp-accent);
   --yq-rain-bright: #6f7ce0;
   --yq-rain-deep: var(--dp-accent-strong);
-  --yq-gold: var(--dp-warning);
-  --yq-gold-bright: #d97706;
-  /* 白天鎏金为深琥珀 (#a16207)；落在鎏金面上的字用白色才能看清 */
-  --yq-gold-fg: #ffffff;
-  --yq-gold-fg-faint: rgba(255, 255, 255, .35);
-  /* 聚光底色：白天要更深更暖（深琥珀），与白底卡片形成对比 */
-  --yq-gold-faint: rgba(217, 119, 6, .22);
-  --yq-gold-glow: rgba(217, 119, 6, .38);
-  --yq-gold-glow-strong: rgba(217, 119, 6, .52);
+  /* 白天鎏金：极浅琥珀（amber-100），用于"主按钮底色 / 选中态底色 / 微光" */
+  --yq-gold: #fbbf24;            /* 主按钮描边 / 实色鎏金 */
+  --yq-gold-bright: #f59e0b;
+  --yq-gold-deep: #92400e;        /* 主按钮字色（amber-800，对比度 > 7:1） */
+  /* 白天鎏金面上的字用深棕琥珀，才能在浅金底上清晰 */
+  --yq-gold-fg: #92400e;
+  --yq-gold-fg-faint: rgba(146, 64, 14, .55);
+  /* 聚光底色：白天极浅极淡（amber-100/40），仅够看出鎏金在白底卡片上"亮了" */
+  --yq-gold-faint: rgba(251, 191, 36, .14);
+  --yq-gold-glow: rgba(217, 119, 6, .18);
+  --yq-gold-glow-strong: rgba(217, 119, 6, .32);
   --yq-rain-faint: rgba(79, 94, 209, .14);
   --yq-rain-glow: rgba(79, 94, 209, .55);
   --dp-danger-faint: rgba(229, 90, 105, .14);
