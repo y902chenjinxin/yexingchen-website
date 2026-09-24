@@ -25,6 +25,9 @@ from app.schemas.common import ResponseBase
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/datahub", tags=["个人数据中心"])
 
+# v2.16：财经/生活模块家庭共享，数据中心按 household 聚合
+HOUSEHOLD_ID = 1
+
 FINANCE_CATEGORY_ICONS = {
     "餐饮": "🍜", "交通": "🚇", "购物": "🛍️", "居家": "🏠", "娱乐": "🎮",
     "医疗": "💊", "教育": "📚", "人情": "🎁", "其他": "🧾",
@@ -42,7 +45,7 @@ def _finance_block(db, uid):
     rows = (
         db.query(FinanceTransaction)
         .filter(
-            FinanceTransaction.user_id == uid,
+            FinanceTransaction.household_id == HOUSEHOLD_ID,
             FinanceTransaction.deleted_at.is_(None),
         )
         .all()
@@ -115,13 +118,13 @@ async def overview(
     try:
         t_count = (
             db.query(Travel)
-            .filter(Travel.user_id == uid)
+            .filter(Travel.household_id == HOUSEHOLD_ID)
             .count()
         )
         cities = (
             db.query(TravelCity)
             .join(Travel, TravelCity.travel_id == Travel.id)
-            .filter(Travel.user_id == uid)
+            .filter(Travel.household_id == HOUSEHOLD_ID)
             .all()
         )
         provinces, city_names = set(), set()
@@ -168,12 +171,12 @@ async def overview(
     feeds = {
         "unread": (
             db.query(FeedArticle)
-            .filter(FeedArticle.user_id == uid, FeedArticle.read == 0)
+            .filter(FeedArticle.household_id == HOUSEHOLD_ID, FeedArticle.read == 0)
             .count()
         ),
         "sources": (
             db.query(FeedSource)
-            .filter(FeedSource.user_id == uid, FeedSource.deleted_at.is_(None))
+            .filter(FeedSource.household_id == HOUSEHOLD_ID, FeedSource.deleted_at.is_(None))
             .count()
         ),
     }

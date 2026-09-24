@@ -33,6 +33,8 @@ chrome_user_data/
 
 # Temp files
 temp_screenshot/
+# 浏览器取证截图（scripts/verify_*.js 产出）
+artifacts/
 *.tmp
 config.toml
 

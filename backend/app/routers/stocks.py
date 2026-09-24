@@ -263,7 +263,7 @@ async def search(q: str = Query("", max_length=30), count: int = Query(8, ge=1, 
 def _summary(uid, db):
     rows = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.household_id == HOUSEHOLD_ID, StockWatchlist.deleted_at.is_(None))
         .order_by(StockWatchlist.sort_order.asc(), StockWatchlist.id.asc())
         .all()
     )
@@ -389,11 +389,13 @@ def _scan_alerts_once(uid: int, db: Session) -> int:
     """扫描当前自选股，对「现价触达目标价」的事件落 log（去重：同日/同方向不重复入库）。
 
     返回本次新增的 alert 数（已存在的不会重复入库）。
+    v2.16：财经模块家庭共享，按 household 过滤。
     """
+    hid = HOUSEHOLD_ID  # noqa: F841 — 兼容旧调用方传 uid 时仍可工作
     today = datetime.now().strftime("%Y-%m-%d")
     rows = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.household_id == HOUSEHOLD_ID, StockWatchlist.deleted_at.is_(None))
         .all()
     )
     inserted = 0
@@ -423,7 +425,7 @@ def _scan_alerts_once(uid: int, db: Session) -> int:
         exists = (
             db.query(StockAlertLog)
             .filter(
-                StockAlertLog.household_id == hid,
+                StockAlertLog.household_id == HOUSEHOLD_ID,
                 StockAlertLog.stock_id == w.id,
                 StockAlertLog.kind == kind,
                 StockAlertLog.date == today,
@@ -702,7 +704,6 @@ async def stock_news(
 
         hid = HOUSEHOLD_ID
 
-        uid = current_user["user_id"]
         w = (
             db.query(StockWatchlist)
             .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None),
@@ -713,7 +714,7 @@ async def stock_news(
         rows = (
             db.query(FeedArticle)
             .filter(
-                FeedArticle.user_id == uid,
+                FeedArticle.household_id == hid,
                 or_(
                     FeedArticle.title.ilike(f"%{name}%"),
                     FeedArticle.title.ilike(f"%{code_upper}%"),
@@ -827,7 +828,7 @@ async def stock_insight(
             )
             name = (w.name if w else "") or code
             for r in (db.query(FeedArticle)
-                      .filter(FeedArticle.user_id == uid,
+                      .filter(FeedArticle.household_id == hid,
                               or_(FeedArticle.title.ilike(f"%{name}%"), FeedArticle.title_zh.ilike(f"%{name}%")))
                       .order_by(FeedArticle.published_at.desc()).limit(8).all()):
                 t = r.title_zh or r.title or ""

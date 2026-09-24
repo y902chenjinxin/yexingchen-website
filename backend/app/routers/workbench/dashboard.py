@@ -23,12 +23,15 @@ from app.routers.workbench._common import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/workbench", tags=["工作台-首页"])
 
+# v2.16：财经/生活模块家庭共享，工作台 KPI 按 household 聚合
+HOUSEHOLD_ID = 1
+
 
 def _countdown_summary(db: Session, uid: int) -> dict:
-    """活跃倒计时数量 + 最近 5 条。"""
+    """活跃倒计时数量 + 最近 5 条（家庭共享）。"""
     rows = (
         db.query(Countdown)
-        .filter(Countdown.user_id == uid, Countdown.is_archived == False)  # noqa: E712
+        .filter(Countdown.household_id == HOUSEHOLD_ID, Countdown.is_archived == False)  # noqa: E712
         .order_by(Countdown.target_date.asc())
         .all()
     )
@@ -65,10 +68,10 @@ def _countdown_summary(db: Session, uid: int) -> dict:
 
 
 def _travel_summary(db: Session, uid: int) -> dict:
-    """足迹：旅行数 / 省份数 / 城市数 / 最近 3 条。"""
+    """足迹：旅行数 / 省份数 / 城市数 / 最近 3 条（家庭共享）。"""
     travel_rows = (
         db.query(Travel)
-        .filter(Travel.user_id == uid)
+        .filter(Travel.household_id == HOUSEHOLD_ID)
         .order_by(Travel.created_at.desc())
         .all()
     )
@@ -111,13 +114,13 @@ def _travel_summary(db: Session, uid: int) -> dict:
 
 
 def _finance_summary(db: Session, uid: int) -> dict:
-    """本月记账：收支笔数 / 净流入 / 最近 30 天日趋势。"""
+    """本月记账：收支笔数 / 净流入 / 最近 30 天日趋势（家庭共享）。"""
     now = datetime.now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     rows = (
         db.query(FinanceTransaction)
         .filter(
-            FinanceTransaction.user_id == uid,
+            FinanceTransaction.household_id == HOUSEHOLD_ID,
             FinanceTransaction.deleted_at.is_(None),
             FinanceTransaction.occurred_at >= month_start,
         )
@@ -130,7 +133,7 @@ def _finance_summary(db: Session, uid: int) -> dict:
     rows30 = (
         db.query(FinanceTransaction)
         .filter(
-            FinanceTransaction.user_id == uid,
+            FinanceTransaction.household_id == HOUSEHOLD_ID,
             FinanceTransaction.deleted_at.is_(None),
             FinanceTransaction.occurred_at >= thirty,
         )
@@ -164,10 +167,10 @@ def _finance_summary(db: Session, uid: int) -> dict:
 
 
 def _stocks_summary(db: Session, uid: int) -> dict:
-    """自选股：symbol 数 / 持仓明细（成本/数量/目标价）。"""
+    """自选股：symbol 数 / 持仓明细（成本/数量/目标价）（家庭共享）。"""
     rows = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.household_id == HOUSEHOLD_ID, StockWatchlist.deleted_at.is_(None))
         .order_by(StockWatchlist.sort_order, StockWatchlist.id)
         .all()
     )

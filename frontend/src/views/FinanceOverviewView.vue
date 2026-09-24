@@ -195,9 +195,9 @@ async function loadStock() {
     stock.marketValue = Number(sum?.market_value ?? 0)
     stock.symbolCount = Number(sum?.symbol_count ?? 0)
     stock.alerts = Number(sum?.alerts ?? 0)
-    stock.top = (wl || []).slice(0, 6).map((w) => ({
+    stock.top = (wl?.list || []).slice(0, 6).map((w) => ({
       id: w.id, code: w.code, market: w.market, name: w.name,
-      price: Number(w.last_price ?? 0), change_pct: Number(w.change_pct ?? 0),
+      price: Number(w.price ?? 0), change_pct: Number(w.pct ?? 0),
     }))
   } catch (e) { /* ignore */ }
 }

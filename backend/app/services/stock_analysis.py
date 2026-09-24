@@ -19,6 +19,9 @@ from app.services.user_ai_provider import build_http_provider_from_config, resol
 
 LEVELS = ("up", "hold", "watch", "down", "danger")
 
+# v2.16：财经模块家庭共享，自选股/研判/快照按 household 归属
+HOUSEHOLD_ID = 1
+
 # 与前端 KlineChart 一致的轻量规则打分，用于 AI 兜底档位 + 提示词里的基线
 def rule_level_and_summary(klines) -> tuple[str, str]:
     """基于近 20 根 K 线做轻量规则研判，返回 (level, summary)。"""
@@ -76,7 +79,7 @@ def _related_news(uid: int, db: Session, name: str, company: str, size: int = 5)
         rows = (
             db.query(FeedArticle)
             .filter(
-                FeedArticle.user_id == uid,
+                FeedArticle.household_id == HOUSEHOLD_ID,
                 or_(FeedArticle.title_zh.ilike(f"%{name}%"), FeedArticle.title.ilike(f"%{name}%")),
             )
             .order_by(FeedArticle.published_at.desc())
@@ -120,7 +123,7 @@ def _upsert(db: Session, uid: int, market: str, code: str, name: str, date: str,
     row = (
         db.query(StockDailyAnalysis)
         .filter(
-            StockDailyAnalysis.user_id == uid,
+            StockDailyAnalysis.household_id == HOUSEHOLD_ID,
             StockDailyAnalysis.code == code.upper(),
             StockDailyAnalysis.market == market,
             StockDailyAnalysis.date == date,
@@ -128,7 +131,7 @@ def _upsert(db: Session, uid: int, market: str, code: str, name: str, date: str,
         .first()
     )
     if not row:
-        row = StockDailyAnalysis(user_id=uid, household_id=1, code=code.upper(), market=market, date=date)
+        row = StockDailyAnalysis(user_id=uid, household_id=HOUSEHOLD_ID, code=code.upper(), market=market, date=date)
         db.add(row)
     row.name = name
     row.price = payload.get("price")
@@ -190,10 +193,10 @@ def analyze_stock(db: Session, uid: int, w: StockWatchlist, date: str, provider=
 
 
 def run_daily_for_user(db: Session, uid: int, date: str) -> dict:
-    """为某用户的全部存续自选股跑当日研判 + 记录当日持仓快照。"""
+    """为家庭全部存续自选股跑当日研判 + 记录当日持仓快照（家庭共享）。"""
     rows = (
         db.query(StockWatchlist)
-        .filter(StockWatchlist.user_id == uid, StockWatchlist.deleted_at.is_(None))
+        .filter(StockWatchlist.household_id == HOUSEHOLD_ID, StockWatchlist.deleted_at.is_(None))
         .order_by(StockWatchlist.sort_order.asc(), StockWatchlist.id.asc())
         .all()
     )
@@ -211,18 +214,18 @@ def run_daily_for_user(db: Session, uid: int, date: str) -> dict:
 
 
 def _record_snapshot(db: Session, uid: int, date: str) -> None:
-    """复用汇总逻辑记录当日持仓快照（同日覆盖）。"""
+    """复用汇总逻辑记录当日持仓快照（同日覆盖，家庭共享）。"""
     try:
         from app.models.stocks import PortfolioSnapshot
         from app.routers.stocks import _summary
         s = _summary(uid, db)
         row = (
             db.query(PortfolioSnapshot)
-            .filter(PortfolioSnapshot.user_id == uid, PortfolioSnapshot.date == date)
+            .filter(PortfolioSnapshot.household_id == HOUSEHOLD_ID, PortfolioSnapshot.date == date)
             .first()
         )
         if not row:
-            row = PortfolioSnapshot(user_id=uid, date=date)
+            row = PortfolioSnapshot(user_id=uid, household_id=HOUSEHOLD_ID, date=date)
             db.add(row)
         row.market_value = s["market_value"]
         row.hold_pnl = s["hold_pnl"]
@@ -252,16 +255,20 @@ def run_daily_scheduler_once() -> dict:
     date = bj.strftime("%Y-%m-%d")
     done, skipped = 0, 0
     with SessionLocal() as db:
-        uids = [
-            r[0] for r in db.query(StockWatchlist.user_id)
+        from sqlalchemy import func
+
+        # 自选股已家庭共享：按 household 维度跑一次，取该家庭最早录入人作为 AI 配置来源
+        households = (
+            db.query(StockWatchlist.household_id, func.min(StockWatchlist.user_id))
             .filter(StockWatchlist.deleted_at.is_(None))
-            .distinct()
+            .group_by(StockWatchlist.household_id)
             .all()
-        ]
-        for uid in uids:
+        )
+        for hid, owner_uid in households:
+            uid = owner_uid or 1
             has_today = (
                 db.query(StockDailyAnalysis.id)
-                .filter(StockDailyAnalysis.user_id == uid, StockDailyAnalysis.date == date)
+                .filter(StockDailyAnalysis.household_id == hid, StockDailyAnalysis.date == date)
                 .first()
             )
             if has_today:
@@ -270,5 +277,5 @@ def run_daily_scheduler_once() -> dict:
             res = run_daily_for_user(db, uid, date)
             if not res.get("skip"):
                 done += 1
-    logger.info("股票每日研判结束：date=%s 完成 %d 个用户，跳过 %d 个", date, done, skipped)
+    logger.info("股票每日研判结束：date=%s 完成 %d 个家庭，跳过 %d 个", date, done, skipped)
     return {"date": date, "done": done, "skipped": skipped}

@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 KB_SOURCE_LIMIT = 3
 KB_MAX_CHARS = 1600
 
+# v2.16：财经/生活模块家庭共享（资讯/旅行/记账按 household 检索；笔记/任务仍按用户隔离）
+HOUSEHOLD_ID = 1
+
 # 记账相关触发词：命中时额外注入当月财务摘要（助 AI 回答“这个月花了多少/还有多少钱”）
 FINANCE_KEYWORDS = ("花", "支", "账", "钱", "预算", "结余", "收入", "工资", "餐饮", "交通", "购物", "娱乐", "居家", "报销")
 
@@ -60,7 +63,7 @@ def _finance_context(db: Session, uid: int, query: str) -> Optional[str]:
         rows = (
             db.query(FinanceTransaction)
             .filter(
-                FinanceTransaction.user_id == uid,
+                FinanceTransaction.household_id == HOUSEHOLD_ID,
                 FinanceTransaction.deleted_at.is_(None),
                 FinanceTransaction.occurred_at >= m_start,
                 FinanceTransaction.occurred_at < m_end,
@@ -154,7 +157,7 @@ def build_knowledge_context(db: Session, user_id: int, query: str) -> Optional[s
         ]
         arts = (
             db.query(FeedArticle)
-            .filter(FeedArticle.user_id == uid, or_(*like))
+            .filter(FeedArticle.household_id == HOUSEHOLD_ID, or_(*like))
             .order_by(FeedArticle.updated_at.desc())
             .limit(KB_SOURCE_LIMIT)
             .all()
@@ -181,7 +184,7 @@ def build_knowledge_context(db: Session, user_id: int, query: str) -> Optional[s
         ]
         travels = (
             db.query(Travel)
-            .filter(Travel.user_id == uid, or_(*like))
+            .filter(Travel.household_id == HOUSEHOLD_ID, or_(*like))
             .order_by(Travel.updated_at.desc())
             .limit(KB_SOURCE_LIMIT)
             .all()

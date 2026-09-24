@@ -12,6 +12,7 @@ from app.models.feed import FeedArticle, FeedSource
 from app.services.translate import is_cjk, translate_summary, translate_title
 from app.routers.feed._common import (
     FETCH_TIMEOUT,
+    HOUSEHOLD_ID,
     MAX_CONTENT_LEN,
     MAX_SUMMARY_LEN,
     MAX_TITLE_LEN,
@@ -258,10 +259,12 @@ def _fetch_source_articles(source: FeedSource) -> List[dict]:
 
 
 def _upsert_articles(db: Session, source: FeedSource, articles: List[dict]) -> int:
+    # v2.16：文章按家庭共享入库；user_id 保留为抓取发起人溯源
     uid = source.user_id
+    hid = getattr(source, "household_id", None) or HOUSEHOLD_ID
     existing = {
         a.guid for a in db.query(FeedArticle.guid)
-        .filter(FeedArticle.user_id == uid, FeedArticle.source_id == source.id)
+        .filter(FeedArticle.household_id == hid, FeedArticle.source_id == source.id)
         .all()
     }
     added = 0
@@ -270,6 +273,7 @@ def _upsert_articles(db: Session, source: FeedSource, articles: List[dict]) -> i
             continue
         db.add(FeedArticle(
             user_id=uid,
+            household_id=hid,
             source_id=source.id,
             guid=art["guid"],
             title=art["title"],
@@ -288,7 +292,7 @@ def _upsert_articles(db: Session, source: FeedSource, articles: List[dict]) -> i
         added += 1
     source.article_count = (
         db.query(FeedArticle).filter(
-            FeedArticle.user_id == uid, FeedArticle.source_id == source.id
+            FeedArticle.household_id == hid, FeedArticle.source_id == source.id
         ).count()
         + added
     )

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from app.database import SessionLocal
 from app.models.feed import FeedSource
+from app.routers.feed._common import HOUSEHOLD_ID
 from app.routers.feed._fetch import _fetch_source_articles, _upsert_articles
 
 logger = logging.getLogger(__name__)
@@ -17,14 +18,17 @@ FEED_SYNC_WARMUP = 30
 
 
 def sync_all_sources_once() -> dict:
-    """抓取全部未删除订阅源并入库，返回统计（幂等，按 guid 去重）。"""
+    """抓取家庭内全部未删除订阅源并入库，返回统计（幂等，按 guid 去重）。"""
     added = 0
     total = 0
     failed = 0
     with SessionLocal() as db:
         rows = (
             db.query(FeedSource)
-            .filter(FeedSource.deleted_at.is_(None))
+            .filter(
+                FeedSource.household_id == HOUSEHOLD_ID,
+                FeedSource.deleted_at.is_(None),
+            )
             .all()
         )
         total = len(rows)

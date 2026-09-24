@@ -64,6 +64,9 @@ from app.routers.workbench._schemas import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/workbench", tags=["工作台-AI高级"])
 
+# v2.16：记账家庭共享，AI 工具写入时显式带上 household_id
+HOUSEHOLD_ID = 1
+
 # ============ Tool 注册表（Agent 可调用） ============
 # 每个 executor 签名：(args: dict, *, db: Session, user_id: int) -> dict
 
@@ -129,6 +132,7 @@ def _tool_log_finance(args: dict, *, db: Session, user_id: int) -> dict:
         return {"ok": False, "error": "amount 必须 > 0"}
     tx = FinanceTransaction(
         user_id=user_id,
+        household_id=HOUSEHOLD_ID,
         amount_cents=int(amount * 100),
         type=t_type,
         category=category,
