@@ -14,12 +14,18 @@ os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 os.environ.setdefault('SMTP_USER', 'test@example.com')
 
-# 触发所有模型 import，让 User 等类的 relationship('Music' / 'Novel' / ...) 字符串能解析。
-# 测试文件里不必再单独 import 这些模型。
-from app.models.user import User, VerificationCode  # noqa: F401,E402
-from app.models.music import Music  # noqa: F401,E402
-from app.models.novel import Novel  # noqa: F401,E402
-from app.models.video import Video  # noqa: F401,E402
-from app.models.tool import Tool  # noqa: F401,E402
-from app.models.log import OperationLog  # noqa: F401,E402
-from app.models.system import GlobalSetting, TokenBlocklist  # noqa: F401,E402
+# 触发所有模型 import，让 User 等类的 relationship('Music' / 'HouseholdMember' / ...)
+# 字符串关系能解析；测试文件里不必再单独 import 这些模型。
+#
+# 这里改成自动遍历 app.models 包：此前是手写清单，随着模型变多（family / finance / life /
+# habits / stocks / travels / workbench …）没有同步补充，导致 User 里指向 HouseholdMember
+# 的 relationship 在测试中解析失败：
+#   InvalidRequestError: expression 'HouseholdMember' failed to locate a name
+# 自动遍历后，以后新增模型文件不需要再改这里。
+import importlib
+import pkgutil
+
+import app.models as _models_pkg
+
+for _mod in pkgutil.iter_modules(_models_pkg.__path__):
+    importlib.import_module(f"app.models.{_mod.name}")

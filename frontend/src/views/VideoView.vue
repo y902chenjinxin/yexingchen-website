@@ -10,9 +10,20 @@
         <el-input v-model="keyword" size="small" clearable placeholder="搜索标题/分类" style="width: 260px">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
+        <!-- 上传人筛选：视频库是全账号共享的，用它快速定位「自己传的」 -->
+        <el-select
+          v-model="uploaderId"
+          size="small"
+          clearable
+          placeholder="上传人"
+          style="width: 132px;"
+          @change="doSearch"
+        >
+          <el-option v-for="u in uploaders" :key="u.id" :label="u.name" :value="u.id" />
+        </el-select>
         <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
-        <span v-if="keyword" class="search-count">匹配 {{ videoStore.list.length }} 条</span>
-        <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
+        <span v-if="hasFilter" class="search-count">匹配 {{ videoStore.list.length }} 条</span>
+        <el-button v-if="hasFilter" size="small" plain @click="resetSearch">清空筛选</el-button>
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
@@ -41,6 +52,13 @@
         </el-table-column>
         <el-table-column label="上传时间" width="150">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+        </el-table-column>
+        <!-- 上传人：只读展示，由上传时的账号决定，后端不支持修改 -->
+        <el-table-column label="上传人" width="96" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.uploader_name">{{ row.uploader_name }}</span>
+            <span v-else>—</span>
+          </template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
@@ -258,12 +276,16 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
-import { downloadVideoTemplate } from '@/api/video'
+import { downloadVideoTemplate, getVideoUploaders } from '@/api/video'
 
 const videoStore = useVideoStore()
 
 const showUpload = ref(false)
 const keyword = ref('')
+/* 上传人筛选：视频库全账号共享，用它快速找到自己上传的视频 */
+const uploaderId = ref(null)
+const uploaders = ref([])
+const hasFilter = computed(() => !!keyword.value || !!uploaderId.value)
 const uploading = ref(false)
 const uploadRef = ref(null)
 const coverRef = ref(null)
@@ -434,17 +456,35 @@ async function onDownloadTemplate() {
   }
 }
 
-onMounted(() => { fetchData() })
+onMounted(() => {
+  fetchData()
+  loadUploaders()
+})
+
+async function loadUploaders() {
+  try {
+    const res = await getVideoUploaders()
+    uploaders.value = res?.data?.list || []
+  } catch { /* 拉不到就只显示「全部」，不影响主流程 */ }
+}
 
 async function fetchData() {
   // size=200 一次性拉全（管理页用客户端分页）
-  const params = keyword.value ? { q: keyword.value } : { size: 200 }
+  const params = { size: 200 }
+  if (keyword.value) params.q = keyword.value
+  if (uploaderId.value) params.uploader_id = uploaderId.value
   await videoStore.fetchList(params)
 }
 
 function doSearch() {
   videoStore.page = 1
   fetchData()
+}
+
+function resetSearch() {
+  keyword.value = ''
+  uploaderId.value = null
+  doSearch()
 }
 
 function openUpload() {

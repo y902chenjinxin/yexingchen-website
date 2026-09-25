@@ -1,4 +1,5 @@
 from app.models.music import Music
+from app.models.user import User
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -57,6 +58,33 @@ async def _stream_file(file_path: str):
     )
 
 
+@router.get("/uploaders", response_model=ResponseBase)
+async def list_music_uploaders(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """曲库的上传人列表 —— 只列出确实有曲目的账号，供前端「上传人」筛选下拉使用。
+
+    曲库是全账号共享的，加这个维度是为了让每个人快速找到自己上传的内容。
+    必须定义在 /{music_id}/... 之前，否则 "uploaders" 会被当成路径参数吃掉。
+    """
+    rows = (
+        db.query(User.id, User.nickname, User.email)
+        .join(Music, Music.uploader_id == User.id)
+        .distinct()
+        .all()
+    )
+    items = [
+        {
+            "id": r.id,
+            "name": (r.nickname or "").strip() or (r.email or "").split("@")[0] or f"用户{r.id}",
+        }
+        for r in rows
+    ]
+    items.sort(key=lambda x: x["id"])
+    return ResponseBase(data={"list": items})
+
+
 @router.get("/{music_id}/stream")
 async def stream_music(music_id: str):
     """流式播放音乐：按音乐库 id 查 file_path。
@@ -81,6 +109,7 @@ async def list_music(
     q: Optional[str] = None,
     category: Optional[str] = None,
     tags: Optional[str] = None,
+    uploader_id: Optional[int] = None,
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db),
@@ -98,8 +127,19 @@ async def list_music(
         for tag in tags.split(","):
             query = query.filter(Music.tags.contains(tag.strip()))
 
+    # 按上传人筛选：曲库全账号共享，这个维度用来快速定位「自己传的」
+    if uploader_id:
+        query = query.filter(Music.uploader_id == uploader_id)
+
     total = query.count()
     items = query.order_by(Music.created_at.desc()).offset((page - 1) * size).limit(size).all()
+
+    # 批量取上传人显示名（一次查询，避免逐条 N+1）
+    uids = {m.uploader_id for m in items if m.uploader_id}
+    uploader_names = {}
+    if uids:
+        for u in db.query(User.id, User.nickname, User.email).filter(User.id.in_(uids)).all():
+            uploader_names[u.id] = (u.nickname or "").strip() or (u.email or "").split("@")[0] or f"用户{u.id}"
 
     # 不再合成「系统默认曲」条目：内置古筝已由迁移 z6a7b8c9d0e1 落成一条**真实** music 记录，
     # 因此它和普通曲目一样可编辑 / 删除 / 打标签（此前是硬塞的只读条目，后台改不了）。
@@ -114,6 +154,7 @@ async def list_music(
             "category": m.category,
             "tags": m.tags,
             "uploader_id": m.uploader_id,
+            "uploader_name": uploader_names.get(m.uploader_id, ""),
             "file_size": m.file_size,
             "is_default": m.is_default,
             "created_at": str(m.created_at)

@@ -1,3 +1,36 @@
+## [v2.40.10] - 2026-09-25
+
+### 音乐 / 视频模块：列表支持按「上传人」筛选，并显示上传人列（SW `xuanhuang-v232`）
+
+**背景**：音乐、视频是全账号共享的，多账号使用时无法区分谁传的。夜星要求加「上传人」字段：默认记录上传账号、不可编辑，并在搜索框旁支持按上传人筛选。
+
+**现状核实**：`Music.uploader_id` / `Video.uploader_id` 字段与「上传时自动写入 current_user」的逻辑早已存在，且 `MusicUpdate` / `VideoUpdate` 里没有该字段（天然不可编辑）——缺的只是筛选参数、展示列和上传人下拉数据源。
+
+**后端**（`music.py` / `video.py`）：
+- list 接口新增 `uploader_id` 查询参数，精确过滤
+- 返回项新增 `uploader_name`：批量收集当页 uploader_id 一次查 users 表取 `nickname`（空则回退 email），避免 N+1
+- 新增 `GET /api/music/uploaders`、`GET /api/videos/uploaders`：返回有作品的用户 `[{id, name}]`（DISTINCT uploader_id JOIN users，按 id 排序），供前端下拉
+
+**前端**（`MusicView.vue` / `VideoView.vue`）：
+- 搜索框旁新增「上传人」el-select（「全部上传人」+ 各用户，clearable）
+- `fetchData` 组装 `uploader_id` 参数；存在任一筛选条件时显示「清空筛选」按钮，一键重置
+- 表格新增只读「上传人」列（音乐页放在时长后、视频页放在上传时间后）
+- `api/music.js` / `api/video.js` 补 `getUploaders()`；`resetSearch` 一并清空上传人筛选
+
+**测试**：新增 `backend/tests/test_uploader_filter.py`（6 个用例，sqlite 内存库直调路由）：
+音乐/视频各自覆盖「uploader_name 注入、按 uploader_id 过滤、无匹配返回空、uploaders 去重排序」；全绿。
+
+**顺带修复**：`tests/conftest.py` 的模型导入是手写清单，`User` 上指向 `HouseholdMember` 的 relationship 因后者未加载而炸测试 —— 改为遍历 `app/models/*.py` 自动导入，以后新增模型不再需要同步这里。
+
+**验证**（生产）：
+- API：`/api/music/uploaders` → `[{"id":1,"name":"四金哥哥"}]`；`?uploader_id=1` → 43 条全部归属该用户；列表项含 `uploader_name`
+- 浏览器（音乐页）：搜索框旁出现「上传人」下拉（选项「全部上传人 / 四金哥哥」）；选中后列表只剩该用户、出现「清空筛选」；表头出现「上传人」列且值正确
+- 浏览器（视频页）：同样的下拉与「上传人」列均在
+
+**部署**：后端 deploy_backend.py（health=200、ENV=production 保留）；前端 SW v231→v232（v231 为并发会话递增）、vite build + deploy_frontend.py（home=200）
+
+---
+
 ## [v2.40.8] - 2026-09-25
 
 ### 家庭账本去掉重复卡片；播放条支持最小化为可拖动图标（SW `xuanhuang-v228`）

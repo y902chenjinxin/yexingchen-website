@@ -19,9 +19,20 @@
           >
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
+          <!-- 上传人筛选：曲库是全账号共享的，用它快速定位「自己传的」 -->
+          <el-select
+            v-model="uploaderId"
+            size="small"
+            clearable
+            placeholder="上传人"
+            class="mt-uploader"
+            @change="doSearch"
+          >
+            <el-option v-for="u in uploaders" :key="u.id" :label="u.name" :value="u.id" />
+          </el-select>
           <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
-          <el-button v-if="keyword" size="small" plain @click="resetSearch">清空筛选</el-button>
-          <span v-if="keyword" class="search-count">匹配 {{ musicStore.list.length }} 条</span>
+          <el-button v-if="hasFilter" size="small" plain @click="resetSearch">清空筛选</el-button>
+          <span v-if="hasFilter" class="search-count">匹配 {{ musicStore.list.length }} 条</span>
         </div>
         <div class="mt-right">
           <span class="mt-count">共 {{ musicStore.list.length }} 首</span>
@@ -84,6 +95,13 @@
         </el-table-column>
         <el-table-column label="时长" width="72">
           <template #default="{ row }">{{ formatDuration(row.duration) }}</template>
+        </el-table-column>
+        <!-- 上传人：只读展示，由上传时的账号决定，后端不支持修改 -->
+        <el-table-column label="上传人" width="96" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.uploader_name">{{ row.uploader_name }}</span>
+            <span v-else class="dim">—</span>
+          </template>
         </el-table-column>
 
         <!-- 操作：设为背景乐 / 编辑 / 删除 —— 左对齐排布，保证各行按钮纵向对齐。
@@ -298,7 +316,7 @@ import { useIsMobile } from '@/composables/useIsMobile'
 import { useMusicStore } from '@/stores/music'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
-import { downloadMusicTemplate } from '@/api/music'
+import { downloadMusicTemplate, getMusicUploaders } from '@/api/music'
 
 const isMobile = useIsMobile()
 const musicStore = useMusicStore()
@@ -307,6 +325,10 @@ const bgm = useBgmLibraryStore()
 
 const showUpload = ref(false)
 const keyword = ref('')
+/* 上传人筛选：曲库全账号共享，用它快速找到自己上传的曲目 */
+const uploaderId = ref(null)
+const uploaders = ref([])
+const hasFilter = computed(() => !!keyword.value || !!uploaderId.value)
 const uploading = ref(false)
 const uploadRef = ref(null)
 const uploadFileList = ref([])
@@ -478,11 +500,21 @@ async function onDownloadTemplate() {
 
 onMounted(() => {
   fetchData()
+  loadUploaders()
 })
+
+async function loadUploaders() {
+  try {
+    const res = await getMusicUploaders()
+    uploaders.value = res?.data?.list || []
+  } catch { /* 拉不到就只显示「全部」，不影响主流程 */ }
+}
 
 async function fetchData() {
   // size=200 一次性拉全（管理页用客户端分页），避免后端默认 20 条导致列表截断
-  const params = keyword.value ? { q: keyword.value } : { size: 200 }
+  const params = { size: 200 }
+  if (keyword.value) params.q = keyword.value
+  if (uploaderId.value) params.uploader_id = uploaderId.value
   await musicStore.fetchList(params)
 }
 
@@ -494,6 +526,7 @@ function doSearch() {
 
 function resetSearch() {
   keyword.value = ''
+  uploaderId.value = null
   doSearch()
 }
 
@@ -692,6 +725,8 @@ function formatDuration(sec) {
   flex-wrap: wrap;
 }
 .mt-search { width: 240px; }
+/* 上传人筛选下拉（与搜索框同排，窄一些） */
+.mt-uploader { width: 132px; }
 .mt-count {
   font-size: 12px;
   color: var(--dp-text3);

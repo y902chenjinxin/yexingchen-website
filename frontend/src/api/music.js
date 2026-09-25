@@ -5,6 +5,9 @@ export const uploadMusic = (formData) => api.post('/music', formData, { headers:
 export const updateMusic = (id, data) => api.put(`/music/${id}`, data)
 export const deleteMusic = (id) => api.delete(`/music/${id}`)
 
+// 上传人列表（只包含确实有曲目的账号），供列表页的「上传人」筛选下拉使用
+export const getMusicUploaders = () => api.get('/music/uploaders')
+
 // 批量导入：传入 { files: File[], items: [{ title, artist, category, tags }] }，items 与 files 一一对应
 export const batchUploadMusic = ({ files, items }) => {
   const formData = new FormData()

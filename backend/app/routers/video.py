@@ -1,4 +1,5 @@
 from app.models.video import Video
+from app.models.user import User
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -16,11 +17,39 @@ from app.config import settings
 router = APIRouter(prefix="/api/videos", tags=["视频岛"])
 
 
+@router.get("/uploaders", response_model=ResponseBase)
+async def list_video_uploaders(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """视频库的上传人列表 —— 只列出确实有视频的账号，供前端「上传人」筛选下拉使用。
+
+    视频库是全账号共享的，加这个维度是为了让每个人快速找到自己上传的内容。
+    必须定义在 /{video_id}/... 之前，否则 "uploaders" 会被当成路径参数吃掉。
+    """
+    rows = (
+        db.query(User.id, User.nickname, User.email)
+        .join(Video, Video.uploader_id == User.id)
+        .distinct()
+        .all()
+    )
+    items = [
+        {
+            "id": r.id,
+            "name": (r.nickname or "").strip() or (r.email or "").split("@")[0] or f"用户{r.id}",
+        }
+        for r in rows
+    ]
+    items.sort(key=lambda x: x["id"])
+    return ResponseBase(data={"list": items})
+
+
 @router.get("", response_model=ResponseBase)
 async def list_videos(
     q: Optional[str] = None,
     category: Optional[str] = None,
     tags: Optional[str] = None,
+    uploader_id: Optional[int] = None,
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db),
@@ -36,8 +65,19 @@ async def list_videos(
         for tag in tags.split(","):
             query = query.filter(Video.tags.contains(tag.strip()))
 
+    # 按上传人筛选：视频库全账号共享，这个维度用来快速定位「自己传的」
+    if uploader_id:
+        query = query.filter(Video.uploader_id == uploader_id)
+
     total = query.count()
     items = query.order_by(Video.created_at.desc()).offset((page - 1) * size).limit(size).all()
+
+    # 批量取上传人显示名（一次查询，避免逐条 N+1）
+    uids = {v.uploader_id for v in items if v.uploader_id}
+    uploader_names = {}
+    if uids:
+        for u in db.query(User.id, User.nickname, User.email).filter(User.id.in_(uids)).all():
+            uploader_names[u.id] = (u.nickname or "").strip() or (u.email or "").split("@")[0] or f"用户{u.id}"
 
     return ResponseBase(data={
         "list": [
@@ -50,6 +90,7 @@ async def list_videos(
                 "category": v.category,
                 "tags": v.tags,
                 "uploader_id": v.uploader_id,
+                "uploader_name": uploader_names.get(v.uploader_id, ""),
                 "file_size": v.file_size,
                 "created_at": str(v.created_at)
             }

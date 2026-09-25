@@ -5,6 +5,9 @@ export const uploadVideo = (formData) => api.post('/videos', formData, { headers
 export const updateVideo = (id, data) => api.put(`/videos/${id}`, data)
 export const deleteVideo = (id) => api.delete(`/videos/${id}`)
 
+// 上传人列表（只包含确实有视频的账号），供列表页的「上传人」筛选下拉使用
+export const getVideoUploaders = () => api.get('/videos/uploaders')
+
 // 批量导入：files + items 一一对应；items 中可选 cover
 export const batchUploadVideo = ({ files, items, covers }) => {
   const formData = new FormData()
