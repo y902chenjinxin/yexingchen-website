@@ -41,6 +41,22 @@ class MenuIn(BaseModel):
     is_enabled: int = 1
 
 
+class MenuUpdateIn(BaseModel):
+    """菜单更新用的「部分更新」入参：只有显式传入的字段才会被改写。
+
+    此前更新复用 MenuIn，而 MenuIn 的默认值是 parent_id=0 / sort_order=0 / is_enabled=1，
+    所以「只传 is_enabled」的请求会把该菜单的上级和排序一并冲成 0
+    ——菜单页拨一次启停开关就会毁掉这行的层级和排序。
+    """
+
+    parent_id: Optional[int] = None
+    title: Optional[str] = None
+    path: Optional[str] = None
+    icon: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_enabled: Optional[int] = None
+
+
 @router.get("/menus", response_model=ResponseBase)
 async def list_menus(
     db: Session = Depends(get_db),
@@ -61,6 +77,9 @@ async def list_public_menus(
     - 其余角色：若其 role.menu_ids 为空(未配置) → 全部启用菜单；否则仅返回其中 id 命中的菜单
       另：父菜单只是容器，只要任一子项被允许，父菜单一并放行
       （否则会出现「超管明明勾了『账本』，用户却连『数据一览』入口都看不到」）
+
+    v2.18 调整：管理后台的二级节点（path 以 `/admin/` 开头）只在用户具备 super_admin 角色
+    时才返回——这是顶栏的「快速前往」用，不能让普通用户看到管理入口。
     """
     rows = (
         db.query(Menu)
@@ -74,6 +93,8 @@ async def list_public_menus(
         menu_ids = _role_allowed_menu_ids(db, current_user.get("role"))
     except Exception:
         menu_ids = None
+    # 管理后台节点不暴露给非超管（无论是「默认全部可见」还是「角色 menu_ids 过滤」场景）
+    rows = [m for m in rows if not (m.path or "").startswith("/admin/")]
     if not menu_ids:
         return ResponseBase(data={"list": [_menu_to_dict(m) for m in rows]})
 
@@ -132,14 +153,15 @@ async def create_menu(
 @router.put("/menus/{menu_id}", response_model=ResponseBase)
 async def update_menu(
     menu_id: int,
-    req: MenuIn,
+    req: MenuUpdateIn,
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_super_admin),
 ):
     menu = db.query(Menu).filter(Menu.id == menu_id).first()
     if not menu:
         raise_error(ErrCode.INVALID_PARAM, "菜单不存在")
-    if req.path.strip() and req.path.strip() != menu.path:
+    # 下面每个字段都「传了才改」：避免只发 is_enabled 的请求把层级/排序冲掉
+    if req.path is not None and req.path.strip() and req.path.strip() != menu.path:
         if menu.is_builtin:
             raise_error(ErrCode.AUTH_PERMISSION_DENIED, "内置菜单不可修改路径")
         if not req.path.strip().startswith("/"):
@@ -147,13 +169,16 @@ async def update_menu(
         if db.query(Menu).filter(Menu.path == req.path.strip()).first():
             raise_error(ErrCode.INVALID_PARAM, "菜单路径已存在")
         menu.path = req.path.strip()[:255]
-    if req.title:
+    if req.title is not None and req.title.strip():
         menu.title = req.title.strip()[:60]
     if req.icon is not None:
         menu.icon = req.icon.strip()[:60]
-    menu.parent_id = _validate_parent(db, req.parent_id, menu_id)
-    menu.sort_order = req.sort_order
-    menu.is_enabled = 1 if req.is_enabled else 0
+    if req.parent_id is not None:
+        menu.parent_id = _validate_parent(db, req.parent_id, menu_id)
+    if req.sort_order is not None:
+        menu.sort_order = req.sort_order
+    if req.is_enabled is not None:
+        menu.is_enabled = 1 if req.is_enabled else 0
     db.commit()
     log_action(
         db, current_user["user_id"], "update",

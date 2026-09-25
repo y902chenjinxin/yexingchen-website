@@ -1,3 +1,41 @@
+## [v2.40.4] - 2026-09-25
+
+### 管理后台菜单页改造收尾 + 修 5 个 bug（含数据损坏根因，SW `xuanhuang-v219`）
+
+**背景**：菜单权限页从 el-table 树状模式改成自定义「一级组 + 二级行」list 的改造只存在于工作区、未提交，且夜星反馈展示仍有问题。接手后定位到 5 个 bug，其中第 1 个是本轮所有数据异常的真根因。
+
+**① 后端 `update_menu` 是「整体覆盖」而非「部分更新」——数据损坏根因**
+`MenuIn` 的 `parent_id=0 / sort_order=0 / is_enabled=1` 是**字段默认值**，而更新端点**无条件写入**这三个字段。前端拨一次启停开关只发 `{is_enabled}`，于是该菜单的**上级和排序被默认值 0 冲掉**。生产实测：`xuanhuang_menus` 23 行的 `sort_order` 全部被清零。
+修法：新增 `MenuUpdateIn`（字段全 `Optional = None`），更新改为「传了才改」；create 继续用 `MenuIn`。
+> 这也解释了此前排查「所有行 parent_id / is_enabled 都是 0」时反复重置又被冲掉的诡异现象——重置后只要再发一次只含 `is_enabled` 的 PUT，数据就再次被破坏。
+
+**② 前端开关永远显示「停用」**
+`:model-value="!!row.is_enabled"` 把数字转成布尔 `true`，而 `:active-value="1"` 是**数字** → `true !== 1`，开关恒为关。
+还有一个叠加原因：`menuTree` 是 computed 里 `map` 产出的**副本**（用了展开运算符），`handleToggleEnabled` 改副本不会让 computed 重算，值就算对了开关也不会动。
+修法：直接绑数字 `:model-value="row.is_enabled"`；handler 改为写回 `menus` 源数组里的那一项（乐观更新 + 失败回滚）。
+
+**③ 所有开关被禁用**
+`:disabled="is_builtin"` —— 生产 23 条菜单**全部** `is_builtin=1`，导致启停开关一个都点不动，看起来就是坏的。后端本就允许启停内置菜单（只禁止改 path 与删除），故去掉 `:disabled`。
+
+**④ 二级行与一级行 / 表头列不对齐**
+二级行用整行 `margin-left: 32px`，且 `border-left` 是 2px（一级行 3px）；border-box 下内容宽度不同，列逐级错开。
+修法：缩进移进名称单元格内部（`.menu-row--child .menu-name { padding-left }`），`border-left` 统一 3px，并给 `.menu-header` 补等宽透明左边框。
+
+**⑤ tag 视觉过重**
+组行同时挂「一级 / 内置 / 分组容器」三个 tag。精简为只保留「内置」（它解释了为什么没有删除按钮），组行右侧改为轻量文字「N 项」。
+
+**数据修复**：生产 `xuanhuang_menus` 的 `sort_order`（23 行全 0）按目标结构恢复为二级 `10/20/30…` 递增——取值来自遗留脚本 `scripts/_v218_menu_reshuffle.py` 的 `TARGETS`；恢复前 `shutil.copy2` 备份 DB。
+
+**验证（生产 + 真实浏览器）**：
+- 后端 API：`PUT {is_enabled:0}` 后 `parent_id` / `sort_order` **保持不变** ✅；恢复后与初始状态完全一致
+- 页面结构：23 行 / 5 组 / 18 子项；**23 个开关全部显示"开启"、0 个禁用**；「分组容器」标签已消失，组行显示「6 项 / 6 项 / 2 项 / 1 项 / 3 项」
+- 列对齐：表头 / 一级行 / 二级行的列坐标**完全一致** `[298,493,708,822,894,1016]`
+- 交互回归：UI 点击开关「启用 → 停用」成功切换且文案跟随；再拨回后查库，`parent_id` / `sort_order` / `is_enabled` **零变化** ✅
+
+**部署**：后端 `deploy_backend.py`（`admin_menus.py` 在白名单内，health=200、`ENV=production` 保留）；前端 SW `v217 → v218 → v219`、`npx vite build --outDir dist` + `deploy_frontend.py`（223 文件、home=200、`download/` 与 `.well-known/` 完好）。
+
+---
+
 ## [v2.40.3] - 2026-09-22
 
 ### 表格"正在播放"行高亮 + 播放框居中（解决全屏页面溢出）
