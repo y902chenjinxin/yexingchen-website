@@ -831,9 +831,11 @@ html:root[data-theme="day"] .login-page .filing-links a {
 #app:not(.is-mobile) .mouse-light:hover::after {
   opacity: 1;
 }
-/* 确保卡片文字在聚光之上 */
-#app:not(.is-mobile) [data-mouse-light] > *,
-#app:not(.is-mobile) .mouse-light > * {
+/* 确保卡片文字在聚光之上。
+   注意用 :where() 把优先级压到 0：否则「#app + 属性选择器」会盖过组件 scoped 样式，
+   把卡片内部刻意绝对定位的图层（如倒计时卡的 .cd-card-bg / .cd-card-body）强行改成
+   position:relative，导致背景图高度塌成 0 而不可见。组件自己声明定位的层级优先。 */
+:where(#app:not(.is-mobile)) :where([data-mouse-light], .mouse-light) > * {
   position: relative;
   z-index: 1;
 }
@@ -906,21 +908,28 @@ html:root[data-theme="day"] .login-page .filing-links a {
   border-radius: 12px;
   overflow: hidden;
 }
-#app:not(.is-mobile) .el-table.admin-table .el-table__row {
+/* 这条亮条必须挂在行的第一个 td 上，不能挂在 tr 上 —— 这是后台表格「整行内容错位一列」的根因。
+   tr 是 display: table-row，它的 ::before 会被表格的匿名盒修复（table-fixup）变成一个新的
+   table-cell，于是每行最前面凭空多出一格（宽度 = 第一列的宽度），该行所有真实 td 被依次
+   挤到后一列：表头停在原列，内容整体右移一列，td 拿到的宽度也全部错位。
+   td 本身是 table-cell，它的 ::before 只是单元格内部的 inline 内容，不参与列分配。 */
+#app:not(.is-mobile) .el-table.admin-table .el-table__row > td:first-child {
   position: relative;
 }
-#app:not(.is-mobile) .el-table.admin-table .el-table__row::before {
+#app:not(.is-mobile) .el-table.admin-table .el-table__row > td:first-child::before {
   content: "";
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  /* 渐变收在鎏金系内：原先第二色用了 --yq-rain（名字是「雨青」，实际值却是靛蓝 #5b6ae0），
+     在鎏金竖条尾巴上透出一截冷紫，跟玄黄调性不符。 */
+  background: linear-gradient(180deg, var(--yq-gold, #c7a96b), var(--yq-gold-bright, #e5c477));
   opacity: 0;
   transform: scaleY(.4);
   transform-origin: center;
   transition: opacity .22s ease, transform .28s cubic-bezier(.22, .61, .36, 1);
 }
-#app:not(.is-mobile) .el-table.admin-table .el-table__row:hover::before {
+#app:not(.is-mobile) .el-table.admin-table .el-table__row:hover > td:first-child::before {
   opacity: 1;
   transform: scaleY(1);
 }

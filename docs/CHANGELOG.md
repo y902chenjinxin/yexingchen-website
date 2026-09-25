@@ -1,3 +1,42 @@
+## [v2.40.6] - 2026-09-25
+
+### 修复：管理后台所有 el-table 表格「内容整体错位一列」（SW `xuanhuang-v222`）
+
+**现象**：角色管理 / 用户管理等用 `el-table` 的后台页，表头与内容对不齐 ——
+第一列内容被右推一列宽，后续每个单元格都拿的是「下一列」的宽度，最右侧「操作」列被压成 0 宽。
+
+**根因**：`desktop-product.css` 里给行加 hover 鎏金亮条的写法用错了层。
+
+```css
+/* 错的写法：挂在 tr 上 */
+.el-table.admin-table .el-table__row::before { content: ""; position: absolute; width: 3px; ... }
+```
+
+`tr` 是 `display: table-row`，标签内的任何子内容都会触发表格的匿名盒修复
+（CSS 2.1 §17.2.1 table-fixup）：**伪元素被改造成一个真正的 table-cell**。
+于是每行最前面凭空多出一格（占用第一列的宽度），该行所有真实 `td` 被依次挤到后一列。
+
+实测（用户管理页）：`colgroup` 7 列宽度完全正确、`td0` 的 class 也是 `column_1`，
+但 `td0.getBoundingClientRect()` 显示它在第 2 列 —— `offsetLeft = 200`（= 第一列宽），
+实际宽度 120（= 第二列宽）。`thWidths` 与 `tdWidths` 恰好错开一位。
+
+**修法**：把亮条挂到行的第一个 `td` 上。`td` 本身是 table-cell，其 `::before` 只是
+单元格内部的 inline 内容，不参与列分配。
+
+```css
+.el-table.admin-table .el-table__row > td:first-child { position: relative; }
+.el-table.admin-table .el-table__row > td:first-child::before { /* 同原样式 */ }
+.el-table.admin-table .el-table__row:hover > td:first-child::before { opacity: 1; transform: scaleY(1); }
+```
+
+顺手把亮条渐变的第二色从 `--yq-rain` 换成 `--yq-gold-bright`：前者名字叫「雨青」，
+实际值却是靛蓝 `#5b6ae0`，在鎏金竖条尾巴上透出一截冷紫，与玄黄调性不符。
+
+**验证**：浏览器注入 `tr::before{content:none}` 做对照实验，`td0` 由 `x=483 / 宽 120`
+恢复为 `x=283 / 宽 200`，与表头完全对齐（`aligned: true`）。详见 ISSUES v2.40.6。
+
+---
+
 ## [v2.40.5] - 2026-09-25
 
 ### 背景音乐不再自动播放 + 内置曲改为可编辑记录；管理后台菜单页 / 角色页配色回归玄黄（SW `xuanhuang-v221`）
