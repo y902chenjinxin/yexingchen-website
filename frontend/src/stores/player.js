@@ -29,11 +29,11 @@ export const usePlayerStore = defineStore('player', () => {
   const queueIndex = ref(-1)
   /* shuffle 防重复：记录最近 8 首已播过的 id */
   const shuffleRecent = ref([])
-  // BGM 总开关：关闭时彻底停播且不再自动拉起（含自动播放被拦后的恢复句柄）；
-  // 状态持久化到 localStorage，下次进站保持用户上次的选择。
-  // 默认开启：仅显式关闭过（存 '0'）才停；未设置过统一播放背景音乐，
-  // 避免"背景音乐莫名消失"（用户以为丢失）。
-  const bgmEnabled = ref(localStorage.getItem('bgm_enabled') !== '0')
+  // BGM 总开关：关闭时彻底停播且不再自动拉起（含自动播放被拦后的恢复句柄）。
+  // **每次进站一律从「关闭」开始，且不做持久化** —— 需求是「记住选中的曲目，但进站不自动播」。
+  // 若把开关本身持久化，用户上次开着、这次进来就会看到「开启」却不出声，反而更难理解。
+  // 曲目选择由 bgmLibrary 的 bgmChoiceId 单独记住。
+  const bgmEnabled = ref(false)
   const shows = computed(() => mode.value === 'playlist' && !!curItem.value)
   // 用户点 ✕ 关闭播放框：即便 BGM 仍在后台播放，也不再常驻显示播放条
   const dismissed = ref(false)
@@ -60,10 +60,11 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  // 解析播放 URL：default 曲 / 上传曲目 / 外部链接
+  // 解析播放 URL：普通曲目按 id 走；'default' 只作为旧引用的兼容别名保留
+  // （内置古筝现在是一条真实音乐记录，正常会走 id 分支）
   function resolveUrl(item) {
     if (!item) return ''
-    if (item.id === 'default' || item.is_default) return '/api/music/default/stream'
+    if (item.id === 'default') return '/api/music/default/stream'
     return `/api/music/${item.id}/stream`
   }
 
@@ -169,7 +170,7 @@ export const usePlayerStore = defineStore('player', () => {
         if (recent.has(String(queue.value[i].id))) continue
         candidates.push(i)
       }
-      const pool = candidates.length ? candidates : queue.map((_, i) => i).filter(i => i !== queueIndex.value)
+      const pool = candidates.length ? candidates : queue.value.map((_, i) => i).filter(i => i !== queueIndex.value)
       return pool[Math.floor(Math.random() * pool.length)]
     }
     // 列表循环：到末尾回到 0
@@ -286,7 +287,7 @@ export const usePlayerStore = defineStore('player', () => {
   // 开启：按当前偏好源立即恢复播放（被浏览器拦截时自动武装恢复句柄）
   function setBgmEnabled(on) {
     bgmEnabled.value = !!on
-    localStorage.setItem('bgm_enabled', bgmEnabled.value ? '1' : '0')
+    // 不写 localStorage：开关状态是「本次会话」的，见 bgmEnabled 声明处的说明
     if (!bgmEnabled.value) {
       disarmResume()
       if (mode.value === 'bgm') {

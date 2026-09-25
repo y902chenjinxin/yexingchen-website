@@ -117,6 +117,12 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "services", "family_reminder.py"), f"{REMOTE_BASE}/backend/app/services/family_reminder.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "m3n4o5p6q7r8_family_contacts_subscriptions.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/m3n4o5p6q7r8_family_contacts_subscriptions.py"),
+    # ---- v2.17 通讯录 / 订阅 加 household_id（家庭共享）----
+    (os.path.join(ROOT, "backend", "alembic", "versions", "x4y5z6a7b8c9_family_household.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/x4y5z6a7b8c9_family_household.py"),
+    # ---- v2.18 通讯录联系人头像----
+    (os.path.join(ROOT, "backend", "alembic", "versions", "y5z6a7b8c9d0_contacts_avatar.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/y5z6a7b8c9d0_contacts_avatar.py"),
     # ---- v2.21.0（桌宠开关 / 账本自定义分类 / AI Provider 权限 / 农历生日）----
     (os.path.join(ROOT, "backend", "app", "services", "lunar.py"),           f"{REMOTE_BASE}/backend/app/services/lunar.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "workbench", "providers.py"), f"{REMOTE_BASE}/backend/app/routers/workbench/providers.py"),
@@ -124,6 +130,11 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "alembic", "versions", "n4o5p6q7r8s9_finance_categories_lunar.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/n4o5p6q7r8s9_finance_categories_lunar.py"),
     (os.path.join(ROOT, "backend", "requirements.txt"),                 f"{REMOTE_BASE}/backend/requirements.txt"),
+    # ---- 成员展示名统一走账号昵称（member_naming）----
+    (os.path.join(ROOT, "backend", "app", "services", "member_naming.py"), f"{REMOTE_BASE}/backend/app/services/member_naming.py"),
+    # ---- v2.40.5 内置背景曲改为真实音乐记录----
+    (os.path.join(ROOT, "backend", "alembic", "versions", "z6a7b8c9d0e1_seed_builtin_bgm.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/z6a7b8c9d0e1_seed_builtin_bgm.py"),
 ]
 
 

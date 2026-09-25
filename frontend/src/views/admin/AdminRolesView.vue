@@ -48,7 +48,7 @@
     </section>
 
     <!-- 角色编辑弹窗 -->
-    <el-dialog v-model="showRoleDialog" :title="roleForm.id ? '编辑角色' : '新增角色'" width="560px">
+    <el-dialog v-model="showRoleDialog" class="role-dialog" :title="roleForm.id ? '编辑角色' : '新增角色'" width="560px">
       <el-form :model="roleForm" label-width="90px">
         <el-form-item label="角色名称">
           <el-input v-model="roleForm.name" placeholder="如：内容编辑" maxlength="40" />
@@ -63,6 +63,16 @@
           <div class="role-menu-toolbar">
             <el-button link type="primary" size="small" @click="setRoleMenuAll">全选</el-button>
             <el-button link size="small" @click="setRoleMenuNone">清空</el-button>
+            <el-divider direction="vertical" />
+            <span class="toolbar-hint">按分组快选：</span>
+            <el-button
+              v-for="p in parentGroupOptions"
+              :key="p.id"
+              link
+              size="small"
+              :type="groupHasFullChecked(p.id) ? 'success' : 'primary'"
+              @click="toggleGroup(p.id)"
+            >{{ p.title }}</el-button>
           </div>
           <div class="role-menu-tree-wrap">
             <el-tree
@@ -72,6 +82,7 @@
               node-key="id"
               show-checkbox
               default-expand-all
+              :check-strictly="false"
               @check="onRoleMenuCheck"
             />
           </div>
@@ -90,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getRoleList, addRole, updateRole, deleteRole, getMenuList } from '@/api/admin'
 import AdminLayout from './AdminLayout.vue'
@@ -197,6 +208,41 @@ function onRoleMenuCheck() {
   roleForm.value.menu_ids = [...new Set([...checked, ...halfChecked])]
 }
 
+/* v2.18：按一级分组快选。点一次全选该组所有二级，再点取消。 */
+const parentGroupOptions = computed(() =>
+  menus.value.filter(m => !m.parent_id || m.parent_id === 0)
+)
+
+function childrenOf(parentId) {
+  return menus.value.filter(m => m.parent_id === parentId).map(m => m.id)
+}
+
+function groupHasFullChecked(parentId) {
+  if (!roleMenuTreeRef.value) return false
+  const childIds = childrenOf(parentId)
+  if (!childIds.length) return false
+  const checked = new Set(roleMenuTreeRef.value.getCheckedKeys() || [])
+  return childIds.every(id => checked.has(id))
+}
+
+function toggleGroup(parentId) {
+  if (!roleMenuTreeRef.value) return
+  const childIds = childrenOf(parentId)
+  if (groupHasFullChecked(parentId)) {
+    // 已全选 → 取消整组（保留其它组的选择）
+    const cur = new Set(roleMenuTreeRef.value.getCheckedKeys() || [])
+    const next = [...cur].filter(id => !childIds.includes(id))
+    roleMenuTreeRef.value.setCheckedKeys(next)
+    roleForm.value.menu_ids = next
+  } else {
+    // 否则 → 全选该组
+    const cur = new Set(roleMenuTreeRef.value.getCheckedKeys() || [])
+    const next = [...new Set([...cur, ...childIds])]
+    roleMenuTreeRef.value.setCheckedKeys(next)
+    roleForm.value.menu_ids = next
+  }
+}
+
 async function handleSaveRole() {
   if (!roleForm.value.name || !roleForm.value.code) {
     ElMessage.warning('请填写角色名称与标识')
@@ -235,14 +281,24 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* ---- 本页局部玄黄主题 ----
+   只在本页重定义 Element Plus 主色，不动全局 --dp-accent，其它后台页维持原配色。
+   理由同菜单页：管理后台此前是清一色靛蓝，一点玄黄鎏金都没有，跟工作台放在一起像两套系统。 */
 .section {
+  --el-color-primary: var(--yq-gold-bright);
+  --el-color-primary-light-3: var(--yq-gold);
+  --el-color-primary-light-5: var(--yq-gold);
+  --el-color-primary-light-7: var(--yq-gold-faint);
+  --el-color-primary-light-8: var(--yq-gold-faint);
+  --el-color-primary-light-9: var(--yq-gold-faint);
+
   background: var(--dp-surface);
   border: 1px solid var(--dp-line);
   border-radius: var(--dp-radius);
   padding: 18px 22px;
   box-shadow: var(--dp-shadow);
 }
-.section-tip { font-size: 12px; color: var(--dp-text3); margin-bottom: 12px; line-height: 1.55; }
+.section-tip { font-size: 12px; color: var(--dp-text3); margin-bottom: 14px; line-height: 1.6; }
 
 .role-name { font-weight: 600; margin-right: 6px; }
 .builtin-tag { margin-left: 4px; }
@@ -251,14 +307,45 @@ onMounted(async () => {
 .empty-icon { font-size: 36px; opacity: .5; margin-bottom: 8px; }
 .empty-text { font-size: 13px; color: var(--dp-text3); }
 
-.role-menu-toolbar { display: flex; gap: 8px; margin-bottom: 6px; }
-.role-menu-tree-wrap {
-  max-height: 220px;
-  overflow-y: auto;
-  border: 1px solid var(--dp-line);
-  border-radius: 6px;
-  padding: 8px;
-  background: var(--dp-bg2);
+/* 编辑弹窗：弹窗未设 append-to-body，就地渲染在本组件内，所以 scoped 的 :deep() 能穿透到它 */
+:deep(.role-dialog) {
+  --el-color-primary: var(--yq-gold-bright);
+  --el-color-primary-light-3: var(--yq-gold);
+  --el-color-primary-light-5: var(--yq-gold);
+  --el-color-primary-light-7: var(--yq-gold-faint);
+  --el-color-primary-light-8: var(--yq-gold-faint);
+  --el-color-primary-light-9: var(--yq-gold-faint);
 }
-.form-hint { font-size: 11px; color: var(--dp-text3); margin-top: 4px; }
+
+.role-menu-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
+.toolbar-hint { font-size: 12px; color: var(--dp-text3); margin: 0 4px; }
+
+/* 可见菜单树：
+   原先是「灰底 + 1px 边框的方盒子」，像把默认组件直接塞进表单里，所以显得突兀。
+   改成无外框、只用一条左侧细线界定范围，行距压紧；勾选框统一到鎏金，
+   与菜单页的启停开关同色。 */
+.role-menu-tree-wrap {
+  max-height: 232px;
+  overflow-y: auto;
+  border: 0;
+  border-left: 2px solid var(--dp-line);
+  border-radius: 0;
+  padding: 2px 0 2px 10px;
+  background: transparent;
+
+  --el-checkbox-checked-bg-color: var(--yq-gold-bright);
+  --el-checkbox-checked-input-border-color: var(--yq-gold-bright);
+  --el-checkbox-checked-text-color: var(--dp-text);
+  --el-tree-node-hover-bg-color: var(--dp-bg2);
+}
+.role-menu-tree-wrap :deep(.el-tree) { background: transparent; }
+.role-menu-tree-wrap :deep(.el-tree-node__content) { height: 30px; border-radius: 6px; }
+.role-menu-tree-wrap :deep(.el-tree-node__label) { font-size: 13px; }
+/* 一级分组加字重区分层级，二级保持常规字重 */
+.role-menu-tree-wrap :deep(.el-tree > .el-tree-node > .el-tree-node__content .el-tree-node__label) { font-weight: 500; }
+.role-menu-tree-wrap :deep(.el-tree-node__expand-icon) { color: var(--dp-text3); }
+.role-menu-tree-wrap :deep(.el-checkbox__inner) { border-radius: 4px; }
+.role-menu-tree-wrap :deep(.el-checkbox__input.is-checked .el-checkbox__inner::after) { border-color: #fff; }
+
+.form-hint { font-size: 11px; color: var(--dp-text3); margin-top: 6px; }
 </style>

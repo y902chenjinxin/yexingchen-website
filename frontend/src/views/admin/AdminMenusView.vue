@@ -6,8 +6,8 @@
 
     <section class="section">
       <div class="section-tip">
-        支持一级 / 二级模块：一级是侧栏的分组（内容 / 生活 / 财经 / 智能 / 管理），
-        二级是分组下实际可点的页面。系统内置菜单不可删除，避免误删导致侧栏路由失效。
+        支持一级 / 二级模块：一级是侧栏的分组（内容 / 生活 / 财经 / 智能 / 管理），二级是分组下实际可点的页面。
+        <span class="tip-em">系统内置菜单不可删除</span>（避免误删导致侧栏路由失效），但可以随时停用。
       </div>
 
       <!-- 自定义渲染：每个一级组 → 头部一行 + 内部若干二级行。
@@ -34,11 +34,10 @@
             <div class="menu-cell menu-name">
               <el-icon class="menu-branch"><FolderOpened /></el-icon>
               <span class="menu-title">{{ group.title }}</span>
-              <el-tag v-if="group.is_builtin" size="small" type="warning" class="level-tag">内置</el-tag>
               <span class="child-count">{{ group.children.length }} 项</span>
             </div>
             <div class="menu-cell menu-path">
-              <code class="path-code">{{ group.path || '—（一级容器）' }}</code>
+              <span class="path-none">—</span>
             </div>
             <div class="menu-cell menu-parent">—</div>
             <div class="menu-cell menu-sort">{{ group.sort_order }}</div>
@@ -79,7 +78,6 @@
             <div class="menu-cell menu-name">
               <el-icon class="menu-leaf"><component :is="iconMap[child.icon] || HomeFilled" /></el-icon>
               <span class="menu-title">{{ child.title }}</span>
-              <el-tag v-if="child.is_builtin" size="small" type="warning" class="level-tag">内置</el-tag>
             </div>
             <div class="menu-cell menu-path">
               <code class="path-code">{{ child.path }}</code>
@@ -283,17 +281,30 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ---- 本页局部玄黄主题 ----
+   只在这一页重定义 Element Plus 主色变量，**不动全局 --dp-accent**，所以其它后台页维持原配色。
+   玄黄的「鎏金」在工作台早就在用（--lj-seal / --lj-ochre），而管理后台此前是清一色靛蓝、
+   一点金都没有 —— 放在一起就像两套不同的系统。
+   （没有引入青色：项目里 --ls-jade / --yq-rain 目前实际都指向靛蓝，不是真青色，
+     与其硬造一个，不如只用鎏金做强调、其余交给墨色层级。） */
 .section {
+  --el-color-primary: var(--yq-gold-bright);
+  --el-color-primary-light-3: var(--yq-gold);
+  --el-color-primary-light-5: var(--yq-gold);
+  --el-color-primary-light-7: var(--yq-gold-faint);
+  --el-color-primary-light-8: var(--yq-gold-faint);
+  --el-color-primary-light-9: var(--yq-gold-faint);
+  --el-switch-on-color: var(--yq-gold-bright);
+  --el-switch-off-color: var(--dp-line-strong);
+
   background: var(--dp-surface);
   border: 1px solid var(--dp-line);
   border-radius: var(--dp-radius);
   padding: 18px 22px;
   box-shadow: var(--dp-shadow);
 }
-.section-tip { font-size: 12px; color: var(--dp-text3); margin-bottom: 12px; line-height: 1.55; }
-
-.menu-title-text { font-weight: 500; }
-.menu-icon, .menu-branch { color: var(--dp-accent); }
+.section-tip { font-size: 12px; color: var(--dp-text3); margin-bottom: 14px; line-height: 1.6; }
+.tip-em { color: var(--yq-gold-bright); font-weight: 500; }
 
 /* 自定义 list 布局：6 列 grid，每列独立对齐 */
 .menu-list {
@@ -327,13 +338,14 @@ onMounted(() => {
   transition: background-color .15s;
 }
 .menu-row:hover { background: var(--dp-bg2); }
+/* 一级组行：不再铺整行渐变底（太重、像色带），改用左侧鎏金细线 + 字重区分。
+   层级靠留白和线来表达，不靠色块。 */
 .menu-row--group {
-  background: linear-gradient(135deg, rgba(199,169,107,.10), rgba(127,168,163,.06));
-  border-left-color: var(--dp-accent);
+  border-left-color: var(--yq-gold-bright);
   font-weight: 500;
 }
+/* 二级行也不再铺底色，避免整页变成一条条色带 */
 .menu-row--child {
-  background: var(--dp-bg2);
   border-left-color: var(--dp-line);
 }
 /* 二级缩进放进名称单元格内部。用整行 margin-left 会改掉这一行的内容宽度，
@@ -356,22 +368,21 @@ onMounted(() => {
   gap: 6px;
   flex-wrap: nowrap;
 }
-.menu-name .menu-branch,
-.menu-name .menu-leaf { color: var(--dp-accent); flex: none; }
+.menu-name .menu-branch { color: var(--yq-gold-bright); flex: none; }
+.menu-name .menu-leaf { color: var(--dp-text2); flex: none; }
 .menu-name .menu-title { font-size: 14px; }
-.menu-name .level-tag { margin-left: 2px; }
-.level-tag { transform: scale(.92); transform-origin: left center; }
-/* 分组行的「N 项」计数：用轻量文字替代原先那个「分组容器」标签，降视觉重量 */
+/* 分组行的「N 项」计数：轻量文字，替代原先每行都挂的「内置 / 分组容器」标签 */
 .child-count { font-size: 11px; color: var(--dp-text3); font-weight: 400; }
 
+/* 一级容器没有对外路径（库里存的是 /__group/xxx 占位），列表里显示破折号即可 */
+.path-none { color: var(--dp-text3); }
 .path-code {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 12px;
   color: var(--dp-text2);
-  background: var(--dp-surface);
+  background: var(--dp-bg2);
   padding: 1px 6px;
   border-radius: 4px;
-  border: 1px solid var(--dp-line);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;

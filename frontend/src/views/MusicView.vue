@@ -47,7 +47,8 @@
         @selection-change="onSelectionChange"
         empty-text="暂无音乐，点上方「导入」添加"
       >
-        <el-table-column type="selection" width="46" :selectable="(row) => Number(row.is_default) !== 1" />
+        <!-- 全选：内置古筝已是普通曲目，不再有「不可勾选」的只读行 -->
+        <el-table-column type="selection" width="46" />
 
         <!-- 标题：播放按钮内联，省一列 -->
         <el-table-column label="曲目" min-width="220">
@@ -85,17 +86,16 @@
           <template #default="{ row }">{{ formatDuration(row.duration) }}</template>
         </el-table-column>
 
-        <!-- 操作：设为默认（背景乐） / 编辑 / 删除 —— 左对齐排布，保证各行按钮纵向对齐 -->
+        <!-- 操作：设为背景乐 / 编辑 / 删除 —— 左对齐排布，保证各行按钮纵向对齐。
+             内置古筝现在是普通曲目记录，所以不再有「只读行」守卫，每首都能编辑删除。 -->
         <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <div class="row-ops">
-              <el-tag v-if="isCurBgm(row)" size="small" type="primary" effect="dark" class="bgm-on">默认中</el-tag>
-              <el-button v-else size="small" @click="setAsBg(row)">设为默认</el-button>
+              <el-tag v-if="isCurBgm(row)" size="small" type="primary" effect="dark" class="bgm-on">背景乐</el-tag>
+              <el-button v-else size="small" @click="setAsBg(row)">设为背景乐</el-button>
 
-              <template v-if="Number(row.is_default) !== 1">
-                <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
-                <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
-              </template>
+              <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
+              <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
             </div>
           </template>
         </el-table-column>
@@ -292,7 +292,7 @@
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useMusicStore } from '@/stores/music'
@@ -608,11 +608,13 @@ async function confirmBatchDelete() {
   if (!ids.length) return
   batchDeleting.value = true
   try {
-    const hitBgm = ids.some(id => String(player.bgmChoiceId) === String(id))
+    // bgmChoiceId 与 setBackground 都在 bgmLibrary store 上；早前误写成 player.* ，
+    // 前者恒为 undefined（判断永不成立）、后者不是函数（异常被 catch 吞掉）
+    const hitBgm = ids.some(id => String(bgm.bgmChoiceId) === String(id))
     for (const id of ids) {
       await musicStore.remove(id)
     }
-    if (hitBgm) player.setBackground(null, false)
+    if (hitBgm) bgm.setBackground(null, false)
     ElMessage.success(`已删除 ${ids.length} 项`)
     showBatchDelete.value = false
     tableRef.value?.clearSelection()

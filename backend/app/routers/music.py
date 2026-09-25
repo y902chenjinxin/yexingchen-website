@@ -59,7 +59,11 @@ async def _stream_file(file_path: str):
 
 @router.get("/{music_id}/stream")
 async def stream_music(music_id: str):
-    """流式播放音乐（'default'=系统内置古筝，否则按音乐库 id 查 file_path）"""
+    """流式播放音乐：按音乐库 id 查 file_path。
+
+    `default` 是历史别名（旧「合成条目」的 id），保留只为兼容浏览器里还缓存的旧前端；
+    内置古筝现在是真实记录（迁移 z6a7b8c9d0e1 播种），正常都走下面的 id 分支。
+    """
     if music_id == "default":
         return await _stream_file("uploads/bgm/bamboo_flute.mp3")
     db = SessionLocal()
@@ -97,22 +101,9 @@ async def list_music(
     total = query.count()
     items = query.order_by(Music.created_at.desc()).offset((page - 1) * size).limit(size).all()
 
-    # 系统默认古筝曲：始终作为列表首条展示（只读保护，不可删改）
-    default_entry = {
-        "id": "default",
-        "title": "玄黄古筝 · 默认背景",
-        "artist": "系统",
-        "file_path": "/api/settings/bg_music/stream/bamboo_flute",
-        "original_filename": "default-bg.mp3",
-        "duration": 0,
-        "category": "系统",
-        "tags": "默认,古筝",
-        "uploader_id": 0,
-        "file_size": 0,
-        "is_default": True,
-        "created_at": ""
-    }
-    list_items = (([default_entry] if not q else []) + [
+    # 不再合成「系统默认曲」条目：内置古筝已由迁移 z6a7b8c9d0e1 落成一条**真实** music 记录，
+    # 因此它和普通曲目一样可编辑 / 删除 / 打标签（此前是硬塞的只读条目，后台改不了）。
+    list_items = [
         {
             "id": m.id,
             "title": m.title,
@@ -124,11 +115,11 @@ async def list_music(
             "tags": m.tags,
             "uploader_id": m.uploader_id,
             "file_size": m.file_size,
-            "is_default": False,
+            "is_default": m.is_default,
             "created_at": str(m.created_at)
         }
         for m in items
-    ])
+    ]
 
     return ResponseBase(data={
         "list": list_items,

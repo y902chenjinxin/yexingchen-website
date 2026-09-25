@@ -113,9 +113,9 @@
         </button>
         <template #dropdown>
           <div class="tb-cd-panel" @click.stop>
-            <div class="tb-panel-title">倒计时</div>
+            <div class="tb-panel-title">时光痕迹</div>
             <div
-              v-for="it in top5"
+              v-for="it in upcoming"
               :key="it.id"
               class="tb-cd-item"
               @click="goCountdown(it.id)"
@@ -125,7 +125,7 @@
               <span class="tb-cd-date">{{ shortDate(it.target_date) }}</span>
               <span class="tb-cd-days">{{ it.days_left }} 天</span>
             </div>
-            <div v-if="!top5.length" class="tb-cd-empty">暂无进行中的倒计时</div>
+            <div v-if="!upcoming.length" class="tb-cd-empty">暂无进行中的倒计时</div>
           </div>
         </template>
       </el-dropdown>
@@ -176,9 +176,46 @@
             </div>
 
             <!-- 分隔线 -->
-            <div v-if="alertItems.length && taskItems.length" class="tb-alert-divider"></div>
+            <div class="tb-alert-divider"></div>
 
-            <!-- 段 2：目标价预警 -->
+            <!-- 段 2：即将到来（时光痕迹 / 倒计时）
+                 工作台已移除「即将到来」区块，事件统一收进这里 -->
+            <div class="tb-alert-section">
+              <div class="tb-panel-title">
+                <span>
+                  <el-icon><Calendar /></el-icon>
+                  即将到来
+                  <span v-if="upcoming.length" class="tb-section-count">{{ upcoming.length }}</span>
+                </span>
+                <router-link to="/tool/countdown" class="tb-alert-link" @click.stop>查看全部 →</router-link>
+              </div>
+              <div v-if="!upcoming.length" class="tb-alert-empty">
+                暂无即将到来的事件。
+              </div>
+              <div
+                v-for="cd in upcoming"
+                :key="'cd-' + cd.id"
+                class="tb-alert-item kind-cd"
+                @click="goCountdown(cd.id)"
+              >
+                <span
+                  class="tb-alert-kind kind-cd-kind"
+                  :style="{ background: (cd.color || '#c7a96b') + '22', color: cd.color || '#c7a96b' }"
+                >
+                  {{ cd.direction === 'count_up' ? '纪念' : '倒计' }}
+                </span>
+                <span class="tb-alert-name">{{ cd.title }}</span>
+                <span class="tb-alert-meta">
+                  {{ shortDate(cd.target_date) }} ·
+                  {{ cd.direction === 'count_up' ? `已经 ${cd.days_left} 天` : `还有 ${cd.days_left} 天` }}
+                </span>
+              </div>
+            </div>
+
+            <!-- 分隔线 -->
+            <div class="tb-alert-divider"></div>
+
+            <!-- 段 3：目标价预警 -->
             <div class="tb-alert-section">
               <div class="tb-panel-title">
                 <span>
@@ -258,7 +295,8 @@ const nearest = computed(() => {
   if (!cds.length) return null
   return cds.sort((a, b) => a.days_left - b.days_left)[0]
 })
-const top5 = computed(() => {
+// 顶栏「倒计时徽章」与「提醒中心 · 即将到来」共用同一份最近 5 条
+const upcoming = computed(() => {
   const cds = cdList.value.filter(c => c.days_left >= 0)
   cds.sort((a, b) => a.days_left - b.days_left)
   return cds.slice(0, 5)
@@ -443,7 +481,7 @@ const bgmListOpen = ref(false)
 const curBgmName = computed(() => {
   const id = bgm.bgmChoiceId
   const it = bgm.musicLibrary.find(x => String(x.id) === String(id))
-  return it ? it.title : '默认古筝'
+  return it ? it.title : '未选择'
 })
 
 function chooseBgm(item) {
@@ -814,6 +852,11 @@ onUnmounted(() => {
 .tb-alert-kind.pri-high { background: rgba(216, 80, 79, .14); color: #D8504F; }
 .tb-alert-kind.pri-medium { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold, #c7a96b); }
 .tb-alert-kind.pri-low { background: rgba(127, 168, 163, .14); color: var(--yq-rain, #7fa8a3); }
+
+/* 提醒中心 · 即将到来（时光痕迹）：色标取事件自身配色，行内不留右侧按钮列 */
+.tb-alert-item.kind-cd { grid-template-columns: 44px 1fr; }
+.tb-alert-item.kind-cd .tb-alert-name { font-size: 12.5px; }
+.tb-alert-kind.kind-cd-kind { letter-spacing: .04em; }
 
 @media (max-width: 767px) {
   /* 触控目标 ≥44px（WCAG）：移动端顶栏图标按钮加大命中区，顶栏高度仍容纳得下 */

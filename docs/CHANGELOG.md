@@ -1,3 +1,64 @@
+## [v2.40.5] - 2026-09-25
+
+### 背景音乐不再自动播放 + 内置曲改为可编辑记录；管理后台菜单页 / 角色页配色回归玄黄（SW `xuanhuang-v221`）
+
+夜星提了三件事，本轮一并处理。
+
+#### ① 背景音乐：进站不自动播，只记住所选曲目
+
+**为什么会自动响**：`bgmLibrary.initBgm()` 第一行就无条件起播内置曲
+（`if (!player.bgmUrl) player.playBgm('/api/music/default/stream')`），
+且 `player.bgmEnabled` 默认是 `true`（`localStorage.getItem('bgm_enabled') !== '0'`）。
+两者叠加 → 每次进站都在放古筝。
+
+**为什么那首改不了删不掉**：它**根本不是数据库记录**。后端 `music.py` 在列表接口里
+硬塞了一条合成条目（`id='default'`、`is_default=True`），音频写死在 `uploads/bgm/bamboo_flute.mp3`，
+所以后台既编辑不了也删不掉。
+
+**改法**：
+- 后端：列表接口不再合成条目；新增幂等迁移 `z6a7b8c9d0e1` 把那个 mp3 落成一条**真实** `music`
+  记录（`玄黄古筝`，`is_default=0`），此后它走普通曲目的增删改流程。`/api/music/default/stream`
+  保留为兼容别名，只服务浏览器里还缓存的旧前端。
+- 前端：`bgmChoiceId` 默认 `''`（不再替用户选一首）；`initBgm()` **只加载库 + 恢复上次选的曲目，
+  绝不调用 `playBgm()`，也不武装 pointerdown 恢复句柄**（否则进站后随便点一下就响，那只是换了时机的自动播放）；
+  `refreshBgmChoice()` 不再回落到 default stream；`setBackground(null)` 时若选择已失效则**归零**，
+  不再自动挑一首顶上。
+- `bgmEnabled` 改为**每次进站从「关闭」开始且不持久化**：需求是「记住曲目、但进站不自动播」，
+  若连开关状态也持久化，用户上次开着、这次进来会看到「开启」却不出声，反而更难理解。
+- MusicView：去掉「默认中」特判与「只读行」守卫（`Number(row.is_default) !== 1`），
+  所有曲子都能编辑 / 删除 / 勾选；文案「设为默认」改为更准确的「设为背景乐」。
+
+**验证**：`/api/music` 返回 43 条（42 原有 + 1 播种），无 `id='default'` 合成条目；
+播种行 `id=53 / 玄黄古筝 / file_path=/bgm/bamboo_flute.mp3`；`GET /api/music/53/stream`
+→ 200 `audio/mpeg` 1259172 字节、前 16 字节是真 ID3 头。
+
+#### ②③ 管理后台菜单页 / 角色页：局部套玄黄 token
+
+**真根源不是组件库**：`desktop-theme-day.css` 里 `--dp-accent: #5b6ae0`（靛蓝）、
+夜间 `#A78BFA`（紫），管理后台是清一色靛蓝；而工作台那套 `--lj-*` 用的是鎏金
+（`--lj-seal` / `--lj-ochre` ← `--yq-gold`）。**后台一点金都没有**，跟工作台放在一起像两套系统。
+（顺带核实：项目里 `--ls-jade` / `--yq-rain` 目前实际都指向靛蓝、并非真青色，
+所以本轮只用鎏金做强调，其余交给墨色层级，不硬造一个青色。）
+
+**范围按夜星要求只改这两个页** —— 做法是在页面根节点 `.section` 上**重定义 `--el-color-primary` 等
+Element Plus 变量**（CSS 自定义属性按 DOM 继承，重定义只影响该子树），**不动全局 `--dp-accent`**，
+其它后台页维持原配色。
+
+- **菜单页**：开关改鎏金（`--el-switch-on-color`）；去掉每行重复的「内置」标签（全部内置等于零信息，
+  改在页头说明一次）；一级行的路径列不再暴露内部占位符 `/__group/xxx`，显示 `—`；
+  一级行去掉整行渐变底，改左侧 3px 鎏金竖线（层级靠留白和线，不靠色块）；二级行也不再铺底色；
+  一级图标鎏金、二级图标中性墨色；`--el-color-primary` 覆盖后按钮 / tag / 焦点环一并转金。
+- **角色页**：「可见菜单」树原本是「灰底 + 1px 边框」的方盒子，像把默认组件直接塞进表单里 →
+  改为无外框、只用一条左侧细线界定范围，行高压紧到 30px；勾选框统一到鎏金；
+  一级分组加字重区分层级。弹窗未设 `append-to-body`（就地渲染），所以 scoped 的 `:deep(.role-dialog)`
+  能穿透到弹窗，主按钮也一并转金。
+
+**部署/验证**：后端 `deploy_backend.py`（迁移 `y5z6a7b8c9d0 → z6a7b8c9d0e1` 已执行、health=200、
+`ENV=production` 保留）；前端 SW `v219 → v220 → v221`、`vite build` + `deploy_frontend.py`（home=200）。
+eslint 对全部改动文件 0 error。
+
+---
+
 ## [v2.40.4] - 2026-09-25
 
 ### 管理后台菜单页改造收尾 + 修 5 个 bug（含数据损坏根因，SW `xuanhuang-v219`）
