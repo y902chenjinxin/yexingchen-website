@@ -35,7 +35,7 @@
  */
 import { Document, Link } from '@element-plus/icons-vue'
 
-const props = defineProps({
+defineProps({
   assets: { type: Array, required: true },
   totalSizeText: { type: String, required: true },
 })

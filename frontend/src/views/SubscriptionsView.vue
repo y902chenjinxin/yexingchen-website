@@ -87,7 +87,7 @@
             <thead>
               <tr>
                 <th>名称</th><th class="r">金额</th><th class="r">周期</th>
-                <th class="r">下次到期</th><th class="r">操作</th>
+                <th class="r">下次到期</th><th>创建人</th><th class="r">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -109,6 +109,10 @@
                     </span>
                   </template>
                   <span v-else class="sb-muted">未设</span>
+                </td>
+                <td class="sb-creator">
+                  <span v-if="s.creator_name">{{ s.creator_avatar || '👤' }} {{ s.creator_name }}</span>
+                  <span v-else class="sb-muted">—</span>
                 </td>
                 <td class="r sb-actions">
                   <button v-if="s.is_active" class="sb-btn ghost tiny" @click="pay(s)">已缴费</button>
@@ -388,6 +392,8 @@ onMounted(reload)
 .sb-tag.off { color: var(--lj-text-3); background: rgba(74,95,99,.1); }
 .sb-code { display: block; font-size: 11px; color: var(--lj-text-3); margin-top: 3px; }
 .sb-num { font-variant-numeric: tabular-nums; }
+/* 家庭共享：谁录入的（账号昵称，注销后显示「已注销」） */
+.sb-creator { font-size: 12px; color: var(--lj-text-2); white-space: nowrap; }
 .sb-due { font-variant-numeric: tabular-nums; }
 .sb-days { margin-left: 8px; font-size: 11px; padding: 1px 7px; border-radius: 999px;
   border: 1px solid var(--lj-line); color: var(--lj-text-2); }

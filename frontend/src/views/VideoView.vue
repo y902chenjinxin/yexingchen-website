@@ -49,6 +49,18 @@
           </template>
         </el-table-column>
       </el-table>
+      <div v-if="!videoStore.loading && videoStore.list.length" class="pager-wrap">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next"
+          :total="videoStore.list.length"
+          :page-size="pageSize"
+          :page-sizes="[10, 20, 50]"
+          :current-page="page"
+          @size-change="onSizeChange"
+          @current-change="onPageChange"
+        />
+      </div>
       <EmptyState v-if="!videoStore.loading && videoStore.list.length === 0" size="sm" title="暂无视频" description="到管理后台上传视频，或稍后刷新重试" />
     </div>
 
@@ -242,7 +254,7 @@
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'

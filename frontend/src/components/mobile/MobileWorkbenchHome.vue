@@ -100,7 +100,7 @@ const QUICK = [
   { label:'足迹',   path:'/travels', acc:'--ab-cyn', icon:ICONS.travels },
   { label:'通讯录', path:'/contacts',acc:'--ab-amb', icon:ICONS.contacts },
   { label:'证件照', path:'/tool/idphoto', acc:'--ab-cyn', icon:ICONS.idphoto },
-  { label:'倒计时', path:'/tool/countdown', acc:'--ab-vio', icon:ICONS.countdown },
+  { label:'时光痕迹', path:'/tool/countdown', acc:'--ab-vio', icon:ICONS.countdown },
 ]
 const quick = QUICK
 

@@ -30,7 +30,7 @@ import { useIsMobile } from '@/composables/useIsMobile'
 const router = useRouter()
 const { isMobile } = useIsMobile()
 
-const props = defineProps({
+defineProps({
   type: {
     type: String,
     required: true

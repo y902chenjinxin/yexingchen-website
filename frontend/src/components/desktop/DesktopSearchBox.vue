@@ -116,7 +116,7 @@ const groups = computed(() => {
   return [
     { key: 'notes', title: '笔记', icon: Document, items: r.notes || [], label: (it) => it?.title || '（无标题）', to: (it) => `/notes/${it?.id}` },
     { key: 'music', title: '音乐', icon: Headset, items: r.music || [], label: (it) => it?.title || '（无标题）', to: () => '/music' },
-    { key: 'novels', title: '小说', icon: Reading, items: r.novels || [], label: (it) => it?.title + (it?.author ? `　${it.author}` : ''), to: () => '/novel' },
+    { key: 'novels', title: '小说', icon: Reading, items: r.novels || [], label: (it) => it?.title + (it?.author ? `\u3000${it.author}` : ''), to: () => '/novel' },
     { key: 'videos', title: '视频', icon: VideoPlay, items: r.videos || [], label: (it) => it?.title || '（无标题）', to: () => '/video' },
     { key: 'tools', title: '工具', icon: Tools, items: r.tools || [], label: (it) => it?.title || it?.description || '（无标题）', to: () => '/tool' },
   ]

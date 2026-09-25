@@ -86,9 +86,7 @@ import {
   MapLocation,
   Money,
   TrendCharts,
-  DataAnalysis,
   Notebook,
-  List,
   Calendar,
   ChatLineRound,
   Connection,
@@ -149,7 +147,6 @@ const groups = computed(() => {
         { path: '/music', title: '音乐', icon: Headset },
         { path: '/novel', title: '小说', icon: Reading },
         { path: '/video', title: '视频', icon: VideoPlay },
-        { path: '/life', title: '生活', icon: Apple },  // v2.15 体重 / 三餐家人共享
         { path: '/log', title: '日志', icon: EditPen },
         { path: '/tool', title: '工具', icon: Bell },
         { path: '/notes', title: '笔记云台', icon: Notebook },
@@ -158,25 +155,19 @@ const groups = computed(() => {
     {
       label: '生活',
       items: [
+        { path: '/life', title: '体重三餐', icon: Apple },  // v2.17 体重 / 三餐家人共享，由内容分组移入
         { path: '/tool/countdown', title: '时光痕迹', icon: Calendar },
         { path: '/travels', title: '足迹地图', icon: MapLocation },
         { path: '/finance/book', title: '记账', icon: Money },  // v2.16.2 记账归入生活分组
+        { path: '/contacts', title: '通讯录', icon: Compass },  // v2.18 由「家」分组并入「生活」
+        { path: '/subscriptions', title: '订阅', icon: Coin },  // v2.18 由「家」分组并入「生活」
       ],
     },
     {
-      label: '财经',  // v2.16 财经模块：综合 / 行情 / 资讯
+      label: '财经',  // v2.37 去掉「综合」总览页（与工作台 KPI 重复），财经只剩行情 / 资讯
       items: [
-        { path: '/finance/overview', title: '综合', icon: DataAnalysis },
         { path: '/finance/market', title: '行情', icon: TrendCharts },
         { path: '/finance/news', title: '资讯', icon: Connection },
-      ],
-    },
-    {
-      label: '家',
-      items: [
-        { path: '/contacts', title: '通讯录', icon: Compass },
-        { path: '/subscriptions', title: '订阅', icon: Coin },
-        { path: '/tasks', title: '待办', icon: List },
       ],
     },
     {
@@ -208,7 +199,7 @@ function isActive(path) {
   if (path === '/tool') return route.path === '/tool' || (route.path.startsWith('/tool/') && !route.path.startsWith('/tool/countdown'))
   if (path === '/admin/users') return route.path === '/admin' || route.path === '/admin/users'
   // v2.16 财经/记账子页互不抢占高亮（精确匹配；记账现挂生活分组但仍属 /finance/book）
-  if (path === '/finance/overview' || path === '/finance/market' || path === '/finance/news' || path === '/finance/book') {
+  if (path === '/finance/market' || path === '/finance/news' || path === '/finance/book') {
     return route.path === path
   }
   return route.path === path || route.path.startsWith(path + '/')

@@ -128,7 +128,6 @@ const hoverExp = computed(() => (hover.value == null ? 0 : (props.days[hover.val
 const hoverDay = computed(() => (hover.value == null ? '' : (props.days[hover.value]?.day || '').slice(5)))
 const tipStyle = computed(() => {
   if (hover.value == null) return {}
-  const cellW = plotW / Math.max(1, n.value - 1)
   const pct = ((x(hover.value)) / W) * 100
   const flip = pct > 68
   return { left: `${pct}%`, transform: `translateX(${flip ? -110 : 10}%)` }

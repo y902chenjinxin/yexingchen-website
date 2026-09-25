@@ -79,7 +79,7 @@
     <!-- 编辑对话框 -->
     <el-dialog
       v-model="editVisible"
-      title="编辑倒计时"
+      title="编辑事件"
       width="480px"
       :close-on-click-modal="false"
       class="cdd-dialog"

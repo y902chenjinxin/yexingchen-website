@@ -16,12 +16,16 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.family import Subscription
 from app.schemas.errors import ErrCode, raise_error
-from app.services.family_reminder import advance_subscription, next_due_after, parse_date
+from app.services.family_reminder import advance_subscription, parse_date
 from app.services.log_service import log_action
+from app.services.member_naming import creator_of, member_map
 from app.services.softdelete import restore, soft_delete
 from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api/subscriptions", tags=["订阅账单"])
+
+# v2.17：订阅家庭共享（user_id 降级为「录入人」溯源）
+HOUSEHOLD_ID = 1
 
 CYCLES = ("weekly", "monthly", "quarterly", "yearly", "once")
 CYCLE_LABEL = {
@@ -103,12 +107,12 @@ def _norm_cycle(v, default="monthly"):
     return v if v in CYCLES else default
 
 
-def _to_out(s: Subscription, today: date | None = None) -> dict:
+def _to_out(s: Subscription, today: date | None = None, mmap: dict | None = None) -> dict:
     today = today or date.today()
     due = parse_date(s.next_due)
     amount = float(s.amount or 0)
     per_year = PER_YEAR.get(s.cycle, 0)
-    return {
+    out = {
         "id": s.id,
         "name": s.name,
         "amount": amount,
@@ -128,6 +132,9 @@ def _to_out(s: Subscription, today: date | None = None) -> dict:
         "created_at": str(s.created_at),
         "updated_at": str(s.updated_at),
     }
+    if mmap is not None:
+        out.update(creator_of(s.user_id, mmap))
+    return out
 
 
 @router.get("")
@@ -139,7 +146,7 @@ def list_subscriptions(
     current_user: dict = Depends(get_current_user),
 ):
     query = db.query(Subscription).filter(
-        Subscription.user_id == current_user["user_id"], Subscription.deleted_at.is_(None)
+        Subscription.household_id == HOUSEHOLD_ID, Subscription.deleted_at.is_(None)
     )
     if q:
         query = query.filter(or_(Subscription.name.contains(q), Subscription.category.contains(q)))
@@ -149,7 +156,8 @@ def list_subscriptions(
         query = query.filter(Subscription.is_active == is_active)
 
     today = date.today()
-    rows = [_to_out(s, today) for s in query.all()]
+    mmap = member_map(db, HOUSEHOLD_ID)
+    rows = [_to_out(s, today, mmap) for s in query.all()]
     # 未到期且临近的排前面；无到期日的沉底
     rows.sort(key=lambda r: (
         0 if r["is_active"] else 1,
@@ -170,7 +178,7 @@ def subscription_stats(
     rows = [
         _to_out(s, today)
         for s in db.query(Subscription).filter(
-            Subscription.user_id == current_user["user_id"], Subscription.deleted_at.is_(None)
+            Subscription.household_id == HOUSEHOLD_ID, Subscription.deleted_at.is_(None)
         ).all()
     ]
     active = [r for r in rows if r["is_active"]]
@@ -215,10 +223,11 @@ def upcoming_due(
     current_user: dict = Depends(get_current_user),
 ):
     today = date.today()
+    mmap = member_map(db, HOUSEHOLD_ID)
     rows = [
-        _to_out(s, today)
+        _to_out(s, today, mmap)
         for s in db.query(Subscription).filter(
-            Subscription.user_id == current_user["user_id"],
+            Subscription.household_id == HOUSEHOLD_ID,
             Subscription.deleted_at.is_(None),
             Subscription.is_active == 1,
             Subscription.next_due.isnot(None),
@@ -235,7 +244,7 @@ def get_subscription(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    return ok(_to_out(_ensure(db, sub_id, current_user["user_id"])))
+    return ok(_to_out(_ensure(db, sub_id), mmap=member_map(db, HOUSEHOLD_ID)))
 
 
 @router.post("", status_code=201)
@@ -246,6 +255,7 @@ def create_subscription(
 ):
     s = Subscription(
         user_id=current_user["user_id"],
+        household_id=HOUSEHOLD_ID,
         name=payload.name,
         amount=payload.amount or 0,
         currency=payload.currency or "CNY",
@@ -264,7 +274,7 @@ def create_subscription(
         db, current_user["user_id"], "create",
         target_type="subscription", target_id=s.id, detail=f"新增订阅 {s.name}",
     )
-    return ok(_to_out(s), "已添加")
+    return ok(_to_out(s, mmap=member_map(db, HOUSEHOLD_ID)), "已添加")
 
 
 @router.put("/{sub_id}")
@@ -274,7 +284,7 @@ def update_subscription(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    s = _ensure(db, sub_id, current_user["user_id"])
+    s = _ensure(db, sub_id)
     if payload.name is not None:
         name = payload.name.strip()
         if not name:
@@ -304,7 +314,7 @@ def update_subscription(
         db, current_user["user_id"], "update",
         target_type="subscription", target_id=s.id, detail=f"更新订阅 {s.name}",
     )
-    return ok(_to_out(s), "已保存")
+    return ok(_to_out(s, mmap=member_map(db, HOUSEHOLD_ID)), "已保存")
 
 
 @router.post("/{sub_id}/pay")
@@ -314,7 +324,7 @@ def pay_subscription(
     current_user: dict = Depends(get_current_user),
 ):
     """标记已缴费：到期日顺延到下一个账单周期（一次性订阅则置为停用）。"""
-    s = _ensure(db, sub_id, current_user["user_id"])
+    s = _ensure(db, sub_id)
     before = s.next_due
     advance_subscription(db, s)
     log_action(
@@ -322,7 +332,7 @@ def pay_subscription(
         target_type="subscription", target_id=s.id,
         detail=f"订阅 {s.name} 缴费顺延 {before} → {s.next_due or '（已结束）'}",
     )
-    return ok(_to_out(s), "已顺延到下一周期")
+    return ok(_to_out(s, mmap=member_map(db, HOUSEHOLD_ID)), "已顺延到下一周期")
 
 
 @router.delete("/{sub_id}")
@@ -331,7 +341,7 @@ def delete_subscription(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    s = _ensure(db, sub_id, current_user["user_id"])
+    s = _ensure(db, sub_id)
     soft_delete(s, db)
     log_action(
         db, current_user["user_id"], "delete",
@@ -350,7 +360,7 @@ def restore_subscription(
         db.query(Subscription)
         .filter(
             Subscription.id == sub_id,
-            Subscription.user_id == current_user["user_id"],
+            Subscription.household_id == HOUSEHOLD_ID,
             Subscription.deleted_at.isnot(None),
         )
         .first()
@@ -358,15 +368,16 @@ def restore_subscription(
     if not s:
         raise_error(ErrCode.INVALID_PARAM, "回收站中无此订阅", 404)
     restore(s, db)
-    return ok(_to_out(s), "已恢复")
+    return ok(_to_out(s, mmap=member_map(db, HOUSEHOLD_ID)), "已恢复")
 
 
-def _ensure(db: Session, sub_id: int, user_id: int) -> Subscription:
+def _ensure(db: Session, sub_id: int) -> Subscription:
+    """按家庭取订阅：家人共享后不再按 user_id 过滤（否则看不到别人订的）。"""
     s = (
         db.query(Subscription)
         .filter(
             Subscription.id == sub_id,
-            Subscription.user_id == user_id,
+            Subscription.household_id == HOUSEHOLD_ID,
             Subscription.deleted_at.is_(None),
         )
         .first()

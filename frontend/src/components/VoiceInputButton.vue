@@ -13,13 +13,15 @@
   </span>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useVoiceInput } from '@/composables/useVoiceInput'
 
-const props = defineProps<{ lang?: string }>()
-const emit = defineEmits<{ (e: 'result', text: string): void }>()
+// 项目未接入 TypeScript 工具链（无 @typescript-eslint/parser），
+// 这里保持纯 JS，避免 eslint 因 <script lang="ts"> 直接解析失败
+const props = defineProps({ lang: { type: String, default: '' } })
+const emit = defineEmits(['result'])
 
 const voice = useVoiceInput({ lang: props.lang })
 const isListening = ref(false)

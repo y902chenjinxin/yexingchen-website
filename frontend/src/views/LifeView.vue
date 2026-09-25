@@ -9,10 +9,6 @@
   <IslandInnerBase type="life" title="生活" subtitle="家人共享 · 体重 / 三餐">
     <template #toolbar>
       <div class="life-tb">
-        <el-select v-model="filterMember" size="small" clearable placeholder="全部家人" class="life-tb-sel">
-          <el-option label="全部家人" :value="''" />
-          <el-option v-for="m in members" :key="m.id" :label="`${m.avatar} ${m.display_name}`" :value="m.id" />
-        </el-select>
         <el-radio-group v-model="filterRange" size="small" class="life-tb-range">
           <el-radio-button value="7">7 天</el-radio-button>
           <el-radio-button value="30">30 天</el-radio-button>
@@ -25,13 +21,97 @@
       </div>
     </template>
 
+    <!-- 人员标签 + 家人汇总：数据全家共享，按成员切片查看 -->
+    <section class="life-members">
+      <div class="life-members-head">
+        <h3>👨‍👩‍👧 家人</h3>
+        <span class="life-col-meta">{{ rangeLabel }} · 点标签看各自的，汇总为全家</span>
+      </div>
+
+      <div class="life-mtags">
+        <button class="life-mtag" :class="{ on: !filterMember }" @click="pickMember('')">
+          <span class="life-mtag-avatar">🏠</span>
+          <span class="life-mtag-name">全部家人</span>
+          <span class="life-mtag-meta">{{ weightList.length }} 体重 · {{ mealList.length }} 餐</span>
+        </button>
+        <button
+          v-for="m in members"
+          :key="m.id"
+          class="life-mtag"
+          :class="{ on: String(filterMember) === String(m.id) }"
+          @click="pickMember(m.id)"
+        >
+          <span class="life-mtag-avatar">{{ m.avatar || '🌿' }}</span>
+          <span class="life-mtag-name">{{ m.display_name }}</span>
+          <span class="life-mtag-meta">{{ memberCounts.w.get(String(m.id)) || 0 }} 体重 · {{ memberCounts.m.get(String(m.id)) || 0 }} 餐</span>
+        </button>
+      </div>
+
+      <div class="life-sum-grid">
+        <div class="life-sum-card">
+          <div class="life-sum-title">⚖️ 体重汇总</div>
+          <div class="life-sum-table-wrap" v-if="weightSummary.length">
+          <table class="life-sum-table">
+            <thead>
+              <tr><th class="c-name">成员</th><th>记录</th><th>最新</th><th>区间变化</th><th>最近测量</th></tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="s in weightSummary"
+                :key="s.memberId"
+                class="life-sum-row"
+                :class="{ on: String(filterMember) === String(s.memberId) }"
+                @click="pickMember(s.memberId)"
+              >
+                <td class="c-name"><span class="life-sum-avatar">{{ s.avatar }}</span>{{ s.name }}</td>
+                <td>{{ s.count }}</td>
+                <td class="life-sum-strong">{{ s.latest }} kg</td>
+                <td :class="s.deltaClass">{{ s.deltaText }}</td>
+                <td>{{ s.lastAt }}</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+          <div v-else class="life-sum-empty">区间内没有体重记录</div>
+        </div>
+
+        <div class="life-sum-card">
+          <div class="life-sum-title">🍱 三餐汇总</div>
+          <div class="life-sum-table-wrap" v-if="mealSummary.length">
+          <table class="life-sum-table">
+            <thead>
+              <tr><th class="c-name">成员</th><th>总数</th><th>早</th><th>午</th><th>晚</th><th>加餐</th></tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="s in mealSummary"
+                :key="s.memberId"
+                class="life-sum-row"
+                :class="{ on: String(filterMember) === String(s.memberId) }"
+                @click="pickMember(s.memberId)"
+              >
+                <td class="c-name"><span class="life-sum-avatar">{{ s.avatar }}</span>{{ s.name }}</td>
+                <td class="life-sum-strong">{{ s.count }}</td>
+                <td>{{ s.breakfast }}</td>
+                <td>{{ s.lunch }}</td>
+                <td>{{ s.dinner }}</td>
+                <td>{{ s.snack }}</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+          <div v-else class="life-sum-empty">区间内没有三餐记录</div>
+        </div>
+      </div>
+    </section>
+
     <div class="life-layout">
       <!-- 左栏：体重 -->
       <section class="life-col life-weight">
         <div class="life-col-head">
           <h3>⚖️ 体重趋势</h3>
           <span class="life-col-meta" v-if="weightList.length">
-            {{ members.length }} 位家人 · 共 {{ weightList.length }} 条记录
+            <template v-if="filterMember">仅看 {{ activeMemberName }} · </template>{{ weightFiltered.length }} 条记录
           </span>
         </div>
 
@@ -41,8 +121,18 @@
         </div>
 
         <!-- 趋势图：每人一条折线 -->
-        <div v-else-if="weightList.length" class="wt-chart-wrap">
-          <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="wt-chart" preserveAspectRatio="xMidYMid meet">
+        <div v-else-if="weightFiltered.length" class="wt-chart-wrap">
+          <svg
+            ref="wtSvg"
+            :viewBox="`0 0 ${CHART_W} ${CHART_H}`"
+            class="wt-chart"
+            preserveAspectRatio="xMidYMid meet"
+            @mousemove="onMove"
+            @mouseleave="onLeave"
+            @touchstart.passive="onTouchStart"
+            @touchmove.passive="onTouchMove"
+            @touchend.passive="onTouchEnd"
+          >
             <!-- 网格 -->
             <g class="wt-grid">
               <line v-for="i in 4" :key="'g' + i"
@@ -61,7 +151,7 @@
               <text :x="CHART_PAD_L - 6" :y="CHART_H - CHART_PAD_B" text-anchor="end">{{ chartRange.yMin.toFixed(1) }}</text>
             </g>
             <!-- 折线：每人一条 -->
-            <g v-for="(line, idx) in weightLines" :key="line.memberId">
+            <g v-for="line in weightLines" :key="line.memberId">
               <polyline
                 :points="line.points"
                 fill="none"
@@ -74,6 +164,13 @@
               <circle v-for="p in line.dots" :key="p.k"
                 :cx="p.x" :cy="p.y" r="3" :fill="line.color" class="wt-dot" />
             </g>
+            <!-- 悬浮十字线：吸附到最近一次的测量日期 -->
+            <g v-if="hoverCol" class="wt-hover">
+              <line :x1="hoverCol.x" :x2="hoverCol.x"
+                :y1="CHART_PAD_T" :y2="CHART_H - CHART_PAD_B" class="wt-cross" />
+              <circle v-for="h in hoverDots" :key="'h' + h.memberId"
+                :cx="h.x" :cy="h.y" r="4.5" :fill="h.color" class="wt-hover-dot" />
+            </g>
             <!-- 图例 -->
             <g class="wt-legend" v-if="weightLines.length">
               <g v-for="(line, idx) in weightLines" :key="'l' + line.memberId"
@@ -85,17 +182,24 @@
               </g>
             </g>
           </svg>
+          <ChartTip
+            :show="hoverCol !== null"
+            :x="hoverX"
+            :vw="CHART_W"
+            :title="hoverTitle"
+            :rows="hoverRows"
+          />
         </div>
         <EmptyState
           v-else
           tone="generic"
           size="sm"
-          title="还没有体重记录"
-          description="点上方「＋ 记体重」添加第一条数据，体重曲线会按家人自动分线"
+          :title="filterMember ? `${activeMemberName} 还没有体重记录` : '还没有体重记录'"
+          :description="filterMember ? '切回「全部家人」看其他家人的记录' : '点上方「＋ 记体重」添加第一条数据，体重曲线会按家人自动分线'"
         />
 
         <!-- 列表 -->
-        <div v-if="weightList.length" class="wt-list">
+        <div v-if="weightGroups.length" class="wt-list">
           <div v-for="g in weightGroups" :key="g.date" class="wt-day">
             <div class="wt-day-hd">
               <span class="wt-day-date">{{ g.date }}</span>
@@ -117,15 +221,17 @@
       <section class="life-col life-meal">
         <div class="life-col-head">
           <h3>🍱 三餐记录</h3>
-          <span class="life-col-meta" v-if="mealList.length">{{ mealList.length }} 张</span>
+          <span class="life-col-meta" v-if="mealList.length">
+            <template v-if="filterMember">仅看 {{ activeMemberName }} · </template>{{ mealFiltered.length }} 张
+          </span>
         </div>
 
         <div v-if="loading && !mealList.length" class="life-skel life-skel-grid">
           <SkeletonBlock v-for="i in 6" :key="i" width="100%" height="160px" />
         </div>
 
-        <div v-else-if="mealList.length" class="meal-grid">
-          <figure v-for="m in mealList" :key="m.id" class="meal-card">
+        <div v-else-if="mealFiltered.length" class="meal-grid">
+          <figure v-for="m in mealFiltered" :key="m.id" class="meal-card">
             <div class="meal-img-wrap">
               <img :src="mealPhotoUrl(m.photo_path)" :alt="m.note || m.member_name" class="meal-img" loading="lazy" />
               <span class="meal-type-tag" :class="'mt-' + m.meal_type">{{ mealLabel(m.meal_type) }}</span>
@@ -146,8 +252,8 @@
           v-else
           tone="generic"
           size="sm"
-          title="还没有三餐记录"
-          description="点「📷 记一餐」上传第一张照片，三餐记录按家人自动归类"
+          :title="filterMember ? `${activeMemberName} 还没有三餐记录` : '还没有三餐记录'"
+          :description="filterMember ? '切回「全部家人」看其他家人的记录' : '点「📷 记一餐」上传第一张照片，三餐记录按家人自动归类'"
         />
       </section>
     </div>
@@ -249,18 +355,96 @@ import { ref, computed, onMounted, watch } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import ChartTip from '@/components/charts/ChartTip.vue'
+import { useChartHover } from '@/composables/useChartHover'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useLifeStore } from '@/stores/life'
+import { useAuthStore } from '@/stores/auth'
 
 const store = useLifeStore()
+const auth = useAuthStore()
 const members = computed(() => store.members)
 const weightList = computed(() => store.weightList)
 const mealList = computed(() => store.mealList)
 const loading = computed(() => store.loading)
 
 // ============================== 顶部筛选 ==============================
+// 成员筛选走客户端切片：列表按人过滤，但汇总始终保留全家的口径
 const filterMember = ref('')
 const filterRange = ref('30')
+
+const rangeLabel = computed(() => (filterRange.value === 'all' ? '全部时间' : `近 ${filterRange.value} 天`))
+
+const activeMemberName = computed(() => {
+  const hit = members.value.find((m) => String(m.id) === String(filterMember.value))
+  return hit ? hit.display_name : '家人'
+})
+
+function pickMember(id) {
+  const next = id === '' || id == null ? '' : id
+  filterMember.value = String(filterMember.value) === String(next) ? '' : next
+}
+
+const weightFiltered = computed(() => (filterMember.value
+  ? weightList.value.filter((w) => String(w.member_id) === String(filterMember.value))
+  : weightList.value))
+
+const mealFiltered = computed(() => (filterMember.value
+  ? mealList.value.filter((m) => String(m.member_id) === String(filterMember.value))
+  : mealList.value))
+
+// ============================== 家人汇总 ==============================
+// 体重：每人 记录数 / 最新值 / 区间首末变化 / 最近测量日
+const weightSummary = computed(() => {
+  const byMember = new Map()
+  for (const w of weightList.value) {
+    if (!byMember.has(w.member_id)) byMember.set(w.member_id, [])
+    byMember.get(w.member_id).push(w)
+  }
+  const out = []
+  for (const [memberId, items] of byMember) {
+    const asc = [...items].sort((a, b) => new Date(a.measured_at) - new Date(b.measured_at))
+    const first = Number(asc[0].weight_kg)
+    const last = Number(asc[asc.length - 1].weight_kg)
+    const delta = last - first
+    out.push({
+      memberId,
+      name: asc[0].member_name || '—',
+      avatar: asc[0].member_avatar || '🌿',
+      count: items.length,
+      latest: last.toFixed(1),
+      deltaText: asc.length > 1 ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)} kg` : '—',
+      deltaClass: asc.length > 1 ? (delta > 0 ? 'up' : (delta < 0 ? 'down' : '')) : '',
+      lastAt: (asc[asc.length - 1].measured_at || '').slice(0, 10),
+    })
+  }
+  return out.sort((a, b) => b.count - a.count)
+})
+
+// 三餐：每人 总数 + 各餐别次数
+const mealSummary = computed(() => {
+  const map = new Map()
+  for (const m of mealList.value) {
+    if (!map.has(m.member_id)) {
+      map.set(m.member_id, {
+        memberId: m.member_id,
+        name: m.member_name || '—',
+        avatar: m.member_avatar || '🌿',
+        count: 0, breakfast: 0, lunch: 0, dinner: 0, snack: 0,
+      })
+    }
+    const s = map.get(m.member_id)
+    s.count += 1
+    if (s[m.meal_type] != null) s[m.meal_type] += 1
+  }
+  return [...map.values()].sort((a, b) => b.count - a.count)
+})
+
+// 标签上的「N 体重 · N 餐」计数，避免在 v-for 里反复 find
+const memberCounts = computed(() => ({
+  w: new Map(weightSummary.value.map((s) => [String(s.memberId), s.count])),
+  m: new Map(mealSummary.value.map((s) => [String(s.memberId), s.count])),
+}))
 
 // ============================== 体重图表 ==============================
 const CHART_W = 560
@@ -274,12 +458,8 @@ const CHART_PAD_B = 24
 const PALETTE = ['#c7a96b', '#7fa8a3', '#d97706', '#4f5ed1', '#16a34a', '#dc2626', '#a855f7']
 const weightLines = computed(() => {
   const lines = []
-  const filtered = filterMember.value
-    ? weightList.value.filter((w) => String(w.member_id) === String(filterMember.value))
-    : weightList.value
-
   const byMember = new Map()
-  for (const w of filtered) {
+  for (const w of weightFiltered.value) {
     if (!byMember.has(w.member_id)) byMember.set(w.member_id, [])
     byMember.get(w.member_id).push(w)
   }
@@ -330,13 +510,66 @@ const chartRange = computed(() => {
   return { from: fmt(minT), to: fmt(maxT), yMin: yMin - pad, yMax: yMax + pad }
 })
 
+// 悬浮读数：吸附到最近的测量日期，同一天多位家人的体重一起展示
+const wtSvg = ref(null)
+const weightCols = computed(() => {
+  const lines = weightLines.value
+  if (!lines.length) return []
+  const allTs = lines.flatMap((l) => l._ts)
+  const minT = Math.min(...allTs)
+  const maxT = Math.max(...allTs)
+  const innerW = CHART_W - CHART_PAD_L - CHART_PAD_R
+  const span = Math.max(1, maxT - minT)
+  return [...new Set(allTs)].sort((a, b) => a - b)
+    .map((ts) => ({ ts, x: CHART_PAD_L + ((ts - minT) / span) * innerW }))
+})
+
+const { hoverIndex, hoverX, onMove, onLeave, onTouchStart, onTouchMove, onTouchEnd } = useChartHover({
+  svgRef: wtSvg,
+  columns: () => weightCols.value.map((c) => c.x),
+})
+
+const hoverCol = computed(() => weightCols.value[hoverIndex.value] || null)
+
+const hoverDots = computed(() => {
+  const col = hoverCol.value
+  const r = chartRange.value
+  if (!col || r.yMin == null) return []
+  const innerH = CHART_H - CHART_PAD_T - CHART_PAD_B
+  const spanY = Math.max(0.1, r.yMax - r.yMin)
+  const yScale = (w) => CHART_PAD_T + ((r.yMax - w) / spanY) * innerH
+  const out = []
+  for (const l of weightLines.value) {
+    const i = l._ts.indexOf(col.ts)
+    if (i < 0) continue
+    out.push({ memberId: l.memberId, color: l.color, x: col.x, y: yScale(l._w[i]) })
+  }
+  return out
+})
+
+const hoverTitle = computed(() => {
+  const col = hoverCol.value
+  if (!col) return ''
+  const d = new Date(col.ts)
+  return `${d.getMonth() + 1}/${d.getDate()}`
+})
+
+const hoverRows = computed(() => {
+  const col = hoverCol.value
+  if (!col) return []
+  const rows = []
+  for (const l of weightLines.value) {
+    const i = l._ts.indexOf(col.ts)
+    if (i < 0) continue
+    rows.push({ label: l.name, value: `${l._w[i].toFixed(1)} kg`, color: l.color })
+  }
+  return rows
+})
+
 // 列表按日期分组
 const weightGroups = computed(() => {
-  const filtered = filterMember.value
-    ? weightList.value.filter((w) => String(w.member_id) === String(filterMember.value))
-    : weightList.value
   const map = new Map()
-  for (const w of filtered) {
+  for (const w of weightFiltered.value) {
     const key = w.measured_at.slice(0, 10)
     if (!map.has(key)) map.set(key, [])
     map.get(key).push(w)
@@ -378,6 +611,7 @@ async function submitWeight() {
     const payload = { ...weightForm.value }
     if (!payload.measured_at) delete payload.measured_at
     await store.addWeight(payload)
+    await loadAll()
     ElMessage.success('已记录')
     showWeightDialog.value = false
   } catch (e) {
@@ -412,6 +646,7 @@ async function submitMeal() {
   mealSubmitting.value = true
   try {
     await store.addMeal({ ...mealForm.value, photo: mealFileRaw.value })
+    await loadAll()
     ElMessage.success('已上传')
     showMealDialog.value = false
   } catch (e) {
@@ -425,11 +660,11 @@ async function submitMeal() {
 // ============================== 删除 ==============================
 async function onDeleteWeight(w) {
   try { await ElMessageBox.confirm(`确认删除 ${w.member_name} 的 ${w.weight_kg}kg？`, '提示', { type: 'warning' }) } catch { return }
-  try { await store.removeWeight(w.id); ElMessage.success('已删除') } catch { /* 拦截器提示 */ }
+  try { await store.removeWeight(w.id); await loadAll(); ElMessage.success('已删除') } catch { /* 拦截器提示 */ }
 }
 async function onDeleteMeal(m) {
   try { await ElMessageBox.confirm('确认删除这张照片？', '提示', { type: 'warning' }) } catch { return }
-  try { await store.removeMeal(m.id); ElMessage.success('已删除') } catch { /* 拦截器提示 */ }
+  try { await store.removeMeal(m.id); await loadAll(); ElMessage.success('已删除') } catch { /* 拦截器提示 */ }
 }
 
 // ============================== 家人管理 ==============================
@@ -438,7 +673,7 @@ function openMembersDialog() { showMembersDialog.value = true }
 async function editMemberInline(m) {
   let newName = ''
   try {
-    const { value } = await ElMessageBox.prompt(`把「${m.display_name}」改成`, '改名', {
+    const { value } = await ElMessageBox.prompt(`把「${m.display_name}」的昵称改成`, '改昵称', {
       inputValue: m.display_name,
       inputValidator: (v) => (v && v.trim() ? true : '昵称不能为空'),
     })
@@ -446,6 +681,8 @@ async function editMemberInline(m) {
   } catch { return }
   try {
     await store.editMember(m.id, { display_name: newName })
+    // 后端把「家人名」写的就是账号昵称（唯一真源），改到自己时同步刷新顶栏
+    await auth.fetchUser()
     ElMessage.success('已更新')
   } catch { /* 拦截器提示 */ }
 }
@@ -455,10 +692,10 @@ async function onDeleteMember(m) {
 }
 
 // ============================== 初始化 ==============================
+// 不带 member_id 拉全量：列表在客户端按人切片，汇总才能拿到全家口径
 async function loadAll() {
   await store.fetchMembers()
   const params = {}
-  if (filterMember.value) params.member_id = filterMember.value
   if (filterRange.value !== 'all') {
     const days = Number(filterRange.value)
     const from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
@@ -467,15 +704,92 @@ async function loadAll() {
   await Promise.all([store.fetchWeight(params), store.fetchMeals(params)])
 }
 onMounted(loadAll)
-watch([filterMember, filterRange], loadAll)
+watch(filterRange, loadAll)
 </script>
 
 <style scoped>
 .life-tb {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
-.life-tb-sel { width: 140px; }
 .life-tb-range { flex: 0 0 auto; }
+
+/* 人员标签 + 家人汇总 */
+.life-members {
+  background: var(--ls-paper);
+  border: 1px solid var(--ls-line);
+  border-radius: var(--ls-radius, 12px);
+  padding: 18px 20px;
+  box-shadow: var(--ls-shadow, 0 1px 2px rgba(0,0,0,.04));
+  margin-bottom: 18px;
+}
+.life-members-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--ls-line);
+}
+.life-members-head h3 { margin: 0; font-size: 15px; color: var(--lj-text); letter-spacing: .04em; }
+
+.life-mtags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.life-mtag {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 13px; border-radius: 999px;
+  border: 1px solid var(--ls-line); background: transparent;
+  color: var(--lj-text-2); cursor: pointer;
+  font-family: inherit; font-size: 13px;
+  transition: border-color var(--motion-fast, .12s) var(--ease-standard, ease),
+              background var(--motion-fast, .12s) var(--ease-standard, ease),
+              color var(--motion-fast, .12s) var(--ease-standard, ease);
+}
+.life-mtag:hover { border-color: var(--lj-text-3); color: var(--lj-text); }
+.life-mtag.on {
+  border-color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold, #c7a96b);
+  background: rgba(199,169,107,.14);
+}
+.life-mtag-avatar { font-size: 15px; line-height: 1; }
+.life-mtag-name { font-weight: 600; }
+.life-mtag-meta { font-size: 11.5px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
+.life-mtag.on .life-mtag-meta { color: inherit; }
+
+.life-sum-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+/* 窄屏改单列时不能写裸 1fr：1fr = minmax(auto, 1fr)，轨道最小宽度会被
+   nowrap 表格的 min-content 顶住，卡片被撑出视口（375px 下溢出 30px）。
+   必须显式 minmax(0, 1fr)，让轨道能收缩、把溢出交给 .life-sum-table-wrap 横向滚动。 */
+@media (max-width: 1000px) { .life-sum-grid { grid-template-columns: minmax(0, 1fr); } }
+.life-sum-card {
+  border: 1px solid var(--ls-line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--ls-paper-2, rgba(127,127,127,.03));
+  min-width: 0;
+}
+.life-sum-title { font-size: 13px; color: var(--lj-text-2); letter-spacing: .04em; margin-bottom: 8px; }
+/* 单元格是 nowrap，窄屏（375px）下 5~6 列必然超过卡片宽度，
+   不给横向滚动容器就会把整个页面撑出横向滚动条 */
+.life-sum-table-wrap { overflow-x: auto; }
+.life-sum-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.life-sum-table th {
+  text-align: right; padding: 6px 8px;
+  font-size: 11.5px; font-weight: 600; color: var(--lj-text-3);
+  border-bottom: 1px solid var(--ls-line); white-space: nowrap;
+}
+.life-sum-table th.c-name, .life-sum-table td.c-name { text-align: left; }
+.life-sum-table td {
+  padding: 7px 8px; text-align: right;
+  border-bottom: 1px dashed var(--ls-line);
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+  color: var(--lj-text-2);
+}
+.life-sum-table tr:last-child td { border-bottom: none; }
+.life-sum-row { cursor: pointer; transition: background var(--motion-fast, .12s) var(--ease-standard, ease); }
+.life-sum-row:hover { background: rgba(127,168,163,.06); }
+.life-sum-row.on { background: rgba(199,169,107,.12); }
+.life-sum-avatar { margin-right: 6px; }
+.life-sum-strong { font-weight: 600; color: var(--lj-text); }
+.life-sum-table td.up { color: var(--lj-cinnabar, #c27053); }
+.life-sum-table td.down { color: var(--lj-seal, #7fa8a3); }
+.life-sum-empty { padding: 18px 4px; text-align: center; font-size: 12.5px; color: var(--lj-text-3); }
 
 .life-layout {
   display: grid;
@@ -506,10 +820,21 @@ watch([filterMember, filterRange], loadAll)
 .wt-chart-wrap {
   width: 100%;
   margin-bottom: 16px;
+  position: relative;
 }
 .wt-chart {
   width: 100%; height: 220px;
   display: block;
+  cursor: crosshair;
+}
+.wt-chart .wt-cross {
+  stroke: var(--lj-text-3);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: .5;
+}
+.wt-chart .wt-hover-dot {
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, .35));
 }
 .wt-chart .wt-grid line {
   stroke: var(--ls-line, rgba(127,127,127,.18));

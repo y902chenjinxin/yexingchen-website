@@ -110,7 +110,7 @@ const meId = computed(() => auth.user?.id)
 const mapPoints = computed(() => {
   const pts = []
   for (const t of travels.value) {
-    ;(t.cities || []).forEach((c) => {
+    (t.cities || []).forEach((c) => {
       pts.push({ tripId: t.id, tripTitle: t.title, seq: c.seq, city: c.city, province: c.province, lon: c.lon, lat: c.lat })
     })
   }
@@ -176,7 +176,7 @@ function openCreate() {
   activeTripId.value = null
   activeProvince.value = null
 }
-function openEdit(id) {
+function openEdit() {
   editing.value = detail.value
   editorOpen.value = true
 }

@@ -134,16 +134,10 @@ const routes = [
     component: () => import('@/views/CountdownDetailView.vue'),
     meta: { requiresAuth: true, hideGlobalTopBar: true }
   },
-  // v2.16 财经模块：综合 / 行情 / 资讯 / 记账
+  // v2.16 财经模块：行情 / 资讯 / 记账（v2.37 移除「综合」总览，重定向改指行情）
   {
     path: '/finance',
-    redirect: '/finance/overview'
-  },
-  {
-    path: '/finance/overview',
-    name: 'FinanceOverview',
-    component: () => import('@/views/FinanceOverviewView.vue'),
-    meta: { requiresAuth: true }
+    redirect: '/finance/market'
   },
   {
     path: '/finance/market',

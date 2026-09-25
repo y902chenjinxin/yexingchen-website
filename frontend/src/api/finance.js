@@ -45,6 +45,8 @@ api.interceptors.response.use(
 export const financeApi = {
   categories: () => api.get('/finance/categories'),
   summary: (params) => api.get('/finance/summary', { params: params || {} }),
+  // 按家人汇总（每人一行 + 合计行），用于「人员标签」下的汇总数据
+  memberBreakdown: (params) => api.get('/finance/member-breakdown', { params: params || {} }),
   list: (params) => api.get('/finance/transactions', { params }),
   create: (data) => api.post('/finance/transactions', data),
   update: (id, data) => api.put(`/finance/transactions/${id}`, data),

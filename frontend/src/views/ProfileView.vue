@@ -166,7 +166,6 @@
 <script setup>
 defineOptions({ name: 'ProfileView' })
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -183,7 +182,6 @@ const brandIcons = [
   { tag: 'xuanhuang', name: '玄黄 · 辉光', src: iconXuanhuang },
 ]
 
-const router = useRouter()
 const auth = useAuthStore()
 const prefs = usePrefsStore()
 
@@ -217,10 +215,7 @@ const themeOptions = [
 // 工作台模块显隐
 const moduleVisible = computed(() => prefs.moduleVisible)
 const moduleOptions = [
-  { key: 'habits', label: '习惯打卡', hint: '工作台显示「习惯打卡」卡片' },
-  { key: 'weather', label: '天气', hint: '工作台顶置的天气小部件' },
-  { key: 'feeds', label: '资讯', hint: '工作台底部的资讯推送流' },
-  { key: 'brief', label: 'AI 简报', hint: '工作台的「今日简报」横幅' },
+  { key: 'weather', label: '天气', hint: '工作台右上角的天气小部件' },
 ]
 
 // 用户信息

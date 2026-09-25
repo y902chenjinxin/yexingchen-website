@@ -46,14 +46,11 @@ export const useLifeStore = defineStore('life', () => {
     fd.append('weight_kg', payload.weight_kg)
     if (payload.measured_at) fd.append('measured_at', payload.measured_at)
     if (payload.note) fd.append('note', payload.note)
-    const res = await createWeight(fd)
-    await fetchWeight()
-    return res
+    return createWeight(fd)
   }
 
   async function removeWeight(id) {
-    await deleteWeight(id)
-    await fetchWeight()
+    return deleteWeight(id)
   }
 
   async function addMeal(payload) {
@@ -63,14 +60,11 @@ export const useLifeStore = defineStore('life', () => {
     if (payload.taken_at) fd.append('taken_at', payload.taken_at)
     if (payload.note) fd.append('note', payload.note)
     fd.append('photo', payload.photo)
-    const res = await createMeal(fd)
-    await fetchMeals()
-    return res
+    return createMeal(fd)
   }
 
   async function removeMeal(id) {
-    await deleteMeal(id)
-    await fetchMeals()
+    return deleteMeal(id)
   }
 
   async function addMember(payload) {

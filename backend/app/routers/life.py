@@ -18,18 +18,19 @@
 - DELETE /api/life/meals/{id}    删三餐（任何成员）
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.models.life import Household, HouseholdMember, WeightLog, MealPhoto
+from app.models.life import HouseholdMember, WeightLog, MealPhoto
 from app.models.user import User
 from app.database import get_db
 from app.schemas.common import ResponseBase
 from app.utils.security import get_current_user
 from app.schemas.errors import ErrCode, raise_error
 from app.services.log_service import log_action
+from app.services.member_naming import apply_member_name, member_name
 from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_MEAL_EXTENSIONS
 from app.config import settings
 
@@ -59,7 +60,8 @@ def _member_to_out(m: HouseholdMember) -> dict:
         "id": m.id,
         "user_id": m.user_id,
         "household_id": m.household_id,
-        "display_name": m.display_name,
+        # 展示名以账号昵称为准（member_naming.member_name 负责昵称→档案名→成员N 的回退）
+        "display_name": member_name(m),
         "avatar": m.avatar or "🌿",
         "birth_year": m.birth_year,
         "height_cm": m.height_cm,
@@ -118,6 +120,7 @@ async def list_members(
 ):
     members = (
         db.query(HouseholdMember)
+        .options(joinedload(HouseholdMember.user))  # member_name() 要读昵称，避免 N+1
         .filter(HouseholdMember.household_id == HOUSEHOLD_ID)
         .order_by(HouseholdMember.is_owner.desc(), HouseholdMember.id.asc())
         .all()
@@ -153,13 +156,16 @@ async def create_member(
     m = HouseholdMember(
         user_id=user_id,
         household_id=HOUSEHOLD_ID,
-        display_name=display_name,
+        display_name=display_name[:64],
         avatar=avatar,
         birth_year=birth_year,
         height_cm=height_cm,
         is_owner=0,
     )
     db.add(m); db.commit()
+    # 展示名以昵称为准，这里同步一次，否则刚建的成员会显示成该账号的原昵称
+    apply_member_name(db, m, display_name)
+    db.commit()
     log_action(db, current_user["user_id"], "create", "life_member", m.id,
                detail=f"新增家人：{display_name}", ip_address="")
     return ResponseBase(msg="已新增", data=_member_to_out(m))
@@ -180,7 +186,7 @@ async def update_member(
     # 仅房主或本人可改
     if not me.is_owner and me.id != target.id:
         raise_error(ErrCode.FORBIDDEN, "仅房主或本人可改")
-    if display_name is not None: target.display_name = display_name
+    if display_name is not None: apply_member_name(db, target, display_name)
     if avatar is not None: target.avatar = avatar
     if birth_year is not None: target.birth_year = birth_year
     if height_cm is not None: target.height_cm = height_cm
@@ -231,13 +237,18 @@ async def list_weight(
     items = q.order_by(WeightLog.measured_at.desc()).limit(limit).all()
 
     # 批量查 member 信息做关联（避免 N+1）
-    members = {m.id: m for m in db.query(HouseholdMember).filter(
-        HouseholdMember.id.in_([i.member_id for i in items]) if items else [0]
-    ).all()}
+    # 注意：条件必须写在 in_() 里面。写成 `filter(A.in_(xs) if xs else [0])` 时
+    # 三元表达式作用于整个 filter 参数，空列表会把裸 list 交给 filter → 500
+    member_ids = [i.member_id for i in items]
+    members = {m.id: m for m in db.query(HouseholdMember).options(
+        joinedload(HouseholdMember.user)
+    ).filter(
+        HouseholdMember.id.in_(member_ids)
+    ).all()} if member_ids else {}
 
     return ResponseBase(data={
         "list": [
-            _weight_to_out(w, members[w.member_id].display_name if w.member_id in members else "",
+            _weight_to_out(w, member_name(members[w.member_id]) if w.member_id in members else "",
                            members[w.member_id].avatar if w.member_id in members else "🌿")
             for w in items
         ],
@@ -328,13 +339,16 @@ async def list_meals(
 
     items = q.order_by(MealPhoto.taken_at.desc()).limit(limit).all()
 
-    members = {m.id: m for m in db.query(HouseholdMember).filter(
-        HouseholdMember.id.in_([i.member_id for i in items]) if items else [0]
-    ).all()} if items else {}
+    meal_member_ids = [i.member_id for i in items]
+    members = {m.id: m for m in db.query(HouseholdMember).options(
+        joinedload(HouseholdMember.user)
+    ).filter(
+        HouseholdMember.id.in_(meal_member_ids)
+    ).all()} if meal_member_ids else {}
 
     return ResponseBase(data={
         "list": [
-            _meal_to_out(p, members[p.member_id].display_name if p.member_id in members else "",
+            _meal_to_out(p, member_name(members[p.member_id]) if p.member_id in members else "",
                          members[p.member_id].avatar if p.member_id in members else "🌿")
             for p in items
         ],

@@ -29,21 +29,49 @@
         </button>
       </div>
       <template v-if="pnlSeries.length">
-        <svg class="pp-trend" :viewBox="`0 0 ${TW} ${TH}`" preserveAspectRatio="none" role="img"
-          aria-label="每日盈亏柱状图">
-          <line class="pp-zero" :x1="8" :x2="TW - 8" :y1="zeroY" :y2="zeroY" />
-          <rect
-            v-for="(d, i) in pnlSeries"
-            :key="d.date"
-            class="pp-bar"
-            :class="d.pnl >= 0 ? 'is-up' : 'is-down'"
-            :x="barX(i)"
-            :y="Math.min(zeroY, barY(d.pnl))"
-            :width="barW"
-            :height="Math.max(1.5, Math.abs(barY(d.pnl) - zeroY))"
-            rx="2"
+        <div class="pp-trend-wrap">
+          <svg
+            ref="ppSvg"
+            class="pp-trend"
+            :viewBox="`0 0 ${TW} ${TH}`"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="每日盈亏柱状图"
+            @mousemove="onMove"
+            @mouseleave="onLeave"
+            @touchstart.passive="onTouchStart"
+            @touchmove.passive="onTouchMove"
+            @touchend.passive="onTouchEnd"
+          >
+            <rect
+              v-if="hoverIndex !== null"
+              class="pp-hover-band"
+              :x="barX(hoverIndex)"
+              :y="0"
+              :width="barW"
+              :height="TH"
+            />
+            <line class="pp-zero" :x1="8" :x2="TW - 8" :y1="zeroY" :y2="zeroY" />
+            <rect
+              v-for="(d, i) in pnlSeries"
+              :key="d.date"
+              class="pp-bar"
+              :class="d.pnl >= 0 ? 'is-up' : 'is-down'"
+              :x="barX(i)"
+              :y="Math.min(zeroY, barY(d.pnl))"
+              :width="barW"
+              :height="Math.max(1.5, Math.abs(barY(d.pnl) - zeroY))"
+              rx="2"
+            />
+          </svg>
+          <ChartTip
+            :show="hoverBar !== null"
+            :x="hoverX"
+            :vw="TW"
+            :title="hoverBar ? shortDate(hoverBar.date) : ''"
+            :rows="hoverRows"
           />
-        </svg>
+        </div>
         <div class="pp-xrow">
           <span v-for="(d, i) in pnlSeries" :key="'x' + d.date" class="pp-x">
             {{ i % xStep === 0 ? shortDate(d.date) : '' }}
@@ -92,8 +120,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
+import ChartTip from '@/components/charts/ChartTip.vue'
+import { useChartHover } from '@/composables/useChartHover'
 
 const props = defineProps({
   holdings: { type: Array, default: () => [] },   // summary.holdings
@@ -173,6 +203,23 @@ function barY(v) {
 const rangeSum = computed(() => pnlSeries.value.reduce((s, d) => s + d.pnl, 0))
 const maxUp = computed(() => Math.max(0, ...pnlSeries.value.map(d => d.pnl)))
 const maxDown = computed(() => Math.min(0, ...pnlSeries.value.map(d => d.pnl)))
+
+/* ---------- 悬浮读数：指针吸附到最近的柱子，显示该日日期与盈亏 ---------- */
+const ppSvg = ref(null)
+const { hoverIndex, hoverX, onMove, onLeave, onTouchStart, onTouchMove, onTouchEnd } = useChartHover({
+  svgRef: ppSvg,
+  columns: () => pnlSeries.value.map((_, i) => barX(i) + barW.value / 2),
+})
+const hoverBar = computed(() => (hoverIndex.value == null ? null : (pnlSeries.value[hoverIndex.value] || null)))
+const hoverRows = computed(() => {
+  const d = hoverBar.value
+  if (!d) return []
+  return [{
+    label: '当日盈亏',
+    value: `${sign(d.pnl)}¥${fmt(Math.abs(d.pnl))}`,
+    color: d.pnl >= 0 ? 'var(--pnl-up, #d8504f)' : 'var(--pnl-down, #3f968e)',
+  }]
+})
 
 /* ---------- 日历 ---------- */
 const todayStr = localDate(new Date())
@@ -298,7 +345,9 @@ function cellCls(c) {
 .pp-leg-pct { color: var(--lj-text-2); font-variant-numeric: tabular-nums; }
 
 /* 每日盈亏走势 */
-.pp-trend { width: 100%; height: 110px; display: block; }
+.pp-trend-wrap { position: relative; }
+.pp-trend { width: 100%; height: 110px; display: block; cursor: crosshair; }
+.pp-hover-band { fill: var(--lj-dai); opacity: .08; pointer-events: none; }
 .pp-zero { stroke: var(--lj-line-strong); stroke-width: 1; stroke-dasharray: 4 4; }
 .pp-bar.is-up { fill: var(--pnl-up); }
 .pp-bar.is-down { fill: var(--pnl-down); }

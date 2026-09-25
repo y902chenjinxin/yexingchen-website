@@ -12,7 +12,7 @@
  *   <div v-mouse-light="{ tilt: 8, spot: true, lift: true }">...</div>
  *
  * 参数：
- *   tilt - 倾斜角度上限（度），默认 6
+ *   tilt - 倾斜角度上限（度），默认 8
  *   spot - 是否启用聚光，默认 true
  *   lift - 是否同时上浮 translateY(-2px)，默认 true
  *
@@ -30,7 +30,7 @@ function bind(el, binding) {
   el.__mouseLightBound = true
   el.__mouseLightId = ++_seq
 
-  const opts = Object.assign({ tilt: 6, spot: true, lift: true }, binding.value || {})
+  const opts = Object.assign({ tilt: 8, spot: true, lift: true }, binding.value || {})
   const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
 
   // 初始 CSS 变量与 transition

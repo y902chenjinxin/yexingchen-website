@@ -29,6 +29,17 @@ export const contactsApi = {
   update: (id, payload) => api.put(`/contacts/${id}`, payload),
   remove: (id) => api.delete(`/contacts/${id}`),
   restore: (id) => api.post(`/contacts/${id}/restore`),
+  /** v2.18：上传 / 替换头像（multipart，file 字段）。成功后会返回最新联系人 out。 */
+  uploadAvatar: (id, file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post(`/contacts/${id}/avatar`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000, // 上传稍宽
+    })
+  },
+  /** v2.18：清除头像（落回首字占位）。 */
+  clearAvatar: (id) => api.delete(`/contacts/${id}/avatar`),
 }
 
 /* ---------------- 订阅 ---------------- */

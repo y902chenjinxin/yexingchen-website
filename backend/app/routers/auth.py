@@ -10,6 +10,7 @@ from app.services.auth_service import send_register_code, verify_code
 from app.utils.security import verify_password, create_access_token, get_current_user, get_client_ip
 from app.utils.rate_limit import login_limiter, register_limiter
 from app.services.log_service import log_action
+from app.services.member_naming import sync_display_name
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])
 
@@ -134,6 +135,9 @@ async def update_me(
 
     if req.nickname is not None:
         user.nickname = req.nickname.strip()[:100]
+        # 家庭成员展示名以昵称为准，这里把 household_member 的镜像一并刷新，
+        # 否则「家人账目 / 生活岛」会继续显示改名前的旧名
+        sync_display_name(db, user.id)
 
     if req.avatar_id is not None:
         user.avatar_id = req.avatar_id

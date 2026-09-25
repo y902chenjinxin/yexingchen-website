@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
   travels: { type: Array, default: () => [] },
   activeId: { type: Number, default: null },
   canEdit: { type: Boolean, default: false }

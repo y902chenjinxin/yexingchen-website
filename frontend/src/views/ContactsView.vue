@@ -29,7 +29,34 @@
       <section v-if="view === 'list'" class="ct-list">
         <article v-for="c in filtered" :key="c.id" class="ct-card glass">
           <div class="ct-card-main">
-            <div class="ct-avatar" :class="{ pin: c.is_pinned }">{{ (c.name || '?').slice(0, 1) }}</div>
+            <!-- 头像：有照片就展示小圆图（点击预览），没照片就退回首字占位 -->
+            <div
+              v-if="c.avatar_url"
+              class="ct-avatar ct-avatar-photo"
+              :class="{ pin: c.is_pinned }"
+              @click="openPreview(c)"
+              role="button"
+              :aria-label="`预览 ${c.name} 的头像`"
+              :title="`点击预览 ${c.name}`"
+            >
+              <img :src="c.avatar_url" :alt="`${c.name} 的头像`" loading="lazy" />
+            </div>
+            <div
+              v-else
+              class="ct-avatar"
+              :class="{ pin: c.is_pinned }"
+              :title="`上传 ${c.name} 的头像`"
+              @click="triggerAvatarUpload(c)"
+              role="button"
+              aria-label="上传头像"
+            >{{ (c.name || '?').slice(0, 1) }}</div>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              :ref="el => bindAvatarInput(c.id, el)"
+              @change="onAvatarPicked(c, $event)"
+            />
             <div class="ct-card-text">
               <div class="ct-name-row">
                 <span class="ct-name">{{ c.name }}</span>
@@ -45,11 +72,16 @@
                   电话 <a class="ct-tel" :href="`tel:${c.phone}`">{{ c.phone }}</a>
                 </span>
                 <span v-if="c.address">住址 {{ c.address }}</span>
+                <span v-if="c.creator_name" class="ct-creator">{{ c.creator_avatar || '👤' }} {{ c.creator_name }} 录入</span>
               </div>
               <p v-if="c.notes" class="ct-notes">{{ c.notes }}</p>
             </div>
           </div>
           <div class="ct-card-actions">
+            <button class="ct-btn ghost tiny" @click="triggerAvatarUpload(c)">
+              {{ c.avatar_url ? '更换头像' : '上传头像' }}
+            </button>
+            <button v-if="c.avatar_url" class="ct-btn ghost tiny" @click="clearAvatar(c)">清除头像</button>
             <button class="ct-btn ghost tiny" @click="togglePin(c)">{{ c.is_pinned ? '取消置顶' : '置顶' }}</button>
             <button class="ct-btn ghost tiny" @click="openEdit(c)">编辑</button>
             <button class="ct-btn ghost tiny danger" @click="remove(c)">删除</button>
@@ -96,6 +128,15 @@
         <p class="ct-cal-tip">点日历上的名字可直接编辑。农历生日已换算成对应公历日期后落入日历（标「农」角标），换算以上面列表里的下次生日为准。</p>
       </section>
     </div>
+
+    <!-- ============ 头像大图预览（el-image-viewer，ESC / 点背景关） ============ -->
+    <el-image-viewer
+      v-if="previewUrl"
+      :url-list="[previewUrl]"
+      :initial-index="0"
+      @close="previewUrl = ''"
+      :z-index="3000"
+    />
 
     <!-- ============ 新增 / 编辑弹窗 ============ -->
     <el-dialog v-model="dialog" :title="form.id ? '编辑联系人' : '新增联系人'" width="560px">
@@ -189,6 +230,79 @@ const saving = ref(false)
 const birthMonth = ref(null)
 const birthDay = ref(null)
 const form = reactive(emptyForm())
+
+/* ---------- v2.18：联系人头像预览 & 上传 ---------- */
+// 当前正在大图预览的图片 URL；空字符串表示未预览（el-image-viewer 只在 truthy 时挂载）
+const previewUrl = ref('')
+// 每个联系人对应一个隐藏的 <input type=file>；用 id 做 key 即可（id 在同一家庭内唯一）
+const avatarInputs = reactive({})
+
+function bindAvatarInput(id, el) {
+  if (el) avatarInputs[id] = el
+  else delete avatarInputs[id]
+}
+
+function openPreview(c) {
+  if (!c.avatar_url) return
+  previewUrl.value = c.avatar_url
+}
+
+function triggerAvatarUpload(c) {
+  // 优先点行内的隐藏 input；空实现也由 el-image-viewer 等无关按钮触发
+  const input = avatarInputs[c.id]
+  if (input) input.click()
+}
+
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024  // 与后端 CONTACT_AVATAR_MAX_SIZE 对齐
+const AVATAR_ALLOWED = ['image/jpeg', 'image/png', 'image/webp']
+
+function onAvatarPicked(c, ev) {
+  const file = ev.target.files?.[0]
+  // 必须立即清空，否则同一文件连续选不会触发 change
+  ev.target.value = ''
+  if (!file) return
+  if (!AVATAR_ALLOWED.includes(file.type)) {
+    ElMessage.warning('只支持 jpg / png / webp 格式')
+    return
+  }
+  if (file.size > AVATAR_MAX_BYTES) {
+    ElMessage.warning(`头像过大（${(file.size / 1024 / 1024).toFixed(1)}MB），请压缩到 5MB 以内`)
+    return
+  }
+  uploadAvatarFor(c, file)
+}
+
+async function uploadAvatarFor(c, file) {
+  const loadingKey = `up-${c.id}`
+  ElMessage.info(`正在上传「${c.name}」的头像…`)
+  try {
+    const res = await contactsApi.uploadAvatar(c.id, file)
+    // 用服务端返回的最新 out 替换本地条；找不到则全量刷新
+    if (res?.data) {
+      const idx = list.value.findIndex((x) => x.id === c.id)
+      if (idx >= 0) list.value.splice(idx, 1, res.data)
+    } else {
+      await reload()
+    }
+    ElMessage.success('头像已更新')
+  } catch { /* 拦截器已提示 */ }
+}
+
+async function clearAvatar(c) {
+  try {
+    await ElMessageBox.confirm(`确认清除「${c.name}」的头像？`, '提示', { type: 'warning' })
+  } catch { return }
+  try {
+    const res = await contactsApi.clearAvatar(c.id)
+    if (res?.data) {
+      const idx = list.value.findIndex((x) => x.id === c.id)
+      if (idx >= 0) list.value.splice(idx, 1, res.data)
+    } else {
+      await reload()
+    }
+    ElMessage.success('已清除头像')
+  } catch { /* 拦截器已提示 */ }
+}
 
 // 农历没有 31 日，日下拉要跟着历法收窄，否则会填出永远存不进的日期
 const maxBirthDay = computed(() => (form.birthday_type === 'lunar' ? 30 : 31))
@@ -426,8 +540,13 @@ onMounted(reload)
 .ct-card-main { display: flex; gap: 14px; flex: 1; min-width: 260px; align-items: flex-start; }
 .ct-avatar { width: 42px; height: 42px; flex: none; border-radius: 12px; display: flex;
   align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 18px;
-  background: rgba(127,168,163,.16); color: var(--lj-dai); border: 1px solid var(--lj-line); }
+  background: rgba(127,168,163,.16); color: var(--lj-dai); border: 1px solid var(--lj-line);
+  cursor: pointer; transition: transform .15s ease, box-shadow .2s ease, border-color .2s; }
+.ct-avatar:hover { border-color: var(--lj-seal); transform: translateY(-1px); }
 .ct-avatar.pin { background: var(--lj-seal-soft); color: var(--lj-seal); border-color: var(--lj-seal); }
+/* v2.18：上传过照片时，缩略头像是张圆角图；点击放大预览 */
+.ct-avatar-photo { padding: 0; overflow: hidden; cursor: zoom-in; }
+.ct-avatar-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .ct-card-text { flex: 1; min-width: 0; }
 .ct-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ct-name { font-size: 16px; font-weight: 600; color: var(--lj-text); }
@@ -444,6 +563,8 @@ onMounted(reload)
 .ct-tel { color: var(--lj-dai); text-decoration: none; }
 .ct-tel:hover { text-decoration: underline; }
 .ct-notes { margin: 6px 0 0; font-size: 12px; color: var(--lj-text-3); line-height: 1.6; }
+/* 家庭共享：谁录入的（账号昵称，注销后显示「已注销」） */
+.ct-creator { color: var(--lj-text-3); }
 .ct-card-actions { display: flex; gap: 6px; margin-left: auto; }
 
 .ct-empty { text-align: center; padding: 46px 20px; font-size: 13px; line-height: 1.9; color: var(--lj-text-3); }

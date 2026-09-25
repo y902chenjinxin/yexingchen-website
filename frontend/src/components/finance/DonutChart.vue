@@ -1,5 +1,5 @@
 <template>
-  <div class="dc">
+  <div class="dc" @touchstart.passive="hoverIdx = null">
     <svg :viewBox="`0 0 ${size} ${size}`" class="dc-svg" role="img" :aria-label="ariaLabel">
       <circle
         v-for="(seg, i) in segments"
@@ -14,15 +14,19 @@
         :transform="`rotate(${seg.angle} ${center} ${center})`"
         stroke-linecap="butt"
         class="dc-seg"
+        :class="{ 'is-on': hoverIdx === i, 'is-dim': hoverIdx !== null && hoverIdx !== i }"
+        @mouseenter="hoverIdx = i"
+        @mouseleave="hoverIdx = null"
+        @touchstart.stop.passive="hoverIdx = i"
       />
-      <text x="50%" y="47%" text-anchor="middle" class="dc-total">{{ totalLabel }}</text>
-      <text x="50%" y="59%" text-anchor="middle" class="dc-total-sub">{{ countLabel }}</text>
+      <text x="50%" y="47%" text-anchor="middle" class="dc-total" :class="{ 'is-num': hovered }">{{ centerBig }}</text>
+      <text x="50%" y="59%" text-anchor="middle" class="dc-total-sub">{{ centerSub }}</text>
     </svg>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   data: { type: Array, default: () => [] }, // [{category, amount, color}]
@@ -56,12 +60,27 @@ const segments = computed(() => {
 })
 const totalLabel = computed(() => Number(tot.value).toFixed(2))
 const countLabel = computed(() => `${props.data.length} ${props.unit}`)
+
+/* 悬浮读数：指针落在某段环上时，中心改为显示该段的金额与占比 */
+const hoverIdx = ref(null)
+const hovered = computed(() => (hoverIdx.value == null ? null : props.data[hoverIdx.value] || null))
+const centerBig = computed(() => (hovered.value ? Number(hovered.value.amount || 0).toFixed(2) : totalLabel.value))
+const centerSub = computed(() => {
+  const h = hovered.value
+  if (!h) return countLabel.value
+  const pct = tot.value ? ((h.amount || 0) / tot.value) * 100 : 0
+  return `${h.category} · ${pct.toFixed(1)}%`
+})
 </script>
 
 <style scoped>
 .dc { flex: none; width: 190px; height: 190px; }
 .dc-svg { width: 100%; height: 100%; display: block; }
-.dc-seg { opacity: 1; }
+.dc-seg { pointer-events: stroke; transition: opacity .18s ease, stroke-width .18s ease; }
+.dc-seg.is-dim { opacity: .26; }
+.dc-seg.is-on { stroke-width: 28; }
 .dc-total { font-size: 30px; font-weight: 700; fill: var(--lj-text); letter-spacing: .02em; }
+.dc-total.is-num { font-size: 26px; }
 .dc-total-sub { font-size: 12px; fill: var(--lj-text-3); }
+@media (prefers-reduced-motion: reduce) { .dc-seg { transition: none; } }
 </style>

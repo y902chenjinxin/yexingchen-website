@@ -22,11 +22,24 @@ from app.schemas.common import ResponseBase
 from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user
 from app.models.finance import FinanceCategory, FinanceTransaction
+from app.services.member_naming import member_map
 
 router = APIRouter(prefix="/api/finance", tags=["个人记账"])
 
 # v2.16：财经模块家庭共享
 HOUSEHOLD_ID = 1
+
+
+def _member_map(db: Session) -> dict:
+    """user_id → 家庭档案（姓名/头像），用于把流水的创建者显示成「人员标签」。"""
+    return member_map(db, HOUSEHOLD_ID)
+
+
+def _member_of(uid, mmap: dict) -> dict:
+    hit = mmap.get(uid)
+    return {"user_id": uid, "name": hit["name"], "avatar": hit["avatar"]} if hit else {
+        "user_id": uid, "name": "已注销", "avatar": "👤",
+    }
 
 # 收支分类（含 emoji 供前端展示）；未命中归「其他」
 EXPENSE_CATEGORIES = [
@@ -156,9 +169,9 @@ def _resolve_category(db: Session, ttype: str, category: str) -> str:
     return name if hit else FALLBACK_CATEGORY
 
 
-def _to_dict(t: FinanceTransaction, icons: dict = None) -> dict:
+def _to_dict(t: FinanceTransaction, icons: dict = None, mmap: dict = None) -> dict:
     imap = icons if icons is not None else CATEGORY_ICONS
-    return {
+    out = {
         "id": t.id,
         "type": t.type,
         "amount": round(t.amount_cents / 100, 2),
@@ -169,6 +182,10 @@ def _to_dict(t: FinanceTransaction, icons: dict = None) -> dict:
         "occurred_at": str(t.occurred_at),
         "created_at": str(t.created_at),
     }
+    # v2.16.2：带上创建者，供前端按「人员标签」分组/筛选
+    if mmap is not None:
+        out["member"] = _member_of(t.user_id, mmap)
+    return out
 
 
 # ---------- 分类元数据 ----------
@@ -339,6 +356,7 @@ async def summary(
     month: str = Query("", description="YYYY-MM，dim=month 时生效"),
     day: str = Query("", description="YYYY-MM-DD，dim=day 时生效"),
     year: str = Query("", description="YYYY，dim=year 时生效"),
+    member_user_id: int | None = Query(None, description="按创建者过滤；不传=全部家人"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -380,6 +398,10 @@ async def summary(
         FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     )
+    # 累计结余 / 最早年份始终按全家口径，不随人员筛选漂移
+    balance_base = base
+    if member_user_id is not None:
+        base = base.filter(FinanceTransaction.user_id == member_user_id)
 
     # 所选维度窗口内的流水（KPI + 分类占比 + 趋势）
     rows = base.filter(FinanceTransaction.occurred_at >= start, FinanceTransaction.occurred_at < end).all()
@@ -387,8 +409,8 @@ async def summary(
     expense = sum(r.amount_cents for r in rows if r.type == "expense")
     count = len(rows)
 
-    # 累计结余（全量，含已删除过滤）
-    all_rows = base.all()
+    # 累计结余（全量，含已删除过滤；始终全家口径）
+    all_rows = balance_base.all()
     total_income = sum(r.amount_cents for r in all_rows if r.type == "income")
     total_expense = sum(r.amount_cents for r in all_rows if r.type == "expense")
     balance = total_income - total_expense
@@ -457,6 +479,86 @@ async def summary(
     })
 
 
+# ---------- 按家人汇总（每人一行 + 合计行） ----------
+@router.get("/member-breakdown", response_model=ResponseBase)
+async def member_breakdown(
+    dim: str = Query("month", description="day/month/year，统计维度"),
+    month: str = Query("", description="YYYY-MM，dim=month 时生效"),
+    day: str = Query("", description="YYYY-MM-DD，dim=day 时生效"),
+    year: str = Query("", description="YYYY，dim=year 时生效"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """把所选周期内的流水按创建者（家庭档案）聚合，供「人员标签 + 汇总数据」使用。
+
+    金额单位为元。返回 members 为每人一行，total 为全家合计。
+    """
+    now = datetime.now()
+    dim = dim if dim in ("day", "month", "year") else "month"
+    if dim == "day":
+        d = day or f"{now.year}-{now.month:02d}-{now.day:02d}"
+        try:
+            sy, sm, sd = (int(x) for x in d.split("-"))
+        except (ValueError, TypeError):
+            sy, sm, sd = now.year, now.month, now.day
+        start, end = datetime(sy, sm, sd), datetime(sy, sm, sd) + timedelta(days=1)
+    elif dim == "year":
+        sy = int(year) if year and str(year).isdigit() else now.year
+        start, end = datetime(sy, 1, 1), datetime(sy + 1, 1, 1)
+    else:
+        if month:
+            try:
+                sy, sm = (int(x) for x in month.split("-"))
+            except (ValueError, TypeError):
+                sy, sm = now.year, now.month
+        else:
+            sy, sm = now.year, now.month
+        start = datetime(sy, sm, 1)
+        end = datetime(sy + (1 if sm == 12 else 0), 1 if sm == 12 else sm + 1, 1)
+
+    rows = (
+        db.query(FinanceTransaction)
+        .filter(
+            FinanceTransaction.household_id == HOUSEHOLD_ID,
+            FinanceTransaction.deleted_at.is_(None),
+            FinanceTransaction.occurred_at >= start,
+            FinanceTransaction.occurred_at < end,
+        )
+        .all()
+    )
+
+    mmap = _member_map(db)
+    agg: dict[int, dict] = {}
+    for r in rows:
+        a = agg.setdefault(r.user_id, {"income": 0, "expense": 0, "count": 0})
+        a[r.type if r.type in ("income", "expense") else "expense"] += r.amount_cents
+        a["count"] += 1
+
+    members = []
+    for uid, a in agg.items():
+        info = _member_of(uid, mmap)
+        members.append({
+            **info,
+            "income": round(a["income"] / 100, 2),
+            "expense": round(a["expense"] / 100, 2),
+            "count": a["count"],
+            "balance": round((a["income"] - a["expense"]) / 100, 2),
+        })
+    # 花得多的排前面，便于一眼看出谁占比大
+    members.sort(key=lambda m: (-m["expense"], -m["income"]))
+
+    return ResponseBase(data={
+        "dim": dim,
+        "members": members,
+        "total": {
+            "income": round(sum(m["income"] for m in members), 2),
+            "expense": round(sum(m["expense"] for m in members), 2),
+            "count": sum(m["count"] for m in members),
+            "balance": round(sum(m["balance"] for m in members), 2),
+        },
+    })
+
+
 # ---------- 流水列表 ----------
 @router.get("/transactions", response_model=ResponseBase)
 async def list_transactions(
@@ -467,6 +569,7 @@ async def list_transactions(
     q: str = "",
     start: str = "",
     end: str = "",
+    member_user_id: int | None = Query(None, description="按创建者过滤；不传=全部家人"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -474,6 +577,8 @@ async def list_transactions(
         FinanceTransaction.household_id == HOUSEHOLD_ID,
         FinanceTransaction.deleted_at.is_(None),
     )
+    if member_user_id is not None:
+        query = query.filter(FinanceTransaction.user_id == member_user_id)
     if type in ("income", "expense"):
         query = query.filter(FinanceTransaction.type == type)
     if category:
@@ -493,7 +598,7 @@ async def list_transactions(
         .offset((page - 1) * size).limit(size).all()
     )
     return ResponseBase(data={
-        "list": [_to_dict(r, _category_icon_map(db)) for r in rows],
+        "list": [_to_dict(r, _category_icon_map(db), _member_map(db)) for r in rows],
         "total": total,
         "page": page,
         "size": size,

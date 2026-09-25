@@ -145,13 +145,25 @@ fetch('/geo/china.json').then((r) => r.json()).then((d) => { geo.value = d }).ca
 
 const reduced = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const W = ref(600)
-const H = ref(540)
+// 投影参数一律由 geo.bound 推导（等距圆柱 + 中纬余弦压缩）。
+// 早前用模块级 let 缓存、在 computed 里赋值，既是 vue/no-side-effects-in-computed-properties
+// 违规，也让 W/H 的正确性依赖 provinces 先被求值。
+const proj = computed(() => {
+  const bnd = geo.value?.bound
+  if (!bnd) return null
+  const [minLon, minLat, maxLon, maxLat] = bnd
+  const k = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180)
+  return { minLon, maxLat, k, w: (maxLon - minLon) * k, h: maxLat - minLat }
+})
+const W = computed(() => proj.value?.w ?? 600)
+const H = computed(() => proj.value?.h ?? 540)
 // 城市标记缩放：白环定位针 glyph 约 4.7 单位宽，缩到约 0.47 地图单位，属于清晰的小标记
 const FOOT_SCALE = 0.10
-let K = 1
-let minLon = 73, maxLon = 135, minLat = 18, maxLat = 54
-function project(lon, lat) { return [(lon - minLon) * K, (maxLat - lat) * 1] }
+function project(lon, lat) {
+  const p = proj.value
+  if (!p) return [0, 0]
+  return [(lon - p.minLon) * p.k, p.maxLat - lat]
+}
 function buildD(ringsList) {
   const rings = ringsList.flat()
   return rings.map((ring) => ring.map(([lo, la], i) => {
@@ -232,7 +244,6 @@ function onWheel(e) {
 }
 function zoomAt(clientX, clientY, factor) {
   const s2 = clamp(view.s * factor, 1, 14)
-  const f = s2 / view.s
   const pt = toContent(clientX, clientY)
   if (!pt) return
   view.tx = pt.mx - pt.cx * s2
@@ -287,12 +298,6 @@ watch(() => props.activeTripId, (id) => {
 /* ---------- 数据 ---------- */
 const provinces = computed(() => {
   if (!geo.value) return []
-  const bnd = geo.value.bound
-  minLon = bnd[0]; minLat = bnd[1]; maxLon = bnd[2]; maxLat = bnd[3]
-  const mid = (minLat + maxLat) / 2 * Math.PI / 180
-  K = Math.cos(mid)
-  W.value = (maxLon - minLon) * K
-  H.value = (maxLat - minLat)
   const byProv = {}
   for (const pt of props.points) { if (pt.province) byProv[pt.province] = (byProv[pt.province] || 0) + 1 }
   const citiesByProv = {}

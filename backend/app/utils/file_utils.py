@@ -12,6 +12,8 @@ ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm"}
 ALLOWED_COVER_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
 # v2.15 生活模块：体重无需文件；三餐图片沿用封面扩展名限制（jpg/jpeg/png/webp/gif）
 ALLOWED_MEAL_EXTENSIONS = ALLOWED_COVER_EXTENSIONS
+# v2.18 家人头像：仅 jpg/jpeg/png/webp；gif 体积过大且不需要动画，落上限与封面同（5MB）
+ALLOWED_CONTACT_AVATAR_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
 
 def allowed_file(filename: str, allowed_extensions: set) -> bool:

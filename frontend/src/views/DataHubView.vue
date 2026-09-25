@@ -55,18 +55,41 @@
               <span class="dh-card-title">支出趋势</span>
               <span class="dh-card-sub">近 6 月</span>
             </div>
-            <svg class="dh-chart" :viewBox="chartBox" preserveAspectRatio="none">
-              <template v-for="(v, i) in expPoints" :key="'g' + i">
-                <line class="dh-chart-g" :x1="v.x" :x2="v.x" :y1="padT" :y2="chartH - 4" />
-              </template>
-              <polyline class="dh-chart-poly" :points="expPtsStr" />
-              <circle v-for="(v, i) in expPoints" :key="'c' + i" class="dh-chart-dot"
-                :cx="v.x" :cy="v.y" r="3.2" />
-              <template v-for="(v, i) in expPoints" :key="'t' + i">
-                <text class="dh-chart-x" :x="v.x" :y="chartH - 2" :text-anchor=" i===0 ? 'start' : i===expPoints.length-1 ? 'end' : 'middle'">{{ v.label }}</text>
-              </template>
-              <text v-for="(v, i) in expPoints" :key="'tval' + i" class="dh-chart-xy" :x="v.x" :y="v.y - 7" :text-anchor=" i===0 ? 'start' : i===expPoints.length-1 ? 'end' : 'middle'">{{ moneyShort(v.value) }}</text>
-            </svg>
+            <div class="dh-chart-wrap">
+              <svg
+                ref="dhSvg"
+                class="dh-chart"
+                :viewBox="chartBox"
+                preserveAspectRatio="none"
+                @mousemove="onMove"
+                @mouseleave="onLeave"
+                @touchstart.passive="onTouchStart"
+                @touchmove.passive="onTouchMove"
+                @touchend.passive="onTouchEnd"
+              >
+                <template v-for="(v, i) in expPoints" :key="'g' + i">
+                  <line class="dh-chart-g" :x1="v.x" :x2="v.x" :y1="padT" :y2="chartH - 4" />
+                </template>
+                <polyline class="dh-chart-poly" :points="expPtsStr" />
+                <circle v-for="(v, i) in expPoints" :key="'c' + i" class="dh-chart-dot"
+                  :cx="v.x" :cy="v.y" r="3.2" />
+                <template v-for="(v, i) in expPoints" :key="'t' + i">
+                  <text class="dh-chart-x" :x="v.x" :y="chartH - 2" :text-anchor=" i===0 ? 'start' : i===expPoints.length-1 ? 'end' : 'middle'">{{ v.label }}</text>
+                </template>
+                <text v-for="(v, i) in expPoints" :key="'tval' + i" class="dh-chart-xy" :x="v.x" :y="v.y - 7" :text-anchor=" i===0 ? 'start' : i===expPoints.length-1 ? 'end' : 'middle'">{{ moneyShort(v.value) }}</text>
+                <g v-if="hoverPoint">
+                  <line class="dh-chart-cross" :x1="hoverPoint.x" :x2="hoverPoint.x" :y1="padT" :y2="chartH - 4" />
+                  <circle class="dh-chart-hdot" :cx="hoverPoint.x" :cy="hoverPoint.y" r="4.6" />
+                </g>
+              </svg>
+              <ChartTip
+                :show="hoverPoint !== null"
+                :x="hoverX"
+                :vw="300"
+                :title="hoverPoint ? hoverPoint.label : ''"
+                :rows="hoverRows"
+              />
+            </div>
           </section>
 
           <!-- 支出分类占比 -->
@@ -152,6 +175,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import BackButton from '@/components/BackButton.vue'
+import ChartTip from '@/components/charts/ChartTip.vue'
+import { useChartHover } from '@/composables/useChartHover'
 import { datahubApi } from '@/api/datahub'
 
 const loading = ref(true)
@@ -209,6 +234,17 @@ const expPoints = computed(() => {
   })
 })
 const expPtsStr = computed(() => expPoints.value.map((p) => `${p.x},${p.y}`).join(' '))
+
+// 悬浮读数：左右滑动吸附到最近的月份
+const dhSvg = ref(null)
+const { hoverIndex, hoverX, onMove, onLeave, onTouchStart, onTouchMove, onTouchEnd } = useChartHover({
+  svgRef: dhSvg,
+  columns: () => expPoints.value.map((p) => p.x),
+})
+const hoverPoint = computed(() => expPoints.value[hoverIndex.value] || null)
+const hoverRows = computed(() => (
+  hoverPoint.value ? [{ label: '支出', value: `¥ ${money(hoverPoint.value.value)}` }] : []
+))
 
 const donePctQ = computed(() => {
   const t = task.value
@@ -319,10 +355,13 @@ onMounted(async () => {
 .dh-card-title { font-size: 15px; font-weight: 600; letter-spacing: .08em; }
 .dh-card-sub { font-size: 11px; color: var(--lj-text-3); }
 
-.dh-chart { width: 100%; height: 128px; display: block; }
+.dh-chart-wrap { position: relative; }
+.dh-chart { width: 100%; height: 128px; display: block; cursor: crosshair; }
 .dh-chart-g { stroke: rgba(127,168,163,0.12); stroke-width: 1; }
 .dh-chart-poly { fill: none; stroke: var(--lj-dai); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .dh-chart-dot { fill: var(--lj-dai); }
+.dh-chart-cross { stroke: var(--lj-dai); stroke-width: 1; stroke-dasharray: 3 3; opacity: .5; }
+.dh-chart-hdot { fill: var(--lj-dai); filter: drop-shadow(0 0 4px rgba(0, 0, 0, .35)); }
 .dh-chart-x { font-size: 9px; fill: var(--lj-text-3); }
 .dh-chart-xy { font-size: 9px; fill: var(--lj-text-2); }
 
@@ -336,11 +375,13 @@ onMounted(async () => {
 .dh-cat-fill { display: block; height: 100%; border-radius: 999px; transition: width .5s; }
 .dh-cat-val { font-size: 13px; font-weight: 600; }
 
-.dh-donut { display: flex; align-items: center; gap: 18px; }
+.dh-donut { position: relative; display: flex; align-items: center; gap: 18px; }
 .dh-donut-svg { width: 90px; height: 90px; transform: rotate(-90deg); }
 .dh-donut-ring { fill: none; stroke: rgba(127,168,163,.14); stroke-width: 8; }
 .dh-donut-bar { fill: none; stroke: var(--lj-dai); stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray .6s; }
-.dh-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+/* 必须相对 .dh-donut 定位：缺 position:relative 时 inset:0 会逃到更外层定位祖先，
+   铺成一张盖住整块网格的透明遮罩，把趋势图的 mousemove 全吃掉 */
+.dh-donut-center { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .dh-donut-center b { font-size: 18px; }
 .dh-donut-center span { font-size: 10px; color: var(--lj-text-3); }
 .dh-donut-legend { font-size: 12.5px; color: var(--lj-text-2); display: flex; align-items: center; gap: 8px; }

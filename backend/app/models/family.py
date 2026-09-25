@@ -32,11 +32,16 @@ class Contact(Base):
     __tablename__ = "xuanhuang_contacts"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    # user_id 是「录入人」溯源（谁加的这位家人），过滤一律走 household_id
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    household_id = Column(Integer, nullable=False, default=1, index=True)
     name = Column(String(60), nullable=False)
     relation = Column(String(40), nullable=False, default="")  # 关系：父亲/母亲/姑姑…
     phone = Column(String(40), nullable=False, default="")
     address = Column(String(255), nullable=False, default="")
+    # 联系人头像：相对路径如 /contacts/1234567890_abcd.jpg；None 表示沿用「姓字」首字占位
+    # 沿用 meal photo 一样的存储约定（UPLOAD_DIR 下子目录 + 时间戳_随机串.扩展名）
+    avatar_path = Column(String(255), nullable=True)
     # 生日只存「月-日」MM-DD：家人往往只记得月日，且年份不参与提醒；
     # 需要算年龄时再看 birth_year
     birthday = Column(String(5), nullable=True)
@@ -63,7 +68,9 @@ class Subscription(Base):
     __tablename__ = "xuanhuang_subscriptions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    # user_id 是「录入人」溯源（谁订的这项），过滤一律走 household_id
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    household_id = Column(Integer, nullable=False, default=1, index=True)
     name = Column(String(80), nullable=False)
     amount = Column(Numeric(10, 2), nullable=False, default=0)
     currency = Column(String(8), nullable=False, default="CNY")

@@ -259,7 +259,7 @@
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useNovelStore } from '@/stores/novel'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'

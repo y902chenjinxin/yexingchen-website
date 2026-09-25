@@ -20,7 +20,7 @@
       </defs>
 
       <g class="kc-grid">
-        <template v-for="g in grid">
+        <template v-for="g in grid" :key="g.y">
           <line :x1="pltL" :x2="plotR" :y1="g.y" :y2="g.y" />
           <text class="kc-lbl" :x="plotR + 6" :y="g.y + 3">{{ g.txt }}</text>
         </template>
@@ -303,8 +303,6 @@ const analysis = computed(() => {
     const above5 = ma5 != null && k.close >= ma5
     const above20 = ma20 != null && k.close >= ma20
     const up = k.close >= k.open
-    const body = Math.abs(k.close - k.open)
-    const rng = Math.max(0.0001, k.high - k.low)
 
     let shape
     if (chg > 1.5 && up) shape = '强势上攻'
@@ -380,7 +378,6 @@ function chartMove(e) {
   if (pan) {
     const dx = e.clientX - pan.sx
     const dr = dx * pan.stepR
-    const r = svg.value.getBoundingClientRect()
     const shift = Math.round(dr * (count.value - 1))
     setRange(pan.st + shift, count.value)
   }

@@ -40,7 +40,7 @@
 import BackButton from '@/components/BackButton.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
-const props = defineProps({
+defineProps({
   title: { type: String, required: true },
   status: { type: String, required: true },
   saveState: { type: String, required: true }, // idle | saving | saved | error

@@ -121,7 +121,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive } from 'vue'
 import TravelCityPicker from './TravelCityPicker.vue'
 import { uploadMedia } from '@/api/travels'
 

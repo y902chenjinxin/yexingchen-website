@@ -30,7 +30,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { User, Lock, Menu as MenuIcon } from '@element-plus/icons-vue'
 

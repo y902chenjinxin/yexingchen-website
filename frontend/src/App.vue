@@ -54,7 +54,6 @@ import { useAuthStore } from '@/stores/auth'
 import { usePrefsStore, applyTheme } from '@/stores/prefs'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
 import DesktopSidebar from '@/components/desktop/DesktopSidebar.vue'
-import FloatingAiButton from '@/components/desktop/FloatingAiButton.vue'
 import MobileTabBar from '@/components/MobileTabBar.vue'
 import MobileFullPlayer from '@/components/mobile/MobileFullPlayer.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
@@ -115,7 +114,7 @@ const aiToolsOpen = ref(false)
 // 触发序列：按 g 后 1.5s 内按下字母，否则取消
 let gPressedAt = 0
 const G_ROUTES = {
-  w: '/workbench', n: '/notes', f: '/finance/overview', t: '/tasks', l: '/tool',
+  w: '/workbench', n: '/notes', f: '/finance/book', t: '/tasks', l: '/tool',
   m: '/music', c: '/tool/countdown', s: '/finance/market', p: '/profile', d: '/diary',
   r: '/travels', e: '/finance/news',
 }

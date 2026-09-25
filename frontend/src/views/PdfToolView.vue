@@ -266,7 +266,7 @@ function loadScript(src) {
     document.head.appendChild(s)
   })
 }
-async function ensureLibs(kind) {
+async function ensureLibs() {
   if (!libsPromise) {
     libsPromise = (async () => {
       if (!window.pdfjsLib) {
@@ -316,7 +316,6 @@ async function prepareImage(f, dim) {
         confirmCompress = true
       } catch { return { embedType: null } }
     }
-    const maxDim = confirmCompress ? 2000 : Math.max(dim.w, dim.h)
     const scale = confirmCompress
       ? 2000 / Math.max(dim.w, dim.h)
       : 1

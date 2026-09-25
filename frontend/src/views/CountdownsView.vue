@@ -1,16 +1,16 @@
 <template>
-  <IslandInnerBase type="tool" title="倒计时" subtitle="倒计时与纪念日 · 记录期待的日子，也记录走过的时光">
+  <IslandInnerBase type="tool" title="时光痕迹" subtitle="记录期待的日子，也记录走过的时光">
     <template #toolbar>
       <el-button size="small" plain @click="showArchived = !showArchived">
         {{ showArchived ? '隐藏归档' : '显示归档' }}
       </el-button>
-      <el-button type="primary" size="small" @click="openDialog()">新建倒计时</el-button>
+      <el-button type="primary" size="small" @click="openDialog()">新建事件</el-button>
     </template>
 
     <!-- 空状态 -->
     <div v-if="!loading && items.length === 0" class="cd-empty">
       <span class="cd-empty-icon">⏳</span>
-      <span class="cd-empty-text">还没有倒计时事件</span>
+      <span class="cd-empty-text">还没有任何时光痕迹</span>
       <el-button type="primary" size="small" @click="openDialog()">新建第一个</el-button>
     </div>
 
@@ -81,7 +81,7 @@
     <!-- 新建/编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="editing ? '编辑倒计时' : '新建倒计时'"
+      :title="editing ? '编辑事件' : '新建事件'"
       width="480px"
       :close-on-click-modal="false"
       class="cd-dialog"
@@ -318,7 +318,7 @@ async function load() {
     const { data: resp } = await listCountdowns({ includeArchived: true })
     items.value = resp.data?.list || resp.list || []
   } catch {
-    ElMessage.error('加载倒计时失败')
+    ElMessage.error('加载时光痕迹失败')
   } finally {
     loading.value = false
   }

@@ -84,7 +84,6 @@ async function load(refresh = false) {
   }
 }
 
-async function refresh() { await load(true) }
 function goHistory() {
   router.push('/history')
 }

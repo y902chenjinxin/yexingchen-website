@@ -253,6 +253,74 @@
         </div>
       </section>
 
+      <!-- 家人账目：人员标签 + 汇总数据 -->
+      <section class="fin-members glass">
+        <div class="fin-members-head">
+          <h2 class="fin-chart-title">家人账目</h2>
+          <span class="fin-members-hint">点标签看各自的，合计为全家</span>
+        </div>
+
+        <div class="fin-mtags">
+          <button class="fin-mtag" :class="{ on: !memberFilter }" @click="pickMember('')">
+            <span class="fin-mtag-avatar">🏠</span>
+            <span class="fin-mtag-name">全部家人</span>
+            <span class="fin-mtag-amt">¥ {{ money(breakdown.total?.expense) }}</span>
+          </button>
+          <button
+            v-for="m in memberTags"
+            :key="m.user_id"
+            class="fin-mtag"
+            :class="{ on: String(memberFilter) === String(m.user_id) }"
+            @click="pickMember(m.user_id)"
+          >
+            <span class="fin-mtag-avatar">{{ m.avatar }}</span>
+            <span class="fin-mtag-name">{{ m.name }}</span>
+            <span class="fin-mtag-amt">¥ {{ money(m.expense) }}</span>
+          </button>
+        </div>
+
+        <div v-if="breakdown.members && breakdown.members.length" class="fin-mtable-wrap">
+          <table class="fin-mtable">
+            <thead>
+              <tr>
+                <th class="c-name">成员</th>
+                <th class="c-num">{{ unitLabel }}收入</th>
+                <th class="c-num">{{ unitLabel }}支出</th>
+                <th class="c-num">笔数</th>
+                <th class="c-num">结余</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="m in breakdown.members"
+                :key="m.user_id"
+                class="fin-mtr"
+                :class="{ on: String(memberFilter) === String(m.user_id) }"
+                @click="pickMember(m.user_id)"
+              >
+                <td class="c-name"><span class="fin-mtd-avatar">{{ m.avatar }}</span>{{ m.name }}</td>
+                <td class="c-num income">+ ¥ {{ money(m.income) }}</td>
+                <td class="c-num expense">− ¥ {{ money(m.expense) }}</td>
+                <td class="c-num">{{ m.count }}</td>
+                <td class="c-num" :class="m.balance >= 0 ? 'income' : 'expense'">
+                  {{ m.balance >= 0 ? '+' : '−' }} ¥ {{ money(Math.abs(m.balance)) }}
+                </td>
+              </tr>
+              <tr class="fin-mtr total">
+                <td class="c-name">全家合计</td>
+                <td class="c-num income">+ ¥ {{ money(breakdown.total?.income) }}</td>
+                <td class="c-num expense">− ¥ {{ money(breakdown.total?.expense) }}</td>
+                <td class="c-num">{{ breakdown.total?.count || 0 }}</td>
+                <td class="c-num" :class="(breakdown.total?.balance || 0) >= 0 ? 'income' : 'expense'">
+                  {{ (breakdown.total?.balance || 0) >= 0 ? '+' : '−' }} ¥ {{ money(Math.abs(breakdown.total?.balance || 0)) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-else class="fin-members-empty">{{ unitLabel }}暂无流水</div>
+      </section>
+
       <!-- 图表区 -->
       <section class="fin-charts">
         <div class="fin-chart glass">
@@ -285,6 +353,10 @@
         <div class="fin-ledger-head">
           <h2 class="fin-chart-title">流水明细</h2>
           <div class="fin-filters">
+            <span v-if="memberFilter" class="fin-filter-chip">
+              仅看 {{ activeMemberName }}
+              <button class="fin-filter-chip-x" @click="pickMember('')">✕</button>
+            </span>
             <el-select v-model="filters.type" placeholder="全部类型" clearable class="fin-filter" @change="reload(1)">
               <el-option label="支出" value="expense" />
               <el-option label="收入" value="income" />
@@ -304,7 +376,10 @@
                   <span class="fin-row-cat">{{ row.category }}</span>
                   <span class="fin-row-note">{{ row.note }}</span>
                 </div>
-                <div class="fin-row-date">{{ fmtDay(row.occurred_at) }}</div>
+                <div class="fin-row-date">
+                  <span v-if="row.member" class="fin-row-member">{{ row.member.avatar }} {{ row.member.name }}</span>
+                  {{ fmtDay(row.occurred_at) }}
+                </div>
               </div>
               <div class="fin-row-amt" :class="row.type">
                 {{ row.type === 'income' ? '+' : '−' }} ¥ {{ money(row.amount) }}
@@ -426,6 +501,7 @@ import VoiceInputButton from '@/components/VoiceInputButton.vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
 import TrendChart from '@/components/finance/TrendChart.vue'
 import { financeApi, exportFinanceCsv } from '@/api/finance'
+import { listMembers } from '@/api/life'
 
 function backToTopScroll() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -453,6 +529,70 @@ const pageSize = 20
 const saving = ref(false)
 
 const filters = reactive({ type: '', q: '' })
+
+/* ---- 人员标签 + 家人汇总 ---- */
+// '' = 全部家人；否则是创建者 user_id（后端 member_user_id 过滤）
+const memberFilter = ref('')
+const members = ref([])
+const breakdown = ref({ members: [], total: {} })
+
+// 标签来源：家庭成员档案 ∪ 汇总里出现过的创建者（含已注销账号的历史流水）
+const memberTags = computed(() => {
+  const bmap = new Map((breakdown.value.members || []).map((m) => [m.user_id, m]))
+  const seen = new Set()
+  const out = []
+  for (const m of members.value) {
+    const b = bmap.get(m.user_id)
+    out.push({
+      user_id: m.user_id,
+      name: m.display_name || `成员${m.user_id}`,
+      avatar: m.avatar || '🌿',
+      expense: b?.expense || 0,
+    })
+    seen.add(m.user_id)
+  }
+  for (const b of breakdown.value.members || []) {
+    if (seen.has(b.user_id)) continue
+    out.push({ user_id: b.user_id, name: b.name, avatar: b.avatar || '👤', expense: b.expense || 0 })
+  }
+  return out
+})
+
+const activeMemberName = computed(() => {
+  const hit = memberTags.value.find((m) => String(m.user_id) === String(memberFilter.value))
+  return hit ? hit.name : '家人'
+})
+
+function pickMember(uid) {
+  const next = uid === '' || uid == null ? '' : uid
+  memberFilter.value = String(memberFilter.value) === String(next) ? '' : next
+  page.value = 1
+  loadSummary()
+  loadList()
+}
+
+async function loadMembers() {
+  try {
+    const res = await listMembers()
+    members.value = res?.data?.list || []
+  } catch {
+    members.value = []
+  }
+}
+
+async function loadBreakdown() {
+  const params = { dim: dim.value }
+  if (dim.value === 'day') params.day = day.value
+  else if (dim.value === 'year') params.year = year.value
+  else params.month = month.value
+  const res = await financeApi.memberBreakdown(params)
+  breakdown.value = res.data || { members: [], total: {} }
+}
+
+// 周期内的三个口径一起刷：KPI/图表、家人汇总、流水列表
+function loadPeriodStats() {
+  return Promise.all([loadSummary(), loadBreakdown()])
+}
 
 const form = reactive({
   show: false,
@@ -541,7 +681,7 @@ function pickDay(d) {
 function closeDd() {
   ddOpen.value = false
   page.value = 1
-  loadSummary()
+  loadPeriodStats()
   loadList()
 }
 function onDocClick() { if (ddOpen.value) ddOpen.value = false }
@@ -647,6 +787,7 @@ async function loadSummary() {
   if (dim.value === 'day') params.day = day.value
   else if (dim.value === 'year') params.year = year.value
   else params.month = month.value
+  if (memberFilter.value) params.member_user_id = memberFilter.value
   const res = await financeApi.summary(params)
   summary.value = { ...res.data, categories: (res.data.categories || []).map((c, i) => ({ ...c, color: PALETTE[i % PALETTE.length] })) }
 }
@@ -659,11 +800,11 @@ async function loadList() {
   const params = { page: page.value, size: pageSize }
   if (filters.type) params.type = filters.type
   if (filters.q) params.q = filters.q
+  if (memberFilter.value) params.member_user_id = memberFilter.value
   const res = await financeApi.list(params)
   list.value = res.data.list
   total.value = res.data.total
 }
-function handleCurrentChange() {}
 const showImportHelp = ref(false)
 async function exportCsv() {
   let start, end
@@ -760,7 +901,7 @@ function setDim(d) {
   if (dim.value === d || !['day', 'month', 'year'].includes(d)) return
   dim.value = d
   page.value = 1
-  loadSummary()
+  loadPeriodStats()
   loadList()
 }
 function shift(step) {
@@ -776,7 +917,7 @@ function shift(step) {
     month.value = `${Math.floor(totalM / 12)}-${pad((totalM % 12) + 1)}`
   }
   page.value = 1
-  loadSummary()
+  loadPeriodStats()
   loadList()
 }
 function goNow() {
@@ -784,11 +925,11 @@ function goNow() {
   else if (dim.value === 'year') year.value = String(now.getFullYear())
   else month.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`
   page.value = 1
-  loadSummary()
+  loadPeriodStats()
   loadList()
 }
 async function reloadAndScroll() {
-  await Promise.all([loadSummary(), reload(1)])
+  await Promise.all([loadPeriodStats(), reload(1)])
   backToTopScroll()
 }
 
@@ -845,19 +986,20 @@ async function save() {
     form.show = false
     form.editing = false
     form.editingId = null
-    await Promise.all([loadSummary(), reload(1)])
+    await Promise.all([loadPeriodStats(), reload(1)])
   } finally {
     saving.value = false
   }
 }
 async function del(row) {
   await financeApi.remove(row.id)
-  await Promise.all([loadSummary(), loadList()])
+  await Promise.all([loadPeriodStats(), loadList()])
 }
 
 onMounted(() => {
   loadCategories()
-  loadSummary()
+  loadMembers()
+  loadPeriodStats()
   loadList()
   document.addEventListener('click', onDocClick)
 })
@@ -1036,6 +1178,41 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-kpi-val.expense { color: var(--lj-vermilion); }
 .fin-kpi-sub { font-size: 11px; color: var(--lj-text-3); }
 
+/* 家人账目：人员标签 + 汇总表 */
+.fin-members { border-radius: 16px; padding: 18px; margin-bottom: 18px; }
+.fin-members-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.fin-members-head .fin-chart-title { margin: 0; }
+.fin-members-hint { font-size: 12px; color: var(--lj-text-3); }
+.fin-mtags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.fin-mtag { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px;
+  border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer;
+  font-family: var(--font-serif); font-size: 13px; transition: all .2s; }
+.fin-mtag:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
+.fin-mtag.on { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.14); }
+.fin-mtag-avatar { font-size: 15px; line-height: 1; }
+.fin-mtag-amt { font-size: 12px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
+.fin-mtag.on .fin-mtag-amt { color: var(--lj-seal); }
+.fin-mtable-wrap { overflow-x: auto; }
+.fin-mtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fin-mtable th { text-align: right; padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--lj-text-2);
+  border-bottom: 1px solid var(--lj-line); white-space: nowrap; }
+.fin-mtable th.c-name, .fin-mtable td.c-name { text-align: left; }
+.fin-mtable td { padding: 9px 10px; border-bottom: 1px dashed var(--lj-line); text-align: right;
+  white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fin-mtable td.income { color: var(--lj-ochre); }
+.fin-mtable td.expense { color: var(--lj-vermilion); }
+.fin-mtr { cursor: pointer; transition: background .2s; }
+.fin-mtr:hover { background: rgba(127,168,163,.06); }
+.fin-mtr.on { background: rgba(127,168,163,.12); }
+.fin-mtr.total { font-weight: 600; background: rgba(199,169,107,.08); cursor: default; }
+.fin-mtr.total td { border-bottom: none; }
+.fin-mtd-avatar { margin-right: 6px; }
+.fin-members-empty { padding: 22px 6px; text-align: center; font-size: 13px; color: var(--lj-text-3); }
+.fin-filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  font-size: 12px; color: var(--lj-seal); background: rgba(127,168,163,.14); border: 1px solid var(--lj-line); }
+.fin-filter-chip-x { border: none; background: transparent; color: inherit; cursor: pointer; font-size: 12px; padding: 0; }
+.fin-row-member { color: var(--lj-seal); margin-right: 6px; }
+
 /* 图表 */
 .fin-charts { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; margin-bottom: 18px; }
 .fin-chart { border-radius: 16px; padding: 18px; }
@@ -1085,5 +1262,9 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   .fin-page { padding: 88px 14px 50px; }
   .fin-kpis { grid-template-columns: 1fr 1fr; }
   .fin-title { font-size: 22px; }
+  .fin-members { padding: 14px; }
+  .fin-mtag { padding: 5px 11px; font-size: 12px; }
+  .fin-mtable { font-size: 12px; }
+  .fin-mtable th, .fin-mtable td { padding: 7px 8px; }
 }
 </style>

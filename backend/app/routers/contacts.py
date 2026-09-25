@@ -14,21 +14,31 @@ import re
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from pydantic import BaseModel, field_validator
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.family import Contact
 from app.schemas.errors import ErrCode, raise_error
 from app.services.family_reminder import next_birthday_any
 from app.services.lunar import format_lunar_text, parse_lunar_mmdd
 from app.services.log_service import log_action
+from app.services.member_naming import creator_of, member_map
 from app.services.softdelete import restore, soft_delete
+from app.utils.file_utils import (
+    ALLOWED_CONTACT_AVATAR_EXTENSIONS,
+    delete_file,
+    save_upload_file,
+)
 from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api/contacts", tags=["家人通讯录"])
+
+# v2.17：通讯录家庭共享（user_id 降级为「录入人」溯源）
+HOUSEHOLD_ID = 1
 
 MMDD_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
@@ -119,7 +129,7 @@ def _check_lunar(birthday: Optional[str], btype: str) -> None:
         raise_error(ErrCode.INVALID_PARAM, "农历生日应为 01-01 ~ 12-30（农历无 31 日）")
 
 
-def _to_out(c: Contact, today: date | None = None) -> dict:
+def _to_out(c: Contact, today: date | None = None, mmap: dict | None = None) -> dict:
     today = today or date.today()
     btype = c.birthday_type or "solar"
     got = next_birthday_any(c, today)
@@ -128,12 +138,20 @@ def _to_out(c: Contact, today: date | None = None) -> dict:
     else:
         nb, ref_year = None, None
     age = (ref_year - c.birth_year) if (ref_year and c.birth_year) else None
-    return {
+    out = {
         "id": c.id,
         "name": c.name,
         "relation": c.relation or "",
         "phone": c.phone or "",
         "address": c.address or "",
+        # v2.18：联系人头像。avatar_path 是相对路径（/contacts/xxx.jpg），
+        # 已通过 FastAPI 静态挂在 /uploads 下供前端直接 <img src> 取用；
+        # 没上传时为空字符串，前端 fall back 到「姓字首字」头像。
+        "avatar_path": c.avatar_path or "",
+        # avatar_url 直接拼成 /uploads/<path>：后端在 /uploads 上挂了 StaticFiles，
+        # 原始相对路径（如 /contacts/xxx.jpg）会被前端的 SPA 路由抢走而落到 HTML。
+        # 用绝对 URL 后，前端 <img src> 直接走静态路径，不再被前端路由捕获。
+        "avatar_url": ("/uploads" + c.avatar_path) if c.avatar_path else "",
         "birthday": c.birthday,
         "birth_year": c.birth_year,
         "birthday_type": btype,
@@ -150,6 +168,9 @@ def _to_out(c: Contact, today: date | None = None) -> dict:
         "created_at": str(c.created_at),
         "updated_at": str(c.updated_at),
     }
+    if mmap is not None:
+        out.update(creator_of(c.user_id, mmap))
+    return out
 
 
 @router.get("")
@@ -160,7 +181,7 @@ def list_contacts(
     current_user: dict = Depends(get_current_user),
 ):
     query = db.query(Contact).filter(
-        Contact.user_id == current_user["user_id"], Contact.deleted_at.is_(None)
+        Contact.household_id == HOUSEHOLD_ID, Contact.deleted_at.is_(None)
     )
     if q:
         query = query.filter(
@@ -178,7 +199,8 @@ def list_contacts(
     # 数据量是「家人级」（几十条），排序在 Python 里算更直观：
     # 置顶优先 → 生日近的靠前 → 无生日 → 手工排序 → 姓名
     today = date.today()
-    rows = [_to_out(c, today) for c in query.all()]
+    mmap = member_map(db, HOUSEHOLD_ID)
+    rows = [_to_out(c, today, mmap) for c in query.all()]
     rows.sort(key=lambda r: (
         0 if r["is_pinned"] else 1,
         0 if r["days_to_birthday"] is not None else 1,
@@ -197,10 +219,11 @@ def upcoming_birthdays(
 ):
     """未来 N 天内的生日（含今天），供待办/工作台提醒使用。"""
     today = date.today()
+    mmap = member_map(db, HOUSEHOLD_ID)
     rows = [
-        _to_out(c, today)
+        _to_out(c, today, mmap)
         for c in db.query(Contact).filter(
-            Contact.user_id == current_user["user_id"],
+            Contact.household_id == HOUSEHOLD_ID,
             Contact.deleted_at.is_(None),
             Contact.birthday.isnot(None),
         ).all()
@@ -216,8 +239,8 @@ def get_contact(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    c = _ensure(db, contact_id, current_user["user_id"])
-    return ok(_to_out(c))
+    c = _ensure(db, contact_id)
+    return ok(_to_out(c, mmap=member_map(db, HOUSEHOLD_ID)))
 
 
 @router.post("", status_code=201)
@@ -228,6 +251,7 @@ def create_contact(
 ):
     c = Contact(
         user_id=current_user["user_id"],
+        household_id=HOUSEHOLD_ID,
         name=payload.name,
         relation=payload.relation or "",
         phone=payload.phone or "",
@@ -249,7 +273,7 @@ def create_contact(
         db, current_user["user_id"], "create",
         target_type="contact", target_id=c.id, detail=f"新增联系人 {c.name}",
     )
-    return ok(_to_out(c), "已添加")
+    return ok(_to_out(c, mmap=member_map(db, HOUSEHOLD_ID)), "已添加")
 
 
 @router.put("/{contact_id}")
@@ -259,7 +283,7 @@ def update_contact(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    c = _ensure(db, contact_id, current_user["user_id"])
+    c = _ensure(db, contact_id)
     if payload.name is not None:
         name = payload.name.strip()
         if not name:
@@ -288,7 +312,7 @@ def update_contact(
         db, current_user["user_id"], "update",
         target_type="contact", target_id=c.id, detail=f"更新联系人 {c.name}",
     )
-    return ok(_to_out(c), "已保存")
+    return ok(_to_out(c, mmap=member_map(db, HOUSEHOLD_ID)), "已保存")
 
 
 @router.delete("/{contact_id}")
@@ -297,13 +321,14 @@ def delete_contact(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    c = _ensure(db, contact_id, current_user["user_id"])
+    c = _ensure(db, contact_id)
+    avatar = c.avatar_path  # 先记下：软删不删文件，留给 restore
     soft_delete(c, db)
     log_action(
         db, current_user["user_id"], "delete",
         target_type="contact", target_id=contact_id, detail=f"删除联系人 {c.name}",
     )
-    return ok({"ok": True}, "已删除")
+    return ok({"ok": True, "avatar_path": avatar or ""}, "已删除")
 
 
 @router.post("/{contact_id}/restore")
@@ -316,7 +341,7 @@ def restore_contact(
         db.query(Contact)
         .filter(
             Contact.id == contact_id,
-            Contact.user_id == current_user["user_id"],
+            Contact.household_id == HOUSEHOLD_ID,
             Contact.deleted_at.isnot(None),
         )
         .first()
@@ -324,15 +349,74 @@ def restore_contact(
     if not c:
         raise_error(ErrCode.NOT_FOUND, "回收站中无此联系人")
     restore(c, db)
-    return ok(_to_out(c), "已恢复")
+    return ok(_to_out(c, mmap=member_map(db, HOUSEHOLD_ID)), "已恢复")
 
 
-def _ensure(db: Session, contact_id: int, user_id: int) -> Contact:
+# ====================== 头像上传 / 清除（v2.18） ======================
+
+# 上限与封面（AI 封面）共用：5MB；头像一般一二百 KB，5MB 留足手机原图
+CONTACT_AVATAR_MAX_SIZE = settings.MAX_COVER_SIZE
+
+
+@router.post("/{contact_id}/avatar")
+async def upload_avatar(
+    contact_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """上传 / 替换联系人头像。删除旧文件再落新文件，保证磁盘无堆积。"""
+    c = _ensure(db, contact_id)
+
+    try:
+        rel_path, _size = await save_upload_file(
+            file, "contacts", ALLOWED_CONTACT_AVATAR_EXTENSIONS, CONTACT_AVATAR_MAX_SIZE
+        )
+    except ValueError as e:
+        raise_error(ErrCode.INVALID_PARAM, str(e))
+
+    old = c.avatar_path
+    c.avatar_path = rel_path
+    db.commit()
+    db.refresh(c)
+    # 新文件落定后再删旧的：避免上传失败时把原图先删了
+    if old and old != rel_path:
+        delete_file(old)
+    log_action(
+        db, current_user["user_id"], "update",
+        target_type="contact_avatar", target_id=c.id, detail=f"更新头像 {c.name}",
+    )
+    return ok(_to_out(c, mmap=member_map(db, HOUSEHOLD_ID)), "已上传")
+
+
+@router.delete("/{contact_id}/avatar")
+def clear_avatar(
+    contact_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """清除联系人头像（落回首字占位）。同时删磁盘文件。"""
+    c = _ensure(db, contact_id)
+    old = c.avatar_path
+    c.avatar_path = None
+    db.commit()
+    db.refresh(c)
+    if old:
+        delete_file(old)
+    log_action(
+        db, current_user["user_id"], "update",
+        target_type="contact_avatar", target_id=c.id, detail=f"清除头像 {c.name}",
+    )
+    return ok(_to_out(c, mmap=member_map(db, HOUSEHOLD_ID)), "已清除头像")
+
+
+def _ensure(db: Session, contact_id: int) -> Contact:
+    """按家庭取联系人：家人共享后不再按 user_id 过滤（否则看不到别人加的）。"""
     c = (
         db.query(Contact)
         .filter(
             Contact.id == contact_id,
-            Contact.user_id == user_id,
+            Contact.household_id == HOUSEHOLD_ID,
             Contact.deleted_at.is_(None),
         )
         .first()

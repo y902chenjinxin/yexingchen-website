@@ -40,8 +40,8 @@ export const usePrefsStore = defineStore('prefs', () => {
   const petVisible = ref(false)
   // 主题覆盖：'auto'（跟随时间） | 'day'（恒亮） | 'night'（恒暗）
   const themeOverride = ref('auto')
-  // 工作台模块显隐（缺省全开，新用户/未登录不会因缺字段被隐藏）
-  const moduleVisible = ref({ habits: true, weather: true, feeds: true, brief: true })
+  // 工作台模块显隐（v2.38 起工作台只剩「天气」一个可开关模块）
+  const moduleVisible = ref({ weather: true })
   // 当前偏好归属的用户 id（null = 尚未绑定 / 未登录）
   const boundUid = ref(null)
 
@@ -50,11 +50,8 @@ export const usePrefsStore = defineStore('prefs', () => {
     // 只有显式存过 true 才显示；新用户/未登录默认 false
     petVisible.value = saved?.petVisible === true
     themeOverride.value = saved?.theme || 'auto'
-    // 用默认值兜底，只覆盖已存在的 key
-    moduleVisible.value = {
-      habits: true, weather: true, feeds: true, brief: true,
-      ...(saved?.moduleVisible || {}),
-    }
+    // 只保留仍在用的 key，旧版本存下的 habits/feeds/brief 一并丢弃
+    moduleVisible.value = { weather: saved?.moduleVisible?.weather !== false }
   }
 
   // 模块加载即同步 hydrate：先用上次登录用户的偏好，避免桌宠闪现
@@ -99,7 +96,7 @@ export const usePrefsStore = defineStore('prefs', () => {
     applyTheme(mode)
   }
 
-  /** 工作台模块显示/隐藏（habits/weather/feeds/brief） */
+  /** 工作台模块显示/隐藏（当前仅 weather） */
   function setModuleVisible(key, visible) {
     if (!(key in moduleVisible.value)) return
     moduleVisible.value = { ...moduleVisible.value, [key]: !!visible }
