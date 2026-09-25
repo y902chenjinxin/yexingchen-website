@@ -6,7 +6,7 @@
       - 现在用 player.isPlaying || player.curItem：仅当有声时显示，避免空占位 + 与表格内容视觉重叠
       - BGM 模式下若 autoplay 被拦，bar 会隐藏；用户主动点"设为默认"再点播放后会重新出现
     -->
-    <div v-if="shouldShow" class="npbar" ref="barRef">
+    <div v-if="shouldShow && !minimized" class="npbar" ref="barRef">
       <!-- 曲目信息（点击展开全屏播放器，仅移动端生效） -->
       <div class="np-info" @click="onInfoClick">
         <div class="np-cover">
@@ -131,16 +131,42 @@
         />
       </div>
 
+      <!-- 最小化：收起成浮动小图标（播放条不再占位），点图标再展开 -->
+      <button class="np-btn np-min" @click="minimize" title="最小化成小图标（不挡内容，可拖动）" aria-label="最小化播放框">
+        <svg viewBox="0 0 24 24" class="np-vol-ic" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+
       <!-- 关闭：任何模式都可叉掉播放框，停止后自动恢复默认背景音乐 -->
       <button class="np-btn np-close" @click="player.stopAndHide()" title="关闭播放（回到背景音乐）" aria-label="关闭播放">
         <svg viewBox="0 0 24 24" class="np-vol-ic" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </div>
   </transition>
+
+  <!-- 最小化后的浮动图标：可拖动；位移很小则视为点击 → 展开播放条 -->
+  <div
+    v-if="shouldShow && minimized"
+    class="np-mini"
+    :class="{ playing: player.isPlaying, dragging }"
+    :style="{ left: miniPos.x + 'px', top: miniPos.y + 'px' }"
+    role="button"
+    tabindex="0"
+    :title="miniTitle"
+    aria-label="展开播放框（可拖动改变位置）"
+    @pointerdown="onMiniDown"
+    @pointermove="onMiniMove"
+    @pointerup="onMiniUp"
+    @pointercancel="onMiniUp"
+    @keydown.enter.prevent="expand"
+    @keydown.space.prevent="expand"
+  >
+    <span class="np-mini-note" aria-hidden="true">♪</span>
+    <span class="np-mini-dot" aria-hidden="true"></span>
+  </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { VideoPause, VideoPlay } from '@element-plus/icons-vue'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
@@ -188,6 +214,100 @@ const shouldShow = computed(() => {
 
 const ratio = computed(() => (player.duration ? player.progress / player.duration : 0))
 const volProxy = ref(player.volume)
+
+/* ---------- 最小化：把播放条收成一个可拖动的浮动图标 ----------
+ * 动机：播放条是 position:fixed 且宽 min(100% - 32px, 1200px)、固定在底部居中，
+ * 在别的页面上操作时会压住内容，而且不可移动 —— 想看被遮住的部分只能关掉播放。
+ * 现在可以收成一个小圆标，位置随便拖，并且记住。 */
+const MINI_SIZE = 46
+const MINI_MARGIN = 8
+const DRAG_THRESHOLD = 6      // 位移小于它就算「点击」，大于就算「拖动」
+
+function clampNum(v, lo, hi) { return Math.min(Math.max(v, lo), hi) }
+
+function defaultMiniPos() {
+  const vw = window.innerWidth || 1024
+  const vh = window.innerHeight || 768
+  // 默认落在右下角、原播放条上方一点（用户希望「页面右边浮现」）
+  return { x: vw - MINI_SIZE - 20, y: vh - MINI_SIZE - 96 }
+}
+
+function loadMiniPos() {
+  try {
+    const raw = localStorage.getItem('np_mini_pos')
+    if (!raw) return null
+    const p = JSON.parse(raw)
+    if (typeof p?.x === 'number' && typeof p?.y === 'number') return p
+  } catch { /* 数据坏了就退回默认位置 */ }
+  return null
+}
+
+function saveMiniPos() {
+  try { localStorage.setItem('np_mini_pos', JSON.stringify(miniPos.value)) } catch { /* 忽略 */ }
+}
+
+const minimized = ref(localStorage.getItem('np_minimized') === '1')
+const miniPos = ref(loadMiniPos() || defaultMiniPos())
+const dragging = ref(false)
+
+function minimize() {
+  minimized.value = true
+  try { localStorage.setItem('np_minimized', '1') } catch { /* 忽略 */ }
+}
+function expand() {
+  minimized.value = false
+  try { localStorage.setItem('np_minimized', '0') } catch { /* 忽略 */ }
+}
+
+const miniTitle = computed(() => {
+  const t = displayItem.value?.title || '背景音乐'
+  return `${player.isPlaying ? '正在播放' : '已暂停'}：${t}（单击展开，拖动可移动）`
+})
+
+/* 拖动：pointer 事件 + 边界钳制；松手时若几乎没动，就当作点击 → 展开 */
+let dragOrigin = null
+let movedDist = 0
+
+function onMiniDown(e) {
+  if (e.button) return                       // 只响应主指针（左键/触摸）
+  const rect = e.currentTarget.getBoundingClientRect()
+  dragOrigin = { px: e.clientX, py: e.clientY, left: rect.left, top: rect.top }
+  movedDist = 0
+  dragging.value = true
+  try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* 忽略 */ }
+}
+
+function onMiniMove(e) {
+  if (!dragOrigin) return
+  const dx = e.clientX - dragOrigin.px
+  const dy = e.clientY - dragOrigin.py
+  movedDist = Math.max(movedDist, Math.hypot(dx, dy))
+  miniPos.value = {
+    x: clampNum(dragOrigin.left + dx, MINI_MARGIN, window.innerWidth - MINI_SIZE - MINI_MARGIN),
+    y: clampNum(dragOrigin.top + dy, MINI_MARGIN, window.innerHeight - MINI_SIZE - MINI_MARGIN),
+  }
+}
+
+function onMiniUp(e) {
+  if (!dragOrigin) return
+  const wasDrag = movedDist > DRAG_THRESHOLD
+  dragOrigin = null
+  dragging.value = false
+  try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* 忽略 */ }
+  if (wasDrag) saveMiniPos()
+  else expand()
+}
+
+/* 窗口尺寸变化时把图标拉回可视区，
+ * 否则「拖到右下角后把窗口缩小」会让图标留在屏幕外找不回来 */
+function onWinResize() {
+  miniPos.value = {
+    x: clampNum(miniPos.value.x, MINI_MARGIN, window.innerWidth - MINI_SIZE - MINI_MARGIN),
+    y: clampNum(miniPos.value.y, MINI_MARGIN, window.innerHeight - MINI_SIZE - MINI_MARGIN),
+  }
+}
+onMounted(() => window.addEventListener('resize', onWinResize))
+onBeforeUnmount(() => window.removeEventListener('resize', onWinResize))
 
 const MODE_LABEL = {
   list: { short: '列表', title: '列表循环' },
@@ -360,6 +480,52 @@ function fmt(sec) {
 .np-mode:hover { background: rgba(255, 255, 255, 0.12); }
 .np-close { background: transparent; }
 .np-close:hover { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+.np-min { background: transparent; }
+.np-min:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* ---- 最小化后的浮动图标 ----
+   固定在屏幕上（fixed），位置由内联 left/top 控制，可拖动并记忆；
+   touch-action:none 让触摸拖动不会误触发页面滚动。 */
+.np-mini {
+  position: fixed;
+  width: 46px; height: 46px;
+  z-index: 981;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  color: rgba(224, 238, 255, 0.92);
+  background: linear-gradient(160deg, rgba(38, 48, 64, 0.94), rgba(24, 31, 44, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  -webkit-backdrop-filter: saturate(150%) blur(12px);
+  backdrop-filter: saturate(150%) blur(12px);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.np-mini:hover { border-color: rgba(255, 255, 255, 0.24); }
+.np-mini:focus-visible { outline: 2px solid var(--yq-gold, #fbbf24); outline-offset: 2px; }
+.np-mini.dragging { cursor: grabbing; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55); }
+.np-mini-note { font-size: 19px; line-height: 1; }
+
+/* 右上角状态点：播放中鎏金呼吸，暂停时静态 */
+.np-mini-dot {
+  position: absolute; top: 7px; right: 7px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(200, 215, 230, 0.38);
+}
+.np-mini.playing .np-mini-dot {
+  background: var(--yq-gold, #fbbf24);
+  animation: npMiniPulse 1.9s ease-out infinite;
+}
+@keyframes npMiniPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(251, 191, 36, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-mini.playing .np-mini-dot { animation: none; }
+}
 
 .np-qmeta {
   margin-left: 6px;
