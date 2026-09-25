@@ -60,6 +60,13 @@ frontend/scripts/
 scripts/generate-*.js
 scripts/generate_*.py
 scripts/remove_bg.py
+
+# 一次性调试/取证脚本：以 _ 开头（_peek / _diag / _survey / _v218* / _verify / _shot …）。
+# 这类脚本用完即弃，不入库；本地如需留存，归到 artifacts/_archive_scripts/（artifacts/ 已被忽略）
+scripts/_*.py
+scripts/_*.js
+backend/_*.py
+eslint-report.json
 restart_pm2.py
 
 # Documentation archive (if needed)
