@@ -198,16 +198,11 @@
                 class="tb-alert-item kind-cd"
                 @click="goCountdown(cd.id)"
               >
-                <span
-                  class="tb-alert-kind kind-cd-kind"
-                  :style="{ background: (cd.color || '#c7a96b') + '22', color: cd.color || '#c7a96b' }"
-                >
-                  {{ cd.direction === 'count_up' ? '纪念' : '倒计' }}
-                </span>
+                <span class="tb-cd-mark" :style="{ background: cd.color || 'var(--yq-gold)' }"></span>
                 <span class="tb-alert-name">{{ cd.title }}</span>
                 <span class="tb-alert-meta">
                   {{ shortDate(cd.target_date) }} ·
-                  {{ cd.direction === 'count_up' ? `已经 ${cd.days_left} 天` : `还有 ${cd.days_left} 天` }}
+                  <em class="tb-alert-days">{{ cd.days_left === 0 ? '就是今天' : `还有 ${cd.days_left} 天` }}</em>
                 </span>
               </div>
             </div>
@@ -295,9 +290,13 @@ const nearest = computed(() => {
   if (!cds.length) return null
   return cds.sort((a, b) => a.days_left - b.days_left)[0]
 })
-// 顶栏「倒计时徽章」与「提醒中心 · 即将到来」共用同一份最近 5 条
+// 顶栏「倒计时徽章」与「提醒中心 · 即将到来」共用同一份最近 5 条。
+// 必须限定 count_down：纪念日（count_up）的 days_left 在后端是 abs(日期差)，
+// 即「已过天数」且恒 ≥ 0，与倒计时的「剩余天数」不是同一量纲 —— 混进来既排不出
+// 正确的序，也会让「即将到来」里冒出「已经 13 天」这种自相矛盾的条目。
+// （nearest 一直是对的，这里此前漏了这个条件。）
 const upcoming = computed(() => {
-  const cds = cdList.value.filter(c => c.days_left >= 0)
+  const cds = cdList.value.filter(c => c.direction === 'count_down' && c.days_left >= 0)
   cds.sort((a, b) => a.days_left - b.days_left)
   return cds.slice(0, 5)
 })
@@ -853,10 +852,22 @@ onUnmounted(() => {
 .tb-alert-kind.pri-medium { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold, #c7a96b); }
 .tb-alert-kind.pri-low { background: rgba(127, 168, 163, .14); color: var(--yq-rain, #7fa8a3); }
 
-/* 提醒中心 · 即将到来（时光痕迹）：色标取事件自身配色，行内不留右侧按钮列 */
-.tb-alert-item.kind-cd { grid-template-columns: 44px 1fr; }
+/* 提醒中心 · 即将到来：现在只剩倒计时（count_down）了，所以不再需要「纪念 / 倒计」
+   胶囊标签（那种标签在只剩一类时是纯冗余），改用事件自身配色的小圆点做行首标识
+   （与「时光痕迹」下拉里的 .tb-cd-dot 保持同一套视觉），省下的横向空间还给标题。
+   注意类名不要叫 .tb-alert-dot —— 那个已经名花有主，是顶栏铃铛上的数字角标
+   （position:absolute + min-width:16px），撞名会把角标压成 7px、圆点反被撑到 16px。 */
+.tb-alert-item.kind-cd { grid-template-columns: 10px 1fr; }
 .tb-alert-item.kind-cd .tb-alert-name { font-size: 12.5px; }
-.tb-alert-kind.kind-cd-kind { letter-spacing: .04em; }
+.tb-cd-mark {
+  width: 7px; height: 7px; border-radius: 50%;
+  justify-self: center; flex: none;
+}
+/* 天数是从这里读懂事件的核心信息，给它重点色，日期退为次要 */
+.tb-alert-days {
+  font-style: normal; font-weight: 600;
+  color: var(--lj-seal, var(--yq-gold));
+}
 
 @media (max-width: 767px) {
   /* 触控目标 ≥44px（WCAG）：移动端顶栏图标按钮加大命中区，顶栏高度仍容纳得下 */
