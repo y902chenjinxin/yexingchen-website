@@ -273,7 +273,6 @@ function onAvatarPicked(c, ev) {
 }
 
 async function uploadAvatarFor(c, file) {
-  const loadingKey = `up-${c.id}`
   ElMessage.info(`正在上传「${c.name}」的头像…`)
   try {
     const res = await contactsApi.uploadAvatar(c.id, file)
