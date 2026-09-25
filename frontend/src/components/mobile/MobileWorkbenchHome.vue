@@ -11,13 +11,20 @@
       </div>
     </header>
 
-    <!-- 数据总览：首屏只放可行动的数据，不放装饰性趋势占位 -->
+    <!-- 数据总览：首屏只放可行动的数据，不放装饰性趋势占位。
+         原先主视觉是「本月净流入」大数字、下面再列收入与支出 —— 但净流入本身就是
+         「收入 − 支出」，三项互相重复，与桌面账本同一个问题，故一并去掉，
+         改为收入 / 支出两栏并列。 -->
     <div class="abb-hero glass-card" aria-label="数据总览">
-      <div class="abb-hero__lab">本月净流入</div>
-      <div class="abb-hero__num">{{ fmtMoney(monthNet) }}</div>
-      <div class="abb-hero__sub">
-        <span>本月收入 <b :class="income > 0 ? 'up' : undefined">{{ fmtMoney(income) }}</b></span>
-        <span>本月支出 <b :class="expense > 0 ? 'dn' : undefined">{{ fmtMoney(expense) }}</b></span>
+      <div class="abb-hero__pair">
+        <div class="abb-hero__col">
+          <div class="abb-hero__lab">本月收入</div>
+          <div class="abb-hero__num up">{{ fmtMoney(income) }}</div>
+        </div>
+        <div class="abb-hero__col">
+          <div class="abb-hero__lab">本月支出</div>
+          <div class="abb-hero__num dn">{{ fmtMoney(expense) }}</div>
+        </div>
       </div>
     </div>
 
@@ -67,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { financeApi } from '@/api/finance'
 import { stocksApi } from '@/api/stocks'
@@ -111,7 +118,6 @@ const stockPnl = ref(null)
 const habitDone = ref(null)
 const habitTotal = ref(null)
 
-const monthNet = computed(() => income.value === null || expense.value === null ? null : income.value - expense.value)
 const fmtMoney = (v) => v === null || v === undefined ? '—' : '¥ ' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
 const fmtPnl = (v) => v === null || v === undefined ? '—' : (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2) + '%'
 
@@ -191,14 +197,16 @@ onMounted(async () => {
 }
 .abb-hero:active { transform: scale(.98); }
 .abb-hero__lab { font-size: 12px; letter-spacing: .06em; color: var(--ls-text-2, #5b6b8a); }
+/* 收入 / 支出两栏并列（净流入已去掉） */
+.abb-hero__pair { display: flex; gap: 16px; }
+.abb-hero__col { flex: 1; min-width: 0; }
 .abb-hero__num {
-  margin-top: 6px; font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums;
+  margin-top: 6px; font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums;
   letter-spacing: .01em; color: var(--ls-text, #0f1530);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.abb-hero__sub { display: flex; gap: 18px; margin-top: 8px; font-size: 12.5px; color: var(--ls-text-3, #8a8f98); }
-.abb-hero__sub b { font-weight: 700; }
-.abb-hero__sub .up { color: var(--pnl-up, #e5484d); }
-.abb-hero__sub .dn { color: var(--pnl-down, #1aa86a); }
+.abb-hero__num.up { color: var(--pnl-up, #e5484d); }
+.abb-hero__num.dn { color: var(--pnl-down, #1aa86a); }
 
 /* 习惯打卡小卡 */
 .abb-habit {

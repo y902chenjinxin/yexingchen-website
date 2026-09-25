@@ -220,11 +220,16 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 #app.is-mobile .abb-title { color: var(--m-text); font-size: 20px; letter-spacing: -.04em; }
 #app.is-mobile .abb-ai { min-height: 36px; padding: 0 13px; border-radius: 10px !important; }
 #app.is-mobile .abb-hero { margin-top: 18px; padding: 20px; border-radius: 18px !important; background: var(--m-surface-2) !important; }
+#app.is-mobile .abb-hero__pair { display: flex; gap: 14px; }
+#app.is-mobile .abb-hero__col { flex: 1; min-width: 0; }
 #app.is-mobile .abb-hero__lab { color: var(--m-text-2); }
-#app.is-mobile .abb-hero__num { margin-top: 10px; color: var(--m-text); font-size: 36px; letter-spacing: -.04em; }
-#app.is-mobile .abb-hero__sub { color: var(--m-text-2); }
-#app.is-mobile .abb-hero__sub .up { color: var(--m-positive); }
-#app.is-mobile .abb-hero__sub .dn { color: var(--m-negative); }
+/* 两栏并列后字号从 36px 降到 24px，否则「¥ 6,900.00」这类金额会挤爆半栏 */
+#app.is-mobile .abb-hero__num {
+  margin-top: 6px; color: var(--m-text); font-size: 24px; letter-spacing: -.02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#app.is-mobile .abb-hero__num.up { color: var(--m-positive); }
+#app.is-mobile .abb-hero__num.dn { color: var(--m-negative); }
 #app.is-mobile .abb-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 #app.is-mobile .abb-stat { min-width: 0; padding: 13px 12px; border: 1px solid var(--m-line); border-radius: 14px; background: var(--m-surface); }
 #app.is-mobile .abb-stat__label, #app.is-mobile .abb-stat small { display: block; color: var(--m-text-3); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
