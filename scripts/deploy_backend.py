@@ -111,6 +111,9 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "routers", "contacts.py"),     f"{REMOTE_BASE}/backend/app/routers/contacts.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "subscriptions.py"), f"{REMOTE_BASE}/backend/app/routers/subscriptions.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "idphoto.py"),       f"{REMOTE_BASE}/backend/app/routers/idphoto.py"),
+    # ---- v2.40.14 工具岛：OCR / 语音转文字（本地推理）----
+    (os.path.join(ROOT, "backend", "app", "routers", "ocr.py"),           f"{REMOTE_BASE}/backend/app/routers/ocr.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "asr.py"),           f"{REMOTE_BASE}/backend/app/routers/asr.py"),
     # ---- v2.36 升级新增 RSS 公开订阅源（F9）----
     (os.path.join(ROOT, "backend", "app", "routers", "rss.py"),           f"{REMOTE_BASE}/backend/app/routers/rss.py"),
     (os.path.join(ROOT, "backend", "models", "modnet", "model-q.onnx"),    f"{REMOTE_BASE}/backend/models/modnet.onnx"),

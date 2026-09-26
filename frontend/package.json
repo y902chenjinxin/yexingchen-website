@@ -14,7 +14,9 @@
   "dependencies": {
     "axios": "^1.7.2",
     "element-plus": "^2.7.2",
+    "jsqr": "^1.4.0",
     "pinia": "^2.1.7",
+    "qrcode": "^1.5.4",
     "three": "^0.184.0",
     "vue": "^3.4.27",
     "vue-cal": "^5.0.1-rc.46",

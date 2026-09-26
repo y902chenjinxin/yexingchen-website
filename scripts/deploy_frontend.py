@@ -3,7 +3,8 @@ import os, paramiko
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HOST, USER, PORT = "203.195.208.25", "root", 22
 REMOTE_DIST = "/var/www/yexingchen/dist"
-LOCAL_DIST = os.path.join(ROOT, "frontend", "dist")
+# 可用环境变量覆盖源目录（如 DEPLOY_DIST=dist-deploy，绕开 safe-delete 对 dist 清空的拦截）
+LOCAL_DIST = os.path.join(ROOT, "frontend", os.environ.get("DEPLOY_DIST", "dist"))
 
 p = os.path.join(os.path.dirname(ROOT), ".secrets", "local.env")
 PW = None

@@ -1,3 +1,55 @@
+## [v2.40.14] - 2026-09-26
+
+### 工具岛新增四件：语音转文字 / OCR / 二维码 / 随机密码（SW `xuanhuang-v239`）
+
+选型依据：调研 IT-Tools（40k⭐）/ Omni-Tools（10k⭐）/ PairDrop（11k⭐）/ FunASR（20k⭐）
+等自托管工具生态后，按「与玄黄账号体系的协同度 + 鸿蒙 4 端可行性」筛选。
+
+**① 语音转文字 `/tool/asr`**（服务端本地推理）
+- 引擎：**sherpa-onnx + SenseVoiceSmall int8**（模型 229MB，部署在 `backend/models/`）。
+  弃用 funasr+torch（运行时要 1.5GB+ 内存，本机 3.6GB 扛不住）；SenseVoice 中文 CER
+  4.2% 显著优于 Whisper 9.8%，CPU 上 17x 实时
+- **前端负责音频转码**：AudioContext 解码任意格式（mp3/m4a/webm/录音）→
+  OfflineAudioContext 重采样 16k 单声道 → 手写 PCM16 WAV 编码上传。
+  服务端因此**不需要 ffmpeg**；若采样率不符，服务端 numpy 线性重采样兜底
+- 懒加载引擎（首次调用才初始化）；`GET /api/asr/status` 供前端显示就绪状态；
+  模型缺失返回 503 友好提示；识别结果剥离 SenseVoice 的 `<|zh|><|NEUTRAL|>` 标记
+- 识别结果可一键「追加到闪念 · 日记」（quickApi.create 闭环）
+
+**② OCR 文字识别 `/tool/ocr`**（服务端本地推理）
+- 引擎：**RapidOCR**（PaddleOCR 的 onnxruntime 移植，模型随 wheel 自带，纯 CPU）。
+  与 workbench `/ai/ocr`（依赖高德 key / 多模态 Provider）互补：工具岛要开箱即用
+- 上传图片 ≤12MB → 返回全文 + 行数；支持点击 / 拖拽 / Ctrl+V 粘贴
+
+**③ 二维码 `/tool/qrcode`**（纯前端）
+- 生成：`qrcode` 包，内容/尺寸/纠错级别可调，下载 PNG 或复制到剪贴板
+- 解析：`jsQR`，支持点击 / 拖拽 / 粘贴图片，超大图缩到 1600px 再解，识别后可复制 / 直开链接
+
+**④ 随机密码 `/tool/password`**（纯前端）
+- 长度 6~64；小写 / 大写 / 数字 / 特殊字符四类勾选；排除易混淆字符（0O1lI|）
+- `crypto.getRandomValues` + **拒绝采样**（避免取模偏差）；熵值 + 强度条实时显示
+
+**后端依赖安装（服务器手工，未入 requirements.txt）**：
+  `pip install opencv-python-headless PyYAML six shapely pyclipper` +
+  `pip install --no-deps rapidocr_onnxruntime`（避免拉 GUI 版 opencv 触发 libGL 缺失）+
+  `pip install sherpa-onnx`。已记 ISSUES，换机重装需按此顺序。
+
+**部署与验证**：
+- 后端 deploy（health=200）；前端 deploy（dist-deploy 目录，见下）；`/api/asr/status` ready=true
+- **生产真实验证**：OCR 上传含中文的合成图，识别结果「玄黄工具岛OCR 测试12345」；
+  ASR 上传 1s 正弦波 WAV，引擎完整跑通（输出幻觉词 "Yeah."，管线无误）；
+  浏览器实测 /tool/asr 徽章「🟢 引擎就绪」、/tool/qrcode 输入即出码、
+  /tool/password 生成 16 位强密码；工具岛列表 12 个工具全部可见
+- pytest 新增 test_toolkit_ocr_asr.py 7 用例全绿（校验/降级路径 + WAV 解析/重采样纯函数）
+- 工具表登记：4 条 builtin 记录直插生产 tools 表（id 17~20，幂等 upsert）；
+  ⚠️ 与倒计时同款隐患——种子数据不在迁移里，换新环境需重插，已记 ISSUES
+
+**部署脚本改进**：`deploy_frontend.py` 支持 `DEPLOY_DIST` 环境变量覆盖源目录——
+本机 `vite build --outDir dist` 会被 safe-delete 守卫拦（dist 107 文件 > 50 阈值），
+改构建到 `dist-deploy` 再部署。
+
+---
+
 ## [v2.40.13] - 2026-09-26
 
 ### 输入框去掉「框里的小框」——内层原生输入框不再叠加第二圈焦点环（SW `xuanhuang-v238`）

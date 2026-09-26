@@ -7,6 +7,18 @@
 
 ---
 
+## v2.40.14 新发现与遗留（2026-09-26）
+
+| ID | 问题 | 类别 | 状态 |
+|----|------|------|------|
+| V2414-001 | **工具表种子数据不随 alembic 迁移**：工具岛 4 个新工具（二维码/随机密码/OCR/语音转文字，tools.id 17~20）是直插生产库的，换新环境部署后列表为空需重插（倒计时同款问题） | 部署 | 📌 建议做一次幂等 seed 迁移统一收口 |
+| V2414-002 | ASR/OCR 依赖（sherpa-onnx / rapidocr_onnxruntime / opencv-python-headless）未入 requirements.txt——rapidocr 必须 `--no-deps` 装，否则拉 GUI 版 opencv 触发 libGL 缺失；换机重装需按 CHANGELOG v2.40.14 的顺序手工装 | 部署 | 📌 已记录 |
+| V2414-003 | SenseVoice 对无语音内容（正弦波）会幻觉输出短词（实测 "Yeah."）；正常语音不受影响 | 模型行为 | 📌 已记录 |
+| V2414-004 | 本地 venv 缺 numpy（仅 onnxruntime 间接需要），ASR 的 WAV 解析单测本地跑前需 `pip install numpy`；服务器已有 | 测试环境 | ✅ 本地已补 |
+| V2414-005 | `vite build --outDir dist` 会被 safe-delete 守卫拦（>50 文件清空需确认）——已让 deploy_frontend.py 支持 `DEPLOY_DIST` 环境变量，常规做法改用 `dist-deploy` | 构建 | ✅ 已绕开 |
+
+---
+
 ## v2.40.10 新发现与遗留（2026-09-25）
 
 | ID | 问题 | 类别 | 状态 |

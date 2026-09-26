@@ -128,6 +128,34 @@ const routes = [
     component: () => import('@/views/CountdownsView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 二维码 工具页（生成 + 解析，纯前端本地处理）
+  {
+    path: '/tool/qrcode',
+    name: 'QrTool',
+    component: () => import('@/views/QrToolView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 随机密码 工具页（纯前端 crypto 生成）
+  {
+    path: '/tool/password',
+    name: 'PasswordTool',
+    component: () => import('@/views/PasswordToolView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 OCR 文字识别（服务端 RapidOCR 本地推理）
+  {
+    path: '/tool/ocr',
+    name: 'OcrTool',
+    component: () => import('@/views/OcrToolView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 语音转文字（服务端 sherpa-onnx SenseVoice 本地推理）
+  {
+    path: '/tool/asr',
+    name: 'AsrTool',
+    component: () => import('@/views/AsrToolView.vue'),
+    meta: { requiresAuth: true }
+  },
   {
     path: '/tool/countdown/:id',
     name: 'CountdownDetail',

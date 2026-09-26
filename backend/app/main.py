@@ -7,8 +7,8 @@ import logging
 
 from app.database import engine, Base
 from app.routers import (
-    admin_menus, admin_roles, admin_users, auth, contacts, cover, countdown, datahub, finance, idphoto, life, log, music, novel,
-    quick, search, settings as settings_router, subscriptions,
+    admin_menus, admin_roles, admin_users, asr, auth, contacts, cover, countdown, datahub, finance, idphoto, life, log, music, novel,
+    ocr, quick, search, settings as settings_router, subscriptions,
     stocks, tool, travels, video, video_parse, voice_clone,
 )
 from app.routers.workbench import router as workbench_router
@@ -169,6 +169,9 @@ app.include_router(quick.router)
 app.include_router(contacts.router)
 app.include_router(subscriptions.router)
 app.include_router(idphoto.router)
+# v2.40.14 工具岛：OCR / 语音转文字（本地推理）
+app.include_router(ocr.router)
+app.include_router(asr.router)
 from app.routers import rss as rss_router
 app.include_router(rss_router.router)
 # v2.15 生活模块：家庭共享空间（体重 / 三餐）
