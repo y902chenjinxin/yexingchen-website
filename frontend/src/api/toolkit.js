@@ -11,3 +11,13 @@ export const ocrImage = (fd) => api.post('/ocr', fd, { timeout: 120000 })
 export const asrStatus = () => api.get('/asr/status')
 
 export const asrTranscribe = (fd) => api.post('/asr', fd, { timeout: 300000 })
+
+// ---- v2.40.15 时间胶囊 / 摸鱼日历 / AI诗签 ----
+export const capsuleCreate = (payload) => api.post('/capsules', payload)
+export const capsuleList = () => api.get('/capsules')
+export const capsuleOpen = (id) => api.post(`/capsules/${id}/open`)
+export const capsuleDelete = (id) => api.delete(`/capsules/${id}`)
+
+export const fishCalendar = () => api.get('/fish/calendar')
+
+export const getPoem = (refresh = 0) => api.get('/poem', { params: refresh ? { refresh: 1 } : {} })

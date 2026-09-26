@@ -150,7 +150,8 @@ const form = ref({ title: '', icon: '', description: '', url: '', kind: 'externa
 const rows = ref([])
 const loading = ref(false)
 const page = ref(1)
-const pageSize = ref(10)
+// 工具已增至 20+，默认一页显示 24 条，避免新工具被挤到第 2、3 页看不见
+const pageSize = ref(24)
 
 const filteredRows = computed(() => {
   if (!keyword.value) return rows.value

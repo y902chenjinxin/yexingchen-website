@@ -156,6 +156,69 @@ const routes = [
     component: () => import('@/views/AsrToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 时间胶囊（写给未来的信）
+  {
+    path: '/tool/capsule',
+    name: 'CapsuleTool',
+    component: () => import('@/views/CapsuleToolView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 摸鱼日历
+  {
+    path: '/tool/fish',
+    name: 'FishTool',
+    component: () => import('@/views/FishToolView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 AI 诗签
+  {
+    path: '/tool/poem',
+    name: 'PoemTool',
+    component: () => import('@/views/PoemToolView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 人生 4000 周
+  {
+    path: '/tool/lifegrid',
+    name: 'LifeGrid',
+    component: () => import('@/views/LifeGridView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 电子木鱼
+  {
+    path: '/tool/muyu',
+    name: 'Muyu',
+    component: () => import('@/views/MuyuView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 摸鱼小游戏合集
+  {
+    path: '/tool/games',
+    name: 'Games',
+    component: () => import('@/views/GamesView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 打字测速
+  {
+    path: '/tool/typing',
+    name: 'TypingTool',
+    component: () => import('@/views/TypingView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 代码美化图
+  {
+    path: '/tool/codesnap',
+    name: 'CodeSnap',
+    component: () => import('@/views/CodeSnapView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 人脉图谱
+  {
+    path: '/tool/contactsmap',
+    name: 'ContactsMap',
+    component: () => import('@/views/ContactsMapView.vue'),
+    meta: { requiresAuth: true }
+  },
   {
     path: '/tool/countdown/:id',
     name: 'CountdownDetail',

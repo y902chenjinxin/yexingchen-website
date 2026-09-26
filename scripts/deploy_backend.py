@@ -114,6 +114,13 @@ BACKEND_FILES = [
     # ---- v2.40.14 工具岛：OCR / 语音转文字（本地推理）----
     (os.path.join(ROOT, "backend", "app", "routers", "ocr.py"),           f"{REMOTE_BASE}/backend/app/routers/ocr.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "asr.py"),           f"{REMOTE_BASE}/backend/app/routers/asr.py"),
+    # ---- v2.40.15 时间胶囊 / 摸鱼日历 / AI诗签 ----
+    (os.path.join(ROOT, "backend", "app", "models", "capsule.py"),        f"{REMOTE_BASE}/backend/app/models/capsule.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "capsule.py"),       f"{REMOTE_BASE}/backend/app/routers/capsule.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "fish.py"),          f"{REMOTE_BASE}/backend/app/routers/fish.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "poem.py"),          f"{REMOTE_BASE}/backend/app/routers/poem.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "b8c9d0e1f2a3_time_capsule.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/b8c9d0e1f2a3_time_capsule.py"),
     # ---- v2.36 升级新增 RSS 公开订阅源（F9）----
     (os.path.join(ROOT, "backend", "app", "routers", "rss.py"),           f"{REMOTE_BASE}/backend/app/routers/rss.py"),
     (os.path.join(ROOT, "backend", "models", "modnet", "model-q.onnx"),    f"{REMOTE_BASE}/backend/models/modnet.onnx"),

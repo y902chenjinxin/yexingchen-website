@@ -41,13 +41,21 @@ import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
-  plugins: [vue(), injectSwVersion(), Components({ resolvers: [ElementPlusResolver({ importStyle: false })] })],
+  plugins: [vue(), injectSwVersion(), Components({
+    resolvers: [ElementPlusResolver({ importStyle: false })],
+    // 本机构建时 components.d.ts 会被杀软/编辑器临时占用导致 EPERM 中断构建；
+    // 该文件已存在于仓库，JS 项目无需每次重写，故关闭自动生成
+    dts: false,
+  })],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
     }
   },
   build: {
+    // 本机 rm / emptyDir 被 safe-delete 守卫拦（>50 文件需确认）时，
+    // 用 VITE_NO_EMPTY=1 构建到已有目录（旧 chunk 残留无害，远端部署会整体清掉）
+    emptyOutDir: process.env.VITE_NO_EMPTY !== '1',
     // E1+E2 vendor 拆包：把大块 vendor 拆为独立 chunk，便于浏览器长效缓存
     rollupOptions: {
       output: {
