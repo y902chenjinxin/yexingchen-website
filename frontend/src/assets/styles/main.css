@@ -63,6 +63,19 @@ a, button, [role="button"], input, select, textarea, label, .el-button, .el-inpu
 }
 /* 隐藏鼠标点击时的浏览器默认环（保留键盘环） */
 :focus:not(:focus-visible) { outline: 0; }
+
+/* 输入类组件：去掉内层原生输入框的第二圈。
+   背景：:focus-visible 规范对文本输入框在「鼠标点击」时也会触发（点击后即将打字），
+   因此 el-input 内层的 <input> 会同时出现两层指示——外层 wrapper 的焦点发光边框 +
+   内层 input 的 outline 小框（夜星截图里的「输入框里的小框」）。
+   外层 wrapper 已清晰指示焦点，内层 outline 纯属重复，去掉；
+   裸输入框（无容器焦点态的）、按钮 / 链接 / 复选框仍保留焦点环，键盘可用性不受影响。
+   选择器带 #app 前缀以压过 desktop-product.css 的 #app :focus-visible（鎏金环）。 */
+#app .el-input__wrapper input:focus-visible,
+#app .el-textarea__inner:focus-visible,
+#app .el-select__wrapper input:focus-visible {
+  outline: none;
+}
 ::selection { background: var(--dp-accent, #67e8f9); color: #0a0f20; }
 
 /* ========== 动效: 尊重用户「减少动态效果」偏好 (S5) ========== */
