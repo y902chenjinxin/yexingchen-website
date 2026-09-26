@@ -164,38 +164,73 @@ const pointer = { x: -9999, y: -9999 }
 let reduceMotion = false
 
 /**
- * 雨青粒子网参数（依据 docs/ai/WORK_LOG.md 记录的 v2.x 原始实现复原）：
+ * 雨青粒子网参数（依据 docs/ai/WORK_LOG.md 记录的 v2.x 原始实现复原，v2.40.11 调密度）：
  *   - 雨青粒子漂移：克制 0.32 速
- *   - 粒子间距离 130px 内 连极细雨青线，透明度 (1 - d/130) × 0.15
+ *   - 粒子间距离 155px 内 连极细雨青线，透明度 (1 - d/155) × 0.18
  *   - 鼠标 190px 影响半径内吸引粒子，并加亮连线向光标聚拢（α × 0.30）
  *   - 粒子带径向微光晕，核为冷白青
  *   - prefers-reduced-motion 时退化为静态帧
- * 仅粒子数由原始 72 收敛到 40（反馈"太多"），其余参数与原始一致。
+ * 密度沿革：原始 72 粒 → 反馈「太多」降到 40 → 反馈「线稀疏」改为按面积自适应
+ *   （52 基准 / 36~64 夹取），连线距离 130→155、线透明度 0.15→0.18。
+ * 疏密分区：登录卡片正后方保持稀疏（玻璃卡底下太密会显脏），粒子被软性推离卡片区，
+ *   越靠中心推力越大；出生时也避开卡片区，避免首帧爆开。
  */
-const PARTICLE_COUNT = 40       // 粒子数量
-const LINK_DIST = 130           // 粒子间连线最大距离（原始值）
+const LINK_DIST = 155           // 粒子间连线最大距离（原 130，v2.40.11 加密网感）
 const POINTER_DIST = 190        // 鼠标影响半径（原始值）
 const BASE_SPEED = 0.32         // 克制漂移速度（原始值）
 const MAX_SPEED = 0.9           // 速度上限（原始值）
 const PULL = 0.022              // 鼠标吸引力（原始值）
+const LINE_ALPHA = 0.18         // 连线透明度上限（原 0.15，v2.40.11）
+// 面积自适应粒子数：1920×937 基准取 52，夹取 36~64（下限保证小屏不空，上限顾手机端性能）
+const PARTICLE_BASE = 52
+const PARTICLE_MIN = 36
+const PARTICLE_MAX = 64
+const REF_AREA = 1920 * 937
+// 疏密分区：卡片外扩 48px 的矩形内粒子被软推离
+const ZONE_PAD = 48
+const ZONE_PUSH = 0.05
+let cardZone = { x: 0, y: 0, w: 0, h: 0 }   // 相对 canvas 的卡片区（含外扩），w=0 表示无卡片
 
-const COL_LINE = '127, 168, 163'        // 雨青连线
-const COL_POINTER = '168, 211, 206'     // 鼠标连线偏亮
-const COL_HALO = '168, 211, 206'        // 粒子光晕
-const COL_CORE = '206, 226, 220'        // 粒子核
+function particleCountFor(w, h) {
+  return Math.max(PARTICLE_MIN, Math.min(PARTICLE_MAX, Math.round((PARTICLE_BASE * (w * h)) / REF_AREA)))
+}
+
+function inZone(x, y) {
+  return cardZone.w > 0 && x > cardZone.x && x < cardZone.x + cardZone.w
+    && y > cardZone.y && y < cardZone.y + cardZone.h
+}
 
 function initParticles(w, h) {
   particles = []
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
+  const count = particleCountFor(w, h)
+  for (let i = 0; i < count; i++) {
+    let x = 0, y = 0
+    for (let tries = 0; tries < 8; tries++) {
+      x = Math.random() * w
+      y = Math.random() * h
+      if (!inZone(x, y)) break
+    }
+    if (inZone(x, y)) {
+      // 极小屏下 8 次都落在卡片区：退化为沿四边撒
+      const edge = Math.floor(Math.random() * 4)
+      if (edge === 0) { x = Math.random() * w; y = 0 }
+      else if (edge === 1) { x = Math.random() * w; y = h }
+      else if (edge === 2) { x = 0; y = Math.random() * h }
+      else { x = w; y = Math.random() * h }
+    }
     particles.push({
-      x: Math.random() * w,
-      y: Math.random() * h,
+      x, y,
       vx: (Math.random() - 0.5) * 2 * BASE_SPEED,
       vy: (Math.random() - 0.5) * 2 * BASE_SPEED,
       r: 0.7 + Math.random() * 1.5
     })
   }
 }
+
+const COL_LINE = '127, 168, 163'        // 雨青连线
+const COL_POINTER = '168, 211, 206'     // 鼠标连线偏亮
+const COL_HALO = '168, 211, 206'        // 粒子光晕
+const COL_CORE = '206, 226, 220'        // 粒子核
 
 function setupCanvas() {
   const canvas = particleCanvas.value
@@ -207,6 +242,21 @@ function setupCanvas() {
   canvas.height = h * dpr
   pctx = canvas.getContext('2d')
   pctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  // 疏密分区：记录登录卡片（外扩 ZONE_PAD）相对 canvas 的矩形
+  const page = canvas.closest('.login-page')
+  const card = page ? page.querySelector('.login-card') : null
+  if (card) {
+    const cr = card.getBoundingClientRect()
+    const xr = canvas.getBoundingClientRect()
+    cardZone = {
+      x: cr.left - xr.left - ZONE_PAD,
+      y: cr.top - xr.top - ZONE_PAD,
+      w: cr.width + ZONE_PAD * 2,
+      h: cr.height + ZONE_PAD * 2
+    }
+  } else {
+    cardZone = { x: 0, y: 0, w: 0, h: 0 }
+  }
   reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   initParticles(w, h)
 }
@@ -222,7 +272,7 @@ function draw() {
   if (!w || !h) return
   pctx.clearRect(0, 0, w, h)
 
-  // 更新位置 + 鼠标吸引（与文档记录的原始实现一致）
+  // 更新位置 + 鼠标吸引（与文档记录的原始实现一致）+ 卡片区软推离
   for (const p of particles) {
     const dxp = pointer.x - p.x
     const dyp = pointer.y - p.y
@@ -231,6 +281,20 @@ function draw() {
       const pull = (1 - dp / POINTER_DIST) * PULL
       p.vx += (dxp / dp) * pull
       p.vy += (dyp / dp) * pull
+    }
+    // 疏密分区：卡片矩形（含外扩）内软性推离，越靠中心推力越大
+    if (cardZone.w > 0) {
+      const cx = cardZone.x + cardZone.w / 2
+      const cy = cardZone.y + cardZone.h / 2
+      const dxz = p.x - cx
+      const dyz = p.y - cy
+      const zx = cardZone.w / 2
+      const zy = cardZone.h / 2
+      if (Math.abs(dxz) < zx && Math.abs(dyz) < zy) {
+        const depth = 1 - Math.max(Math.abs(dxz) / zx, Math.abs(dyz) / zy)
+        if (Math.abs(dxz) >= Math.abs(dyz)) p.vx += (dxz >= 0 ? 1 : -1) * depth * ZONE_PUSH
+        else p.vy += (dyz >= 0 ? 1 : -1) * depth * ZONE_PUSH
+      }
     }
     const sp = Math.hypot(p.vx, p.vy)
     if (sp > MAX_SPEED) {
@@ -255,7 +319,7 @@ function draw() {
       const dy = a.y - b.y
       const d = Math.hypot(dx, dy)
       if (d < LINK_DIST) {
-        const alpha = (1 - d / LINK_DIST) * 0.15
+        const alpha = (1 - d / LINK_DIST) * LINE_ALPHA
         pctx.strokeStyle = `rgba(${COL_LINE}, ${alpha.toFixed(3)})`
         pctx.beginPath()
         pctx.moveTo(a.x, a.y)
