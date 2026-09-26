@@ -54,7 +54,7 @@
 
     <!-- 底部信息 -->
     <div class="dsb-foot">
-      <span>v2.36.0</span>
+      <span>{{ APP_VERSION }}</span>
     </div>
   </aside>
 
@@ -97,6 +97,7 @@ import {
   Menu,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { APP_VERSION } from '@/constants/version'
 import DesktopSearchBox from './DesktopSearchBox.vue'
 
 const route = useRoute()
