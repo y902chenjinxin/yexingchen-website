@@ -117,7 +117,10 @@ def test_fish_calendar_shape():
     assert d["weekday"] in "一二三四五六日"
     assert 0 <= d["days_to_saturday"] <= 6
     names = {h["name"] for h in d["holidays"]}
-    assert {"春节", "国庆节", "周末(周六)"} <= names          # 农历精确推算 + 公历 + 周末
+    assert {"国庆节", "周末(周六)"} <= names                  # 公历法定 + 周末
+    # v2.40.16 起榜单以法定假期优先，农历小节日是否进前 8 名随日期浮动，
+    # 故此处只断言「农历/公历小节日」这条通道仍在工作（精确性见 test_holiday_plan.py）
+    assert any(h.get("kind") == "festival" for h in d["holidays"])
     assert all(h["days_left"] >= 0 for h in d["holidays"])
     assert sorted(d["holidays"], key=lambda h: h["days_left"]) == d["holidays"]  # 已排序
 
