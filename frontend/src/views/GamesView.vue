@@ -10,7 +10,7 @@
         <div class="gm-info">方向键 / 滑动合并方块 · <b>{{ s2048.score }}</b> 分
           <button class="gm-mini" @click="init2048">重开</button>
         </div>
-        <div class="g2048" ref="g2048El" tabindex="0" @keydown.prevent="onKey2048">
+        <div class="g2048" ref="g2048El" tabindex="0">
           <div v-for="(row, r) in s2048.grid" :key="r" class="row2048">
             <div v-for="(v, c) in row" :key="c" class="cell2048" :class="'v' + (v || 0)">{{ v || '' }}</div>
           </div>
@@ -18,7 +18,7 @@
             <button class="gm-mini" @click.stop="init2048">再来</button>
           </div>
         </div>
-        <div class="gm-hint">手机上直接在棋盘上滑动即可</div>
+        <div class="gm-hint">电脑端方向键直接可用 · 手机在棋盘上滑动</div>
       </div>
 
       <!-- 贪吃蛇 -->
@@ -26,9 +26,9 @@
         <div class="gm-info">方向键转向 · <b>{{ snake.score }}</b> 分
           <button class="gm-mini" @click="initSnake">重开</button>
         </div>
-        <canvas ref="snakeEl" width="400" height="400" class="snake-cv" tabindex="0" @keydown.prevent="onKeySnake"></canvas>
+        <canvas ref="snakeEl" width="400" height="400" class="snake-cv" tabindex="0"></canvas>
         <div v-if="snake.over" class="gm-center-msg">撞到了 · {{ snake.score }} 分，按「重开」再来</div>
-        <div class="gm-hint">点击画布获得焦点后再用方向键</div>
+        <div class="gm-hint">电脑端方向键直接可用 · 手机点「重开」后滑动无效，建议电脑玩</div>
       </div>
 
       <!-- 扫雷 -->
@@ -129,6 +129,22 @@ function move2048(dir) {
 const onKey2048 = (e) => {
   const map = { ArrowLeft: 'left', ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down' }
   if (map[e.key]) move2048(map[e.key])
+}
+
+/* ---------- 键盘统一入口（v2.40.18）----------
+ * 以前 keydown 绑在各游戏元素上，得先「点一下棋盘」拿到焦点，电脑端直接按方向键毫无反应
+ * （而且浏览器默认用它滚动页面）。改为窗口级监听：只要游戏页在显示就生效，
+ * 并按当前 tab 分发；顺带 preventDefault 掉方向键的滚动行为。
+ * 焦点在输入框里时不拦截（扫雷页有勾选框，别抢走键盘操作）。
+ */
+const ARROW_KEYS = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown']
+function onWindowKey(e) {
+  if (!ARROW_KEYS.includes(e.key)) return
+  const t = e.target
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+  e.preventDefault()
+  if (tab.value === 'g2048') onKey2048(e)
+  else if (tab.value === 'snake') onKeySnake(e)
 }
 // 触摸滑动
 let tStart = null
@@ -250,8 +266,12 @@ function checkWin() {
 onMounted(() => {
   init2048(); initMine()
   if (g2048El.value) bindTouch(g2048El.value)
+  window.addEventListener('keydown', onWindowKey)
 })
-onBeforeUnmount(() => clearInterval(snake.timer))
+onBeforeUnmount(() => {
+  clearInterval(snake.timer)
+  window.removeEventListener('keydown', onWindowKey)
+})
 </script>
 
 <style scoped>

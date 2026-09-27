@@ -35,18 +35,52 @@
       <template v-for="(group, gi) in groups" :key="group.label">
         <div v-if="group.label" class="dsb-group-label">{{ group.label }}</div>
 
-        <RouterLink
-          v-for="item in group.items"
-          :key="item.path"
-          :to="item.path"
-          class="dsb-item"
-          :class="{ active: isActive(item.path), 'super-only': item.superOnly }"
-        >
-          <span class="dsb-ic" aria-hidden="true">
-            <component :is="item.icon" />
-          </span>
-          <span class="dsb-label">{{ item.title }}</span>
-        </RouterLink>
+        <template v-for="item in group.items" :key="item.path">
+          <!-- 外部静态站（如人生重开模拟器）走原生 a 标签，RouterLink 接不住 -->
+          <a
+            v-if="item.external"
+            :href="item.path"
+            class="dsb-item"
+            :class="{ active: isActive(item.path) }"
+          >
+            <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
+            <span class="dsb-label">{{ item.title }}</span>
+          </a>
+          <RouterLink
+            v-else
+            :to="item.path"
+            class="dsb-item"
+            :class="{ active: isActive(item.path), 'super-only': item.superOnly }"
+          >
+            <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
+            <span class="dsb-label">{{ item.title }}</span>
+          </RouterLink>
+        </template>
+
+        <!-- 二级子模块（如 生活 › 娱乐） -->
+        <template v-for="sub in group.subs || []" :key="group.label + '/' + sub.label">
+          <div class="dsb-sublabel">{{ sub.label }}</div>
+          <template v-for="item in sub.items" :key="item.path">
+            <a
+              v-if="item.external"
+              :href="item.path"
+              class="dsb-item dsb-item-sub"
+              :class="{ active: isActive(item.path) }"
+            >
+              <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
+              <span class="dsb-label">{{ item.title }}</span>
+            </a>
+            <RouterLink
+              v-else
+              :to="item.path"
+              class="dsb-item dsb-item-sub"
+              :class="{ active: isActive(item.path) }"
+            >
+              <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
+              <span class="dsb-label">{{ item.title }}</span>
+            </RouterLink>
+          </template>
+        </template>
 
         <div v-if="gi < groups.length - 1" class="dsb-divider" aria-hidden="true"></div>
       </template>
@@ -95,6 +129,12 @@ import {
   UserFilled,
   Lock,
   Menu,
+  Coffee,      // v2.40.18 生活：摸鱼日历
+  Message,     // v2.40.18 生活：时间胶囊（写给未来的信）
+  Grid,        // v2.40.18 生活：人生 4000 周（格子）
+  Sunny,       // v2.40.18 娱乐：电子木鱼（静心）
+  Football,    // v2.40.18 娱乐：摸鱼小游戏
+  Refresh,     // v2.40.18 娱乐：人生重开模拟器
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { APP_VERSION } from '@/constants/version'
@@ -158,10 +198,25 @@ const groups = computed(() => {
       items: [
         { path: '/life', title: '体重三餐', icon: Apple },  // v2.17 体重 / 三餐家人共享，由内容分组移入
         { path: '/tool/countdown', title: '时光痕迹', icon: Calendar },
+        // v2.40.18：时间三件套 + 摸鱼归入生活（原先只能在「工具」列表里翻到）
+        { path: '/tool/lifegrid', title: '人生 4000 周', icon: Grid },
+        { path: '/tool/capsule', title: '时间胶囊', icon: Message },
+        { path: '/tool/fish', title: '摸鱼日历', icon: Coffee },
         { path: '/travels', title: '足迹地图', icon: MapLocation },
         { path: '/finance/book', title: '记账', icon: Money },  // v2.16.2 记账归入生活分组
         { path: '/contacts', title: '通讯录', icon: Compass },  // v2.18 由「家」分组并入「生活」
         { path: '/subscriptions', title: '订阅', icon: Coin },  // v2.18 由「家」分组并入「生活」
+      ],
+      // v2.40.18 二级子模块：生活 › 娱乐（摸鱼玩具集中在这）
+      subs: [
+        {
+          label: '娱乐',
+          items: [
+            { path: '/tool/muyu', title: '电子木鱼', icon: Sunny },
+            { path: '/tool/games', title: '摸鱼小游戏', icon: Football },
+            { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },
+          ],
+        },
       ],
     },
     {
@@ -193,11 +248,21 @@ const groups = computed(() => {
 })
 
 /* ---------- 路由匹配高亮 ---------- */
+// v2.40.18：这些内置工具挂到了「生活 / 娱乐 / 通讯录」等其它模块下，
+// 点它们时不该把「工具」菜单一起点亮（否则两个菜单同时高亮）
+const TOOLS_IN_OTHER_MODULES = [
+  '/tool/countdown', '/tool/lifegrid', '/tool/capsule', '/tool/fish',
+  '/tool/muyu', '/tool/games', '/tool/contactsmap',
+]
+
 function isActive(path) {
   if (path === '/workbench') return route.path === '/workbench'
   if (path === '/notes') return route.path === '/notes' || route.path.startsWith('/notes/')
   if (path === '/tool/countdown') return route.path.startsWith('/tool/countdown')
-  if (path === '/tool') return route.path === '/tool' || (route.path.startsWith('/tool/') && !route.path.startsWith('/tool/countdown'))
+  if (path === '/tool') {
+    return route.path === '/tool'
+      || (route.path.startsWith('/tool/') && !TOOLS_IN_OTHER_MODULES.some((p) => route.path.startsWith(p)))
+  }
   if (path === '/admin/users') return route.path === '/admin' || route.path === '/admin/users'
   // v2.16 财经/记账子页互不抢占高亮（精确匹配；记账现挂生活分组但仍属 /finance/book）
   if (path === '/finance/market' || path === '/finance/news' || path === '/finance/book') {
@@ -356,6 +421,28 @@ function go(path) { router.push(path) }
   padding: 12px 12px 6px;
   font-weight: 500;
 }
+
+/* 二级子模块标签（如 生活 › 娱乐）：比一级分组更轻，缩进对齐子条目图标 */
+.dsb-sublabel {
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--dp-text3);
+  opacity: .72;
+  padding: 8px 12px 4px 26px;
+  font-weight: 500;
+  position: relative;
+}
+/* 左侧竖线：把子模块与同级条目在视觉上连成一组 */
+.dsb-sublabel::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 12px;
+  width: 1px;
+  height: 10px;
+  background: var(--dp-line);
+}
+.dsb-item-sub { padding-left: 26px; }
 
 .dsb-item {
   display: flex;

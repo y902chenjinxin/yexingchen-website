@@ -23,6 +23,10 @@
           <option v-for="r in usedRelations" :key="r" :value="r">{{ r }}</option>
         </select>
         <span class="ct-count">共 {{ filtered.length }} 位{{ upcomingCount ? ` · 近 30 天生日 ${upcomingCount} 位` : '' }}</span>
+        <!-- v2.40.18：人脉图谱归属通讯录（原先藏在工具岛里，找不到） -->
+        <button class="ct-btn ghost ct-btn-map" title="按关系聚簇的关系网络图，可拖拽节点" @click="goContactsMap">
+          <span class="ct-map-ic" aria-hidden="true">🕸</span> 人脉图谱
+        </button>
       </div>
 
       <!-- ============ 列表视图 ============ -->
@@ -211,6 +215,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -218,6 +223,10 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { contactsApi, RELATION_OPTIONS } from '@/api/family'
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']
+
+const router = useRouter()
+/** 跳「人脉图谱」（页面本体仍是工具岛的 canvas 力导向图，只是入口挂到通讯录） */
+function goContactsMap() { router.push('/tool/contactsmap') }
 
 const list = ref([])
 const loading = ref(true)
@@ -533,6 +542,9 @@ onMounted(reload)
 .ct-input:focus { outline: none; border-color: var(--lj-seal); }
 .ct-select { flex: 0 0 150px; min-width: 150px; }
 .ct-count { font-size: 12px; color: var(--lj-text-3); }
+/* 「人脉图谱」入口：靠右、不抢搜索框的位置（窄屏会自然换行） */
+.ct-btn-map { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ct-map-ic { font-size: 13px; line-height: 1; }
 
 .ct-list { display: flex; flex-direction: column; gap: 10px; }
 .ct-card { border-radius: 16px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
