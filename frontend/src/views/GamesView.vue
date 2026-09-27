@@ -8,6 +8,7 @@
       <!-- 2048 -->
       <div v-if="tab === 'g2048'" class="gm-pane">
         <div class="gm-info">方向键 / 滑动合并方块 · <b>{{ s2048.score }}</b> 分
+          <span class="gm-best">最高 {{ best2048 }}</span>
           <button class="gm-mini" @click="init2048">重开</button>
         </div>
         <div class="g2048" ref="g2048El" tabindex="0">
@@ -24,6 +25,7 @@
       <!-- 贪吃蛇 -->
       <div v-if="tab === 'snake'" class="gm-pane">
         <div class="gm-info">方向键转向 · <b>{{ snake.score }}</b> 分
+          <span class="gm-best">最高 {{ bestSnake }}</span>
           <button class="gm-mini" @click="initSnake">重开</button>
         </div>
         <canvas ref="snakeEl" width="400" height="400" class="snake-cv" tabindex="0"></canvas>
@@ -68,6 +70,19 @@ const tab = ref('g2048')
 function switchTab(k) {
   tab.value = k
   if (k === 'snake') nextTick(() => { initSnake(); snakeEl.value?.focus() })
+}
+
+/* ================= 本机最高分（C5） ================= */
+const best2048 = ref(0)
+const bestSnake = ref(0)
+function loadBests() {
+  best2048.value = Number(localStorage.getItem('g2048_best') || 0) || 0
+  bestSnake.value = Number(localStorage.getItem('snake_best') || 0) || 0
+}
+function saveBest(key, score, refObj) {
+  if (!score || score <= refObj.value) return
+  refObj.value = score
+  localStorage.setItem(key, String(score))
 }
 
 /* ================= 2048 ================= */
@@ -115,6 +130,7 @@ function move2048(dir) {
   if (!moved) return
   s2048.grid = out
   s2048.score += gained
+  saveBest('g2048_best', s2048.score, best2048)
   spawn2048()
   // 结束判定：无空格且无可合并
   const flat = s2048.grid.flat()
@@ -184,6 +200,7 @@ function stepSnake() {
   snake.body.unshift(head)
   if (head[0] === snake.food[0] && head[1] === snake.food[1]) { snake.score += 10; placeFood() }
   else snake.body.pop()
+  saveBest('snake_best', snake.score, bestSnake)
   drawSnake()
 }
 function onKeySnake(e) {
@@ -265,6 +282,7 @@ function checkWin() {
 
 onMounted(() => {
   init2048(); initMine()
+  loadBests()
   if (g2048El.value) bindTouch(g2048El.value)
   window.addEventListener('keydown', onWindowKey)
 })
@@ -282,11 +300,20 @@ onBeforeUnmount(() => {
 }
 .gm-tab.active { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
 .gm-pane { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.gm-info { font-size: 13.5px; color: var(--dp-text2, #45505b); display: flex; align-items: center; gap: 10px; }
+.gm-info { font-size: 13.5px; color: var(--dp-text2, #45505b); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .gm-info b { color: var(--yq-gold, #c7a96b); }
+.gm-best { font-size: 12px; color: var(--dp-text3, #8a8f98); }
 .gm-mini {
   padding: 4px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b);
+}
+/* ---------- 窄屏（B 类响应式）：2048 棋盘在 360px 屏上会溢出 4px，格子缩一档 ---------- */
+@media (max-width: 480px) {
+  .g2048 { padding: 8px; gap: 6px; }
+  .row2048 { gap: 6px; }
+  .cell2048 { width: 62px; height: 62px; font-size: 21px; }
+  .gm-tab { padding: 7px 16px; font-size: 13px; }
+  .mine-cell { font-size: 12px; }
 }
 .gm-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .gm-center-msg { font-size: 14px; color: #e5484d; font-weight: 600; }

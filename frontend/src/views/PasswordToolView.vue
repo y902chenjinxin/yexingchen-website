@@ -47,7 +47,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
-import { ElMessage } from 'element-plus'
+import { copyText as copyToClipboard } from '@/utils/clipboard'
 
 const classes = ref([
   { key: 'lower', label: '小写字母', sample: 'a-z', on: true, chars: 'abcdefghijklmnopqrstuvwxyz' },
@@ -114,12 +114,7 @@ function generate() {
 
 async function copy() {
   if (!password.value) return
-  try {
-    await navigator.clipboard.writeText(password.value)
-    ElMessage.success('已复制（剪贴板约 30s 后建议自行清空）')
-  } catch {
-    ElMessage.warning('复制失败，请手动选择复制')
-  }
+  await copyToClipboard(password.value, '已复制（剪贴板约 30s 后建议自行清空）')
 }
 
 onMounted(generate)

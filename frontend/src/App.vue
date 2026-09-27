@@ -60,6 +60,7 @@ import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import AiToolsDrawer from '@/components/workbench/AiToolsDrawer.vue'
+import { checkFestivalNotice } from '@/utils/festivalNotice'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 // WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
@@ -167,6 +168,12 @@ onMounted(async () => {
   // 如果已登录且在登录页，自动跳转到首页
   if (auth.isLoggedIn && route.path === '/login') {
     router.push('/workbench')
+  }
+
+  // 假期 / 调休补班提醒（v2.40.20）：只在用户于「摸鱼日历」里开过开关时才生效，
+  // 且是**本地通知**——站点打开时检查一次，没开站点不会收到。失败静默，绝不打扰。
+  if (auth.isLoggedIn) {
+    setTimeout(() => { checkFestivalNotice().catch(() => {}) }, 3000)
   }
 
   // 已登录后启动 token 滑动续期定时器：周期性检查，临近过期自动续期，保持不掉线

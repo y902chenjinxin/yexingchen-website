@@ -38,6 +38,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { ElMessage } from 'element-plus'
 import { ocrImage } from '@/api/toolkit'
+import { copyText as copyToClipboard } from '@/utils/clipboard'
 
 const fileInput = ref(null)
 const srcUrl = ref('')
@@ -84,7 +85,7 @@ async function recognize(file) {
 }
 
 async function copyText() {
-  try { await navigator.clipboard.writeText(resultText.value); ElMessage.success('已复制') } catch { /* 忽略 */ }
+  await copyToClipboard(resultText.value)
 }
 
 onMounted(() => document.addEventListener('paste', onPaste))

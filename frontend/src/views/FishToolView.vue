@@ -83,6 +83,14 @@
           （还有 {{ data.next_pending.days_left }} 天）
         </div>
 
+        <!-- 假期 / 补班提醒（C2）：本地通知，站点打开时生效 -->
+        <div class="ft-notice glass-card">
+          <label class="ft-notice-sw">
+            <input v-model="noticeOn" type="checkbox" @change="toggleNotice"> 假期提醒
+          </label>
+          <span class="ft-notice-text">{{ noticeText }}</span>
+        </div>
+
         <div class="ft-note">{{ (data.notes || []).join(' · ') }}</div>
       </template>
     </div>
@@ -91,8 +99,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { fishCalendar } from '@/api/toolkit'
+import {
+  noticeEnabled, setNoticeEnabled, requestNoticePermission, noticeStatusText,
+} from '@/utils/festivalNotice'
 
 const data = ref(null)
 const error = ref('')
@@ -124,6 +136,32 @@ const heroSub = computed(() => {
 function formatRange(h) {
   if (!h.end || h.end === h.date) return h.date
   return `${h.date} ~ ${h.end}`
+}
+
+/* ---------- 假期提醒开关 ---------- */
+const noticeOn = ref(noticeEnabled())
+const noticeText = ref(noticeStatusText())
+
+/** 关掉直接生效；打开要过通知权限，被拒就回滚开关并说明原因 */
+async function toggleNotice() {
+  if (!noticeOn.value) {
+    setNoticeEnabled(false)
+    noticeText.value = noticeStatusText()
+    return
+  }
+  const perm = await requestNoticePermission()
+  if (perm === 'granted') {
+    setNoticeEnabled(true)
+    noticeText.value = noticeStatusText()
+    ElMessage.success('已开启假期提醒')
+  } else {
+    noticeOn.value = false
+    setNoticeEnabled(false)
+    noticeText.value = noticeStatusText()
+    ElMessage.warning(perm === 'unsupported'
+      ? '当前浏览器不支持通知'
+      : '通知权限被拒绝，请在浏览器地址栏的权限设置里允许')
+  }
 }
 
 onMounted(async () => {
@@ -173,16 +211,34 @@ onMounted(async () => {
 .ft-holiday {
   display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px;
   border-bottom: 1px solid var(--dp-line, rgba(0,0,0,.06));
+  flex-wrap: wrap;              /* 窄屏允许「还有 N 天」换行，避免挤出边界（审计 A8） */
 }
-.ft-h-name { font-weight: 600; font-size: 14px; color: var(--dp-text, #18202a); width: 90px; flex: none; }
-.ft-h-date { font-size: 13px; color: var(--dp-text3, #8a8f98); flex: 1; }
+.ft-h-name { font-weight: 600; font-size: 14px; color: var(--dp-text, #18202a); min-width: 72px; flex: none; }
+.ft-h-date { font-size: 13px; color: var(--dp-text3, #8a8f98); flex: 1 1 auto; min-width: 0; }
 .ft-h-badge {
   flex: none; font-size: 11px; padding: 2px 7px; border-radius: 999px; line-height: 1.5;
 }
 .ft-h-badge.legal { color: var(--yq-gold, #c7a96b); background: color-mix(in srgb, var(--yq-gold, #c7a96b) 14%, transparent); }
 .ft-h-badge.makeup { color: #e5484d; background: color-mix(in srgb, #e5484d 12%, transparent); }
-.ft-h-days { flex: none; font-size: 13.5px; font-weight: 700; color: var(--dp-text2, #45505b); }
+.ft-h-days { flex: none; margin-left: auto; font-size: 13.5px; font-weight: 700; color: var(--dp-text2, #45505b); }
 .ft-h-days.hot { color: #e5484d; }
 .ft-pending { margin-top: 14px; padding: 12px 16px; font-size: 12.5px; color: var(--dp-text3, #8a8f98); }
+.ft-notice { margin-top: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ft-notice-sw { font-size: 13px; color: var(--dp-text2, #45505b); display: inline-flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
+.ft-notice-text { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .ft-note { margin-top: 12px; font-size: 11.5px; color: var(--dp-text3, #8a8f98); line-height: 1.7; }
+
+/* ---------- 窄屏（B 类响应式） ---------- */
+@media (max-width: 480px) {
+  .ft-hero { padding: 18px 16px; }
+  .ft-main { font-size: 19px; }
+  .ft-stats { gap: 8px; }
+  .ft-stat { padding: 12px 8px; }
+  .ft-stat-num { font-size: 19px; }
+  .ft-yiji { grid-template-columns: 1fr; }     /* 宜 / 忌 改上下排，字才不至于挤 */
+  .ft-holiday { padding: 10px 12px; gap: 8px; }
+  .ft-h-name { min-width: 64px; font-size: 13.5px; }
+  .ft-h-date { font-size: 12.5px; }
+  .ft-h-days { margin-left: 0; width: 100%; text-align: right; }
+}
 </style>

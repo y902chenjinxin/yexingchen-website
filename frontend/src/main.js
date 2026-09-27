@@ -20,6 +20,8 @@ import './assets/styles/desktop-theme-night.css'
 import './assets/styles/desktop-theme-day.css'
 // 桌面端产品化骨架与组件层（不写颜色 token）：作用域 #app:not(.is-mobile)，与移动端互不干扰
 import './assets/styles/desktop-product.css'
+// 工具岛各页的窄屏兜底（预览元素不撑破、按钮不被压扁等）：放最后，保证能兜住
+import './assets/styles/tool-mobile.css'
 
 const app = createApp(App)
 

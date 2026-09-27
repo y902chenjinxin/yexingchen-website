@@ -1,0 +1,42 @@
+/*
+ * 工具岛各页的窄屏兜底（v2.40.20）
+ *
+ * 背景：19 个工具页里 14 个**没有自己的 @media**（见 docs/ai/TOOL_POLISH_AUDIT_20260927.md B1），
+ * 虽然手机视口实测没有横向溢出（外壳的 .inner-main 已自适应），但预览元素、代码块、range 滑块
+ * 这类「固定尺寸/不可换行」的东西仍有撑破风险。这里用一份公共规则统一兜住，
+ * 页面专属的断点仍写在各自 <style> 里（就近可读）。
+ *
+ * 注意：**不要在这里加全局 el-dialog 宽度**——移动端弹窗已由 mobile-deink.css 统一处理。
+ */
+
+/* ---------- 平板 / 手机 ---------- */
+@media (max-width: 768px) {
+  /* 预览类元素永远不要撑破容器（canvas / video / img 都可能是固定像素尺寸） */
+  .island-inner-tool canvas,
+  .island-inner-tool video,
+  .island-inner-tool img,
+  .island-inner-tool svg { max-width: 100%; }
+
+  /* 长代码 / 长路径 / 长链接不要撑破布局，改为容器内横向滚动 */
+  .island-inner-tool pre,
+  .island-inner-tool code,
+  .island-inner-tool [class*="-url"],
+  .island-inner-tool [class*="-path"] { overflow-x: auto; overflow-wrap: anywhere; }
+
+  /* 滑块类控件允许收缩（不少页面给了固定/最小宽度） */
+  .island-inner-tool input[type="range"] { max-width: 100%; }
+}
+
+/* ---------- 手机 ---------- */
+@media (max-width: 480px) {
+  .island-inner-tool .inner-main { padding: 12px 12px 24px; }
+
+  /* 工具页里成排的按钮：允许文字换行，别被压成竖条 */
+  .island-inner-tool .inner-main button { white-space: normal; max-width: 100%; }
+
+  /* 卡片圆角收敛一档，屏幕小的时候更利落 */
+  .island-inner-tool .glass-card { border-radius: 12px; }
+
+  /* 表格字号降一档（工具页偶尔有统计表） */
+  .island-inner-tool .el-table { font-size: 12.5px; }
+}

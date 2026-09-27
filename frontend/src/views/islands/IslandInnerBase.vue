@@ -8,6 +8,11 @@
           <span class="back-icon">←</span>
           <span class="back-text">返回工作台</span>
         </button>
+        <!-- 从「工具」列表进来的，手机上再给一个直回列表的入口（C4）：
+             历史返回只能回上一页，想继续逛别的工具就得一路退出去 -->
+        <button v-if="isMobile && fromToolList" class="tool-list-btn" @click="goToolList">
+          <span aria-hidden="true">⚒</span> 工具箱
+        </button>
         <h1 class="island-title">{{ title }}</h1>
         <p class="island-subtitle">{{ subtitle }}</p>
         <div v-if="$slots.toolbar" class="inner-toolbar"><slot name="toolbar" /></div>
@@ -24,11 +29,18 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 const router = useRouter()
 const { isMobile } = useIsMobile()
+
+/** 上一页是不是「工具」列表 —— 是才显示「工具箱」快捷入口，避免无关页面多长一个按钮 */
+const fromToolList = computed(() => {
+  const back = router.options.history.state?.back
+  return typeof back === 'string' && back.split('?')[0].replace(/\/$/, '') === '/tool'
+})
 
 defineProps({
   type: {
@@ -49,6 +61,10 @@ function goBack() {
   // 统一「回来源页优先」：有浏览历史则返回上一页；直接落地（无历史）才回工作台。
   if (window.history.length > 1) { try { window.history.back(); return } catch { /* fallthrough */ } }
   router.push('/workbench')
+}
+
+function goToolList() {
+  router.push('/tool')
 }
 </script>
 
@@ -211,6 +227,18 @@ function goBack() {
   }
   .back-text { display: none; }
   .back-icon { font-size: 20px; line-height: 1; }
+
+  /* 「工具箱」快捷入口：与返回章同形，但带文字 */
+  .tool-list-btn {
+    flex: none; margin-right: 4px;
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 40px; padding: 0 12px;
+    border-radius: 12px; cursor: pointer;
+    font-size: 12.5px;
+    border: 1px solid var(--dp-line, rgba(255,255,255,.14));
+    background: var(--dp-surface, rgba(255,255,255,.06));
+    color: var(--dp-text2, #45505b);
+  }
 
   .island-title { margin: 0; flex: 1; min-width: 0; font-size: clamp(22px, 6vw, 30px); }
   .island-subtitle { flex-basis: 100%; margin: 0; font-size: 13px; }

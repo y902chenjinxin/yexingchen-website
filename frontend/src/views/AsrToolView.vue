@@ -47,6 +47,7 @@ import { ref, computed, onBeforeUnmount } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { ElMessage } from 'element-plus'
 import { asrStatus, asrTranscribe } from '@/api/toolkit'
+import { copyText as copyToClipboard } from '@/utils/clipboard'
 import { quickApi } from '@/api/quick'
 
 const engineReady = ref(null)   // null=查询中 true/false
@@ -157,8 +158,8 @@ async function transcribeBlob(blob) {
   }
 }
 
-function copyText() {
-  navigator.clipboard.writeText(resultText.value).then(() => ElMessage.success('已复制')).catch(() => {})
+async function copyText() {
+  await copyToClipboard(resultText.value)
 }
 
 /** 追加到闪念 · 日记（站点已有能力，顺手的闭环） */

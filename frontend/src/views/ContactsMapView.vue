@@ -7,7 +7,12 @@
 
       <div class="mt-canvas-wrap">
         <canvas ref="cvEl" width="900" height="620" class="mt-canvas" @pointerdown="onDown" @pointermove="onMove" @pointerup="onUp"></canvas>
-        <div v-if="!nodes.length && !loading" class="mt-empty">通讯录还是空的 —— 先去添加几位家人。</div>
+        <div v-if="!nodes.length && !loading && !loadError" class="mt-empty">通讯录还是空的 —— 先去添加几位家人。</div>
+        <!-- 加载失败不能静默：以前 catch 里直接忽略，接口挂了就是一片空白（审计 A7） -->
+        <div v-if="loadError" class="mt-empty mt-error">
+          <span>{{ loadError }}</span>
+          <button class="mt-retry" @click="load">重试</button>
+        </div>
       </div>
 
       <div v-if="selected" class="mt-detail glass-card">
@@ -101,18 +106,23 @@ const cvEl = ref(null)
 const nodes = reactive([])
 const selected = ref(null)
 const loading = ref(true)
+const loadError = ref('')
 
 let edges = []
 let rafId = 0
 let dragNode = null
 
 async function load() {
+  loadError.value = ''
+  loading.value = true
   try {
     // 拦截器 return response.data → {code,msg,data}
     const body = await api.get('/contacts', { params: { size: 500 } })
     const list = body?.data?.list || body?.data || []
     buildGraph(Array.isArray(list) ? list : [])
-  } catch { /* 静默 */ } finally { loading.value = false }
+  } catch (e) {
+    loadError.value = e?.response?.data?.detail || '通讯录加载失败，请检查网络后重试'
+  } finally { loading.value = false }
 }
 
 function roleOf(relation) {
@@ -326,6 +336,12 @@ onBeforeUnmount(() => cancelAnimationFrame(rafId))
     var(--dp-bg2, rgba(0,0,0,.02));
 }
 .mt-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dp-text3, #8a8f98); font-size: 13.5px; }
+/* 加载失败态：给原因 + 重试，不要只留一片空白 */
+.mt-error { flex-direction: column; gap: 12px; text-align: center; padding: 20px; color: #e5484d; }
+.mt-retry {
+  padding: 6px 18px; border-radius: 8px; font-size: 12.5px; cursor: pointer;
+  border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b);
+}
 .mt-detail {
   margin-top: 14px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   font-size: 14px; color: var(--dp-text, #18202a);

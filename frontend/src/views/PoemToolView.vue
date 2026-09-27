@@ -23,6 +23,7 @@ import { ref, onMounted } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { ElMessage } from 'element-plus'
 import { getPoem } from '@/api/toolkit'
+import { copyText as copyToClipboard } from '@/utils/clipboard'
 
 const text = ref('')
 const dateStr = ref('')
@@ -41,7 +42,7 @@ async function draw(refresh) {
   }
 }
 async function copy() {
-  try { await navigator.clipboard.writeText(text.value); ElMessage.success('已复制') } catch { /* 忽略 */ }
+  await copyToClipboard(text.value)
 }
 onMounted(() => draw(false))
 </script>

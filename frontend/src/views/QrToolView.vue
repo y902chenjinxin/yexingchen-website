@@ -75,6 +75,8 @@ import QRCode from 'qrcode'
 import jsQR from 'jsqr'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { ElMessage } from 'element-plus'
+// 复制统一走 utils（含降级 + 失败提示），别再用各页自己的 catch 忽略
+import { copyText as copyToClipboard, copyImage as copyImageToClipboard } from '@/utils/clipboard'
 
 const tab = ref('gen')
 
@@ -109,13 +111,7 @@ async function downloadQr() {
   a.click()
 }
 async function copyImage() {
-  try {
-    const blob = await (await fetch(dataUrl.value)).blob()
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-    ElMessage.success('已复制到剪贴板')
-  } catch {
-    ElMessage.warning('当前浏览器不支持复制图片，请用「下载 PNG」')
-  }
+  await copyImageToClipboard(dataUrl.value)
 }
 
 // ---- 解析 ----
@@ -127,7 +123,7 @@ const fileInput = ref(null)
 
 function isUrl(s) { return /^https?:\/\//i.test(s || '') }
 async function copyText(s) {
-  try { await navigator.clipboard.writeText(s); ElMessage.success('已复制') } catch { /* 忽略 */ }
+  await copyToClipboard(s)
 }
 
 function onPick(e) {

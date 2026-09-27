@@ -125,7 +125,7 @@
             @click="run()"
           >{{ processing ? '处理中…' : '开始压缩' }}</button>
           <button v-if="finishedCount" class="ct-zip" :disabled="processing" @click="downloadZip">全部打包下载 (ZIP)</button>
-          <button v-if="list.length" class="ct-clear" :disabled="processing" @click="clearAll">清空列表</button>
+          <button v-if="list.length" class="ct-clear" :disabled="processing" @click="confirmClearAll">清空列表</button>
         </div>
       </div>
     </div>
@@ -134,7 +134,7 @@
 
 <script setup>
 import { ref, reactive, computed, onBeforeUnmount, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import StepIndicator from '@/components/common/StepIndicator.vue'
 
@@ -259,6 +259,21 @@ function revoke(f) {
 function clearAll() {
   list.value.forEach((f) => revoke(f))
   list.value.length = 0
+}
+
+/** 按钮走这个：清空列表是破坏性操作，统一加确认（审计 B3）。
+ *  onBeforeUnmount 仍用静默的 clearAll，避免卸载时弹框。 */
+async function confirmClearAll() {
+  if (!list.value.length) return
+  try {
+    await ElMessageBox.confirm(
+      `将移除列表里的 ${list.value.length} 个文件（原文件不受影响，可重新选择）。`,
+      '确认清空列表？',
+      { type: 'warning', confirmButtonText: '清空', cancelButtonText: '算了' },
+    )
+  } catch { return }
+  clearAll()
+  ElMessage.success('已清空列表')
 }
 onBeforeUnmount(() => {
   if (barScrollEl) barScrollEl.removeEventListener('scroll', onBarScroll)

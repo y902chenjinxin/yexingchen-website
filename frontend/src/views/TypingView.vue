@@ -12,6 +12,15 @@
         <div class="ty-stat"><b>{{ stats.left }}</b><span>剩余秒</span></div>
       </div>
 
+      <!-- 本机最佳（C5）：按模式分开记，刷新后还在 -->
+      <div class="ty-best">
+        <template v-if="best">
+          本机最佳：<b>{{ best.wpm }}</b> {{ mode === 'en' ? 'WPM' : '字/分' }}
+          · 正确率 {{ best.acc }}% · {{ best.at }}
+        </template>
+        <template v-else>还没有记录 —— 挑战一次就会记住最好成绩</template>
+      </div>
+
       <div v-if="!running && !finished" class="ty-ready">
         <button class="ty-btn primary" @click="start">开始 60 秒挑战</button>
         <div class="ty-hint">点击开始后输入框自动聚焦，打完自动换下一句/词</div>
@@ -40,6 +49,7 @@
 
       <div v-if="finished" class="ty-result glass-card">
         {{ mode === 'en' ? 'WPM' : '字/分' }} <b>{{ stats.wpm }}</b> · 正确率 <b>{{ stats.acc }}%</b> · 共 {{ stats.chars }} 字符
+        <span v-if="isNewBest" class="ty-newbest">🎉 新纪录</span>
         <button class="ty-btn primary" @click="start">再来一次</button>
       </div>
     </div>
@@ -99,10 +109,13 @@ function setMode(m) {
   finished.value = false
   typed.value = ''
   target.value = ''
+  isNewBest.value = false
+  loadBest()
 }
 
 function start() {
   running.value = true; finished.value = false
+  isNewBest.value = false
   typed.value = ''; totalTyped = 0; correctTyped = 0; piecesDone = 0
   stats.chars = 0; stats.wpm = 0; stats.acc = 100
   target.value = pick()
@@ -156,13 +169,46 @@ function finish() {
   running.value = false
   finished.value = true
   updateLive()
+  saveBest()
 }
+
+/* ---------- 本机最佳成绩（C5）：按模式分开存，刷新后能看到自己的天花板 ---------- */
+function bestKey() { return `ty_best_${mode.value}` }
+function readBest() {
+  try {
+    const b = JSON.parse(localStorage.getItem(bestKey()) || 'null')
+    return b && typeof b.wpm === 'number' ? b : null
+  } catch { return null }
+}
+const best = ref(null)
+function loadBest() { best.value = readBest() }
+function saveBest() {
+  if (!stats.wpm) return
+  const prev = readBest()
+  if (!prev || stats.wpm > prev.wpm) {
+    const rec = { wpm: stats.wpm, acc: stats.acc, at: new Date().toISOString().slice(0, 10) }
+    localStorage.setItem(bestKey(), JSON.stringify(rec))
+    best.value = rec
+    isNewBest.value = true
+  } else {
+    best.value = prev
+    isNewBest.value = false
+  }
+}
+const isNewBest = ref(false)
+
+// 首次进入就显示已有的最佳成绩
+loadBest()
 
 onBeforeUnmount(() => clearInterval(timerId))
 </script>
 
 <style scoped>
 .ty-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+/* 本机最佳成绩行 */
+.ty-best { margin: 10px 0 4px; font-size: 12px; color: var(--dp-text3, #8a8f98); }
+.ty-best b { color: var(--yq-gold, #c7a96b); font-size: 13.5px; }
+.ty-newbest { margin: 0 6px; font-size: 12.5px; font-weight: 700; color: var(--yq-gold, #c7a96b); }
 .ty-tab {
   padding: 8px 22px; border-radius: 999px; border: 1px solid var(--dp-line, rgba(0,0,0,.1));
   background: transparent; color: var(--dp-text2, #45505b); cursor: pointer; font-size: 13.5px;
