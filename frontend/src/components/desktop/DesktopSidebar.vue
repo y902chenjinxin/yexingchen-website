@@ -258,6 +258,8 @@ const TOOLS_IN_OTHER_MODULES = [
 function isActive(path) {
   if (path === '/workbench') return route.path === '/workbench'
   if (path === '/notes') return route.path === '/notes' || route.path.startsWith('/notes/')
+  // 人脉图谱归通讯录：进图谱页时把「通讯录」点亮（工具菜单已由白名单排除）
+  if (path === '/contacts') return route.path === '/contacts' || route.path.startsWith('/tool/contactsmap')
   if (path === '/tool/countdown') return route.path.startsWith('/tool/countdown')
   if (path === '/tool') {
     return route.path === '/tool'

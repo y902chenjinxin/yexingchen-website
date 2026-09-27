@@ -21,6 +21,9 @@
         <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
         <span v-if="keyword" class="search-count">匹配 {{ filteredRows.length }} 条</span>
         <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
+        <!-- v2.40.18：下架的工具默认不显示（如已归入通讯录的「人脉图谱」），
+             需要管理时再勾上；此前下架项照样列在表里，只是多个「下架」标记 -->
+        <el-checkbox v-model="showDisabled" size="small">显示已下架（{{ disabledCount }}）</el-checkbox>
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
@@ -129,7 +132,7 @@
 
 <script setup>
 defineOptions({ name: 'ToolView' })
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -152,15 +155,24 @@ const loading = ref(false)
 const page = ref(1)
 // 工具已增至 20+，默认一页显示 24 条，避免新工具被挤到第 2、3 页看不见
 const pageSize = ref(24)
+// 是否显示已下架的工具（默认否：下架 = 从工具模块撤下，但数据留着便于恢复）
+const showDisabled = ref(false)
+const disabledCount = computed(() => rows.value.filter(r => !r.is_enabled).length)
+
+const visibleRows = computed(() =>
+  showDisabled.value ? rows.value : rows.value.filter(r => r.is_enabled)
+)
 
 const filteredRows = computed(() => {
-  if (!keyword.value) return rows.value
+  if (!keyword.value) return visibleRows.value
   const q = keyword.value.toLowerCase()
-  return rows.value.filter(r => (r.title || '').toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q))
+  return visibleRows.value.filter(r => (r.title || '').toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q))
 })
 const pagedRows = computed(() =>
   filteredRows.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value)
 )
+// 切换「显示已下架」后行数会变，页码归位避免停在空白页
+watch(showDisabled, () => { page.value = 1 })
 
 async function loadAll() {
   loading.value = true
