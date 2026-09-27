@@ -7,9 +7,9 @@ import logging
 
 from app.database import engine, Base
 from app.routers import (
-    admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, datahub, finance, fish, idphoto, life, log, music, novel,
+    admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, datahub, finance, fish, idphoto, life, log, lost, music, novel,
     ocr, poem, quick, search, settings as settings_router, subscriptions,
-    stocks, tool, travels, video, video_parse, voice_clone,
+    stocks, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
 from app.routers.workbench import router as workbench_router
 from app.routers.feed import router as feed_router
@@ -180,6 +180,10 @@ from app.routers import rss as rss_router
 app.include_router(rss_router.router)
 # v2.15 生活模块：家庭共享空间（体重 / 三餐）
 app.include_router(life.router)
+# v2.40.21 生活模块：遗失物件 / 穿搭推荐 / 密码保险箱（都走 household 共享 + 上传人筛选）
+app.include_router(lost.router)
+app.include_router(wardrobe.router)
+app.include_router(vault.router)
 
 
 @app.get("/")

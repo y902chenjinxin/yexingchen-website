@@ -135,6 +135,8 @@ import {
   Sunny,       // v2.40.18 娱乐：电子木鱼（静心）
   Football,    // v2.40.18 娱乐：摸鱼小游戏
   Refresh,     // v2.40.18 娱乐：人生重开模拟器
+  Box,         // v2.40.21 生活：遗失物件（东西丢了）
+  Suitcase,    // v2.40.21 生活：穿搭推荐
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { APP_VERSION } from '@/constants/version'
@@ -204,6 +206,10 @@ const groups = computed(() => {
         { path: '/tool/fish', title: '摸鱼日历', icon: Coffee },
         { path: '/travels', title: '足迹地图', icon: MapLocation },
         { path: '/finance/book', title: '记账', icon: Money },  // v2.16.2 记账归入生活分组
+        // v2.40.21 生活三件套（都家庭共享 + 记录上传人）：遗失物件 / 穿搭推荐 / 密码保险箱
+        { path: '/lost', title: '遗失物件', icon: Box },
+        { path: '/wardrobe', title: '穿搭推荐', icon: Suitcase },
+        { path: '/vault', title: '密码保险箱', icon: Lock },
         { path: '/contacts', title: '通讯录', icon: Compass },  // v2.18 由「家」分组并入「生活」
         { path: '/subscriptions', title: '订阅', icon: Coin },  // v2.18 由「家」分组并入「生活」
       ],

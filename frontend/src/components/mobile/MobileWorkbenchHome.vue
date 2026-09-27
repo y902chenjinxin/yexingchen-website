@@ -91,6 +91,10 @@ const ICONS = {
   travels: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 2 6 5 6 9a6 6 0 0 1-12 0c0-4 2.5-7 6-9z"/><path d="M9.5 19h5"/></svg>',
   contacts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a7 7 0 0 1 14 0c0 5.5-7 10-7 10z"/><circle cx="12" cy="10" r="2.4"/></svg>',
   idphoto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M8.5 18c.8-2.3 2.2-3.4 3.5-3.4s2.7 1.1 3.5 3.4"/></svg>',
+  // v2.40.21 生活三件套：遗失物件 / 穿搭推荐 / 密码保险箱
+  lost: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5 12 4l8 4.5v9L12 22l-8-4.5z"/><path d="M4 8.5 12 13l8-4.5M12 13v9"/></svg>',
+  wardrobe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4"/><path d="M12 7c-4.4 0-8 2.2-8 5v9h16v-9c0-2.8-3.6-5-8-5z"/><path d="M12 12v9"/></svg>',
+  vault: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/><circle cx="12" cy="15.5" r="1.6"/><path d="M12 17.1v1.6"/></svg>',
   countdown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.6 1.5"/><path d="M9 3h6M12 3v1.5"/></svg>',
   ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.6c0 3.4-3.6 6.2-8 6.2-.9 0-1.7-.1-2.5-.3L5.5 20l1.1-3.1A6.6 6.6 0 0 1 4 11.6C4 8.2 7.6 5.4 12 5.4s8 2.8 8 6.2z"/><path d="M12 8.6v3.6M10.2 10.4h3.6"/></svg>',
 }
@@ -108,6 +112,10 @@ const QUICK = [
   { label:'通讯录', path:'/contacts',acc:'--ab-amb', icon:ICONS.contacts },
   { label:'证件照', path:'/tool/idphoto', acc:'--ab-cyn', icon:ICONS.idphoto },
   { label:'时光痕迹', path:'/tool/countdown', acc:'--ab-vio', icon:ICONS.countdown },
+  // v2.40.21 生活三件套
+  { label:'遗失物件', path:'/lost',   acc:'--ab-cor', icon:ICONS.lost },
+  { label:'穿搭推荐', path:'/wardrobe', acc:'--ab-pur', icon:ICONS.wardrobe },
+  { label:'密码保险箱', path:'/vault',  acc:'--ab-amb', icon:ICONS.vault },
 ]
 const quick = QUICK
 

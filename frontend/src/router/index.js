@@ -296,6 +296,25 @@ const routes = [
     component: () => import('@/views/LifeView.vue'),
     meta: { requiresAuth: true }
   },
+  // v2.40.21 生活模块三件套：遗失物件 / 穿搭推荐 / 密码保险箱（都家庭共享）
+  {
+    path: '/lost',
+    name: 'LostItems',
+    component: () => import('@/views/LostItemsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/wardrobe',
+    name: 'Wardrobe',
+    component: () => import('@/views/WardrobeView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/vault',
+    name: 'Vault',
+    component: () => import('@/views/VaultView.vue'),
+    meta: { requiresAuth: true }
+  },
   {
     path: '/tasks',
     name: 'Tasks',
