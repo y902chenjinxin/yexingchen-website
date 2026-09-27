@@ -52,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 
@@ -62,18 +62,32 @@ const birth = ref('')
 const birthInput = ref('')
 const wrapEl = ref(null)
 
-/* ---------- 日期：一律按**本地时区**处理 ----------
- * 以前用 `toISOString().slice(0, 10)` 取日期，而 toISOString 是 UTC —— 中国时区 +8
- * 会让每个格子显示的日期整体偏早一天（见 docs/ai/TOOL_POLISH_AUDIT_20260927.md A1）。
- * `new Date('YYYY-MM-DD')` 也按 UTC 解析，同样要拆开手动构造。
+/* ---------- 日期：纯「日历日」运算，别碰时区/毫秒 ----------
+ * 两轮踩坑记录：
+ *  1) 原先用 `toISOString().slice(0,10)` 取日期 —— 那是 UTC，+8 时区下会错。
+ *  2) 改用本地时间后仍差一天：**中国 1986–1991 实行过夏令时**（+9），
+ *     `new Date(1990, 5, 15).getTime() + n*86400000` 这种「毫秒加法」在跨越
+ *     夏令时边界时会漂移一小时，落回当天 23:00 就退成前一天。
+ * 结论：只用「本地 y/m/d 字段」做纯整数运算（借 Date.UTC 当无时区的算盘）。
  */
-function parseLocalDate(s) {
+function splitYmd(s) {
   const [y, m, d] = String(s).split('-').map(Number)
-  return new Date(y, (m || 1) - 1, d || 1)
+  return { y: y || 1970, m: m || 1, d: d || 1 }
 }
-function formatLocalDate(d) {
-  const p = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+function pad2(n) { return String(n).padStart(2, '0') }
+/** 以「本地年月日」为原点的整数日运算，返回 yyyy-MM-dd 字符串 */
+function addDaysFrom(ymd, days) {
+  const { y, m, d } = splitYmd(ymd)
+  const t = Date.UTC(y, m - 1, d) + days * 86400000
+  const dt = new Date(t)
+  return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`
+}
+/** 两个「本地日期」相差几天（同样走 UTC 算盘，避开夏令时） */
+function dayDiff(fromYmd, toDate) {
+  const { y, m, d } = splitYmd(fromYmd)
+  const a = Date.UTC(y, m - 1, d)
+  const b = Date.UTC(toDate.getFullYear(), toDate.getMonth(), toDate.getDate())
+  return Math.round((b - a) / 86400000)
 }
 
 /** 今天：用 ref 而不是模块级常量，页面挂过夜/跨周时还能刷新（A2） */
@@ -82,22 +96,16 @@ function refreshToday() { today.value = new Date() }
 
 const livedWeeks = computed(() => {
   if (!birth.value) return 0
-  const b = parseLocalDate(birth.value)
-  const days = Math.max(0, Math.floor((today.value - b) / 86400000))
+  const days = Math.max(0, dayDiff(birth.value, today.value))
   return Math.min(TOTAL, Math.floor(days / 7))
 })
 const percent = computed(() => ((livedWeeks.value / TOTAL) * 100).toFixed(1))
 const remainingWeeks = computed(() => Math.max(0, TOTAL - livedWeeks.value))
 
-/** 第 w 周对应的日期（本地时区） */
-function weekDate(w) {
-  const b = parseLocalDate(birth.value)
-  const d = new Date(b.getTime() + (w - 1) * 7 * 86400000)
-  return d
-}
+/** 第 w 周对应的日期（按本地日历，第 1 周 = 出生那天所在周） */
 function weekLabel(w) {
   if (!birth.value) return ''
-  return formatLocalDate(weekDate(w))
+  return addDaysFrom(birth.value, (w - 1) * 7)
 }
 
 /* ---------- 自适应格子：52 列尽量一屏放下（A3） ---------- */
@@ -109,24 +117,29 @@ const gapPx = ref(3)
 function fitGrid() {
   const w = wrapEl.value?.clientWidth
   if (!w) return
-  // gap 随格子大小缩放，先按 3px 估，再回算能塞下的格子尺寸
+  // 先按 gap=3 试算格子尺寸，再按格子大小定 gap（越小的格子配越小的间隙）
   let cell = Math.floor((w - 6 - COLS * 3) / COLS)
   cell = Math.max(MIN_CELL, Math.min(MAX_CELL, cell))
-  gapPx.value = cell >= 10 ? 3 : 2
-  // 用实际 gap 再校一次，保证总宽不超过容器
+  gapPx.value = cell >= 10 ? 3 : (cell >= 6 ? 2 : 1)
+  // 用实际 gap 再校一次，保证总宽尽量不超过容器（52 列一屏收下）
   cell = Math.floor((w - 6 - (COLS - 1) * gapPx.value) / COLS)
   cellPx.value = Math.max(MIN_CELL, Math.min(MAX_CELL, cell))
 }
 
 let ro = null
-onMounted(() => {
+/** 观察网格容器：格子宽度要跟着容器走（窄屏才可能一屏收下 52 列） */
+function observeWrap() {
+  if (!window.ResizeObserver || !wrapEl.value || ro) return
+  ro = new ResizeObserver(fitGrid)
+  ro.observe(wrapEl.value)
+}
+onMounted(async () => {
   birth.value = localStorage.getItem('lg_birth') || ''
   document.addEventListener('visibilitychange', onVisible)
   window.addEventListener('resize', fitGrid)
-  if (window.ResizeObserver && wrapEl.value) {
-    ro = new ResizeObserver(fitGrid)
-    ro.observe(wrapEl.value)
-  }
+  // 有生日时网格才渲染出来，必须等 DOM 更新后再量宽度，否则 wrapEl 还是 null（自适应失效）
+  await nextTick()
+  observeWrap()
   fitGrid()
 })
 onBeforeUnmount(() => {
@@ -139,12 +152,14 @@ function onVisible() {
   if (document.visibilityState === 'visible') { refreshToday(); fitGrid() }
 }
 
-function saveBirth() {
+async function saveBirth() {
   if (!birthInput.value) { ElMessage.warning('请先选择出生日期'); return }
   birth.value = birthInput.value
   localStorage.setItem('lg_birth', birth.value)
   refreshToday()
-  requestAnimationFrame(fitGrid)
+  await nextTick()      // 等网格挂上来再量
+  observeWrap()
+  fitGrid()
 }
 function resetBirth() {
   birth.value = ''
@@ -211,14 +226,20 @@ function exportImage() {
     if (!blob) { ElMessage.warning('导出失败，请重试'); return }
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `人生4000周-${formatLocalDate(new Date())}.png`
+    a.download = `人生4000周-${todayStr()}.png`
     a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 5000)
   }, 'image/png')
 }
 
-/** 给父组件或其他地方复用的日期（避免再有人踩 UTC 的坑） */
-defineExpose({ formatLocalDate })
+/** 今天（本地）的 yyyy-MM-dd，导出文件名用 */
+function todayStr() {
+  const t = today.value
+  return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`
+}
+
+/** 复用的纯日期工具（别再踩 UTC / 夏令时的坑） */
+defineExpose({ addDaysFrom, dayDiff, todayStr })
 </script>
 
 <style scoped>
