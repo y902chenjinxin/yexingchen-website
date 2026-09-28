@@ -126,13 +126,8 @@
 
         <!-- 公历日期 -->
         <el-form-item v-if="!form.is_lunar" label="目标日期" prop="target_date">
-          <el-date-picker
-            v-model="form.target_date"
-            type="date"
-            placeholder="选择日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
+          <!-- v2.40.37 换成农历日历（可点年份快速跳年） -->
+          <LunarDatePicker v-model="form.target_date" placeholder="选择日期" />
         </el-form-item>
 
         <!-- 农历月日 -->
@@ -217,6 +212,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import LunarDatePicker from '@/components/common/LunarDatePicker.vue'
 import {
   listCountdowns,
   createCountdown,

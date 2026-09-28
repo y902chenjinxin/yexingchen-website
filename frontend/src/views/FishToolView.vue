@@ -63,6 +63,12 @@
           </div>
         </div>
 
+        <!-- 月历（复用 LunarCalendar：农历/节气/节日 + 休/班角标；点头部年份可快速跳年） -->
+        <div class="ft-cal glass-card">
+          <div class="ft-sec-title ft-cal-title">月历</div>
+          <LunarCalendar v-model="calDate" dense />
+        </div>
+
         <!-- 假期倒计时 -->
         <div class="ft-holidays">
           <div class="ft-sec-title">假期倒计时</div>
@@ -101,6 +107,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
+import LunarCalendar from '@/components/common/LunarCalendar.vue'
 import { fishCalendar } from '@/api/toolkit'
 import {
   noticeEnabled, setNoticeEnabled, requestNoticePermission, noticeStatusText,
@@ -108,6 +115,11 @@ import {
 
 const data = ref(null)
 const error = ref('')
+
+/* 月历：默认选中今天，点其它日期会在底部显示那天的农历/节气/节日/放假信息 */
+const _t = new Date()
+const _p = (n) => String(n).padStart(2, '0')
+const calDate = ref(`${_t.getFullYear()}-${_p(_t.getMonth() + 1)}-${_p(_t.getDate())}`)
 
 const heroMain = computed(() => {
   const d = data.value
@@ -207,6 +219,8 @@ onMounted(async () => {
 .ft-yiji-label.ji { background: #e5484d; }
 .ft-yiji-text { font-size: 14.5px; color: var(--dp-text, #18202a); line-height: 1.6; }
 .ft-holidays { margin-top: 18px; }
+.ft-cal { margin-top: 18px; padding: 16px 18px 12px; }
+.ft-cal-title { margin-bottom: 12px; }
 .ft-sec-title { font-size: 13px; color: var(--dp-text3, #8a8f98); margin-bottom: 8px; letter-spacing: .05em; }
 .ft-holiday {
   display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px;
@@ -236,6 +250,7 @@ onMounted(async () => {
   .ft-stat { padding: 12px 8px; }
   .ft-stat-num { font-size: 19px; }
   .ft-yiji { grid-template-columns: 1fr; }     /* 宜 / 忌 改上下排，字才不至于挤 */
+  .ft-cal { padding: 14px 12px 10px; }
   .ft-holiday { padding: 10px 12px; gap: 8px; }
   .ft-h-name { min-width: 64px; font-size: 13.5px; }
   .ft-h-date { font-size: 12.5px; }
