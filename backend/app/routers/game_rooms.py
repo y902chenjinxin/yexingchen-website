@@ -45,6 +45,34 @@ class MoveIn(BaseModel):
     action: dict = {}
 
 
+def _last_move(db: Session, room_id: int) -> GameMove | None:
+    """房间的**全局**最后一手（与 after_seq 无关，轮次判定必须用它）。"""
+    return (
+        db.query(GameMove)
+        .filter(GameMove.room_id == room_id)
+        .order_by(GameMove.seq.desc())
+        .first()
+    )
+
+
+def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session) -> dict:
+    """补 my_seat / my_turn（v2.40.28 修）。
+
+    坑：原先用**增量** moves 判断轮次 —— 轮询（after_seq=last_seq）时增量常为空数组，
+    于是走到「还没人落子」分支 → my_turn = (uid == 执黑方)。后果：白方加入后每次都判
+    「没轮到我」，棋盘被锁死完全点不动；黑方则恒为「轮到我」。
+    轮次是房间的全局属性，必须查全局最后一手。
+    """
+    black_id = r.black_user_id or r.owner_id
+    out["my_seat"] = "black" if uid == black_id else "white"
+    if r.status != "playing":
+        out["my_turn"] = False
+        return out
+    last = _last_move(db, r.id)
+    out["my_turn"] = (uid == black_id) if last is None else (last.user_id != uid)
+    return out
+
+
 def _room_to_out(r: GameRoom, names: dict[int, str], after_seq: int = 0, db: Session | None = None) -> dict:
     black_id = r.black_user_id or r.owner_id
     out = {
@@ -74,7 +102,10 @@ def _room_to_out(r: GameRoom, names: dict[int, str], after_seq: int = 0, db: Ses
             {"seq": m.seq, "user_id": m.user_id, "action": json.loads(m.action or "{}")}
             for m in moves
         ]
-        out["last_seq"] = moves[-1].seq if moves else 0
+        # last_seq 必须是**全局**最大 seq：客户端拿它当下一轮的 after_seq，
+        # 若按增量算（增量为空时返回 0）会把客户端的轮询游标打回 0、反复重放。
+        last = _last_move(db, r.id)
+        out["last_seq"] = last.seq if last else 0
     return out
 
 
@@ -132,7 +163,9 @@ def create_room(
     db.refresh(r)
     log_action(db, current_user["user_id"], "create", "game_room", r.id,
                detail=f"邀请 {names_display(db, req.invitee_user_id)} 来一局{GAMES[req.game]}")
-    return ResponseBase(msg="房间已创建，等对方接受", data=_room_to_out(r, _names(db)))
+    out = _room_to_out(r, _names(db), db=db)
+    _decorate_seat(r, out, current_user["user_id"], db)
+    return ResponseBase(msg="房间已创建，等对方接受", data=out)
 
 
 def names_display(db: Session, user_id: int) -> str:
@@ -198,7 +231,9 @@ def accept_room(
     db.commit()
     db.refresh(r)
     log_action(db, current_user["user_id"], "update", "game_room", r.id, detail=f"接受了{GAMES.get(r.game, r.game)}邀请")
-    return ResponseBase(msg="已接受，开局！", data=_room_to_out(r, _names(db)))
+    out = _room_to_out(r, _names(db), db=db)
+    _decorate_seat(r, out, current_user["user_id"], db)
+    return ResponseBase(msg="已接受，开局！", data=out)
 
 
 @router.post("/rooms/{room_id}/decline", response_model=ResponseBase)
@@ -248,16 +283,7 @@ def room_state(
     _ensure_player(r, current_user["user_id"])
     names = _names(db)
     out = _room_to_out(r, names, after_seq=after_seq, db=db)
-    uid = current_user["user_id"]
-    black_id = r.black_user_id or r.owner_id
-    out["my_seat"] = "black" if uid == black_id else "white"
-    # 轮到我 = 对局中 且（还没人落子→我是执黑方；否则最后一手不是我）
-    if r.status != "playing":
-        out["my_turn"] = False
-    elif not out["moves"]:
-        out["my_turn"] = uid == black_id
-    else:
-        out["my_turn"] = out["moves"][-1]["user_id"] != uid
+    _decorate_seat(r, out, current_user["user_id"], db)
     return ResponseBase(data=out)
 
 

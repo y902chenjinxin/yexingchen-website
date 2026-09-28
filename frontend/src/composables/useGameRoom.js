@@ -54,6 +54,8 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
           seenMoveSeq = m.seq   // 自己的动作（乐观应用过）也推进游标
         }
       }
+      // 游标推进到服务端全局 last_seq（服务端返回的是全局值，非增量值）
+      if (typeof d.last_seq === 'number') lastSeq.value = Math.max(lastSeq.value, d.last_seq)
       onStatus?.({ status: d.status, winner_id: d.winner_id, my_turn: d.my_turn })
     } catch { /* 轮询失败静默，下轮再试 */ }
   }

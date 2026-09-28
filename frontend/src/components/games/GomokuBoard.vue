@@ -82,17 +82,21 @@
       <p v-if="!families.length" class="gk-online-desc">家庭里还没有其他账号可以邀请。</p>
     </div>
 
-    <div class="gk-board" :class="{ locked: boardLocked, 'has-winner': winLine.length }">
-      <button
-        v-for="idx in N * N"
-        :key="idx"
-        class="gk-cell"
-        :class="{ last: lastIdx === idx - 1, win: winLine.includes(idx - 1) }"
-        :aria-label="`第${Math.ceil(idx / N)}行第${((idx - 1) % N) + 1}列`"
-        @click="play(idx - 1)"
-      >
-        <i v-if="board[idx - 1]" class="gk-stone" :class="board[idx - 1] === HUMAN ? 'black' : 'white'"></i>
-      </button>
+    <div class="gk-boardwrap">
+      <div class="gk-board" :class="{ locked: boardLocked, 'has-winner': winLine.length }">
+        <button
+          v-for="idx in N * N"
+          :key="idx"
+          class="gk-cell"
+          :class="{ last: lastIdx === idx - 1, win: winLine.includes(idx - 1) }"
+          :aria-label="`第${Math.ceil(idx / N)}行第${((idx - 1) % N) + 1}列`"
+          @click="play(idx - 1)"
+        >
+          <i v-if="board[idx - 1]" class="gk-stone" :class="board[idx - 1] === HUMAN ? 'black' : 'white'"></i>
+        </button>
+      </div>
+      <!-- 锁定时给出可见原因（此前是静默 pointer-events:none，点了毫无反馈） -->
+      <div v-if="lockHint" class="gk-lockmask"><span>{{ lockHint }}</span></div>
     </div>
     <p class="gk-hint">
       {{ mode === 'online' ? '在线模式 · 对方落子约 2 秒内自动出现' : '黑方先行 · 五子连珠获胜 · 困难模式 AI 搜索更深' }}
@@ -142,10 +146,13 @@ const firstPick = ref('me')     // 先手：'me'=我执黑 / 'other'=对方执�
 const onlineWinner = ref('')
 const lastInviteeName = ref('')
 
-function onRemoteMove(action) {
+function onRemoteMove(action, userId) {
   const idx = action?.idx
-  if (typeof idx !== 'number' || board.value[idx]) return
-  const color = 3 - turn.value
+  if (typeof idx !== 'number' || idx < 0 || idx >= N * N || board.value[idx]) return
+  // 颜色按**座位**（绝对色）：执黑方 = 1、执白方 = 2。
+  // 不能用「3 - 上一手」反推 —— join 重放时 turn 初值是 HUMAN，黑方第一手会被画成白子。
+  const blackId = gRoom.room.value?.black_user_id
+  const color = (userId != null && blackId != null && userId === blackId) ? HUMAN : AI
   board.value[idx] = color
   lastIdx.value = idx
   history.value.push(idx)
@@ -168,6 +175,17 @@ const roomLocked = computed(() => roomActive.value)
 const onlinePlaying = computed(() => mode.value === 'online' && gRoom.status.value === 'playing')
 const onlineMyTurn = computed(() => onlinePlaying.value && gRoom.myTurn.value)
 const boardLocked = computed(() => mode.value === 'online' && !onlineMyTurn.value)
+/** 棋盘为什么点不动 —— 必须显式告诉用户，静默锁死会让人以为「坏了」 */
+const lockHint = computed(() => {
+  if (mode.value !== 'online') return ''
+  if (!gRoom.room.value) return '先选一位家人发出邀请，再开始对局'
+  const st = gRoom.status.value
+  const who = gRoom.opponentName.value || '对方'
+  if (st === 'waiting') return `等「${who}」接受邀请…`
+  if (st === 'playing') return gRoom.myTurn.value ? '' : `等「${who}」落子…`
+  if (st === 'finished') return '本局已结束'
+  return ''
+})
 const myColor = computed(() => (gRoom.mySeat.value === 'white' ? AI : HUMAN))
 const blackName = computed(() => {
   if (mode.value === 'online' && gRoom.room.value) return gRoom.mySeat.value === 'black' ? '你' : (gRoom.opponentName.value || '对方')
@@ -517,6 +535,16 @@ onBeforeUnmount(() => { clearTimeout(timer); gRoom.stopPoll() })
   padding: 9px 11px; font-size: 13.5px; background: var(--dp-surface, #fff); color: var(--dp-text, #18202a); font-family: inherit; }
 
 /* 棋盘：锁定时压暗禁点 */
+.gk-boardwrap { position: relative; display: inline-block; }
+.gk-lockmask {
+  position: absolute; inset: 0; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.5); pointer-events: none; padding: 12px; text-align: center;
+}
+.gk-lockmask span {
+  font-size: 12.5px; font-weight: 600; color: var(--dp-text2, #45505b);
+  background: rgba(255,255,255,.94); padding: 8px 16px; border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(20,30,40,.14);
+}
 .gk-board {
   display: grid; grid-template-columns: repeat(15, var(--cell, 26px)); grid-auto-rows: var(--cell, 26px);
   background: linear-gradient(135deg, #e8d9b8, #dcc79a); padding: 8px; border-radius: 14px;
