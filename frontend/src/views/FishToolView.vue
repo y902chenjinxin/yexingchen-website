@@ -66,7 +66,7 @@
         <!-- 月历（复用 LunarCalendar：农历/节气/节日 + 休/班角标；点头部年份可快速跳年） -->
         <div class="ft-cal glass-card">
           <div class="ft-sec-title ft-cal-title">月历</div>
-          <LunarCalendar v-model="calDate" dense />
+          <div class="ft-cal-box"><LunarCalendar v-model="calDate" dense /></div>
         </div>
 
         <!-- 假期倒计时 -->
@@ -221,6 +221,8 @@ onMounted(async () => {
 .ft-holidays { margin-top: 18px; }
 .ft-cal { margin-top: 18px; padding: 16px 18px 12px; }
 .ft-cal-title { margin-bottom: 12px; }
+/* 桌面端限宽：月历拉满整行会显得散，按手机日历的比例收在一列里 */
+.ft-cal-box { max-width: 468px; }
 .ft-sec-title { font-size: 13px; color: var(--dp-text3, #8a8f98); margin-bottom: 8px; letter-spacing: .05em; }
 .ft-holiday {
   display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px;
