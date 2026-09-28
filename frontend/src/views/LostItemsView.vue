@@ -69,6 +69,12 @@
                   <span v-for="t in it.tags" :key="t" class="li-tag">{{ t }}</span>
                 </div>
               </div>
+              <!-- 卡片上直接给操作入口（桌面悬停显现 / 触屏常显）：
+                   只靠「点卡片看详情」太隐蔽，夜星找不到编辑与删除（V2438-001） -->
+              <div class="li-acts">
+                <button class="li-act" title="编辑这条" @click.stop="openEdit(it)">编辑</button>
+                <button class="li-act danger" title="删除这条" @click.stop="remove(it)">删除</button>
+              </div>
             </article>
           </div>
         </section>
@@ -217,6 +223,14 @@ function openCreate() {
   formVisible.value = true
 }
 
+/** 打开详情（点卡片）。此前模板引用了它但**函数从未定义** ——
+ *  点卡片直接抛 TypeError，详情打不开、编辑与删除按钮永远露不出来（V2438-001）。 */
+function openDetail(it) {
+  if (!it) return
+  detail.value = it
+  detailVisible.value = true
+}
+
 function openEdit(it) {
   if (!it) return
   Object.assign(form, {
@@ -338,8 +352,20 @@ onMounted(async () => {
 .li-year-count { font-size: 11px; opacity: .8; }
 .li-list { display: flex; flex-direction: column; gap: 10px; }
 
-.li-card { display: flex; gap: 14px; padding: 12px 14px; border-radius: 14px; cursor: pointer; transition: border-color .2s; }
+.li-card { position: relative; display: flex; gap: 14px; padding: 12px 14px; border-radius: 14px; cursor: pointer; transition: border-color .2s; }
 .li-card:hover { border-color: var(--lj-line-strong); }
+
+/* 卡片操作按钮：桌面悬停显现（不抢视觉），触屏与窄屏常显 */
+.li-acts { flex: none; display: flex; align-items: center; gap: 6px; opacity: 0; transition: opacity .18s; }
+.li-card:hover .li-acts, .li-card:focus-within .li-acts { opacity: 1; }
+.li-act {
+  border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2);
+  font-family: inherit; font-size: 12px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+  transition: all .18s; white-space: nowrap;
+}
+.li-act:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
+.li-act.danger:hover { border-color: var(--pnl-up, #c2432f); color: var(--pnl-up, #c2432f); }
+@media (hover: none) { .li-acts { opacity: 1; } }
 .li-thumb { width: 78px; height: 78px; flex: none; border-radius: 10px; overflow: hidden; position: relative; background: rgba(74,95,99,.08); }
 .li-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .li-thumb-plain { display: flex; align-items: center; justify-content: center; font-size: 28px; }
@@ -383,5 +409,8 @@ onMounted(async () => {
   .li-stats { gap: 12px; font-size: 12.5px; }
   .li-thumb { width: 62px; height: 62px; }
   .li-owner { margin-left: 0; }
+  /* 窄屏按钮竖排，省横向空间 */
+  .li-acts { opacity: 1; flex-direction: column; gap: 6px; }
+  .li-act { padding: 4px 9px; font-size: 11.5px; }
 }
 </style>

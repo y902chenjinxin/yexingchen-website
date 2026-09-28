@@ -22,6 +22,15 @@ module.exports = {
     // SW 注册/换版消息）都刻意吞掉异常，空 catch 是设计而非疏漏
     'no-empty': ['error', { allowEmptyCatch: true }],
 
+    /* ---------- 语义护栏：模板引用了不存在的属性/函数 ----------
+     * V2438-001 的根因：LostItemsView 模板写了 `@click="openDetail(it)"`，
+     * 但脚本里从未定义 openDetail —— vue3-recommended **不含**这条规则，
+     * lint 全绿、构建通过，线上表现却是「点卡片毫无反应」，
+     * 连带藏在详情里的编辑/删除按钮永远露不出来（夜星报障）。
+     * 本规则启用前已在全量 src 上试跑：0 命中、无噪音；造样例可稳定命中。
+     */
+    'vue/no-undef-properties': 'error',
+
     /* ---------- 关掉纯排版规则，让 eslint 只管语义 ----------
      * vue3-recommended 自带一批「排版」规则（换行位置、属性排序、缩进、自闭合），
      * 原本指望 prettier 接管，但 prettier 并未安装（.prettierrc / lint-staged 是空配置），

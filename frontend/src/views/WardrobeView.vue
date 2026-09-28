@@ -101,6 +101,12 @@
               <img v-if="it.photos && it.photos.length" :src="it.photos[0]" :alt="it.name" loading="lazy">
               <span v-else class="wd-card-ph">{{ categoryEmoji(it.category) }}</span>
               <span v-if="it.status !== '在穿'" class="wd-badge">{{ it.status }}</span>
+              <!-- 卡片上直接给操作入口（桌面悬停显现 / 触屏常显）：与遗失物件一致，
+                   只靠「点卡片看详情」太隐蔽（V2438-001） -->
+              <div class="wd-card-acts">
+                <button class="wd-act" title="编辑这件" @click.stop="openItemEdit(it)">编辑</button>
+                <button class="wd-act danger" title="删除这件" @click.stop="removeItem(it)">删除</button>
+              </div>
             </div>
             <div class="wd-card-body">
               <div class="wd-card-name">{{ it.name }}</div>
@@ -723,6 +729,20 @@ onMounted(async () => {
 .wd-card-ph { font-size: 34px; }
 .wd-badge { position: absolute; left: 8px; top: 8px; font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
   background: rgba(0,0,0,.55); color: #fff; }
+/* 卡片操作：贴在图片底部，桌面悬停显现，触屏常显 */
+.wd-card-acts {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: flex-end; gap: 6px;
+  padding: 8px; background: linear-gradient(transparent, rgba(8, 12, 16, .74)); opacity: 0; transition: opacity .18s;
+}
+.wd-card:hover .wd-card-acts, .wd-card:focus-within .wd-card-acts { opacity: 1; }
+.wd-act {
+  border: 1px solid rgba(255, 255, 255, .28); background: rgba(0, 0, 0, .3); color: #fff;
+  font-family: inherit; font-size: 11.5px; padding: 4px 10px; border-radius: 8px; cursor: pointer;
+  transition: all .18s; white-space: nowrap;
+}
+.wd-act:hover { background: rgba(199, 169, 107, .9); border-color: transparent; color: #0B0F14; }
+.wd-act.danger:hover { background: var(--pnl-up, #c2432f); color: #fff; }
+@media (hover: none) { .wd-card-acts { opacity: 1; } }
 .wd-card-body { padding: 9px 11px 12px; }
 .wd-card-name { font-size: 13.5px; font-weight: 600; color: var(--lj-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wd-card-meta { display: flex; gap: 9px; flex-wrap: wrap; font-size: 11px; color: var(--lj-text-3); margin-top: 5px; }
