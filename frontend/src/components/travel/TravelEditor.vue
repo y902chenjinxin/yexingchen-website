@@ -16,11 +16,11 @@
         <div class="ted-row">
           <div class="ted-field">
             <label class="ted-label">出发日期</label>
-            <input v-model="d.start_date" type="date" class="ted-input" />
+            <LunarDatePicker v-model="d.start_date" placeholder="选择出发日期" />
           </div>
           <div class="ted-field">
             <label class="ted-label">结束日期</label>
-            <input v-model="d.end_date" type="date" class="ted-input" />
+            <LunarDatePicker v-model="d.end_date" placeholder="选择结束日期" />
           </div>
         </div>
 
@@ -122,6 +122,7 @@
 
 <script setup>
 import { reactive } from 'vue'
+import LunarDatePicker from '@/components/common/LunarDatePicker.vue'
 import TravelCityPicker from './TravelCityPicker.vue'
 import { uploadMedia } from '@/api/travels'
 

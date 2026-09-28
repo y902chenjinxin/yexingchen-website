@@ -9,7 +9,7 @@ from app.database import engine, Base
 from app.routers import (
     admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, datahub, finance, fish, idphoto, life, log, lost, music, novel,
     ocr, poem, quick, search, settings as settings_router, subscriptions,
-    game_rooms, stocks, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
+    day_calendar, game_rooms, stocks, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
 from app.routers.workbench import router as workbench_router
 from app.routers.feed import router as feed_router
@@ -186,6 +186,8 @@ app.include_router(wardrobe.router)
 app.include_router(vault.router)
 # v2.40.25 棋类游戏：在线双人（房间 + 邀请 + 轮询同步）
 app.include_router(game_rooms.router)
+# v2.40.36 日历数据（农历/节气/节日/法定假期）
+app.include_router(day_calendar.router)
 
 
 @app.get("/")

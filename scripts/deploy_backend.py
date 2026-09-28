@@ -145,6 +145,16 @@ BACKEND_FILES = [
     # ---- v2.40.5 内置背景曲改为真实音乐记录----
     (os.path.join(ROOT, "backend", "alembic", "versions", "z6a7b8c9d0e1_seed_builtin_bgm.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/z6a7b8c9d0e1_seed_builtin_bgm.py"),
+    # ---- v2.40.25~34 生活岛·棋类游戏在线对战（房间/悔棋/离开心跳/先手切换）----
+    #      此前本白名单漏了这三个文件，直接部署会出现「路由是旧的 / 缺列」的线上 500。
+    (os.path.join(ROOT, "backend", "app", "models", "game.py"),          f"{REMOTE_BASE}/backend/app/models/game.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "game_rooms.py"),   f"{REMOTE_BASE}/backend/app/routers/game_rooms.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "e1f2a3b4c5d6_game_rooms.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/e1f2a3b4c5d6_game_rooms.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "f2a3b4c5d6e7_room_first_player.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/f2a3b4c5d6e7_room_first_player.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "a3b4c5d6e7f8_room_leave_heartbeat.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/a3b4c5d6e7f8_room_leave_heartbeat.py"),
 ]
 
 

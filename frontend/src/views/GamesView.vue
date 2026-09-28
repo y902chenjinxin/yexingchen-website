@@ -108,6 +108,9 @@
  * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/boardSizes/big 声明能力）。
  * v2.40.33：按夜星要求**黑白棋下架**（不是他要的，组件 OthelloBoard.vue 保留，说一声可恢复），
  *           换成**围棋**（新组件 GoBoard.vue，中国规则数子法）。
+ * v2.40.34：飞行棋由 iframe 嵌第三方静态页（LudoEmbed.vue）改为**自写 LudoBoard.vue** ——
+ *           原方案的「选择人数」弹层被 iframe 高度裁切，点了人数看不到「开始游戏」按钮（表现为点了没反应），
+ *           且第三方是同屏多人、无联机能力，无法「邀请家人」。现在支持 2/3/4 人同屏 + 在线邀请。
  */
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
@@ -153,10 +156,15 @@ const gamelist = [
   },
   {
     key: 'ludo', label: '飞行棋', tag: '中国规则 · 大屏', group: '棋类', big: true,
-    desc: '同色跳格、飞行捷径、安全格；开源实现（MIT），默认大屏展示。',
+    desc: '掷 6 起飞、踩同色飞跃、飞行通道直飞；双人/三人/四人同屏，或在线邀请家人。',
     icon: ICON.ludo,
-    component: defineAsyncComponent(() => import('@/components/games/LudoEmbed.vue')),
-    modes: null,
+    component: defineAsyncComponent(() => import('@/components/games/LudoBoard.vue')),
+    modes: [
+      { key: 'pvp2', label: '双人同屏', hint: '红 vs 黄，一台设备轮着掷' },
+      { key: 'pvp3', label: '三人同屏', hint: '红绿黄混战，谁先归航' },
+      { key: 'pvp4', label: '四人同屏', hint: '四色全上，最热闹' },
+      { key: 'online', label: '在线 · 邀请对战', hint: '建房邀请家人，跨设备同步' },
+    ],
   },
   {
     key: 'sudoku', label: '数独', tag: '唯一解 · 三档', group: '益智',
