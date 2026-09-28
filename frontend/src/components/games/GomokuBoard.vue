@@ -44,6 +44,7 @@
       <div v-if="mode === 'online' && gRoom.room.value" class="gk-banner" :class="'st-' + gRoom.status.value">
         <template v-if="gRoom.status.value === 'waiting'">
           <span class="gk-pulse"></span> 邀请已发给 {{ gRoom.opponentName.value }}，等待接受…
+          <span class="gk-firstnote">{{ gRoom.room.value.black_name }} 执黑先行</span>
           <button class="gk-btn" @click="cancelInvite">取消邀请</button>
           <button class="gk-btn" @click="refreshRoom">刷新</button>
         </template>
@@ -67,6 +68,13 @@
         <select v-model="inviteeId" class="gk-select">
           <option v-for="f in families" :key="f.user_id" :value="f.user_id">{{ f.avatar }} {{ f.display_name }}</option>
         </select>
+      </div>
+      <div class="gk-first-row">
+        <span class="gk-first-label">先手：</span>
+        <button class="gk-mode" :class="{ on: firstPick === 'me' }" @click="firstPick = 'me'">我执黑</button>
+        <button class="gk-mode" :class="{ on: firstPick === 'other' }" @click="firstPick = 'other'">对方执黑</button>
+      </div>
+      <div class="gk-online-row">
         <button class="gk-btn primary" :disabled="!inviteeId || gRoom.joining.value" @click="invite">
           {{ gRoom.joining.value ? '创建中…' : '发出邀请' }}
         </button>
@@ -130,6 +138,7 @@ let timer = null
 /* ---------- 在线对战 ---------- */
 const families = ref([])
 const inviteeId = ref(null)
+const firstPick = ref('me')     // 先手：'me'=我执黑 / 'other'=对方执黑（v2.40.27）
 const onlineWinner = ref('')
 const lastInviteeName = ref('')
 
@@ -186,9 +195,8 @@ async function invite() {
   const f = families.value.find(x => x.user_id === inviteeId.value)
   lastInviteeName.value = f?.display_name || ''
   try {
-    await gRoom.createInvite(inviteeId.value)
-    myColor.value = HUMAN
-    ElMessage.success('邀请已发出，等对方接受')
+    await gRoom.createInvite(inviteeId.value, firstPick.value)
+    ElMessage.success(`邀请已发出（${firstPick.value === 'me' ? '你' : lastInviteeName.value || '对方'}执黑先行），等对方接受`)
   } catch (e) {
     ElMessage.warning(e?.response?.data?.detail || '邀请失败')
   }
@@ -199,10 +207,20 @@ async function cancelInvite() {
   ElMessage.success('已取消')
 }
 async function refreshRoom() { if (gRoom.room.value?.id) await gRoom.join(gRoom.room.value.id, { autoAccept: false }) }
+/** 再来一局：邀请同一人，并**交换先后手**（上一局谁执黑，这局换人） */
 async function reinviteSame() {
   const uid = inviteeId.value
+  firstPick.value = firstPick.value === 'me' ? 'other' : 'me'
   gRoom.reset(); clearLocal()
-  if (uid) { inviteeId.value = uid; await gRoom.createInvite(uid) }
+  if (uid) { inviteeId.value = uid }
+  if (uid) {
+    try {
+      await gRoom.createInvite(uid, firstPick.value)
+      ElMessage.success(`新对局已发出（${firstPick.value === 'me' ? '你' : '对方'}执黑先行）`)
+    } catch (e) {
+      ElMessage.warning(e?.response?.data?.detail || '邀请失败')
+    }
+  }
 }
 function askExit() {
   ElMessageBox.confirm('退出将按认输处理，对方获胜。确定退出？', '退出对局', {
@@ -491,6 +509,10 @@ onBeforeUnmount(() => { clearTimeout(timer); gRoom.stopPoll() })
 .gk-online-title { font-size: 15px; font-weight: 700; color: var(--dp-text, #18202a); }
 .gk-online-desc { margin: 6px 0 10px; font-size: 12px; color: var(--dp-text3, #8a8f98); line-height: 1.7; }
 .gk-online-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+/* 先手选择（v2.40.27） */
+.gk-first-row { display: flex; align-items: center; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+.gk-first-label { font-size: 12.5px; color: var(--dp-text3, #8a8f98); }
+.gk-firstnote { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .gk-select { flex: 1; min-width: 160px; border: 1px solid var(--dp-line, rgba(0,0,0,.14)); border-radius: 10px;
   padding: 9px 11px; font-size: 13.5px; background: var(--dp-surface, #fff); color: var(--dp-text, #18202a); font-family: inherit; }
 

@@ -38,6 +38,7 @@ GK_N = 15
 class RoomIn(BaseModel):
     game: str
     invitee_user_id: int
+    first: str = "me"      # 'me'=我执黑先行 / 'other'=对方执黑先行（v2.40.27 切换先手）
 
 
 class MoveIn(BaseModel):
@@ -45,6 +46,7 @@ class MoveIn(BaseModel):
 
 
 def _room_to_out(r: GameRoom, names: dict[int, str], after_seq: int = 0, db: Session | None = None) -> dict:
+    black_id = r.black_user_id or r.owner_id
     out = {
         "id": r.id,
         "game": r.game,
@@ -53,6 +55,8 @@ def _room_to_out(r: GameRoom, names: dict[int, str], after_seq: int = 0, db: Ses
         "invitee_id": r.invitee_id,
         "owner_name": names.get(r.owner_id, "家人"),
         "invitee_name": (names.get(r.invitee_id, "家人") if r.invitee_id else None),
+        "black_user_id": black_id,
+        "black_name": names.get(black_id, "家人"),
         "invite_code": r.invite_code,
         "status": r.status,
         "winner_id": r.winner_id,
@@ -112,12 +116,15 @@ def create_room(
     )
     if not invitee:
         raise_error(ErrCode.NOT_FOUND, "对方不在你的家庭里")
+    if req.first not in ("me", "other"):
+        raise_error(ErrCode.INVALID_PARAM, "first 只能是 me / other")
     r = GameRoom(
         household_id=HOUSEHOLD_ID,
         game=req.game,
         owner_id=current_user["user_id"],
         invitee_id=req.invitee_user_id,
         status="waiting",
+        black_user_id=current_user["user_id"] if req.first == "me" else req.invitee_user_id,
         invite_code=secrets.token_hex(3),   # 6 位短码，防误入不防攻击
     )
     db.add(r)
@@ -242,12 +249,13 @@ def room_state(
     names = _names(db)
     out = _room_to_out(r, names, after_seq=after_seq, db=db)
     uid = current_user["user_id"]
-    out["my_seat"] = "black" if uid == r.owner_id else "white"
+    black_id = r.black_user_id or r.owner_id
+    out["my_seat"] = "black" if uid == black_id else "white"
     # 轮到我 = 对局中 且（还没人落子→我是执黑方；否则最后一手不是我）
     if r.status != "playing":
         out["my_turn"] = False
     elif not out["moves"]:
-        out["my_turn"] = uid == r.owner_id
+        out["my_turn"] = uid == black_id
     else:
         out["my_turn"] = out["moves"][-1]["user_id"] != uid
     return ResponseBase(data=out)
@@ -260,7 +268,7 @@ def room_move(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """落子/动作。服务端校验：房间进行中、是轮到我、格子未被占；五子棋额外做服务端胜负判定。"""
+    """落子/动作。服务端校验：房间进行中、执黑方先走、轮到我、格子未被占；五子棋额外做服务端胜负判定。"""
     r = _get_room(db, room_id)
     uid = current_user["user_id"]
     _ensure_player(r, uid)
@@ -272,8 +280,12 @@ def room_move(
         .order_by(GameMove.seq.desc())
         .first()
     )
-    if last and last.user_id == uid:
-        raise_error(ErrCode.INVALID_PARAM, "还没轮到你")
+    black_id = r.black_user_id or r.owner_id
+    if last:
+        if last.user_id == uid:
+            raise_error(ErrCode.INVALID_PARAM, "还没轮到你")
+    elif uid != black_id:
+        raise_error(ErrCode.INVALID_PARAM, "等执黑方先走")
     action = req.action or {}
     game = r.game
 

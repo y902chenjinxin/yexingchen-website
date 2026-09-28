@@ -20,6 +20,7 @@ class GameRoom(Base):
     invitee_id = Column(Integer, nullable=True, index=True)  # 受邀人（执白）
     status = Column(String(20), default="waiting")       # waiting/playing/finished/declined/abandoned
     winner_id = Column(Integer, nullable=True)           # 胜者 user_id；0=平局
+    black_user_id = Column(Integer, nullable=True)       # 执黑先行者（建房时可选「我 / 对方」，默认房主）
     invite_code = Column(String(12), default="")
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

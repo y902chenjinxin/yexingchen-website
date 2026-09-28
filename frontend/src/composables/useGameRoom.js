@@ -58,9 +58,9 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
     } catch { /* 轮询失败静默，下轮再试 */ }
   }
 
-  async function createInvite(inviteeUserId) {
+  async function createInvite(inviteeUserId, first = 'me') {
     error.value = ''
-    const res = await gameRoomsApi.create({ game, invitee_user_id: inviteeUserId })
+    const res = await gameRoomsApi.create({ game, invitee_user_id: inviteeUserId, first })
     room.value = res?.data || null
     moves.value = []
     lastSeq.value = 0
