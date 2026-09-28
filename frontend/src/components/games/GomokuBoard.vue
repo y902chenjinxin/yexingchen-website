@@ -5,15 +5,45 @@
         <button v-for="m in modes" :key="m.key" class="gk-mode" :class="{ on: mode === m.key }" @click="setMode(m.key)">{{ m.label }}</button>
       </div>
       <div class="gk-status">
-        <span v-if="!over" :class="{ turn: turn === HUMAN }">{{ turn === HUMAN ? '轮到你（黑）' : (mode === 'pvp' ? '轮到白方' : 'AI 思考中…') }}</span>
-        <span v-else class="gk-result">{{ resultText }}</span>
+        <template v-if="mode === 'online'">
+          <span v-if="!gRoom.room.value">{{ '邀请一位家人开一局' }}</span>
+          <span v-else-if="gRoom.status.value === 'waiting'">等待 {{ gRoom.opponentName.value }} 接受…</span>
+          <span v-else-if="gRoom.status.value === 'playing'">
+            {{ gRoom.myTurn.value ? '轮到你（' + (myColor === HUMAN ? '黑' : '白') + '）' : '等对方落子…' }}
+          </span>
+          <span v-else class="gk-result">{{ onlineResultText }}</span>
+        </template>
+        <template v-else>
+          <span v-if="!over" :class="{ turn: turn === HUMAN }">{{ turn === HUMAN ? '轮到你（黑）' : (mode === 'pvp' ? '轮到白方' : 'AI 思考中…') }}</span>
+          <span v-else class="gk-result">{{ resultText }}</span>
+        </template>
         <button class="gk-btn" @click="restart">重开</button>
-        <button class="gk-btn" :disabled="!canUndo" @click="undo">悔棋</button>
+        <button v-if="mode !== 'online'" class="gk-btn" :disabled="!canUndo" @click="undo">悔棋</button>
       </div>
     </div>
 
+    <!-- 在线：邀请面板 / 房间操作 -->
+    <div v-if="mode === 'online'" class="gk-online glass">
+      <template v-if="!gRoom.room.value">
+        <span>对手：</span>
+        <select v-model="inviteeId" class="gk-select">
+          <option v-for="f in families" :key="f.user_id" :value="f.user_id">{{ f.avatar }} {{ f.name }}</option>
+        </select>
+        <button class="gk-btn primary" :disabled="!inviteeId || gRoom.joining.value" @click="invite">
+          {{ gRoom.joining.value ? '创建中…' : '发出邀请' }}
+        </button>
+        <span class="gk-hint">对方在线会立刻弹窗，收到邀请后接受即可开局</span>
+      </template>
+      <template v-else>
+        <span>对局编号 #{{ gRoom.room.value.id }} · 对手：{{ gRoom.opponentName.value }}</span>
+        <button v-if="gRoom.status.value === 'waiting'" class="gk-btn" @click="cancelInvite">取消邀请</button>
+        <button v-if="gRoom.status.value === 'waiting'" class="gk-btn" @click="refreshRoom">刷新</button>
+        <button v-if="gRoom.status.value === 'playing'" class="gk-btn" @click="resignOnline">认输</button>
+        <button v-if="gRoom.status.value === 'finished'" class="gk-btn primary" @click="reinviteSame">再来一局</button>
+      </template>
+    </div>
+
     <div class="gk-board" :style="{ '--n': N }">
-      <!-- 星位与线由背景网格绘制；棋子用 DOM，点击即落子 -->
       <button
         v-for="idx in N * N"
         :key="idx"
@@ -25,24 +55,28 @@
         <i v-if="board[idx - 1]" class="gk-stone" :class="board[idx - 1] === HUMAN ? 'black' : 'white'"></i>
       </button>
     </div>
-    <p class="gk-hint">黑方先行 · 五子连珠获胜 · 困难模式 AI 搜索更深，落子会稍慢</p>
+    <p class="gk-hint">黑方先行 · 五子连珠获胜 · 在线模式对方落子后棋盘自动更新（约 2 秒内）</p>
   </div>
 </template>
 
 <script setup>
 /** 五子棋（自写，无外部依赖）。
- * AI = 极小化极大 + Alpha-Beta 剪枝，候选点限制在已有棋子半径 2 内，评估用公开的棋型打分表
- * （连五/活四/冲四/活三…，与 lihongxun945/gobang README 教程同一套公开算法，代码为自研实现）。
- * 模式：pvp 双人 / easy 陪练（1 层贪心）/ hard（3 层搜索）。
+ * 本地：双人 / 简单(贪心) / 困难(3 层极小化极大 + Alpha-Beta + 棋型打分表，公开算法自研实现)。
+ * 在线（v2.40.25）：useGameRoom 房间会话 —— 邀请家人 → 接受 → 轮询同步落子；
+ * 服务端权威 = 轮次 / 占位 / 五连胜负，棋盘状态由事件重放。
  */
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { useGameRoom } from '@/composables/useGameRoom'
+import { familyMembers } from '@/api/lifeExtra'
 
 const N = 15
 const HUMAN = 1, AI = 2
 const modes = [
-  { key: 'pvp', label: '双人' },
+  { key: 'pvp', label: '双人（同屏）' },
   { key: 'easy', label: '单机 · 简单' },
   { key: 'hard', label: '单机 · 困难' },
+  { key: 'online', label: '在线 · 邀请对战' },
 ]
 const mode = ref('easy')
 const board = ref(Array(N * N).fill(0))
@@ -55,18 +89,85 @@ const history = ref([])
 const thinking = ref(false)
 let timer = null
 
-const canUndo = computed(() => history.value.length > 0 && !thinking.value)
+/* ---------- 在线对战 ---------- */
+const families = ref([])
+const inviteeId = ref(null)
+const onlineWinner = ref('')   // 'me' | 'opp' | 'draw'
+const myColor = ref(HUMAN)     // 在线座位：房主执黑
+
+function onRemoteMove(action) {
+  const idx = action?.idx
+  if (typeof idx !== 'number' || board.value[idx]) return
+  const color = 3 - turn.value        // 轮到谁，落的就是谁的颜色
+  board.value[idx] = color
+  lastIdx.value = idx
+  history.value.push(idx)
+  const line = checkWinFrom(board.value, idx, color)
+  if (line) { winLine.value = line; winner.value = color; over.value = true }
+  turn.value = color === HUMAN ? AI : HUMAN
+}
+function onRoomStatus(s) {
+  if (s.status === 'finished') {
+    over.value = true
+    const uid = Number(gRoom.myUserId.value)
+    onlineWinner.value = !s.winner_id ? 'draw' : (s.winner_id === uid ? 'me' : 'opp')
+  }
+}
+const gRoom = useGameRoom('gomoku', { onRemoteMove, onStatus: onRoomStatus })
+
+const onlineResultText = computed(() =>
+  onlineWinner.value === 'me' ? '🎉 你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '🤝 平局')
+
+async function loadFamilies() {
+  try {
+    const res = await familyMembers()
+    families.value = (res?.data?.list || []).filter(m => m.user_id && m.user_id !== Number(gRoom.myUserId.value))
+  } catch { families.value = [] }
+}
+async function invite() {
+  if (!inviteeId.value) { ElMessage.warning('先选一位家人'); return }
+  try {
+    await gRoom.createInvite(inviteeId.value)
+    ElMessage.success('邀请已发出，等对方接受')
+  } catch (e) {
+    ElMessage.warning(e?.response?.data?.detail || '邀请失败')
+  }
+}
+async function cancelInvite() {
+  await gRoom.cancel()
+  ElMessage.success('已取消')
+}
+async function reinviteSame() {
+  gRoom.reset()
+  clearLocal()
+  if (inviteeId.value) await gRoom.createInvite(inviteeId.value)
+}
+function resignOnline() { gRoom.resign(); over.value = true; onlineWinner.value = 'opp' }
+async function refreshRoom() { if (gRoom.room.value?.id) await gRoom.join(gRoom.room.value.id, { autoAccept: false }) }
+/** 其他会话/全局弹窗接受后跳转进来：由父组件传 joinRoomId */
+const props = defineProps({ joinRoomId: { type: Number, default: 0 } })
+watch(() => props.joinRoomId, (id) => {
+  if (!id) return
+  mode.value = 'online'
+  clearLocal()
+  gRoom.join(Number(id), { autoAccept: true }).then(() => {
+    myColor.value = gRoom.mySeat.value === 'black' ? HUMAN : AI
+    ElMessage.success('已进入对局')
+  })
+})
+
+const onlinePlaying = computed(() => mode.value === 'online' && gRoom.status.value === 'playing')
+const onlineMyTurn = computed(() => onlinePlaying.value && gRoom.myTurn.value)
+
+/* ---------- 本地对局逻辑（双人 / AI） ---------- */
+const canUndo = computed(() => history.value.length > 0 && !thinking.value && mode.value !== 'online')
 const resultText = computed(() => {
   if (winner.value === HUMAN) return mode.value === 'pvp' ? '🎉 黑方胜' : '🎉 你赢了'
   if (winner.value === AI) return mode.value === 'pvp' ? '🎉 白方胜' : 'AI 赢了，再来'
   return '🤝 平局'
 })
 
-function setMode(k) {
-  mode.value = k
-  restart()
-}
-function restart() {
+function clearLocal() {
   clearTimeout(timer)
   board.value = Array(N * N).fill(0)
   turn.value = HUMAN
@@ -77,8 +178,18 @@ function restart() {
   history.value = []
   thinking.value = false
 }
+function setMode(k) {
+  mode.value = k
+  clearLocal()
+  gRoom.reset()
+  if (k === 'online') { myColor.value = HUMAN; loadFamilies() }
+}
+function restart() {
+  if (mode.value === 'online') { gRoom.reset(); clearLocal(); loadFamilies(); return }
+  clearLocal()
+  if (mode.value !== 'pvp') return
+}
 
-/** 从最后一手出发四方向数连子（O(1)，只查 5 颗） */
 function checkWinFrom(bd, idx, p) {
   const x = idx % N, y = Math.floor(idx / N)
   for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
@@ -95,7 +206,6 @@ function checkWinFrom(bd, idx, p) {
   return null
 }
 
-/* ---------- 评估：某点落 p 后，四方向的 (连子数, 开口数) 打分 ---------- */
 function lineScore(count, open) {
   if (count >= 5) return 1000000
   if (count === 4) return open === 2 ? 50000 : (open === 1 ? 8000 : 0)
@@ -119,8 +229,6 @@ function pointScore(bd, idx, p) {
   }
   return total
 }
-
-/** 候选点：有棋子的半径 2 内的空位（首手走天元） */
 function candidates(bd) {
   const out = []
   if (!bd.some(v => v)) return [Math.floor(N * N / 2)]
@@ -136,16 +244,13 @@ function candidates(bd) {
   }
   return out
 }
-
-/** 极小化极大（AI 最大化）。depth：easy=1 贪心，hard=3 */
 function search(bd, depth, alpha, beta, maximizing) {
-  // 终局：上一层已把「能赢的点」处理掉，这里以评估值收口
   if (depth === 0) return evaluateBoard(bd)
   const p = maximizing ? AI : HUMAN
   const cands = candidates(bd)
     .map(idx => ({ idx, s: pointScore(bd, idx, p) + pointScore(bd, idx, 3 - p) }))
     .sort((a, b) => b.s - a.s)
-    .slice(0, 10)                          // 剪枝：只搜启发式前 10 个候选
+    .slice(0, 10)
   if (!cands.length) return 0
   let best = maximizing ? -Infinity : Infinity
   for (const { idx } of cands) {
@@ -161,26 +266,12 @@ function search(bd, depth, alpha, beta, maximizing) {
   return best
 }
 function evaluateBoard(bd) {
-  // 全盘粗评估：双方候选点最高威胁差（够用即可，搜索已承担主要智力）
   let ai = 0, hu = 0
   for (const idx of candidates(bd)) {
     ai = Math.max(ai, pointScore(bd, idx, AI))
     hu = Math.max(hu, pointScore(bd, idx, HUMAN))
   }
   return ai - hu * 1.1
-}
-
-function play(idx) {
-  if (over.value || thinking.value || board.value[idx]) return
-  if (mode.value !== 'pvp' && turn.value !== HUMAN) return
-  place(idx)
-  if (over.value) return
-  if (mode.value !== 'pvp') {
-    turn.value = AI      // 先翻到 AI 再调用，aiMove 内部落子后会翻回 HUMAN
-    aiMove()
-  } else {
-    turn.value = 3 - turn.value
-  }
 }
 
 function place(idx) {
@@ -192,6 +283,39 @@ function place(idx) {
   else if (board.value.every(v => v)) { over.value = true }
 }
 
+function play(idx) {
+  if (over.value || thinking.value || board.value[idx]) return
+  // ---------- 在线 ----------
+  if (mode.value === 'online') {
+    if (!onlineMyTurn.value) return
+    const color = myColor.value
+    board.value[idx] = color
+    lastIdx.value = idx
+    history.value.push(idx)
+    turn.value = color === HUMAN ? AI : HUMAN
+    const line = checkWinFrom(board.value, idx, color)
+    if (line) { winLine.value = line; over.value = true }
+    gRoom.send({ idx }).catch(() => {
+      ElMessage.warning('落子同步失败，正在恢复局面…')
+      gRoom.join(gRoom.room.value.id).then(() => {
+        clearLocal()
+        for (const m of gRoom.moves.value) onRemoteMove(m.action, m.user_id)
+      })
+    })
+    return
+  }
+  // ---------- 本地 ----------
+  if (mode.value !== 'pvp' && turn.value !== HUMAN) return
+  place(idx)
+  if (over.value) return
+  if (mode.value !== 'pvp') {
+    turn.value = AI
+    aiMove()
+  } else {
+    turn.value = 3 - turn.value
+  }
+}
+
 function aiMove() {
   thinking.value = true
   timer = setTimeout(() => {
@@ -201,7 +325,6 @@ function aiMove() {
       .map(idx => ({ idx, s: pointScore(bd, idx, AI) * 2 + pointScore(bd, idx, HUMAN) }))
       .sort((a, b) => b.s - a.s)
       .slice(0, depth === 1 ? 1 : 10)
-    // 先看有没有「自己能立刻赢」或「对方能立刻赢」的点（必杀/必防）
     let pick = cands.find(c => { bd[c.idx] = AI; const w = checkWinFrom(bd, c.idx, AI); bd[c.idx] = 0; return w })
     if (!pick) pick = cands.find(c => { bd[c.idx] = HUMAN; const w = checkWinFrom(bd, c.idx, HUMAN); bd[c.idx] = 0; return w })
     if (!pick) {
@@ -219,9 +342,8 @@ function aiMove() {
 }
 
 function undo() {
-  if (!history.value.length || thinking.value) return
+  if (!history.value.length || thinking.value || mode.value === 'online') return
   clearTimeout(timer)
-  // 双人撤 1 步；人机把 AI 那步也一起撤（撤回到自己上一手之前）
   const steps = mode.value === 'pvp' ? 1 : (history.value.length >= 2 ? 2 : 1)
   for (let i = 0; i < steps && history.value.length; i++) {
     const idx = history.value.pop()
@@ -232,13 +354,16 @@ function undo() {
   turn.value = HUMAN
 }
 
-onBeforeUnmount(() => clearTimeout(timer))
+onMounted(async () => {
+  if (mode.value === 'online') loadFamilies()
+})
+onBeforeUnmount(() => { clearTimeout(timer); gRoom.stopPoll() })
 </script>
 
 <style scoped>
 .gk-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
 .gk-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; width: 100%; }
-.gk-modes { display: flex; gap: 6px; }
+.gk-modes { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .gk-mode { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--dp-line, rgba(0,0,0,.12));
   background: transparent; color: var(--dp-text2, #45505b); cursor: pointer; font-size: 12.5px; font-family: inherit; }
 .gk-mode.on { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
@@ -246,7 +371,12 @@ onBeforeUnmount(() => clearTimeout(timer))
 .gk-result { font-weight: 700; color: var(--yq-gold, #c7a96b); }
 .gk-btn { padding: 4px 13px; border-radius: 8px; font-size: 12px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b); font-family: inherit; }
+.gk-btn.primary { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; }
 .gk-btn:disabled { opacity: .5; cursor: default; }
+.gk-online { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  padding: 10px 16px; border-radius: 12px; font-size: 13px; color: var(--dp-text2, #45505b); width: 100%; }
+.gk-select { border: 1px solid var(--dp-line, rgba(0,0,0,.14)); border-radius: 8px; padding: 6px 9px;
+  font-size: 13px; background: var(--dp-surface, #fff); color: var(--dp-text, #18202a); font-family: inherit; }
 
 .gk-board {
   display: grid; grid-template-columns: repeat(15, var(--cell, 26px)); grid-auto-rows: var(--cell, 26px);
@@ -255,13 +385,12 @@ onBeforeUnmount(() => clearTimeout(timer))
 }
 .gk-cell { border: none; padding: 0; background: transparent; cursor: pointer; position: relative;
   box-shadow: inset -1px 0 0 rgba(0,0,0,.25), inset 0 -1px 0 rgba(0,0,0,.25); }
-.gk-cell:last-child { box-shadow: none; }
 .gk-stone { position: absolute; inset: 2px; border-radius: 50%; display: block; }
 .gk-stone.black { background: radial-gradient(circle at 34% 30%, #555, #111); }
 .gk-stone.white { background: radial-gradient(circle at 34% 30%, #fff, #cfcabb); }
 .gk-cell.last::after { content: ''; position: absolute; top: 50%; left: 50%; width: 5px; height: 5px;
   margin: -2.5px; border-radius: 50%; background: #e5484d; z-index: 2; }
-.gk-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
+.gk-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); text-align: center; }
 
 @media (max-width: 480px) {
   .gk-board { --cell: 21px; padding: 6px; }

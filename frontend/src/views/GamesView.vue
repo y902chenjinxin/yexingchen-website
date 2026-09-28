@@ -13,7 +13,11 @@
 
       <!-- KeepAlive：切 tab 不丢对局（数独计时/棋局状态都在组件内部） -->
       <KeepAlive>
-        <component :is="current.component" :key="current.key" />
+        <component
+          :is="current.component"
+          :key="current.key + (pendingRoom.id && pendingRoom.game === current.key ? '-' + pendingRoom.id : '')"
+          :join-room-id="pendingRoom.game === current.key ? pendingRoom.id : 0"
+        />
       </KeepAlive>
     </div>
   </IslandInnerBase>
@@ -26,7 +30,8 @@
  * 历史说明：2048 与电子木鱼已按需求下线（不符合棋类定位）；
  * 贪吃蛇/扫雷暂留（夜星未点名删除，后续可再收）。
  */
-import { ref, computed, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 
 const gamelist = [
@@ -39,6 +44,20 @@ const gamelist = [
 ]
 const tab = ref('gomoku')
 const current = computed(() => gamelist.find(g => g.key === tab.value) || gamelist[0])
+
+/* ---------- 从全局邀请弹窗跳转进来（/tool/games?room=ID&game=gomoku） ---------- */
+const route = useRoute()
+const router = useRouter()
+const pendingRoom = ref({ id: 0, game: '' })
+watch(() => route.query.room, (v) => {
+  const id = Number(v) || 0
+  const game = String(route.query.game || '')
+  if (id && gamelist.some(g => g.key === game)) {
+    pendingRoom.value = { id, game }
+    tab.value = game
+    router.replace({ query: {} })   // 消费掉，避免刷新重复进入
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

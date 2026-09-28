@@ -61,6 +61,8 @@ import SiteFooter from '@/components/SiteFooter.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import AiToolsDrawer from '@/components/workbench/AiToolsDrawer.vue'
 import { checkFestivalNotice } from '@/utils/festivalNotice'
+import { gameRoomsApi } from '@/api/gameRooms'
+import { ElMessageBox } from 'element-plus'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 // WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
@@ -195,6 +197,32 @@ onMounted(async () => {
 
   onBeforeUnmount(() => { if (extendTimer) clearInterval(extendTimer) })
   onBeforeUnmount(() => { if (themeTimer) clearInterval(themeTimer) })
+  onBeforeUnmount(() => { if (inviteTimer) clearInterval(inviteTimer) })
+
+  /* ---------- 棋类游戏 · 对局邀请轮询（v2.40.25）----------
+   * 家人建房邀请你后，这里每 25s 查一次；弹窗接受 → 直接跳进对局。
+   * 轮询而非 WebSocket：回合制场景足够，实现与重连都简单。 */
+  const inviteSeen = new Set()
+  async function pollGameInvites() {
+    if (!auth.isLoggedIn) return
+    try {
+      const res = await gameRoomsApi.invites()
+      for (const inv of (res?.data?.list || [])) {
+        if (inviteSeen.has(inv.id)) continue
+        inviteSeen.add(inv.id)
+        ElMessageBox.confirm(
+          `「${inv.owner_name}」邀请你来一局${inv.game_name}`,
+          '对局邀请',
+          { confirmButtonText: '接受，开打！', cancelButtonText: '拒绝', type: 'info' },
+        ).then(async () => {
+          await gameRoomsApi.accept(inv.id)
+          router.push(`/tool/games?room=${inv.id}&game=${inv.game}`)
+        }).catch(() => { gameRoomsApi.decline(inv.id).catch(() => {}) })
+      }
+    } catch { /* 静默 */ }
+  }
+  var inviteTimer = setInterval(pollGameInvites, 25000)
+  if (auth.isLoggedIn) setTimeout(pollGameInvites, 6000)
 })
 </script>
 
