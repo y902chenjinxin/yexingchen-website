@@ -200,8 +200,10 @@ onMounted(async () => {
   onBeforeUnmount(() => { if (inviteTimer) clearInterval(inviteTimer) })
 
   /* ---------- 棋类游戏 · 对局邀请轮询（v2.40.25）----------
-   * 家人建房邀请你后，这里每 25s 查一次；弹窗接受 → 直接跳进对局。
-   * 轮询而非 WebSocket：回合制场景足够，实现与重连都简单。 */
+   * 家人建房邀请你后，这里每 5s 查一次；弹窗接受 → 直接跳进对局。
+   * 轮询而非 WebSocket：回合制场景足够，实现与重连都简单。
+   * v2.40.34：间隔 25s→5s、首探 6s→1.2s —— 夜星反馈「等太久」，现在 5~10s 内到达。 */
+  const INVITE_POLL_MS = 5000
   const inviteSeen = new Set()
   async function pollGameInvites() {
     if (!auth.isLoggedIn) return
@@ -229,8 +231,8 @@ onMounted(async () => {
       }
     } catch { /* 静默 */ }
   }
-  var inviteTimer = setInterval(pollGameInvites, 25000)
-  if (auth.isLoggedIn) setTimeout(pollGameInvites, 6000)
+  var inviteTimer = setInterval(pollGameInvites, INVITE_POLL_MS)
+  if (auth.isLoggedIn) setTimeout(pollGameInvites, 1200)
 })
 </script>
 

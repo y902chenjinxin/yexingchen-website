@@ -1,12 +1,15 @@
 """游戏房间（生活岛·棋类游戏）—— 在线双人对战。
 
-设计（v2.40.25）：
-- **轮询同步，不上 WebSocket**：回合制游戏 1.5s 轮询完全够，家庭规模（2~5 人）下最简单可靠；
-  以后要实时化再换 SSE/WS，接口形状不变。
+设计（v2.40.25，v2.40.34 扩展）：
+- **轮询同步，不上 WebSocket**：回合制游戏 1.6s 轮询完全够，家庭规模（2~5 人）下最简单可靠。
 - 房间即邀请：owner 建房并选一位家人（invitee_id）→ status=waiting；对方接受 → playing。
-- **服务端只做权威的「轮次 + 落子合法性(格子空) + 五子棋胜负」**；黑白棋翻子/飞行棋骰子等
-  复杂规则由客户端计算后上报（家庭场景，荣誉制），服务端记录 moves 事件流以便回放与观战。
-- 座位：owner 执黑先行，invitee 执白。
+- **服务端权威项 = 轮次 / 落子合法性 / 五子棋胜负**；飞行棋骰子等复杂规则由客户端计算后上报
+  （家庭场景，荣誉制），服务端记录 moves 事件流以便回放与观战。
+- 座位：默认 owner 执黑先行，建房时可切换（black_user_id）。
+- v2.40.34：
+  * **悔棋**：`{"undo":1}` 作为事件追加，重放时弹出上一手 → last_seq 单调递增，轮询游标不失效；
+    每方每局 3 次（服务端按事件流统计）。
+  * **对手退出**：`/leave` 主动告知 + `*_seen_at` 心跳兜底（90s），终局原因写 end_reason。
 """
 from __future__ import annotations
 
@@ -29,10 +32,12 @@ from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api/games", tags=["生活岛-棋类游戏"])
 
-GAMES = {"gomoku": "五子棋", "othello": "黑白棋"}
+GAMES = {"gomoku": "五子棋", "othello": "黑白棋", "ludo": "飞行棋"}
 
 # 五子棋棋盘常量（服务端胜负判定用）
 GK_N = 15
+UNDO_QUOTA = 3          # 每方每局悔棋上限
+HEARTBEAT_TIMEOUT = 90  # 对手心跳超时（秒）→ 判负结束
 
 
 class RoomIn(BaseModel):
@@ -45,6 +50,15 @@ class MoveIn(BaseModel):
     action: dict = {}
 
 
+def _moves(db: Session, room_id: int) -> list[GameMove]:
+    return (
+        db.query(GameMove)
+        .filter(GameMove.room_id == room_id)
+        .order_by(GameMove.seq)
+        .all()
+    )
+
+
 def _last_move(db: Session, room_id: int) -> GameMove | None:
     """房间的**全局**最后一手（与 after_seq 无关，轮次判定必须用它）。"""
     return (
@@ -55,26 +69,79 @@ def _last_move(db: Session, room_id: int) -> GameMove | None:
     )
 
 
-def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session) -> dict:
-    """补 my_seat / my_turn（v2.40.28 修）。
+def _black_id(r: GameRoom) -> int:
+    return r.black_user_id or r.owner_id
 
-    坑：原先用**增量** moves 判断轮次 —— 轮询（after_seq=last_seq）时增量常为空数组，
-    于是走到「还没人落子」分支 → my_turn = (uid == 执黑方)。后果：白方加入后每次都判
-    「没轮到我」，棋盘被锁死完全点不动；黑方则恒为「轮到我」。
-    轮次是房间的全局属性，必须查全局最后一手。
+
+def _stone_of(r: GameRoom, uid: int) -> int:
+    """棋子颜色按**座位**（执黑=1 / 执白=2），不是按 owner。"""
+    return 1 if uid == _black_id(r) else 2
+
+
+def _replay_gomoku(db: Session, r: GameRoom):
+    """重放事件流（含悔棋），返回 (board, stack, undo_used)。
+
+    stack 是「有效落子栈」—— 悔棋即弹出栈顶，因此轮次/胜负都必须基于它，
+    不能简单取最后一条 move（那会把被悔掉的一手当成最新手）。
     """
-    black_id = r.black_user_id or r.owner_id
-    out["my_seat"] = "black" if uid == black_id else "white"
+    board = [0] * (GK_N * GK_N)
+    stack: list[tuple[int, int]] = []
+    undo_used: dict[int, int] = {}
+    for mv in _moves(db, r.id):
+        a = json.loads(mv.action or "{}")
+        if a.get("undo"):
+            if stack:
+                idx, _ = stack.pop()
+                board[idx] = 0
+            undo_used[mv.user_id] = undo_used.get(mv.user_id, 0) + 1
+        elif isinstance(a.get("idx"), int) and 0 <= a["idx"] < GK_N * GK_N:
+            idx = a["idx"]
+            board[idx] = _stone_of(r, mv.user_id)
+            stack.append((idx, mv.user_id))
+    return board, stack, undo_used
+
+
+def _ludo_turn_uid(db: Session, r: GameRoom) -> int:
+    """飞行棋轮次：客户端把「掷骰 / 走子 / 跳过」都上报成事件，这里按流推导。
+
+    规则：一次 move/skip 结束后换人；若该次动作带 `extra=true`（掷 6 或吃子奖励）
+    则同一人继续。掷骰本身不换人（同一回合的第二段动作）。
+    """
+    cur = _black_id(r)
+    other = r.invitee_id if cur == r.owner_id else r.owner_id
+    for mv in _moves(db, r.id):
+        a = json.loads(mv.action or "{}")
+        if a.get("t") in ("move", "skip") and not a.get("extra"):
+            cur = other if cur == r.owner_id else r.owner_id
+    return cur
+
+
+def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session, replay=None) -> dict:
+    """补 my_seat / my_turn / undo_left。
+
+    坑（v2.40.28 修）：轮次是房间的**全局**属性，必须查全局状态；
+    用增量 moves 判断会在轮询（after_seq=last_seq）时误判，把棋盘锁死。
+    """
+    out["my_seat"] = "black" if uid == _black_id(r) else "white"
     if r.status != "playing":
         out["my_turn"] = False
-        return out
-    last = _last_move(db, r.id)
-    out["my_turn"] = (uid == black_id) if last is None else (last.user_id != uid)
+    elif r.game == "ludo":
+        out["my_turn"] = uid == _ludo_turn_uid(db, r)
+    elif r.game == "gomoku":
+        _, stack, undo_used = replay if replay is not None else _replay_gomoku(db, r)
+        last_uid = stack[-1][1] if stack else None
+        out["my_turn"] = (uid == _black_id(r)) if last_uid is None else (last_uid != uid)
+        out["undo_left"] = max(0, UNDO_QUOTA - undo_used.get(uid, 0))
+        opp = r.invitee_id if uid == r.owner_id else r.owner_id
+        out["undo_opp_left"] = max(0, UNDO_QUOTA - undo_used.get(opp, 0))
+    else:
+        last = _last_move(db, r.id)
+        out["my_turn"] = (uid == _black_id(r)) if last is None else (last.user_id != uid)
     return out
 
 
 def _room_to_out(r: GameRoom, names: dict[int, str], after_seq: int = 0, db: Session | None = None) -> dict:
-    black_id = r.black_user_id or r.owner_id
+    black_id = _black_id(r)
     out = {
         "id": r.id,
         "game": r.game,
@@ -88,6 +155,7 @@ def _room_to_out(r: GameRoom, names: dict[int, str], after_seq: int = 0, db: Ses
         "invite_code": r.invite_code,
         "status": r.status,
         "winner_id": r.winner_id,
+        "end_reason": r.end_reason or "",
         "created_at": str(r.created_at) if r.created_at else "",
         "updated_at": str(r.updated_at) if r.updated_at else "",
     }
@@ -125,6 +193,10 @@ def _names(db: Session) -> dict[int, str]:
     return name_map(db)
 
 
+def names_display(db: Session, user_id: int) -> str:
+    return name_map(db).get(user_id, "家人")
+
+
 # ---------- 建房 / 邀请 ----------
 
 @router.post("/rooms", response_model=ResponseBase)
@@ -149,6 +221,7 @@ def create_room(
         raise_error(ErrCode.NOT_FOUND, "对方不在你的家庭里")
     if req.first not in ("me", "other"):
         raise_error(ErrCode.INVALID_PARAM, "first 只能是 me / other")
+    now = datetime.now()
     r = GameRoom(
         household_id=HOUSEHOLD_ID,
         game=req.game,
@@ -157,6 +230,7 @@ def create_room(
         status="waiting",
         black_user_id=current_user["user_id"] if req.first == "me" else req.invitee_user_id,
         invite_code=secrets.token_hex(3),   # 6 位短码，防误入不防攻击
+        owner_seen_at=now,
     )
     db.add(r)
     db.commit()
@@ -166,10 +240,6 @@ def create_room(
     out = _room_to_out(r, _names(db), db=db)
     _decorate_seat(r, out, current_user["user_id"], db)
     return ResponseBase(msg="房间已创建，等对方接受", data=out)
-
-
-def names_display(db: Session, user_id: int) -> str:
-    return name_map(db).get(user_id, "家人")
 
 
 @router.get("/invites", response_model=ResponseBase)
@@ -227,6 +297,7 @@ def accept_room(
     if r.status != "waiting":
         raise_error(ErrCode.INVALID_PARAM, "邀请已失效")
     r.status = "playing"
+    r.invitee_seen_at = datetime.now()
     r.updated_at = datetime.now()
     db.commit()
     db.refresh(r)
@@ -265,9 +336,40 @@ def resign_room(
         raise_error(ErrCode.INVALID_PARAM, "对局不在进行中")
     r.status = "finished"
     r.winner_id = r.invitee_id if current_user["user_id"] == r.owner_id else r.owner_id
+    r.end_reason = "resign"
     r.updated_at = datetime.now()
     db.commit()
     return ResponseBase(msg="已认输", data=_room_to_out(r, _names(db)))
+
+
+@router.post("/rooms/{room_id}/leave", response_model=ResponseBase)
+def leave_room(
+    room_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """主动离开对局：进行中 → 判负结束（对方胜）；等待中 → 取消/拒绝邀请。
+
+    客户端在组件卸载与 pagehide 时调用（后者用 sendBeacon），
+    这样「对手退出后我方一起退出」不必等心跳超时。
+    """
+    r = _get_room(db, room_id)
+    uid = current_user["user_id"]
+    _ensure_player(r, uid)
+    if r.status == "waiting":
+        r.status = "declined" if uid == r.invitee_id else "abandoned"
+        r.updated_at = datetime.now()
+        db.commit()
+        return ResponseBase(msg="已取消邀请", data=_room_to_out(r, _names(db)))
+    if r.status == "playing":
+        other = r.invitee_id if uid == r.owner_id else r.owner_id
+        r.status = "finished"
+        r.winner_id = other or 0
+        r.end_reason = "leave"
+        r.updated_at = datetime.now()
+        db.commit()
+        return ResponseBase(msg="已离开对局", data=_room_to_out(r, _names(db)))
+    return ResponseBase(msg="房间已结束", data=_room_to_out(r, _names(db)))
 
 
 # ---------- 对局状态 / 落子 ----------
@@ -280,10 +382,26 @@ def room_state(
     current_user: dict = Depends(get_current_user),
 ):
     r = _get_room(db, room_id)
-    _ensure_player(r, current_user["user_id"])
+    uid = current_user["user_id"]
+    _ensure_player(r, uid)
+    now = datetime.now()
+    # 心跳：每次拉状态刷新自己那一侧的时间戳
+    if uid == r.owner_id:
+        r.owner_seen_at = now
+    else:
+        r.invitee_seen_at = now
+    # 对手心跳超时 → 判负结束（后台标签页被节流约 1 次/分，90s 阈值不会误杀）
+    if r.status == "playing":
+        opp_seen = r.invitee_seen_at if uid == r.owner_id else r.owner_seen_at
+        if opp_seen and (now - opp_seen).total_seconds() > HEARTBEAT_TIMEOUT:
+            r.status = "finished"
+            r.winner_id = uid
+            r.end_reason = "timeout"
+    db.commit()
     names = _names(db)
+    replay = _replay_gomoku(db, r) if r.game == "gomoku" else None
     out = _room_to_out(r, names, after_seq=after_seq, db=db)
-    _decorate_seat(r, out, current_user["user_id"], db)
+    _decorate_seat(r, out, uid, db, replay=replay)
     return ResponseBase(data=out)
 
 
@@ -294,59 +412,45 @@ def room_move(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """落子/动作。服务端校验：房间进行中、执黑方先走、轮到我、格子未被占；五子棋额外做服务端胜负判定。"""
+    """落子/动作。五子棋做严格校验（轮次 + 占位 + 胜负）；飞行棋客户端权威（荣誉制）。"""
     r = _get_room(db, room_id)
     uid = current_user["user_id"]
     _ensure_player(r, uid)
     if r.status != "playing":
         raise_error(ErrCode.INVALID_PARAM, "对局不在进行中")
-    last = (
-        db.query(GameMove)
-        .filter(GameMove.room_id == r.id)
-        .order_by(GameMove.seq.desc())
-        .first()
-    )
-    black_id = r.black_user_id or r.owner_id
-    if last:
-        if last.user_id == uid:
-            raise_error(ErrCode.INVALID_PARAM, "还没轮到你")
-    elif uid != black_id:
-        raise_error(ErrCode.INVALID_PARAM, "等执黑方先走")
+    last = _last_move(db, r.id)
+    black_id = _black_id(r)
     action = req.action or {}
-    game = r.game
+    winner_id = None
 
-    if game == "gomoku":
+    if r.game == "gomoku":
+        board, stack, _ = _replay_gomoku(db, r)
+        last_uid = stack[-1][1] if stack else None
+        if last_uid is not None and last_uid == uid:
+            raise_error(ErrCode.INVALID_PARAM, "还没轮到你")
+        if last_uid is None and uid != black_id:
+            raise_error(ErrCode.INVALID_PARAM, "等执黑方先走")
         idx = action.get("idx")
         if not isinstance(idx, int) or not (0 <= idx < GK_N * GK_N):
             raise_error(ErrCode.INVALID_PARAM, "落子位置不合法")
-        # 重放棋盘校验格子未被占（家庭规模，重放成本可忽略）
-        bd = [0] * (GK_N * GK_N)
-        seq = 0
-        for mv in db.query(GameMove).filter(GameMove.room_id == r.id).order_by(GameMove.seq).all():
-            a = json.loads(mv.action or "{}")
-            if isinstance(a.get("idx"), int):
-                bd[a["idx"]] = 1 if mv.user_id == r.owner_id else 2
-            seq = mv.seq
-        if bd[idx]:
+        if board[idx]:
             raise_error(ErrCode.INVALID_PARAM, "这个位置已经有子了")
-        me_stone = 1 if uid == r.owner_id else 2
-        bd[idx] = me_stone
+        me_stone = _stone_of(r, uid)
+        board[idx] = me_stone
         x, y = idx % GK_N, idx // GK_N
-        winner_id = None
         for dx, dy in ((1, 0), (0, 1), (1, 1), (1, -1)):
             cnt = 1
             for sign in (1, -1):
                 nx, ny = x + dx * sign, y + dy * sign
-                while 0 <= nx < GK_N and 0 <= ny < GK_N and bd[ny * GK_N + nx] == me_stone:
+                while 0 <= nx < GK_N and 0 <= ny < GK_N and board[ny * GK_N + nx] == me_stone:
                     cnt += 1
                     nx += dx * sign
                     ny += dy * sign
             if cnt >= 5:
                 winner_id = uid
                 break
-    else:
-        seq = last.seq if last else 0
-        winner_id = None
+    # 飞行棋等：客户端权威，服务端只记录（不校验轮次 —— 一回合含「掷骰 + 走子」两段，
+    # 且掷 6 / 吃子会带来连续行动，严格交替会把合法操作全部拒掉）
 
     mv = GameMove(
         household_id=HOUSEHOLD_ID,
@@ -359,10 +463,62 @@ def room_move(
     if winner_id:
         r.status = "finished"
         r.winner_id = winner_id
+        r.end_reason = "win"
     r.updated_at = datetime.now()
     db.commit()
     db.refresh(r)
     return ResponseBase(msg="已记录", data={"seq": mv.seq, "winner_id": r.winner_id, "status": r.status})
+
+
+@router.post("/rooms/{room_id}/undo", response_model=ResponseBase)
+def room_undo(
+    room_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """悔棋（仅五子棋）：追加 `{"undo":1}` 事件，重放时弹出上一手。
+
+    每方每局 3 次。只能悔**自己刚下的那一手**（对方已应招则不能悔）。
+    若悔掉的正是制胜一手，房间从 finished 回到 playing。
+    """
+    r = _get_room(db, room_id)
+    uid = current_user["user_id"]
+    _ensure_player(r, uid)
+    if r.game != "gomoku":
+        raise_error(ErrCode.INVALID_PARAM, "该游戏不支持悔棋")
+    if r.status == "finished" and r.end_reason != "win":
+        raise_error(ErrCode.INVALID_PARAM, "对局已结束，无法悔棋")
+    if r.status not in ("playing", "finished"):
+        raise_error(ErrCode.INVALID_PARAM, "对局不在进行中")
+    _, stack, undo_used = _replay_gomoku(db, r)
+    if not stack:
+        raise_error(ErrCode.INVALID_PARAM, "还没有可悔的棋")
+    _, last_uid = stack[-1]
+    if last_uid != uid:
+        raise_error(ErrCode.INVALID_PARAM, "只能悔自己刚下的那一手")
+    if undo_used.get(uid, 0) >= UNDO_QUOTA:
+        raise_error(ErrCode.INVALID_PARAM, f"本局悔棋次数已用完（每方 {UNDO_QUOTA} 次）")
+
+    last = _last_move(db, r.id)
+    mv = GameMove(
+        household_id=HOUSEHOLD_ID,
+        room_id=r.id,
+        seq=(last.seq if last else 0) + 1,
+        user_id=uid,
+        action=json.dumps({"undo": 1}),
+    )
+    db.add(mv)
+    if r.status == "finished":
+        r.status = "playing"
+        r.winner_id = None
+        r.end_reason = None
+    r.updated_at = datetime.now()
+    db.commit()
+    db.refresh(r)
+    log_action(db, uid, "update", "game_room", r.id, detail="悔棋一手")
+    out = _room_to_out(r, _names(db), db=db)
+    _decorate_seat(r, out, uid, db)
+    return ResponseBase(msg="已悔棋", data=out)
 
 
 @router.post("/rooms/{room_id}/finish", response_model=ResponseBase)
@@ -380,6 +536,7 @@ def room_finish(
     winner = (req.action or {}).get("winner_id")
     r.status = "finished"
     r.winner_id = int(winner) if winner else 0   # 0 = 平局
+    r.end_reason = "draw" if not winner else "win"
     r.updated_at = datetime.now()
     db.commit()
     return ResponseBase(msg="对局已结束", data=_room_to_out(r, _names(db)))

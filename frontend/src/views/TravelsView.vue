@@ -72,7 +72,7 @@
       <!-- 内联详情（无弹窗） -->
       <transition name="tv-panel">
         <section v-if="detail && !editorOpen" class="tv-detail-wrap">
-          <TravelDetail :t="detail" :can-edit="canEdit && detail.user_id === meId" @close="detail=null" @edit="openEdit" @remove="onRemove" />
+          <TravelDetail :t="detail" :can-edit="canEdit" @close="detail=null" @edit="openEdit" @remove="onRemove" />
         </section>
       </transition>
     </div>
@@ -105,7 +105,6 @@ const editorOpen = ref(false)
 const editing = ref(null)
 const saving = ref(false)
 
-const meId = computed(() => auth.user?.id)
 
 const mapPoints = computed(() => {
   const pts = []

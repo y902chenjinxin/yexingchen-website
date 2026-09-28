@@ -118,6 +118,9 @@ def _travel_brief(t: Travel, cities: List[TravelCity]) -> dict:
     tags = [x for x in (t.tags or "").split(",") if x]
     return {
         "id": t.id,
+        # v2.40.35：补上创建者。此前接口不返回 user_id，前端拿到的永远是 undefined，
+        # 于是「本人才能编辑」的判定恒为 false —— 上海那条（丽莎创建的）就一直没法编辑/删除
+        "user_id": t.user_id,
         "title": t.title,
         "summary": t.summary,
         "cover": t.cover,
@@ -250,9 +253,13 @@ def _add_cities(db: Session, travel_id: int, cities: List[CityIn]) -> None:
 
 
 def _owns(t: Travel, user: dict, db: Session) -> bool:
-    if user and user["user_id"] == t.user_id:
-        return True
-    return False
+    """是否可以编辑/删除这条行程。
+
+    足迹是**家庭共享**模块（与遗失物件/衣柜/三餐同一约定）：家里任何登录成员都能改。
+    历史数据里有 user_id 为 NULL 的行（早期种子数据），按「只有创建者能改」判定会让它们
+    永远无法编辑、也无法删除 —— 就是这个规定把「上海三日游」锁死了（V2435-001）。
+    """
+    return bool(user and user.get("user_id"))
 
 
 @router.put("/{travel_id}")

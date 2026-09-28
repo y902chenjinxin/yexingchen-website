@@ -1,5 +1,5 @@
 <template>
-  <div class="gk-wrap">
+  <div ref="wrapEl" class="gk-wrap">
     <!-- ===== 玩家条：头像对峙 + 回合指示（质感壳） ===== -->
     <div class="gk-shell">
       <div class="gk-players">
@@ -33,14 +33,15 @@
         >{{ m.label }}</button>
       </div>
 
-      <!-- 本地对局操作：重开 / 悔棋 -->
+      <!-- 本地对局操作：重开 / 悔棋（含配额） -->
       <div v-if="mode !== 'online'" class="gk-status">
         <span v-if="over" class="gk-result">{{ resultText }}</span>
         <button class="gk-btn" @click="restart">重开</button>
-        <button class="gk-btn" :disabled="!canUndo" @click="undo">悔棋</button>
+        <button class="gk-btn" :disabled="!canUndoLocal" @click="undoLocal">悔棋</button>
+        <span class="gk-quota">{{ localQuotaText }}</span>
       </div>
 
-      <!-- 房间状态横幅（waiting / playing 结果提示） -->
+      <!-- 房间状态横幅（waiting / playing / finished） -->
       <div v-if="mode === 'online' && gRoom.room.value" class="gk-banner" :class="'st-' + gRoom.status.value">
         <template v-if="gRoom.status.value === 'waiting'">
           <span class="gk-pulse"></span> 邀请已发给 {{ gRoom.opponentName.value }}，等待接受…
@@ -50,10 +51,14 @@
         </template>
         <template v-else-if="gRoom.status.value === 'playing'">
           <span>{{ gRoom.myTurn.value ? '轮到你落子' : '等对方落子…' }}</span>
+          <button class="gk-btn" :disabled="!canUndoOnline" @click="undoOnline">
+            悔棋（你 {{ gRoom.undoLeft.value }} · 对方 {{ gRoom.undoOppLeft.value }}）
+          </button>
           <button class="gk-btn" @click="askExit">退出对局（认输）</button>
         </template>
         <template v-else-if="gRoom.status.value === 'finished'">
           <span class="gk-result">{{ onlineResultText }}</span>
+          <button v-if="canUndoOnline" class="gk-btn" @click="undoOnline">悔棋翻盘（余 {{ gRoom.undoLeft.value }}）</button>
           <button class="gk-btn primary" @click="reinviteSame">再来一局</button>
           <button class="gk-btn" @click="exitOnline">退出</button>
         </template>
@@ -82,12 +87,17 @@
       <p v-if="!families.length" class="gk-online-desc">家庭里还没有其他账号可以邀请。</p>
     </div>
 
-    <div ref="wrapEl" class="gk-boardwrap">
+    <!-- 锁定原因：放在棋盘**外面**，不遮挡棋局（此前是覆盖在棋盘上的遮罩气泡） -->
+    <p v-if="lockHint" class="gk-locknote"><span class="gk-dot"></span>{{ lockHint }}</p>
+
+    <div class="gk-boardwrap">
       <div
         class="gk-board"
         :class="{ locked: boardLocked, 'has-winner': winLine.length }"
-        :style="{ gridTemplateColumns: `repeat(${N}, ${cellPx}px)`, gridAutoRows: cellPx + 'px' }"
+        :style="{ '--cell': cellPx + 'px', '--n': N, gridTemplateColumns: `repeat(${N}, ${cellPx}px)`, gridAutoRows: cellPx + 'px' }"
       >
+        <!-- 网格线画在**格子中心** → 棋子圆心正好落在交叉点上 -->
+        <div class="gk-grid" aria-hidden="true"></div>
         <button
           v-for="idx in N * N"
           :key="idx"
@@ -99,14 +109,12 @@
           <i v-if="board[domToInner(idx - 1)]" class="gk-stone" :class="board[domToInner(idx - 1)] === HUMAN ? 'black' : 'white'"></i>
         </button>
       </div>
-      <!-- 锁定时给出可见原因（此前是静默 pointer-events:none，点了毫无反馈） -->
-      <div v-if="lockHint" class="gk-lockmask"><span>{{ lockHint }}</span></div>
     </div>
     <p class="gk-hint">
-      <template v-if="mode === 'online'">在线模式 · 对方落子约 2 秒内自动出现</template>
+      <template v-if="mode === 'online'">在线模式 · 对方落子约 2 秒内自动出现 · 每方每局 3 次悔棋</template>
       <template v-else>
         黑方先行 · 五子连珠获胜 · 困难模式 AI 搜索更深
-        <span class="gk-expandnote">· 棋盘 {{ N }}×{{ N }}</span>
+        <span class="gk-expandnote">· 棋盘 {{ N }}×{{ N }} · 每方每局 3 次悔棋</span>
       </template>
     </p>
   </div>
@@ -115,11 +123,15 @@
 <script setup>
 /** 五子棋（自写，无外部依赖）。
  * 本地：双人 / 简单(贪心) / 困难(3 层极小化极大 + Alpha-Beta + 棋型打分表，公开算法自研实现)。
- * 在线（v2.40.25→v2.40.26 重构）：useGameRoom 房间会话；
- *   - 房间激活（waiting/playing）时**锁定模式与页面**（父组件收 room-lock 事件禁用游戏 tab），
- *     只有「退出对局」能解锁 —— 修复「第二个人还能自己直接操作/随意切换」的问题
- *   - 邀请下拉修复：显示家人名字（此前误读字段名只显示了头像 emoji）
- *   - 恢复：进页面自动接回自己进行中的房间（刷新/换设备都不丢）
+ * 在线：useGameRoom 房间会话（轮询同步）。
+ *
+ * v2.40.34 修复（夜星反馈）：
+ *  1. **棋子落在交叉点上**：格子按钮不再画边框，另加 .gk-grid 覆盖层把线画在格心；
+ *     棋盘内边距 = 半个格宽，边线上的棋子不被裁。
+ *  2. **提示语不盖棋盘**：删掉 .gk-lockmask 遮罩，锁定原因移到棋盘上方独立一行。
+ *  3. **悔棋配额**：本地每方每局 3 次（按钮显示余量）；在线走服务端 /undo（同为 3 次）。
+ *  4. **夜间主题提亮**：深木纹棋盘 + 深色玻璃壳，文字对比度拉到 AA。
+ *  5. **对手退出自动结束**：服务端 end_reason=leave/timeout 且我方获胜 → 提示并自动退出。
  */
 import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -127,7 +139,7 @@ import { useGameRoom } from '@/composables/useGameRoom'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 
-const emit = defineEmits(['room-lock', 'room-unlock'])
+const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
 const props = defineProps({
   initialMode: { type: String, default: '' },   // 模式由页面「第一步」选定（v2.40.29）
   resume: { type: Boolean, default: false },    // 从本地存档续局
@@ -144,6 +156,7 @@ const props = defineProps({
 const FULL = 27
 const BASE_MARGIN = 6                       // (27 - 6*2) = 15 起始边长
 const SRV_N = 15                            // 服务端棋盘边长
+const UNDO_QUOTA = 3                        // 每方每局悔棋上限
 /** 开局尺寸 → 外边距（27-15=12→6，27-19=8→4，27-23=4→2；对局中**不再变化**） */
 const defaultMargin = computed(() => {
   const size = Number(props.boardSize) || 15
@@ -168,6 +181,8 @@ const winLine = ref([])
 const lastIdx = ref(-1)
 const history = ref([])
 const thinking = ref(false)
+/** 本地模式悔棋余量（按颜色记，双方各 3 次） */
+const undoLeft = ref({ black: UNDO_QUOTA, white: UNDO_QUOTA })
 let timer = null
 
 /* ---------- 坐标换算 ---------- */
@@ -198,14 +213,17 @@ function innerToSrv(i) {
 /** 胜利连子对应的 DOM 格（高亮用），一次算好 */
 const winDomSet = computed(() => new Set(winLine.value.map(innerToDom).filter(i => i >= 0)))
 
-/* ---------- 棋盘自适应：格宽 = min(26, (容器宽 - 内边距) / 边长) ---------- */
+/* ---------- 棋盘自适应 ----------
+ * 棋盘总宽 = (N + 1) * 格宽 + 16（两侧各 8px 木框 + 半个格宽的内缩），
+ * 所以 格宽 = (容器宽 - 16) / (N + 1)。量的是 .gk-wrap（width:100%），
+ * 不能量 .gk-boardwrap —— 它是 inline-block，宽度由棋盘自己决定，量了会自我循环。 */
 const wrapEl = ref(null)
 const cellPx = ref(26)
 let resizeHandler = null
 function measureCell() {
   const w = wrapEl.value?.clientWidth || 0
-  if (!w) { cellPx.value = N.value > 19 ? 20 : 26; return }
-  cellPx.value = Math.max(13, Math.min(26, Math.floor((w - 20) / N.value)))
+  if (!w) { cellPx.value = N.value > 19 ? 18 : 24; return }
+  cellPx.value = Math.max(11, Math.min(26, Math.floor((w - 16) / (N.value + 1))))
 }
 
 /* ---------- 在线对战 ---------- */
@@ -214,8 +232,18 @@ const inviteeId = ref(null)
 const firstPick = ref('me')     // 先手：'me'=我执黑 / 'other'=对方执黑（v2.40.27）
 const onlineWinner = ref('')
 const lastInviteeName = ref('')
+let exited = false               // 已自动退出，避免重复触发
 
 function onRemoteMove(action, userId) {
+  // 悔棋事件：弹出最后一手（双方事件流一致，重放结果一致）
+  if (action?.undo) {
+    const idx = history.value.pop()
+    if (typeof idx === 'number') board.value[idx] = 0
+    lastIdx.value = history.value[history.value.length - 1] ?? -1
+    winLine.value = []; winner.value = 0; over.value = false
+    turn.value = myColor.value === HUMAN ? AI : HUMAN   // 悔棋方重新行棋
+    return
+  }
   const srv = action?.idx
   if (typeof srv !== 'number' || srv < 0 || srv >= SRV_N * SRV_N) return
   const idx = srvToInner(srv)          // 服务端坐标 → 内部坐标（在线不扩展，偏移固定）
@@ -236,7 +264,20 @@ function onRoomStatus(s) {
     over.value = true
     const uid = Number(gRoom.myUserId.value)
     onlineWinner.value = !s.winner_id ? 'draw' : (s.winner_id === uid ? 'me' : 'opp')
+    const reason = s.end_reason || gRoom.room.value?.end_reason || ''
+    // 对手离开/掉线 → 我方**一起退出**，不傻等（夜星反馈 #5）
+    if (s.winner_id === uid && (reason === 'leave' || reason === 'timeout')) {
+      autoExit(reason)
+    }
   }
+}
+function autoExit(reason) {
+  if (exited) return
+  exited = true
+  ElMessage.info(reason === 'timeout' ? '对方已掉线，对局自动结束' : '对方已离开，对局结束')
+  gRoom.reset()
+  emit('room-unlock')
+  emit('exit')
 }
 const gRoom = useGameRoom('gomoku', { onRemoteMove, onStatus: onRoomStatus })
 
@@ -246,7 +287,7 @@ const roomLocked = computed(() => roomActive.value)
 const onlinePlaying = computed(() => mode.value === 'online' && gRoom.status.value === 'playing')
 const onlineMyTurn = computed(() => onlinePlaying.value && gRoom.myTurn.value)
 const boardLocked = computed(() => mode.value === 'online' && !onlineMyTurn.value)
-/** 棋盘为什么点不动 —— 必须显式告诉用户，静默锁死会让人以为「坏了」 */
+/** 棋盘为什么点不动 —— 必须显式告诉用户（显示在棋盘**外面**，不遮棋局） */
 const lockHint = computed(() => {
   if (mode.value !== 'online') return ''
   if (!gRoom.room.value) return '先选一位家人发出邀请，再开始对局'
@@ -271,6 +312,24 @@ const modeLabel = computed(() => (mode.value === 'online' ? '在线' : '本地')
 const onlineResultText = computed(() =>
   onlineWinner.value === 'me' ? '🎉 你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '🤝 平局')
 
+/* ---------- 悔棋 ---------- */
+/** 最后一手是谁下的（本地模式扣谁的配额） */
+const lastMoverColor = computed(() => {
+  const i = history.value[history.value.length - 1]
+  return typeof i === 'number' ? board.value[i] : 0
+})
+const localQuotaLeft = computed(() =>
+  mode.value === 'pvp' ? (lastMoverColor.value === AI ? undoLeft.value.white : undoLeft.value.black)
+    : undoLeft.value.black)
+const canUndoLocal = computed(() =>
+  mode.value !== 'online' && !thinking.value && history.value.length > 0 && localQuotaLeft.value > 0)
+const localQuotaText = computed(() => {
+  const q = undoLeft.value
+  return mode.value === 'pvp' ? `悔棋余量 黑 ${q.black} · 白 ${q.white}` : `悔棋余量 ${q.black} 次`
+})
+/** 在线：服务端下发的 can_undo 才是权威（只有「最后一手是我下的」才可悔） */
+const canUndoOnline = computed(() => mode.value === 'online' && !!gRoom.room.value?.can_undo)
+
 watch(roomActive, (v) => { emit(v ? 'room-lock' : 'room-unlock') })
 
 async function loadFamilies() {
@@ -287,7 +346,7 @@ async function invite() {
     await gRoom.createInvite(inviteeId.value, firstPick.value)
     ElMessage.success(`邀请已发出（${firstPick.value === 'me' ? '你' : lastInviteeName.value || '对方'}执黑先行），等对方接受`)
   } catch (e) {
-    ElMessage.warning(e?.response?.data?.detail || '邀请失败')
+    ElMessage.warning(e?.response?.data?.detail || e?.msg || '邀请失败')
   }
 }
 async function cancelInvite() {
@@ -307,7 +366,7 @@ async function reinviteSame() {
       await gRoom.createInvite(uid, firstPick.value)
       ElMessage.success(`新对局已发出（${firstPick.value === 'me' ? '你' : '对方'}执黑先行）`)
     } catch (e) {
-      ElMessage.warning(e?.response?.data?.detail || '邀请失败')
+      ElMessage.warning(e?.response?.data?.detail || e?.msg || '邀请失败')
     }
   }
 }
@@ -357,6 +416,7 @@ function clearLocal() {
   history.value = []
   thinking.value = false
   onlineWinner.value = ''
+  undoLeft.value = { black: UNDO_QUOTA, white: UNDO_QUOTA }
 }
 /* ---------- 本地存档：退出/返回首页后可从「第一步」续上（在线局不存） ---------- */
 const SAVE_KEY = 'gomoku'
@@ -376,6 +436,7 @@ function saveLocal() {
       winLine: winLine.value,
       winner: winner.value,
       over: over.value,
+      undoLeft: undoLeft.value,
     })
   }, 400)
 }
@@ -393,6 +454,9 @@ function restoreLocal() {
   winLine.value = s.winLine || []
   winner.value = s.winner || 0
   over.value = !!s.over
+  undoLeft.value = s.undoLeft && typeof s.undoLeft.black === 'number'
+    ? { black: s.undoLeft.black, white: s.undoLeft.white ?? UNDO_QUOTA }
+    : { black: UNDO_QUOTA, white: UNDO_QUOTA }
   return true
 }
 watch([board, over], saveLocal, { deep: true })
@@ -573,17 +637,55 @@ function aiMove() {
   }, 120)
 }
 
-function undo() {
-  if (!history.value.length || thinking.value || mode.value === 'online') return
+/** 本地悔棋：双人撤 1 手（扣该手落子方的配额），单机撤 2 手（扣自己的配额） */
+function undoLocal() {
+  if (mode.value === 'online') { undoOnline(); return }
+  if (thinking.value || !history.value.length) return
+  if (localQuotaLeft.value <= 0) { ElMessage.warning(`本局悔棋次数已用完（每方 ${UNDO_QUOTA} 次）`); return }
   clearTimeout(timer)
-  const steps = mode.value === 'pvp' ? 1 : (history.value.length >= 2 ? 2 : 1)
-  for (let i = 0; i < steps && history.value.length; i++) {
+  if (mode.value === 'pvp') {
     const idx = history.value.pop()
+    const color = board.value[idx]
     board.value[idx] = 0
+    if (color === AI) undoLeft.value.white = Math.max(0, undoLeft.value.white - 1)
+    else undoLeft.value.black = Math.max(0, undoLeft.value.black - 1)
+    turn.value = color || HUMAN          // 撤掉谁的手，就还谁走
+  } else {
+    const steps = history.value.length >= 2 ? 2 : 1
+    for (let i = 0; i < steps && history.value.length; i++) {
+      const idx = history.value.pop()
+      board.value[idx] = 0
+    }
+    undoLeft.value.black = Math.max(0, undoLeft.value.black - 1)
+    turn.value = HUMAN
   }
   over.value = false; winner.value = 0; winLine.value = []
   lastIdx.value = history.value[history.value.length - 1] ?? -1
-  turn.value = HUMAN
+}
+
+/** 在线悔棋：服务端校验（只能悔自己刚下的那手 + 配额），回吐全量事件后本地重建 */
+async function undoOnline() {
+  if (!canUndoOnline.value) return
+  try {
+    const d = await gRoom.undo()
+    rebuildFromMoves(d.moves || [])
+    if (gRoom.status.value === 'finished') {
+      over.value = true
+      onlineWinner.value = !d.winner_id ? 'draw' : (d.winner_id === Number(gRoom.myUserId.value) ? 'me' : 'opp')
+    }
+  } catch (e) {
+    ElMessage.warning(e?.response?.data?.msg || e?.msg || '悔棋失败')
+  }
+}
+/** 用事件流重建棋盘（悔棋 / 落子失败恢复都用它） */
+function rebuildFromMoves(list) {
+  board.value = Array(FULL * FULL).fill(0)
+  history.value = []
+  lastIdx.value = -1
+  winLine.value = []
+  winner.value = 0
+  over.value = false
+  for (const m of list) onRemoteMove(m.action, m.user_id)
 }
 
 onMounted(async () => {
@@ -606,8 +708,11 @@ onMounted(async () => {
   if (mode.value === 'online') await resumeMine()
 })
 onBeforeUnmount(() => {
-  clearTimeout(timer); clearTimeout(saveTimer); gRoom.stopPoll()
+  clearTimeout(timer); clearTimeout(saveTimer)
   if (resizeHandler) window.removeEventListener('resize', resizeHandler)
+  // 离开页面 = 离开对局：对方立刻看到终局（不用等 90s 心跳超时）
+  gRoom.leaveOnUnload()
+  gRoom.stopPoll()
 })
 </script>
 
@@ -655,7 +760,8 @@ onBeforeUnmount(() => {
 @keyframes gkpulse { 50% { opacity: .3 } }
 .gk-result { font-weight: 700; color: var(--yq-gold, #c7a96b); }
 
-.gk-status { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--dp-text2, #45505b); }
+.gk-status { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--dp-text2, #45505b); flex-wrap: wrap; justify-content: center; }
+.gk-quota { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .gk-btn { padding: 5px 14px; border-radius: 9px; font-size: 12px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b); font-family: inherit; }
 .gk-btn.primary { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
@@ -670,45 +776,104 @@ onBeforeUnmount(() => {
 .gk-online-title { font-size: 15px; font-weight: 700; color: var(--dp-text, #18202a); }
 .gk-online-desc { margin: 6px 0 10px; font-size: 12px; color: var(--dp-text3, #8a8f98); line-height: 1.7; }
 .gk-online-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-/* 先手选择（v2.40.27） */
 .gk-first-row { display: flex; align-items: center; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
 .gk-first-label { font-size: 12.5px; color: var(--dp-text3, #8a8f98); }
 .gk-firstnote { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .gk-select { flex: 1; min-width: 160px; border: 1px solid var(--dp-line, rgba(0,0,0,.14)); border-radius: 10px;
   padding: 9px 11px; font-size: 13.5px; background: var(--dp-surface, #fff); color: var(--dp-text, #18202a); font-family: inherit; }
 
-/* 棋盘：锁定时压暗禁点 */
-.gk-boardwrap { position: relative; display: inline-block; }
-.gk-lockmask {
-  position: absolute; inset: 0; border-radius: 14px; display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,.5); pointer-events: none; padding: 12px; text-align: center;
-}
-.gk-lockmask span {
+/* 锁定提示：棋盘外的独立一行（不遮挡棋局） */
+.gk-locknote {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0;
   font-size: 12.5px; font-weight: 600; color: var(--dp-text2, #45505b);
-  background: rgba(255,255,255,.94); padding: 8px 16px; border-radius: 999px;
-  box-shadow: 0 4px 14px rgba(20,30,40,.14);
+  background: rgba(199,169,107,.14); padding: 7px 16px; border-radius: 999px;
 }
+.gk-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yq-gold, #c7a96b); animation: gkpulse 1.2s infinite; }
+
+/* ===== 棋盘：网格线画在格心 → 棋子落在交叉点上 ===== */
+.gk-boardwrap { position: relative; display: inline-block; }
 .gk-board {
-  display: grid; grid-template-columns: repeat(15, var(--cell, 26px)); grid-auto-rows: var(--cell, 26px);
-  background: linear-gradient(135deg, #e8d9b8, #dcc79a); padding: 8px; border-radius: 14px;
-  touch-action: manipulation; user-select: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15), 0 10px 30px rgba(20,30,40,.12);
+  position: relative;
+  display: grid;
+  /* 内边距 = 半个格宽 + 8px 木框；总宽 = (N+1)*格宽 + 16px（measureCell 按此反算） */
+  padding: calc(var(--cell, 26px) / 2 + 8px);
+  background: linear-gradient(135deg, #e8d9b8, #dcc79a);
+  border-radius: 14px;
+  touch-action: manipulation; user-select: none;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15), 0 10px 30px rgba(20,30,40,.12);
   transition: filter .2s;
+  --gk-line: rgba(40, 30, 10, .5);
 }
 .gk-board.locked { filter: saturate(.75) brightness(.94); pointer-events: none; }
-.gk-cell { border: none; padding: 0; background: transparent; cursor: pointer; position: relative;
-  box-shadow: inset -1px 0 0 rgba(0,0,0,.25), inset 0 -1px 0 rgba(0,0,0,.25); }
-.gk-stone { position: absolute; inset: 2px; border-radius: 50%; display: block; }
+/* 网格线覆盖层：从第一个交叉点画到最后一个，间距 = 格宽 */
+.gk-grid {
+  position: absolute;
+  left: calc(var(--cell, 26px) + 8px);
+  top: calc(var(--cell, 26px) + 8px);
+  width: calc(var(--cell, 26px) * (var(--n, 15) - 1) + 1px);
+  height: calc(var(--cell, 26px) * (var(--n, 15) - 1) + 1px);
+  background-image:
+    repeating-linear-gradient(to right, var(--gk-line) 0 1px, transparent 1px var(--cell, 26px)),
+    repeating-linear-gradient(to bottom, var(--gk-line) 0 1px, transparent 1px var(--cell, 26px));
+  pointer-events: none;
+}
+.gk-cell { border: none; padding: 0; background: transparent; cursor: pointer; position: relative; }
+/* 悬停提示：空格子上浮现淡影 */
+.gk-cell:hover::after { content: ''; position: absolute; inset: 30%; border-radius: 50%; background: rgba(30,20,0,.16); }
+.gk-cell.last:hover::after, .gk-cell.win:hover::after { content: none; }
+.gk-stone { position: absolute; inset: 7%; border-radius: 50%; display: block; }
 .gk-stone.black { background: radial-gradient(circle at 34% 30%, #555, #111); }
 .gk-stone.white { background: radial-gradient(circle at 34% 30%, #fff, #cfcabb); }
-.gk-cell.last::after { content: ''; position: absolute; top: 50%; left: 50%; width: 5px; height: 5px;
-  margin: -2.5px; border-radius: 50%; background: #e5484d; z-index: 2; }
-.gk-cell.win::before { content: ''; position: absolute; inset: 1px; border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(229,72,77,.85); z-index: 1; }
+/* 最后一手：子上一枚红点 */
+.gk-cell.last .gk-stone::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 22%; height: 22%;
+  margin: -11% 0 0 -11%; border-radius: 50%; background: #e5484d;
+}
+/* 五连高亮：整串子加金环 */
+.gk-cell.win .gk-stone { box-shadow: 0 0 0 2px rgba(229,72,77,.9), 0 0 12px rgba(229,72,77,.55); }
 .gk-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); text-align: center; }
 
 @media (max-width: 480px) {
-  .gk-board { --cell: 21px; padding: 6px; }
+  .gk-board { --cell: 20px; }
   .gk-shell { padding: 12px; }
   .gk-players { gap: 8px; }
 }
+
+/* ===== 夜间主题：深木纹棋盘 + 深色玻璃壳（此前白壳压在纯黑底上，发灰看不清） ===== */
+:root[data-theme="night"] .gk-shell,
+:root[data-theme="night"] .gk-online {
+  background: linear-gradient(160deg, rgba(38,44,58,.94), rgba(22,26,36,.92));
+  border-color: rgba(199,169,107,.3);
+  box-shadow: 0 8px 28px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
+}
+:root[data-theme="night"] .gk-player-txt b { color: #f2eee4; }
+:root[data-theme="night"] .gk-player-txt i { color: #b9b3cc; }
+:root[data-theme="night"] .gk-player.active { background: rgba(199,169,107,.18); }
+:root[data-theme="night"] .gk-online-title { color: #f2eee4; }
+:root[data-theme="night"] .gk-online-desc,
+:root[data-theme="night"] .gk-first-label,
+:root[data-theme="night"] .gk-firstnote,
+:root[data-theme="night"] .gk-quota { color: #b9b3cc; }
+:root[data-theme="night"] .gk-hint { color: #a9a3bd; }
+:root[data-theme="night"] .gk-status { color: #ded9ee; }
+:root[data-theme="night"] .gk-btn {
+  background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); color: #ece7dc;
+}
+:root[data-theme="night"] .gk-btn:hover:not(:disabled) { border-color: rgba(252,211,77,.6); color: #fde68a; }
+:root[data-theme="night"] .gk-btn.primary { background: #c7a96b; border-color: #c7a96b; color: #1a1509; }
+:root[data-theme="night"] .gk-mode { color: #ded9ee; border-color: rgba(255,255,255,.2); }
+:root[data-theme="night"] .gk-select {
+  background: rgba(255,255,255,.07); color: #f2eee4; border-color: rgba(255,255,255,.2);
+}
+:root[data-theme="night"] .gk-banner.st-waiting { background: rgba(199,169,107,.2); color: #ded9ee; }
+:root[data-theme="night"] .gk-banner.st-playing { background: rgba(127,168,163,.22); color: #ded9ee; }
+:root[data-theme="night"] .gk-banner.st-finished { background: rgba(199,169,107,.26); color: #f6f2e8; }
+:root[data-theme="night"] .gk-locknote { background: rgba(199,169,107,.22); color: #ded9ee; }
+:root[data-theme="night"] .gk-board {
+  background: linear-gradient(135deg, #6d5836, #4f3f26);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.55);
+  --gk-line: rgba(255, 236, 190, .5);
+}
+:root[data-theme="night"] .gk-stone.black { background: radial-gradient(circle at 34% 30%, #6a6a6a, #0b0b0b); box-shadow: 0 0 0 1px rgba(255,255,255,.22); }
+:root[data-theme="night"] .gk-stone.white { background: radial-gradient(circle at 34% 30%, #fff, #ddd7c6); box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
 </style>

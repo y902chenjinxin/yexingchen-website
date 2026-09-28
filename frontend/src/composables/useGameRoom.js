@@ -6,13 +6,16 @@
  *   g.createInvite(memberUserId)     // 邀请家人 → waiting
  *   g.join(roomId)                   // 接受邀请 / 恢复对局（重放全部事件）
  *   g.send({ idx: 112 })             // 我的落子（服务端校验轮次与占位）
- *   g.state.my_turn                  // 是否轮到我（轮询驱动）
+ *   g.undo()                         // 悔棋（五子棋，每方每局 3 次）
+ *   g.leave()                        // 主动离开（对方立即看到终局）
+ *   g.myTurn.value                   // 是否轮到我（轮询驱动）
  *
  * 事件流：服务端只存动作（moves），棋盘状态由客户端重放；
  * 服务端权威项 = 轮次 / 格子占用 / 五子棋胜负。
+ * v2.40.34：新增悔棋（`{"undo":1}` 事件）与主动离开。
  */
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { gameRoomsApi } from '@/api/gameRooms'
+import { gameRoomsApi, beaconLeave } from '@/api/gameRooms'
 import { useAuthStore } from '@/stores/auth'
 
 export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
@@ -29,6 +32,9 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
   const status = computed(() => room.value?.status || '')
   const mySeat = computed(() => room.value?.my_seat || 'black')
   const myTurn = computed(() => !!room.value?.my_turn)
+  const endReason = computed(() => room.value?.end_reason || '')
+  const undoLeft = computed(() => room.value?.undo_left ?? 3)
+  const undoOppLeft = computed(() => room.value?.undo_opp_left ?? 3)
   const opponentName = computed(() =>
     room.value ? (room.value.owner_id === myUserId.value ? room.value.invitee_name : room.value.owner_name) : '')
 
@@ -56,7 +62,7 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
       }
       // 游标推进到服务端全局 last_seq（服务端返回的是全局值，非增量值）
       if (typeof d.last_seq === 'number') lastSeq.value = Math.max(lastSeq.value, d.last_seq)
-      onStatus?.({ status: d.status, winner_id: d.winner_id, my_turn: d.my_turn })
+      onStatus?.({ status: d.status, winner_id: d.winner_id, my_turn: d.my_turn, end_reason: d.end_reason })
     } catch { /* 轮询失败静默，下轮再试 */ }
   }
 
@@ -106,6 +112,25 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
     }
   }
 
+  /** 悔棋：服务端追加 undo 事件并回吐最新房间态（含新的 last_seq） */
+  async function undo() {
+    if (!room.value?.id) return null
+    const res = await gameRoomsApi.undo(room.value.id)
+    const d = res?.data || {}
+    room.value = { ...room.value, ...d, moves: undefined }
+    // 服务端会回吐全量 moves（after_seq 默认 0）→ 本地重建事件流与游标
+    moves.value = d.moves || []
+    lastSeq.value = d.last_seq || 0
+    seenMoveSeq = d.last_seq || 0
+    return d
+  }
+
+  /** 主动离开对局（进行中=认输；等待中=取消邀请） */
+  async function leave() {
+    if (room.value?.id) { try { await gameRoomsApi.leave(room.value.id) } catch { /* 忽略 */ } }
+    stopPoll()
+  }
+
   async function finish(winnerId) {
     if (!room.value?.id) return
     const res = await gameRoomsApi.finish(room.value.id, winnerId)
@@ -124,10 +149,18 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
     seenMoveSeq = 0
   }
 
-  onBeforeUnmount(stopPoll)
+  /** 页面要关掉/切走时的兜底通知（不 reset，由调用方决定） */
+  function leaveOnUnload() {
+    if (room.value?.id && ['waiting', 'playing'].includes(room.value.status)) {
+      beaconLeave(room.value.id)
+    }
+  }
+
+  onBeforeUnmount(() => { stopPoll() })
   return {
     room, moves, status, mySeat, myTurn, myUserId, opponentName, error, joining,
-    createInvite, join, send, finish, decline, cancel, resign,
+    endReason, undoLeft, undoOppLeft,
+    createInvite, join, send, undo, leave, leaveOnUnload, finish, decline, cancel, resign,
     startPoll, stopPoll, reset,
   }
 }
