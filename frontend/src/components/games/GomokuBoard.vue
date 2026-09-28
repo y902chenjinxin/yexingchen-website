@@ -82,24 +82,32 @@
       <p v-if="!families.length" class="gk-online-desc">家庭里还没有其他账号可以邀请。</p>
     </div>
 
-    <div class="gk-boardwrap">
-      <div class="gk-board" :class="{ locked: boardLocked, 'has-winner': winLine.length }">
+    <div ref="wrapEl" class="gk-boardwrap">
+      <div
+        class="gk-board"
+        :class="{ locked: boardLocked, 'has-winner': winLine.length }"
+        :style="{ gridTemplateColumns: `repeat(${N}, ${cellPx}px)`, gridAutoRows: cellPx + 'px' }"
+      >
         <button
           v-for="idx in N * N"
           :key="idx"
           class="gk-cell"
-          :class="{ last: lastIdx === idx - 1, win: winLine.includes(idx - 1) }"
+          :class="{ last: lastIdx === domToInner(idx - 1), win: winDomSet.has(idx - 1) }"
           :aria-label="`第${Math.ceil(idx / N)}行第${((idx - 1) % N) + 1}列`"
           @click="play(idx - 1)"
         >
-          <i v-if="board[idx - 1]" class="gk-stone" :class="board[idx - 1] === HUMAN ? 'black' : 'white'"></i>
+          <i v-if="board[domToInner(idx - 1)]" class="gk-stone" :class="board[domToInner(idx - 1)] === HUMAN ? 'black' : 'white'"></i>
         </button>
       </div>
       <!-- 锁定时给出可见原因（此前是静默 pointer-events:none，点了毫无反馈） -->
       <div v-if="lockHint" class="gk-lockmask"><span>{{ lockHint }}</span></div>
     </div>
     <p class="gk-hint">
-      {{ mode === 'online' ? '在线模式 · 对方落子约 2 秒内自动出现' : '黑方先行 · 五子连珠获胜 · 困难模式 AI 搜索更深' }}
+      <template v-if="mode === 'online'">在线模式 · 对方落子约 2 秒内自动出现</template>
+      <template v-else>
+        黑方先行 · 五子连珠获胜 · 困难模式 AI 搜索更深
+        <span v-if="expands" class="gk-expandnote">· 棋盘已向外扩展 {{ expands }}/3 次（现 {{ N }}×{{ N }}）</span>
+      </template>
     </p>
   </div>
 </template>
@@ -113,7 +121,7 @@
  *   - 邀请下拉修复：显示家人名字（此前误读字段名只显示了头像 emoji）
  *   - 恢复：进页面自动接回自己进行中的房间（刷新/换设备都不丢）
  */
-import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
 import { familyMembers } from '@/api/lifeExtra'
@@ -127,7 +135,19 @@ const props = defineProps({
   joinRoomId: { type: Number, default: 0 },     // 受邀跳转进来：直接进指定房间
 })
 
-const N = 15
+/* ---------- 棋盘尺寸：内部满盘固定，外部开放区可扩（v2.40.30） ----------
+ * 内部一律用 FULL×FULL 的坐标存棋子（27×27），**永不重映射**；
+ * 开放区是它中心的方块，起始 15×15，棋子落到距离边缘 1 线以内就向外扩 2 圈，
+ * 最多 3 次：15 → 19 → 23 → 27。
+ * 这样扩展只是「放大窗口」，已落的子、AI 搜索、胜负判定都不受影响。
+ * 在线对局不扩展（服务端棋盘固定 15×15，srv2in/in2srv 做坐标翻译）。 */
+const FULL = 27
+const BASE_MARGIN = 6                       // (27 - 6*2) = 15 起始边长
+const SRV_N = 15                            // 服务端棋盘边长
+const margin = ref(BASE_MARGIN)             // 开放区外留的边距：6 → 4 → 2 → 0
+const N = computed(() => FULL - margin.value * 2)          // 对外边长 15/19/23/27
+const expands = computed(() => (BASE_MARGIN - margin.value) / 2)   // 已扩展次数 0..3
+
 const HUMAN = 1, AI = 2
 const modes = [
   { key: 'pvp', label: '双人（同屏）' },
@@ -136,7 +156,7 @@ const modes = [
   { key: 'online', label: '在线 · 邀请对战' },
 ]
 const mode = ref(props.initialMode || 'easy')
-const board = ref(Array(N * N).fill(0))
+const board = ref(Array(FULL * FULL).fill(0))
 const turn = ref(HUMAN)
 const over = ref(false)
 const winner = ref(0)
@@ -146,6 +166,44 @@ const history = ref([])
 const thinking = ref(false)
 let timer = null
 
+/* ---------- 坐标换算 ---------- */
+/** DOM 格序号（0..N*N-1）→ 内部索引 */
+function domToInner(d) {
+  const n = N.value, m = margin.value
+  const x = d % n, y = (d / n) | 0
+  return (y + m) * FULL + (x + m)
+}
+/** 内部索引 → DOM 格序号（不在开放区返回 -1） */
+function innerToDom(i) {
+  const n = N.value, m = margin.value
+  const x = i % FULL, y = (i / FULL) | 0
+  const dx = x - m, dy = y - m
+  if (dx < 0 || dy < 0 || dx >= n || dy >= n) return -1
+  return dy * n + dx
+}
+/** 服务端 15×15 索引 ↔ 内部索引（在线对局用；服务端棋盘永远是起始那 15×15） */
+function srvToInner(s) {
+  const x = s % SRV_N, y = (s / SRV_N) | 0
+  return (y + BASE_MARGIN) * FULL + (x + BASE_MARGIN)
+}
+function innerToSrv(i) {
+  const x = (i % FULL) - BASE_MARGIN, y = ((i / FULL) | 0) - BASE_MARGIN
+  if (x < 0 || y < 0 || x >= SRV_N || y >= SRV_N) return -1
+  return y * SRV_N + x
+}
+/** 胜利连子对应的 DOM 格（高亮用），一次算好 */
+const winDomSet = computed(() => new Set(winLine.value.map(innerToDom).filter(i => i >= 0)))
+
+/* ---------- 棋盘自适应：格宽 = min(26, (容器宽 - 内边距) / 边长) ---------- */
+const wrapEl = ref(null)
+const cellPx = ref(26)
+let resizeHandler = null
+function measureCell() {
+  const w = wrapEl.value?.clientWidth || 0
+  if (!w) { cellPx.value = N.value > 19 ? 20 : 26; return }
+  cellPx.value = Math.max(13, Math.min(26, Math.floor((w - 20) / N.value)))
+}
+
 /* ---------- 在线对战 ---------- */
 const families = ref([])
 const inviteeId = ref(null)
@@ -154,8 +212,10 @@ const onlineWinner = ref('')
 const lastInviteeName = ref('')
 
 function onRemoteMove(action, userId) {
-  const idx = action?.idx
-  if (typeof idx !== 'number' || idx < 0 || idx >= N * N || board.value[idx]) return
+  const srv = action?.idx
+  if (typeof srv !== 'number' || srv < 0 || srv >= SRV_N * SRV_N) return
+  const idx = srvToInner(srv)          // 服务端坐标 → 内部坐标（在线不扩展，偏移固定）
+  if (board.value[idx]) return
   // 颜色按**座位**（绝对色）：执黑方 = 1、执白方 = 2。
   // 不能用「3 - 上一手」反推 —— join 重放时 turn 初值是 HUMAN，黑方第一手会被画成白子。
   const blackId = gRoom.room.value?.black_user_id
@@ -282,7 +342,9 @@ const resultText = computed(() => {
 
 function clearLocal() {
   clearTimeout(timer)
-  board.value = Array(N * N).fill(0)
+  board.value = Array(FULL * FULL).fill(0)
+  margin.value = BASE_MARGIN
+  nextTick(measureCell)
   turn.value = HUMAN
   over.value = false
   winner.value = 0
@@ -303,6 +365,7 @@ function saveLocal() {
       mode: mode.value,
       summary: `${modeLabel.value} · 已下 ${history.value.length} 手`,
       board: board.value,
+      margin: margin.value,
       history: history.value,
       turn: turn.value,
       lastIdx: lastIdx.value,
@@ -314,10 +377,12 @@ function saveLocal() {
 }
 function restoreLocal() {
   const s = loadGame(SAVE_KEY)
-  if (!s || !Array.isArray(s.board) || s.board.length !== N * N || s.mode === 'online') return false
+  if (!s || !Array.isArray(s.board) || s.board.length !== FULL * FULL || s.mode === 'online') return false
   clearTimeout(timer)
   if (s.mode) mode.value = s.mode
   board.value = s.board
+  margin.value = typeof s.margin === 'number' ? s.margin : BASE_MARGIN
+  nextTick(measureCell)
   history.value = s.history || []
   turn.value = s.turn || HUMAN
   lastIdx.value = s.lastIdx ?? -1
@@ -346,13 +411,13 @@ function restart() {
 }
 
 function checkWinFrom(bd, idx, p) {
-  const x = idx % N, y = Math.floor(idx / N)
+  const x = idx % FULL, y = Math.floor(idx / FULL)
   for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
     const line = [idx]
     for (const sign of [1, -1]) {
       let nx = x + dx * sign, ny = y + dy * sign
-      while (nx >= 0 && nx < N && ny >= 0 && ny < N && bd[ny * N + nx] === p) {
-        line.push(ny * N + nx)
+      while (nx >= 0 && nx < FULL && ny >= 0 && ny < FULL && bd[ny * FULL + nx] === p) {
+        line.push(ny * FULL + nx)
         nx += dx * sign; ny += dy * sign
       }
     }
@@ -368,16 +433,16 @@ function lineScore(count, open) {
   return open === 2 ? 10 : 0
 }
 function pointScore(bd, idx, p) {
-  const x = idx % N, y = Math.floor(idx / N)
+  const x = idx % FULL, y = Math.floor(idx / FULL)
   let total = 0
   for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
     let count = 1, open = 0
     for (const sign of [1, -1]) {
       let nx = x + dx * sign, ny = y + dy * sign
-      while (nx >= 0 && nx < N && ny >= 0 && ny < N && bd[ny * N + nx] === p) {
+      while (nx >= 0 && nx < FULL && ny >= 0 && ny < FULL && bd[ny * FULL + nx] === p) {
         count++; nx += dx * sign; ny += dy * sign
       }
-      if (nx >= 0 && nx < N && ny >= 0 && ny < N && bd[ny * N + nx] === 0) open++
+      if (nx >= 0 && nx < FULL && ny >= 0 && ny < FULL && bd[ny * FULL + nx] === 0) open++
     }
     total += lineScore(count, open)
   }
@@ -385,14 +450,16 @@ function pointScore(bd, idx, p) {
 }
 function candidates(bd) {
   const out = []
-  if (!bd.some(v => v)) return [Math.floor(N * N / 2)]
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const idx = y * N + x
+  const m = margin.value                 // 只在开放区内找点（外面还没开放）
+  const lo = m, hi = FULL - m
+  if (!bd.some(v => v)) return [Math.floor(FULL / 2) * FULL + Math.floor(FULL / 2)]
+  for (let y = lo; y < hi; y++) for (let x = lo; x < hi; x++) {
+    const idx = y * FULL + x
     if (bd[idx]) continue
     let near = false
     for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) {
       const nx = x + dx, ny = y + dy
-      if (nx >= 0 && nx < N && ny >= 0 && ny < N && bd[ny * N + nx]) { near = true; break }
+      if (nx >= 0 && nx < FULL && ny >= 0 && ny < FULL && bd[ny * FULL + nx]) { near = true; break }
     }
     if (near) out.push(idx)
   }
@@ -434,10 +501,31 @@ function place(idx) {
   lastIdx.value = idx
   const line = checkWinFrom(board.value, idx, turn.value)
   if (line) { winLine.value = line; winner.value = turn.value; over.value = true }
-  else if (board.value.every(v => v)) { over.value = true }
+  else if (openAreaFull()) { over.value = true }
+}
+/** 开放区是否已下满（判定平局，只看当前开放区） */
+function openAreaFull() {
+  const m = margin.value
+  for (let y = m; y < FULL - m; y++) {
+    for (let x = m; x < FULL - m; x++) if (!board.value[y * FULL + x]) return false
+  }
+  return true
+}
+/** 落子后看它离开放区边缘还有几线，≤1 就向外扩 2 圈（最多 3 次；在线模式不扩） */
+function maybeExpand(innerIdx) {
+  if (mode.value === 'online' || margin.value <= 0) return
+  if (history.value.length < 12) return      // 开局贴边不算「吃紧」，至少下过 12 手再考虑
+  const x = innerIdx % FULL, y = (innerIdx / FULL) | 0
+  const m = margin.value
+  const d = Math.min(x - m, FULL - 1 - m - x, y - m, FULL - 1 - m - y)
+  if (d > 1) return
+  margin.value -= 2
+  nextTick(() => { measureCell(); ElMessage.success(`棋局吃紧，棋盘向外扩展 —— 现在 ${N.value}×${N.value}（第 ${expands.value}/3 次）`) })
 }
 
-function play(idx) {
+/** 模板传进来的是 DOM 格序号；内部一律用 27×27 坐标 */
+function play(domIdx) {
+  const idx = domToInner(domIdx)
   if (over.value || thinking.value || board.value[idx]) return
   if (mode.value === 'online') {
     if (!onlineMyTurn.value) { ElMessage.warning('还没轮到你'); return }
@@ -448,7 +536,7 @@ function play(idx) {
     turn.value = color === HUMAN ? AI : HUMAN
     const line = checkWinFrom(board.value, idx, color)
     if (line) { winLine.value = line; over.value = true }
-    gRoom.send({ idx }).catch(() => {
+    gRoom.send({ idx: innerToSrv(idx) }).catch(() => {
       ElMessage.warning('落子同步失败，正在恢复局面…')
       gRoom.join(gRoom.room.value.id).then(() => {
         clearLocal()
@@ -460,6 +548,7 @@ function play(idx) {
   if (mode.value !== 'pvp' && turn.value !== HUMAN) return
   place(idx)
   if (over.value) return
+  maybeExpand(idx)
   if (mode.value !== 'pvp') {
     turn.value = AI
     aiMove()
@@ -489,7 +578,7 @@ function aiMove() {
       }
     }
     thinking.value = false
-    if (pick) { turn.value = AI; place(pick.idx); turn.value = HUMAN }
+    if (pick) { turn.value = AI; place(pick.idx); turn.value = HUMAN; maybeExpand(pick.idx) }
   }, 120)
 }
 
@@ -507,6 +596,10 @@ function undo() {
 }
 
 onMounted(async () => {
+  // 格宽随容器与当前边长自适应（项目惯例：nextTick 后量容器）
+  resizeHandler = () => measureCell()
+  window.addEventListener('resize', resizeHandler, { passive: true })
+  nextTick(measureCell)
   await loadFamilies()
   // 受邀跳转进来（/tool/games?room=&game=）：直接进那个房间
   if (props.joinRoomId) {
@@ -521,7 +614,10 @@ onMounted(async () => {
   // 只有在线模式才自动接回进行中的房间，避免玩本地局时被拉走
   if (mode.value === 'online') await resumeMine()
 })
-onBeforeUnmount(() => { clearTimeout(timer); clearTimeout(saveTimer); gRoom.stopPoll() })
+onBeforeUnmount(() => {
+  clearTimeout(timer); clearTimeout(saveTimer); gRoom.stopPoll()
+  if (resizeHandler) window.removeEventListener('resize', resizeHandler)
+})
 </script>
 
 <style scoped>
