@@ -1,3 +1,17 @@
+## [v2.40.34] - 2026-09-28
+
+### 通讯录头像上传上限 5MB → 20MB（SW `xuanhuang-v267`）
+
+- 后端新增**独立配置** `MAX_CONTACT_AVATAR_SIZE = 20MB`，`contacts.py` 不再复用 `MAX_COVER_SIZE`
+  —— 后者是封面 / 三餐照片共用的 5MB，直接改会连带放宽其它功能
+- 前端 `AVATAR_MAX_BYTES` 同步 20MB，超限提示改为「请压缩到 20MB 以内」
+- nginx `client_max_body_size` 已是 500M，无需调整
+
+**实测**：生成 7.64MB JPEG → `POST /contacts/{id}/avatar` 返回 `code=0 已上传`（旧限制下会被拒）；
+测试联系人与上传文件已清理。
+
+---
+
 ## [v2.40.33] - 2026-09-28
 
 ### 新增围棋（替换黑白棋）+ 五子棋开局选棋盘大小（SW `xuanhuang-v265`→`v266`）
