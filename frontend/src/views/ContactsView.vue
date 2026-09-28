@@ -262,7 +262,7 @@ function triggerAvatarUpload(c) {
   if (input) input.click()
 }
 
-const AVATAR_MAX_BYTES = 5 * 1024 * 1024  // 与后端 CONTACT_AVATAR_MAX_SIZE 对齐
+const AVATAR_MAX_BYTES = 20 * 1024 * 1024  // 与后端 MAX_CONTACT_AVATAR_SIZE 对齐（v2.40.34 放宽到 20MB）
 const AVATAR_ALLOWED = ['image/jpeg', 'image/png', 'image/webp']
 
 function onAvatarPicked(c, ev) {
@@ -275,7 +275,7 @@ function onAvatarPicked(c, ev) {
     return
   }
   if (file.size > AVATAR_MAX_BYTES) {
-    ElMessage.warning(`头像过大（${(file.size / 1024 / 1024).toFixed(1)}MB），请压缩到 5MB 以内`)
+    ElMessage.warning(`头像过大（${(file.size / 1024 / 1024).toFixed(1)}MB），请压缩到 20MB 以内`)
     return
   }
   uploadAvatarFor(c, file)

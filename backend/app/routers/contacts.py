@@ -354,8 +354,9 @@ def restore_contact(
 
 # ====================== 头像上传 / 清除（v2.18） ======================
 
-# 上限与封面（AI 封面）共用：5MB；头像一般一二百 KB，5MB 留足手机原图
-CONTACT_AVATAR_MAX_SIZE = settings.MAX_COVER_SIZE
+# 头像上限：**独立配置** 20MB（v2.40.34 夜星要求放宽）。
+# 不再与 MAX_COVER_SIZE(5MB) 共用 —— 那会连带放宽三餐照片与小说/视频封面。
+CONTACT_AVATAR_MAX_SIZE = settings.MAX_CONTACT_AVATAR_SIZE
 
 
 @router.post("/{contact_id}/avatar")

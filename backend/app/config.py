@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     MAX_NOVEL_SIZE: int = 100 * 1024 * 1024
     MAX_VIDEO_SIZE: int = 500 * 1024 * 1024
     MAX_COVER_SIZE: int = 5 * 1024 * 1024
+    # 通讯录头像：夜星要求放宽到 20MB（与封面解耦，别影响三餐照片/小说视频封面）
+    MAX_CONTACT_AVATAR_SIZE: int = 20 * 1024 * 1024
 
     # 视频去水印解析服务（独立进程，同机 8070 端口）
     PARSE_SERVICE_URL: str = "http://127.0.0.1:8070"
