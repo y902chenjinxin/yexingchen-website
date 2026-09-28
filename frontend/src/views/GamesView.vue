@@ -95,8 +95,8 @@
  * 进度：自研游戏写 localStorage 存档（utils/gameSave），回列表后可「继续上一局」。
  * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/big/saveable 声明能力）。
  */
-import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
@@ -262,12 +262,12 @@ watch(isBig, async (v) => {
 onBeforeUnmount(() => { document.body.style.overflow = ''; raiseHost(false) })
 
 /* ---------- 从全局邀请弹窗跳进来（/tool/games?room=ID&game=gomoku） ----------
- * ⚠️ App.vue 的 RouterView 是 `:key="route.fullPath"`：这里一调 router.replace({query:{}})
- * 清 query，fullPath 就变，**整个页面被销毁重建**，刚设好的 tab/phase 全丢 ——
- * 表现就是「接受邀请后回到空态、进不去对局」。所以状态先落 sessionStorage，重建后 onMounted 续上。 */
-const JOIN_KEY = 'xuanhuang_join_room'
+ * ⚠️ 清 URL 参数**绝不能**用 router.replace({query:{}})：App.vue 的 RouterView 是
+ * `:key="route.fullPath"`，URL 一变整页就销毁重建、刚设好的 tab/phase 全丢 ——
+ * 这正是「接受邀请后回到空态、进不去对局」的根因（桌面端同样中招，上一版用 sessionStorage
+ * 兜底也只是亡羊补牢）。这里直接改 history，不触发 vue-router 导航，状态原地保留。
+ * 保留 history.state（含 router 内部字段），避免前进/后退信息错乱。 */
 const route = useRoute()
-const router = useRouter()
 
 function enterRoom(id, game) {
   pendingRoom.value = { id, game }
@@ -284,20 +284,8 @@ watch(() => route.query.room, (v) => {
   const game = String(route.query.game || '')
   if (!id || !ALL[game]) return
   enterRoom(id, game)
-  try { sessionStorage.setItem(JOIN_KEY, JSON.stringify({ id, game })) } catch { /* 忽略 */ }
-  router.replace({ query: {} })
+  try { window.history.replaceState(window.history.state, '', route.path) } catch { /* 忽略 */ }
 }, { immediate: true })
-
-onMounted(() => {
-  try {
-    const raw = sessionStorage.getItem(JOIN_KEY)
-    if (!raw) return
-    sessionStorage.removeItem(JOIN_KEY)
-    const { id, game } = JSON.parse(raw) || {}
-    // 页面被 fullPath 变化重建过 → watch 白跑，这里兜回来
-    if (id && ALL[game] && tab.value !== game) enterRoom(id, game)
-  } catch { /* 忽略 */ }
-})
 </script>
 
 <style scoped>
