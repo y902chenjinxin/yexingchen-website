@@ -175,8 +175,12 @@ function play(idx) {
   if (mode.value !== 'pvp' && turn.value !== HUMAN) return
   place(idx)
   if (over.value) return
-  if (mode.value !== 'pvp' && turn.value === AI) aiMove()
-  else turn.value = 3 - turn.value
+  if (mode.value !== 'pvp') {
+    turn.value = AI      // 先翻到 AI 再调用，aiMove 内部落子后会翻回 HUMAN
+    aiMove()
+  } else {
+    turn.value = 3 - turn.value
+  }
 }
 
 function place(idx) {
