@@ -1,7 +1,7 @@
 <template>
   <div class="ot-wrap">
     <div class="ot-toolbar">
-      <div class="ot-modes">
+      <div v-if="!bare" class="ot-modes">
         <button v-for="m in modes" :key="m.key" class="ot-mode" :class="{ on: mode === m.key }" @click="setMode(m.key)">{{ m.label }}</button>
       </div>
       <div class="ot-status">
@@ -42,7 +42,8 @@
  *       双方都无法落子或棋盘满则终局，子多者胜。
  * AI：简单 = 位置权重贪心（角最高、角旁负分）；困难 = 3 层极小化极大 + Alpha-Beta。
  */
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 
 const N = 8
 const BLACK = 1, WHITE = 2
@@ -52,7 +53,12 @@ const modes = [
   { key: 'easy', label: '单机 · 简单' },
   { key: 'hard', label: '单机 · 困难' },
 ]
-const mode = ref('easy')
+const props = defineProps({
+  initialMode: { type: String, default: '' },
+  resume: { type: Boolean, default: false },
+  bare: { type: Boolean, default: false },
+})
+const mode = ref(props.initialMode || 'easy')
 const humanIsBlack = true
 
 const board = ref(Array(64).fill(0))
@@ -78,7 +84,36 @@ const turnText = computed(() => {
   return turn.value === (humanIsBlack ? BLACK : WHITE) ? `轮到你（${side}）` : 'AI 思考中…'
 })
 
-function restart() {
+/* ---------- 本地存档：返回列表后可「继续上一局」 ---------- */
+const SAVE_KEY = 'othello'
+let saveTimer = null
+const modeLabel = computed(() => (modes.find(m => m.key === mode.value) || {}).label || '本局')
+function saveLocal() {
+  // 开局只有 4 颗子时没必要存（等于没下）
+  if (over.value || counts.value.black + counts.value.white <= 4) return
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveGame(SAVE_KEY, {
+      mode: mode.value,
+      summary: `${modeLabel.value} · 黑白 ${counts.value.black}:${counts.value.white}`,
+      board: board.value, turn: turn.value, over: over.value, lastIdx: lastIdx.value,
+    })
+  }, 400)
+}
+function restoreLocal() {
+  const s = loadGame(SAVE_KEY)
+  if (!s || !Array.isArray(s.board) || s.board.length !== 64) return false
+  if (s.mode) mode.value = s.mode
+  board.value = s.board
+  turn.value = s.turn || BLACK
+  over.value = !!s.over
+  lastIdx.value = s.lastIdx ?? -1
+  return true
+}
+watch([board, over], saveLocal, { deep: true })
+onMounted(() => { if (props.resume) restoreLocal() })
+
+function resetBoard() {
   clearTimeout(timer)
   board.value = Array(64).fill(0)
   board.value[27] = WHITE; board.value[28] = BLACK
@@ -89,6 +124,12 @@ function restart() {
   flipSet.value = new Set()
   skipNote.value = ''
   thinking.value = false
+}
+/** 用户主动重开 / 切模式：作废存档。setup 期间的初始化走 resetBoard()，不能清档 */
+function restart() {
+  clearTimeout(saveTimer)
+  clearGame(SAVE_KEY)
+  resetBoard()
 }
 
 function xy(idx) { return [idx % N, Math.floor(idx / N)] }
@@ -214,8 +255,8 @@ function search(bd, depth, alpha, beta, turnP, aiP) {
 }
 
 function setMode(k) { mode.value = k; restart() }
-onBeforeUnmount(() => clearTimeout(timer))
-restart()
+onBeforeUnmount(() => { clearTimeout(timer); clearTimeout(saveTimer) })
+resetBoard()   // 初始摆子；「继续上一局」由 onMounted 覆盖，不能在这里清档
 </script>
 
 <style scoped>

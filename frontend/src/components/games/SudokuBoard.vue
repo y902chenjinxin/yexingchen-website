@@ -1,7 +1,7 @@
 <template>
   <div class="sd-wrap">
     <div class="sd-toolbar">
-      <div class="sd-modes">
+      <div v-if="!bare" class="sd-modes">
         <button v-for="m in modes" :key="m.key" class="sd-mode" :class="{ on: diff === m.key }" @click="setDiff(m.key)">{{ m.label }}</button>
       </div>
       <div class="sd-status">
@@ -42,15 +42,21 @@
  * 难度：入门挖 38 洞 / 进阶 45 / 困难 52。
  * 交互：点选格 → 数字键盘；填错（同行/列/宫冲突）标红；提示格永久固定。
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 
+const props = defineProps({
+  initialMode: { type: String, default: '' },   // 难度由页面「第一步」选定
+  resume: { type: Boolean, default: false },
+  bare: { type: Boolean, default: false },
+})
 const modes = [
   { key: 'easy', label: '入门' },
   { key: 'mid', label: '进阶' },
   { key: 'hard', label: '困难' },
 ]
 const HOLES = { easy: 38, mid: 45, hard: 52 }
-const diff = ref('easy')
+const diff = ref(props.initialMode || 'easy')
 const grid = ref(Array(81).fill(0))
 const solution = ref(Array(81).fill(0))
 const given = ref(Array(81).fill(false))
@@ -119,6 +125,7 @@ function fullSolution() {
 }
 
 function newGame() {
+  clearGame(SAVE_KEY)
   const sol = fullSolution()
   const puzzle = [...sol]
   const order = Array.from({ length: 81 }, (_, i) => i).sort(() => Math.random() - 0.5)
@@ -172,11 +179,42 @@ function fmtTime(s) {
   const m = Math.floor(s / 60)
   return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
+
+/* ---------- 本地存档：返回列表后可「继续上一局」（含计时延续） ---------- */
+const SAVE_KEY = 'sudoku'
+let saveTimer = null
+const diffLabel = computed(() => (modes.find(m => m.key === diff.value) || {}).label || '')
+function saveLocal() {
+  if (done.value || !given.value.some(Boolean)) return
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveGame(SAVE_KEY, {
+      mode: diff.value,
+      summary: `${diffLabel.value} · 已填 ${81 - remain.value}/81 · ${fmtTime(elapsed.value)}`,
+      grid: grid.value, given: given.value, solution: solution.value,
+      elapsed: elapsed.value, done: done.value,
+    })
+  }, 500)
+}
+function restoreLocal() {
+  const s = loadGame(SAVE_KEY)
+  if (!s || !Array.isArray(s.grid) || s.grid.length !== 81) return false
+  if (s.mode) diff.value = s.mode
+  grid.value = s.grid
+  given.value = s.given || s.grid.map(v => !!v)
+  solution.value = Array.isArray(s.solution) && s.solution.length === 81 ? s.solution : []
+  elapsed.value = s.elapsed || 0
+  done.value = !!s.done
+  selected.value = -1
+  return true
+}
+watch([grid, done], saveLocal, { deep: true })
+
 onMounted(() => {
-  newGame()
+  if (props.resume && restoreLocal()) { /* 续局 */ } else { newGame() }
   timer = setInterval(() => { if (!done.value) elapsed.value++ }, 1000)
 })
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => { clearInterval(timer); clearTimeout(saveTimer) })
 </script>
 
 <style scoped>

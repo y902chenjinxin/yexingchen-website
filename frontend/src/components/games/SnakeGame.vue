@@ -14,6 +14,13 @@
 /** 贪吃蛇：从旧 GamesView 原样迁移（v2.40.18 的窗口级键盘监听改为组件内自管）。 */
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 
+// 页面（GamesView）统一传模式/续局/门面标记；贪吃蛇无模式也不续局，声明以免落到根元素属性上
+defineProps({
+  initialMode: { type: String, default: '' },
+  resume: { type: Boolean, default: false },
+  bare: { type: Boolean, default: false },
+})
+
 const snakeEl = ref(null)
 const snake = reactive({ score: 0, over: false, dir: [1, 0], body: [], food: [0, 0], timer: 0 })
 const best = ref(Number(localStorage.getItem('snake_best') || 0) || 0)

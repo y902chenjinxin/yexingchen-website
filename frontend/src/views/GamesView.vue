@@ -1,86 +1,373 @@
 <template>
-  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 黑白棋 · 数独 · 飞行棋 · 纯本地可玩">
-    <div class="games-tool">
-      <!-- 对局进行中锁定其它游戏页签（房间激活时由组件发 room-lock 事件） -->
-      <div class="gm-tabs">
-        <button
-          v-for="g in gamelist"
-          :key="g.key"
-          class="gm-tab"
-          :class="{ active: tab === g.key }"
-          :disabled="roomLocked && tab !== g.key"
-          :title="roomLocked && tab !== g.key ? '对局进行中，退出后才能切换' : ''"
-          @click="tab = g.key"
-        >{{ g.label }}</button>
-      </div>
-      <div v-if="roomLocked" class="gm-locktip">🔒 对局进行中 —— 退出对局后才能玩其他的</div>
+  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 黑白棋 · 飞行棋 · 数独 · 扫雷 · 贪吃蛇">
+    <div class="gm-root" :class="{ 'is-big': isBig }">
+      <!-- ===== 左：游戏类型 ===== -->
+      <aside v-show="!isBig" class="gm-rail">
+        <div v-for="grp in groups" :key="grp.name" class="gm-grp">
+          <div class="gm-grp-name">{{ grp.name }}</div>
+          <button
+            v-for="g in grp.items"
+            :key="g.key"
+            class="gm-item"
+            :class="{ on: tab === g.key, dim: itemLocked(g) }"
+            :disabled="itemLocked(g)"
+            :title="itemLocked(g) ? '对局进行中 —— 退出对局后才能切换' : ''"
+            @click="pick(g.key)"
+          >
+            <!-- eslint-disable-next-line vue/no-v-html -- 图标为本地常量字符串，无外部输入 -->
+            <span class="gm-item-ic" v-html="g.icon"></span>
+            <span class="gm-item-tx">
+              <b>{{ g.label }}</b>
+              <i>{{ g.tag }}</i>
+            </span>
+            <span v-if="saves[g.key]" class="gm-item-dot" title="有未完成的存档"></span>
+          </button>
+        </div>
+      </aside>
 
-      <!-- KeepAlive：切 tab 不丢对局（数独计时/棋局状态都在组件内部） -->
-      <KeepAlive>
-        <component
-          :is="current.component"
-          :key="current.key + (pendingRoom.id && pendingRoom.game === current.key ? '-' + pendingRoom.id : '')"
-          :join-room-id="pendingRoom.game === current.key ? pendingRoom.id : 0"
-          @room-lock="roomLocked = true"
-          @room-unlock="roomLocked = false"
-        />
-      </KeepAlive>
+      <!-- ===== 右：游戏空间 ===== -->
+      <section class="gm-stage">
+        <!-- 空态：默认什么都不摆，避免一屏平铺 -->
+        <div v-if="!tab" class="gm-empty">
+          <div class="gm-empty-ic">♟</div>
+          <b>从左边挑一个游戏</b>
+          <p>选中后先选模式，再进对局。想看得舒服一点，进去后可点「放大」全屏玩，随时能退出或续上进度。</p>
+        </div>
+
+        <template v-else>
+          <header class="gm-head">
+            <div class="gm-head-tx">
+              <b>{{ cur.label }}</b>
+              <i>{{ cur.desc }}</i>
+            </div>
+            <div class="gm-head-ops">
+              <span v-if="roomLocked" class="gm-locktip">🔒 对局进行中</span>
+              <button class="gm-op" @click="toggleBig">{{ isBig ? '退出全屏' : '放大' }}</button>
+              <button class="gm-op ghost" @click="backToList">返回列表</button>
+            </div>
+          </header>
+
+          <!-- 第一步：先选模式 -->
+          <div v-if="phase === 'setup'" class="gm-setup">
+            <div class="gm-setup-title">选择模式</div>
+            <div class="gm-modecards">
+              <button
+                v-for="m in cur.modes"
+                :key="m.key"
+                class="gm-modecard"
+                @click="startGame(m.key)"
+              >
+                <b>{{ m.label }}</b>
+                <i>{{ m.hint }}</i>
+              </button>
+            </div>
+            <button v-if="saves[tab]" class="gm-resume" @click="resumeGame">
+              ▶ 继续上一局 · {{ saves[tab].summary }}
+              <em>{{ age(saves[tab].ts) }}</em>
+            </button>
+          </div>
+
+          <!-- 第二步：对局 -->
+          <div v-else class="gm-play">
+            <component
+              :is="cur.component"
+              :key="runKey"
+              :initial-mode="chosenMode"
+              :resume="resumeFlag"
+              :bare="true"
+              :join-room-id="pendingRoom.game === cur.key ? pendingRoom.id : 0"
+              @room-lock="roomLocked = true"
+              @room-unlock="roomLocked = false"
+            />
+          </div>
+        </template>
+      </section>
     </div>
   </IslandInnerBase>
 </template>
 
 <script setup>
-/** 棋类游戏（v2.40.24，由「摸鱼小游戏」改名重构）。
- * 框架：可扩展的 tab 容器 —— 每个游戏一个自包含组件（棋盘/规则/AI/状态都在组件内部），
- * 加新游戏 = 写一个组件 + 在 gamelist 里加一行，页面其余部分不动。
- * 历史说明：2048 与电子木鱼已按需求下线（不符合棋类定位）；
- * 贪吃蛇/扫雷暂留（夜星未点名删除，后续可再收）。
+/** 棋类游戏（v2.40.29 交互重构）。
+ *
+ * 布局：左「游戏类型」栏 + 右「游戏空间」，默认空态（不预渲染任何棋盘）；
+ * 分步：选类型 → 选模式 → 进对局，避免一屏平铺；
+ * 大屏：舞台容器全屏化（fixed），组件**不重新挂载**，因此对局与进度天然保留；
+ * 进度：自研游戏写 localStorage 存档（utils/gameSave），回列表后可「继续上一局」。
+ * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/big/saveable 声明能力）。
  */
-import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
+import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
+
+const ICON = {
+  gomoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><circle cx="9" cy="9" r="2" fill="currentColor" stroke="none"/></svg>',
+  othello: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg>',
+  ludo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 4v16M4 12h16"/><circle cx="8.2" cy="8.2" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.8" cy="15.8" r="1.4" fill="currentColor" stroke="none"/></svg>',
+  sudoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/></svg>',
+  mine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="13" r="6"/><path d="M12 7V3M4.6 10.6 2 8M19.4 10.6 22 8M7 19l-2 2M17 19l2 2"/></svg>',
+  snake: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h7a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3h2"/><rect x="2" y="15.5" width="2.6" height="2.6" rx="1" fill="currentColor" stroke="none"/><circle cx="18.6" cy="4.6" r="1.5" fill="currentColor" stroke="none"/></svg>',
+}
 
 const gamelist = [
-  { key: 'gomoku', label: '五子棋', component: defineAsyncComponent(() => import('@/components/games/GomokuBoard.vue')) },
-  { key: 'othello', label: '黑白棋', component: defineAsyncComponent(() => import('@/components/games/OthelloBoard.vue')) },
-  { key: 'sudoku', label: '数独', component: defineAsyncComponent(() => import('@/components/games/SudokuBoard.vue')) },
-  { key: 'ludo', label: '飞行棋', component: defineAsyncComponent(() => import('@/components/games/LudoEmbed.vue')) },
-  { key: 'snake', label: '贪吃蛇', component: defineAsyncComponent(() => import('@/components/games/SnakeGame.vue')) },
-  { key: 'mine', label: '扫雷', component: defineAsyncComponent(() => import('@/components/games/MineGame.vue')) },
+  {
+    key: 'gomoku', label: '五子棋', tag: '15×15 · AI 三档', group: '棋类',
+    desc: '五子连珠取胜；同屏双人、单机陪练，或在线邀请家人。',
+    icon: ICON.gomoku,
+    component: defineAsyncComponent(() => import('@/components/games/GomokuBoard.vue')),
+    modes: [
+      { key: 'pvp', label: '双人同屏', hint: '一台设备轮着下' },
+      { key: 'easy', label: '单机 · 简单', hint: 'AI 只看一步，适合陪练' },
+      { key: 'hard', label: '单机 · 困难', hint: 'AI 三层搜索，会堵会攻' },
+      { key: 'online', label: '在线 · 邀请对战', hint: '建房邀请家人，跨设备同步' },
+    ],
+  },
+  {
+    key: 'othello', label: '黑白棋', tag: '夹住翻转 · AI', group: '棋类',
+    desc: '落子夹住对方棋子即可翻转，终局子多者胜。',
+    icon: ICON.othello,
+    component: defineAsyncComponent(() => import('@/components/games/OthelloBoard.vue')),
+    modes: [
+      { key: 'pvp', label: '双人同屏', hint: '一台设备轮着下' },
+      { key: 'easy', label: '单机 · 简单', hint: '贪心算角位，容易赢' },
+      { key: 'hard', label: '单机 · 困难', hint: '三层搜索，别小看它' },
+    ],
+  },
+  {
+    key: 'ludo', label: '飞行棋', tag: '中国规则 · 大屏', group: '棋类', big: true,
+    desc: '同色跳格、飞行捷径、安全格；开源实现（MIT），默认大屏展示。',
+    icon: ICON.ludo,
+    component: defineAsyncComponent(() => import('@/components/games/LudoEmbed.vue')),
+    modes: null,
+  },
+  {
+    key: 'sudoku', label: '数独', tag: '唯一解 · 三档', group: '益智',
+    desc: '挖洞带唯一解校验；填错标红，卡住可提示一格。',
+    icon: ICON.sudoku,
+    component: defineAsyncComponent(() => import('@/components/games/SudokuBoard.vue')),
+    modes: [
+      { key: 'easy', label: '入门', hint: '挖 38 洞，轻松热手' },
+      { key: 'mid', label: '进阶', hint: '挖 45 洞，需要点耐心' },
+      { key: 'hard', label: '困难', hint: '挖 52 洞，慢慢来' },
+    ],
+  },
+  {
+    key: 'mine', label: '扫雷', tag: '10×10 · 15 雷', group: '益智',
+    desc: '经典扫雷，手机上可开「旗子模式」代替右键。',
+    icon: ICON.mine,
+    component: defineAsyncComponent(() => import('@/components/games/MineGame.vue')),
+    modes: null,
+  },
+  {
+    key: 'snake', label: '贪吃蛇', tag: '最高分记录', group: '休闲',
+    desc: '经典贪吃蛇，记录本机最高分。',
+    icon: ICON.snake,
+    component: defineAsyncComponent(() => import('@/components/games/SnakeGame.vue')),
+    modes: null,
+  },
 ]
-const tab = ref('gomoku')
-const roomLocked = ref(false)   // 在线对局进行中 → 锁定其它页签
-const current = computed(() => gamelist.find(g => g.key === tab.value) || gamelist[0])
+const ALL = Object.fromEntries(gamelist.map(g => [g.key, g]))
+const groups = ['棋类', '益智', '休闲']
+  .map(name => ({ name, items: gamelist.filter(g => g.group === name) }))
+  .filter(g => g.items.length)
 
-/* ---------- 从全局邀请弹窗跳转进来（/tool/games?room=ID&game=gomoku） ---------- */
+/* ---------- 状态 ---------- */
+const tab = ref('')            // '' = 空态（默认什么都不摆）
+const phase = ref('setup')     // setup=选模式 / play=对局
+const chosenMode = ref('')
+const resumeFlag = ref(false)
+const runId = ref(0)           // 变更即强制重新挂载组件（开新局）
+const isBig = ref(false)       // 舞台全屏
+const roomLocked = ref(false)  // 在线对局进行中 → 锁左栏
+const pendingRoom = ref({ id: 0, game: '' })
+
+const cur = computed(() => ALL[tab.value] || {})
+const runKey = computed(() => `${tab.value}-${runId.value}`)
+
+const saves = reactive({})
+function refreshSaves() {
+  for (const g of gamelist) saves[g.key] = loadGame(g.key)
+}
+refreshSaves()
+const age = saveAge
+
+function itemLocked(g) {
+  return roomLocked.value && tab.value && g.key !== tab.value
+}
+
+/* ---------- 分步流程 ---------- */
+function pick(key) {
+  const g = ALL[key]
+  if (!g) return
+  if (itemLocked(g)) { ElMessage.warning('对局进行中 —— 先点「退出对局」再切换'); return }
+  tab.value = key
+  chosenMode.value = ''
+  resumeFlag.value = false
+  isBig.value = !!g.big
+  phase.value = g.modes ? 'setup' : 'play'
+  runId.value += 1
+  refreshSaves()
+}
+
+function startGame(modeKey) {
+  clearGame(tab.value)         // 开新局 → 旧存档作废
+  refreshSaves()
+  chosenMode.value = modeKey
+  resumeFlag.value = false
+  phase.value = 'play'
+  runId.value += 1
+}
+
+function resumeGame() {
+  const s = saves[tab.value]
+  if (!s) return
+  chosenMode.value = s.mode || ''
+  resumeFlag.value = true
+  phase.value = 'play'
+  runId.value += 1
+}
+
+function backToList() {
+  if (roomLocked.value) { ElMessage.warning('对局进行中 —— 先「退出对局（认输）」再离开'); return }
+  isBig.value = false
+  refreshSaves()
+  tab.value = ''
+  phase.value = 'setup'
+  chosenMode.value = ''
+  runId.value += 1
+}
+
+function toggleBig() { isBig.value = !isBig.value }
+
+/* ---------- 从全局邀请弹窗跳进来（/tool/games?room=ID&game=gomoku） ---------- */
 const route = useRoute()
 const router = useRouter()
-const pendingRoom = ref({ id: 0, game: '' })
 watch(() => route.query.room, (v) => {
   const id = Number(v) || 0
   const game = String(route.query.game || '')
-  if (id && gamelist.some(g => g.key === game)) {
-    pendingRoom.value = { id, game }
-    tab.value = game
-    router.replace({ query: {} })   // 消费掉，避免刷新重复进入
-  }
+  if (!id || !ALL[game]) return
+  pendingRoom.value = { id, game }
+  tab.value = game
+  chosenMode.value = 'online'
+  resumeFlag.value = false
+  phase.value = 'play'          // 受邀方直接进对局，不再走模式选择
+  isBig.value = false
+  runId.value += 1
+  router.replace({ query: {} })
 }, { immediate: true })
 </script>
 
 <style scoped>
-.games-tool { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.gm-tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.gm-tab {
-  padding: 8px 22px; border-radius: 999px; border: 1px solid var(--dp-line, rgba(0,0,0,.1));
-  background: transparent; color: var(--dp-text2, #45505b); cursor: pointer; font-size: 13.5px;
+/* ===== 布局：左栏 + 舞台 ===== */
+.gm-root {
+  display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 18px;
+  align-items: start; width: 100%;
 }
-.gm-tab.active { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
-
-@media (max-width: 480px) {
-  .gm-tab { padding: 7px 14px; font-size: 12.5px; }
+.gm-root.is-big .gm-stage {
+  position: fixed; inset: 0; z-index: 60; overflow-y: auto;
+  background: var(--dp-bg, #f7f5f0); padding: 14px 20px 30px;
 }
-.gm-locktip { font-size: 12px; color: var(--dp-text3, #8a8f98); background: rgba(199,169,107,.1); padding: 6px 14px; border-radius: 999px; }
 
-.gm-locktip { font-size: 12px; color: var(--dp-text3, #8a8f98); background: rgba(199,169,107,.1); padding: 6px 14px; border-radius: 999px; }
-.gm-tab:disabled { opacity: .4; cursor: not-allowed; }
+/* ===== 左栏 ===== */
+.gm-rail { display: flex; flex-direction: column; gap: 16px; }
+.gm-grp { display: flex; flex-direction: column; gap: 6px; }
+.gm-grp-name {
+  font-size: 11.5px; letter-spacing: .08em; color: var(--dp-text3, #8a8f98);
+  padding: 0 4px 4px; font-weight: 600;
+}
+.gm-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 9px 11px; border-radius: 13px; cursor: pointer; font-family: inherit;
+  border: 1px solid transparent; background: transparent; transition: all .18s;
+  position: relative;
+}
+.gm-item:hover { background: rgba(255,255,255,.6); }
+.gm-item.on {
+  background: var(--dp-surface, #fff); border-color: var(--yq-gold, #c7a96b);
+  box-shadow: 0 4px 14px rgba(20,30,40,.07);
+}
+.gm-item.dim { opacity: .38; cursor: not-allowed; }
+.gm-item-ic { width: 22px; height: 22px; flex: none; color: var(--yq-gold, #c7a96b); }
+.gm-item-ic :deep(svg) { width: 22px; height: 22px; display: block; }
+.gm-item-tx { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.gm-item-tx b { font-size: 13.5px; color: var(--dp-text, #18202a); font-weight: 600; }
+.gm-item-tx i { font-style: normal; font-size: 11px; color: var(--dp-text3, #8a8f98); }
+.gm-item-dot {
+  position: absolute; right: 10px; top: 50%; margin-top: -3px; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--yq-gold, #c7a96b);
+}
+
+/* ===== 舞台 ===== */
+.gm-stage { min-height: 340px; display: flex; flex-direction: column; gap: 14px; }
+.gm-empty {
+  flex: 1; min-height: 320px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; text-align: center; padding: 40px 20px;
+  border: 1px dashed var(--dp-line, rgba(0,0,0,.14)); border-radius: 18px;
+  background: linear-gradient(160deg, rgba(255,255,255,.5), rgba(255,255,255,.25));
+}
+.gm-empty-ic { font-size: 40px; color: var(--yq-gold, #c7a96b); line-height: 1; }
+.gm-empty b { font-size: 15px; color: var(--dp-text, #18202a); }
+.gm-empty p { max-width: 380px; font-size: 12.5px; line-height: 1.8; color: var(--dp-text3, #8a8f98); margin: 0; }
+
+.gm-head {
+  display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+  padding-bottom: 10px; border-bottom: 1px solid var(--dp-line, rgba(0,0,0,.08));
+}
+.gm-head-tx { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 2px; }
+.gm-head-tx b { font-size: 16px; color: var(--dp-text, #18202a); }
+.gm-head-tx i { font-style: normal; font-size: 12px; color: var(--dp-text3, #8a8f98); }
+.gm-head-ops { display: flex; align-items: center; gap: 8px; }
+.gm-op {
+  padding: 6px 14px; border-radius: 999px; font-size: 12.5px; cursor: pointer; font-family: inherit;
+  border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff);
+  color: var(--dp-text2, #45505b); transition: all .18s;
+}
+.gm-op:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.gm-op.ghost { background: transparent; }
+.gm-locktip {
+  font-size: 11.5px; color: var(--dp-text3, #8a8f98); background: rgba(199,169,107,.14);
+  padding: 5px 12px; border-radius: 999px;
+}
+
+/* ===== 第一步：选模式 ===== */
+.gm-setup { display: flex; flex-direction: column; gap: 12px; max-width: 620px; }
+.gm-setup-title { font-size: 13px; font-weight: 600; color: var(--dp-text2, #45505b); }
+.gm-modecards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.gm-modecard {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+  padding: 14px 16px; border-radius: 15px; font-family: inherit;
+  border: 1px solid var(--dp-line, rgba(0,0,0,.12));
+  background: linear-gradient(160deg, rgba(255,255,255,.85), rgba(255,255,255,.55));
+  transition: all .18s;
+}
+.gm-modecard:hover {
+  border-color: var(--yq-gold, #c7a96b); transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(20,30,40,.09);
+}
+.gm-modecard b { font-size: 14px; color: var(--dp-text, #18202a); }
+.gm-modecard i { font-style: normal; font-size: 11.5px; line-height: 1.6; color: var(--dp-text3, #8a8f98); }
+.gm-resume {
+  align-self: flex-start; display: flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 999px; cursor: pointer; font-family: inherit; font-size: 12.5px;
+  border: 1px dashed var(--yq-gold, #c7a96b); background: rgba(199,169,107,.08);
+  color: var(--yq-gold, #c7a96b); font-weight: 600;
+}
+.gm-resume em { font-style: normal; font-weight: 400; opacity: .75; }
+
+/* ===== 第二步：对局 ===== */
+.gm-play { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.gm-root.is-big .gm-play { max-width: 820px; margin: 0 auto; }
+
+@media (max-width: 860px) {
+  .gm-root { grid-template-columns: 1fr; gap: 12px; }
+  .gm-rail {
+    flex-direction: row; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+  }
+  .gm-grp { flex-direction: row; align-items: center; gap: 6px; }
+  .gm-grp-name { display: none; }
+  .gm-item { width: auto; padding: 7px 12px; }
+  .gm-item-tx i { display: none; }
+  .gm-empty { min-height: 220px; }
+}
 </style>

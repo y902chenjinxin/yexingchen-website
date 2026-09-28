@@ -20,8 +20,8 @@
         </div>
       </div>
 
-      <!-- 模式（房间激活时锁定） -->
-      <div class="gk-modes" :class="{ locked: roomLocked }">
+      <!-- 模式（页面已选则隐藏；房间激活时锁定） -->
+      <div v-if="!bare" class="gk-modes" :class="{ locked: roomLocked }">
         <button
           v-for="m in modes"
           :key="m.key"
@@ -117,8 +117,15 @@ import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
 import { familyMembers } from '@/api/lifeExtra'
+import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 
 const emit = defineEmits(['room-lock', 'room-unlock'])
+const props = defineProps({
+  initialMode: { type: String, default: '' },   // 模式由页面「第一步」选定（v2.40.29）
+  resume: { type: Boolean, default: false },    // 从本地存档续局
+  bare: { type: Boolean, default: false },      // 隐藏内置模式段（模式已在页面上选过）
+  joinRoomId: { type: Number, default: 0 },     // 受邀跳转进来：直接进指定房间
+})
 
 const N = 15
 const HUMAN = 1, AI = 2
@@ -128,7 +135,7 @@ const modes = [
   { key: 'hard', label: '单机 · 困难' },
   { key: 'online', label: '在线 · 邀请对战' },
 ]
-const mode = ref('easy')
+const mode = ref(props.initialMode || 'easy')
 const board = ref(Array(N * N).fill(0))
 const turn = ref(HUMAN)
 const over = ref(false)
@@ -285,6 +292,42 @@ function clearLocal() {
   thinking.value = false
   onlineWinner.value = ''
 }
+/* ---------- 本地存档：退出/返回首页后可从「第一步」续上（在线局不存） ---------- */
+const SAVE_KEY = 'gomoku'
+let saveTimer = null
+function saveLocal() {
+  if (mode.value === 'online' || over.value || !history.value.length) return
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveGame(SAVE_KEY, {
+      mode: mode.value,
+      summary: `${modeLabel.value} · 已下 ${history.value.length} 手`,
+      board: board.value,
+      history: history.value,
+      turn: turn.value,
+      lastIdx: lastIdx.value,
+      winLine: winLine.value,
+      winner: winner.value,
+      over: over.value,
+    })
+  }, 400)
+}
+function restoreLocal() {
+  const s = loadGame(SAVE_KEY)
+  if (!s || !Array.isArray(s.board) || s.board.length !== N * N || s.mode === 'online') return false
+  clearTimeout(timer)
+  if (s.mode) mode.value = s.mode
+  board.value = s.board
+  history.value = s.history || []
+  turn.value = s.turn || HUMAN
+  lastIdx.value = s.lastIdx ?? -1
+  winLine.value = s.winLine || []
+  winner.value = s.winner || 0
+  over.value = !!s.over
+  return true
+}
+watch([board, over], saveLocal, { deep: true })
+
 function setMode(k) {
   if (roomLocked.value && k !== mode.value) {
     ElMessage.warning('对局进行中 —— 先点「退出对局」再切换模式')
@@ -297,6 +340,8 @@ function setMode(k) {
 }
 function restart() {
   if (mode.value === 'online') { ElMessage.info('在线模式请用「再来一局」或「退出对局」'); return }
+  clearTimeout(saveTimer)
+  clearGame(SAVE_KEY)
   clearLocal()
 }
 
@@ -463,9 +508,20 @@ function undo() {
 
 onMounted(async () => {
   await loadFamilies()
-  await resumeMine()
+  // 受邀跳转进来（/tool/games?room=&game=）：直接进那个房间
+  if (props.joinRoomId) {
+    mode.value = 'online'
+    try {
+      await gRoom.join(props.joinRoomId)
+      ElMessage.success(`已进入与「${gRoom.opponentName.value}」的对局`)
+      return
+    } catch { /* 房间不可用 → 落到常规流程 */ }
+  }
+  if (props.resume && restoreLocal()) return
+  // 只有在线模式才自动接回进行中的房间，避免玩本地局时被拉走
+  if (mode.value === 'online') await resumeMine()
 })
-onBeforeUnmount(() => { clearTimeout(timer); gRoom.stopPoll() })
+onBeforeUnmount(() => { clearTimeout(timer); clearTimeout(saveTimer); gRoom.stopPoll() })
 </script>
 
 <style scoped>

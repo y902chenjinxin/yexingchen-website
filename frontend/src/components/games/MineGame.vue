@@ -22,12 +22,18 @@
 
 <script setup>
 /** 扫雷：从旧 GamesView 原样迁移。 */
-import { reactive } from 'vue'
+import { reactive, watch, onMounted } from 'vue'
+import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+
+const props = defineProps({ resume: { type: Boolean, default: false } })
+const SAVE_KEY = 'mine'
 
 const SIZE = 10, MINES = 15
 const mine = reactive({ cells: [], flagsLeft: MINES, flagMode: false, result: '' })
 
 function initMine() {
+  clearTimeout(saveTimer)
+  clearGame(SAVE_KEY)
   mine.cells = Array.from({ length: SIZE * SIZE }, (_, i) => ({
     i, x: i % SIZE, y: Math.floor(i / SIZE), mine: false, revealed: false, flagged: false, boom: false, n: 0,
   }))
@@ -76,7 +82,29 @@ function checkWin() {
   const hidden = mine.cells.filter(c => !c.revealed).length
   if (hidden === MINES) mine.result = '🎉 通关！排雷成功'
 }
-initMine()
+/* ---------- 本地存档：返回列表后可「继续上一局」 ---------- */
+let saveTimer = null
+function saveLocal() {
+  if (mine.result || !mine.cells.some(c => c.revealed)) return
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveGame(SAVE_KEY, {
+      summary: `已翻开 ${mine.cells.filter(c => c.revealed).length} 格 · 余 ${mine.flagsLeft} 雷`,
+      cells: mine.cells, flagsLeft: mine.flagsLeft, flagMode: mine.flagMode,
+    })
+  }, 500)
+}
+function restoreLocal() {
+  const s = loadGame(SAVE_KEY)
+  if (!s || !Array.isArray(s.cells) || s.cells.length !== SIZE * SIZE) return false
+  mine.cells = s.cells
+  mine.flagsLeft = typeof s.flagsLeft === 'number' ? s.flagsLeft : MINES
+  mine.flagMode = !!s.flagMode
+  mine.result = ''
+  return true
+}
+watch([() => mine.cells, () => mine.result], saveLocal, { deep: true })
+onMounted(() => { if (!(props.resume && restoreLocal())) initMine() })
 </script>
 
 <style scoped>
