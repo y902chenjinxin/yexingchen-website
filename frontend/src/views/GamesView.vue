@@ -61,6 +61,17 @@
                 <i>{{ m.hint }}</i>
               </button>
             </div>
+            <div v-if="cur.boardSizes" class="gm-size">
+              <span class="gm-size-label">棋盘大小</span>
+              <button
+                v-for="s in cur.boardSizes"
+                :key="s"
+                class="gm-sizebtn"
+                :class="{ on: chosenBoard === s }"
+                @click="chosenBoard = s"
+              >{{ s }}×{{ s }}</button>
+              <span class="gm-size-hint">开局定好就不再变（在线对战固定 15×15）</span>
+            </div>
             <button v-if="saves[tab]" class="gm-resume" @click="resumeGame">
               ▶ 继续上一局 · {{ saves[tab].summary }}
               <em>{{ age(saves[tab].ts) }}</em>
@@ -73,6 +84,7 @@
               :is="cur.component"
               :key="runKey"
               :initial-mode="chosenMode"
+              :board-size="chosenBoard"
               :resume="resumeFlag"
               :bare="true"
               :join-room-id="pendingRoom.game === cur.key ? pendingRoom.id : 0"
@@ -116,6 +128,7 @@ const gamelist = [
     desc: '五子连珠取胜；同屏双人、单机陪练，或在线邀请家人。',
     icon: ICON.gomoku,
     component: defineAsyncComponent(() => import('@/components/games/GomokuBoard.vue')),
+    boardSizes: [15, 19, 23],   // 开局可选棋盘大小（对局中固定，不自动变化）
     modes: [
       { key: 'pvp', label: '双人同屏', hint: '一台设备轮着下' },
       { key: 'easy', label: '单机 · 简单', hint: 'AI 只看一步，适合陪练' },
@@ -176,6 +189,7 @@ const groups = ['棋类', '益智', '休闲']
 const tab = ref('')            // '' = 空态（默认什么都不摆）
 const phase = ref('setup')     // setup=选模式 / play=对局
 const chosenMode = ref('')
+const chosenBoard = ref(15)   // 开局棋盘边长（五子棋可选 15/19/23）
 const resumeFlag = ref(false)
 const runId = ref(0)           // 变更即强制重新挂载组件（开新局）
 const isBig = ref(false)       // 舞台全屏
@@ -203,6 +217,7 @@ function pick(key) {
   if (itemLocked(g)) { ElMessage.warning('对局进行中 —— 先点「退出对局」再切换'); return }
   tab.value = key
   chosenMode.value = ''
+  chosenBoard.value = 15
   resumeFlag.value = false
   isBig.value = !!g.big
   phase.value = g.modes ? 'setup' : 'play'
@@ -382,6 +397,15 @@ watch(() => route.query.room, (v) => {
 }
 .gm-modecard b { font-size: 14px; color: var(--dp-text, #18202a); }
 .gm-modecard i { font-style: normal; font-size: 11.5px; line-height: 1.6; color: var(--dp-text3, #8a8f98); }
+.gm-size { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gm-size-label { font-size: 12.5px; color: var(--dp-text2, #45505b); font-weight: 600; }
+.gm-sizebtn {
+  padding: 6px 14px; border-radius: 999px; cursor: pointer; font-family: inherit; font-size: 12.5px;
+  border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: transparent; color: var(--dp-text2, #45505b);
+  transition: all .18s;
+}
+.gm-sizebtn.on { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
+.gm-size-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .gm-resume {
   align-self: flex-start; display: flex; align-items: center; gap: 8px;
   padding: 9px 16px; border-radius: 999px; cursor: pointer; font-family: inherit; font-size: 12.5px;

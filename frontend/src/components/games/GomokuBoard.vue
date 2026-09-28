@@ -106,7 +106,7 @@
       <template v-if="mode === 'online'">在线模式 · 对方落子约 2 秒内自动出现</template>
       <template v-else>
         黑方先行 · 五子连珠获胜 · 困难模式 AI 搜索更深
-        <span v-if="expands" class="gk-expandnote">· 棋盘已向外扩展 {{ expands }}/3 次（现 {{ N }}×{{ N }}）</span>
+        <span class="gk-expandnote">· 棋盘 {{ N }}×{{ N }}</span>
       </template>
     </p>
   </div>
@@ -133,20 +133,24 @@ const props = defineProps({
   resume: { type: Boolean, default: false },    // 从本地存档续局
   bare: { type: Boolean, default: false },      // 隐藏内置模式段（模式已在页面上选过）
   joinRoomId: { type: Number, default: 0 },     // 受邀跳转进来：直接进指定房间
+  boardSize: { type: Number, default: 15 },     // 开局选定的棋盘边长（15/19/23）
 })
 
 /* ---------- 棋盘尺寸：内部满盘固定，外部开放区可扩（v2.40.30） ----------
  * 内部一律用 FULL×FULL 的坐标存棋子（27×27），**永不重映射**；
- * 开放区是它中心的方块，起始 15×15，棋子落到距离边缘 1 线以内就向外扩 2 圈，
- * 最多 3 次：15 → 19 → 23 → 27。
- * 这样扩展只是「放大窗口」，已落的子、AI 搜索、胜负判定都不受影响。
+ * 开放区（真正在下的棋盘）是它中心的方块，**开局由玩家选定**：15×15 / 19×19 / 23×23，
+ * 对局中固定不变 —— 中途改变棋盘会影响五子连珠的规则，不能自动扩。
  * 在线对局不扩展（服务端棋盘固定 15×15，srv2in/in2srv 做坐标翻译）。 */
 const FULL = 27
 const BASE_MARGIN = 6                       // (27 - 6*2) = 15 起始边长
 const SRV_N = 15                            // 服务端棋盘边长
-const margin = ref(BASE_MARGIN)             // 开放区外留的边距：6 → 4 → 2 → 0
+/** 开局尺寸 → 外边距（27-15=12→6，27-19=8→4，27-23=4→2；对局中**不再变化**） */
+const defaultMargin = computed(() => {
+  const size = Number(props.boardSize) || 15
+  return Math.max(0, Math.min(BASE_MARGIN, Math.round((FULL - size) / 2)))
+})
+const margin = ref(defaultMargin.value)     // 开放区外留的边距（开局定死）
 const N = computed(() => FULL - margin.value * 2)          // 对外边长 15/19/23/27
-const expands = computed(() => (BASE_MARGIN - margin.value) / 2)   // 已扩展次数 0..3
 
 const HUMAN = 1, AI = 2
 const modes = [
@@ -343,7 +347,7 @@ const resultText = computed(() => {
 function clearLocal() {
   clearTimeout(timer)
   board.value = Array(FULL * FULL).fill(0)
-  margin.value = BASE_MARGIN
+  margin.value = mode.value === 'online' ? BASE_MARGIN : defaultMargin.value
   nextTick(measureCell)
   turn.value = HUMAN
   over.value = false
@@ -511,18 +515,6 @@ function openAreaFull() {
   }
   return true
 }
-/** 落子后看它离开放区边缘还有几线，≤1 就向外扩 2 圈（最多 3 次；在线模式不扩） */
-function maybeExpand(innerIdx) {
-  if (mode.value === 'online' || margin.value <= 0) return
-  if (history.value.length < 12) return      // 开局贴边不算「吃紧」，至少下过 12 手再考虑
-  const x = innerIdx % FULL, y = (innerIdx / FULL) | 0
-  const m = margin.value
-  const d = Math.min(x - m, FULL - 1 - m - x, y - m, FULL - 1 - m - y)
-  if (d > 1) return
-  margin.value -= 2
-  nextTick(() => { measureCell(); ElMessage.success(`棋局吃紧，棋盘向外扩展 —— 现在 ${N.value}×${N.value}（第 ${expands.value}/3 次）`) })
-}
-
 /** 模板传进来的是 DOM 格序号；内部一律用 27×27 坐标 */
 function play(domIdx) {
   const idx = domToInner(domIdx)
@@ -548,7 +540,6 @@ function play(domIdx) {
   if (mode.value !== 'pvp' && turn.value !== HUMAN) return
   place(idx)
   if (over.value) return
-  maybeExpand(idx)
   if (mode.value !== 'pvp') {
     turn.value = AI
     aiMove()
@@ -578,7 +569,7 @@ function aiMove() {
       }
     }
     thinking.value = false
-    if (pick) { turn.value = AI; place(pick.idx); turn.value = HUMAN; maybeExpand(pick.idx) }
+    if (pick) { turn.value = AI; place(pick.idx); turn.value = HUMAN }
   }, 120)
 }
 
