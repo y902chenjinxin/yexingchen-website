@@ -62,7 +62,7 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import AiToolsDrawer from '@/components/workbench/AiToolsDrawer.vue'
 import { checkFestivalNotice } from '@/utils/festivalNotice'
 import { gameRoomsApi } from '@/api/gameRooms'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 // WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
@@ -215,7 +215,15 @@ onMounted(async () => {
           '对局邀请',
           { confirmButtonText: '接受，开打！', cancelButtonText: '拒绝', type: 'info' },
         ).then(async () => {
-          await gameRoomsApi.accept(inv.id)
+          // ⚠️ accept 失败**不能**落到下面的 catch —— 那会被当成「用户点了拒绝」而把房间 decline 掉，
+          // 表现就是「点了接受，房间却没了、进不去对局」。这里单独兜住并允许下次重弹。
+          try {
+            await gameRoomsApi.accept(inv.id)
+          } catch (e) {
+            inviteSeen.delete(inv.id)
+            ElMessage.warning(e?.response?.data?.msg || '接受失败，请稍后再试')
+            return
+          }
           router.push(`/tool/games?room=${inv.id}&game=${inv.game}`)
         }).catch(() => { gameRoomsApi.decline(inv.id).catch(() => {}) })
       }

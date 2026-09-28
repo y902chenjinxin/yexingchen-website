@@ -1,5 +1,26 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+
+/* 手机浏览器 = 桌面版（v2.40.30 夜星拍板）
+ * 只有玄黄 APK（WebView 注入 UA `XuanHuangApp/x.y.z`）才用移动端外壳；
+ * 手机自带浏览器 / 微信等一律走桌面版 —— 把 viewport 固定成 1280 宽，
+ * 于是 CSS 媒体查询与 useIsMobile 都自然落到桌面分支，手机上看到可缩放的完整网页版。
+ * 逃生口：URL 带 ?m=1 强制移动端（?m=0 取消），应对旧版不带标记的 APK。
+ * 必须在挂载前执行，否则移动端样式会先闪一帧。 */
+;(function mobileBrowserUsesDesktopLayout() {
+  try {
+    const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || ''
+    if (/XuanHuangApp/i.test(ua)) return              // APK：保持 device-width
+    let forceMobile = false
+    try { forceMobile = localStorage.getItem('xuanhuang_force_mobile') === '1' } catch { /* 忽略 */ }
+    if (forceMobile) return
+    const isMobileBrowser = /Android|iPhone|iPad|iPod|Windows Phone|HarmonyOS|Mobile|MicroMessenger/i.test(ua)
+    if (!isMobileBrowser) return
+    const meta = document.querySelector('meta[name="viewport"]')
+    if (meta) meta.setAttribute('content', 'width=1280, viewport-fit=cover')
+  } catch { /* 忽略：宁可保持默认也不白屏 */ }
+})()
+
 import 'element-plus/dist/index.css'
 import App from './App.vue'
 import router from './router'

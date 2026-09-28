@@ -95,7 +95,7 @@
  * 进度：自研游戏写 localStorage 存档（utils/gameSave），回列表后可「继续上一局」。
  * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/big/saveable 声明能力）。
  */
-import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
@@ -261,13 +261,15 @@ watch(isBig, async (v) => {
 })
 onBeforeUnmount(() => { document.body.style.overflow = ''; raiseHost(false) })
 
-/* ---------- 从全局邀请弹窗跳进来（/tool/games?room=ID&game=gomoku） ---------- */
+/* ---------- 从全局邀请弹窗跳进来（/tool/games?room=ID&game=gomoku） ----------
+ * ⚠️ App.vue 的 RouterView 是 `:key="route.fullPath"`：这里一调 router.replace({query:{}})
+ * 清 query，fullPath 就变，**整个页面被销毁重建**，刚设好的 tab/phase 全丢 ——
+ * 表现就是「接受邀请后回到空态、进不去对局」。所以状态先落 sessionStorage，重建后 onMounted 续上。 */
+const JOIN_KEY = 'xuanhuang_join_room'
 const route = useRoute()
 const router = useRouter()
-watch(() => route.query.room, (v) => {
-  const id = Number(v) || 0
-  const game = String(route.query.game || '')
-  if (!id || !ALL[game]) return
+
+function enterRoom(id, game) {
   pendingRoom.value = { id, game }
   tab.value = game
   chosenMode.value = 'online'
@@ -275,8 +277,27 @@ watch(() => route.query.room, (v) => {
   phase.value = 'play'          // 受邀方直接进对局，不再走模式选择
   isBig.value = false
   runId.value += 1
+}
+
+watch(() => route.query.room, (v) => {
+  const id = Number(v) || 0
+  const game = String(route.query.game || '')
+  if (!id || !ALL[game]) return
+  enterRoom(id, game)
+  try { sessionStorage.setItem(JOIN_KEY, JSON.stringify({ id, game })) } catch { /* 忽略 */ }
   router.replace({ query: {} })
 }, { immediate: true })
+
+onMounted(() => {
+  try {
+    const raw = sessionStorage.getItem(JOIN_KEY)
+    if (!raw) return
+    sessionStorage.removeItem(JOIN_KEY)
+    const { id, game } = JSON.parse(raw) || {}
+    // 页面被 fullPath 变化重建过 → watch 白跑，这里兜回来
+    if (id && ALL[game] && tab.value !== game) enterRoom(id, game)
+  } catch { /* 忽略 */ }
+})
 </script>
 
 <style scoped>

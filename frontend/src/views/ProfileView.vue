@@ -112,6 +112,24 @@
         </div>
       </div>
 
+      <!-- 账号：切换 / 退出（v2.40.30，APK「我的」里原本没有任何登出入口） -->
+      <div class="info-card account-card">
+        <div class="card-header">
+          <h2>账号</h2>
+        </div>
+        <div class="card-body">
+          <p class="pref-hint">
+            当前登录：<b>{{ auth.user?.nickname || '—' }}</b>
+            <span v-if="auth.user?.email">（{{ auth.user.email }}）</span>
+          </p>
+          <p class="pref-hint">换个人用这台设备，或退出登录。切换账号会清掉本机登录状态并回到登录页。</p>
+          <div class="account-ops">
+            <button class="acc-btn" @click="switchAccount">切换账号</button>
+            <button class="acc-btn danger" @click="doLogout">退出登录</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 品牌意象 -->
       <div class="info-card">
         <div class="card-header">
@@ -167,6 +185,8 @@
 defineOptions({ name: 'ProfileView' })
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import BackButton from '@/components/BackButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePrefsStore } from '@/stores/prefs'
@@ -184,6 +204,28 @@ const brandIcons = [
 
 const auth = useAuthStore()
 const prefs = usePrefsStore()
+const router = useRouter()
+
+/** 退出登录：清本机登录态后回登录页 */
+function doLogout() {
+  ElMessageBox.confirm('退出后需要重新输入账号密码，确定退出？', '退出登录', {
+    confirmButtonText: '退出', cancelButtonText: '取消', type: 'warning',
+  }).then(() => {
+    auth.logoutAction()
+    ElMessage.success('已退出登录')
+    router.replace('/login')
+  }).catch(() => {})
+}
+
+/** 切换账号：同样退出，但带上标记，登录页会把焦点落在账号框 */
+function switchAccount() {
+  ElMessageBox.confirm('将退出当前账号，回到登录页登录另一个账号。', '切换账号', {
+    confirmButtonText: '去登录', cancelButtonText: '取消', type: 'warning',
+  }).then(() => {
+    auth.logoutAction()
+    router.replace('/login?switch=1')
+  }).catch(() => {})
+}
 
 // PWA 安装：Chromium 可直接弹原生安装框；iOS 只能文字引导「分享 → 添加到主屏幕」
 const {
@@ -532,4 +574,14 @@ async function savePassword() {
   .brand-stage { border-radius: 20%; padding: 8px; }
   .brand-cell figcaption { font-size: 11.5px; }
 }
+/* 账号操作（v2.40.30）：换账号 / 退出 */
+.account-ops { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.acc-btn {
+  padding: 9px 20px; border-radius: 10px; font-size: 13.5px; cursor: pointer; font-family: inherit;
+  border: 1px solid var(--yq-gold, #c7a96b); background: transparent; color: var(--yq-gold, #c7a96b);
+  font-weight: 600; transition: background .18s;
+}
+.acc-btn:hover { background: rgba(199, 169, 107, .12); }
+.acc-btn.danger { border-color: #d9534f; color: #d9534f; }
+.acc-btn.danger:hover { background: rgba(217, 83, 79, .1); }
 </style>
