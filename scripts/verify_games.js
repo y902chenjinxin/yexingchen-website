@@ -99,7 +99,7 @@ let ws, msgId = 0
 const consoleErrors = []
 const failedRequests = []
 
-function send(method, params = {}) {
+function send(method, params = {}, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
     const id = ++msgId
     ws.send(JSON.stringify({ id, method, params }))
@@ -108,7 +108,7 @@ function send(method, params = {}) {
       if (r.id === id) { ws.removeEventListener('message', handler); resolve(r) }
     }
     ws.addEventListener('message', handler)
-    setTimeout(() => { ws.removeEventListener('message', handler); reject(new Error('timeout ' + method)) }, 30000)
+    setTimeout(() => { ws.removeEventListener('message', handler); reject(new Error('timeout ' + method)) }, timeoutMs)
   })
 }
 
@@ -172,8 +172,16 @@ async function evalJs(expression) {
 }
 
 async function shot(name) {
-  const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
-  if (!r.result?.data) return null
+  // 截图偶发挂起/发暗（页面有常驻 CSS 动画 + 大 payload + 窗口不在前台时合成器给旧帧）
+  // → 先 bringToFront，再重试 2 次并放宽超时
+  try { await send('Page.bringToFront') } catch { /* 忽略 */ }
+  await new Promise(r => setTimeout(r, 250))
+  let r = null
+  for (let i = 0; i < 2; i++) {
+    try { r = await send('Page.captureScreenshot', { format: 'png' }, 60000); break }
+    catch (e) { console.log(`  [warn] screenshot retry (${i + 1}): ${e.message}`) }
+  }
+  if (!r?.result?.data) { console.log('  [warn] screenshot failed:', name); return null }
   fs.mkdirSync(OUT_DIR, { recursive: true })
   const p = path.join(OUT_DIR, name)
   fs.writeFileSync(p, Buffer.from(r.result.data, 'base64'))
@@ -190,6 +198,27 @@ async function waitFor(sel, timeout = 15000) {
     await new Promise(r => setTimeout(r, 300))
   }
   return false
+}
+
+/** 轮询等待条件表达式为真 */
+async function waitUntil(expr, timeout = 10000) {
+  const t0 = Date.now()
+  while (Date.now() - t0 < timeout) {
+    if (await evalJs(`!!(${expr})`)) return true
+    await new Promise(r => setTimeout(r, 250))
+  }
+  return false
+}
+
+/** 等路由进场动画收尾：island-inner 无 transform、opacity=1（否则量到缩放中的坐标） */
+async function settle(timeout = 6000) {
+  await waitUntil(`(() => {
+    const el = document.querySelector('.island-inner')
+    if (!el) return true
+    const cs = getComputedStyle(el)
+    return cs.transform === 'none' && cs.opacity === '1'
+  })()`, timeout)
+  await new Promise(r => setTimeout(r, 300))
 }
 
 /** 按可见文字点按钮 */
@@ -249,17 +278,26 @@ function check(name, pass, detail) {
   check('五子棋模式卡渲染', modeN >= 3, `count=${modeN}`)
   await clickText('.gm-modecard', '双人同屏')
   await waitFor('.gk-board', 10000)
-  await new Promise(r => setTimeout(r, 1200))   // 等 measureCell + 字体
+  await settle()                                // 等进场动画收尾，再量坐标
 
   // 3.1 交叉点几何：格子中心是否与网格线重合
+  //     注意：页面可能有祖先 transform/zoom，getBoundingClientRect 是缩放后坐标，
+  //     而 getComputedStyle 的 px 是缩放前 —— 所以「格宽/线距」必须从 rect 实测反推。
   const geo = await evalJs(`(() => {
     const board = document.querySelector('.gk-board')
     const grid = document.querySelector('.gk-grid')
     const cells = [...document.querySelectorAll('.gk-cell')]
     if (!board || !grid || !cells.length) return { err: 'no board/grid/cells' }
     const g = grid.getBoundingClientRect()
-    const cell = parseFloat(getComputedStyle(board).getPropertyValue('--cell'))
     const n = parseFloat(getComputedStyle(board).getPropertyValue('--n'))
+    const r0 = cells[0].getBoundingClientRect()
+    const cellPx = r0.width                       // 实测格宽（已含缩放）
+    // 网格线的真实周期 = 一个格宽（repeating-linear-gradient 每 var(--cell) 重复一次），
+    // 不能用 grid.width/(n-1) —— 覆盖层宽度是 cell*(n-1)+1px（多出的 1px 给最后一条线留厚度），
+    // 那样除会把线距算大 0.07px，末端累积成 1px 假偏差。
+    const lineGap = cellPx
+    // 覆盖层应恰好跨过 n-1 个格距（+1px 线厚）
+    const spanOk = Math.abs(g.width - (cellPx * (n - 1) + 1)) < 1.5
     // 取 4 个角的格子中心，与「该位置应有的网格线交点」比较
     const picks = [0, n - 1, n * (n - 1), n * n - 1]
     let maxDev = 0
@@ -267,14 +305,27 @@ function check(name, pass, detail) {
       const r = cells[i].getBoundingClientRect()
       const cx = r.left + r.width / 2, cy = r.top + r.height / 2
       const col = i % n, row = Math.floor(i / n)
-      const lineX = g.left + col * cell
-      const lineY = g.top + row * cell
+      const lineX = g.left + col * lineGap
+      const lineY = g.top + row * lineGap
       maxDev = Math.max(maxDev, Math.abs(cx - lineX), Math.abs(cy - lineY))
     }
-    return { cell, n, maxDev: Math.round(maxDev * 100) / 100, gridW: Math.round(g.width), boardW: Math.round(board.getBoundingClientRect().width) }
+    // 祖先 transform/zoom 诊断
+    const chain = []
+    for (let el = board; el && el !== document.documentElement; el = el.parentElement) {
+      const cs = getComputedStyle(el)
+      if (cs.transform !== 'none' || cs.zoom !== 'normal') chain.push(el.className + ' {transform:' + cs.transform + ',zoom:' + cs.zoom + '}')
+    }
+    return {
+      n, cellCss: getComputedStyle(board).getPropertyValue('--cell').trim(),
+      cellMeasured: Math.round(cellPx * 100) / 100,
+      gridW: Math.round(g.width * 100) / 100,
+      spanOk, maxDev: Math.round(maxDev * 100) / 100, chain,
+    }
   })()`)
   check('棋子交叉点对齐（格心=线交点，偏差<1px）', geo.maxDev != null && geo.maxDev < 1,
-    `cell=${geo.cell} n=${geo.n} maxDev=${geo.maxDev}px gridW=${geo.gridW}`)
+    `cellCss=${geo.cellCss} cell实测=${geo.cellMeasured} gridW=${geo.gridW} maxDev=${geo.maxDev}px`)
+  check('网格覆盖层恰好跨 n-1 个格距', geo.spanOk === true, `gridW=${geo.gridW} 期望≈${(geo.cellMeasured * (geo.n - 1) + 1).toFixed(2)}`)
+  if (geo.chain?.length) console.log('  祖先缩放链:', JSON.stringify(geo.chain))
 
   // 3.2 落子后棋子圆心是否在线交点上
   const stoneGeo = await evalJs(`(() => {
@@ -282,17 +333,17 @@ function check(name, pass, detail) {
     const grid = document.querySelector('.gk-grid')
     const cells = [...document.querySelectorAll('.gk-cell')]
     const n = parseFloat(getComputedStyle(board).getPropertyValue('--n'))
-    const cell = parseFloat(getComputedStyle(board).getPropertyValue('--cell'))
+    const g = grid.getBoundingClientRect()
+    const lineGap = g.width / (n - 1)
     // 点第 8 行第 8 列（中心区）
     const target = 7 * n + 7
     cells[target].click()
     return new Promise(res => setTimeout(() => {
-      const st = document.querySelector('.gk-cell .gk-stone') || document.querySelectorAll('.gk-cell')[target].querySelector('.gk-stone')
+      const st = cells[target].querySelector('.gk-stone')
       if (!st) return res({ err: 'stone not rendered' })
-      const g = grid.getBoundingClientRect()
       const r = st.getBoundingClientRect()
       const cx = r.left + r.width / 2, cy = r.top + r.height / 2
-      const lineX = g.left + 7 * cell, lineY = g.top + 7 * cell
+      const lineX = g.left + 7 * lineGap, lineY = g.top + 7 * lineGap
       res({ dev: Math.round(Math.max(Math.abs(cx - lineX), Math.abs(cy - lineY)) * 100) / 100 })
     }, 400))
   })()`)
@@ -330,15 +381,73 @@ function check(name, pass, detail) {
     const cs = getComputedStyle(b)
     return {
       theme: document.documentElement.getAttribute('data-theme'),
-      boardBg: cs.backgroundColor || cs.backgroundImage.slice(0, 80),
-      boardFilter: cs.filter,
+      boardBgImage: cs.backgroundImage.slice(0, 90),
+      boardBgColor: cs.backgroundColor,
+      lineColor: cs.getPropertyValue('--gk-line').trim(),
       hintColor: hint ? getComputedStyle(hint).color : '',
-      lineColor: getComputedStyle(document.documentElement).getPropertyValue('--gk-line').trim(),
+      shellBg: getComputedStyle(document.querySelector('.gk-shell')).backgroundImage.slice(0, 70),
     }
   })()`)
   console.log('  night style:', JSON.stringify(night))
-  check('夜间主题下棋盘有实底（非透明）', !!night.boardBg && night.boardBg !== 'rgba(0, 0, 0, 0)', night.boardBg)
+  const hasWood = /gradient/.test(night.boardBgImage || '') && night.boardBgImage !== 'none'
+  check('夜间主题棋盘为深木纹实底（非透明）', hasWood, night.boardBgImage)
+  check('夜间主题网格线可见（非空色值）', !!night.lineColor, `--gk-line=${night.lineColor}`)
+  // 落一枚子并把棋盘滚到视野中央，便于看图核验
+  await evalJs(`(() => {
+    const cells = [...document.querySelectorAll('.gk-cell')]
+    const n = 15
+    cells[7 * n + 8]?.click()
+    document.querySelector('.gk-board')?.scrollIntoView({ block: 'center' })
+    return 1
+  })()`)
+  await new Promise(r => setTimeout(r, 1400))
+  // 诊断：为何整页发暗 —— 查 island-inner 的透明度/变换 + 覆盖在棋盘中心的最上层元素
+  const dim = await evalJs(`(() => {
+    const inner = document.querySelector('.island-inner')
+    const cs = inner ? getComputedStyle(inner) : null
+    const b = document.querySelector('.gk-board')?.getBoundingClientRect()
+    const top = b ? document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2) : null
+    const fixed = [...document.querySelectorAll('body *')].filter(el => {
+      const s = getComputedStyle(el)
+      if (s.position !== 'fixed' && s.position !== 'absolute') return false
+      const r = el.getBoundingClientRect()
+      return r.width > innerWidth * 0.8 && r.height > innerHeight * 0.8 && s.visibility !== 'hidden'
+    }).map(el => ({ cls: el.className?.toString().slice(0, 60), z: getComputedStyle(el).zIndex, op: getComputedStyle(el).opacity, bg: getComputedStyle(el).backgroundColor }))
+    return JSON.stringify({
+      innerOpacity: cs?.opacity, innerTransform: cs?.transform,
+      innerFilter: cs?.filter, topEl: top ? top.className?.toString().slice(0, 60) : null,
+      fixedOverlays: fixed,
+    })
+  })()`)
+  console.log('  dim 诊断:', dim)
   await shot('games_gomoku.png')
+
+  // 3.6 放大模式：左主棋盘 + 右辅栏（主次分明）+ 顶部头部不压棋局
+  await clickText('.gm-op', '放大')
+  await new Promise(r => setTimeout(r, 1000))
+  await settle()
+  const big = await evalJs(`(() => {
+    const board = document.querySelector('.gk-board')
+    const shell = document.querySelector('.gk-shell')
+    const head = document.querySelector('.gm-head')
+    const stage = document.querySelector('.gm-stage')
+    if (!board || !shell || !head) return { err: 'missing el' }
+    const b = board.getBoundingClientRect(), s = shell.getBoundingClientRect(), h = head.getBoundingClientRect()
+    const ov = (r1, r2) => !(r1.bottom <= r2.top || r1.top >= r2.bottom || r1.right <= r2.left || r1.left >= r2.right)
+    return {
+      boardW: Math.round(b.width), boardH: Math.round(b.height),
+      shellW: Math.round(s.width),
+      sideBySide: s.left >= b.right - 2,
+      shellOverBoard: ov(s, b),
+      headOverShell: ov(h, s),
+      headOverBoard: ov(h, b),
+      stageScrollable: stage.scrollHeight > stage.clientHeight + 2,
+    }
+  })()`)
+  check('放大：棋盘放大（>560）且辅栏移到右侧', big.sideBySide === true && big.boardW > 560, JSON.stringify(big))
+  check('放大：头部不压玩家条/棋盘（无顶部凸出重叠）',
+    big.headOverShell === false && big.headOverBoard === false, JSON.stringify(big))
+  await shot('games_gomoku_big.png')
 
   /* ================= 飞行棋 ================= */
   console.log('\n== 4. 飞行棋 ==')
@@ -352,7 +461,9 @@ function check(name, pass, detail) {
   for (const [label, expect] of [['双人同屏', 2], ['三人同屏', 3], ['四人同屏', 4]]) {
     await clickText('.gm-modecard', label)
     const ok = await waitFor('.lb-board', 10000)
-    await new Promise(r => setTimeout(r, 900))
+    await settle()
+    await evalJs(`document.querySelector('.lb-board')?.scrollIntoView({ block: 'center' })`)
+    await new Promise(r => setTimeout(r, 700))
     const info = await evalJs(`JSON.stringify({
       players: document.querySelectorAll('.lb-player').length,
       pieces: document.querySelectorAll('.lb-piece').length,
@@ -371,15 +482,18 @@ function check(name, pass, detail) {
   // 在线邀请面板
   await clickText('.gm-modecard', '在线')
   await waitFor('.lb-online', 8000)
+  // 家人列表是异步拉的，必须等 option 真的出现再判（否则误判「没有可邀请的账号」）
+  const optOk = await waitUntil(`document.querySelectorAll('.lb-select option').length > 0`, 10000)
   const online = await evalJs(`JSON.stringify({
     panel: !!document.querySelector('.lb-online'),
     select: !!document.querySelector('.lb-select'),
-    options: document.querySelectorAll('.lb-select option').length,
+    options: [...document.querySelectorAll('.lb-select option')].map(o => o.textContent.trim()),
     inviteBtn: !!document.querySelector('.lb-online .lb-btn.primary'),
     text: (document.querySelector('.lb-online')?.innerText || '').slice(0, 120)
   })`)
   const od = JSON.parse(online || '{}')
   check('飞行棋在线邀请面板可用', od.panel && od.inviteBtn, online)
+  check('飞行棋在线可邀请家人（下拉有成员）', optOk && od.options?.length > 0, JSON.stringify(od.options))
   await shot('games_ludo_online.png')
 
   console.log('\n== 5. 控制台错误 ==')

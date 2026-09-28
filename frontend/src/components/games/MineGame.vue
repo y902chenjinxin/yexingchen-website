@@ -1,7 +1,8 @@
 <template>
   <div class="mn-wrap">
     <div class="mn-info">左键翻开 · 右键/旗子模式插旗 · 剩余雷 <b>{{ mine.flagsLeft }}</b>
-      <button class="mn-btn" @click="initMine">重开</button>
+      <button v-if="!mine.started" class="mn-btn primary" @click="mine.started = true">开始游戏</button>
+      <button v-else class="mn-btn" @click="initMine">重开</button>
     </div>
     <div class="mn-grid">
       <div
@@ -16,6 +17,7 @@
     <div class="mn-toggle">
       <label class="mn-flagmode"><input v-model="mine.flagMode" type="checkbox"> 旗子模式（手机用）</label>
     </div>
+    <div v-if="!mine.started" class="mn-idle">按「开始游戏」后可翻开格子</div>
     <div v-if="mine.result" class="mn-msg">{{ mine.result }}</div>
   </div>
 </template>
@@ -29,11 +31,10 @@ const props = defineProps({ resume: { type: Boolean, default: false } })
 const SAVE_KEY = 'mine'
 
 const SIZE = 10, MINES = 15
-const mine = reactive({ cells: [], flagsLeft: MINES, flagMode: false, result: '' })
+const mine = reactive({ cells: [], flagsLeft: MINES, flagMode: false, result: '', started: false })
 
-function initMine() {
-  clearTimeout(saveTimer)
-  clearGame(SAVE_KEY)
+/** 只铺盘、不开局 —— 等玩家点「开始游戏」才接受点击 */
+function buildBoard() {
   mine.cells = Array.from({ length: SIZE * SIZE }, (_, i) => ({
     i, x: i % SIZE, y: Math.floor(i / SIZE), mine: false, revealed: false, flagged: false, boom: false, n: 0,
   }))
@@ -44,6 +45,12 @@ function initMine() {
     if (!c.mine) { c.mine = true; placed++ }
   }
   mine.cells.forEach(c => { c.n = neighbors(c).filter(n => n.mine).length })
+}
+function initMine() {
+  clearTimeout(saveTimer)
+  clearGame(SAVE_KEY)
+  buildBoard()
+  mine.started = true
 }
 function neighbors(c) {
   const out = []
@@ -61,6 +68,7 @@ function cellText(c) {
   return c.n || ''
 }
 function digCell(c) {
+  if (!mine.started) return
   if (mine.flagMode) { flagCell(c); return }
   if (c.revealed || c.flagged || mine.result) return
   if (c.mine) { c.revealed = c.boom = true; revealAll(); mine.result = '💥 踩雷了，重开一局？'; return }
@@ -68,7 +76,7 @@ function digCell(c) {
   checkWin()
 }
 function flagCell(c) {
-  if (c.revealed || mine.result) return
+  if (!mine.started || c.revealed || mine.result) return
   c.flagged = !c.flagged
   mine.flagsLeft = MINES - mine.cells.filter(x => x.flagged).length
 }
@@ -101,10 +109,11 @@ function restoreLocal() {
   mine.flagsLeft = typeof s.flagsLeft === 'number' ? s.flagsLeft : MINES
   mine.flagMode = !!s.flagMode
   mine.result = ''
+  mine.started = true      // 续局等于已在局中，不需要再点「开始」
   return true
 }
 watch([() => mine.cells, () => mine.result], saveLocal, { deep: true })
-onMounted(() => { if (!(props.resume && restoreLocal())) initMine() })
+onMounted(() => { if (!(props.resume && restoreLocal())) buildBoard() })
 </script>
 
 <style scoped>
@@ -112,7 +121,16 @@ onMounted(() => { if (!(props.resume && restoreLocal())) initMine() })
 .mn-info { font-size: 13.5px; color: var(--dp-text2, #45505b); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .mn-info b { color: var(--yq-gold, #c7a96b); }
 .mn-btn { padding: 4px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
-  border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b); font-family: inherit; }
+  border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--color-bg-glass, rgba(127,127,127,.06));
+  color: var(--dp-text2, #45505b); font-family: inherit; transition: all .18s; }
+.mn-btn:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold-deep, var(--yq-gold-bright, #c7a96b)); }
+.mn-btn.primary {
+  padding: 5px 18px; font-size: 12.5px; font-weight: 600;
+  border-color: var(--yq-gold, #c7a96b); background: var(--yq-gold, #c7a96b); color: var(--yq-gold-fg, #fff);
+  box-shadow: 0 4px 12px var(--yq-gold-glow, rgba(199,169,107,.3));
+}
+.mn-btn.primary:hover { filter: brightness(1.06); color: var(--yq-gold-fg, #fff); }
+.mn-idle { font-size: 12.5px; color: var(--dp-text2, #8a8f98); }
 .mn-grid {
   display: grid; grid-template-columns: repeat(10, 34px); gap: 2px; padding: 8px; border-radius: 12px;
   background: rgba(0,0,0,.06);

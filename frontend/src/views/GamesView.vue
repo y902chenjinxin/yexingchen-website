@@ -1,6 +1,6 @@
 <template>
   <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 飞行棋 · 数独 · 扫雷 · 贪吃蛇">
-    <div class="gm-root" :class="{ 'is-big': isBig }">
+    <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill }">
       <!-- ===== 左：游戏类型 ===== -->
       <aside v-show="!isBig" class="gm-rail">
         <div v-for="grp in groups" :key="grp.name" class="gm-grp">
@@ -87,9 +87,11 @@
               :board-size="chosenBoard"
               :resume="resumeFlag"
               :bare="true"
+              :big="isBig"
               :join-room-id="pendingRoom.game === cur.key ? pendingRoom.id : 0"
               @room-lock="roomLocked = true"
               @room-unlock="roomLocked = false"
+              @exit="backToList"
             />
           </div>
         </template>
@@ -133,6 +135,7 @@ const gamelist = [
     key: 'gomoku', label: '五子棋', tag: '15×15 · AI 三档', group: '棋类',
     desc: '五子连珠取胜；同屏双人、单机陪练，或在线邀请家人。',
     icon: ICON.gomoku,
+    fill: true,                 // 放大时用「定高两栏」布局：棋盘占左侧主位、其余移右侧辅栏
     component: defineAsyncComponent(() => import('@/components/games/GomokuBoard.vue')),
     boardSizes: [15, 19, 23],   // 开局可选棋盘大小（对局中固定，不自动变化）
     modes: [
@@ -146,6 +149,7 @@ const gamelist = [
     key: 'go', label: '围棋', tag: '9/13/19 路 · 入门 AI', group: '棋类',
     desc: '气与提子、禁自杀、打劫；双方各停一手后自动数子（中国规则，黑贴 7.5 目）。',
     icon: ICON.go,
+    fill: true,                 // 放大时用「定高两栏」布局：棋盘占左侧主位、其余移右侧辅栏
     component: defineAsyncComponent(() => import('@/components/games/GoBoard.vue')),
     boardSizes: [9, 13, 19],
     modes: [
@@ -330,6 +334,21 @@ watch(() => route.query.room, (v) => {
   position: sticky; top: 0; z-index: 3; background: var(--dp-bg, #f7f5f0);
   padding: 8px 0 10px; box-shadow: 0 8px 16px -12px rgba(20, 30, 40, .5);
 }
+/* 「定高两栏」放大（五子棋）：头部独立成行、棋局区自己滚动。
+   此前是「吸顶头部 + 整页滚动」，玩家条会被吸顶头部压住 → 看着像顶部凸出来一块。
+   现在头部占 grid 第一行、内容占第二行，两者永不重叠。 */
+.gm-root.is-big.is-fill .gm-stage {
+  display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px;
+  overflow: hidden; padding: 12px 20px 16px;
+}
+.gm-root.is-big.is-fill .gm-head {
+  position: static; box-shadow: none; padding: 2px 0 10px;
+  border-bottom: 1px solid var(--dp-line, rgba(0, 0, 0, .08));
+}
+.gm-root.is-big.is-fill .gm-play {
+  min-height: 0; height: 100%; width: 100%; max-width: 1320px; margin: 0 auto;
+  overflow-y: auto; overflow-x: hidden;
+}
 
 /* ===== 左栏 ===== */
 .gm-rail { display: flex; flex-direction: column; gap: 16px; }
@@ -344,11 +363,25 @@ watch(() => route.query.room, (v) => {
   border: 1px solid transparent; background: transparent; transition: all .18s;
   position: relative;
 }
-.gm-item:hover { background: rgba(255,255,255,.6); }
-.gm-item.on {
-  background: var(--dp-surface, #fff); border-color: var(--yq-gold, #c7a96b);
-  box-shadow: 0 4px 14px rgba(20,30,40,.07);
+/* 悬停/选中都走玻璃 + 鎏金，不用 `--dp-surface`：夜间它是 #0d0d18，压在更亮的岛屿底上
+   反而比背景更暗，选中项看着像「凹进去」；硬编码的 rgba(255,255,255,.6) 又会糊成灰块。 */
+.gm-item:hover {
+  background: var(--color-bg-glass, rgba(127,127,127,.06));
+  border-color: var(--glass-border, var(--dp-line, rgba(0,0,0,.14)));
 }
+.gm-item.on {
+  background: var(--yq-gold-faint, rgba(199,169,107,.16));
+  border-color: var(--yq-gold, #c7a96b);
+  box-shadow: 0 6px 18px var(--yq-gold-glow, rgba(199,169,107,.16));
+}
+/* 左侧鎏金竖条：比整块底色更醒目，且不依赖主题亮度 */
+.gm-item.on::before {
+  content: ''; position: absolute; left: 0; top: 50%; width: 3px; height: 22px;
+  margin-top: -11px; border-radius: 0 3px 3px 0; background: var(--yq-gold, #c7a96b);
+}
+/* 鎏金字：白天用 --yq-gold-deep(#92400e, 7:1)，夜间回落到 --yq-gold-bright(#FDE68A) */
+.gm-item.on .gm-item-tx b { color: var(--yq-gold-deep, var(--yq-gold-bright, var(--yq-gold, #c7a96b))); }
+.gm-item.on .gm-item-tx i { color: var(--dp-text2, #8a8f98); }
 .gm-item.dim { opacity: .38; cursor: not-allowed; }
 .gm-item-ic { width: 22px; height: 22px; flex: none; color: var(--yq-gold, #c7a96b); }
 .gm-item-ic :deep(svg) { width: 22px; height: 22px; display: block; }
@@ -362,24 +395,57 @@ watch(() => route.query.room, (v) => {
 
 /* ===== 舞台 ===== */
 .gm-stage { min-height: 340px; display: flex; flex-direction: column; gap: 14px; }
+/* 空态：毛玻璃面板 + 金色柔光锚点 + 淡棋盘格纹理。
+   夜间主题下不能再用半透明白（会和纯黑背景糊成一块灰砖），统一走全站玻璃 token。 */
 .gm-empty {
+  position: relative; overflow: hidden;
   flex: 1; min-height: 320px; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 8px; text-align: center; padding: 40px 20px;
-  border: 1px dashed var(--dp-line, rgba(0,0,0,.14)); border-radius: 18px;
-  background: linear-gradient(160deg, rgba(255,255,255,.5), rgba(255,255,255,.25));
+  justify-content: center; gap: 12px; text-align: center; padding: 44px 24px;
+  border: 1px solid var(--glass-border, var(--dp-line, rgba(0,0,0,.14)));
+  border-radius: 20px;
+  background: var(--color-bg-glass, rgba(255,255,255,.6));
+  backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
+  box-shadow: var(--shadow-glass, 0 8px 24px rgba(20,30,40,.08));
 }
-.gm-empty-ic { font-size: 40px; color: var(--yq-gold, #c7a96b); line-height: 1; }
-.gm-empty b { font-size: 15px; color: var(--dp-text, #18202a); }
-.gm-empty p { max-width: 380px; font-size: 12.5px; line-height: 1.8; color: var(--dp-text3, #8a8f98); margin: 0; }
+.gm-empty::before {
+  content: ''; position: absolute; left: 50%; top: 36%; width: 440px; height: 280px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, var(--yq-gold-faint, rgba(199,169,107,.16)), transparent 72%);
+}
+.gm-empty::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; opacity: .55;
+  background-image:
+    repeating-linear-gradient(to right, var(--dp-line, rgba(0,0,0,.08)) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(to bottom, var(--dp-line, rgba(0,0,0,.08)) 0 1px, transparent 1px 34px);
+  -webkit-mask-image: radial-gradient(62% 62% at 50% 44%, #000, transparent 78%);
+  mask-image: radial-gradient(62% 62% at 50% 44%, #000, transparent 78%);
+}
+.gm-empty > * { position: relative; z-index: 1; }
+.gm-empty-ic {
+  width: 76px; height: 76px; display: grid; place-items: center;
+  border-radius: 24px; font-size: 36px; line-height: 1;
+  color: var(--yq-gold, #c7a96b);
+  border: 1px solid var(--glass-border, var(--dp-line, rgba(0,0,0,.14)));
+  background: var(--color-bg-glass, rgba(255,255,255,.5));
+  box-shadow: var(--glass-highlight, inset 0 1px 0 rgba(255,255,255,.6));
+}
+.gm-empty b { font-size: 15.5px; letter-spacing: .01em; color: var(--dp-text, #18202a); }
+.gm-empty p {
+  max-width: 400px; font-size: 12.5px; line-height: 1.85; margin: 0;
+  color: var(--dp-text2, var(--dp-text3, #8a8f98));
+}
 
 .gm-head {
   display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
   padding-bottom: 10px; border-bottom: 1px solid var(--dp-line, rgba(0,0,0,.08));
 }
-.gm-head-tx { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 2px; }
+/* min-width 由 180px 改 0：标题栏窄一点时右侧「放大 / 返回列表」会被 flex-wrap 挤到第二行，
+   看起来像没有返回按钮；让文字先收缩，操作按钮始终留在第一行。 */
+.gm-head-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .gm-head-tx b { font-size: 16px; color: var(--dp-text, #18202a); }
-.gm-head-tx i { font-style: normal; font-size: 12px; color: var(--dp-text3, #8a8f98); }
-.gm-head-ops { display: flex; align-items: center; gap: 8px; }
+.gm-head-tx i { font-style: normal; font-size: 12px; color: var(--dp-text2, #8a8f98); }
+.gm-head-ops { display: flex; align-items: center; gap: 8px; flex: none; }
 .gm-op {
   padding: 6px 14px; border-radius: 999px; font-size: 12.5px; cursor: pointer; font-family: inherit;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff);
@@ -396,19 +462,26 @@ watch(() => route.query.room, (v) => {
 .gm-setup { display: flex; flex-direction: column; gap: 12px; max-width: 620px; }
 .gm-setup-title { font-size: 13px; font-weight: 600; color: var(--dp-text2, #45505b); }
 .gm-modecards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+/* 模式卡片：原先是硬编码的白色渐变，夜间压在深色岛屿上就是一排灰砖；
+   改用全站玻璃 token，昼夜各自成立。 */
 .gm-modecard {
   display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
   padding: 14px 16px; border-radius: 15px; font-family: inherit;
-  border: 1px solid var(--dp-line, rgba(0,0,0,.12));
-  background: linear-gradient(160deg, rgba(255,255,255,.85), rgba(255,255,255,.55));
+  border: 1px solid var(--glass-border, var(--dp-line, rgba(0,0,0,.12)));
+  background: var(--color-bg-glass, rgba(127,127,127,.06));
+  backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
+  box-shadow: var(--glass-highlight, none);
   transition: all .18s;
 }
 .gm-modecard:hover {
-  border-color: var(--yq-gold, #c7a96b); transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(20,30,40,.09);
+  border-color: var(--yq-gold, #c7a96b);
+  background: var(--yq-gold-faint, rgba(199,169,107,.14));
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px var(--yq-gold-glow, rgba(199,169,107,.16));
 }
 .gm-modecard b { font-size: 14px; color: var(--dp-text, #18202a); }
-.gm-modecard i { font-style: normal; font-size: 11.5px; line-height: 1.6; color: var(--dp-text3, #8a8f98); }
+.gm-modecard i { font-style: normal; font-size: 11.5px; line-height: 1.6; color: var(--dp-text2, #8a8f98); }
 .gm-size { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .gm-size-label { font-size: 12.5px; color: var(--dp-text2, #45505b); font-weight: 600; }
 .gm-sizebtn {

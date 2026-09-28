@@ -1,5 +1,7 @@
 <template>
-  <div class="go-wrap">
+  <div class="go-wrap" :class="{ 'is-big': big }" :style="{ '--board-w': boardW + 'px' }">
+    <!-- ===== 辅栏：玩家条 + 操作（普通模式随主列纵向排；放大模式移到棋盘右侧） ===== -->
+    <div class="go-side">
     <div class="go-shell">
       <div class="go-players">
         <div class="go-player" :class="{ active: !over && turn === BLACK }">
@@ -33,7 +35,10 @@
 
       <div v-if="resultText" class="go-result">{{ resultText }}</div>
     </div>
+    </div><!-- /.go-side -->
 
+    <!-- ===== 主区：棋盘（放大模式下独占左侧主位） ===== -->
+    <div ref="mainEl" class="go-main">
     <div class="go-boardwrap">
       <div
         class="go-board"
@@ -53,6 +58,7 @@
         </button>
       </div>
     </div>
+    </div><!-- /.go-main -->
 
     <p class="go-hint">
       落子于交叉点 · 无气之子被提 · 不能自杀 · 禁立即回提（劫）·
@@ -84,6 +90,7 @@ const props = defineProps({
   resume: { type: Boolean, default: false },
   bare: { type: Boolean, default: false },
   boardSize: { type: Number, default: 19 },
+  big: { type: Boolean, default: false },   // 页面「放大」：棋盘占左侧主位，其余内容移到右侧辅栏
 })
 
 const EMPTY = 0, BLACK = 1, WHITE = 2
@@ -141,14 +148,33 @@ const resultText = computed(() => {
 const canUndo = computed(() => history.value.length > 0 && !thinking.value)
 const passLabel = computed(() => (passes.value ? '停手即终局' : '停一手'))
 
-/* ---------- 棋盘几何 ---------- */
+/* ---------- 棋盘几何 ----------
+ * 棋盘总宽 = size * 格宽 + 24（两侧各 12px 木框）。量 .go-main（width:100%），
+ * 不能量 .go-boardwrap —— 它是 inline-block，宽度由棋盘自己决定，量了会自我循环。
+ * 普通模式：宽度上限 560，玩家条与棋盘**同宽**（--board-w），避免「壳比盘宽」的错位。
+ * 放大模式：棋盘独占左栏，上限放大，且再受可用高度约束（不能竖着溢出）。 */
+const mainEl = ref(null)
 const cellPx = ref(28)
+const MAX_BOARD_W = 560        // 普通模式棋盘宽度上限
+const BIG_MAX_BOARD_W = 880    // 放大模式棋盘宽度上限
 let resizeHandler = null
 function measureCell() {
-  const n = size.value
-  const avail = Math.min((window.innerWidth || 390) - 72, 620)   // 容器会跟着变宽，取视口算最稳
-  cellPx.value = Math.max(13, Math.min(34, Math.floor(avail / n)))
+  const el = mainEl.value
+  const availW = el?.clientWidth || 0
+  if (!availW) { cellPx.value = size.value > 13 ? 20 : 28; return }
+  const capW = props.big ? BIG_MAX_BOARD_W : MAX_BOARD_W
+  let cell = Math.floor((Math.min(availW, capW) - 24) / size.value)
+  if (props.big) {
+    const availH = el?.clientHeight || 0
+    if (availH > 160) cell = Math.min(cell, Math.floor((availH - 24) / size.value))
+  }
+  // 上限：普通模式 46（避免 9 路盘把棋子画成巨球），放大模式 64
+  cellPx.value = Math.max(12, Math.min(props.big ? 64 : 46, cell))
 }
+/** 棋盘实际总宽（与 .go-board 盒模型一致），普通模式下供玩家条对齐 */
+const boardW = computed(() => size.value * cellPx.value + 24)
+// 放大/退出放大：布局从单列切成两栏，容器宽高都变了 → 重新量格宽
+watch(() => props.big, () => nextTick(measureCell))
 function coord(idx) { return [idx % size.value, Math.floor(idx / size.value)] }
 function neighbors(idx) {
   const n = size.value, [x, y] = coord(idx), out = []
@@ -411,8 +437,37 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .go-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+
+/* 辅栏容器：普通模式 display:contents → 子项直接参与 .go-wrap 的纵向排列 */
+.go-side { display: contents; }
+/* 主区（棋盘所在列）：普通模式占满宽度并居中棋盘 */
+.go-main { width: 100%; display: flex; justify-content: center; }
+
+/* ===== 放大模式：左主棋盘 + 右辅栏，主次分明 ===== */
+.go-wrap.is-big {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px 22px;
+  width: 100%; height: 100%; min-height: 0;
+}
+.go-wrap.is-big .go-side {
+  display: flex; flex-direction: column; gap: 12px;
+  grid-column: 2; grid-row: 1; width: 100%; max-height: 100%;
+  overflow-y: auto; align-self: start;
+}
+.go-wrap.is-big .go-shell { width: 100%; max-width: 100%; }
+.go-wrap.is-big .go-players { gap: 10px; }
+.go-wrap.is-big .go-player { max-width: none; }
+.go-wrap.is-big .go-main {
+  grid-column: 1; grid-row: 1; width: 100%; height: 100%; min-height: 0;
+  align-items: center;
+}
+.go-wrap.is-big .go-hint { grid-column: 1; grid-row: 2; justify-self: center; }
+
+/* 玩家条宽度 = 棋盘宽（--board-w，由 boardW 计算），与棋局左右边缘严格对齐 */
 .go-shell {
-  width: 100%; max-width: 560px; border-radius: 18px; padding: 14px 16px;
+  width: var(--board-w, 100%); max-width: 100%; border-radius: 18px; padding: 14px 16px;
   background: linear-gradient(160deg, rgba(255,255,255,.75), rgba(255,255,255,.45));
   border: 1px solid var(--dp-line, rgba(0,0,0,.1));
   box-shadow: 0 8px 28px rgba(20,30,40,.08), inset 0 1px 0 rgba(255,255,255,.6);
@@ -480,4 +535,40 @@ onBeforeUnmount(() => {
   .go-players { gap: 8px; }
   .go-player { padding: 6px 9px; }
 }
+
+/* 窄屏：放大模式退回单列（棋盘在上、辅栏在下），避免两栏把棋盘挤成一条 */
+@media (max-width: 900px) {
+  .go-wrap.is-big { grid-template-columns: 1fr; grid-template-rows: auto auto auto; height: auto; }
+  .go-wrap.is-big .go-side { grid-column: 1; grid-row: 1; max-height: none; overflow: visible; }
+  .go-wrap.is-big .go-main { grid-column: 1; grid-row: 2; height: auto; }
+  .go-wrap.is-big .go-hint { grid-column: 1; grid-row: 3; }
+}
+
+/* ===== 夜间主题：深木纹棋盘 + 深色玻璃壳（与五子棋一致，避免白壳压在纯黑底上发灰看不清） ===== */
+:root[data-theme="night"] .go-shell {
+  background: linear-gradient(160deg, rgba(38,44,58,.94), rgba(22,26,36,.92));
+  border-color: rgba(199,169,107,.3);
+  box-shadow: 0 8px 28px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
+}
+:root[data-theme="night"] .go-player-txt b { color: #f2eee4; }
+:root[data-theme="night"] .go-player-txt i { color: #b9b3cc; }
+:root[data-theme="night"] .go-player.active { background: rgba(199,169,107,.18); }
+:root[data-theme="night"] .go-vs,
+:root[data-theme="night"] .go-info { color: #b9b3cc; }
+:root[data-theme="night"] .go-hint { color: #a9a3bd; }
+:root[data-theme="night"] .go-btn {
+  background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); color: #ece7dc;
+}
+:root[data-theme="night"] .go-btn:hover:not(:disabled) { border-color: rgba(252,211,77,.6); color: #fde68a; }
+:root[data-theme="night"] .go-board {
+  background: linear-gradient(135deg, #6d5836, #4f3f26);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.55);
+}
+:root[data-theme="night"] .go-cell::before,
+:root[data-theme="night"] .go-cell::after { background: rgba(255, 236, 190, .5); }
+:root[data-theme="night"] .go-cell.star {
+  background: radial-gradient(circle, rgba(255,236,190,.85) 0 2.4px, transparent 2.6px);
+}
+:root[data-theme="night"] .go-stone.black { box-shadow: 0 0 0 1px rgba(255,255,255,.22); }
+:root[data-theme="night"] .go-stone.white { box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
 </style>

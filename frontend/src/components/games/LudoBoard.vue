@@ -140,6 +140,8 @@
           <i v-for="n in 9" :key="n" :class="{ on: dicePips.includes(n - 1) }"></i>
         </div>
         <button class="lb-roll" :disabled="!canRoll" @click="doRoll">{{ rollLabel }}</button>
+        <!-- 棋盘下方就在手边：页面头部的「返回列表」滚下去就看不见了 -->
+        <button class="lb-btn" @click="emit('exit')">返回列表</button>
       </div>
       <ul class="lb-log">
         <li v-for="(l, i) in log" :key="i" :class="{ fresh: i === log.length - 1 }">{{ l }}</li>

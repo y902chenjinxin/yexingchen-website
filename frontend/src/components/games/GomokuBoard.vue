@@ -1,5 +1,7 @@
 <template>
-  <div ref="wrapEl" class="gk-wrap">
+  <div class="gk-wrap" :class="{ 'is-big': big }" :style="{ '--board-w': boardW + 'px' }">
+    <!-- ===== 辅栏：玩家条 + 模式 + 操作 + 邀请（普通模式随主列纵向排；放大模式移到棋盘右侧） ===== -->
+    <div class="gk-side">
     <!-- ===== 玩家条：头像对峙 + 回合指示（质感壳） ===== -->
     <div class="gk-shell">
       <div class="gk-players">
@@ -89,7 +91,10 @@
 
     <!-- 锁定原因：放在棋盘**外面**，不遮挡棋局（此前是覆盖在棋盘上的遮罩气泡） -->
     <p v-if="lockHint" class="gk-locknote"><span class="gk-dot"></span>{{ lockHint }}</p>
+    </div><!-- /.gk-side -->
 
+    <!-- ===== 主区：棋盘（放大模式下独占左侧主位） ===== -->
+    <div ref="mainEl" class="gk-main">
     <div class="gk-boardwrap">
       <div
         class="gk-board"
@@ -110,6 +115,7 @@
         </button>
       </div>
     </div>
+    </div><!-- /.gk-main -->
     <p class="gk-hint">
       <template v-if="mode === 'online'">在线模式 · 对方落子约 2 秒内自动出现 · 每方每局 3 次悔棋</template>
       <template v-else>
@@ -132,6 +138,11 @@
  *  3. **悔棋配额**：本地每方每局 3 次（按钮显示余量）；在线走服务端 /undo（同为 3 次）。
  *  4. **夜间主题提亮**：深木纹棋盘 + 深色玻璃壳，文字对比度拉到 AA。
  *  5. **对手退出自动结束**：服务端 end_reason=leave/timeout 且我方获胜 → 提示并自动退出。
+ *
+ * v2.40.35 排版（夜星反馈）：
+ *  1. 玩家条/邀请面板宽度改由 `--board-w` 驱动，与棋盘**严格同宽**，修掉「壳 560、盘 432」的边缘错位。
+ *  2. 放大模式改「左主棋盘 + 右辅栏」两栏（棋盘独占左侧主位，玩家条/模式/操作移右侧），主次分明。
+ *  3. 放大模式棋盘同时受可用宽高约束，一屏放下不溢出；窄屏（≤900px）自动退回单列。
  */
 import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -146,6 +157,7 @@ const props = defineProps({
   bare: { type: Boolean, default: false },      // 隐藏内置模式段（模式已在页面上选过）
   joinRoomId: { type: Number, default: 0 },     // 受邀跳转进来：直接进指定房间
   boardSize: { type: Number, default: 15 },     // 开局选定的棋盘边长（15/19/23）
+  big: { type: Boolean, default: false },       // 页面「放大」：棋盘占左侧主位，其余内容移到右侧辅栏
 })
 
 /* ---------- 棋盘尺寸：内部满盘固定，外部开放区可扩（v2.40.30） ----------
@@ -215,16 +227,29 @@ const winDomSet = computed(() => new Set(winLine.value.map(innerToDom).filter(i 
 
 /* ---------- 棋盘自适应 ----------
  * 棋盘总宽 = (N + 1) * 格宽 + 16（两侧各 8px 木框 + 半个格宽的内缩），
- * 所以 格宽 = (容器宽 - 16) / (N + 1)。量的是 .gk-wrap（width:100%），
- * 不能量 .gk-boardwrap —— 它是 inline-block，宽度由棋盘自己决定，量了会自我循环。 */
-const wrapEl = ref(null)
+ * 所以 格宽 = (容器宽 - 16) / (N + 1)。量的是 .gk-main（width:100%），
+ * 不能量 .gk-boardwrap —— 它是 inline-block，宽度由棋盘自己决定，量了会自我循环。
+ * 普通模式：宽度上限 560，玩家条/邀请面板与棋盘**同宽**（--board-w），避免「壳比盘宽」的错位。
+ * 放大模式：棋盘独占左栏，宽度上限放大，且再受可用高度约束（不能竖着溢出）。 */
+const mainEl = ref(null)
 const cellPx = ref(26)
+const MAX_BOARD_W = 560        // 普通模式棋盘宽度上限
+const BIG_MAX_BOARD_W = 880    // 放大模式棋盘宽度上限
 let resizeHandler = null
 function measureCell() {
-  const w = wrapEl.value?.clientWidth || 0
-  if (!w) { cellPx.value = N.value > 19 ? 18 : 24; return }
-  cellPx.value = Math.max(11, Math.min(26, Math.floor((w - 16) / (N.value + 1))))
+  const el = mainEl.value
+  const availW = el?.clientWidth || 0
+  if (!availW) { cellPx.value = N.value > 19 ? 18 : 24; return }
+  const capW = props.big ? BIG_MAX_BOARD_W : MAX_BOARD_W
+  let cell = Math.floor((Math.min(availW, capW) - 16) / (N.value + 1))
+  if (props.big) {
+    const availH = el?.clientHeight || 0
+    if (availH > 160) cell = Math.min(cell, Math.floor((availH - 16) / (N.value + 1)))
+  }
+  cellPx.value = Math.max(11, cell)
 }
+/** 棋盘实际总宽（与 .gk-board 的盒模型一致）；普通模式下供玩家条/邀请面板对齐 */
+const boardW = computed(() => (N.value + 1) * cellPx.value + 16)
 
 /* ---------- 在线对战 ---------- */
 const families = ref([])
@@ -331,6 +356,8 @@ const localQuotaText = computed(() => {
 const canUndoOnline = computed(() => mode.value === 'online' && !!gRoom.room.value?.can_undo)
 
 watch(roomActive, (v) => { emit(v ? 'room-lock' : 'room-unlock') })
+// 放大/退出放大：布局从单列切成两栏，容器宽高都变了 → 重新量格宽
+watch(() => props.big, () => nextTick(measureCell))
 
 async function loadFamilies() {
   try {
@@ -719,9 +746,39 @@ onBeforeUnmount(() => {
 <style scoped>
 .gk-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
 
-/* ===== 质感壳：玻璃卡 + 柔和渐变 ===== */
+/* 辅栏容器：普通模式 display:contents → 子项直接参与 .gk-wrap 的纵向排列（布局与改动前一致） */
+.gk-side { display: contents; }
+/* 主区（棋盘所在列）：普通模式占满宽度并居中棋盘 */
+.gk-main { width: 100%; display: flex; justify-content: center; }
+
+/* ===== 放大模式：左主棋盘 + 右辅栏，主次分明 ===== */
+.gk-wrap.is-big {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px 22px;
+  width: 100%; height: 100%; min-height: 0;
+}
+.gk-wrap.is-big .gk-side {
+  display: flex; flex-direction: column; gap: 12px;
+  grid-column: 2; grid-row: 1; width: 100%; max-height: 100%;
+  overflow-y: auto; align-self: start;
+}
+.gk-wrap.is-big .gk-shell,
+.gk-wrap.is-big .gk-online { width: 100%; max-width: 100%; }
+.gk-wrap.is-big .gk-locknote { align-self: flex-start; }
+.gk-wrap.is-big .gk-players { gap: 10px; }
+.gk-wrap.is-big .gk-player { max-width: none; }
+.gk-wrap.is-big .gk-main {
+  grid-column: 1; grid-row: 1; width: 100%; height: 100%; min-height: 0;
+  align-items: center;
+}
+.gk-wrap.is-big .gk-hint { grid-column: 1; grid-row: 2; }
+
+/* ===== 质感壳：玻璃卡 + 柔和渐变 =====
+   宽度 = 棋盘宽（--board-w，由 boardW 计算），与棋局左右边缘严格对齐 */
 .gk-shell {
-  width: 100%; max-width: 560px; border-radius: 18px; padding: 16px 18px;
+  width: var(--board-w, 100%); max-width: 100%; border-radius: 18px; padding: 16px 18px;
   background: linear-gradient(160deg, rgba(255,255,255,.75), rgba(255,255,255,.45));
   border: 1px solid var(--dp-line, rgba(0,0,0,.1));
   box-shadow: 0 8px 28px rgba(20,30,40,.08), inset 0 1px 0 rgba(255,255,255,.6);
@@ -767,9 +824,9 @@ onBeforeUnmount(() => {
 .gk-btn.primary { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
 .gk-btn:disabled { opacity: .5; cursor: default; }
 
-/* 邀请面板 */
+/* 邀请面板：与玩家条/棋盘同宽 */
 .gk-online {
-  width: 100%; max-width: 560px; border-radius: 18px; padding: 18px;
+  width: var(--board-w, 100%); max-width: 100%; border-radius: 18px; padding: 18px;
   background: linear-gradient(160deg, rgba(255,255,255,.75), rgba(255,255,255,.45));
   border: 1px solid var(--dp-line, rgba(0,0,0,.1)); box-shadow: 0 8px 28px rgba(20,30,40,.08);
 }
@@ -834,9 +891,18 @@ onBeforeUnmount(() => {
 .gk-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); text-align: center; }
 
 @media (max-width: 480px) {
-  .gk-board { --cell: 20px; }
+  /* 格宽由 measureCell 按容器反算（.gk-board 的 --cell 是内联样式，这里覆盖不到），
+     故小屏只收壳的留白，不再重复声明 --cell */
   .gk-shell { padding: 12px; }
   .gk-players { gap: 8px; }
+}
+
+/* 窄屏：放大模式退回单列（棋盘在上、辅栏在下），避免两栏把棋盘挤成一条 */
+@media (max-width: 900px) {
+  .gk-wrap.is-big { grid-template-columns: 1fr; grid-template-rows: auto auto auto; height: auto; }
+  .gk-wrap.is-big .gk-side { grid-column: 1; grid-row: 1; max-height: none; overflow: visible; }
+  .gk-wrap.is-big .gk-main { grid-column: 1; grid-row: 2; height: auto; }
+  .gk-wrap.is-big .gk-hint { grid-column: 1; grid-row: 3; }
 }
 
 /* ===== 夜间主题：深木纹棋盘 + 深色玻璃壳（此前白壳压在纯黑底上，发灰看不清） ===== */

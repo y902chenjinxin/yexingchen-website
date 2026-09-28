@@ -2,10 +2,12 @@
   <div class="sn-wrap">
     <div class="sn-info">方向键转向 · <b>{{ snake.score }}</b> 分
       <span class="sn-best">最高 {{ best }}</span>
-      <button class="sn-btn" @click="initSnake">重开</button>
+      <button v-if="!snake.started" class="sn-btn primary" @click="startSnake">开始游戏</button>
+      <button v-else class="sn-btn" @click="restart">重开</button>
     </div>
     <canvas ref="snakeEl" width="400" height="400" class="sn-cv" tabindex="0"></canvas>
-    <div v-if="snake.over" class="sn-msg">撞到了 · {{ snake.score }} 分，按「重开」再来</div>
+    <div v-if="!snake.started" class="sn-idle">按「开始游戏」或任意方向键开局</div>
+    <div v-else-if="snake.over" class="sn-msg">撞到了 · {{ snake.score }} 分，按「重开」再来</div>
     <p class="sn-hint">电脑端方向键直接可用（无需点棋盘）· 手机建议电脑玩</p>
   </div>
 </template>
@@ -22,16 +24,26 @@ defineProps({
 })
 
 const snakeEl = ref(null)
-const snake = reactive({ score: 0, over: false, dir: [1, 0], body: [], food: [0, 0], timer: 0 })
+const snake = reactive({ score: 0, over: false, started: false, dir: [1, 0], body: [], food: [0, 0], timer: 0 })
 const best = ref(Number(localStorage.getItem('snake_best') || 0) || 0)
 
-function initSnake() {
+/** 只重置，不启动 —— 进页面先摆好棋面等玩家点「开始」 */
+function resetBoard() {
   clearInterval(snake.timer)
-  snake.score = 0; snake.over = false; snake.dir = [1, 0]
+  snake.score = 0; snake.over = false; snake.started = false; snake.dir = [1, 0]
   snake.body = [[8, 10], [7, 10], [6, 10]]
   placeFood()
   drawSnake()
+}
+function startSnake() {
+  if (snake.started) return
+  clearInterval(snake.timer)
+  snake.started = true
   snake.timer = setInterval(stepSnake, 130)
+}
+function restart() {
+  resetBoard()
+  startSnake()
 }
 function placeFood() {
   do { snake.food = [Math.floor(Math.random() * 20), Math.floor(Math.random() * 20)] }
@@ -53,7 +65,10 @@ function stepSnake() {
 function onKeySnake(e) {
   const map = { ArrowLeft: [-1, 0], ArrowUp: [0, -1], ArrowRight: [1, 0], ArrowDown: [0, 1] }
   const d = map[e.key]
-  if (d && (d[0] !== -snake.dir[0] || d[1] !== -snake.dir[1])) snake.dir = d
+  if (!d) return
+  // 开局那一手不许掉头（身体是横的，掉头会立刻自撞），所以先起步再转向
+  if (!snake.started) { startSnake(); return }
+  if (d[0] !== -snake.dir[0] || d[1] !== -snake.dir[1]) snake.dir = d
 }
 function drawSnake() {
   const cv = snakeEl.value
@@ -74,7 +89,7 @@ function onWindowKey(e) {
   if (e.key.startsWith('Arrow')) { e.preventDefault(); onKeySnake(e) }
 }
 onMounted(() => {
-  initSnake()
+  resetBoard()
   window.addEventListener('keydown', onWindowKey)
 })
 onBeforeUnmount(() => {
@@ -89,8 +104,17 @@ onBeforeUnmount(() => {
 .sn-info b { color: var(--yq-gold, #c7a96b); }
 .sn-best { font-size: 12px; color: var(--dp-text3, #8a8f98); }
 .sn-btn { padding: 4px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
-  border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b); font-family: inherit; }
+  border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--color-bg-glass, rgba(127,127,127,.06));
+  color: var(--dp-text2, #45505b); font-family: inherit; transition: all .18s; }
+.sn-btn:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold-deep, var(--yq-gold-bright, #c7a96b)); }
+.sn-btn.primary {
+  padding: 5px 18px; font-size: 12.5px; font-weight: 600;
+  border-color: var(--yq-gold, #c7a96b); background: var(--yq-gold, #c7a96b); color: var(--yq-gold-fg, #fff);
+  box-shadow: 0 4px 12px var(--yq-gold-glow, rgba(199,169,107,.3));
+}
+.sn-btn.primary:hover { filter: brightness(1.06); color: var(--yq-gold-fg, #fff); }
 .sn-cv { border-radius: 12px; outline: none; border: 1px solid var(--dp-line, rgba(0,0,0,.1)); max-width: 100%; }
+.sn-idle { font-size: 12.5px; color: var(--dp-text2, #8a8f98); }
 .sn-msg { font-size: 14px; color: #e5484d; font-weight: 600; }
 .sn-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 </style>
