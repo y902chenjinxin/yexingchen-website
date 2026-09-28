@@ -213,16 +213,15 @@ const groups = computed(() => {
         { path: '/contacts', title: '通讯录', icon: Compass },  // v2.18 由「家」分组并入「生活」
         { path: '/subscriptions', title: '订阅', icon: Coin },  // v2.18 由「家」分组并入「生活」
       ],
-      // v2.40.18 二级子模块：生活 › 娱乐（摸鱼玩具集中在这）
-      subs: [
-        {
-          label: '娱乐',
-          items: [
-            { path: '/tool/muyu', title: '电子木鱼', icon: Sunny },
-            { path: '/tool/games', title: '摸鱼小游戏', icon: Football },
-            { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },
-          ],
-        },
+    },
+    {
+      // v2.40.23：娱乐由「生活 › 娱乐」二级子模块提升为一级模块（夜星要求）——
+      // 摸鱼玩具自成一组，和正经生活事务分开，视觉上也不再藏一层
+      label: '娱乐',
+      items: [
+        { path: '/tool/muyu', title: '电子木鱼', icon: Sunny },
+        { path: '/tool/games', title: '摸鱼小游戏', icon: Football },
+        { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },
       ],
     },
     {
