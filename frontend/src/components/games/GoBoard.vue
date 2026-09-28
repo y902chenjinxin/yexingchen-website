@@ -23,7 +23,7 @@
 
       <div class="go-status">
         <span class="go-info">
-          {{ size }}×{{ size }} · 提子 黑 {{ captured.white }} / 白 {{ captured.black }}
+          {{ size }}×{{ size }} · 提子 黑 {{ captured.black }} / 白 {{ captured.white }}
           <span v-if="koPoint >= 0" class="go-ko">劫</span>
         </span>
         <button class="go-btn" :disabled="over || thinking" @click="pass">{{ passLabel }}</button>
