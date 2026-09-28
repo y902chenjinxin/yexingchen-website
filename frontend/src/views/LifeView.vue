@@ -300,16 +300,21 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="照片">
-          <el-upload
-            :auto-upload="false"
-            :limit="1"
-            accept=".jpg,.jpeg,.png,.webp,.gif"
-            :file-list="mealFileList"
-            :on-change="handleMealFileChange"
-            :on-remove="handleMealFileRemove"
-          >
-            <el-button>选择照片</el-button>
-          </el-upload>
+          <!-- v2.40.24：手机上新增「拍照」直接调起后置相机（capture），原「从相册选」保留 -->
+          <div class="meal-photo-row">
+            <label class="meal-photo-btn">
+              📸 拍照
+              <input type="file" accept="image/*" capture="environment" hidden @change="onMealPick($event)">
+            </label>
+            <label class="meal-photo-btn">
+              🖼 从相册选
+              <input type="file" accept="image/*" hidden @change="onMealPick($event)">
+            </label>
+            <div v-if="mealPreview" class="meal-photo-preview">
+              <img :src="mealPreview" alt="已选照片">
+              <button type="button" class="meal-photo-del" @click="clearMealPhoto">×</button>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="mealForm.note" placeholder="可选：妈妈做的红烧肉" />
@@ -625,20 +630,25 @@ async function submitWeight() {
 const showMealDialog = ref(false)
 const mealSubmitting = ref(false)
 const mealForm = ref({ member_id: null, meal_type: 'breakfast', note: '' })
-const mealFileList = ref([])
 const mealFileRaw = ref(null)
+const mealPreview = ref('')
 function openMealDialog() {
   mealForm.value = { member_id: members.value[0]?.id || null, meal_type: 'breakfast', note: '' }
-  mealFileList.value = []
   mealFileRaw.value = null
+  mealPreview.value = ''
   showMealDialog.value = true
 }
-function handleMealFileChange(file) {
-  if (!file || !file.raw) return
-  mealFileRaw.value = file.raw
+/** 拍照 / 相册共用：capture 的 input 会直接调起手机后置相机 */
+function onMealPick(e) {
+  const f = e.target?.files?.[0]
+  if (!f) return
+  mealFileRaw.value = f
+  mealPreview.value = URL.createObjectURL(f)
+  e.target.value = ''
 }
-function handleMealFileRemove() {
+function clearMealPhoto() {
   mealFileRaw.value = null
+  mealPreview.value = ''
 }
 async function submitMeal() {
   if (!mealForm.value.member_id) { ElMessage.warning('请选家人'); return }
@@ -949,4 +959,18 @@ watch(filterRange, loadAll)
 .member-card-name { font-size: 14px; color: var(--lj-text); display: flex; align-items: center; gap: 6px; }
 .member-card-meta { font-size: 11.5px; color: var(--lj-text-3); margin-top: 2px; }
 .member-card-ops { display: flex; gap: 4px; }
+/* 记一餐：拍照 / 相册按钮与预览（v2.40.24） */
+.meal-photo-row { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.meal-photo-btn {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--lj-line, rgba(0,0,0,.14)); background: var(--lj-surface, #fff); color: var(--lj-text-2, #45505b);
+  font-family: inherit; white-space: nowrap;
+}
+.meal-photo-btn:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.meal-photo-preview { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; }
+.meal-photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+.meal-photo-del {
+  position: absolute; right: 2px; top: 2px; width: 20px; height: 20px; border-radius: 50%;
+  border: none; background: rgba(0,0,0,.55); color: #fff; cursor: pointer; font-size: 13px; line-height: 1;
+}
 </style>

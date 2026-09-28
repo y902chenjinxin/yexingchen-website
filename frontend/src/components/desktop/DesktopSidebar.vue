@@ -132,7 +132,6 @@ import {
   Coffee,      // v2.40.18 生活：摸鱼日历
   Message,     // v2.40.18 生活：时间胶囊（写给未来的信）
   Grid,        // v2.40.18 生活：人生 4000 周（格子）
-  Sunny,       // v2.40.18 娱乐：电子木鱼（静心）
   Football,    // v2.40.18 娱乐：摸鱼小游戏
   Refresh,     // v2.40.18 娱乐：人生重开模拟器
   Box,         // v2.40.21 生活：遗失物件（东西丢了）
@@ -219,8 +218,8 @@ const groups = computed(() => {
       // 摸鱼玩具自成一组，和正经生活事务分开，视觉上也不再藏一层
       label: '娱乐',
       items: [
-        { path: '/tool/muyu', title: '电子木鱼', icon: Sunny },
-        { path: '/tool/games', title: '摸鱼小游戏', icon: Football },
+        // v2.40.24：电子木鱼下线；摸鱼小游戏改名「棋类游戏」（五子棋/黑白棋/数独/飞行棋 …）
+        { path: '/tool/games', title: '棋类游戏', icon: Football },
         { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },
       ],
     },

@@ -184,14 +184,8 @@ const routes = [
     component: () => import('@/views/LifeGridView.vue'),
     meta: { requiresAuth: true }
   },
-  // 内置 电子木鱼
-  {
-    path: '/tool/muyu',
-    name: 'Muyu',
-    component: () => import('@/views/MuyuView.vue'),
-    meta: { requiresAuth: true }
-  },
-  // 内置 摸鱼小游戏合集
+  // v2.40.24 电子木鱼下线（不符合棋类定位，夜星要求删除）
+  // 内置 棋类游戏合集（原「摸鱼小游戏」：五子棋/黑白棋/数独/飞行棋 + 贪吃蛇/扫雷）
   {
     path: '/tool/games',
     name: 'Games',
