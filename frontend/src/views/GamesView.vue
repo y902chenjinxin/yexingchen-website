@@ -95,7 +95,7 @@
  * 进度：自研游戏写 localStorage 存档（utils/gameSave），回列表后可「继续上一局」。
  * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/big/saveable 声明能力）。
  */
-import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, watch, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
@@ -240,6 +240,10 @@ function backToList() {
 
 function toggleBig() { isBig.value = !isBig.value }
 
+// 大屏时锁住背景滚动，避免「滚到底后把底下页面带着滚」
+watch(isBig, (v) => { document.body.style.overflow = v ? 'hidden' : '' })
+onBeforeUnmount(() => { document.body.style.overflow = '' })
+
 /* ---------- 从全局邀请弹窗跳进来（/tool/games?room=ID&game=gomoku） ---------- */
 const route = useRoute()
 const router = useRouter()
@@ -264,9 +268,14 @@ watch(() => route.query.room, (v) => {
   display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 18px;
   align-items: start; width: 100%;
 }
+/* 大屏：压过应用侧栏(90/95)与顶栏，整屏沉浸；头部吸顶，保证「退出全屏/返回列表」随时可点 */
 .gm-root.is-big .gm-stage {
-  position: fixed; inset: 0; z-index: 60; overflow-y: auto;
-  background: var(--dp-bg, #f7f5f0); padding: 14px 20px 30px;
+  position: fixed; inset: 0; z-index: 400; overflow-y: auto;
+  background: var(--dp-bg, #f7f5f0); padding: 14px 24px 36px;
+}
+.gm-root.is-big .gm-head {
+  position: sticky; top: 0; z-index: 3; background: var(--dp-bg, #f7f5f0);
+  padding: 8px 0 10px; box-shadow: 0 8px 16px -12px rgba(20, 30, 40, .5);
 }
 
 /* ===== 左栏 ===== */
@@ -357,7 +366,7 @@ watch(() => route.query.room, (v) => {
 
 /* ===== 第二步：对局 ===== */
 .gm-play { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.gm-root.is-big .gm-play { max-width: 820px; margin: 0 auto; }
+.gm-root.is-big .gm-play { max-width: 1000px; margin: 0 auto; }
 
 @media (max-width: 860px) {
   .gm-root { grid-template-columns: 1fr; gap: 12px; }
