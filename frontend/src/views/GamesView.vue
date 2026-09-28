@@ -1,5 +1,5 @@
 <template>
-  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 黑白棋 · 飞行棋 · 数独 · 扫雷 · 贪吃蛇">
+  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 飞行棋 · 数独 · 扫雷 · 贪吃蛇">
     <div class="gm-root" :class="{ 'is-big': isBig }">
       <!-- ===== 左：游戏类型 ===== -->
       <aside v-show="!isBig" class="gm-rail">
@@ -105,7 +105,9 @@
  * 分步：选类型 → 选模式 → 进对局，避免一屏平铺；
  * 大屏：舞台容器全屏化（fixed），组件**不重新挂载**，因此对局与进度天然保留；
  * 进度：自研游戏写 localStorage 存档（utils/gameSave），回列表后可「继续上一局」。
- * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/big/saveable 声明能力）。
+ * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/boardSizes/big 声明能力）。
+ * v2.40.33：按夜星要求**黑白棋下架**（不是他要的，组件 OthelloBoard.vue 保留，说一声可恢复），
+ *           换成**围棋**（新组件 GoBoard.vue，中国规则数子法）。
  */
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
@@ -119,6 +121,7 @@ const ICON = {
   ludo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 4v16M4 12h16"/><circle cx="8.2" cy="8.2" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.8" cy="15.8" r="1.4" fill="currentColor" stroke="none"/></svg>',
   sudoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/></svg>',
   mine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="13" r="6"/><path d="M12 7V3M4.6 10.6 2 8M19.4 10.6 22 8M7 19l-2 2M17 19l2 2"/></svg>',
+  go: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/><circle cx="9.2" cy="9.2" r="2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="14.8" r="2" fill="currentColor" stroke="none"/></svg>',
   snake: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h7a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3h2"/><rect x="2" y="15.5" width="2.6" height="2.6" rx="1" fill="currentColor" stroke="none"/><circle cx="18.6" cy="4.6" r="1.5" fill="currentColor" stroke="none"/></svg>',
 }
 
@@ -137,14 +140,15 @@ const gamelist = [
     ],
   },
   {
-    key: 'othello', label: '黑白棋', tag: '夹住翻转 · AI', group: '棋类',
-    desc: '落子夹住对方棋子即可翻转，终局子多者胜。',
-    icon: ICON.othello,
-    component: defineAsyncComponent(() => import('@/components/games/OthelloBoard.vue')),
+    key: 'go', label: '围棋', tag: '9/13/19 路 · 入门 AI', group: '棋类',
+    desc: '气与提子、禁自杀、打劫；双方各停一手后自动数子（中国规则，黑贴 7.5 目）。',
+    icon: ICON.go,
+    component: defineAsyncComponent(() => import('@/components/games/GoBoard.vue')),
+    boardSizes: [9, 13, 19],
     modes: [
       { key: 'pvp', label: '双人同屏', hint: '一台设备轮着下' },
-      { key: 'easy', label: '单机 · 简单', hint: '贪心算角位，容易赢' },
-      { key: 'hard', label: '单机 · 困难', hint: '三层搜索，别小看它' },
+      { key: 'easy', label: '单机 · 入门', hint: 'AI 会吃子、会逃跑，但不强' },
+      { key: 'hard', label: '单机 · 稍强', hint: '多看一层；仍是入门水平' },
     ],
   },
   {
@@ -217,7 +221,7 @@ function pick(key) {
   if (itemLocked(g)) { ElMessage.warning('对局进行中 —— 先点「退出对局」再切换'); return }
   tab.value = key
   chosenMode.value = ''
-  chosenBoard.value = 15
+  chosenBoard.value = g.boardSizes ? g.boardSizes[0] : 15
   resumeFlag.value = false
   isBig.value = !!g.big
   phase.value = g.modes ? 'setup' : 'play'
