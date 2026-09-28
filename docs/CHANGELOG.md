@@ -1,3 +1,24 @@
+## [v2.40.22] - 2026-09-28
+
+### 登录页输入框：关拼写检查 + 补 autocomplete 语义（SW `xuanhuang-v250`）
+
+夜星截图反馈「输入账号怪怪的」：邮箱下面被浏览器拼写检查画了**红波浪线**（el-input 默认
+`type=text`，拼写检查默认开），且账号框一聚焦就弹密码管理器悬浮推荐、盖住下面的密码框。
+
+**修法**
+- 邮箱框（登录 + 注册）补 `name=email` / `autocomplete=username` / `spellcheck=false` /
+  `autocapitalize=off` / `autocorrect=off` → 红波浪线消失，密码管理器能正确识别「这是登录框的用户名」
+- 登录密码框补 `name=password` / `autocomplete=current-password`
+- 注册页两个密码框用 `autocomplete=new-password`（避免注册时被「建议用已保存的密码」干扰）
+
+**说明**：账号框聚焦时浏览器弹「已保存的密码」是**原生 UX**（存过凭据就会弹，Chrome 会忽略
+password 字段上的 `autocomplete=off`），强关会牺牲一键登录的便利 —— 这次做的是让表单语义正确、
+把拼写检查这类噪音关掉。
+
+**验证**：生产页面实测 `spellcheck=false / autocomplete=username / name=email` 均已生效，输入邮箱无红波浪线。
+
+---
+
 ## [v2.40.21] - 2026-09-27
 
 ### 生活岛三件套：遗失物件 / 穿搭推荐 / 密码保险箱（SW `xuanhuang-v249`）
