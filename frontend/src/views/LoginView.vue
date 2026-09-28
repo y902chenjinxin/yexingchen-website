@@ -11,10 +11,14 @@
       <!-- 登录表单 -->
       <el-form v-if="!isRegistering" class="login-form" :model="loginForm" @submit.prevent="handleLogin" aria-label="登录表单">
         <el-form-item>
-          <el-input v-model="loginForm.email" placeholder="邮箱" size="large" clearable aria-label="邮箱" />
+          <!-- v2.40.22：spellcheck 关掉（浏览器给邮箱画红波浪线）；autocomplete 用标准语义，
+               让密码管理器把这里识别成正经登录框，而不是在页面上乱弹悬浮推荐 -->
+          <el-input v-model="loginForm.email" placeholder="邮箱" size="large" clearable aria-label="邮箱"
+            name="email" autocomplete="username" spellcheck="false" autocapitalize="off" autocorrect="off" />
         </el-form-item>
         <el-form-item>
-          <el-input v-model="loginForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="密码" size="large" aria-label="密码">
+          <el-input v-model="loginForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="密码" size="large" aria-label="密码"
+            name="password" autocomplete="current-password">
             <template #suffix>
               <span class="password-toggle" @click="passwordVisible = !passwordVisible" role="button" :aria-label="passwordVisible ? '隐藏密码' : '显示密码'" tabindex="0" @keydown.enter="passwordVisible = !passwordVisible" @keydown.space.prevent="passwordVisible = !passwordVisible">
                 <!-- 闭眼 SVG -->
@@ -60,7 +64,8 @@
           <p class="step-title">输入注册邮箱</p>
           <el-form :model="registerForm" @submit.prevent="handleSendCode">
             <el-form-item>
-              <el-input v-model="registerForm.email" placeholder="邮箱地址" size="large" clearable />
+              <el-input v-model="registerForm.email" placeholder="邮箱地址" size="large" clearable
+                name="email" autocomplete="username" spellcheck="false" autocapitalize="off" autocorrect="off" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" size="large" style="width: 100%" :loading="loading" native-type="submit">
@@ -79,7 +84,8 @@
               <el-input v-model="registerForm.code" placeholder="6位验证码" size="large" maxlength="6" clearable />
             </el-form-item>
             <el-form-item>
-              <el-input v-model="registerForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="设置密码" size="large">
+              <el-input v-model="registerForm.password" :type="passwordVisible ? 'text' : 'password'" placeholder="设置密码" size="large"
+                name="new-password" autocomplete="new-password">
                 <template #suffix>
                   <span class="password-toggle" @click="passwordVisible = !passwordVisible">
                     <svg v-if="!passwordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -95,7 +101,8 @@
               </el-input>
             </el-form-item>
             <el-form-item>
-              <el-input v-model="registerForm.confirmPassword" :type="confirmPasswordVisible ? 'text' : 'password'" placeholder="确认密码" size="large">
+              <el-input v-model="registerForm.confirmPassword" :type="confirmPasswordVisible ? 'text' : 'password'" placeholder="确认密码" size="large"
+                name="new-password" autocomplete="new-password">
                 <template #suffix>
                   <span class="password-toggle" @click="confirmPasswordVisible = !confirmPasswordVisible">
                     <svg v-if="!confirmPasswordVisible" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
