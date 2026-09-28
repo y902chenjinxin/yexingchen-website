@@ -26,7 +26,7 @@
       </aside>
 
       <!-- ===== 右：游戏空间 ===== -->
-      <section class="gm-stage">
+      <section ref="stageRef" class="gm-stage">
         <!-- 空态：默认什么都不摆，避免一屏平铺 -->
         <div v-if="!tab" class="gm-empty">
           <div class="gm-empty-ic">♟</div>
@@ -95,7 +95,7 @@
  * 进度：自研游戏写 localStorage 存档（utils/gameSave），回列表后可「继续上一局」。
  * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/big/saveable 声明能力）。
  */
-import { ref, reactive, computed, watch, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
@@ -240,9 +240,26 @@ function backToList() {
 
 function toggleBig() { isBig.value = !isBig.value }
 
-// 大屏时锁住背景滚动，避免「滚到底后把底下页面带着滚」
-watch(isBig, (v) => { document.body.style.overflow = v ? 'hidden' : '' })
-onBeforeUnmount(() => { document.body.style.overflow = '' })
+/* 大屏要把整座岛抬到应用侧栏(90)/顶栏(1000)之上。
+ * 坑：.island-inner / .inner-content 自身是 position:relative + z-index:1 —— **自成层叠上下文**，
+ * 子树里再大的 z-index 也只能在 z=1 这一层里排，于是 fixed 舞台会被侧栏盖住。
+ * 所以必须抬祖先，而不是加大屏自己的 z-index。 */
+const stageRef = ref(null)
+function raiseHost(on) {
+  let p = stageRef.value?.parentElement
+  while (p && p !== document.body) {
+    if (p.classList?.contains('inner-content') || p.classList?.contains('island-inner')) {
+      p.style.zIndex = on ? '1200' : ''
+    }
+    p = p.parentElement
+  }
+}
+watch(isBig, async (v) => {
+  document.body.style.overflow = v ? 'hidden' : ''
+  await nextTick()
+  raiseHost(v)
+})
+onBeforeUnmount(() => { document.body.style.overflow = ''; raiseHost(false) })
 
 /* ---------- 从全局邀请弹窗跳进来（/tool/games?room=ID&game=gomoku） ---------- */
 const route = useRoute()
