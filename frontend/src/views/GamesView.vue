@@ -1,15 +1,19 @@
 <template>
   <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 黑白棋 · 数独 · 飞行棋 · 纯本地可玩">
     <div class="games-tool">
+      <!-- 对局进行中锁定其它游戏页签（房间激活时由组件发 room-lock 事件） -->
       <div class="gm-tabs">
         <button
           v-for="g in gamelist"
           :key="g.key"
           class="gm-tab"
           :class="{ active: tab === g.key }"
+          :disabled="roomLocked && tab !== g.key"
+          :title="roomLocked && tab !== g.key ? '对局进行中，退出后才能切换' : ''"
           @click="tab = g.key"
         >{{ g.label }}</button>
       </div>
+      <div v-if="roomLocked" class="gm-locktip">🔒 对局进行中 —— 退出对局后才能玩其他的</div>
 
       <!-- KeepAlive：切 tab 不丢对局（数独计时/棋局状态都在组件内部） -->
       <KeepAlive>
@@ -17,6 +21,8 @@
           :is="current.component"
           :key="current.key + (pendingRoom.id && pendingRoom.game === current.key ? '-' + pendingRoom.id : '')"
           :join-room-id="pendingRoom.game === current.key ? pendingRoom.id : 0"
+          @room-lock="roomLocked = true"
+          @room-unlock="roomLocked = false"
         />
       </KeepAlive>
     </div>
@@ -43,6 +49,7 @@ const gamelist = [
   { key: 'mine', label: '扫雷', component: defineAsyncComponent(() => import('@/components/games/MineGame.vue')) },
 ]
 const tab = ref('gomoku')
+const roomLocked = ref(false)   // 在线对局进行中 → 锁定其它页签
 const current = computed(() => gamelist.find(g => g.key === tab.value) || gamelist[0])
 
 /* ---------- 从全局邀请弹窗跳转进来（/tool/games?room=ID&game=gomoku） ---------- */
@@ -72,4 +79,8 @@ watch(() => route.query.room, (v) => {
 @media (max-width: 480px) {
   .gm-tab { padding: 7px 14px; font-size: 12.5px; }
 }
+.gm-locktip { font-size: 12px; color: var(--dp-text3, #8a8f98); background: rgba(199,169,107,.1); padding: 6px 14px; border-radius: 999px; }
+
+.gm-locktip { font-size: 12px; color: var(--dp-text3, #8a8f98); background: rgba(199,169,107,.1); padding: 6px 14px; border-radius: 999px; }
+.gm-tab:disabled { opacity: .4; cursor: not-allowed; }
 </style>
