@@ -21,13 +21,21 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 
-/* 两 Tab：主页 / 我的（工具经主页快捷入口直达，不再占用主导航） */
+/* 三 Tab：主页 / 模块 / 我的。
+   「模块」承载全站一级 + 二级模块目录（按角色过滤），此前手机端只能靠主页 12 个精选宫格，
+   小说 / 视频 / 日志 / 工具 / 体重 / 棋类 … 全都没有入口。 */
 const tabs = [
   {
     path: '/workbench',
     label: '主页',
     active: (p) => p === '/workbench',
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.2 12 4l8.5 6.2"/><path d="M5.5 8.8V20h13V8.8"/><rect x="9.6" y="12.5" width="4.8" height="3" rx="1.2"/></svg>',
+  },
+  {
+    path: '/modules',
+    label: '模块',
+    active: (p) => p === '/modules',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>',
   },
   {
     path: '/profile',

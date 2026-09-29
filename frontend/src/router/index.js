@@ -24,6 +24,13 @@ const routes = [
     component: () => import('@/views/NotesView.vue'),
     meta: { requiresAuth: true }
   },
+  // 全站模块目录（一级 / 二级）：手机端底部 Tab 第二项，桌面端为兜底分组网格
+  {
+    path: '/modules',
+    name: 'Modules',
+    component: () => import('@/views/ModulesView.vue'),
+    meta: { requiresAuth: true }
+  },
   {
     path: '/notes/new',
     name: 'NoteNew',
@@ -283,11 +290,24 @@ const routes = [
     component: () => import('@/views/ContactsView.vue'),
     meta: { requiresAuth: true }
   },
-  // v2.15 生活模块：家人共享的体重 / 三餐记录
+  // v2.15 生活模块：家人共享的体重 / 美食记忆
+  // v2.41：拆成两个菜单 —— 「体重记录」与「美食记忆」共用同一视图，靠 mode prop 切换
   {
     path: '/life',
-    name: 'Life',
+    redirect: '/life/weight',
+  },
+  {
+    path: '/life/weight',
+    name: 'LifeWeight',
     component: () => import('@/views/LifeView.vue'),
+    props: { mode: 'weight' },
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/life/meals',
+    name: 'LifeMeals',
+    component: () => import('@/views/LifeView.vue'),
+    props: { mode: 'meals' },
     meta: { requiresAuth: true }
   },
   // v2.40.21 生活模块三件套：遗失物件 / 穿搭推荐 / 密码保险箱（都家庭共享）

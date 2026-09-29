@@ -51,9 +51,12 @@
       </div>
     </div>
 
-    <!-- 快捷入口 -->
+    <!-- 快捷入口（精选）＋ 全部模块目录入口 -->
     <div class="abb-sec">
-      <h2 class="abb-sec__title">快捷入口</h2>
+      <div class="abb-sec__head">
+        <h2 class="abb-sec__title">快捷入口</h2>
+        <button class="abb-more" @click="go('/modules')" aria-label="查看全部模块">全部模块 ›</button>
+      </div>
       <div class="abb-grid">
         <button
           v-for="(m, i) in quick"
@@ -228,10 +231,27 @@ onMounted(async () => {
 
 /* 快捷入口 */
 .abb-sec { margin-top: 28px; }
+.abb-sec__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
 .abb-sec__title {
   margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: .12em;
   color: var(--ls-text-3, #8a8f98);
 }
+.abb-sec__head .abb-sec__title { margin-bottom: 0; }
+.abb-more {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--m-accent, var(--lj-dai, #5b6ae0));
+  -webkit-tap-highlight-color: transparent;
+}
+.abb-more:active { opacity: .7; }
 .abb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .abb-cell {
   display: flex; flex-direction: column; align-items: center; gap: 9px;

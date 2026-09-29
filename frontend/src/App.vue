@@ -73,8 +73,8 @@ const auth = useAuthStore()
 const prefs = usePrefsStore()
 const { isMobile } = useIsMobile()
 
-// 移动端缓存底部两 Tab 首页组件（切 Tab 不重挂载、不闪白）；桌面 include 为空 → 不缓存
-const keepAliveNames = computed(() => isMobile.value ? ['WorkbenchView', 'ProfileView'] : [])
+// 移动端缓存三个底部 Tab 首页组件（切 Tab 不重挂载、不闪白）；桌面 include 为空 → 不缓存
+const keepAliveNames = computed(() => isMobile.value ? ['WorkbenchView', 'ModulesView', 'ProfileView'] : [])
 
 // 移动端全屏播放器开关
 const fullPlayer = ref(false)

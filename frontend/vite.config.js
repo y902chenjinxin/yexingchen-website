@@ -91,5 +91,16 @@ export default defineConfig({
         secure: false
       }
     }
+  },
+  // `npm run build` 后 `npx vite preview` 能用同一套代理跑起来，
+  // 便于在本地用「生产构建产物」做端到端取证（dev server 与生产构建的路由过渡行为不一致，
+  // 见 scripts/verify_mobile_modules.js 顶部说明）
+  preview: {
+    port: 4173,
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true, secure: false },
+      '/uploads': { target: 'http://127.0.0.1:8000', changeOrigin: true, secure: false },
+      '/music': { target: 'http://127.0.0.1:8000', changeOrigin: true, secure: false }
+    }
   }
 })

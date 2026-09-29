@@ -109,36 +109,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import {
-  House,
-  Headset,
-  Reading,
-  VideoPlay,
-  Apple,  // v2.15 生活模块（餐饮 emoji 替代：Apple 是苹果 logo 图标，简洁）
-  EditPen,
-  Bell,
-  MapLocation,
-  Money,
-  TrendCharts,
-  Notebook,
-  Calendar,
-  ChatLineRound,
-  Connection,
-  Compass,
-  Coin,
-  UserFilled,
-  Lock,
-  Menu,
-  Coffee,      // v2.40.18 生活：摸鱼日历
-  Message,     // v2.40.18 生活：时间胶囊（写给未来的信）
-  Grid,        // v2.40.18 生活：人生 4000 周（格子）
-  Football,    // v2.40.18 娱乐：摸鱼小游戏
-  Refresh,     // v2.40.18 娱乐：人生重开模拟器
-  Box,         // v2.40.21 生活：遗失物件（东西丢了）
-  Suitcase,    // v2.40.21 生活：穿搭推荐
-} from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { APP_VERSION } from '@/constants/version'
+import { buildNavModules, isNavItemActive } from '@/constants/navModules'
 import DesktopSearchBox from './DesktopSearchBox.vue'
 
 const route = useRoute()
@@ -172,109 +145,16 @@ onMounted(loadCollapsed)
 /* 窄屏抽屉：跳转后自动收起，避免浮层一直压着内容 */
 watch(() => route.path, () => { if (isNarrow()) expanded.value = false })
 
-/* ---------- 菜单分组 ---------- */
+/* ---------- 菜单分组 ----------
+   分组数据已抽到 `@/constants/navModules`（手机端模块目录读同一份），
+   这里只负责按角色取树 + 渲染，不再内联维护条目。 */
 const isSuper = computed(() => auth.user?.role === 'super_admin' || auth.user?.is_super_admin === 1)
 
-const groups = computed(() => {
-  const base = [
-    {
-      label: '',
-      items: [
-        { path: '/workbench', title: '工作台', icon: House },
-      ],
-    },
-    {
-      label: '内容',
-      items: [
-        { path: '/music', title: '音乐', icon: Headset },
-        { path: '/novel', title: '小说', icon: Reading },
-        { path: '/video', title: '视频', icon: VideoPlay },
-        { path: '/log', title: '日志', icon: EditPen },
-        { path: '/tool', title: '工具', icon: Bell },
-        { path: '/notes', title: '笔记云台', icon: Notebook },
-      ],
-    },
-    {
-      label: '生活',
-      items: [
-        { path: '/life', title: '体重三餐', icon: Apple },  // v2.17 体重 / 三餐家人共享，由内容分组移入
-        { path: '/tool/countdown', title: '时光痕迹', icon: Calendar },
-        // v2.40.18：时间三件套 + 摸鱼归入生活（原先只能在「工具」列表里翻到）
-        { path: '/tool/lifegrid', title: '人生 4000 周', icon: Grid },
-        { path: '/tool/capsule', title: '时间胶囊', icon: Message },
-        { path: '/tool/fish', title: '摸鱼日历', icon: Coffee },
-        { path: '/travels', title: '足迹地图', icon: MapLocation },
-        { path: '/finance/book', title: '记账', icon: Money },  // v2.16.2 记账归入生活分组
-        // v2.40.21 生活三件套（都家庭共享 + 记录上传人）：遗失物件 / 穿搭推荐 / 密码保险箱
-        { path: '/lost', title: '遗失物件', icon: Box },
-        { path: '/wardrobe', title: '穿搭推荐', icon: Suitcase },
-        { path: '/vault', title: '密码保险箱', icon: Lock },
-        { path: '/contacts', title: '通讯录', icon: Compass },  // v2.18 由「家」分组并入「生活」
-        { path: '/subscriptions', title: '订阅', icon: Coin },  // v2.18 由「家」分组并入「生活」
-      ],
-    },
-    {
-      // v2.40.23：娱乐由「生活 › 娱乐」二级子模块提升为一级模块（夜星要求）——
-      // 摸鱼玩具自成一组，和正经生活事务分开，视觉上也不再藏一层
-      label: '娱乐',
-      items: [
-        // v2.40.24：电子木鱼下线；摸鱼小游戏改名「棋类游戏」（五子棋/黑白棋/数独/飞行棋 …）
-        { path: '/tool/games', title: '棋类游戏', icon: Football },
-        { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },
-      ],
-    },
-    {
-      label: '财经',  // v2.37 去掉「综合」总览页（与工作台 KPI 重复），财经只剩行情 / 资讯
-      items: [
-        { path: '/finance/market', title: '行情', icon: TrendCharts },
-        { path: '/finance/news', title: '资讯', icon: Connection },
-      ],
-    },
-    {
-      label: '智能',
-      items: [
-        { path: '/assistant', title: 'AI 对话', icon: ChatLineRound },
-      ],
-    },
-  ]
-
-  if (isSuper.value) {
-    base.push({
-      label: '管理',
-      items: [
-        { path: '/admin/users', title: '用户管理', icon: UserFilled, superOnly: true },
-        { path: '/admin/roles', title: '角色管理', icon: Lock, superOnly: true },
-        { path: '/admin/menus', title: '菜单管理', icon: Menu, superOnly: true },
-      ],
-    })
-  }
-  return base
-})
+const groups = computed(() => buildNavModules(isSuper.value))
 
 /* ---------- 路由匹配高亮 ---------- */
-// v2.40.18：这些内置工具挂到了「生活 / 娱乐 / 通讯录」等其它模块下，
-// 点它们时不该把「工具」菜单一起点亮（否则两个菜单同时高亮）
-const TOOLS_IN_OTHER_MODULES = [
-  '/tool/countdown', '/tool/lifegrid', '/tool/capsule', '/tool/fish',
-  '/tool/muyu', '/tool/games', '/tool/contactsmap',
-]
-
 function isActive(path) {
-  if (path === '/workbench') return route.path === '/workbench'
-  if (path === '/notes') return route.path === '/notes' || route.path.startsWith('/notes/')
-  // 人脉图谱归通讯录：进图谱页时把「通讯录」点亮（工具菜单已由白名单排除）
-  if (path === '/contacts') return route.path === '/contacts' || route.path.startsWith('/tool/contactsmap')
-  if (path === '/tool/countdown') return route.path.startsWith('/tool/countdown')
-  if (path === '/tool') {
-    return route.path === '/tool'
-      || (route.path.startsWith('/tool/') && !TOOLS_IN_OTHER_MODULES.some((p) => route.path.startsWith(p)))
-  }
-  if (path === '/admin/users') return route.path === '/admin' || route.path === '/admin/users'
-  // v2.16 财经/记账子页互不抢占高亮（精确匹配；记账现挂生活分组但仍属 /finance/book）
-  if (path === '/finance/market' || path === '/finance/news' || path === '/finance/book') {
-    return route.path === path
-  }
-  return route.path === path || route.path.startsWith(path + '/')
+  return isNavItemActive(path, route.path)
 }
 
 function go(path) { router.push(path) }
