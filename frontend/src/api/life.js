@@ -17,10 +17,14 @@ export const createWeight = (formData) => api.post('/life/weight', formData, {
 })
 export const deleteWeight = (id) => api.delete(`/life/weight/${id}`)
 
-// ============================== 三餐 ==============================
+// ============================== 美食记忆（v2.41 由「三餐」改名） ==============================
 export const listMeals = (params) => api.get('/life/meals', { params })
 export const createMeal = (formData) => api.post('/life/meals', formData, {
   headers: { 'Content-Type': 'multipart/form-data' },
   timeout: 5 * 60 * 1000, // 图片上传给 5 分钟
+})
+export const updateMeal = (id, formData) => api.patch(`/life/meals/${id}`, formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+  timeout: 5 * 60 * 1000,
 })
 export const deleteMeal = (id) => api.delete(`/life/meals/${id}`)

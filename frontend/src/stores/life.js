@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import {
   listMembers, createMember, updateMember, deleteMember,
   listWeight, createWeight, deleteWeight,
-  listMeals, createMeal, deleteMeal,
+  listMeals, createMeal, updateMeal, deleteMeal,
 } from '@/api/life'
 
 export const useLifeStore = defineStore('life', () => {
@@ -63,6 +63,16 @@ export const useLifeStore = defineStore('life', () => {
     return createMeal(fd)
   }
 
+  async function editMeal(id, payload) {
+    const fd = new FormData()
+    if (payload.member_id != null) fd.append('member_id', payload.member_id)
+    if (payload.meal_type) fd.append('meal_type', payload.meal_type)
+    if (payload.taken_at) fd.append('taken_at', payload.taken_at)
+    if (payload.note != null) fd.append('note', payload.note)
+    if (payload.photo) fd.append('photo', payload.photo)
+    return updateMeal(id, fd)
+  }
+
   async function removeMeal(id) {
     return deleteMeal(id)
   }
@@ -97,7 +107,7 @@ export const useLifeStore = defineStore('life', () => {
     members, weightList, mealList, loading,
     fetchMembers, fetchWeight, fetchMeals,
     addWeight, removeWeight,
-    addMeal, removeMeal,
+    addMeal, editMeal, removeMeal,
     addMember, editMember, removeMember,
   }
 })

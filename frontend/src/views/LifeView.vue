@@ -1,12 +1,17 @@
 <!--
   LifeView.vue
-  玄黄 · 生活岛（v2.15）
+  玄黄 · 生活岛
   - 家人共享：所有家庭成员都能看 / 改 / 删数据，按 member_id 切片展示
-  - 体重：趋势图（按成员分线） + 时间轴列表
-  - 三餐：瀑布流 + meal_type chip
+  - v2.41：原「体重三餐」拆成两个菜单，同一视图靠 mode 切换
+      mode="weight" → 体重记录（趋势图 + 时间轴列表）
+      mode="meals"  → 美食记忆（只记大餐 / 纪念餐，支持编辑 / 删除 / 大图预览）
 -->
 <template>
-  <IslandInnerBase type="life" title="生活" subtitle="家人共享 · 体重 / 三餐">
+  <IslandInnerBase
+    type="life"
+    :title="isMeals ? '美食记忆' : '体重记录'"
+    :subtitle="isMeals ? '家人共享 · 只记大餐与值得纪念的一顿' : '家人共享 · 体重趋势与记录'"
+  >
     <template #toolbar>
       <div class="life-tb">
         <el-radio-group v-model="filterRange" size="small" class="life-tb-range">
@@ -15,8 +20,8 @@
           <el-radio-button value="90">90 天</el-radio-button>
           <el-radio-button value="all">全部</el-radio-button>
         </el-radio-group>
-        <el-button type="primary" size="small" @click="openWeightDialog">＋ 记体重</el-button>
-        <el-button size="small" plain @click="openMealDialog">📷 记一餐</el-button>
+        <el-button v-if="!isMeals" type="primary" size="small" @click="openWeightDialog">＋ 记体重</el-button>
+        <el-button v-else type="primary" size="small" @click="openMealDialog">📷 记一顿</el-button>
         <el-button size="small" plain @click="openMembersDialog">家人</el-button>
       </div>
     </template>
@@ -32,7 +37,7 @@
         <button class="life-mtag" :class="{ on: !filterMember }" @click="pickMember('')">
           <span class="life-mtag-avatar">🏠</span>
           <span class="life-mtag-name">全部家人</span>
-          <span class="life-mtag-meta">{{ weightList.length }} 体重 · {{ mealList.length }} 餐</span>
+          <span class="life-mtag-meta">{{ allCountText }}</span>
         </button>
         <button
           v-for="m in members"
@@ -43,12 +48,13 @@
         >
           <span class="life-mtag-avatar">{{ m.avatar || '🌿' }}</span>
           <span class="life-mtag-name">{{ m.display_name }}</span>
-          <span class="life-mtag-meta">{{ memberCounts.w.get(String(m.id)) || 0 }} 体重 · {{ memberCounts.m.get(String(m.id)) || 0 }} 餐</span>
+          <span class="life-mtag-meta">{{ memberCountText(m.id) }}</span>
         </button>
       </div>
 
       <div class="life-sum-grid">
-        <div class="life-sum-card">
+        <!-- 体重汇总 -->
+        <div v-if="!isMeals" class="life-sum-card">
           <div class="life-sum-title">⚖️ 体重汇总</div>
           <div class="life-sum-table-wrap" v-if="weightSummary.length">
           <table class="life-sum-table">
@@ -75,12 +81,13 @@
           <div v-else class="life-sum-empty">区间内没有体重记录</div>
         </div>
 
-        <div class="life-sum-card">
-          <div class="life-sum-title">🍱 三餐汇总</div>
+        <!-- 美食记忆汇总：按「场合」统计，帮家人回看这些值得记的饭 -->
+        <div v-else class="life-sum-card">
+          <div class="life-sum-title">🍱 美食汇总</div>
           <div class="life-sum-table-wrap" v-if="mealSummary.length">
           <table class="life-sum-table">
             <thead>
-              <tr><th class="c-name">成员</th><th>总数</th><th>早</th><th>午</th><th>晚</th><th>加餐</th></tr>
+              <tr><th class="c-name">成员</th><th>张数</th><th>大餐</th><th>纪念日</th><th>旅行</th><th>家常</th></tr>
             </thead>
             <tbody>
               <tr
@@ -92,22 +99,22 @@
               >
                 <td class="c-name"><span class="life-sum-avatar">{{ s.avatar }}</span>{{ s.name }}</td>
                 <td class="life-sum-strong">{{ s.count }}</td>
-                <td>{{ s.breakfast }}</td>
-                <td>{{ s.lunch }}</td>
-                <td>{{ s.dinner }}</td>
-                <td>{{ s.snack }}</td>
+                <td>{{ s.feast }}</td>
+                <td>{{ s.memory }}</td>
+                <td>{{ s.travel }}</td>
+                <td>{{ s.home }}</td>
               </tr>
             </tbody>
           </table>
           </div>
-          <div v-else class="life-sum-empty">区间内没有三餐记录</div>
+          <div v-else class="life-sum-empty">区间内还没有美食记忆</div>
         </div>
       </div>
     </section>
 
-    <div class="life-layout">
-      <!-- 左栏：体重 -->
-      <section class="life-col life-weight">
+    <!-- ===== 体重记录 ===== -->
+    <div v-if="!isMeals" class="life-layout">
+      <section class="life-col">
         <div class="life-col-head">
           <h3>⚖️ 体重趋势</h3>
           <span class="life-col-meta" v-if="weightList.length">
@@ -197,8 +204,13 @@
           :title="filterMember ? `${activeMemberName} 还没有体重记录` : '还没有体重记录'"
           :description="filterMember ? '切回「全部家人」看其他家人的记录' : '点上方「＋ 记体重」添加第一条数据，体重曲线会按家人自动分线'"
         />
+      </section>
 
-        <!-- 列表 -->
+      <section class="life-col">
+        <div class="life-col-head">
+          <h3>📋 体重明细</h3>
+          <span class="life-col-meta" v-if="weightGroups.length">按日期倒序 · {{ weightFiltered.length }} 条</span>
+        </div>
         <div v-if="weightGroups.length" class="wt-list">
           <div v-for="g in weightGroups" :key="g.date" class="wt-day">
             <div class="wt-day-hd">
@@ -215,16 +227,26 @@
             </div>
           </div>
         </div>
+        <EmptyState
+          v-else
+          tone="generic"
+          size="sm"
+          title="还没有明细"
+          description="记录体重后，这里按日期倒序列出每一条"
+        />
       </section>
+    </div>
 
-      <!-- 右栏：餐饮 -->
+    <!-- ===== 美食记忆 ===== -->
+    <div v-else class="life-layout life-layout-single">
       <section class="life-col life-meal">
         <div class="life-col-head">
-          <h3>🍱 三餐记录</h3>
+          <h3>🍱 美食记忆</h3>
           <span class="life-col-meta" v-if="mealList.length">
             <template v-if="filterMember">仅看 {{ activeMemberName }} · </template>{{ mealFiltered.length }} 张
           </span>
         </div>
+        <p class="meal-hint">只记大餐与值得纪念的一顿 —— 日常三餐不必上传，这里留给回头会想念的味道。</p>
 
         <div v-if="loading && !mealList.length" class="life-skel life-skel-grid">
           <SkeletonBlock v-for="i in 6" :key="i" width="100%" height="160px" />
@@ -232,10 +254,11 @@
 
         <div v-else-if="mealFiltered.length" class="meal-grid">
           <figure v-for="m in mealFiltered" :key="m.id" class="meal-card">
-            <div class="meal-img-wrap">
+            <button class="meal-img-wrap" type="button" :aria-label="`预览 ${m.note || m.member_name} 的照片`" @click="openPreview(m)">
               <img :src="mealPhotoUrl(m.photo_path)" :alt="m.note || m.member_name" class="meal-img" loading="lazy" />
-              <span class="meal-type-tag" :class="'mt-' + m.meal_type">{{ mealLabel(m.meal_type) }}</span>
-            </div>
+              <span class="meal-type-tag" :class="mealKindClass(m.meal_type)">{{ mealLabel(m.meal_type) }}</span>
+              <span class="meal-zoom">🔍</span>
+            </button>
             <figcaption class="meal-info">
               <div class="meal-meta">
                 <span class="meal-avatar">{{ m.member_avatar || '🌿' }}</span>
@@ -243,7 +266,11 @@
                 <span class="meal-date">{{ shortDateTime(m.taken_at) }}</span>
               </div>
               <p v-if="m.note" class="meal-note">{{ m.note }}</p>
-              <el-button link size="small" type="danger" class="meal-del" @click="onDeleteMeal(m)">删除</el-button>
+              <div class="meal-ops">
+                <button type="button" class="meal-op" @click="openPreview(m)">预览</button>
+                <button type="button" class="meal-op" @click="openMealEdit(m)">编辑</button>
+                <button type="button" class="meal-op danger" @click="onDeleteMeal(m)">删除</button>
+              </div>
             </figcaption>
           </figure>
         </div>
@@ -252,8 +279,8 @@
           v-else
           tone="generic"
           size="sm"
-          :title="filterMember ? `${activeMemberName} 还没有三餐记录` : '还没有三餐记录'"
-          :description="filterMember ? '切回「全部家人」看其他家人的记录' : '点「📷 记一餐」上传第一张照片，三餐记录按家人自动归类'"
+          :title="filterMember ? `${activeMemberName} 还没有美食记忆` : '还没有美食记忆'"
+          :description="filterMember ? '切回「全部家人」看其他家人的记录' : '点「📷 记一顿」上传大餐或纪念餐的照片，按家人自动归类'"
         />
       </section>
     </div>
@@ -283,21 +310,23 @@
       </template>
     </el-dialog>
 
-    <!-- 记一餐弹窗 -->
-    <el-dialog v-model="showMealDialog" title="记一餐" width="460px" append-to-body>
+    <!-- 记一顿 / 编辑美食记忆（同一表单，靠 mealEditingId 区分） -->
+    <el-dialog v-model="showMealDialog" :title="mealDialogTitle" width="460px" append-to-body>
       <el-form :model="mealForm" label-width="80px">
         <el-form-item label="家人">
           <el-select v-model="mealForm.member_id" placeholder="选家人" style="width:100%">
             <el-option v-for="m in members" :key="m.id" :label="`${m.avatar} ${m.display_name}`" :value="m.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="餐别">
+        <el-form-item label="场合">
           <el-radio-group v-model="mealForm.meal_type">
-            <el-radio-button value="breakfast">🌅 早餐</el-radio-button>
-            <el-radio-button value="lunch">☀️ 午餐</el-radio-button>
-            <el-radio-button value="dinner">🌙 晚餐</el-radio-button>
-            <el-radio-button value="snack">🍪 加餐</el-radio-button>
+            <el-radio-button v-if="legacyKind" :value="mealForm.meal_type">{{ legacyKind }}</el-radio-button>
+            <el-radio-button v-for="k in MEAL_KINDS" :key="k.value" :value="k.value">{{ k.icon }} {{ k.label }}</el-radio-button>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item label="时间">
+          <el-date-picker v-model="mealForm.taken_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss"
+                          placeholder="默认现在" style="width:100%" />
         </el-form-item>
         <el-form-item label="照片">
           <!-- v2.40.24：手机上新增「拍照」直接调起后置相机（capture），原「从相册选」保留 -->
@@ -310,19 +339,24 @@
               🖼 从相册选
               <input type="file" accept="image/*" hidden @change="onMealPick($event)">
             </label>
-            <div v-if="mealPreview" class="meal-photo-preview">
-              <img :src="mealPreview" alt="已选照片">
-              <button type="button" class="meal-photo-del" @click="clearMealPhoto">×</button>
+            <div v-if="mealPhotoShown" class="meal-photo-preview">
+              <img :src="mealPhotoShown" alt="已选照片">
+              <button type="button" class="meal-photo-del" aria-label="移除照片" @click="clearMealPhoto">×</button>
             </div>
           </div>
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="mealForm.note" placeholder="可选：妈妈做的红烧肉" />
+        <el-form-item label="标题">
+          <el-input v-model="mealForm.note" maxlength="60" show-word-limit placeholder="可选：妈妈做的红烧肉" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showMealDialog = false">取消</el-button>
-        <el-button type="primary" :loading="mealSubmitting" :disabled="!mealFileRaw" @click="submitMeal">上传</el-button>
+        <el-button
+          type="primary"
+          :loading="mealSubmitting"
+          :disabled="!mealPhotoShown"
+          @click="submitMeal"
+        >{{ mealEditingId ? '保存' : '上传' }}</el-button>
       </template>
     </el-dialog>
 
@@ -352,11 +386,34 @@
         <el-button @click="showMembersDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 大图预览：整屏毛玻璃灯箱，点背景 / 按 Esc 关闭 -->
+    <Teleport to="body">
+      <div v-if="previewMeal" ref="lightboxEl" class="meal-lb" tabindex="-1" @click.self="closePreview">
+        <figure class="meal-lb-box">
+          <img :src="mealPhotoUrl(previewMeal.photo_path)" :alt="previewMeal.note || previewMeal.member_name" class="meal-lb-img">
+          <figcaption class="meal-lb-bar">
+            <div class="meal-lb-meta">
+              <span class="meal-type-tag" :class="mealKindClass(previewMeal.meal_type)">{{ mealLabel(previewMeal.meal_type) }}</span>
+              <span class="meal-lb-name">{{ previewMeal.member_avatar || '🌿' }} {{ previewMeal.member_name }}</span>
+              <span class="meal-lb-date">{{ longDateTime(previewMeal.taken_at) }}</span>
+            </div>
+            <p v-if="previewMeal.note" class="meal-lb-note">{{ previewMeal.note }}</p>
+            <div class="meal-lb-ops">
+              <button type="button" class="meal-lb-btn" @click="editFromPreview">编辑</button>
+              <button type="button" class="meal-lb-btn danger" @click="deleteFromPreview">删除</button>
+              <button type="button" class="meal-lb-btn" @click="closePreview">关闭</button>
+            </div>
+          </figcaption>
+          <button type="button" class="meal-lb-x" aria-label="关闭预览" @click="closePreview">✕</button>
+        </figure>
+      </div>
+    </Teleport>
   </IslandInnerBase>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
@@ -365,6 +422,12 @@ import { useChartHover } from '@/composables/useChartHover'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useLifeStore } from '@/stores/life'
 import { useAuthStore } from '@/stores/auth'
+
+// mode 由路由 props 注入：'weight' 体重记录 / 'meals' 美食记忆
+const props = defineProps({
+  mode: { type: String, default: 'weight' },
+})
+const isMeals = computed(() => props.mode === 'meals')
 
 const store = useLifeStore()
 const auth = useAuthStore()
@@ -398,6 +461,17 @@ const mealFiltered = computed(() => (filterMember.value
   ? mealList.value.filter((m) => String(m.member_id) === String(filterMember.value))
   : mealList.value))
 
+// 标签上的计数：体重看条数，美食看张数
+const allCountText = computed(() => (isMeals.value
+  ? `${mealList.value.length} 张`
+  : `${weightList.value.length} 条记录`))
+function memberCountText(id) {
+  const n = isMeals.value
+    ? mealSummary.value.find((s) => String(s.memberId) === String(id))?.count || 0
+    : weightSummary.value.find((s) => String(s.memberId) === String(id))?.count || 0
+  return isMeals.value ? `${n} 张` : `${n} 条`
+}
+
 // ============================== 家人汇总 ==============================
 // 体重：每人 记录数 / 最新值 / 区间首末变化 / 最近测量日
 const weightSummary = computed(() => {
@@ -426,7 +500,7 @@ const weightSummary = computed(() => {
   return out.sort((a, b) => b.count - a.count)
 })
 
-// 三餐：每人 总数 + 各餐别次数
+// 美食记忆：每人 张数 + 各场合次数
 const mealSummary = computed(() => {
   const map = new Map()
   for (const m of mealList.value) {
@@ -435,7 +509,7 @@ const mealSummary = computed(() => {
         memberId: m.member_id,
         name: m.member_name || '—',
         avatar: m.member_avatar || '🌿',
-        count: 0, breakfast: 0, lunch: 0, dinner: 0, snack: 0,
+        count: 0, feast: 0, memory: 0, travel: 0, home: 0,
       })
     }
     const s = map.get(m.member_id)
@@ -444,12 +518,6 @@ const mealSummary = computed(() => {
   }
   return [...map.values()].sort((a, b) => b.count - a.count)
 })
-
-// 标签上的「N 体重 · N 餐」计数，避免在 v-for 里反复 find
-const memberCounts = computed(() => ({
-  w: new Map(weightSummary.value.map((s) => [String(s.memberId), s.count])),
-  m: new Map(mealSummary.value.map((s) => [String(s.memberId), s.count])),
-}))
 
 // ============================== 体重图表 ==============================
 const CHART_W = 560
@@ -584,14 +652,38 @@ const weightGroups = computed(() => {
     .map(([date, items]) => ({ date, items }))
 })
 
-// ============================== 餐饮 ==============================
+// ============================== 美食记忆 ==============================
+// 场合（v2.41）：大餐 / 纪念日 / 旅行美食 / 家常好菜
+const MEAL_KINDS = [
+  { value: 'feast', label: '大餐', icon: '🍽' },
+  { value: 'memory', label: '纪念日', icon: '🎉' },
+  { value: 'travel', label: '旅行美食', icon: '✈️' },
+  { value: 'home', label: '家常好菜', icon: '🏠' },
+]
+// v2.41 之前的三餐值，老数据仍要能正常显示
+const LEGACY_MEAL_LABEL = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' }
 function mealLabel(t) {
-  return { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' }[t] || t
+  const hit = MEAL_KINDS.find((k) => k.value === t)
+  return hit ? hit.label : (LEGACY_MEAL_LABEL[t] || t)
 }
+function mealKindClass(t) {
+  return MEAL_KINDS.some((k) => k.value === t) ? `mt-${t}` : 'mt-legacy'
+}
+// 编辑老数据时，把历史值原样摆出来，避免「没选中任何场合」的困惑
+const legacyKind = computed(() => {
+  const t = mealForm.value.meal_type
+  if (MEAL_KINDS.some((k) => k.value === t)) return ''
+  return LEGACY_MEAL_LABEL[t] ? `${LEGACY_MEAL_LABEL[t]}（旧）` : ''
+})
 function shortDateTime(s) {
   if (!s) return ''
   const d = new Date(s)
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+function longDateTime(s) {
+  if (!s) return ''
+  const d = new Date(s)
+  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 function mealPhotoUrl(p) {
   if (!p) return ''
@@ -629,13 +721,37 @@ async function submitWeight() {
 
 const showMealDialog = ref(false)
 const mealSubmitting = ref(false)
-const mealForm = ref({ member_id: null, meal_type: 'breakfast', note: '' })
-const mealFileRaw = ref(null)
-const mealPreview = ref('')
-function openMealDialog() {
-  mealForm.value = { member_id: members.value[0]?.id || null, meal_type: 'breakfast', note: '' }
+const mealEditingId = ref(null)      // 非空 = 编辑已有记录
+const mealForm = ref({ member_id: null, meal_type: 'feast', taken_at: '', note: '' })
+const mealFileRaw = ref(null)        // 新挑的文件（编辑时可不换图）
+const mealPickedUrl = ref('')        // 新挑文件的本地预览地址
+const mealExistingUrl = ref('')      // 编辑时原图地址
+const mealDialogTitle = computed(() => (mealEditingId.value ? '编辑美食记忆' : '记一顿'))
+// 表单里展示的照片：优先新挑的，其次原图
+const mealPhotoShown = computed(() => mealPickedUrl.value || mealExistingUrl.value)
+
+function resetMealForm() {
+  mealEditingId.value = null
   mealFileRaw.value = null
-  mealPreview.value = ''
+  mealPickedUrl.value = ''
+  mealExistingUrl.value = ''
+  mealForm.value = { member_id: members.value[0]?.id || null, meal_type: 'feast', taken_at: '', note: '' }
+}
+function openMealDialog() {
+  resetMealForm()
+  showMealDialog.value = true
+}
+function openMealEdit(m) {
+  resetMealForm()
+  mealEditingId.value = m.id
+  mealForm.value = {
+    member_id: m.member_id,
+    // 老行是 breakfast/lunch/... ：保留原值，不强行改成新场合
+    meal_type: m.meal_type || 'feast',
+    taken_at: (m.taken_at || '').replace(' ', 'T').slice(0, 19),
+    note: m.note || '',
+  }
+  mealExistingUrl.value = mealPhotoUrl(m.photo_path)
   showMealDialog.value = true
 }
 /** 拍照 / 相册共用：capture 的 input 会直接调起手机后置相机 */
@@ -643,29 +759,74 @@ function onMealPick(e) {
   const f = e.target?.files?.[0]
   if (!f) return
   mealFileRaw.value = f
-  mealPreview.value = URL.createObjectURL(f)
+  mealPickedUrl.value = URL.createObjectURL(f)
   e.target.value = ''
 }
 function clearMealPhoto() {
-  mealFileRaw.value = null
-  mealPreview.value = ''
+  // 编辑态下允许清空新图回退到原图；新建态下清空即无图，提交按钮会禁用
+  if (mealFileRaw.value) {
+    URL.revokeObjectURL(mealPickedUrl.value)
+    mealFileRaw.value = null
+    mealPickedUrl.value = ''
+  } else {
+    mealExistingUrl.value = ''
+  }
 }
 async function submitMeal() {
   if (!mealForm.value.member_id) { ElMessage.warning('请选家人'); return }
-  if (!mealFileRaw.value) { ElMessage.warning('请选照片'); return }
+  if (!mealPhotoShown.value) { ElMessage.warning('请选照片'); return }
   mealSubmitting.value = true
   try {
-    await store.addMeal({ ...mealForm.value, photo: mealFileRaw.value })
+    const payload = {
+      member_id: mealForm.value.member_id,
+      meal_type: mealForm.value.meal_type,
+      taken_at: mealForm.value.taken_at || '',
+      note: mealForm.value.note || '',
+      photo: mealFileRaw.value || null,
+    }
+    if (mealEditingId.value) {
+      await store.editMeal(mealEditingId.value, payload)
+    } else {
+      await store.addMeal(payload)
+    }
     await loadAll()
-    ElMessage.success('已上传')
+    ElMessage.success(mealEditingId.value ? '已保存' : '已上传')
     showMealDialog.value = false
   } catch (e) {
-    const msg = e?.msg || e?.detail?.msg || e?.message || '上传失败'
+    const msg = e?.msg || e?.detail?.msg || e?.message || '保存失败'
     ElMessage.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
   } finally {
     mealSubmitting.value = false
   }
 }
+
+// ============================== 大图预览 ==============================
+const previewMeal = ref(null)
+const lightboxEl = ref(null)
+function openPreview(m) {
+  previewMeal.value = m
+  nextTick(() => lightboxEl.value?.focus())
+}
+function closePreview() {
+  previewMeal.value = null
+}
+function editFromPreview() {
+  const m = previewMeal.value
+  closePreview()
+  if (m) openMealEdit(m)
+}
+async function deleteFromPreview() {
+  const m = previewMeal.value
+  closePreview()
+  if (m) await onDeleteMeal(m)
+}
+function onLightboxKey(e) {
+  if (e.key === 'Escape' && previewMeal.value) closePreview()
+}
+watch(previewMeal, (v) => {
+  if (v) window.addEventListener('keydown', onLightboxKey)
+  else window.removeEventListener('keydown', onLightboxKey)
+})
 
 // ============================== 删除 ==============================
 async function onDeleteWeight(w) {
@@ -673,7 +834,7 @@ async function onDeleteWeight(w) {
   try { await store.removeWeight(w.id); await loadAll(); ElMessage.success('已删除') } catch { /* 拦截器提示 */ }
 }
 async function onDeleteMeal(m) {
-  try { await ElMessageBox.confirm('确认删除这张照片？', '提示', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm('确认删除这条美食记忆？照片会一并删除。', '提示', { type: 'warning' }) } catch { return }
   try { await store.removeMeal(m.id); await loadAll(); ElMessage.success('已删除') } catch { /* 拦截器提示 */ }
 }
 
@@ -697,7 +858,7 @@ async function editMemberInline(m) {
   } catch { /* 拦截器提示 */ }
 }
 async function onDeleteMember(m) {
-  try { await ElMessageBox.confirm(`确认删除家人「${m.display_name}」？其体重/三餐记录一并保留（仍归属于原 member_id）。`, '提示', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(`确认删除家人「${m.display_name}」？其体重/美食记录一并保留（仍归属于原 member_id）。`, '提示', { type: 'warning' }) } catch { return }
   try { await store.removeMember(m.id); ElMessage.success('已删除') } catch { /* 拦截器提示 */ }
 }
 
@@ -715,6 +876,15 @@ async function loadAll() {
 }
 onMounted(loadAll)
 watch(filterRange, loadAll)
+// 两个路由复用同一组件实例：切菜单时重置筛选，避免「在体重页筛了某人，切到美食页还带着」
+watch(isMeals, () => {
+  filterMember.value = ''
+  closePreview()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onLightboxKey)
+  if (mealPickedUrl.value) URL.revokeObjectURL(mealPickedUrl.value)
+})
 </script>
 
 <style scoped>
@@ -767,6 +937,8 @@ watch(filterRange, loadAll)
    nowrap 表格的 min-content 顶住，卡片被撑出视口（375px 下溢出 30px）。
    必须显式 minmax(0, 1fr)，让轨道能收缩、把溢出交给 .life-sum-table-wrap 横向滚动。 */
 @media (max-width: 1000px) { .life-sum-grid { grid-template-columns: minmax(0, 1fr); } }
+/* 拆成单模块后汇总只有一张卡，两列会留一块空洞 */
+.life-sum-grid > :only-child { grid-column: 1 / -1; }
 .life-sum-card {
   border: 1px solid var(--ls-line);
   border-radius: 10px;
@@ -785,6 +957,9 @@ watch(filterRange, loadAll)
   border-bottom: 1px solid var(--ls-line); white-space: nowrap;
 }
 .life-sum-table th.c-name, .life-sum-table td.c-name { text-align: left; }
+/* 拆成单模块后汇总表占满整行，不约束列宽的话数字会被摊到整屏；
+   给数值列定宽、让「成员」列吃掉余量，数字就聚到右侧了 */
+.life-sum-table th:not(.c-name), .life-sum-table td:not(.c-name) { width: 88px; }
 .life-sum-table td {
   padding: 7px 8px; text-align: right;
   border-bottom: 1px dashed var(--ls-line);
@@ -803,13 +978,15 @@ watch(filterRange, loadAll)
 
 .life-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 18px;
   margin-top: 4px;
 }
 @media (max-width: 1000px) {
-  .life-layout { grid-template-columns: 1fr; }
+  .life-layout { grid-template-columns: minmax(0, 1fr); }
 }
+/* 美食记忆只有一块内容，铺满整行 */
+.life-layout-single { grid-template-columns: minmax(0, 1fr); }
 
 .life-col {
   background: var(--ls-paper);
@@ -817,6 +994,7 @@ watch(filterRange, loadAll)
   border-radius: var(--ls-radius, 12px);
   padding: 18px 20px;
   box-shadow: var(--ls-shadow, 0 1px 2px rgba(0,0,0,.04));
+  min-width: 0;
 }
 .life-col-head {
   display: flex; justify-content: space-between; align-items: baseline;
@@ -894,10 +1072,14 @@ watch(filterRange, loadAll)
 .wt-row-w { font-weight: 600; color: var(--yq-gold, #c7a96b); margin-left: 4px; }
 .wt-row-note { font-size: 11.5px; color: var(--lj-text-3); margin-top: 2px; }
 
-/* 三餐瀑布流 */
+/* 美食记忆 */
+.meal-hint {
+  margin: 0 0 14px; font-size: 12px; line-height: 1.7;
+  color: var(--lj-text-3);
+}
 .meal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 14px;
 }
 .meal-card {
@@ -914,8 +1096,14 @@ watch(filterRange, loadAll)
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(0,0,0,.12);
 }
-.meal-img-wrap { position: relative; aspect-ratio: 1 / 1; overflow: hidden; }
-.meal-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 图区是可点击的预览入口，去掉 button 默认样式 */
+.meal-img-wrap {
+  position: relative; display: block; width: 100%;
+  aspect-ratio: 1 / 1; overflow: hidden;
+  padding: 0; border: none; background: none; cursor: zoom-in;
+}
+.meal-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform var(--motion-med) var(--ease-standard); }
+.meal-card:hover .meal-img { transform: scale(1.04); }
 .meal-type-tag {
   position: absolute; top: 8px; left: 8px;
   padding: 3px 9px;
@@ -925,11 +1113,23 @@ watch(filterRange, loadAll)
   background: rgba(0, 0, 0, .45);
   color: #fff;
 }
-.meal-type-tag.mt-breakfast { background: rgba(217, 119, 6, .85); }
-.meal-type-tag.mt-lunch     { background: rgba(91, 106, 224, .85); }
-.meal-type-tag.mt-dinner    { background: rgba(127, 168, 163, .85); }
-.meal-type-tag.mt-snack     { background: rgba(168, 85, 247, .85); }
-.meal-info { padding: 8px 10px 6px; position: relative; }
+.meal-type-tag.mt-feast  { background: rgba(199, 169, 107, .9); }
+.meal-type-tag.mt-memory { background: rgba(217, 119, 6, .88); }
+.meal-type-tag.mt-travel { background: rgba(91, 106, 224, .88); }
+.meal-type-tag.mt-home   { background: rgba(127, 168, 163, .9); }
+/* v2.41 之前的三餐老数据：中性灰，不抢戏 */
+.meal-type-tag.mt-legacy { background: rgba(90, 100, 110, .8); }
+.meal-zoom {
+  position: absolute; right: 8px; bottom: 8px;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12px;
+  background: rgba(0, 0, 0, .42);
+  color: #fff;
+  opacity: 0; transition: opacity var(--motion-fast, .12s) var(--ease-standard, ease);
+}
+.meal-card:hover .meal-zoom, .meal-img-wrap:focus-visible .meal-zoom { opacity: 1; }
+.meal-info { padding: 8px 10px 8px; }
 .meal-meta {
   display: flex; align-items: center; gap: 5px;
   font-size: 11.5px; color: var(--lj-text-2);
@@ -938,11 +1138,74 @@ watch(filterRange, loadAll)
 .meal-name { font-weight: 600; color: var(--lj-text); }
 .meal-date { margin-left: auto; font-size: 10.5px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
 .meal-note { margin: 4px 0 0; font-size: 11.5px; color: var(--lj-text-3); line-height: 1.55; }
-.meal-del { position: absolute; top: 6px; right: 6px; }
+.meal-ops {
+  display: flex; gap: 6px; margin-top: 8px;
+  padding-top: 7px; border-top: 1px dashed var(--ls-line);
+}
+.meal-op {
+  flex: 1; padding: 4px 0;
+  border: 1px solid var(--ls-line); border-radius: 7px;
+  background: transparent; color: var(--lj-text-2);
+  font-family: inherit; font-size: 12px; cursor: pointer;
+  transition: border-color var(--motion-fast, .12s) var(--ease-standard, ease),
+              color var(--motion-fast, .12s) var(--ease-standard, ease),
+              background var(--motion-fast, .12s) var(--ease-standard, ease);
+}
+.meal-op:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); background: rgba(199,169,107,.1); }
+.meal-op.danger:hover { border-color: var(--lj-cinnabar, #c27053); color: var(--lj-cinnabar, #c27053); background: rgba(194,112,83,.1); }
+
+/* 大图预览灯箱 */
+.meal-lb {
+  position: fixed; inset: 0; z-index: 2600;
+  display: grid; place-items: center;
+  padding: 24px;
+  background: rgba(12, 16, 20, .72);
+  backdrop-filter: blur(10px);
+  animation: mealLbIn .18s cubic-bezier(.4,.1,.2,1);
+  outline: none;
+}
+@keyframes mealLbIn { from { opacity: 0 } to { opacity: 1 } }
+.meal-lb-box {
+  position: relative;
+  margin: 0; max-width: min(92vw, 880px); max-height: 90vh;
+  display: flex; flex-direction: column;
+  border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(20, 24, 28, .9);
+  box-shadow: 0 24px 60px rgba(0,0,0,.5);
+}
+.meal-lb-img {
+  max-width: 100%; max-height: 62vh;
+  object-fit: contain; display: block; background: #0d1013;
+}
+.meal-lb-bar { padding: 12px 16px 14px; }
+.meal-lb-meta { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.meal-lb-meta .meal-type-tag { position: static; }
+.meal-lb-name { font-size: 13px; color: #f2eee4; font-weight: 600; }
+.meal-lb-date { font-size: 11.5px; color: rgba(242,238,228,.62); font-variant-numeric: tabular-nums; }
+.meal-lb-note { margin: 7px 0 0; font-size: 13px; line-height: 1.6; color: rgba(242,238,228,.86); }
+.meal-lb-ops { display: flex; gap: 8px; margin-top: 12px; }
+.meal-lb-btn {
+  padding: 6px 16px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.07); color: #f2eee4;
+  font-family: inherit; font-size: 12.5px;
+  transition: border-color .16s, background .16s, color .16s;
+}
+.meal-lb-btn:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.meal-lb-btn.danger:hover { border-color: #d98564; color: #d98564; }
+.meal-lb-x {
+  position: absolute; top: 10px; right: 10px;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(0,0,0,.45); color: #fff;
+  font-size: 14px; line-height: 1; cursor: pointer;
+}
+.meal-lb-x:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
 
 /* 骨架 */
 .life-skel { padding: 4px 0; }
-.life-skel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.life-skel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
 
 /* 家人管理 */
 .life-empty { padding: 30px; text-align: center; color: var(--lj-text-3); }
@@ -959,7 +1222,7 @@ watch(filterRange, loadAll)
 .member-card-name { font-size: 14px; color: var(--lj-text); display: flex; align-items: center; gap: 6px; }
 .member-card-meta { font-size: 11.5px; color: var(--lj-text-3); margin-top: 2px; }
 .member-card-ops { display: flex; gap: 4px; }
-/* 记一餐：拍照 / 相册按钮与预览（v2.40.24） */
+/* 记一顿：拍照 / 相册按钮与预览（v2.40.24） */
 .meal-photo-row { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .meal-photo-btn {
   padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;

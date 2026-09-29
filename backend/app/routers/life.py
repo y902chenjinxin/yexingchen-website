@@ -13,9 +13,16 @@
 - GET    /api/life/weight        体重列表（可按 member_id / from / to 过滤）
 - POST   /api/life/weight        新增体重（任何成员）
 - DELETE /api/life/weight/{id}   删体重（任何成员）
-- GET    /api/life/meals         三餐列表（可按 member_id / meal_type / from / to 过滤）
-- POST   /api/life/meals         上传三餐图片（multipart，member_id form）
-- DELETE /api/life/meals/{id}    删三餐（任何成员）
+- GET    /api/life/meals         美食记忆列表（可按 member_id / meal_type / from / to 过滤）
+- POST   /api/life/meals         上传美食照片（multipart，member_id form）
+- PATCH  /api/life/meals/{id}    编辑（换图 / 改标题 / 改类型 / 改时间 / 改归属）
+- DELETE /api/life/meals/{id}    删记录（任何成员）
+
+v2.41：三餐 → 「美食记忆」。不再记录日常三餐，只留大餐与值得纪念的一顿，
+因此 meal_type 的语义从「早/午/晚/加餐」改为「场合」：
+feast 大餐 / memory 纪念日 / travel 旅行美食 / home 家常好菜。
+历史行仍是 breakfast/lunch/dinner/snack（列是普通字符串，无 DB 约束），
+读写两端都保留兼容，避免老数据在列表/编辑时报错。
 """
 from datetime import datetime
 from typing import Optional
@@ -40,7 +47,10 @@ router = APIRouter(prefix="/api/life", tags=["生活岛"])
 # 全局只有一个 household（v2.15 简化设计）
 HOUSEHOLD_ID = 1
 
-MEAL_TYPES = {"breakfast", "lunch", "dinner", "snack"}
+# 美食记忆的「场合」（v2.41 起）
+MEAL_TYPES = {"feast", "memory", "travel", "home"}
+# v2.41 之前的三餐值：只做兼容读取 / 原样回写，不再允许新建
+LEGACY_MEAL_TYPES = {"breakfast", "lunch", "dinner", "snack"}
 
 
 # ============================== 工具函数 ==============================
@@ -323,7 +333,7 @@ async def list_meals(
     q = db.query(MealPhoto).filter(MealPhoto.household_id == HOUSEHOLD_ID)
     if member_id: q = q.filter(MealPhoto.member_id == member_id)
     if meal_type:
-        if meal_type not in MEAL_TYPES:
+        if meal_type not in MEAL_TYPES and meal_type not in LEGACY_MEAL_TYPES:
             raise_error(ErrCode.INVALID_PARAM, "meal_type 不合法")
         q = q.filter(MealPhoto.meal_type == meal_type)
     if from_date:
@@ -366,10 +376,10 @@ async def create_meal(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """上传一张三餐照片（multipart）。"""
+    """上传一张美食照片（multipart）。只记大餐 / 纪念餐，不记日常三餐。"""
     _ensure_member(db, member_id)
     if meal_type not in MEAL_TYPES:
-        raise_error(ErrCode.INVALID_PARAM, "meal_type 必须为 breakfast/lunch/dinner/snack")
+        raise_error(ErrCode.INVALID_PARAM, "meal_type 必须为 feast/memory/travel/home")
 
     try:
         photo_path, _ = await save_upload_file(
@@ -397,6 +407,64 @@ async def create_meal(
     )
     db.add(p); db.commit()
     return ResponseBase(msg="已上传", data=_meal_to_out(p))
+
+
+@router.patch("/meals/{meal_id}", response_model=ResponseBase)
+async def update_meal(
+    meal_id: int,
+    member_id: Optional[int] = Form(None),
+    meal_type: Optional[str] = Form(None),
+    taken_at: Optional[str] = Form(None),
+    note: Optional[str] = Form(None),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """编辑一条美食记忆：改归属 / 改场合 / 改标题 / 改时间 / 换图（换图时删旧文件）。"""
+    p = db.query(MealPhoto).filter(MealPhoto.id == meal_id, MealPhoto.household_id == HOUSEHOLD_ID).first()
+    if not p:
+        raise_error(ErrCode.NOT_FOUND, "记录不存在")
+
+    if member_id is not None:
+        _ensure_member(db, member_id)
+        p.member_id = member_id
+    if meal_type is not None:
+        # 老行回写历史值也放行，避免「只改标题」时因类型校验失败而 400
+        if meal_type not in MEAL_TYPES and meal_type not in LEGACY_MEAL_TYPES:
+            raise_error(ErrCode.INVALID_PARAM, "meal_type 必须为 feast/memory/travel/home")
+        p.meal_type = meal_type
+    if taken_at:
+        try:
+            p.taken_at = datetime.fromisoformat(taken_at)
+        except ValueError:
+            raise_error(ErrCode.INVALID_PARAM, "taken_at 格式应为 ISO datetime")
+    if note is not None:
+        p.note = note[:255]
+
+    # 换图：先存新图再删旧图。顺序不能反 —— 存失败时旧图还在，页面不至于变空图
+    new_path = ""
+    old_path = ""
+    if photo is not None and photo.filename:
+        try:
+            new_path, _ = await save_upload_file(
+                photo, "meals", ALLOWED_MEAL_EXTENSIONS, settings.MAX_COVER_SIZE
+            )
+        except ValueError as e:
+            raise_error(ErrCode.INVALID_PARAM, str(e))
+        old_path = p.photo_path
+        p.photo_path = new_path
+
+    db.commit()
+    if new_path and old_path:
+        delete_file(old_path)
+
+    m = db.query(HouseholdMember).options(joinedload(HouseholdMember.user)).filter(
+        HouseholdMember.id == p.member_id
+    ).first()
+    return ResponseBase(
+        msg="已更新",
+        data=_meal_to_out(p, member_name(m) if m else "", m.avatar if m else "🌿"),
+    )
 
 
 @router.delete("/meals/{meal_id}", response_model=ResponseBase)
