@@ -12,6 +12,7 @@
 | ID | 问题 | 类别 | 状态 |
 |----|------|------|------|
 | V2441-005 | **【安全·最高优先】生产管理员密码以明文散落在公开仓库**：`github.com/y902chenjinxin/yexingchen-website` **未授权即可访问（公开仓库）**，而 `admin@yexingchen.cn` 与明文密码出现在 **13 个已提交文件**（`scripts/probe_api.js`、`scripts/seed_feeds_stocks.py`、`scripts/browser_verify.js`、`backend/tests/test_password_validation.py` 等）。已双重确认：① GitHub API 未授权返回 200；② 直接 raw 抓取文件可读到密码；③ **实测该密码当前仍能登录生产超管账号**（role=admin / is_super_admin=1）。本轮已把**新写的 3 个脚本**改为从 `../.secrets/local.env` 或环境变量取凭据（新增 `scripts/_creds.js`），不再新增明文副本；但**根治需要**：**① 立刻改密**（「我的 → 修改密码」或 `POST /api/auth/change-password`）**② 清理既有 13 处 ③ 仓库改私有，或重写历史** | 安全 | 🚨 待夜星处理 |
+| V2441-006 | **登录限流偏严（2026-09-29 实测把夜星挡在门外）**：`utils/rate_limit.py` 按 **IP** 计数（5 次/5 分钟 → 封 15 分钟），且 `auth.py` **每个登录请求一进来就先记一次失败**，只有成功才清空该 IP 记录。后果：① 夜星在自家 IP 上连续输错 2~3 次就被挡 15 分钟（20:03:40 401 → 20:03:47 401 → 20:03:57 429）；② 我们的自动化登录（agent-browser / API）与他**共用同一 IP 额度**。建议：放宽到 10 次/15 分钟，或改成按 IP+账号，并让 401（账密错）与 429（被限流）文案明确区分 | 体验 / 安全权衡 | 📌 待夜星定 |
 
 ---
 
