@@ -170,15 +170,25 @@ async def change_password(
     if not verify_password(body.old_password, user.password_hash):
         raise_error(ErrCode.USER_PASSWORD_MISMATCH, "当前密码不正确")
 
-    # 验证新密码复杂度
-    if len(body.new_password) < 8:
-        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码长度至少8位")
-    if not any(c.isupper() for c in body.new_password) or not any(c.islower() for c in body.new_password):
-        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需同时包含大写和小写字母")
-    if not any(c.isdigit() for c in body.new_password):
-        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需包含数字")
-    if body.new_password == body.old_password:
-        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码不能与当前密码相同")
+    # 空密码一律拒绝：改完之后本人也登不进来，是数据事故而非「自由」
+    if not body.new_password:
+        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码不能为空")
+
+    # 复杂度校验只约束普通用户；超管豁免（夜星 2026-09-29 明确要求「超管随意改、不受限制」）。
+    # 判定口径与 require_super_admin 保持一致，免得两边对「谁是超管」理解不同。
+    is_super = (
+        current_user.get("is_super_admin") == 1
+        or current_user.get("role") in ("admin", "super_admin")
+    )
+    if not is_super:
+        if len(body.new_password) < 8:
+            raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码长度至少8位")
+        if not any(c.isupper() for c in body.new_password) or not any(c.islower() for c in body.new_password):
+            raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需同时包含大写和小写字母")
+        if not any(c.isdigit() for c in body.new_password):
+            raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需包含数字")
+        if body.new_password == body.old_password:
+            raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码不能与当前密码相同")
 
     # 更新密码
     from app.utils.security import get_password_hash

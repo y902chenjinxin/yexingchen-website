@@ -180,7 +180,7 @@
             type="password"
             show-password
             autocomplete="new-password"
-            placeholder="至少 8 位，含大小写字母和数字"
+            :placeholder="auth.isSuperAdmin ? '超管不校验复杂度，直接输入新密码' : '至少 8 位，含大小写字母和数字'"
           />
         </el-form-item>
         <el-form-item label="确认新密码">
@@ -194,7 +194,11 @@
           />
         </el-form-item>
       </el-form>
-      <p class="pwd-tip">密码至少 8 位，需同时包含大写字母、小写字母和数字</p>
+      <p class="pwd-tip">
+        {{ auth.isSuperAdmin
+          ? '超管账号不受密码复杂度限制，可自定义任意密码（不能为空）'
+          : '密码至少 8 位，需同时包含大写字母、小写字母和数字' }}
+      </p>
       <template #footer>
         <el-button @click="showPasswordDialog = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="savePassword">确认修改</el-button>
@@ -374,18 +378,22 @@ async function savePassword() {
     ElMessage.warning('请输入新密码')
     return
   }
-  const problems = passwordProblems(newPassword)
-  if (problems.length) {
-    ElMessage.warning(`新密码还缺少：${problems.join('、')}`)
-    return
-  }
   if (newPassword !== confirmPassword) {
     ElMessage.warning('两次输入的新密码不一致')
     return
   }
-  if (newPassword === oldPassword) {
-    ElMessage.warning('新密码不能与当前密码相同')
-    return
+  // 复杂度校验只约束普通用户；超管豁免（与后端 change-password 的判定保持一致）。
+  // 普通用户仍在前端先拦一道，缺哪一项就说哪一项，不用等服务端往返。
+  if (!auth.isSuperAdmin) {
+    const problems = passwordProblems(newPassword)
+    if (problems.length) {
+      ElMessage.warning(`新密码还缺少：${problems.join('、')}`)
+      return
+    }
+    if (newPassword === oldPassword) {
+      ElMessage.warning('新密码不能与当前密码相同')
+      return
+    }
   }
   saving.value = true
   try {
