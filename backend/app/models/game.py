@@ -15,7 +15,7 @@ class GameRoom(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     household_id = Column(Integer, nullable=False, default=1, index=True)
-    game = Column(String(30), nullable=False)            # gomoku / othello …
+    game = Column(String(30), nullable=False)            # gomoku / ludo …
     owner_id = Column(Integer, nullable=False, index=True)   # 房主（执黑先行）
     invitee_id = Column(Integer, nullable=True, index=True)  # 受邀人（执白）
     status = Column(String(20), default="waiting")       # waiting/playing/finished/declined/abandoned

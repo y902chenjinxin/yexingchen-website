@@ -108,8 +108,8 @@
  * 大屏：舞台容器全屏化（fixed），组件**不重新挂载**，因此对局与进度天然保留；
  * 进度：自研游戏写 localStorage 存档（utils/gameSave），回列表后可「继续上一局」。
  * 加新游戏 = 写一个自包含组件 + 在 gamelist 加一行（modes/boardSizes/big 声明能力）。
- * v2.40.33：按夜星要求**黑白棋下架**（不是他要的，组件 OthelloBoard.vue 保留，说一声可恢复），
- *           换成**围棋**（新组件 GoBoard.vue，中国规则数子法）。
+ * v2.40.33：按夜星要求**黑白棋下架**（不是他要的），换成**围棋**（新组件 GoBoard.vue，中国规则数子法）。
+ * v2.40.40：确认删除已下架的 OthelloBoard.vue（组件与图标一并移除，归档 artifacts/_deleted_deadcode/）。
  * v2.40.34：飞行棋由 iframe 嵌第三方静态页（LudoEmbed.vue）改为**自写 LudoBoard.vue** ——
  *           原方案的「选择人数」弹层被 iframe 高度裁切，点了人数看不到「开始游戏」按钮（表现为点了没反应），
  *           且第三方是同屏多人、无联机能力，无法「邀请家人」。现在支持 2/3/4 人同屏 + 在线邀请。
@@ -122,7 +122,6 @@ import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
 
 const ICON = {
   gomoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><circle cx="9" cy="9" r="2" fill="currentColor" stroke="none"/></svg>',
-  othello: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg>',
   ludo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 4v16M4 12h16"/><circle cx="8.2" cy="8.2" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.8" cy="15.8" r="1.4" fill="currentColor" stroke="none"/></svg>',
   sudoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/></svg>',
   mine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="13" r="6"/><path d="M12 7V3M4.6 10.6 2 8M19.4 10.6 22 8M7 19l-2 2M17 19l2 2"/></svg>',
