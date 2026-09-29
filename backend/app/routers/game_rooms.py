@@ -32,7 +32,14 @@ from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api/games", tags=["生活岛-棋类游戏"])
 
-GAMES = {"gomoku": "五子棋", "ludo": "飞行棋"}
+GAMES = {
+    "gomoku": "五子棋",
+    "xiangqi": "象棋",
+    "xiangqi_flip": "象棋翻棋",
+    "junqi": "军棋",
+    "junqi_flip": "军棋翻棋",
+    "ludo": "飞行棋",
+}
 
 # 五子棋棋盘常量（服务端胜负判定用）
 GK_N = 15

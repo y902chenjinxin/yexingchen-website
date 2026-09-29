@@ -19,6 +19,9 @@ import { gameRoomsApi, beaconLeave } from '@/api/gameRooms'
 import { useAuthStore } from '@/stores/auth'
 
 export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
+  // game 可为字符串或取值函数：围棋的在线棋盘边长（go9/go13/go19）在建房时才确定，
+  // 传函数可保证「再来一局」用到的是当前边长而不是挂载时捕获的旧值。
+  const gameKey = () => (typeof game === 'function' ? game() : game)
   const auth = useAuthStore()
   const room = ref(null)          // 房间元信息（status/winner/双方名字…）
   const moves = ref([])           // 全量事件（重放用）
@@ -68,7 +71,7 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
 
   async function createInvite(inviteeUserId, first = 'me') {
     error.value = ''
-    const res = await gameRoomsApi.create({ game, invitee_user_id: inviteeUserId, first })
+    const res = await gameRoomsApi.create({ game: gameKey(), invitee_user_id: inviteeUserId, first })
     room.value = res?.data || null
     moves.value = []
     lastSeq.value = 0

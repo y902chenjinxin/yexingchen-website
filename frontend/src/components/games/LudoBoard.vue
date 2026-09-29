@@ -63,9 +63,7 @@
       <div class="lb-online-title">🎯 在线邀请对战</div>
       <p class="lb-online-desc">选一位家人发出邀请，对方接受后开局；你执红先手，掷骰与走子约 2 秒内同步。</p>
       <div class="lb-online-row">
-        <select v-model="inviteeId" class="lb-select">
-          <option v-for="f in families" :key="f.user_id" :value="f.user_id">{{ f.avatar }} {{ f.display_name }}</option>
-        </select>
+        <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
         <button class="lb-btn primary" :disabled="!inviteeId || gRoom.joining.value" @click="invite">
           {{ gRoom.joining.value ? '创建中…' : '发出邀请' }}
         </button>
@@ -176,6 +174,7 @@
 import { ref, computed, onBeforeUnmount, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
+import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 
@@ -778,8 +777,8 @@ onBeforeUnmount(() => {
 .lb-online-title { font-size: 15px; font-weight: 700; color: var(--dp-text, #18202a); }
 .lb-online-desc { margin: 6px 0 10px; font-size: 12px; color: var(--dp-text3, #8a8f98); line-height: 1.7; }
 .lb-online-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.lb-select { flex: 1; min-width: 160px; border: 1px solid var(--dp-line, rgba(0,0,0,.14)); border-radius: 10px;
-  padding: 9px 11px; font-size: 13.5px; background: var(--dp-surface, #fff); color: var(--dp-text, #18202a); font-family: inherit; }
+/* 邀请按钮与选择器并排：让选择器占满剩余宽度（默认是 width:100% 会独占一行） */
+.lb-online-row :deep(.mp-wrap) { width: auto; flex: 1 1 160px; min-width: 0; }
 
 .lb-locknote {
   display: inline-flex; align-items: center; gap: 8px; margin: 0;
@@ -917,7 +916,7 @@ onBeforeUnmount(() => {
 :root[data-theme="night"] .lb-btn.primary { background: #c7a96b; border-color: #c7a96b; color: #1a1509; }
 :root[data-theme="night"] .lb-mode { color: #ded9ee; border-color: rgba(255,255,255,.2); }
 :root[data-theme="night"] .lb-mode.on { background: #c7a96b; border-color: #c7a96b; color: #1a1509; }
-:root[data-theme="night"] .lb-select { background: rgba(255,255,255,.07); color: #f2eee4; border-color: rgba(255,255,255,.2); }
+
 :root[data-theme="night"] .lb-banner.st-waiting { background: rgba(199,169,107,.2); color: #ded9ee; }
 :root[data-theme="night"] .lb-banner.st-playing { background: rgba(127,168,163,.22); color: #ded9ee; }
 :root[data-theme="night"] .lb-banner.st-finished { background: rgba(199,169,107,.26); color: #f6f2e8; }

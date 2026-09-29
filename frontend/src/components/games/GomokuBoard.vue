@@ -1,5 +1,5 @@
 <template>
-  <div class="gk-wrap" :class="{ 'is-big': big }" :style="{ '--board-w': boardW + 'px' }">
+  <div class="gk-wrap" :class="{ 'is-big': big }" :style="{ '--board-w': boardW + 'px', '--tilt': (big ? TILT_DEG : 0) + 'deg' }">
     <!-- ===== 辅栏：玩家条 + 模式 + 操作 + 邀请（普通模式随主列纵向排；放大模式移到棋盘右侧） ===== -->
     <div class="gk-side">
     <!-- ===== 玩家条：头像对峙 + 回合指示（质感壳） ===== -->
@@ -72,9 +72,7 @@
       <div class="gk-online-title">🎯 在线邀请对战</div>
       <p class="gk-online-desc">选一位家人发出邀请，对方接受后进入对局；落子自动同步，约 2 秒内可见。</p>
       <div class="gk-online-row">
-        <select v-model="inviteeId" class="gk-select">
-          <option v-for="f in families" :key="f.user_id" :value="f.user_id">{{ f.avatar }} {{ f.display_name }}</option>
-        </select>
+        <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
       </div>
       <div class="gk-first-row">
         <span class="gk-first-label">先手：</span>
@@ -147,6 +145,7 @@
 import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
+import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 
@@ -235,6 +234,9 @@ const mainEl = ref(null)
 const cellPx = ref(26)
 const MAX_BOARD_W = 560        // 普通模式棋盘宽度上限
 const BIG_MAX_BOARD_W = 880    // 放大模式棋盘宽度上限
+// 放大时棋盘绕底边后仰 TILT_DEG 度（与 <style> 的 .gk-board 一致）；视觉高度 = 实际 × cos
+const TILT_DEG = 20
+const TILT_COS = Math.cos((TILT_DEG * Math.PI) / 180)
 let resizeHandler = null
 function measureCell() {
   const el = mainEl.value
@@ -244,7 +246,8 @@ function measureCell() {
   let cell = Math.floor((Math.min(availW, capW) - 16) / (N.value + 1))
   if (props.big) {
     const availH = el?.clientHeight || 0
-    if (availH > 160) cell = Math.min(cell, Math.floor((availH - 16) / (N.value + 1)))
+    // 盘面平躺后只占 cos 倍高度，按折算后的可用高度放宽格宽，让棋盘铺满主区
+    if (availH > 160) cell = Math.min(cell, Math.floor((availH / TILT_COS - 16) / (N.value + 1)))
   }
   cellPx.value = Math.max(11, cell)
 }
@@ -796,9 +799,19 @@ onBeforeUnmount(() => {
 .gk-player-txt { min-width: 0; }
 .gk-player-txt b { display: block; font-size: 13.5px; color: var(--dp-text, #18202a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gk-player-txt i { font-style: normal; font-size: 11px; color: var(--dp-text3, #8a8f98); }
-.gk-stone-sm { width: 22px; height: 22px; border-radius: 50%; flex: none; box-shadow: 0 2px 5px rgba(0,0,0,.25); }
-.gk-stone-sm.black { background: radial-gradient(circle at 34% 30%, #555, #111); }
-.gk-stone-sm.white { background: radial-gradient(circle at 34% 30%, #fff, #cfcabb); }
+.gk-stone-sm { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+.gk-stone-sm.black {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,.85) 0 8%, transparent 42%),
+    radial-gradient(circle at 50% 48%, #46505f 0%, #222a36 52%, #0a0e14 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), inset -2px -2px 5px rgba(150,185,225,.2), 0 2px 5px rgba(20,30,45,.4);
+}
+.gk-stone-sm.white {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,1) 0 12%, transparent 48%),
+    linear-gradient(150deg, rgba(255,255,255,.96), rgba(228,234,244,.78) 52%, rgba(198,208,224,.8));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.9), inset -2px -2px 5px rgba(140,168,205,.3), 0 2px 5px rgba(20,30,45,.28);
+}
 .gk-vs { font-size: 17px; color: var(--dp-text3, #8a8f98); flex: none; }
 
 .gk-modes { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
@@ -836,8 +849,7 @@ onBeforeUnmount(() => {
 .gk-first-row { display: flex; align-items: center; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
 .gk-first-label { font-size: 12.5px; color: var(--dp-text3, #8a8f98); }
 .gk-firstnote { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
-.gk-select { flex: 1; min-width: 160px; border: 1px solid var(--dp-line, rgba(0,0,0,.14)); border-radius: 10px;
-  padding: 9px 11px; font-size: 13.5px; background: var(--dp-surface, #fff); color: var(--dp-text, #18202a); font-family: inherit; }
+
 
 /* 锁定提示：棋盘外的独立一行（不遮挡棋局） */
 .gk-locknote {
@@ -848,7 +860,11 @@ onBeforeUnmount(() => {
 .gk-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yq-gold, #c7a96b); animation: gkpulse 1.2s infinite; }
 
 /* ===== 棋盘：网格线画在格心 → 棋子落在交叉点上 ===== */
-.gk-boardwrap { position: relative; display: inline-block; }
+.gk-boardwrap {
+  position: relative; display: inline-block;
+  /* 透视容器：放大后棋盘绕底边后仰平躺，像摆在桌面上 */
+  perspective: 2400px; perspective-origin: 50% 34%;
+}
 .gk-board {
   position: relative;
   display: grid;
@@ -858,8 +874,14 @@ onBeforeUnmount(() => {
   border-radius: 14px;
   touch-action: manipulation; user-select: none;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.15), 0 10px 30px rgba(20,30,40,.12);
-  transition: filter .2s;
+  transform-origin: 50% 100%;
+  transform: rotateX(var(--tilt, 0deg));
+  transition: transform .3s cubic-bezier(.4, .1, .2, 1), filter .2s;
+  will-change: transform;
   --gk-line: rgba(40, 30, 10, .5);
+}
+.gk-wrap.is-big .gk-board {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15), 0 30px 46px -22px rgba(45, 32, 14, .55);
 }
 .gk-board.locked { filter: saturate(.75) brightness(.94); pointer-events: none; }
 /* 网格线覆盖层：从第一个交叉点画到最后一个，间距 = 格宽 */
@@ -879,15 +901,38 @@ onBeforeUnmount(() => {
 .gk-cell:hover::after { content: ''; position: absolute; inset: 30%; border-radius: 50%; background: rgba(30,20,0,.16); }
 .gk-cell.last:hover::after, .gk-cell.win:hover::after { content: none; }
 .gk-stone { position: absolute; inset: 7%; border-radius: 50%; display: block; }
-.gk-stone.black { background: radial-gradient(circle at 34% 30%, #555, #111); }
-.gk-stone.white { background: radial-gradient(circle at 34% 30%, #fff, #cfcabb); }
+/* 水晶棋子：一点高光 + 内部折射 + 边缘反光（黑白仍一眼可辨） */
+.gk-stone.black {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,.9) 0 7%, rgba(255,255,255,.26) 20%, transparent 44%),
+    radial-gradient(circle at 68% 80%, rgba(170,200,235,.3) 0 8%, transparent 34%),
+    radial-gradient(circle at 50% 48%, #46505f 0%, #222a36 52%, #0a0e14 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.3),
+    inset 2px 3px 7px rgba(255,255,255,.16),
+    inset -3px -4px 9px rgba(150,185,225,.22),
+    0 3px 7px rgba(20, 30, 45, .45);
+}
+.gk-stone.white {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,1) 0 10%, rgba(255,255,255,.6) 26%, transparent 50%),
+    radial-gradient(circle at 68% 80%, rgba(255,255,255,.5) 0 8%, transparent 32%),
+    linear-gradient(150deg, rgba(255,255,255,.96), rgba(228,234,244,.78) 52%, rgba(198,208,224,.8));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.9),
+    inset -3px -4px 9px rgba(140,168,205,.3),
+    0 3px 7px rgba(20, 30, 45, .3);
+}
 /* 最后一手：子上一枚红点 */
 .gk-cell.last .gk-stone::after {
   content: ''; position: absolute; left: 50%; top: 50%; width: 22%; height: 22%;
   margin: -11% 0 0 -11%; border-radius: 50%; background: #e5484d;
 }
-/* 五连高亮：整串子加金环 */
-.gk-cell.win .gk-stone { box-shadow: 0 0 0 2px rgba(229,72,77,.9), 0 0 12px rgba(229,72,77,.55); }
+/* 五连高亮：用 outline 画红环（不覆盖棋子自身的水晶投影） */
+.gk-cell.win .gk-stone {
+  outline: 2px solid rgba(229,72,77,.9); outline-offset: -2px;
+  filter: drop-shadow(0 0 6px rgba(229,72,77,.6));
+}
 .gk-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); text-align: center; }
 
 @media (max-width: 480px) {
@@ -928,9 +973,6 @@ onBeforeUnmount(() => {
 :root[data-theme="night"] .gk-btn:hover:not(:disabled) { border-color: rgba(252,211,77,.6); color: #fde68a; }
 :root[data-theme="night"] .gk-btn.primary { background: #c7a96b; border-color: #c7a96b; color: #1a1509; }
 :root[data-theme="night"] .gk-mode { color: #ded9ee; border-color: rgba(255,255,255,.2); }
-:root[data-theme="night"] .gk-select {
-  background: rgba(255,255,255,.07); color: #f2eee4; border-color: rgba(255,255,255,.2);
-}
 :root[data-theme="night"] .gk-banner.st-waiting { background: rgba(199,169,107,.2); color: #ded9ee; }
 :root[data-theme="night"] .gk-banner.st-playing { background: rgba(127,168,163,.22); color: #ded9ee; }
 :root[data-theme="night"] .gk-banner.st-finished { background: rgba(199,169,107,.26); color: #f6f2e8; }
@@ -940,6 +982,38 @@ onBeforeUnmount(() => {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.55);
   --gk-line: rgba(255, 236, 190, .5);
 }
-:root[data-theme="night"] .gk-stone.black { background: radial-gradient(circle at 34% 30%, #6a6a6a, #0b0b0b); box-shadow: 0 0 0 1px rgba(255,255,255,.22); }
-:root[data-theme="night"] .gk-stone.white { background: radial-gradient(circle at 34% 30%, #fff, #ddd7c6); box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+:root[data-theme="night"] .gk-wrap.is-big .gk-board {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 30px 48px -22px rgba(0,0,0,.8);
+}
+:root[data-theme="night"] .gk-stone.black {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,.8) 0 7%, rgba(255,255,255,.22) 20%, transparent 44%),
+    radial-gradient(circle at 68% 80%, rgba(170,200,235,.24) 0 8%, transparent 34%),
+    radial-gradient(circle at 50% 48%, #3c4552 0%, #1b222c 52%, #05070a 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(178,204,238,.42),
+    inset 2px 3px 7px rgba(255,255,255,.18),
+    inset -3px -4px 9px rgba(150,185,225,.28),
+    0 3px 8px rgba(0,0,0,.7);
+}
+:root[data-theme="night"] .gk-stone.white {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,.98) 0 10%, rgba(255,255,255,.55) 26%, transparent 50%),
+    radial-gradient(circle at 68% 80%, rgba(255,255,255,.42) 0 8%, transparent 32%),
+    linear-gradient(150deg, rgba(250,252,255,.94), rgba(220,228,240,.78) 52%, rgba(186,198,216,.8));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.85),
+    inset -3px -4px 9px rgba(120,150,190,.35),
+    0 3px 8px rgba(0,0,0,.6);
+}
+:root[data-theme="night"] .gk-stone-sm.black {
+  background: radial-gradient(circle at 33% 26%, rgba(255,255,255,.75) 0 8%, transparent 42%),
+    radial-gradient(circle at 50% 48%, #3c4552 0%, #1b222c 52%, #05070a 100%);
+  box-shadow: inset 0 0 0 1px rgba(178,204,238,.4), 0 2px 5px rgba(0,0,0,.6);
+}
+:root[data-theme="night"] .gk-stone-sm.white {
+  background: radial-gradient(circle at 33% 26%, rgba(255,255,255,1) 0 12%, transparent 48%),
+    linear-gradient(150deg, rgba(250,252,255,.94), rgba(220,228,240,.78) 52%, rgba(186,198,216,.8));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.85), 0 2px 5px rgba(0,0,0,.5);
+}
 </style>

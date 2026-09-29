@@ -1,5 +1,5 @@
 <template>
-  <div class="go-wrap" :class="{ 'is-big': big }" :style="{ '--board-w': boardW + 'px' }">
+  <div class="go-wrap" :class="{ 'is-big': big }" :style="{ '--board-w': boardW + 'px', '--tilt': (big ? TILT_DEG : 0) + 'deg' }">
     <!-- ===== 辅栏：玩家条 + 操作（普通模式随主列纵向排；放大模式移到棋盘右侧） ===== -->
     <div class="go-side">
     <div class="go-shell">
@@ -7,8 +7,8 @@
         <div class="go-player" :class="{ active: !over && turn === BLACK }">
           <span class="go-stone-sm black"></span>
           <div class="go-player-txt">
-            <b>{{ mode === 'pvp' ? '黑方' : '你' }}</b>
-            <i>{{ over ? '—' : (turn === BLACK ? (mode === 'pvp' ? '行棋中' : '你的回合') : '黑') }}</i>
+            <b>{{ blackLabel }}</b>
+            <i>{{ blackSub }}</i>
           </div>
           <span class="go-score">{{ over ? score.black + " 目" : "提 " + captured.black }}</span>
         </div>
@@ -16,8 +16,8 @@
         <div class="go-player" :class="{ active: !over && turn === WHITE }">
           <span class="go-stone-sm white"></span>
           <div class="go-player-txt">
-            <b>{{ mode === 'pvp' ? '白方' : 'AI' }}</b>
-            <i>{{ over ? '—' : (turn === WHITE ? (mode === 'pvp' ? '行棋中' : '思考中…') : '白') }}</i>
+            <b>{{ whiteLabel }}</b>
+            <i>{{ whiteSub }}</i>
           </div>
           <span class="go-score">{{ over ? score.white + " 目" : "提 " + captured.white }}</span>
         </div>
@@ -28,9 +28,51 @@
           {{ size }}×{{ size }} · 提子 黑 {{ captured.black }} / 白 {{ captured.white }}
           <span v-if="koPoint >= 0" class="go-ko">劫</span>
         </span>
-        <button class="go-btn" :disabled="over || thinking" @click="pass">{{ passLabel }}</button>
-        <button class="go-btn" @click="restart">重开</button>
-        <button class="go-btn" :disabled="!canUndo" @click="undo">悔棋</button>
+        <button class="go-btn" :disabled="over || thinking || !canMoveNow" @click="pass">{{ passLabel }}</button>
+        <button v-if="!isOnline" class="go-btn" @click="restart">重开</button>
+        <button v-if="!isOnline" class="go-btn" :disabled="!canUndo" @click="undo">悔棋</button>
+      </div>
+
+      <!-- 在线：房间横幅 -->
+      <div v-if="isOnline && gRoom.room.value" class="go-banner" :class="'st-' + gRoom.status.value">
+        <template v-if="gRoom.status.value === 'waiting'">
+          <span class="go-pulse"></span> 邀请已发给 {{ gRoom.opponentName.value }}，等待接受…
+          <span class="go-firstnote">{{ gRoom.room.value.black_name }} 执黑先行</span>
+          <button class="go-btn" @click="cancelInvite">取消邀请</button>
+          <button class="go-btn" @click="refreshRoom">刷新</button>
+        </template>
+        <template v-else-if="gRoom.status.value === 'playing'">
+          <span>{{ gRoom.myTurn.value ? '轮到你下' : '等对方落子…' }}</span>
+          <button class="go-btn" @click="askExit">退出对局（认输）</button>
+        </template>
+        <template v-else-if="gRoom.status.value === 'finished'">
+          <span class="go-result">{{ onlineResultText }}</span>
+          <button class="go-btn primary" @click="reinviteSame">再来一局</button>
+          <button class="go-btn" @click="exitOnline">退出</button>
+        </template>
+      </div>
+
+      <!-- 在线：邀请面板 -->
+      <div v-if="isOnline && !gRoom.room.value" class="go-online">
+        <div class="go-online-title">🎯 在线邀请对战</div>
+        <p class="go-online-desc">
+          选一位家人发出邀请，对方接受后进入对局；落子自动同步，约 2 秒内可见。
+          本局 {{ size }} 路（按你开局选的棋盘大小）。
+        </p>
+        <div class="go-online-row">
+          <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
+        </div>
+        <div class="go-first-row">
+          <span class="go-first-label">先手：</span>
+          <button class="go-mode" :class="{ on: firstPick === 'me' }" @click="firstPick = 'me'">我执黑</button>
+          <button class="go-mode" :class="{ on: firstPick === 'other' }" @click="firstPick = 'other'">对方执黑</button>
+        </div>
+        <div class="go-online-row">
+          <button class="go-btn primary" :disabled="!inviteeId || gRoom.joining.value" @click="invite">
+            {{ gRoom.joining.value ? '创建中…' : '发出邀请' }}
+          </button>
+        </div>
+        <p v-if="!families.length" class="go-online-desc">家庭里还没有其他账号可以邀请。</p>
       </div>
 
       <div v-if="resultText" class="go-result">{{ resultText }}</div>
@@ -43,7 +85,7 @@
       <div
         class="go-board"
         :style="{ gridTemplateColumns: `repeat(${size}, ${cellPx}px)`, gridAutoRows: cellPx + 'px' }"
-        :class="{ locked: thinking || over }"
+        :class="{ locked: thinking || over || !canMoveNow }"
       >
         <button
           v-for="i in size * size"
@@ -79,16 +121,24 @@
  *
  * AI：**入门级**（提子 > 救自己 > 打吃 > 靠子延伸 + 随机扰动）。
  *     真正的棋力需要 MCTS + 算力，本站服务器纯 CPU、无 GPU，做不到「能下过你」，页面已如实标注。
- * 在线对战未接（服务端当前只认五子棋/黑白棋的 15×15 坐标）。
+ * 在线对战：服务端对非五子棋房间是「客户端权威 + 记录事件流」，因此围棋可复用同一套房间协议。
+ *     边长编码进 game 字段（go9 / go13 / go19）—— 房间表没有边长列，改 schema 要迁移，
+ *     而 game 本就是自由字符串，用它携带边长零成本；受邀方进房时按房间的 game 校正边长。
  */
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useGameRoom } from '@/composables/useGameRoom'
+import MemberPicker from '@/components/games/MemberPicker.vue'
+import { gameRoomsApi } from '@/api/gameRooms'
+import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 
+const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
 const props = defineProps({
   initialMode: { type: String, default: '' },
   resume: { type: Boolean, default: false },
   bare: { type: Boolean, default: false },
+  joinRoomId: { type: Number, default: 0 },
   boardSize: { type: Number, default: 19 },
   big: { type: Boolean, default: false },   // 页面「放大」：棋盘占左侧主位，其余内容移到右侧辅栏
 })
@@ -97,7 +147,7 @@ const EMPTY = 0, BLACK = 1, WHITE = 2
 const SAVE_KEY = 'go'
 
 const size = ref([9, 13, 19].includes(Number(props.boardSize)) ? Number(props.boardSize) : 19)
-const mode = ref(['pvp', 'easy', 'hard'].includes(props.initialMode) ? props.initialMode : 'easy')
+const mode = ref(['pvp', 'easy', 'hard', 'online'].includes(props.initialMode) ? props.initialMode : 'easy')
 const board = ref(Array(size.value * size.value).fill(EMPTY))
 const turn = ref(BLACK)
 const over = ref(false)
@@ -113,8 +163,138 @@ const komi = 7.5
 let aiTimer = null
 let saveTimer = null
 
-const modeLabel = computed(() => ({ pvp: '双人', easy: '单机 · 入门', hard: '单机 · 稍强' }[mode.value] || ''))
+const modeLabel = computed(() => ({ pvp: '双人', easy: '单机 · 入门', hard: '单机 · 稍强', online: '在线对战' }[mode.value] || ''))
 const aiColor = WHITE
+
+/* ---------- 在线对战 ---------- */
+const gRoom = useGameRoom(() => `go${size.value}`, { onRemoteMove, onStatus })
+const families = ref([])
+const inviteeId = ref(null)
+const firstPick = ref('me')          // 'me' = 我执黑先行
+const lastInviteeName = ref('')
+const onlineWinner = ref('')         // '' | 'me' | 'opp' | 'draw'
+const isOnline = computed(() => mode.value === 'online')
+const roomActive = computed(() => !!gRoom.room.value)
+/** 我的棋色：在线按座位，单机执黑，同屏双方都能下 */
+const myColor = computed(() => (gRoom.mySeat.value === 'black' ? BLACK : WHITE))
+const canMoveNow = computed(() => {
+  if (over.value || thinking.value) return false
+  if (isOnline.value) return turn.value === myColor.value
+  if (mode.value === 'pvp') return true
+  return turn.value !== aiColor
+})
+const onlineResultText = computed(() =>
+  onlineWinner.value === 'me' ? '🎉 你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '🤝 和棋')
+const blackLabel = computed(() => {
+  if (isOnline.value && gRoom.room.value) return gRoom.room.value.black_name || '对方'
+  return mode.value === 'pvp' ? '黑方' : '你'
+})
+const whiteLabel = computed(() => {
+  if (isOnline.value && gRoom.room.value) {
+    const r = gRoom.room.value
+    return r.owner_id === r.black_user_id ? (r.invitee_name || '对方') : (r.owner_name || '对方')
+  }
+  return mode.value === 'pvp' ? '白方' : 'AI'
+})
+const blackSub = computed(() => (over.value ? '—' : (turn.value === BLACK ? (isOnline.value || mode.value === 'pvp' ? '行棋中' : '你的回合') : '待走')))
+const whiteSub = computed(() => (over.value ? '—' : (turn.value === WHITE ? (isOnline.value || mode.value === 'pvp' ? '行棋中' : '思考中…') : '待走')))
+
+async function loadFamilies() {
+  try {
+    const res = await familyMembers()
+    families.value = (res?.data?.list || []).filter(m => m.user_id && m.user_id !== Number(gRoom.myUserId.value))
+  } catch { families.value = [] }
+}
+async function invite() {
+  if (!inviteeId.value) { ElMessage.warning('先选一位家人'); return }
+  const f = families.value.find(x => x.user_id === inviteeId.value)
+  lastInviteeName.value = f?.display_name || ''
+  try {
+    await gRoom.createInvite(inviteeId.value, firstPick.value)
+    ElMessage.success(`邀请已发出（${firstPick.value === 'me' ? '你' : lastInviteeName.value || '对方'}执黑先行），等对方接受`)
+  } catch (e) {
+    ElMessage.warning(e?.response?.data?.detail || e?.msg || '邀请失败')
+  }
+}
+async function cancelInvite() { await gRoom.cancel(); clearOnlineLocal(); ElMessage.success('已取消') }
+async function refreshRoom() { if (gRoom.room.value?.id) await gRoom.join(gRoom.room.value.id, { autoAccept: false }) }
+async function reinviteSame() {
+  const uid = inviteeId.value
+  firstPick.value = firstPick.value === 'me' ? 'other' : 'me'
+  gRoom.reset()
+  clearOnlineLocal()
+  if (uid) {
+    inviteeId.value = uid
+    try {
+      await gRoom.createInvite(uid, firstPick.value)
+      ElMessage.success(`新对局已发出（${firstPick.value === 'me' ? '你' : '对方'}执黑先行）`)
+    } catch (e) { ElMessage.warning(e?.response?.data?.detail || e?.msg || '邀请失败') }
+  }
+}
+function askExit() {
+  ElMessageBox.confirm('退出将按认输处理，对方获胜。确定退出？', '退出对局', {
+    confirmButtonText: '认输退出', cancelButtonText: '继续下', type: 'warning',
+  }).then(async () => {
+    await gRoom.resign()
+    gRoom.reset()
+    clearOnlineLocal()
+    emit('room-unlock')
+    ElMessage.success('已退出对局')
+  }).catch(() => {})
+}
+function exitOnline() { gRoom.reset(); clearOnlineLocal(); emit('room-unlock') }
+function clearOnlineLocal() {
+  onlineWinner.value = ''
+  restartLocal()
+}
+/** 上报终局（服务端对非五子棋是客户端权威：winner_id 由客户端给） */
+function reportFinish() {
+  if (!isOnline.value || !gRoom.room.value) return
+  const r = gRoom.room.value
+  const whiteId = r.owner_id === r.black_user_id ? r.invitee_id : r.owner_id
+  const wid = winner.value === BLACK ? r.black_user_id : winner.value === WHITE ? whiteId : 0
+  gRoom.finish(wid).catch(() => {})
+}
+function onStatus(s) {
+  if (s?.status === 'finished') {
+    const myId = gRoom.myUserId.value
+    onlineWinner.value = !s.winner_id ? 'draw' : (s.winner_id === myId ? 'me' : 'opp')
+  }
+}
+/** 对手的一手（或自己的一手回放）：按同一套规则落地 */
+function onRemoteMove(action) {
+  if (!roomActive.value || over.value) return
+  if (action?.pass) { doPass(); return }
+  const idx = action?.idx
+  const n = size.value
+  if (typeof idx !== 'number' || idx < 0 || idx >= n * n) return
+  if (board.value[idx] !== EMPTY) return
+  const res = tryPlay(board.value, idx, turn.value, koPoint.value)
+  if (!res) return
+  applyMove(idx, turn.value)
+  turn.value = 3 - turn.value
+}
+/** 按房间的 game 字段校正边长（受邀方本地选的边长未必与房间一致） */
+function applyRoomSize(game) {
+  const m = /^go(\d+)$/.exec(String(game || ''))
+  const n = m ? Number(m[1]) : 0
+  if (![9, 13, 19].includes(n) || n === size.value) return
+  size.value = n
+  restartLocal()
+}
+/** 受邀跳转进来 / 恢复我的对局 */
+async function resumeMine() {
+  try {
+    const res = await gameRoomsApi.mine()
+    const active = (res?.data?.list || []).find(x => /^go\d+$/.test(x.game) && ['waiting', 'playing'].includes(x.status))
+    if (!active) return
+    applyRoomSize(active.game)
+    mode.value = 'online'
+    await gRoom.join(active.id, { autoAccept: active.status === 'playing' })
+    emit('room-lock')
+    ElMessage.success(`已接回与「${gRoom.opponentName.value}」的对局`)
+  } catch { /* 忽略 */ }
+}
 /** 数子（中国规则）：子 + 只邻接单色的空区 */
 const score = computed(() => {
   const n = size.value
@@ -145,7 +325,7 @@ const resultText = computed(() => {
   if (winner.value === 3) return `🤝 和棋 · ${scoreLine.value}`
   return `${winner.value === BLACK ? '⚫ 黑胜' : '⚪ 白胜'} · ${scoreLine.value}`
 })
-const canUndo = computed(() => history.value.length > 0 && !thinking.value)
+const canUndo = computed(() => history.value.length > 0 && !thinking.value && !isOnline.value)
 const passLabel = computed(() => (passes.value ? '停手即终局' : '停一手'))
 
 /* ---------- 棋盘几何 ----------
@@ -157,6 +337,9 @@ const mainEl = ref(null)
 const cellPx = ref(28)
 const MAX_BOARD_W = 560        // 普通模式棋盘宽度上限
 const BIG_MAX_BOARD_W = 880    // 放大模式棋盘宽度上限
+// 放大时棋盘绕底边后仰 TILT_DEG 度（与 <style> 的 .go-board 一致）；视觉高度 = 实际 × cos
+const TILT_DEG = 20
+const TILT_COS = Math.cos((TILT_DEG * Math.PI) / 180)
 let resizeHandler = null
 function measureCell() {
   const el = mainEl.value
@@ -166,7 +349,8 @@ function measureCell() {
   let cell = Math.floor((Math.min(availW, capW) - 24) / size.value)
   if (props.big) {
     const availH = el?.clientHeight || 0
-    if (availH > 160) cell = Math.min(cell, Math.floor((availH - 24) / size.value))
+    // 盘面平躺后只占 cos 倍高度，按折算后的可用高度放宽格宽，让棋盘铺满主区
+    if (availH > 160) cell = Math.min(cell, Math.floor((availH / TILT_COS - 24) / size.value))
   }
   // 上限：普通模式 46（避免 9 路盘把棋子画成巨球），放大模式 64
   cellPx.value = Math.max(12, Math.min(props.big ? 64 : 46, cell))
@@ -246,24 +430,30 @@ function applyMove(idx, color) {
   return true
 }
 function play(idx) {
-  if (over.value || thinking.value || board.value[idx] !== EMPTY) return
-  if (mode.value !== 'pvp' && turn.value === aiColor) return
+  if (!canMoveNow.value || board.value[idx] !== EMPTY) return
   const res = tryPlay(board.value, idx, turn.value, koPoint.value)
   if (!res) { ElMessage.warning('这里不能下（自杀或打劫回提）'); return }
   const mover = turn.value
   applyMove(idx, mover)
   turn.value = 3 - mover
+  if (isOnline.value) { gRoom.send({ idx }).catch(() => {}) ; return }
   if (mode.value !== 'pvp' && turn.value === aiColor) scheduleAi()
 }
-function pass() {
-  if (over.value || thinking.value) return
+function doPass() {
   // 记一手「停手」（不落子，只推进轮次）
   history.value.push({ snapshot: board.value.slice(), koPoint: koPoint.value, turn: turn.value, lastIdx: lastIdx.value, capBlack: captured.black, capWhite: captured.white })
   passes.value++
   koPoint.value = -1
   lastIdx.value = -1
   turn.value = 3 - turn.value
-  if (passes.value >= 2) { finishByScore(); return }
+  if (passes.value >= 2) finishByScore()
+}
+function pass() {
+  if (!canMoveNow.value) return
+  const wasOver = over.value
+  doPass()
+  if (wasOver || over.value) return
+  if (isOnline.value) { gRoom.send({ pass: 1 }).catch(() => {}) ; return }
   if (mode.value !== 'pvp' && turn.value === aiColor) scheduleAi()
 }
 function finishByScore() {
@@ -272,8 +462,12 @@ function finishByScore() {
   winner.value = s.black > s.white ? BLACK : (s.white > s.black ? WHITE : 3)
   scoreLine.value = `黑 ${s.black} 目 · 白 ${s.white} 目（含贴目 ${komi}）`
   clearGame(SAVE_KEY)
+  if (isOnline.value) {
+    onlineWinner.value = winner.value === 3 ? 'draw' : (winner.value === myColor.value ? 'me' : 'opp')
+    reportFinish()
+  }
 }
-function restart() {
+function restartLocal() {
   clearTimeout(aiTimer)
   clearGame(SAVE_KEY)
   board.value = Array(size.value * size.value).fill(EMPTY)
@@ -288,6 +482,11 @@ function restart() {
   thinking.value = false
   history.value = []
   nextTick(measureCell)
+}
+function restart() {
+  if (isOnline.value) { ElMessage.info('在线模式请用「再来一局」或「退出对局」'); return }
+  restartLocal()
+  if (mode.value !== 'pvp') scheduleAi()
 }
 function undo() {
   if (!canUndo.value) return
@@ -385,7 +584,7 @@ function scheduleAi() {
 
 /* ---------- 存档 ---------- */
 function saveLocal() {
-  if (over.value || !history.value.length) return
+  if (over.value || !history.value.length || isOnline.value) return
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
     saveGame(SAVE_KEY, {
@@ -421,17 +620,34 @@ function restoreLocal() {
   return true
 }
 watch([board, over], saveLocal, { deep: true })
+watch(roomActive, (v) => emit(v ? 'room-lock' : 'room-unlock'))
 
-onMounted(() => {
+onMounted(async () => {
   resizeHandler = () => measureCell()
   window.addEventListener('resize', resizeHandler, { passive: true })
   nextTick(measureCell)
+  // 家人列表必须无条件拉取：模式可能由页面「第一步」直接定为 online
+  await loadFamilies()
+  if (props.joinRoomId) {
+    // 先进房拉一次房间元信息，按房间的 game 校正边长 —— 否则本地默认边长与房间不一致，
+    // 重放事件会落在错的棋盘上（越界点被静默丢弃）
+    try {
+      const res = await gameRoomsApi.state(props.joinRoomId, 0)
+      applyRoomSize(res?.data?.game)
+    } catch { /* 忽略 */ }
+    mode.value = 'online'
+    try { await gRoom.join(props.joinRoomId, { autoAccept: true }) } catch { /* 忽略 */ }
+    emit('room-lock')
+    return
+  }
+  if (mode.value === 'online') { await resumeMine(); return }
   if (props.resume && restoreLocal()) return
   if (mode.value !== 'pvp' && turn.value === aiColor) scheduleAi()
 })
 onBeforeUnmount(() => {
   clearTimeout(aiTimer); clearTimeout(saveTimer)
   if (resizeHandler) window.removeEventListener('resize', resizeHandler)
+  if (roomActive.value) gRoom.leaveOnUnload()
 })
 </script>
 
@@ -499,12 +715,23 @@ onBeforeUnmount(() => {
 .go-result { text-align: center; font-size: 13.5px; font-weight: 700; color: var(--yq-gold, #c7a96b); }
 
 /* 棋盘：木色底 + 交叉点网格；棋子落在**交叉点**上 */
-.go-boardwrap { display: inline-block; }
+.go-boardwrap {
+  display: inline-block;
+  /* 透视容器：放大后棋盘绕底边后仰平躺，像摆在桌面上 */
+  perspective: 2400px; perspective-origin: 50% 34%;
+}
 .go-board {
   display: grid; padding: 12px; border-radius: 12px;
   background: linear-gradient(135deg, #e6cd9f, #d9bb84);
   box-shadow: inset 0 0 0 1px rgba(90,74,52,.35), 0 10px 30px rgba(20,30,40,.14);
-  touch-action: manipulation; user-select: none; transition: filter .2s;
+  touch-action: manipulation; user-select: none;
+  transform-origin: 50% 100%;
+  transform: rotateX(var(--tilt, 0deg));
+  transition: transform .3s cubic-bezier(.4, .1, .2, 1), filter .2s;
+  will-change: transform;
+}
+.go-wrap.is-big .go-board {
+  box-shadow: inset 0 0 0 1px rgba(90,74,52,.35), 0 30px 46px -22px rgba(45, 32, 14, .55);
 }
 .go-board.locked { filter: saturate(.85) brightness(.97); pointer-events: none; }
 .go-cell {
@@ -521,10 +748,31 @@ onBeforeUnmount(() => {
 }
 .go-cell.star { background: radial-gradient(circle, rgba(90, 74, 52, .9) 0 2.4px, transparent 2.6px); }
 .go-stone { position: absolute; inset: 6%; border-radius: 50%; display: block; z-index: 2; }
-.go-stone.black { background: radial-gradient(circle at 34% 30%, #5a5a5a, #0b0b0b); box-shadow: 0 2px 4px rgba(0,0,0,.35); }
-.go-stone.white { background: radial-gradient(circle at 34% 30%, #fff, #cbc6b7); box-shadow: 0 2px 4px rgba(0,0,0,.25); }
+/* 水晶棋子：一点高光 + 内部折射 + 边缘反光（黑白仍一眼可辨） */
+.go-stone.black {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,.9) 0 7%, rgba(255,255,255,.26) 20%, transparent 44%),
+    radial-gradient(circle at 68% 80%, rgba(170,200,235,.3) 0 8%, transparent 34%),
+    radial-gradient(circle at 50% 48%, #46505f 0%, #222a36 52%, #0a0e14 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.3),
+    inset 2px 3px 7px rgba(255,255,255,.16),
+    inset -3px -4px 9px rgba(150,185,225,.22),
+    0 3px 7px rgba(20, 30, 45, .45);
+}
+.go-stone.white {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,1) 0 10%, rgba(255,255,255,.6) 26%, transparent 50%),
+    radial-gradient(circle at 68% 80%, rgba(255,255,255,.5) 0 8%, transparent 32%),
+    linear-gradient(150deg, rgba(255,255,255,.96), rgba(228,234,244,.78) 52%, rgba(198,208,224,.8));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.9),
+    inset -3px -4px 9px rgba(140,168,205,.3),
+    0 3px 7px rgba(20, 30, 45, .3);
+}
 .go-cell.last::after { z-index: 3; }
-.go-cell.last > .go-stone { box-shadow: 0 0 0 2px rgba(199,169,107,.95); }
+/* 用 outline 画「最后一手」金环：不覆盖棋子自身的水晶投影 */
+.go-cell.last > .go-stone { outline: 2px solid rgba(199,169,107,.95); outline-offset: -2px; }
 .go-ko-mark {
   position: absolute; inset: 34%; border-radius: 50%; background: rgba(217,83,79,.85); z-index: 1;
 }
@@ -564,11 +812,33 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #6d5836, #4f3f26);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.55);
 }
+:root[data-theme="night"] .go-wrap.is-big .go-board {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 30px 48px -22px rgba(0,0,0,.8);
+}
 :root[data-theme="night"] .go-cell::before,
 :root[data-theme="night"] .go-cell::after { background: rgba(255, 236, 190, .5); }
 :root[data-theme="night"] .go-cell.star {
   background: radial-gradient(circle, rgba(255,236,190,.85) 0 2.4px, transparent 2.6px);
 }
-:root[data-theme="night"] .go-stone.black { box-shadow: 0 0 0 1px rgba(255,255,255,.22); }
-:root[data-theme="night"] .go-stone.white { box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+:root[data-theme="night"] .go-stone.black {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,.8) 0 7%, rgba(255,255,255,.22) 20%, transparent 44%),
+    radial-gradient(circle at 68% 80%, rgba(170,200,235,.24) 0 8%, transparent 34%),
+    radial-gradient(circle at 50% 48%, #3c4552 0%, #1b222c 52%, #05070a 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(178,204,238,.42),
+    inset 2px 3px 7px rgba(255,255,255,.18),
+    inset -3px -4px 9px rgba(150,185,225,.28),
+    0 3px 8px rgba(0,0,0,.7);
+}
+:root[data-theme="night"] .go-stone.white {
+  background:
+    radial-gradient(circle at 33% 26%, rgba(255,255,255,.98) 0 10%, rgba(255,255,255,.55) 26%, transparent 50%),
+    radial-gradient(circle at 68% 80%, rgba(255,255,255,.42) 0 8%, transparent 32%),
+    linear-gradient(150deg, rgba(250,252,255,.94), rgba(220,228,240,.78) 52%, rgba(186,198,216,.8));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.85),
+    inset -3px -4px 9px rgba(120,150,190,.35),
+    0 3px 8px rgba(0,0,0,.6);
+}
 </style>
