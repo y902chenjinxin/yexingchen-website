@@ -65,6 +65,8 @@ scripts/remove_bg.py
 # 这类脚本用完即弃，不入库；本地如需留存，归到 artifacts/_archive_scripts/（artifacts/ 已被忽略）
 scripts/_*.py
 scripts/_*.js
+scripts/_*.ps1
+scripts/_*.ps1
 backend/_*.py
 eslint-report.json
 restart_pm2.py

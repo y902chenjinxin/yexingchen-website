@@ -7,6 +7,14 @@
 
 ---
 
+## v2.41.3 安全（2026-09-29）
+
+| ID | 问题 | 类别 | 状态 |
+|----|------|------|------|
+| V2441-005 | **【安全·最高优先】生产管理员密码以明文散落在公开仓库**：`github.com/y902chenjinxin/yexingchen-website` **未授权即可访问（公开仓库）**，而 `admin@yexingchen.cn` 与明文密码出现在 **13 个已提交文件**（`scripts/probe_api.js`、`scripts/seed_feeds_stocks.py`、`scripts/browser_verify.js`、`backend/tests/test_password_validation.py` 等）。已双重确认：① GitHub API 未授权返回 200；② 直接 raw 抓取文件可读到密码；③ **实测该密码当前仍能登录生产超管账号**（role=admin / is_super_admin=1）。本轮已把**新写的 3 个脚本**改为从 `../.secrets/local.env` 或环境变量取凭据（新增 `scripts/_creds.js`），不再新增明文副本；但**根治需要**：**① 立刻改密**（「我的 → 修改密码」或 `POST /api/auth/change-password`）**② 清理既有 13 处 ③ 仓库改私有，或重写历史** | 安全 | 🚨 待夜星处理 |
+
+---
+
 ## v2.41.2 新发现与遗留（2026-09-29）
 
 | ID | 问题 | 类别 | 状态 |
