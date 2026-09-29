@@ -19,6 +19,7 @@ from app.routers.workbench.weather import router as weather_router
 from app.routers.workbench.notes import router as notes_router
 from app.routers.workbench.providers import router as providers_router
 from app.routers.workbench.search import router as search_router
+from app.routers.workbench.server_monitor import router as server_monitor_router
 from app.routers.workbench.tasks import router as tasks_router
 from app.routers.workbench.trash import router as trash_router
 
@@ -32,6 +33,7 @@ router.include_router(notes_router)
 router.include_router(assets_router)
 router.include_router(tasks_router)
 router.include_router(search_router)
+router.include_router(server_monitor_router)   # v2.40.39 PC 工作台：服务器监测
 router.include_router(trash_router)
 router.include_router(ai_router)
 router.include_router(ai_advanced_router)

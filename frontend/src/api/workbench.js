@@ -65,6 +65,9 @@ export const workbenchApi = {
     toggle: (id, data) => api.post(`/habits/${id}/toggle`, data),
   },
 
+  // 服务器资源监测（PC 工作台，仅超管）：内存 / 磁盘 / 模块存储占用 / 进程内存
+  serverMonitor: () => api.get('/workbench/server-monitor'),
+
   // 天气（后端代理高德，key 不出服务器）：{city} 或 {lat,lon}
   weather: (params) => api.get('/workbench/dashboard/weather', { params }),
 

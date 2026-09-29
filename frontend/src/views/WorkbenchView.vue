@@ -87,6 +87,11 @@
         <OnThisDayCard />
       </div>
     </section>
+
+    <!-- ============ Bento S4：服务器监测（v2.40.39，仅超管；手机端不渲染） ============ -->
+    <section v-if="auth.isSuperAdmin && !isPhoneBrowser" class="bento-s4">
+      <ServerMonitorCard />
+    </section>
   </div>
 </template>
 
@@ -97,13 +102,26 @@ import TrendBars from '@/components/dashboard/TrendBars.vue'
 import WeatherCard from '@/components/workbench/WeatherCard.vue'
 import DailyQuoteCard from '@/components/workbench/DailyQuoteCard.vue'
 import OnThisDayCard from '@/components/workbench/OnThisDayCard.vue'
+import ServerMonitorCard from '@/components/workbench/ServerMonitorCard.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
+import { useAuthStore } from '@/stores/auth'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 const { isMobile } = useIsMobile()
 const wbStore = useWorkbenchStore()
 const prefs = usePrefsStore()
+const auth = useAuthStore()
+
+/** 服务器监测只在 PC 显示（夜星要求「手机端不用加」）。
+ *  APK 外壳走移动端首页本就没有本卡；这里再拦一层「非 APK 的手机浏览器」——
+ *  它们看的是桌面版布局，但同样不需要这个模块。带 XuanHuangApp 标记的 APK 不拦。 */
+const isPhoneBrowser = computed(() => {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  const phone = /Android|iPhone|iPad|iPod|Windows Phone|HarmonyOS|Mobile|MicroMessenger/i.test(ua)
+  return phone && !/XuanHuangApp/i.test(ua)
+})
 const moduleVisible = computed(() => prefs.moduleVisible)
 
 const kpi = ref({
@@ -284,6 +302,11 @@ onMounted(async () => {
 .bento-wx :deep(.wx-day) { padding: 6px 2px; }
 
 /* ===== S3：文化小卡（每日一言 + 历史上的今天） ===== */
+.bento-s4 {
+  margin-top: 16px;
+}
+/* 监测卡铺满整行 */
+.bento-s4 > :deep(*) { width: 100%; }
 .bento-s3 {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
