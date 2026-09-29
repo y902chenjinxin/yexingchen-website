@@ -164,15 +164,37 @@
     <el-dialog v-model="showPasswordDialog" title="修改密码" width="400px">
       <el-form :model="passwordForm" label-width="100px">
         <el-form-item label="当前密码">
-          <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入当前密码" />
+          <!-- autocomplete 语义：不加的话浏览器密码管理器会把其它站点/新密码填进「当前密码」框，
+               表现为「我明明输对了却报错」 -->
+          <el-input
+            v-model="passwordForm.oldPassword"
+            type="password"
+            show-password
+            autocomplete="current-password"
+            placeholder="请输入当前密码"
+          />
         </el-form-item>
         <el-form-item label="新密码">
-          <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="请输入新密码" />
+          <el-input
+            v-model="passwordForm.newPassword"
+            type="password"
+            show-password
+            autocomplete="new-password"
+            placeholder="至少 8 位，含大小写字母和数字"
+          />
         </el-form-item>
         <el-form-item label="确认新密码">
-          <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
+          <el-input
+            v-model="passwordForm.confirmPassword"
+            type="password"
+            show-password
+            autocomplete="new-password"
+            placeholder="请再次输入新密码"
+            @keyup.enter="savePassword"
+          />
         </el-form-item>
       </el-form>
+      <p class="pwd-tip">密码至少 8 位，需同时包含大写字母、小写字母和数字</p>
       <template #footer>
         <el-button @click="showPasswordDialog = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="savePassword">确认修改</el-button>
@@ -332,27 +354,53 @@ async function saveProfile() {
   }
 }
 
+// 与后端 change-password 的复杂度校验保持一致，提前拦下、给出具体缺哪一项
+function passwordProblems(pwd) {
+  const problems = []
+  if (!pwd || pwd.length < 8) problems.push('至少 8 位')
+  if (!/[a-z]/.test(pwd)) problems.push('小写字母')
+  if (!/[A-Z]/.test(pwd)) problems.push('大写字母')
+  if (!/\d/.test(pwd)) problems.push('数字')
+  return problems
+}
+
 async function savePassword() {
-  if (!passwordForm.value.oldPassword) {
+  const { oldPassword, newPassword, confirmPassword } = passwordForm.value
+  if (!oldPassword) {
     ElMessage.warning('请输入当前密码')
     return
   }
-  if (!passwordForm.value.newPassword) {
+  if (!newPassword) {
     ElMessage.warning('请输入新密码')
     return
   }
-  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    ElMessage.warning('两次密码不一致')
+  const problems = passwordProblems(newPassword)
+  if (problems.length) {
+    ElMessage.warning(`新密码还缺少：${problems.join('、')}`)
+    return
+  }
+  if (newPassword !== confirmPassword) {
+    ElMessage.warning('两次输入的新密码不一致')
+    return
+  }
+  if (newPassword === oldPassword) {
+    ElMessage.warning('新密码不能与当前密码相同')
     return
   }
   saving.value = true
   try {
-    await auth.changePassword(passwordForm.value.oldPassword, passwordForm.value.newPassword)
+    await auth.changePassword(oldPassword, newPassword)
     ElMessage.success('密码修改成功')
     showPasswordDialog.value = false
     passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
   } catch (e) {
-    ElMessage.error('修改失败，请检查当前密码是否正确')
+    // 透传后端真实原因。原来这里固定提示「请检查当前密码是否正确」，
+    // 把「新密码不合规」也误报成「当前密码错」，把排查带偏。
+    const realMsg = e?.response?.data?.detail?.msg
+      || e?.detail?.msg
+      || e?.response?.data?.msg
+      || e?.msg
+    ElMessage.error(realMsg || '修改失败，请稍后重试')
   } finally {
     saving.value = false
   }
@@ -366,6 +414,14 @@ async function savePassword() {
   /* 顶部 84px 避让全局固定顶栏（60px + 留白），否则页头返回按钮被顶栏盖住 */
   padding: 84px 40px 40px;
   font-family: var(--font-serif);
+}
+
+.pwd-tip {
+  margin: -4px 0 0;
+  padding-left: 100px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-secondary, #8a8a8a);
 }
 
 .page-header {

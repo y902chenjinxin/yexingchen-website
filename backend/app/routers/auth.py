@@ -91,13 +91,6 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
     )
 
 
-@router.post("/logout", response_model=ResponseBase)
-async def logout(request: Request, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    client_ip = get_client_ip(request)
-    log_action(db, current_user["user_id"], "logout", detail="用户登出", ip_address=client_ip)
-    return ResponseBase(msg="登出成功")
-
-
 @router.get("/me", response_model=ResponseBase)
 async def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == current_user["user_id"]).first()
@@ -163,7 +156,8 @@ class PasswordChangeRequest(BaseModel):
 
 @router.post("/change-password", response_model=ResponseBase)
 async def change_password(
-    req: PasswordChangeRequest,
+    body: PasswordChangeRequest,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -171,25 +165,27 @@ async def change_password(
     if not user:
         raise_error(ErrCode.AUTH_USER_NOT_EXIST)
 
-    # 验证旧密码
-    if not verify_password(req.old_password, user.password_hash):
-        raise_error(ErrCode.AUTH_INVALID_CREDENTIALS, "原密码错误")
+    # 验证旧密码。注意用 12104/400 而不是 AUTH_INVALID_CREDENTIALS(401)：
+    # 此时用户已通过 token 鉴权，401 会被前端当成「token 失效」清 token 并踢回登录页。
+    if not verify_password(body.old_password, user.password_hash):
+        raise_error(ErrCode.USER_PASSWORD_MISMATCH, "当前密码不正确")
 
     # 验证新密码复杂度
-    if len(req.new_password) < 8:
+    if len(body.new_password) < 8:
         raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码长度至少8位")
-    if not any(c.isupper() for c in req.new_password) or not any(c.islower() for c in req.new_password):
-        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需包含大小写字母")
-    if not any(c.isdigit() for c in req.new_password):
+    if not any(c.isupper() for c in body.new_password) or not any(c.islower() for c in body.new_password):
+        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需同时包含大写和小写字母")
+    if not any(c.isdigit() for c in body.new_password):
         raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码需包含数字")
+    if body.new_password == body.old_password:
+        raise_error(ErrCode.USER_PASSWORD_WEAK, "新密码不能与当前密码相同")
 
     # 更新密码
     from app.utils.security import get_password_hash
-    user.password_hash = get_password_hash(req.new_password)
+    user.password_hash = get_password_hash(body.new_password)
     db.commit()
 
-    client_ip = current_user.get("_client_ip", "")
-    log_action(db, user.id, "password_change", detail="用户修改密码", ip_address=client_ip)
+    log_action(db, user.id, "password_change", detail="用户修改密码", ip_address=get_client_ip(request))
 
     return ResponseBase(msg="密码修改成功")
 
@@ -216,7 +212,7 @@ async def logout(
     if not ok:
         raise_error(ErrCode.AUTH_INVALID_TOKEN, "token 无效或已过期")
 
-    log_action(db, user_id, "logout", detail="用户登出（token 吊销）")
+    log_action(db, user_id, "logout", detail="用户登出（token 吊销）", ip_address=get_client_ip(request))
     return ResponseBase(msg="登出成功")
 
 

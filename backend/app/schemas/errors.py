@@ -40,6 +40,10 @@ class ErrCode:
     USER_UPDATE_FAILED = (12101, "用户信息更新失败")
     USER_AVATAR_UPDATE_FAILED = (12102, "头像更新失败")
     USER_PASSWORD_WEAK = (12103, "密码至少8位，需包含大小写字母和数字")
+    # 修改密码时「当前密码校验不过」。必须与 AUTH_INVALID_CREDENTIALS(401) 分开：
+    # 401 会被前端 axios 拦截器判定为「token 失效」→ 清 token 跳登录页，
+    # 导致用户输错一次当前密码就被强制登出，且看不到真实原因。
+    USER_PASSWORD_MISMATCH = (12104, "当前密码不正确")
 
     # 音乐模块 (13xxx)
     MUSIC_NOT_FOUND = (13201, "音乐不存在")
@@ -92,6 +96,7 @@ _HTTP_STATUS_BY_CODE = {
     ErrCode.USER_UPDATE_FAILED[0]: status.HTTP_500_INTERNAL_SERVER_ERROR,
     ErrCode.USER_AVATAR_UPDATE_FAILED[0]: status.HTTP_500_INTERNAL_SERVER_ERROR,
     ErrCode.USER_PASSWORD_WEAK[0]: status.HTTP_400_BAD_REQUEST,
+    ErrCode.USER_PASSWORD_MISMATCH[0]: status.HTTP_400_BAD_REQUEST,
     ErrCode.MUSIC_NOT_FOUND[0]: status.HTTP_404_NOT_FOUND,
     ErrCode.MUSIC_UPLOAD_FAILED[0]: status.HTTP_500_INTERNAL_SERVER_ERROR,
     ErrCode.MUSIC_DELETE_FAILED[0]: status.HTTP_500_INTERNAL_SERVER_ERROR,

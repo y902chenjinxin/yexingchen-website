@@ -35,7 +35,12 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       const status = error.response.status
-      if (status === 401) {
+      // 少数接口用 401 表达「凭据校验不通过」而不是「token 失效」，
+      // 典型：/auth/login（账密错）、/auth/change-password（当前密码错）。
+      // 这些必须交给业务方 catch 显示真实原因，否则用户输错一次就被清 token 踢回登录页。
+      const url = error.config?.url || ''
+      const isCredentialCheck = url.includes('/auth/login') || url.includes('/auth/change-password')
+      if (status === 401 && !isCredentialCheck) {
         localStorage.removeItem('token')
         if (router.currentRoute.value.path !== '/login') {
           router.push('/login')
