@@ -9,4 +9,4 @@
  * 历史教训：侧栏徽标曾长期硬编码 `v2.36.0`，一路发到 v2.40.16 都没人发现
  * （见 docs/ISSUES.md V2416-005）——所以先集中到这里，至少只剩一处要改。
  */
-export const APP_VERSION = 'v2.41.7'
+export const APP_VERSION = 'v2.41.8'

@@ -63,7 +63,7 @@
       <!-- 在线邀请面板 -->
       <div v-if="mode === 'online' && !gRoom.room.value" class="xf-online">
         <div class="xf-online-title">🎯 在线邀请对战</div>
-        <p class="xf-online-desc">标准棋盘 32 子随机背面撒盘，双方都看不到；先手翻出的颜色即为自己的阵营，明子按真实走法行动。</p>
+        <p class="xf-online-desc">按标准开局布局摆好 32 子后全部翻面洗牌，双方都看不到；先手翻出的颜色即为自己的阵营，明子按棋子自身的真实走法行动。</p>
         <div class="xf-online-row">
           <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
         </div>
@@ -119,7 +119,7 @@
 
     <p class="xf-hint">
       <template v-if="mode === 'online'">在线模式 · 对方行动约 2 秒内自动出现</template>
-      <template v-else>标准棋盘 32 子背面随机撒盘 · 先翻定色 · 明子按真实走法（车直行 · 马蹩腿 · 炮隔子吃 · 兵过河横走）· 吃将即胜</template>
+      <template v-else>标准开局布局 · 32 子背面洗牌 · 先翻定色 · 明子按自身走法（车直行 · 马日字蹩腿 · 相田字可越河 · 士斜一格可越河 · 将帅兵卒一格可越河 · 炮隔子吃）· 吃将即胜</template>
     </p>
   </div>
 </template>
@@ -128,11 +128,13 @@
 /** 中国象棋 · 翻棋（暗棋 / 揭棋式，自写，无外部依赖）。
  *
  * 规则（标准棋盘暗棋）：
- * - 标准 9×10 棋盘，32 枚棋子（红黑各 16）背面朝上随机撒在盘上；先手翻出的颜色即自己的阵营。
+ * - 标准 9×10 棋盘；**开局布局与明棋完全相同**（车马相士将士相马车 / 炮 / 兵卒共 32 点），
+ *   32 枚棋子在这 32 个点内洗牌后**背面朝上**摆放 —— 只洗棋子，不洗位置。
  * - 每次行动 = 翻一枚暗子，或走一枚己方明子。
- * - **明子严格按棋子自身的走法行动与吃子**：车走直线、马走日蹩腿、炮隔子吃、
- *   兵向前一步（过河可横走）、士斜走一格、象走田且塞象眼、将走一格。
- *   因棋子是随机撒盘，士/象/将不再受九宫与河界限制，否则被撒到界外就永远动不了。
+ * - **明子严格按棋子自身的走法行动与吃子**（引擎 relaxed 模式）：
+ *   车走直线任意格；马走「日」字（蹩马腿生效）；相走「田」字（塞象眼生效，**可越河**）；
+ *   士斜走一格且**可越河**；将/帅走一格且**可越河**；兵/卒向前一步、过河后可横走、永不后退；
+ *   炮不吃子时同车，吃子时必须隔一个棋子（炮架）。
  * - 未翻开的暗子不能吃、也不能被吃，但会挡路、可当炮架。
  * - 吃掉对方的将/帅即胜；一方无子可动（无暗子可翻且无明子可走）即负。
  * 对手：双人同屏 / 单机（贪心 AI）/ 在线邀请（轮询同步，客户端权威）。
@@ -144,7 +146,7 @@ import { useGameRoom } from '@/composables/useGameRoom'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
-import { COLS, ROWS, GLYPH, VAL, other, xOf, yOf, pieceTargets } from '@/utils/xiangqiRules'
+import { COLS, ROWS, GLYPH, VAL, other, xOf, yOf, pieceTargets, flipDeal } from '@/utils/xiangqiRules'
 
 const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
 const props = defineProps({
@@ -167,41 +169,11 @@ const GAME_KEY = computed(() => props.gameKey || 'xiangqi_flip')
 const N = COLS * ROWS
 const PIECE_N = 32
 const PAD = 22
-const RED = 'r', BLACK = 'b'
+const RED = 'r'
 
-/* ---------- 开局：可复现的洗牌（在线用房间号当种子，两端一致） ---------- */
-function mulberry32(a) {
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0
-    let t = Math.imul(a ^ (a >>> 15), 1 | a)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-function deck() {
-  const d = []
-  for (const c of [RED, BLACK]) {
-    d.push(c + 'K', c + 'A', c + 'A', c + 'B', c + 'B', c + 'R', c + 'R', c + 'N', c + 'N', c + 'C', c + 'C')
-    for (let k = 0; k < 5; k++) d.push(c + 'P')
-  }
-  return d
-}
-function shuffle(arr, rnd) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1))
-    const t = arr[i]; arr[i] = arr[j]; arr[j] = t
-  }
-  return arr
-}
-/** 32 子随机背面撒在 90 个交叉点上 */
-function shuffleDeal(seed) {
-  const rnd = mulberry32(seed || ((Date.now() ^ 0x5f3a) & 0x7fffffff))
-  const d = shuffle(deck(), rnd)
-  const spots = shuffle(Array.from({ length: N }, (_, k) => k), rnd)
-  const cells = new Array(N).fill(null)
-  for (let k = 0; k < d.length; k++) cells[spots[k]] = { c: d[k][0], t: d[k][1], up: false }
-  return cells
-}
+/* ---------- 开局：发牌交给引擎（在线用房间号当种子，两端一致） ----------
+ * 位置固定为标准开局 32 点，只洗棋子（V2442-007）。见 xiangqiRules.flipDeal。 */
+const shuffleDeal = flipDeal
 
 /* ---------- 状态 ---------- */
 const mode = ref(props.initialMode || 'easy')
@@ -285,7 +257,9 @@ function ariaOf(i, p) {
   return `${s} ${p.c === RED ? '红' : '黑'}${glyph(p)}`
 }
 
-/* ---------- 走法：明子按真实走法（引擎 relaxed 模式） ---------- */
+/* ---------- 走法：明子按真实走法（引擎 relaxed 模式） ----------
+ * relaxed = 只放开「九宫/河界」两处限制（士/象/将自己可越河、可出九宫），
+ * 走法形态一律保留：马蹩腿、相塞象眼、炮隔子吃、兵过河才横走 —— 与夜星口径一致（逐类实测见 docs/ISSUES.md V2442-007）。 */
 /** 把明暗混合的棋盘映射成引擎认识的字符串盘（暗子也占位：挡路 / 当炮架） */
 function stringBoard() {
   return cells.value.map(p => (p ? p.c + p.t : ''))
@@ -386,7 +360,7 @@ function act(a) {
   if (!ok) return
   if (mode.value === 'online') gRoom.send(a)
   afterAction()
-  if (!over.value && aiTurn.value) scheduleAI()
+  if (!over.value) maybeScheduleAI()
 }
 
 function scheduleAI() {
@@ -399,6 +373,15 @@ function scheduleAI() {
     const ok = typeof a.flip === 'number' ? doFlip(a.flip) : doMove(a.from, a.to)
     if (ok) afterAction()
   }, 320)
+}
+/** AI 行动的唯一入口：只在「本地单机 + 确实轮到 AI」时才动。
+ *  修 V2442-006：setMode('easy') 原先无条件 scheduleAI()，
+ *  切换模式时 AI 会抢在玩家（先手）之前翻子。 */
+function maybeScheduleAI() {
+  if (mode.value !== 'easy') return
+  if (thinking.value || over.value) return
+  if (!aiTurn.value) return
+  scheduleAI()
 }
 function aiChoose() {
   const col = colorOf(localAiIdx)
@@ -658,7 +641,7 @@ function setMode(k) {
   clearLocal()
   gRoom.reset()
   if (k === 'online') loadFamilies()
-  else if (k === 'easy') scheduleAI()
+  else if (k === 'easy') maybeScheduleAI()
 }
 function restart() {
   if (mode.value === 'online') { ElMessage.info('在线模式请用「再来一局」或「退出对局」'); return }
@@ -684,8 +667,8 @@ onMounted(async () => {
     emit('room-lock')
   } else if (mode.value === 'online') {
     await resumeMine()
-  } else if (!restored && aiTurn.value) {
-    scheduleAI()
+  } else if (!restored) {
+    maybeScheduleAI()
   }
 })
 onBeforeUnmount(() => {

@@ -133,6 +133,55 @@ export function pieceTargets(b, from, opts = {}) {
   return out
 }
 
+/* ---------- 暗棋（翻棋）发牌 ---------- */
+
+/** 标准开局占位：明棋 initialBoard() 上所有非空位，正好 32 个点。
+ *  暗棋的「位置」就用它 —— 只洗棋子，不洗位置（V2442-007）。 */
+export const STANDARD_SPOTS = initialBoard().reduce((acc, p, i) => {
+  if (p) acc.push(i)
+  return acc
+}, [])
+
+/** 32 枚棋子（红黑各 16：车2 马2 相2 士2 将1 炮2 兵5）。 */
+export function flipDeck() {
+  const d = []
+  for (const c of [RED, BLACK]) {
+    d.push(c + 'K', c + 'A', c + 'A', c + 'B', c + 'B', c + 'R', c + 'R', c + 'N', c + 'N', c + 'C', c + 'C')
+    for (let k = 0; k < 5; k++) d.push(c + 'P')
+  }
+  return d
+}
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+function shuffleIn(arr, rnd) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1))
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t
+  }
+  return arr
+}
+
+/** 暗棋发牌：32 枚棋子洗牌后铺到 STANDARD_SPOTS 这 32 个标准开局点上，全部背面朝上。
+ *  seed 为真值时结果可复现（在线对局用房间号播种，两端一致）；seed 为 0/空则用时间随机。
+ *  返回长度 90 的数组，元素为 { c, t, up:false } 或 null。 */
+export function flipDeal(seed) {
+  const rnd = mulberry32(seed || ((Date.now() ^ 0x5f3a) & 0x7fffffff))
+  const pieces = shuffleIn(flipDeck(), rnd)
+  const spots = shuffleIn(STANDARD_SPOTS.slice(), rnd)
+  const cells = new Array(COLS * ROWS).fill(null)
+  for (let k = 0; k < pieces.length; k++) {
+    cells[spots[k]] = { c: pieces[k][0], t: pieces[k][1], up: false }
+  }
+  return cells
+}
+
 export function findGeneral(b, s) {
   const g = s + 'K'
   for (let i = 0; i < b.length; i++) if (b[i] === g) return i

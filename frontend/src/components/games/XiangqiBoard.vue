@@ -295,7 +295,7 @@ function settle() {
     checkSide.value = ''
     return
   }
-  if (mode.value !== 'pvp' && mode.value !== 'online' && s === aiSide.value) scheduleAI()
+  if (mode.value !== 'pvp' && mode.value !== 'online' && s === aiSide.value) maybeScheduleAI()
 }
 
 function scheduleAI() {
@@ -314,6 +314,16 @@ function scheduleAI() {
     checkSide.value = inCheck(board.value, turn.value) ? turn.value : ''
     settle()
   }, 260)
+}
+
+/** AI 落子的唯一入口：只在「本地单机 + 确实轮到 AI」时才走。
+ *  修 V2442-006：onMounted / restart 原先无条件 scheduleAI()，
+ *  红方（玩家）先行而 AI 执黑，导致「我还没操作，两个炮就压过来了」。 */
+function maybeScheduleAI() {
+  if (mode.value === 'pvp' || mode.value === 'online') return
+  if (thinking.value || over.value) return
+  if (turn.value !== aiSide.value) return
+  scheduleAI()
 }
 
 /* ---------- 悔棋（仅本地） ---------- */
@@ -553,7 +563,7 @@ function restart() {
   clearTimeout(saveTimer)
   clearGame(SAVE_KEY)
   clearLocal()
-  if (mode.value !== 'pvp') scheduleAI()
+  maybeScheduleAI()
 }
 
 function onResize() { measureCell() }
@@ -572,8 +582,8 @@ onMounted(async () => {
     emit('room-lock')
   } else if (mode.value === 'online') {
     await resumeMine()
-  } else if (!restored && mode.value !== 'pvp') {
-    scheduleAI()
+  } else if (!restored) {
+    maybeScheduleAI()
   }
 })
 onBeforeUnmount(() => {
