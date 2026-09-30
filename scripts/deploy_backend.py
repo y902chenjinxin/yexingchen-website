@@ -155,6 +155,9 @@ BACKEND_FILES = [
      f"{REMOTE_BASE}/backend/alembic/versions/f2a3b4c5d6e7_room_first_player.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "a3b4c5d6e7f8_room_leave_heartbeat.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/a3b4c5d6e7f8_room_leave_heartbeat.py"),
+    # ---- v2.42 公私账：流水增加资金池归属（fund / fund_to + transfer 类型）----
+    (os.path.join(ROOT, "backend", "alembic", "versions", "a7b8c9d0e1f2_finance_funds.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/a7b8c9d0e1f2_finance_funds.py"),
 ]
 
 

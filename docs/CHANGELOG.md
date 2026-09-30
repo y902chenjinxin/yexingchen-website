@@ -1,3 +1,65 @@
+## [v2.42.0] - 2026-10-01
+
+### 记账模块改造为「公私账」：三个资金池 + 手动调拨
+
+夜星：「个人零花没有提醒；公款没有上限……按照手动维护来设计吧」。方案见
+`docs/ai/FINANCE_FUNDS_20261001.md`（v2 修订：v1 的「工资入账按固定规则自动拆分」
+被否 —— 公款不够时会从零花取钱补进去，自动拆分反而挡路，改为**全手动维护**）。
+
+**数据模型**：`FinanceTransaction` 加 `fund`（钱在/花在哪个池）与 `fund_to`
+（仅 transfer 用，转入池），`type` 由 `{income, expense}` 扩为
+`{income, expense, transfer}`。`fund ∈ none/personal/public/savings`，`none` 是
+历史数据与待归类，**不参与池子统计**；起算月 `FUND_SINCE = 2026-10`，此前流水天然出局。
+
+**口径**（`GET /api/finance/funds`）：
+
+```
+流入(X) = Σ[income, fund=X] + Σ[transfer, fund_to=X]
+流出(X) = Σ[expense, fund=X] + Σ[transfer, fund=X]
+余额(X) = 流入 − 流出
+```
+
+**接口**：新增 `/finance/funds`（三池余额 + 各人各月转入矩阵 + 未归类计数）、
+`/finance/transfer`（池间调拨，允许转出池透支，不做余额校验）、
+`PATCH /finance/transactions/fund`（批量改归属，调拨行有双端语义故跳过）；
+`/summary` 的**笔数排除调拨**，避免内部搬家被算成消费。
+
+**前端**：记账首页顶部常驻「＋ 记一笔」；三张池子卡（点击切 Tab）+ 五项 Tab
+（总览/存款/公款/个人/流水）；存款、公款走单池看板 + `FundMatrix.vue`
+（行=月份、列=成员）；个人零花按人拆卡；记一笔三态（支出/收入/调拨），调拨态为
+「转出 → 转入」双向选择 + 4 个快捷理由标签（公款补充/月末归集/临时周转/个人退款）；
+流水行加资金池徽标（点击即进编辑改归属）+ 勾选后的批量改归属条。
+
+**改动文件**
+- `backend/app/models/finance.py`、`backend/app/routers/finance.py`
+- `backend/alembic/versions/a7b8c9d0e1f2_finance_funds.py`（新迁移，已登记进 `deploy_backend.py` 白名单）
+- `frontend/src/views/FinanceView.vue`、`frontend/src/components/finance/FundMatrix.vue`、`frontend/src/api/finance.js`
+- `frontend/src/assets/styles/mobile-product.css`（手机端池子卡横滑条 / 分段 Tab / 流水行保留编辑删除）
+- `frontend/src/constants/version.js` → `v2.42.0`；`frontend/public/sw.js` → `xuanhuang-v295`
+
+**部署与生产取证**：构建 `dist-deploy27` → `deploy_backend.py`（含新迁移）+
+`deploy_frontend.py`。生产核验：`/api/finance/funds`、`/api/finance/transfer` 返回
+**401 而非 404**（路由确已注册）、`/sw.js` 为 `xuanhuang-v295`、
+`assets/FinanceView-CovIjihN.js` 200。
+
+新增 `scripts/verify_funds.js`（两层，缺一层不算证明），**生产 29/29 全绿**：
+① API 契约 —— 同池调拨与含 `none` 的调拨被拒；写入 0.01 元探针调拨后公款 inflow
++0.01、零花 outflow +0.01 且余额同步位移；删除后余额回滚基线；`/summary` 笔数不含调拨。
+② 可见层 —— 池子卡 / Tab / 调拨表单 / 快捷标签 / 流水徽标 / 批量条真实渲染，
+且**池子卡数字与 API 一致**（实测公款 ¥448.10 = 转入 500.00 − 已用 51.90）；
+手机端 `?m=1` 下走移动外壳、375px 无横向溢出、池子卡为可横滑一行。
+**探针流水用完即删，不留脏数据。**
+
+> 脚本自身踩的三个坑（**均为误报，不是应用问题**，已修）：
+> ① 池子卡在 `funds` 回填前以 0 兜底渲染，直接读数量到的是加载态，误报
+> 「卡片 0.00 / 单池看板 −51.90 自相矛盾」→ 改为先等卡片数字与 API 对齐；
+> ② 「各人各月转入」矩阵只统计**转入**（income→池 / transfer→池），公款余额若纯由
+> 支出形成，页面显示空态才是对的 → 改为按 API 是否真有转入行判定；
+> ③ `useIsMobile` 自 v2.40.30 起**只认 APK 的 `XuanHuangApp` UA**，手机浏览器一律走
+> 桌面版，「窄屏 + 触控模拟」在桌面 Chrome 里判定必然为 false → 验移动端须走逃生口 `?m=1`。
+
+---
+
 ## [v2.41.9] - 2026-09-30
 
 ### 暗棋兵/卒放开为「单格位移」：上下左右各一格（可横走、可后退）

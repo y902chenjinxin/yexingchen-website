@@ -27,10 +27,18 @@ class FinanceTransaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     # v2.16：家庭共账（user_id 保留作为录入人溯源）
     household_id = Column(Integer, ForeignKey("household.id"), nullable=False, server_default="1", index=True)
-    type = Column(String(16), nullable=False, default="expense")  # income / expense
+    type = Column(String(16), nullable=False, default="expense")  # income / expense / transfer
     amount_cents = Column(Integer, nullable=False, default=0)  # 金额（分），收入为正
     category = Column(String(32), nullable=False, default="其他")
     note = Column(String(255), nullable=False, default="")
+    # v2.42 公私账：资金池归属
+    #   income   → 钱进入的池
+    #   expense  → 钱花出的池
+    #   transfer → 钱转出的池
+    # 取值 none / personal / public / savings；none 为历史数据与待归类，不参与池子统计
+    fund = Column(String(16), nullable=False, default="none", server_default="none")
+    # 仅 transfer 使用：钱转入的池；其余类型为 NULL
+    fund_to = Column(String(16), nullable=True)
     occurred_at = Column(DateTime, nullable=False, default=datetime.now, index=True)  # 发生时间
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
@@ -38,6 +46,8 @@ class FinanceTransaction(Base):
 
     __table_args__ = (
         Index("ix_xuanhuang_finance_household_occurred", "household_id", "occurred_at"),
+        Index("ix_finance_fund_occurred", "household_id", "fund", "occurred_at"),
+        Index("ix_finance_fund_to", "household_id", "fund_to", "occurred_at"),
     )
 
 

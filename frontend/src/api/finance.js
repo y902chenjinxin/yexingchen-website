@@ -47,6 +47,12 @@ export const financeApi = {
   summary: (params) => api.get('/finance/summary', { params: params || {} }),
   // 按家人汇总（每人一行 + 合计行），用于「人员标签」下的汇总数据
   memberBreakdown: (params) => api.get('/finance/member-breakdown', { params: params || {} }),
+  // 公私账资金池总览（三个池子余额 + 各人各月转入矩阵）
+  funds: (params) => api.get('/finance/funds', { params: params || {} }),
+  // 池子间调拨（个人零花 → 公款 等）
+  transfer: (data) => api.post('/finance/transfer', data),
+  // 批量改流水归属
+  batchFund: (data) => api.patch('/finance/transactions/fund', data),
   list: (params) => api.get('/finance/transactions', { params }),
   create: (data) => api.post('/finance/transactions', data),
   update: (id, data) => api.put(`/finance/transactions/${id}`, data),
@@ -94,9 +100,15 @@ export function exportFinanceCsv(params = {}) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       const cd = resp.headers.get('content-disposition') || ''
-      const m = /filename="?([^";]+)"?/.exec(cd)
+      // 后端给的是 `filename=ascii.csv; filename*=UTF-8''%E8%B4%A6...`：
+      // 优先取 RFC 5987 的中文真名，取不到再退回 ASCII 名
+      const star = /filename\*=UTF-8''([^;]+)/i.exec(cd)
+      const plain = /filename="?([^";]+)"?/i.exec(cd)
+      let name = `账本导出_${new Date().toISOString().slice(0, 10)}.csv`
+      if (star) { try { name = decodeURIComponent(star[1]) } catch { /* 保留兜底名 */ } }
+      else if (plain) name = plain[1]
       a.href = url
-      a.download = m ? m[1] : `账本导出_${new Date().toISOString().slice(0, 10)}.csv`
+      a.download = name
       document.body.appendChild(a)
       a.click()
       a.remove()

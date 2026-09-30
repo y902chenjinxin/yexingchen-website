@@ -245,12 +245,13 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 #app.is-mobile .abb-cell__lab { color: var(--m-text-2); }
 #app.is-mobile .abb-trend { display: none !important; }
 
-/* 账本：数据优先，手机隐藏趋势图、导入导出与复杂筛选 */
+/* 账本：数据优先，手机隐藏趋势图、导入导出与复杂筛选
+   注意 .fin-row-ops 不在此列——公私账要求流水「可编辑、可删除」，
+   手机上把这两个按钮藏掉会直接让需求落空，改为在下方给紧凑样式。 */
 #app.is-mobile .fin-inner { padding-bottom: 20px; }
 #app.is-mobile .fin-io,
 #app.is-mobile .fin-io-help,
 #app.is-mobile .fin-filters,
-#app.is-mobile .fin-row-ops,
 #app.is-mobile .fin-charts .fin-chart:nth-child(2) { display: none !important; }
 #app.is-mobile .fin-toolbar { margin-bottom: 18px; }
 #app.is-mobile .fin-period { justify-content: space-between; gap: 8px; }
@@ -279,6 +280,60 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 #app.is-mobile .fin-row-note, #app.is-mobile .fin-row-date { color: var(--m-text-2); }
 #app.is-mobile .fin-row-amt.income { color: var(--m-positive); }
 #app.is-mobile .fin-row-amt.expense { color: var(--m-negative); }
+
+/* 公私账：三张池子卡改横向滑动条（沿用全站移动端「一行可滑」的既有手感），
+   Tab 用分段控件，单池看板/个人卡/批量条统一走 --m-* 表面 token。 */
+#app.is-mobile .fin-pools { display: flex !important; grid-template-columns: none !important; gap: 10px;
+  overflow-x: auto; margin: 0 -16px 16px; padding: 0 16px 4px;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+#app.is-mobile .fin-pools::-webkit-scrollbar { display: none; }
+#app.is-mobile .fin-pool { flex: 0 0 62%; scroll-snap-align: start; padding: 14px !important;
+  border: 1px solid var(--m-line) !important; border-radius: 16px !important;
+  background: var(--m-surface) !important; box-shadow: none !important; }
+#app.is-mobile .fin-pool::after { display: none !important; }
+#app.is-mobile .fin-pool-name { color: var(--m-text-2); }
+#app.is-mobile .fin-pool-val { color: var(--m-text); font-size: 22px; }
+#app.is-mobile .fin-pool-val.neg, #app.is-mobile .fin-pcard-val.neg,
+#app.is-mobile .fin-pool-hero-val.neg { color: var(--m-negative); }
+#app.is-mobile .fin-pool-ok, #app.is-mobile .fin-pool-sub { color: var(--m-text-3); }
+
+#app.is-mobile .fin-todo { background: var(--m-surface) !important; border-color: var(--m-line-strong) !important; }
+#app.is-mobile .fin-todo-text { color: var(--m-text-2); }
+
+#app.is-mobile .fin-tabs { border-radius: 12px; background: var(--m-surface-2) !important;
+  border-color: var(--m-line) !important; }
+#app.is-mobile .fin-tab-item { color: var(--m-text-2); }
+#app.is-mobile .fin-tab-item.on { background: var(--m-accent) !important; color: #fff !important; box-shadow: none; }
+
+#app.is-mobile .fin-panel { gap: 14px; }
+#app.is-mobile .fin-pool-hero { padding: 16px !important; background: var(--m-surface) !important;
+  border-color: var(--m-line) !important; box-shadow: none !important; }
+#app.is-mobile .fin-panel-title { color: var(--m-text); font-size: 18px; }
+#app.is-mobile .fin-panel-sub { color: var(--m-text-2); }
+#app.is-mobile .fin-pool-hero-label { color: var(--m-text-3); }
+#app.is-mobile .fin-pcards { grid-template-columns: repeat(auto-fill, minmax(46%, 1fr)); gap: 10px; }
+#app.is-mobile .fin-pcard { padding: 15px !important; background: var(--m-surface) !important;
+  border-color: var(--m-line) !important; box-shadow: none !important; }
+#app.is-mobile .fin-pcard-name { color: var(--m-text-2); }
+#app.is-mobile .fin-pcard-val { color: var(--m-text); }
+#app.is-mobile .fin-pcard-sub { color: var(--m-text-3); }
+
+/* 流水行：勾选框与编辑/删除按钮在手机上保留（要能改归属、能删） */
+#app.is-mobile .fin-row { gap: 8px; }
+#app.is-mobile .fin-row-check input { width: 17px; height: 17px; }
+#app.is-mobile .fin-row-ops { display: flex !important; gap: 4px; }
+#app.is-mobile .fin-op { width: 30px; height: 30px; border-color: var(--m-line-strong) !important; color: var(--m-text-2); }
+#app.is-mobile .fin-fund-badge { background: var(--m-surface-2) !important; border-color: var(--m-line-strong) !important; color: var(--m-text-2); }
+#app.is-mobile .fin-batch { background: var(--m-surface) !important; border-color: var(--m-line-strong) !important; }
+#app.is-mobile .fin-batch-text { color: var(--m-text-2); }
+#app.is-mobile .fin-batch-clear { color: var(--m-text-3); margin-left: 0; }
+
+/* 记一笔：调拨方向 + 快捷标签 + 资金池选择 */
+#app.is-mobile .fin-transfer-row { gap: 8px; }
+#app.is-mobile .fin-f-hint, #app.is-mobile .fin-quick-label { color: var(--m-text-3); }
+#app.is-mobile .fin-quick-tag, #app.is-mobile .fin-fund { border-color: var(--m-line-strong); color: var(--m-text-2); }
+#app.is-mobile .fin-quick-tag.on, #app.is-mobile .fin-fund.active {
+  border-color: var(--m-accent); color: var(--m-accent); background: rgba(127,168,163,.14); }
 
 /* 其它模块的 KPI / 列表继承相同节奏，保留模块各自的业务语义色 */
 #app.is-mobile :is(.st-kpi, .tv-kpi) { gap: 6px; }

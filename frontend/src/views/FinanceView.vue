@@ -176,7 +176,64 @@
               </div>
             </div>
 
+            <!-- 资金池：收入=进哪个池 / 支出=从哪个池出 / 调拨=转出→转入 -->
             <div class="fin-f-field">
+              <div class="fin-f-label-row">
+                <label class="fin-f-label">
+                  {{ form.type === 'income' ? '进入哪个池' : (form.type === 'expense' ? '从哪个池出' : '调拨方向') }}
+                </label>
+                <span v-if="form.type === 'transfer'" class="fin-f-hint">转出 → 转入</span>
+              </div>
+
+              <template v-if="form.type === 'transfer'">
+                <div class="fin-transfer-row">
+                  <el-select v-model="form.fundFrom" class="fin-transfer-sel">
+                    <el-option v-for="f in FUND_ORDER" :key="f" :label="FUND_META[f].label" :value="f" />
+                  </el-select>
+                  <span class="fin-transfer-arrow">→</span>
+                  <el-select v-model="form.fundTo" class="fin-transfer-sel">
+                    <el-option v-for="f in FUND_ORDER" :key="f" :label="FUND_META[f].label" :value="f" />
+                  </el-select>
+                </div>
+                <div class="fin-quick-tags">
+                  <span class="fin-quick-label">快捷理由</span>
+                  <button
+                    v-for="tag in TRANSFER_TAGS"
+                    :key="tag"
+                    class="fin-quick-tag"
+                    :class="{ on: form.note === tag }"
+                    @click="form.note = form.note === tag ? '' : tag"
+                  >{{ tag }}</button>
+                </div>
+              </template>
+
+              <div v-else class="fin-funds">
+                <button class="fin-fund" :class="{ active: form.fund === 'none' }" @click="pickFund('none')">🚫 未归类</button>
+                <button
+                  v-for="f in FUND_ORDER"
+                  :key="f"
+                  class="fin-fund"
+                  :class="[{ active: form.fund === f }, f]"
+                  @click="pickFund(f)"
+                >{{ FUND_META[f].icon }} {{ FUND_META[f].label }}</button>
+              </div>
+            </div>
+
+            <!-- 归属人：只有涉及「个人零花」时才需要指定是谁的 -->
+            <div v-if="needOwner" class="fin-f-field">
+              <label class="fin-f-label">归属人</label>
+              <div class="fin-funds">
+                <button
+                  v-for="m in ownerOptions"
+                  :key="m.user_id"
+                  class="fin-fund"
+                  :class="{ active: String(form.member) === String(m.user_id) }"
+                  @click="form.member = m.user_id"
+                >{{ m.avatar }} {{ m.name }}</button>
+              </div>
+            </div>
+
+            <div v-if="form.type !== 'transfer'" class="fin-f-field">
               <div class="fin-f-label-row">
                 <label class="fin-f-label">分类</label>
                 <button class="fin-cat-manage" @click="openCatDialog">管理分类</button>
@@ -213,11 +270,54 @@
         </section>
       </transition>
 
+      <!-- 资金池卡片（公私账核心视觉锚点）：点击切到对应 Tab -->
+      <section class="fin-pools" aria-label="资金池">
+        <button
+          v-for="p in poolCards"
+          :key="p.fund"
+          class="fin-pool glass"
+          :class="[p.fund, { on: activeTab === p.fund }]"
+          @click="openPool(p.fund)"
+        >
+          <span class="fin-pool-top">
+            <span class="fin-pool-icon">{{ FUND_META[p.fund].icon }}</span>
+            <span class="fin-pool-name">{{ p.label }}</span>
+          </span>
+          <span class="fin-pool-val" :class="{ neg: p.balance < 0 }">¥ {{ money(p.balance) }}</span>
+          <span class="fin-pool-flags">
+            <span v-if="p.balance < 0" class="fin-pool-over">已透支</span>
+            <span v-else class="fin-pool-ok">余 {{ money(p.balance) }}</span>
+          </span>
+          <span class="fin-pool-sub">转入 ¥ {{ money(p.inflow) }} · 已用 ¥ {{ money(p.outflow) }}</span>
+        </button>
+      </section>
+
+      <!-- 待归类提醒条：只统计 2026-10 之后的流水，历史数据不在此列 -->
+      <div v-if="funds.unclassified > 0 && activeTab !== 'ledger'" class="fin-todo glass">
+        <span class="fin-todo-text">有 <b>{{ funds.unclassified }}</b> 笔流水还没归到任何池子，池子数字暂不含它们。</span>
+        <button class="fin-btn ghost small" @click="showUnclassified">去归类</button>
+      </div>
+
+      <!-- 分栏 Tab -->
+      <div class="fin-tabs" role="tablist">
+        <button
+          v-for="t in tabs"
+          :key="t.key"
+          class="fin-tab-item"
+          :class="{ on: activeTab === t.key }"
+          role="tab"
+          :aria-selected="activeTab === t.key"
+          @click="activeTab = t.key"
+        >{{ t.label }}</button>
+      </div>
+
       <!-- 账本数据概览：只保留一组（收入 / 支出 / 笔数 / 累计结余）。
            原先还另有一组「手机端」变体（净流入 / 支出 / 笔数），但它既没有被媒体查询
            切换，又被后面同特异性的 .fin-kpis{display:grid} 覆盖了 display:none，
            于是两组同时渲染 —— 看起来就像同一组数据被画了两遍。
            净流入本质是「收入 − 支出」，与已有的收入、支出两张卡重复，故一并去掉。 -->
+      <!-- ===== 总览 Tab ===== -->
+      <template v-if="activeTab === 'overview'">
       <section class="fin-kpis" aria-label="账本数据概览">
         <div class="fin-kpi glass">
           <span class="fin-kpi-label">{{ unitLabel }}收入</span>
@@ -332,9 +432,84 @@
           <div v-else class="fin-chart-empty">{{ dim === 'day' ? '单日无跨期趋势，切换「月/年」查看' : '暂无数据' }}</div>
         </div>
       </section>
+      </template>
 
-      <!-- 流水列表 -->
-      <section class="fin-ledger glass">
+      <!-- ===== 存款 / 公款 Tab：单池看板 ===== -->
+      <template v-if="activeTab === 'savings' || activeTab === 'public'">
+        <section class="fin-panel">
+          <div class="fin-pool-hero glass" :class="activeTab">
+            <div class="fin-pool-hero-left">
+              <span class="fin-pool-hero-icon">{{ FUND_META[activeTab].icon }}</span>
+              <div>
+                <h2 class="fin-panel-title">{{ FUND_META[activeTab].label }}</h2>
+                <p class="fin-panel-sub">累计转入 ¥ {{ money(activePool.inflow) }} · 累计已用 ¥ {{ money(activePool.outflow) }}</p>
+              </div>
+            </div>
+            <div class="fin-pool-hero-right">
+              <span class="fin-pool-hero-label">当前余额</span>
+              <span class="fin-pool-hero-val" :class="{ neg: activePool.balance < 0 }">¥ {{ money(activePool.balance) }}</span>
+              <span v-if="activePool.balance < 0" class="fin-pool-over">已透支</span>
+            </div>
+          </div>
+
+          <div class="fin-chart glass">
+            <h2 class="fin-chart-title">各人各月转入</h2>
+            <FundMatrix v-if="matrixRows.length" :rows="matrixRows" :members="matrixMembers" />
+            <div v-else class="fin-chart-empty">还没有转入记录</div>
+          </div>
+
+          <div class="fin-chart glass">
+            <h2 class="fin-chart-title">{{ FUND_META[activeTab].label }}流水</h2>
+            <div v-if="poolTxns.length" class="fin-list">
+              <div v-for="row in poolTxns" :key="row.id" class="fin-row">
+                <div class="fin-row-icon">{{ row.category_icon }}</div>
+                <div class="fin-row-main">
+                  <div class="fin-row-top">
+                    <span class="fin-row-cat">{{ row.category }}</span>
+                    <span class="fin-row-note">{{ row.note }}</span>
+                  </div>
+                  <div class="fin-row-date">
+                    <span v-if="row.member" class="fin-row-member">{{ row.member.avatar }} {{ row.member.name }}</span>
+                    {{ fmtDay(row.occurred_at) }}
+                  </div>
+                </div>
+                <div class="fin-row-amt" :class="row.type">
+                  {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
+                </div>
+                <div class="fin-row-ops">
+                  <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="fin-chart-empty">该池还没有流水</div>
+          </div>
+        </section>
+      </template>
+
+      <!-- ===== 个人零花 Tab：按人拆开 ===== -->
+      <template v-if="activeTab === 'personal'">
+        <section class="fin-panel">
+          <div class="fin-pcards">
+            <div v-for="p in funds.personal_by_member || []" :key="p.user_id" class="fin-pcard glass">
+              <span class="fin-pcard-avatar">{{ p.avatar }}</span>
+              <span class="fin-pcard-name">{{ p.name }}</span>
+              <span class="fin-pcard-val" :class="{ neg: p.balance < 0 }">¥ {{ money(p.balance) }}</span>
+              <span v-if="p.balance < 0" class="fin-pool-over">已透支</span>
+              <span class="fin-pcard-sub">累计转入 ¥ {{ money(p.inflow) }} · 已花 ¥ {{ money(p.outflow) }}</span>
+            </div>
+            <div v-if="!(funds.personal_by_member || []).length" class="fin-chart-empty">还没有个人零花记录</div>
+          </div>
+
+          <div class="fin-chart glass">
+            <h2 class="fin-chart-title">各人各月转入</h2>
+            <FundMatrix v-if="matrixRows.length" :rows="matrixRows" :members="matrixMembers" />
+            <div v-else class="fin-chart-empty">还没有转入记录</div>
+          </div>
+        </section>
+      </template>
+
+      <!-- ===== 流水 Tab ===== -->
+      <section v-if="activeTab === 'ledger'" class="fin-ledger glass">
         <div class="fin-ledger-head">
           <h2 class="fin-chart-title">流水明细</h2>
           <div class="fin-filters">
@@ -342,23 +517,56 @@
               仅看 {{ activeMemberName }}
               <button class="fin-filter-chip-x" @click="pickMember('')">✕</button>
             </span>
-            <el-select v-model="filters.type" placeholder="全部类型" clearable class="fin-filter" @change="reload(1)">
+            <el-select v-model="filters.type" placeholder="全部类型" clearable class="fin-filter" @change="onFilterChange">
               <el-option label="支出" value="expense" />
               <el-option label="收入" value="income" />
+              <el-option label="调拨" value="transfer" />
             </el-select>
-            <input v-model="filters.q" class="fin-filter-input" placeholder="搜索备注/分类…" @keyup.enter="reload(1)" />
-            <button class="fin-btn ghost small" @click="reload(1)">查询</button>
+            <el-select v-model="filters.fund" placeholder="全部资金池" clearable class="fin-filter" @change="onFilterChange">
+              <el-option label="个人零花" value="personal" />
+              <el-option label="公款" value="public" />
+              <el-option label="存款" value="savings" />
+            </el-select>
+            <input v-model="filters.q" class="fin-filter-input" placeholder="搜索备注/分类…" @keyup.enter="onFilterChange" />
+            <button class="fin-btn ghost small" @click="onFilterChange">查询</button>
           </div>
+        </div>
+
+        <!-- 「只看未归类」时的复位入口 -->
+        <div v-if="unclassifiedOnly" class="fin-batch glass">
+          <span class="fin-batch-text">正在只看 <b>未归类</b> 的流水（起算日之后）</span>
+          <button class="fin-batch-clear" @click="onFilterChange">显示全部</button>
+        </div>
+
+        <!-- 批量改归属条：勾选多行后出现 -->
+        <div v-if="checkedIds.length" class="fin-batch glass">
+          <span class="fin-batch-text">已选 <b>{{ checkedIds.length }}</b> 笔，批量改归属：</span>
+          <button v-for="f in FUND_ORDER" :key="f" class="fin-btn ghost small" @click="applyBatchFund(f)">{{ FUND_META[f].label }}</button>
+          <button class="fin-btn ghost small" @click="applyBatchFund('none')">未归类</button>
+          <button class="fin-batch-clear" @click="checkedIds = []">取消选择</button>
         </div>
 
         <div class="fin-list">
           <div v-if="!list.length" class="fin-list-empty">还没有符合条件的流水</div>
           <div v-else>
             <div v-for="row in list" :key="row.id" class="fin-row" :class="{ editing: form.editing && form.editingId === row.id }">
+              <label class="fin-row-check">
+                <input type="checkbox" :checked="checkedIds.includes(row.id)" @change="toggleCheck(row.id)" />
+              </label>
               <div class="fin-row-icon">{{ row.category_icon }}</div>
               <div class="fin-row-main">
                 <div class="fin-row-top">
                   <span class="fin-row-cat">{{ row.category }}</span>
+                  <!-- 资金池徽标：点击直接进编辑表单改归属（不新增弹窗） -->
+                  <button
+                    class="fin-fund-badge"
+                    :class="[row.fund, { todo: row.fund === 'none' && row.type !== 'transfer' }]"
+                    :title="row.type === 'transfer' ? '点击编辑' : '点击修改归属'"
+                    @click="openEdit(row)"
+                  >
+                    <template v-if="row.type === 'transfer'">{{ row.fund_label }} → {{ row.fund_to_label }}</template>
+                    <template v-else>{{ row.fund === 'none' ? '未归类' : row.fund_label }}</template>
+                  </button>
                   <span class="fin-row-note">{{ row.note }}</span>
                 </div>
                 <div class="fin-row-date">
@@ -367,7 +575,7 @@
                 </div>
               </div>
               <div class="fin-row-amt" :class="row.type">
-                {{ row.type === 'income' ? '+' : '−' }} ¥ {{ money(row.amount) }}
+                {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
               </div>
               <div class="fin-row-ops">
                 <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
@@ -479,23 +687,132 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
 import TrendChart from '@/components/finance/TrendChart.vue'
+import FundMatrix from '@/components/finance/FundMatrix.vue'
 import { financeApi, exportFinanceCsv } from '@/api/finance'
 import { listMembers } from '@/api/life'
+import { useAuthStore } from '@/stores/auth'
 
 function backToTopScroll() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+const auth = useAuthStore()
+
 const typeTabs = [
   { key: 'expense', label: '支出' },
   { key: 'income', label: '收入' },
+  { key: 'transfer', label: '调拨' },
 ]
+
+/* ---- v2.42 公私账：资金池 ---- */
+const FUND_ORDER = ['savings', 'public', 'personal']
+const FUND_META = {
+  savings: { label: '存款', icon: '🏦' },
+  public: { label: '公款', icon: '🏛️' },
+  personal: { label: '个人零花', icon: '👛' },
+}
+// 调拨常用理由：纯前端常量，点了只是往备注里填字，不落库
+const TRANSFER_TAGS = ['公款补充', '月末归集', '临时周转', '个人退款']
+
+const tabs = [
+  { key: 'overview', label: '总览' },
+  { key: 'savings', label: '存款' },
+  { key: 'public', label: '公款' },
+  { key: 'personal', label: '个人' },
+  { key: 'ledger', label: '流水' },
+]
+const activeTab = ref('overview')
+
+const funds = ref({ pools: [], monthly_by_member: [], personal_by_member: [], unclassified: 0 })
+const poolTxns = ref([])
+const checkedIds = ref([])
+
+const poolCards = computed(() => {
+  const byFund = new Map((funds.value.pools || []).map((p) => [p.fund, p]))
+  return FUND_ORDER.map((f) => byFund.get(f) || {
+    fund: f, label: FUND_META[f].label, inflow: 0, outflow: 0, balance: 0,
+  })
+})
+
+function poolOf(fund) {
+  return (funds.value.pools || []).find((p) => p.fund === fund) || {
+    fund, label: FUND_META[fund]?.label || '', inflow: 0, outflow: 0, balance: 0,
+  }
+}
+const activePool = computed(() => poolOf(activeTab.value))
+
+// 矩阵：行=月份（新的在上），列=家庭成员并集
+const matrixRows = computed(() => {
+  const fund = activeTab.value === 'personal' ? 'personal' : activeTab.value
+  return (funds.value.monthly_by_member || [])
+    .filter((r) => r.fund === fund)
+    .slice()
+    .sort((a, b) => (a.month < b.month ? 1 : -1))
+})
+const matrixMembers = computed(() => {
+  const seen = new Map()
+  for (const r of funds.value.monthly_by_member || []) {
+    for (const m of r.members || []) if (!seen.has(m.user_id)) seen.set(m.user_id, m)
+  }
+  return [...seen.values()]
+})
+
+async function loadFunds() {
+  try {
+    const res = await financeApi.funds()
+    funds.value = res.data || { pools: [], monthly_by_member: [], personal_by_member: [], unclassified: 0 }
+  } catch {
+    // 池子总览拉不到不该影响记账主流程，静默降级为空池
+  }
+}
+
+async function loadPoolTxns() {
+  if (activeTab.value !== 'savings' && activeTab.value !== 'public') { poolTxns.value = []; return }
+  try {
+    const res = await financeApi.list({ fund: activeTab.value, size: 50, page: 1 })
+    poolTxns.value = res.data?.list || []
+  } catch {
+    poolTxns.value = []
+  }
+}
+
+function openPool(fund) {
+  activeTab.value = activeTab.value === fund ? 'overview' : fund
+}
+
+function showUnclassified() {
+  activeTab.value = 'ledger'
+  filters.type = ''
+  filters.fund = ''
+  filters.q = ''
+  unclassifiedOnly.value = true
+  checkedIds.value = []
+  page.value = 1
+  loadList()
+}
+
+function toggleCheck(id) {
+  const i = checkedIds.value.indexOf(id)
+  if (i >= 0) checkedIds.value.splice(i, 1)
+  else checkedIds.value.push(id)
+}
+
+async function applyBatchFund(fund) {
+  if (!checkedIds.value.length) return
+  try {
+    const res = await financeApi.batchFund({ ids: checkedIds.value, fund })
+    ElMessage.success(res.msg || '已更新归属')
+    checkedIds.value = []
+    await Promise.all([loadFunds(), loadList(), loadPeriodStats()])
+  } catch { /* 错误已由 api 拦截器提示 */ }
+}
+
 const PALETTE = ['#7FA8A3', '#C7A96B', '#6E8BA6', '#B98BA6', '#8BB07A', '#C98B6B', '#6FA6C9', '#A98BC9', '#7F8FA3']
 
 const now = new Date()
@@ -513,7 +830,9 @@ const page = ref(1)
 const pageSize = 20
 const saving = ref(false)
 
-const filters = reactive({ type: '', q: '' })
+const filters = reactive({ type: '', q: '', fund: '' })
+// 「去归类」进来的只看未归类流水；后端按起算日过滤，历史数据不算「待归类」
+const unclassifiedOnly = ref(false)
 
 /* ---- 人员标签 + 家人汇总 ---- */
 // '' = 全部家人；否则是创建者 user_id（后端 member_user_id 过滤）
@@ -588,7 +907,38 @@ const form = reactive({
   date: fmtDate(now),
   category: '餐饮',
   note: '',
+  // v2.42 公私账：资金池归属
+  //   income → 钱进入的池 / expense → 钱花出的池 / transfer → fundFrom 转出、fundTo 转入
+  fund: 'none',
+  fundFrom: 'personal',
+  fundTo: 'public',
+  // 归属人：只有涉及「个人零花」时才需要指定这是谁的零花
+  member: null,
 })
+
+/* ---- 归属人（谁的零花） ---- */
+// 涉及个人零花才问「是谁的」：公款/存款是全家共用的，问归属人没有意义
+const needOwner = computed(() => {
+  if (form.type === 'transfer') return form.fundFrom === 'personal' || form.fundTo === 'personal'
+  return form.fund === 'personal'
+})
+// 优先用家庭档案（有头像与昵称），档案还没加载出来时退回当前登录人
+const ownerOptions = computed(() => {
+  if (members.value.length) {
+    return members.value.map((m) => ({
+      user_id: m.user_id,
+      name: m.display_name || `成员${m.user_id}`,
+      avatar: m.avatar || '🌿',
+    }))
+  }
+  return [{ user_id: Number(auth.user?.id) || 0, name: auth.user?.nickname || '我', avatar: '👤' }]
+})
+
+// 切换资金池时，顺手把归属人补成当前登录人（个人零花最常用自己）
+function pickFund(f) {
+  form.fund = f
+  if (f === 'personal' && form.member == null) form.member = Number(auth.user?.id) || null
+}
 
 const periodLabel = computed(() => {
   if (dim.value === 'day') {
@@ -783,11 +1133,18 @@ function onPage(p) {
 async function loadList() {
   const params = { page: page.value, size: pageSize }
   if (filters.type) params.type = filters.type
+  if (filters.fund) params.fund = filters.fund
   if (filters.q) params.q = filters.q
   if (memberFilter.value) params.member_user_id = memberFilter.value
+  if (unclassifiedOnly.value) params.unclassified = true
   const res = await financeApi.list(params)
   list.value = res.data.list
   total.value = res.data.total
+}
+// 手动改筛选就退出「只看未归类」，否则用户以为自己筛了公款、其实还在未归类视图里
+function onFilterChange() {
+  unclassifiedOnly.value = false
+  return reload(1)
 }
 const showImportHelp = ref(false)
 async function exportCsv() {
@@ -923,6 +1280,12 @@ function resetForm() {
   form.date = fmtDate(new Date())
   form.category = '餐饮'
   form.note = ''
+  // 默认「未归类」而不是猜一个池子：池子归属是钱的方向，猜错会让看板数字失真，
+  // 让用户明确点一下更安全（待归类的笔数会在首页提醒条里露出来）
+  form.fund = 'none'
+  form.fundFrom = 'personal'
+  form.fundTo = 'public'
+  form.member = Number(auth.user?.id) || null
 }
 function openNew() {
   resetForm()
@@ -934,6 +1297,8 @@ function openNew() {
 function pickType(t) {
   form.type = t
   form.category = t === 'income' ? '工资' : '餐饮'
+  // 调拨没有分类；切回来时补一个合法默认，避免带着「调拨」占位名去存
+  if (t === 'transfer') form.note = form.note || ''
 }
 function openEdit(row) {
   form.show = true
@@ -944,6 +1309,10 @@ function openEdit(row) {
   form.date = fmtDay(row.occurred_at)
   form.category = row.category
   form.note = row.note
+  form.fund = row.fund || 'none'
+  form.fundFrom = row.type === 'transfer' ? (row.fund || 'personal') : 'personal'
+  form.fundTo = row.type === 'transfer' ? (row.fund_to || 'public') : 'public'
+  form.member = row.member?.user_id ?? (Number(auth.user?.id) || null)
   backToTopScroll()
 }
 function onVoiceNote(text) {
@@ -951,16 +1320,25 @@ function onVoiceNote(text) {
 }
 async function save() {
   if (!form.amount || form.amount <= 0) {
+    ElMessage.warning('请先填写金额')
+    return
+  }
+  const isTransfer = form.type === 'transfer'
+  if (isTransfer && form.fundFrom === form.fundTo) {
+    ElMessage.warning('转出和转入不能是同一个池')
     return
   }
   saving.value = true
   const payload = {
     type: form.type,
     amount: form.amount,
-    category: form.category,
+    category: isTransfer ? '调拨' : form.category,
     note: form.note,
     occurred_at: `${form.date || fmtDate(new Date())}T12:00:00`,
+    fund: isTransfer ? form.fundFrom : form.fund,
+    fund_to: isTransfer ? form.fundTo : null,
   }
+  if (needOwner.value && form.member != null) payload.member_user_id = form.member
   try {
     if (form.editing) {
       await financeApi.update(form.editingId, payload)
@@ -970,21 +1348,25 @@ async function save() {
     form.show = false
     form.editing = false
     form.editingId = null
-    await Promise.all([loadPeriodStats(), reload(1)])
+    await Promise.all([loadPeriodStats(), reload(1), loadFunds(), loadPoolTxns()])
   } finally {
     saving.value = false
   }
 }
 async function del(row) {
   await financeApi.remove(row.id)
-  await Promise.all([loadPeriodStats(), loadList()])
+  await Promise.all([loadPeriodStats(), loadList(), loadFunds(), loadPoolTxns()])
 }
+
+// 切 Tab 时按需拉单池流水（只有存款/公款两页需要）
+watch(activeTab, () => { loadPoolTxns() })
 
 onMounted(() => {
   loadCategories()
   loadMembers()
   loadPeriodStats()
   loadList()
+  loadFunds()
   document.addEventListener('click', onDocClick)
 })
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
@@ -1161,6 +1543,120 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-kpi-val.expense { color: var(--lj-vermilion); }
 .fin-kpi-sub { font-size: 11px; color: var(--lj-text-3); }
 
+/* ===== 公私账：三个资金池卡片（核心视觉锚点） =====
+   池子配色各成一系，与「收入/支出」的红金语义区分开：
+   存款→鎏金、公款→雨青、个人零花→青莲。全部走 --pool-accent 一个变量，
+   描边、顶部微光条、选中态共用，改色只改一行。 */
+.fin-pools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.fin-pool { --pool-accent: var(--lj-line-strong); position: relative; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 6px; padding: 18px; border-radius: 16px; overflow: hidden;
+  cursor: pointer; text-align: left; font-family: var(--font-serif); color: var(--lj-text);
+  transition: transform .22s, border-color .22s, box-shadow .22s; }
+.fin-pool::after { content: ""; position: absolute; top: 0; left: 14%; right: 14%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--pool-accent), transparent); opacity: .5; }
+.fin-pool:hover { transform: translateY(-2px); border-color: var(--lj-line-strong); }
+.fin-pool.on { border-color: var(--pool-accent); box-shadow: inset 0 0 0 1px var(--pool-accent); }
+.fin-pool.savings { --pool-accent: var(--yq-gold); }
+.fin-pool.public { --pool-accent: var(--yq-rain); }
+.fin-pool.personal { --pool-accent: #8d7fa8; }
+.fin-pool-top { display: flex; align-items: center; gap: 8px; }
+.fin-pool-icon { font-size: 17px; line-height: 1; }
+.fin-pool-name { font-size: 13px; color: var(--lj-text-2); letter-spacing: .1em; }
+.fin-pool-val { font-size: clamp(21px, 2.6vw, 27px); font-weight: 700; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums; }
+.fin-pool-val.neg { color: var(--lj-vermilion); }
+.fin-pool-flags { font-size: 11px; }
+.fin-pool-ok { color: var(--lj-text-3); }
+.fin-pool-sub { font-size: 11.5px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
+.fin-pool-over { display: inline-block; padding: 1px 8px; border-radius: 999px;
+  background: var(--lj-seal-soft); color: var(--lj-seal); }
+
+/* 待归类提醒条：只统计起算日之后的流水 */
+.fin-todo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px; border-radius: 14px; margin-bottom: 14px; border-color: rgba(199,169,107,.42); }
+.fin-todo-text { font-size: 13px; color: var(--lj-text-2); }
+.fin-todo-text b { color: var(--lj-ochre); }
+
+/* 分栏 Tab（总览/存款/公款/个人/流水） */
+.fin-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; margin-bottom: 18px;
+  background: rgba(127,168,163,.08); border: 1px solid var(--lj-line);
+  overflow-x: auto; scrollbar-width: none; }
+.fin-tabs::-webkit-scrollbar { display: none; }
+.fin-tab-item { flex: 1; min-width: 66px; border: 0; background: transparent; color: var(--lj-text-3);
+  font-family: var(--font-serif); font-size: 13px; letter-spacing: .08em; padding: 8px 16px;
+  border-radius: 999px; cursor: pointer; white-space: nowrap; transition: all .2s; }
+.fin-tab-item:hover { color: var(--lj-text); }
+.fin-tab-item.on { color: #fff; background: var(--lj-dai); box-shadow: 0 2px 8px rgba(0,0,0,.22); }
+
+/* 单池看板（存款 / 公款） */
+.fin-panel { display: flex; flex-direction: column; gap: 16px; margin-bottom: 18px; }
+.fin-pool-hero { display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  flex-wrap: wrap; padding: 20px; border-radius: 16px; }
+.fin-pool-hero-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.fin-pool-hero-icon { font-size: 34px; line-height: 1; flex: none; }
+.fin-panel-title { margin: 0; font-size: 20px; letter-spacing: .1em; }
+.fin-panel-sub { margin: 6px 0 0; font-size: 12.5px; color: var(--lj-text-2); }
+.fin-pool-hero-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.fin-pool-hero-label { font-size: 11.5px; color: var(--lj-text-3); letter-spacing: .1em; }
+.fin-pool-hero-val { font-size: clamp(25px, 3.6vw, 33px); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fin-pool-hero.savings .fin-pool-hero-val { color: var(--yq-gold); }
+.fin-pool-hero.public .fin-pool-hero-val { color: var(--yq-rain); }
+/* 放在着色规则之后，透支时盖过池子主色（同特异性、靠后生效） */
+.fin-pool-hero .fin-pool-hero-val.neg { color: var(--lj-vermilion); }
+
+/* 个人零花：每人一张卡 */
+.fin-pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.fin-pcard { display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 18px; border-radius: 16px; }
+.fin-pcard-avatar { font-size: 20px; line-height: 1; }
+.fin-pcard-name { font-size: 13px; color: var(--lj-text-2); letter-spacing: .08em; }
+.fin-pcard-val { font-size: 25px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fin-pcard-val.neg { color: var(--lj-vermilion); }
+.fin-pcard-sub { font-size: 11.5px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
+
+/* 批量改归属条 */
+.fin-batch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px;
+  border-radius: 12px; margin-bottom: 10px; border-color: rgba(127,168,163,.35); }
+.fin-batch-text { font-size: 13px; color: var(--lj-text-2); }
+.fin-batch-text b { color: var(--lj-seal); }
+.fin-batch-clear { margin-left: auto; border: none; background: transparent; color: var(--lj-text-3);
+  font-size: 12px; cursor: pointer; font-family: var(--font-serif); }
+.fin-batch-clear:hover { color: var(--lj-text); }
+
+/* 流水行：勾选框 + 资金池徽标 */
+.fin-row-check { display: flex; align-items: center; flex: none; cursor: pointer; }
+.fin-row-check input { width: 15px; height: 15px; accent-color: var(--lj-dai); cursor: pointer; }
+.fin-fund-badge { border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-3);
+  font-family: var(--font-serif); font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
+  cursor: pointer; white-space: nowrap; transition: all .2s; }
+.fin-fund-badge:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
+.fin-fund-badge.savings { color: var(--yq-gold); border-color: rgba(199,169,107,.45); }
+.fin-fund-badge.public { color: var(--yq-rain); border-color: rgba(127,168,163,.45); }
+.fin-fund-badge.personal { color: #8d7fa8; border-color: rgba(141,127,168,.45); }
+.fin-fund-badge.todo { border-style: dashed; }
+
+/* 记一笔：资金池选择器 + 调拨方向 */
+.fin-f-hint { font-size: 11.5px; color: var(--lj-text-3); letter-spacing: .06em; }
+.fin-transfer-row { display: flex; align-items: center; gap: 10px; }
+.fin-transfer-sel { flex: 1; min-width: 0; }
+.fin-transfer-arrow { flex: none; color: var(--lj-seal); font-size: 16px; }
+.fin-quick-tags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.fin-quick-label { font-size: 11.5px; color: var(--lj-text-3); letter-spacing: .06em; }
+.fin-quick-tag { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--lj-line);
+  background: transparent; color: var(--lj-text-2); font-family: var(--font-serif); font-size: 12.5px;
+  cursor: pointer; transition: all .2s; }
+.fin-quick-tag:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
+.fin-quick-tag.on { border-color: var(--lj-ochre); color: var(--lj-ochre); background: rgba(199,169,107,.14); }
+.fin-funds { display: flex; flex-wrap: wrap; gap: 8px; }
+.fin-fund { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--lj-line);
+  background: transparent; color: var(--lj-text-2); cursor: pointer; transition: all .2s;
+  font-family: var(--font-serif); font-size: 13px; }
+.fin-fund:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
+.fin-fund.active { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.12); }
+.fin-fund.active.savings { border-color: var(--yq-gold); color: var(--yq-gold); background: rgba(199,169,107,.14); }
+.fin-fund.active.public { border-color: var(--yq-rain); color: var(--yq-rain); background: rgba(127,168,163,.16); }
+.fin-fund.active.personal { border-color: #8d7fa8; color: #8d7fa8; background: rgba(141,127,168,.14); }
+
 /* 家人账目：人员标签 + 汇总表 */
 .fin-members { border-radius: 16px; padding: 18px; margin-bottom: 18px; }
 .fin-members-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -1240,6 +1736,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 @media (max-width: 900px) {
   .fin-kpis { grid-template-columns: repeat(2, 1fr); }
   .fin-charts { grid-template-columns: 1fr; }
+  .fin-pool-val { font-size: 20px; }
+  .fin-pool { padding: 14px; }
 }
 @media (max-width: 560px) {
   .fin-page { padding: 88px 14px 50px; }
@@ -1249,5 +1747,17 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   .fin-mtag { padding: 5px 11px; font-size: 12px; }
   .fin-mtable { font-size: 12px; }
   .fin-mtable th, .fin-mtable td { padding: 7px 8px; }
+  /* 三张池子卡挤在一行会看不清金额：改成可横滑的一行，卡宽固定 */
+  .fin-pools { grid-template-columns: repeat(3, minmax(158px, 1fr)); gap: 10px;
+    overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .fin-pools::-webkit-scrollbar { display: none; }
+  .fin-pool { padding: 13px; }
+  .fin-pool-sub { font-size: 11px; }
+  .fin-pool-hero { padding: 16px; }
+  .fin-pool-hero-val { font-size: 26px; }
+  .fin-pcard { padding: 15px; }
+  .fin-tab-item { padding: 8px 13px; font-size: 12.5px; }
+  .fin-transfer-row { gap: 6px; }
+  .fin-batch-clear { margin-left: 0; }
 }
 </style>

@@ -9,6 +9,7 @@ import csv
 import io
 from datetime import datetime, timedelta
 from collections import defaultdict
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 from fastapi.responses import Response
@@ -59,6 +60,51 @@ FALLBACK_CATEGORY = "其他"
 # 自定义分类名长度上限，须 ≤ FinanceTransaction.category(String(32))
 MAX_CATEGORY_NAME_LEN = 12
 DEFAULT_CUSTOM_ICON = "🏷️"
+
+# ---------- v2.42 公私账：资金池 ----------
+# 三个真实池子 + none（历史数据 / 待归类）。
+# 语义：income → 钱进入的池；expense → 钱花出的池；transfer → 钱转出的池（fund_to 为转入池）。
+FUND_NONE = "none"
+FUND_PERSONAL = "personal"
+FUND_PUBLIC = "public"
+FUND_SAVINGS = "savings"
+FUNDS = (FUND_PERSONAL, FUND_PUBLIC, FUND_SAVINGS)
+FUND_LABELS = {
+    FUND_NONE: "未归类",
+    FUND_PERSONAL: "个人零花",
+    FUND_PUBLIC: "公款",
+    FUND_SAVINGS: "存款",
+}
+# 调拨流水占位分类名（transfer 不参与分类统计，仅用于列表展示）
+TRANSFER_CATEGORY = "调拨"
+# 公私账起算月：此前的历史流水一律 fund='none'，不参与任何池子统计
+FUND_SINCE = "2026-10"
+
+
+def _fund_since_dt() -> datetime:
+    return datetime(int(FUND_SINCE[:4]), int(FUND_SINCE[5:7]), 1)
+
+
+def _norm_fund(value) -> str:
+    """归一化资金池取值；非法值一律回落 none（不抛错，避免脏数据把接口打死）。"""
+    v = (value or "").strip()
+    return v if v in FUNDS else FUND_NONE
+
+
+def _resolve_fund_pair(ttype: str, fund, fund_to) -> tuple[str, str | None]:
+    """按流水类型规整 (fund, fund_to)。
+
+    - transfer：两者都必须落在三个真实池里且不相同，否则抛 400。
+    - income/expense：fund 可 none；fund_to 强制置空（不让非调拨行残留转入池）。
+    """
+    if ttype == "transfer":
+        src, dst = _norm_fund(fund), _norm_fund(fund_to)
+        if src == FUND_NONE or dst == FUND_NONE:
+            raise_error(ErrCode.INVALID_PARAM, "调拨必须在个人零花 / 公款 / 存款之间进行")
+        if src == dst:
+            raise_error(ErrCode.INVALID_PARAM, "转出和转入不能是同一个池")
+        return src, dst
+    return _norm_fund(fund), None
 
 
 # ---------- 分类池（内置 + 自定义） ----------
@@ -125,6 +171,11 @@ class TransactionIn(BaseModel):
     category: str = "其他"
     note: str = ""
     occurred_at: str = ""  # ISO 时间串，缺省用当前时间
+    # v2.42 公私账：资金池（income=入池 / expense=出池 / transfer=转出池）
+    fund: str = FUND_NONE
+    fund_to: str | None = None  # 仅 transfer：转入池
+    # 归属人：不传=当前登录人（个人零花调拨必须能指定「谁的零花」）
+    member_user_id: int | None = None
 
     def amount_cents(self) -> int:
         return int(round(self.amount * 100))
@@ -171,6 +222,8 @@ def _resolve_category(db: Session, ttype: str, category: str) -> str:
 
 def _to_dict(t: FinanceTransaction, icons: dict = None, mmap: dict = None) -> dict:
     imap = icons if icons is not None else CATEGORY_ICONS
+    fund = t.fund or FUND_NONE
+    fund_to = t.fund_to or None
     out = {
         "id": t.id,
         "type": t.type,
@@ -181,6 +234,11 @@ def _to_dict(t: FinanceTransaction, icons: dict = None, mmap: dict = None) -> di
         "note": t.note,
         "occurred_at": str(t.occurred_at),
         "created_at": str(t.created_at),
+        # v2.42 公私账：资金池归属（none=未归类，不参与池子统计）
+        "fund": fund,
+        "fund_to": fund_to,
+        "fund_label": FUND_LABELS.get(fund, FUND_LABELS[FUND_NONE]),
+        "fund_to_label": FUND_LABELS.get(fund_to, "") if fund_to else "",
     }
     # v2.16.2：带上创建者，供前端按「人员标签」分组/筛选
     if mmap is not None:
@@ -407,7 +465,8 @@ async def summary(
     rows = base.filter(FinanceTransaction.occurred_at >= start, FinanceTransaction.occurred_at < end).all()
     income = sum(r.amount_cents for r in rows if r.type == "income")
     expense = sum(r.amount_cents for r in rows if r.type == "expense")
-    count = len(rows)
+    # v2.42：transfer 是池子内部调拨，不计入「收入/支出/笔数」，保证改造前后口径一致
+    count = sum(1 for r in rows if r.type in ("income", "expense"))
 
     # 累计结余（全量，含已删除过滤；始终全家口径）
     all_rows = balance_base.all()
@@ -530,8 +589,11 @@ async def member_breakdown(
     mmap = _member_map(db)
     agg: dict[int, dict] = {}
     for r in rows:
+        # v2.42：transfer 是池子内部调拨，不算任何人的收入/支出，跳过
+        if r.type not in ("income", "expense"):
+            continue
         a = agg.setdefault(r.user_id, {"income": 0, "expense": 0, "count": 0})
-        a[r.type if r.type in ("income", "expense") else "expense"] += r.amount_cents
+        a[r.type] += r.amount_cents
         a["count"] += 1
 
     members = []
@@ -569,6 +631,8 @@ async def list_transactions(
     q: str = "",
     start: str = "",
     end: str = "",
+    fund: str = "",
+    unclassified: bool = False,
     member_user_id: int | None = Query(None, description="按创建者过滤；不传=全部家人"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -579,10 +643,21 @@ async def list_transactions(
     )
     if member_user_id is not None:
         query = query.filter(FinanceTransaction.user_id == member_user_id)
-    if type in ("income", "expense"):
+    if type in ("income", "expense", "transfer"):
         query = query.filter(FinanceTransaction.type == type)
     if category:
         query = query.filter(FinanceTransaction.category == category)
+    # 资金池筛选：fund=xxx 命中「转出池或转入池」，便于看「公款相关」全部流水
+    if fund in FUNDS:
+        query = query.filter(or_(FinanceTransaction.fund == fund, FinanceTransaction.fund_to == fund))
+    # 只看未归类（待归类提醒条点进来）；与 /funds 的 unclassified 计数同口径——
+    # 只算公私账起算日之后的流水，历史数据是「不适用」而非「待归类」
+    if unclassified:
+        query = query.filter(
+            FinanceTransaction.fund == FUND_NONE,
+            FinanceTransaction.type != "transfer",
+            FinanceTransaction.occurred_at >= _fund_since_dt(),
+        )
     s_dt, e_dt = _parse_dt(start), _parse_dt(end)
     if s_dt:
         query = query.filter(FinanceTransaction.occurred_at >= s_dt)
@@ -627,22 +702,31 @@ async def create_transaction(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    ttype = payload.type if payload.type in ("income", "expense") else "expense"
+    ttype = payload.type if payload.type in ("income", "expense", "transfer") else "expense"
+    fund, fund_to = _resolve_fund_pair(ttype, payload.fund, payload.fund_to)
     occurred = _parse_dt(payload.occurred_at) or datetime.now()
     uid = current_user["user_id"]
+    # 归属人：调拨「谁的零花」必须能指定；不传或非家庭成员则回落当前登录人
+    owner = uid
+    if payload.member_user_id is not None and payload.member_user_id in _member_map(db):
+        owner = payload.member_user_id
+    # 调拨不属于任何消费分类，统一写「调拨」占位，避免污染分类统计
+    category = TRANSFER_CATEGORY if ttype == "transfer" else _resolve_category(db, ttype, payload.category)
     row = FinanceTransaction(
-        user_id=uid,
+        user_id=owner,
         household_id=HOUSEHOLD_ID,
         type=ttype,
         amount_cents=abs(payload.amount_cents()),
-        category=_resolve_category(db, ttype, payload.category),
+        category=category,
         note=(payload.note or "")[:255],
+        fund=fund,
+        fund_to=fund_to,
         occurred_at=occurred,
     )
     db.add(row)
     db.commit()
     db.refresh(row)
-    return ResponseBase(data=_to_dict(row, _category_icon_map(db)))
+    return ResponseBase(data=_to_dict(row, _category_icon_map(db), _member_map(db)))
 
 
 @router.put("/transactions/{t_id}", response_model=ResponseBase)
@@ -659,16 +743,21 @@ async def update_transaction(
     ).first()
     if not row:
         raise_error(ErrCode.NOT_FOUND)
-    ttype = payload.type if payload.type in ("income", "expense") else "expense"
+    ttype = payload.type if payload.type in ("income", "expense", "transfer") else "expense"
+    fund, fund_to = _resolve_fund_pair(ttype, payload.fund, payload.fund_to)
     row.type = ttype
     row.amount_cents = abs(payload.amount_cents())
-    row.category = _resolve_category(db, ttype, payload.category)
+    row.category = TRANSFER_CATEGORY if ttype == "transfer" else _resolve_category(db, ttype, payload.category)
     row.note = (payload.note or "")[:255]
+    row.fund = fund
+    row.fund_to = fund_to
+    if payload.member_user_id is not None and payload.member_user_id in _member_map(db):
+        row.user_id = payload.member_user_id
     occurred = _parse_dt(payload.occurred_at) or row.occurred_at
     row.occurred_at = occurred
     db.commit()
     db.refresh(row)
-    return ResponseBase(data=_to_dict(row, _category_icon_map(db)))
+    return ResponseBase(data=_to_dict(row, _category_icon_map(db), _member_map(db)))
 
 
 @router.delete("/transactions/{t_id}", response_model=ResponseBase)
@@ -688,6 +777,241 @@ async def delete_transaction(
     row.deleted_at = datetime.now()
     db.commit()
     return ResponseBase(data={"id": t_id, "deleted": True})
+
+
+# ---------- v2.42 公私账：资金池总览 ----------
+def _month_bounds(month: str) -> tuple[datetime, datetime, str]:
+    """YYYY-MM → (月初, 次月初, 归一化月份串)；非法值回落当月。"""
+    now = datetime.now()
+    sy, sm = now.year, now.month
+    if month:
+        try:
+            sy, sm = (int(x) for x in month.split("-"))
+        except (ValueError, TypeError):
+            sy, sm = now.year, now.month
+    start = datetime(sy, sm, 1)
+    end = datetime(sy + (1 if sm == 12 else 0), 1 if sm == 12 else sm + 1, 1)
+    return start, end, f"{sy}-{sm:02d}"
+
+
+def _yuan(cents: int) -> float:
+    return round(cents / 100, 2)
+
+
+@router.get("/funds", response_model=ResponseBase)
+async def funds_overview(
+    month: str = Query("", description="YYYY-MM，用于计算本月转入/支出；缺省当月"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """三个资金池的余额与流转总览。
+
+    口径（见 docs/ai/FINANCE_FUNDS_20261001.md §3.4）：
+      流入(X) = Σ[income, fund=X] + Σ[transfer, fund_to=X]
+      流出(X) = Σ[expense, fund=X] + Σ[transfer, fund=X]
+      余额(X) = 流入 − 流出
+    只统计 occurred_at >= 2026-10 且 fund != none 的流水，历史数据天然不参与。
+    """
+    since = _fund_since_dt()
+    start, end, period = _month_bounds(month)
+
+    rows = (
+        db.query(FinanceTransaction)
+        .filter(
+            FinanceTransaction.household_id == HOUSEHOLD_ID,
+            FinanceTransaction.deleted_at.is_(None),
+            FinanceTransaction.occurred_at >= since,
+        )
+        .all()
+    )
+
+    mmap = _member_map(db)
+    member_ids = sorted(mmap.keys())
+
+    pools = {f: {"inflow": 0, "outflow": 0, "month_inflow": 0, "month_outflow": 0} for f in FUNDS}
+    monthly: dict = defaultdict(lambda: defaultdict(int))  # (month, fund) → {uid: cents}
+    personal: dict = defaultdict(lambda: {"inflow": 0, "outflow": 0})
+    unclassified = 0
+
+    for r in rows:
+        cents = r.amount_cents or 0
+        in_month = start <= r.occurred_at < end
+        src = r.fund or FUND_NONE
+        dst = r.fund_to or FUND_NONE
+        mon = r.occurred_at.strftime("%Y-%m")
+
+        if r.type == "income" and src in FUNDS:
+            pools[src]["inflow"] += cents
+            if in_month:
+                pools[src]["month_inflow"] += cents
+            monthly[(mon, src)][r.user_id] += cents
+        elif r.type == "expense" and src in FUNDS:
+            pools[src]["outflow"] += cents
+            if in_month:
+                pools[src]["month_outflow"] += cents
+        elif r.type == "transfer":
+            if src in FUNDS:
+                pools[src]["outflow"] += cents
+                if in_month:
+                    pools[src]["month_outflow"] += cents
+            if dst in FUNDS:
+                pools[dst]["inflow"] += cents
+                if in_month:
+                    pools[dst]["month_inflow"] += cents
+                monthly[(mon, dst)][r.user_id] += cents
+        elif src == FUND_NONE and r.type in ("income", "expense"):
+            unclassified += 1
+
+        # 个人零花按人拆分（转入/转出都计入对应人）
+        if r.type == "income" and src == FUND_PERSONAL:
+            personal[r.user_id]["inflow"] += cents
+        elif r.type == "expense" and src == FUND_PERSONAL:
+            personal[r.user_id]["outflow"] += cents
+        elif r.type == "transfer":
+            if src == FUND_PERSONAL:
+                personal[r.user_id]["outflow"] += cents
+            if dst == FUND_PERSONAL:
+                personal[r.user_id]["inflow"] += cents
+
+    pool_list = [
+        {
+            "fund": f,
+            "label": FUND_LABELS[f],
+            "inflow": _yuan(pools[f]["inflow"]),
+            "outflow": _yuan(pools[f]["outflow"]),
+            "balance": _yuan(pools[f]["inflow"] - pools[f]["outflow"]),
+            "month_inflow": _yuan(pools[f]["month_inflow"]),
+            "month_outflow": _yuan(pools[f]["month_outflow"]),
+        }
+        for f in (FUND_SAVINGS, FUND_PUBLIC, FUND_PERSONAL)
+    ]
+
+    monthly_by_member = []
+    for key in sorted(monthly.keys()):
+        mon, fund = key
+        by_uid = monthly[key]
+        members = [
+            {**_member_of(uid, mmap), "amount": _yuan(by_uid.get(uid, 0))}
+            for uid in member_ids
+        ]
+        # 兜底：成员档案缺失（已注销）的 user_id 也要露出来，避免金额对不上
+        members += [
+            {**_member_of(uid, mmap), "amount": _yuan(amt)}
+            for uid, amt in by_uid.items() if uid not in mmap
+        ]
+        monthly_by_member.append({
+            "month": mon,
+            "fund": fund,
+            "fund_label": FUND_LABELS.get(fund, ""),
+            "members": members,
+            "total": _yuan(sum(by_uid.values())),
+        })
+
+    personal_by_member = [
+        {
+            **_member_of(uid, mmap),
+            "inflow": _yuan(personal[uid]["inflow"]),
+            "outflow": _yuan(personal[uid]["outflow"]),
+            "balance": _yuan(personal[uid]["inflow"] - personal[uid]["outflow"]),
+        }
+        for uid in sorted(personal.keys())
+    ]
+
+    return ResponseBase(data={
+        "since": FUND_SINCE,
+        "period": period,
+        "pools": pool_list,
+        "monthly_by_member": monthly_by_member,
+        "personal_by_member": personal_by_member,
+        "unclassified": unclassified,
+    })
+
+
+class TransferIn(BaseModel):
+    from_fund: str
+    to_fund: str
+    amount: float = Field(..., gt=0)
+    month: str = ""          # YYYY-MM，缺省当月；occurred_at 取该月 1 日
+    occurred_at: str = ""    # 也允许直接指定具体日期（优先于 month）
+    note: str = ""
+    member_user_id: int | None = None  # 谁的池子转出；缺省当前登录人
+
+
+@router.post("/transfer", response_model=ResponseBase)
+async def create_transfer(
+    payload: TransferIn = Body(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """池子间调拨（如 个人零花 → 公款）。允许转出池透支，不做余额校验。"""
+    src, dst = _resolve_fund_pair("transfer", payload.from_fund, payload.to_fund)
+    if payload.occurred_at:
+        occurred = _parse_dt(payload.occurred_at) or datetime.now()
+    elif payload.month:
+        occurred = _month_bounds(payload.month)[0]
+    else:
+        occurred = datetime.now()
+    uid = current_user["user_id"]
+    owner = uid
+    if payload.member_user_id is not None and payload.member_user_id in _member_map(db):
+        owner = payload.member_user_id
+    row = FinanceTransaction(
+        user_id=owner,
+        household_id=HOUSEHOLD_ID,
+        type="transfer",
+        amount_cents=int(round(payload.amount * 100)),
+        category=TRANSFER_CATEGORY,
+        note=(payload.note or "")[:255],
+        fund=src,
+        fund_to=dst,
+        occurred_at=occurred,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return ResponseBase(
+        data=_to_dict(row, _category_icon_map(db), _member_map(db)),
+        msg=f"{FUND_LABELS[src]} → {FUND_LABELS[dst]} 调拨已记录",
+    )
+
+
+class BatchFundIn(BaseModel):
+    ids: list[int] = Field(default_factory=list)
+    fund: str = FUND_NONE
+
+
+@router.patch("/transactions/fund", response_model=ResponseBase)
+async def batch_set_fund(
+    payload: BatchFundIn = Body(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """批量改流水归属（「这几笔一起改成公款」）。调拨行有双端语义，跳过不改。"""
+    ids = [int(i) for i in (payload.ids or [])]
+    if not ids:
+        raise_error(ErrCode.INVALID_PARAM, "请先选择要改归属的流水")
+    fund = _norm_fund(payload.fund)
+    rows = (
+        db.query(FinanceTransaction)
+        .filter(
+            FinanceTransaction.id.in_(ids),
+            FinanceTransaction.household_id == HOUSEHOLD_ID,
+            FinanceTransaction.deleted_at.is_(None),
+        )
+        .all()
+    )
+    changed = 0
+    for row in rows:
+        if row.type == "transfer":
+            continue
+        row.fund = fund
+        row.fund_to = None
+        changed += 1
+    db.commit()
+    return ResponseBase(
+        data={"changed": changed, "fund": fund, "fund_label": FUND_LABELS.get(fund, "")},
+        msg=f"已把 {changed} 笔流水改为「{FUND_LABELS.get(fund, '未归类')}」",
+    )
 
 
 # ---------- CSV 导出（按月或全部） ----------
@@ -712,21 +1036,33 @@ async def export_csv(
 
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(["日期", "类型", "分类", "金额(元)", "备注"])
+    writer.writerow(["日期", "类型", "分类", "金额(元)", "资金池", "备注"])
+    type_labels = {"income": "收入", "expense": "支出", "transfer": "调拨"}
     for r in rows:
+        fund_label = FUND_LABELS.get(r.fund or FUND_NONE, "")
+        if r.type == "transfer" and r.fund_to:
+            fund_label = f"{FUND_LABELS.get(r.fund, '')} → {FUND_LABELS.get(r.fund_to, '')}"
         writer.writerow([
             r.occurred_at.strftime("%Y-%m-%d"),
-            "收入" if r.type == "income" else "支出",
+            type_labels.get(r.type, r.type),
             r.category,
             f"{r.amount_cents / 100:.2f}",
+            fund_label,
             r.note or "",
         ])
     data = "\ufeff" + buf.getvalue()  # BOM → Excel 识别 UTF-8
-    filename = f"账本导出_{datetime.now():%Y%m%d}.csv"
+    # 文件名含中文，HTTP 头只能装 latin-1：ASCII 名做兜底、真名走 RFC 5987 的 filename*
+    # （直接往 header 塞中文会被 Starlette 的 latin-1 编码抛 UnicodeEncodeError → 500）
+    stamp = f"{datetime.now():%Y%m%d}"
+    ascii_name = f"finance_{stamp}.csv"
+    cn_name = f"账本导出_{stamp}.csv"
     return Response(
         content=data.encode("utf-8"),
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition":
+                f"attachment; filename={ascii_name}; filename*=UTF-8''{quote(cn_name)}",
+        },
     )
 
 
