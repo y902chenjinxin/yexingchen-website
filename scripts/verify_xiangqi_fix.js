@@ -4,6 +4,7 @@
  *
  * 用法：node scripts/verify_xiangqi_fix.js
  *      DIST_DIR=frontend/dist-deploy25 node scripts/verify_xiangqi_fix.js   # 指定构建目录
+ *      SITE=https://yexingchen.cn node scripts/verify_xiangqi_fix.js        # 直接打生产（部署后取证）
  *
  * 复用 verify_games.js 的脚手架：本地静态服务器托管 dist，/api 反代到 yexingchen.cn，
  * 拉 Chrome 走 CDP。三项断言：
@@ -26,6 +27,9 @@ const OUT_DIR = path.join(ROOT, 'artifacts')
 const PORT = 4174
 const PROXY_TARGET = 'https://yexingchen.cn'
 const LOCAL = `http://127.0.0.1:${PORT}`
+/** 传了 SITE 就跳过本地静态服务器、直接验收生产（部署后取证用）。 */
+const SITE = (process.env.SITE || '').replace(/\/$/, '')
+const BASE = SITE || LOCAL
 
 /* ---- 凭据：从 .secrets/local.env 取 ---- */
 function creds() {
@@ -169,7 +173,7 @@ function check(name, pass, detail = '') {
 (async () => {
   if (!fs.existsSync(path.join(DIST, 'index.html'))) throw new Error('dist 不存在: ' + DIST)
   console.log('dist =', DIST)
-  await startServer()
+  if (!SITE) await startServer()
 
   const { email, pw } = creds()
   console.log('== 1. 生产 API 登录 ==')
@@ -184,12 +188,18 @@ function check(name, pass, detail = '') {
   if (!(await chromeRunning())) await launchChrome()
   await connect()
 
-  await send('Page.navigate', { url: LOCAL + '/login' })
+  await send('Page.navigate', { url: BASE + '/login' })
   await new Promise(r => setTimeout(r, 3500))
+  // 清 SW + CacheStorage：否则可能被旧 SW 托着看旧界面（假阴性/假阳性都发生过）
+  await evalJs(`(async () => {
+    try { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(x => x.unregister())) } catch {}
+    try { const ks = await caches.keys(); await Promise.all(ks.map(n => caches.delete(n))) } catch {}
+    return 'cleared'
+  })()`)
   await evalJs(`localStorage.setItem('token', ${JSON.stringify(token)})`)
 
   console.log('\n== 2. 打开 /tool/games ==')
-  await send('Page.navigate', { url: LOCAL + '/tool/games' })
+  await send('Page.navigate', { url: BASE + '/tool/games' })
   await new Promise(r => setTimeout(r, 1500))
   await evalJs(`localStorage.setItem('token', ${JSON.stringify(token)})`)
   await send('Page.reload')
@@ -219,6 +229,34 @@ function check(name, pass, detail = '') {
   check('开局棋子 32 枚且一手未动', a.pieces === 32 && /^0\s*手/.test(a.hist),
     `子数=${a.pieces} 手数=${a.hist}（期望 32 子 / 0 手）`)
   await shot('A-明棋单机开局')
+
+  /* ============ A2. 反向断言：玩家走一步后 AI 必须应一手 ============
+     光验「开局不动」不够 —— 修过头会把 AI 彻底修死，所以必须证明它还下棋。 */
+  console.log('\n== A2. 玩家走一步 → AI 应一手（防「把 AI 修死」） ==')
+  const mv = await evalJs(`(() => {
+    const cells = [...document.querySelectorAll('.xq-cell')]
+    const i = cells.findIndex(c => c.querySelector('.xq-piece.red'))
+    if (i < 0) return { err: '没找到红子' }
+    cells[i].click()
+    return { i, g: cells[i].querySelector('.xq-piece').textContent.trim() }
+  })()`)
+  await new Promise(r => setTimeout(r, 500))
+  const tg = await evalJs(`(() => {
+    const cells = [...document.querySelectorAll('.xq-cell')]
+    const t = cells.find(c => c.classList.contains('target'))
+    if (!t) return -1
+    const idx = cells.indexOf(t); t.click(); return idx
+  })()`)
+  await new Promise(r => setTimeout(r, 2600))          // 等 AI 的 260ms 定时器 + 余量
+  const a2 = await evalJs(`(() => {
+    const hist = document.querySelector('.xq-quota')?.textContent?.trim() || ''
+    const active = document.querySelector('.xq-player.active')?.textContent?.trim() || ''
+    return { hist, active, pieces: document.querySelectorAll('.xq-cell.has-piece').length }
+  })()`)
+  console.log(`   玩家走「${mv.g}」→ 落点 ${tg}；之后 手数=${a2.hist} 轮到=${a2.active}`)
+  check('玩家落子后 AI 应一手（手数=2）', /^2\s*手/.test(a2.hist), `手数=${a2.hist}（期望 2 手）`)
+  check('AI 应手后轮到玩家（不锁死）', /红方/.test(a2.active), `active=${a2.active}`)
+  await shot('A2-明棋玩家走一步后')
 
   /* ============ B. 暗棋：标准开局 32 点 ============ */
   console.log('\n== B. 象棋翻棋（暗棋）—— 排布断言 ==')
@@ -260,25 +298,56 @@ function check(name, pass, detail = '') {
   check('暗棋：32 子全部落在标准开局点（无越界、无空点）', b.extra === 0 && b.missing === 0,
     `多出 ${b.extra} 个, 缺失 ${b.missing} 个`)
 
-  /* ============ C. 翻一枚子 → 出现合法走法高亮 ============ */
-  console.log('\n== C. 暗棋 —— 翻子后走法高亮断言 ==')
-  await evalJs(`document.querySelectorAll('.xf-cell')[49]?.click()`)   // 先翻中间格（4,5 行⑤=中心，通常是空）
-  await new Promise(r => setTimeout(r, 500))
-  // 找到第一枚已翻开的子，点它，看是否有 .target 高亮
+  /* ============ C. 翻两枚 → 回合回到先翻者 → 选明子出现高亮 ============
+     注意「双人同屏」下翻子后**回合换人**，所以必须翻两枚让回合转回来，
+     再去点第一枚明子才可能被选中（只翻一枚就点 → 必然「选不中」，是规则不是 bug）。 */
+  console.log('\n== C. 暗棋 —— 翻子后选中与走法高亮断言 ==')
+  const flipAt = async () => {
+    const i = await evalJs(`(() => {
+      const cells = [...document.querySelectorAll('.xf-cell')]
+      return cells.findIndex(c => c.querySelector('.xf-back'))
+    })()`)
+    await evalJs(`document.querySelectorAll('.xf-cell')[${i}]?.click()`)
+    await new Promise(r => setTimeout(r, 700))
+    return i
+  }
+  const iA = await flipAt()
+  const iB = await flipAt()
   const c1 = await evalJs(`(() => {
     const cells = [...document.querySelectorAll('.xf-cell')]
-    const i = cells.findIndex(c => c.querySelector('.xf-piece'))
-    if (i < 0) return { err: '没有翻开的子' }
-    cells[i].click()
-    return { idx: i, glyph: cells[i].querySelector('.xf-piece').textContent.trim() }
+    const g = i => cells[i]?.querySelector('.xf-piece')?.textContent?.trim() || ''
+    return { upN: cells.filter(c => c.querySelector('.xf-piece')).length,
+             downN: cells.filter(c => c.querySelector('.xf-back')).length,
+             a: g(${iA}), b: g(${iB}),
+             bSide: (cells[${iB}]?.querySelector('.xf-piece')?.className || '') }
   })()`)
+  console.log(`   翻开 A(${iA})="${c1.a}"  B(${iB})="${c1.b}"  明子 ${c1.upN} / 暗子 ${c1.downN}`)
+  check('翻子成功（两次翻棋各翻出一枚明子）', c1.upN === 2 && c1.downN === 30,
+    `明子 ${c1.upN} / 暗子 ${c1.downN}（期望 2 / 30）`)
+
+  await evalJs(`document.querySelectorAll('.xf-cell')[${iA}]?.click()`)   // 回合已转回先翻者
   await new Promise(r => setTimeout(r, 700))
-  const c2 = await evalJs(`document.querySelectorAll('.xf-cell.target').length`)
-  console.log(`   翻开后选中 (${c1.glyph})，合法目标格数 = ${c2}`)
-  check('翻子成功且该子可被选中（走法链路通）', !!c1.glyph && !c1.err, JSON.stringify(c1))
-  // 目标格可能为 0（被周围暗子挡死）——这是规则允许的，所以只做提示不做硬断言
-  if (c2 === 0) console.log('   ⚠️  该子当前 0 个合法目标（周围全是暗子 → 规则上正常，未判失败）')
+  const c2 = await evalJs(`(() => {
+    const cells = [...document.querySelectorAll('.xf-cell')]
+    const el = cells[${iA}]
+    return { cellClass: el.className, targets: document.querySelectorAll('.xf-cell.target').length }
+  })()`)
+  console.log(`   点回第一枚明子 → cellClass="${c2.cellClass}" 合法目标 ${c2.targets} 格`)
+  check('翻出的明子可被选中（走法链路通）', c2.cellClass.includes('sel'), `cellClass=${c2.cellClass}`)
+  // 目标为 0 是规则允许的（周围全暗子挡死），只提示不判失败
+  if (c2.targets === 0) console.log('   ⚠️  该子当前 0 个合法目标（周围全是暗子 → 规则上正常）')
   await shot('C-暗棋翻子后高亮')
+
+  /* ============ D. （SITE 模式）生产 SW 版本与本次构建一致 ============ */
+  if (SITE) {
+    console.log('\n== D. 生产 SW 版本一致性 ==')
+    const localSw = fs.readFileSync(path.join(DIST, 'sw.js'), 'utf8')
+    const wantV = (localSw.match(/xuanhuang-v(\d+)/) || [])[1]
+    const remoteTxt = await (await fetch(SITE + '/sw.js')).text()
+    const gotV = (remoteTxt.match(/xuanhuang-v(\d+)/) || [])[1]
+    console.log(`   本地构建 SW = v${wantV}，生产 SW = v${gotV}`)
+    check('生产 SW 版本 == 本次构建版本', !!wantV && wantV === gotV, `本地 v${wantV} / 生产 v${gotV}`)
+  }
 
   /* ---------------- 汇总 ---------------- */
   console.log('\n' + '='.repeat(64))

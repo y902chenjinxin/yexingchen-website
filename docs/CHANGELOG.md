@@ -63,6 +63,31 @@ mount 那次越序落子后 `turn = other(RED) = BLACK`，紧接着 `settle()` �
 - `frontend/src/views/GamesView.vue`（`xiangqi_flip` 的 tag / desc / rules 改成逐子走法）
 - `frontend/src/constants/version.js` → `v2.41.8`；`frontend/public/sw.js` → `xuanhuang-v293`
 
+#### 部署与生产取证（2026-09-30）
+
+提交 `c7689cc` → 构建 `dist-deploy25` → `DEPLOY_DIST=dist-deploy25 deploy_frontend.py`
+（`uploaded files: 292`、远端 sw `xuanhuang-v293`、`home=200`）。
+
+新增 `scripts/verify_xiangqi_fix.js`：本地静态托管 dist + `/api` 反代生产，走 CDP 真实浏览器。
+后加 `SITE=https://yexingchen.cn` 开关可直接验收生产（顺带断言生产 SW 版本 == 本次构建）。
+**生产实跑 12/12 全绿**：
+
+| 断言 | 结果 |
+|---|---|
+| A 明棋单机：进对局后 32 子、**0 手**（不再抢跑） | ✅ |
+| A2 玩家走一步 → **AI 应一手（2 手）**、回合回到玩家（防「把 AI 修死」） | ✅ |
+| B 暗棋：32 子全在标准开局 32 点、全背面（多 0 / 缺 0） | ✅ |
+| C 暗棋：连翻两枚 → 点回先翻的明子出现 `sel` 与合法目标高亮 | ✅ |
+| D 生产 SW `v293` == 本地构建 | ✅ |
+
+截图取证：`artifacts/xiangqi-A-明棋单机开局.png`（0 手、黑砲在原位）、
+`artifacts/xiangqi-B-暗棋开局.png`（标准开局 32 点全背面）。
+
+> 脚本自身的两个坑（已修）：① `getJson()` 误用 `https.get` 打 http 调试端点，
+> 抛错的 `Protocol "http:" not supported` 被 `chromeRunning()` 吞掉 → 误判「Chrome 未就绪」；
+> ② 暗棋断言原先只翻一枚子就去点它 —— 双人同屏下**翻子即换手**，那一枚当然选不中（规则，非 bug）。
+> 现改为连翻两枚让回合转回先翻者再点，断言才有意义。
+
 ---
 
 ## [v2.41.7] - 2026-09-30
