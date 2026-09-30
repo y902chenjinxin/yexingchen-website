@@ -371,12 +371,15 @@ function check(name, pass, detail = '') {
     if (pawnIdx < 0) await flipAt()
   }
   let pawn = null
-  for (let k = 0; k < 4 && pawnIdx >= 0; k++) {
+  for (let k = 0; k < 6 && pawnIdx >= 0; k++) {
+    // ⚠️ 必须先 click、**等 Vue 重渲染**（≥500ms）再读 classList/target ——
+    //    早先在同一次 evaluate 里点完立刻读，class 还没上，生产环境直接假红。
+    await evalJs(`document.querySelectorAll('.xf-cell')[${pawnIdx}]?.click()`)
+    await new Promise(r => setTimeout(r, 600))
     pawn = await evalJs(`(() => {
       const cells = [...document.querySelectorAll('.xf-cell')]
       const i = ${pawnIdx}
       const el = cells[i]
-      el.click()
       const p = el.querySelector('.xf-piece')
       if (!p) return { err: '该格没有明子' }
       const mine = p.className.includes('red') ? 'red' : 'black'

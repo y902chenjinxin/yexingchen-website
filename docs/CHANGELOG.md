@@ -41,6 +41,16 @@ if (relaxed) {                  // 暗棋：四向各一格（可横走、可后
 - `frontend/src/views/GamesView.vue`（`xiangqi_flip` 的 desc 与兵卒规则行）
 - `frontend/src/constants/version.js` → `v2.41.9`；`frontend/public/sw.js` → `xuanhuang-v294`
 
+**部署与生产取证**：commit `724efad` → 构建 `dist-deploy26` →
+`DEPLOY_DIST=dist-deploy26 deploy_frontend.py`（`uploaded files: 292`、远端 sw `xuanhuang-v294`、`home=200`）
+→ `SITE=https://yexingchen.cn node scripts/verify_xiangqi_fix.js` **生产 15/15 全绿**，
+新增两条断言：A0 明棋红兵在自家半场**只有 1 个落点**（证明明棋没被带坏）、
+C2 暗棋兵/卒的落点集合 **=== 4 邻格里的可走格**（旧规则下自家半场的兵不会有横走/后退高亮）。
+
+> 脚本自身第 3 个坑（已修）：C2 最初在**同一次 evaluate 里点完立刻读** `classList`——
+> Vue 还没重渲染，必然读到 `sel=false`；本地那次之所以"绿"，是因为撞上了上一节留下的选中态。
+> 现改为「click → 等 600ms → 另起一次 evaluate 读状态」，并把换手重试放宽到 6 次。
+
 ---
 
 ## [v2.41.8] - 2026-09-30
