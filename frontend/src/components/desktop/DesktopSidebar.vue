@@ -48,10 +48,13 @@
             <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
             <span class="dsb-label">{{ item.title }}</span>
           </button>
-          <!-- 外部静态站（如人生重开模拟器）走原生 a 标签，RouterLink 接不住 -->
+          <!-- 外部静态站（如人生重开模拟器）走原生 a 标签，RouterLink 接不住。
+               newTab 的第三方站必须新标签打开：站方页面不归我们管，同标签跳走就回不来 -->
           <a
             v-else-if="item.external"
             :href="item.path"
+            :target="item.newTab ? '_blank' : undefined"
+            :rel="item.newTab ? 'noopener noreferrer' : undefined"
             class="dsb-item"
             :class="{ active: isActive(item.path) }"
           >
@@ -76,6 +79,8 @@
             <a
               v-if="item.external"
               :href="item.path"
+              :target="item.newTab ? '_blank' : undefined"
+              :rel="item.newTab ? 'noopener noreferrer' : undefined"
               class="dsb-item dsb-item-sub"
               :class="{ active: isActive(item.path) }"
             >

@@ -28,6 +28,8 @@
             <a
               v-else-if="it.external"
               :href="it.path"
+              :target="it.newTab ? '_blank' : undefined"
+              :rel="it.newTab ? 'noopener noreferrer' : undefined"
               class="mdl-card"
               @click="buzz"
             >
@@ -76,7 +78,13 @@
               <span v-if="it.kbd" class="mdld-card__kbd">{{ formatKbd(it.kbd) }}</span>
             </span>
           </button>
-          <a v-else-if="it.external" :href="it.path" class="mdld-card">
+          <a
+            v-else-if="it.external"
+            :href="it.path"
+            :target="it.newTab ? '_blank' : undefined"
+            :rel="it.newTab ? 'noopener noreferrer' : undefined"
+            class="mdld-card"
+          >
             <span class="mdld-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
             <span class="mdld-card__lab">{{ it.title }}</span>
           </a>

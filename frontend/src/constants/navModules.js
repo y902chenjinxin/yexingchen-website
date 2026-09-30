@@ -7,6 +7,8 @@
  * 结构：
  * - 一级模块 = 数组里的一项（`label` 为空串表示不显示分组标题，目前只有「工作台」这样）
  * - 二级模块 = `items` 里的一项；`external: true` 表示外链静态站，用原生 <a> 打开
+ *   - `newTab: true` 再叠加一层：在新标签打开（默认同标签跳转，会离开应用且无返回路径）。
+ *     仅对**第三方站**用 —— 站方页面不归我们管，同标签跳走就回不来了。
  * - `superOnly: true` 只有超管可见（由 buildNavModules 过滤）
  */
 import {
@@ -39,6 +41,7 @@ import {
   Bowl,
   Search,
   MagicStick,
+  Aim,
 } from '@element-plus/icons-vue'
 
 export const NAV_GROUPS = [
@@ -83,6 +86,10 @@ export const NAV_GROUPS = [
     items: [
       { path: '/tool/games', title: '棋类游戏', icon: Football },
       { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },
+      // 第三方站（Sprite Fusion「Destroy Any Website」）：输入网址后横版闯关把该站砸到 100%。
+      // 站方 CSP frame-ancestors 不含本站域名，**不能 iframe 内嵌**（实测被拦），故走外链新标签。
+      // 站方限定桌面端，手机端打开会看到其自带的「请在电脑上玩」提示。
+      { path: 'https://destroy.spritefusion.com/', title: '拆站小游戏', icon: Aim, external: true, newTab: true },
     ],
   },
   {

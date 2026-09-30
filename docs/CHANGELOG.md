@@ -1,3 +1,44 @@
+## [v2.41.7] - 2026-09-30
+
+### 「娱乐」新增「拆站小游戏」外链入口（第三方站，新标签打开）
+
+夜星提出把 Sprite Fusion 的 **Destroy Any Website** 集成进「娱乐」分组。
+原打算照 `ToolDetailView` 的做法应用内 iframe 嵌入，**实测否决** ——
+非 localhost 源加载时 Chrome 控制台原文：
+
+```
+Framing 'https://destroy.spritefusion.com/' violates the following Content Security Policy directive:
+"frame-ancestors 'self' https://spritefusion.com https://*.spritefusion.com http://localhost:*".
+The request has been blocked.
+```
+
+站方 CSP `frame-ancestors` 只放行自家域与 `localhost`（页面上的「Embed to your website」
+实际只对 `*.spritefusion.com` 生效），第三方站嵌不进来。故按夜星指示改为**外链新标签**。
+
+**改动**
+- `navModules.js`：娱乐分组新增
+  `{ path: 'https://destroy.spritefusion.com/', title: '拆站小游戏', icon: Aim, external: true, newTab: true }`
+- `navModules.js` 新增 `newTab` 语义：external 条目**默认仍是同标签**跳转
+  （`人生重开模拟器` 行为不变），`newTab: true` 才叠加 `target="_blank" rel="noopener noreferrer"`。
+  第三方站必须新标签 —— 站方页面不归我们管，同标签跳走就回不来
+- `DesktopSidebar.vue`（一级 + 二级子模块）、`ModulesView.vue`（手机端卡片 + 桌面兜底网格）
+  共 4 处外链 `<a>` 支持 `newTab`
+
+**已知**：站方限定桌面端（"The game is not available on mobile, try it on a laptop!"），
+手机端点开只会看到站方自带的提示。仍保留入口，避免出现「PC 有、手机没有」。
+
+**验收**：新增 `scripts/verify_destroy_entry.js`，四组断言全绿 ——
+① 桌面侧栏娱乐分组 `href` / `target=_blank` / `rel` 含 `noopener`；
+② `人生重开模拟器` 仍无 `target`（未回归）；③ 手机端 390×844 同样 `target=_blank`；
+④ **真实点击**确认新标签真的开出并指向该站。
+
+> 取证坑：CDP `Runtime.evaluate` 不带 `userGesture` 时，`target="_blank"` 会被 Chrome
+> 当弹窗拦截，表现为「DOM 属性都对、但点了不开标签」的假阴性 —— 点击类断言必须传
+> `userGesture: true`。另 `Target.targetCreated` 在标签刚建出来时 `url` 常是空串，
+> 要轮询 `Target.getTargets` 读最终地址。
+
+---
+
 ## [v2.41.6] - 2026-09-30
 
 ### 侧栏「智能」组按钮项颜色偏深：`color: inherit` 同特异性覆盖掉 `.dsb-item` 的弱化色
