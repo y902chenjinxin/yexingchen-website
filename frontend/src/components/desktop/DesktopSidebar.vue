@@ -35,10 +35,22 @@
       <template v-for="(group, gi) in groups" :key="group.label">
         <div v-if="group.label" class="dsb-group-label">{{ group.label }}</div>
 
-        <template v-for="item in group.items" :key="item.path">
+        <template v-for="item in group.items" :key="item.path || item.actionId">
+          <!-- v2.41.2：kind:'action' 项不跳路由，触发全局命令面板 / AI 抽屉
+               （顶栏瘦身方案：从顶栏迁入「智能」分组） -->
+          <button
+            v-if="item.kind === 'action'"
+            type="button"
+            class="dsb-item dsb-action"
+            @click="invokeNavAction(item)"
+            :title="item.kbd ? `${item.title}  (${formatKbd(item.kbd)})` : item.title"
+          >
+            <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
+            <span class="dsb-label">{{ item.title }}</span>
+          </button>
           <!-- 外部静态站（如人生重开模拟器）走原生 a 标签，RouterLink 接不住 -->
           <a
-            v-if="item.external"
+            v-else-if="item.external"
             :href="item.path"
             class="dsb-item"
             :class="{ active: isActive(item.path) }"
@@ -107,11 +119,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, inject } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { APP_VERSION } from '@/constants/version'
-import { buildNavModules, isNavItemActive } from '@/constants/navModules'
+import { buildNavModules, isNavItemActive, formatKbd } from '@/constants/navModules'
 import DesktopSearchBox from './DesktopSearchBox.vue'
 
 const route = useRoute()
@@ -158,6 +170,17 @@ function isActive(path) {
 }
 
 function go(path) { router.push(path) }
+
+/*
+ * v2.41.2：「命令面板 / AI 高级工具」从顶栏迁入侧栏智能组，点击不跳路由。
+ * 通过 inject('navAction') 拿到 App.vue 暴露的总线方法统一调用，避免重复实现。
+ */
+const navAction = inject('navAction', null)
+function invokeNavAction(item) {
+  if (!navAction) return
+  const fn = navAction[item.actionId]
+  if (typeof fn === 'function') fn()
+}
 </script>
 
 <style scoped>
@@ -378,6 +401,24 @@ function go(path) { router.push(path) }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* v2.41.2：非路由条目（命令面板 / AI 高级工具）用 <button> 渲染，外观与相邻 RouterLink 完全一致。
+   快捷键（Ctrl+K / Ctrl+Shift+A）只放 title 提示，不在行内显示标签 ——
+   侧栏内容区实测仅 139px，而「Shift+Ctrl+A」标签要占 97px，会把「AI 高级工具」压到
+   35px 可用宽度（需 67px）并截断成「AI ...」；链接项和按钮项因此必须同宽同字。 */
+.dsb-action {
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  /* 只继承字体族，**不要**用 `font: inherit` 简写 —— 简写会把 font-size 一并重置为
+     继承值（body 的 16px），压过上面 .dsb-item 的 13px（同特异性、靠后覆盖），
+     于是同一组里 RouterLink 是 13px、button 是 16px，字体再次对不上。
+     字体族已由 main.css 的 `button { font-family: inherit }` 统一兜住。 */
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
 }
 
 .dsb-divider {

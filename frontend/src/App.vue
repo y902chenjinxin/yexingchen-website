@@ -13,8 +13,10 @@
       </transition>
     </router-view>
 
-    <!-- 登录后全站常驻：桌面顶栏（悬浮）；移动端用独立沉浸式外壳，不显示 ✓ -->
-    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" @open-command-palette="cmdRef?.open?.()" @open-ai-tools="aiToolsOpen = true" />
+    <!-- 登录后全站常驻：桌面顶栏（悬浮）；移动端用独立沉浸式外壳，不显示 ✓
+         v2.41.2 顶栏只留「提醒 + 账号」，⌘K / AI 高级工具的入口已迁到侧栏与手机端「智能」分组，
+         由下方 provide('navAction') 统一调起，顶栏不再有对应 emit -->
+    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
 
     <!-- 登录后桌面端：左侧导航（默认展开，可收起，按玉简分组；顶栏不动） -->
     <DesktopSidebar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
@@ -46,7 +48,7 @@
 </template>
 
 <script setup>
-import { ref, computed, defineAsyncComponent, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, defineAsyncComponent, onMounted, onBeforeUnmount, watch, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useAuthStore } from '@/stores/auth'
@@ -111,6 +113,16 @@ const cmdRef = ref(null)
 
 // AI 高级工具抽屉开关（顶栏 ✺ AI 按钮 + 全局热键触发）
 const aiToolsOpen = ref(false)
+
+/*
+ * v2.41.2：顶栏瘦身，「命令面板 / AI 高级工具」迁入侧栏与手机端模块目录。
+ * 这两个动作的开关挂到 provide('navAction')，子组件（DesktopSidebar / ModulesView）inject 后
+ * 按条目的 actionId 统一调起，不重复实现，也不需要在 App 里为每个入口写一份 emit 监听。
+ */
+provide('navAction', {
+  openCommandPalette: () => cmdRef.value?.open?.(),
+  openAiTools: () => { aiToolsOpen.value = true },
+})
 
 // F5 全局键盘快捷键：g+字母（仿 GitHub 路由跳转）
 // 触发序列：按 g 后 1.5s 内按下字母，否则取消

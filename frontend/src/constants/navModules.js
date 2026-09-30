@@ -37,6 +37,8 @@ import {
   Box,
   Suitcase,
   Bowl,
+  Search,
+  MagicStick,
 } from '@element-plus/icons-vue'
 
 export const NAV_GROUPS = [
@@ -94,6 +96,10 @@ export const NAV_GROUPS = [
     label: '智能',
     items: [
       { path: '/assistant', title: 'AI 对话', icon: ChatLineRound },
+      // v2.41.2：顶栏已瘦身，「命令面板」「AI 高级工具」从顶栏迁入此处
+      // ——kind: 'action' 表明该条目不跳路由，由点击处通过 inject('navAction') 触发动画面板
+      { kind: 'action', actionId: 'openCommandPalette', title: '命令面板', icon: Search, kbd: '⌘K' },
+      { kind: 'action', actionId: 'openAiTools', title: 'AI 高级工具', icon: MagicStick, kbd: '⇧⌘A' },
     ],
   },
 ]
@@ -124,6 +130,19 @@ export function buildNavModules(isSuper = false) {
 /** 模块总数（不含分组标题），用于手机端目录页头计数 */
 export function countNavItems(groups) {
   return groups.reduce((n, g) => n + g.items.length, 0)
+}
+
+/**
+ * 快捷键标签跨平台渲染。
+ * 注册表里统一按 mac 写法存（`⌘K` / `⇧⌘A`），Windows/Linux 上换成 `Ctrl+K` / `Shift+Ctrl+A`，
+ * 否则会在非 mac 机器上显示一个按不出来的组合键。
+ */
+export function formatKbd(kbd) {
+  if (!kbd) return ''
+  const isMac = typeof navigator !== 'undefined'
+    && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '')
+  if (isMac) return kbd
+  return kbd.replace('⇧', 'Shift+').replace('⌘', 'Ctrl+')
 }
 
 /**

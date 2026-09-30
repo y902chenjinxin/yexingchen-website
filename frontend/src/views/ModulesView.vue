@@ -14,9 +14,19 @@
 
       <div ref="strips" class="mdl-stripwrap">
         <div class="mdl-strip" @scroll="onStripScroll">
-          <template v-for="it in g.items" :key="it.path">
+          <template v-for="it in g.items" :key="it.path || it.actionId">
+            <!-- v2.41.2：与桌面侧栏同源——kind:'action' 项点击触发命令面板 / AI 抽屉 -->
+            <button
+              v-if="it.kind === 'action'"
+              type="button"
+              class="mdl-card mdl-action"
+              @click="onActionClick(it)"
+            >
+              <span class="mdl-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
+              <span class="mdl-card__lab">{{ it.title }}</span>
+            </button>
             <a
-              v-if="it.external"
+              v-else-if="it.external"
               :href="it.path"
               class="mdl-card"
               @click="buzz"
@@ -52,8 +62,21 @@
     <section v-for="g in groups" :key="g.label || '__home__'" class="mdld-group">
       <h2 class="mdld-group__name">{{ g.label || '总览' }}</h2>
       <div class="mdld-grid">
-        <template v-for="it in g.items" :key="it.path">
-          <a v-if="it.external" :href="it.path" class="mdld-card">
+        <template v-for="it in g.items" :key="it.path || it.actionId">
+          <!-- v2.41.2：kind:'action' 不跳路由，触发命令面板 / AI 抽屉（与侧栏、手机端同源） -->
+          <button
+            v-if="it.kind === 'action'"
+            type="button"
+            class="mdld-card mdld-action"
+            @click="onActionClick(it)"
+          >
+            <span class="mdld-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
+            <span class="mdld-action__text">
+              <span class="mdld-card__lab">{{ it.title }}</span>
+              <span v-if="it.kbd" class="mdld-card__kbd">{{ formatKbd(it.kbd) }}</span>
+            </span>
+          </button>
+          <a v-else-if="it.external" :href="it.path" class="mdld-card">
             <span class="mdld-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
             <span class="mdld-card__lab">{{ it.title }}</span>
           </a>
@@ -69,18 +92,30 @@
 
 <script setup>
 defineOptions({ name: 'ModulesView' })
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, inject } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useIsMobile } from '@/composables/useIsMobile'
-import { buildNavModules, countNavItems, isNavItemActive } from '@/constants/navModules'
+import { buildNavModules, countNavItems, isNavItemActive, formatKbd } from '@/constants/navModules'
 
 const route = useRoute()
 const auth = useAuthStore()
 const { isMobile } = useIsMobile()
 
 const isSuper = computed(() => auth.user?.role === 'super_admin' || auth.user?.is_super_admin === 1)
-const groups = computed(() => buildNavModules(isSuper.value))
+
+/*
+ * 手机端过滤掉 `kind:'action'` 条目（命令面板 / AI 高级工具）。
+ * 这两个面板在 App.vue 里是 `v-if="!isMobile"`，手机上没有可开的东西 —— 留着会变成
+ * 「点一下什么也不发生」的空卡片，不如不显示；桌面兜底网格仍完整保留（带快捷键标签）。
+ */
+const groups = computed(() => {
+  const gs = buildNavModules(isSuper.value)
+  if (!isMobile.value) return gs
+  return gs
+    .map((g) => ({ ...g, items: g.items.filter((it) => it.kind !== 'action') }))
+    .filter((g) => g.items.length > 0)
+})
 const total = computed(() => countNavItems(groups.value))
 
 const isActive = (path) => isNavItemActive(path, route.path)
@@ -101,6 +136,18 @@ function onStripScroll(e) {
 
 function buzz() {
   try { if (navigator && navigator.vibrate) navigator.vibrate(6) } catch { /* noop */ }
+}
+
+/*
+ * v2.41.2：与桌面侧栏同源——kind:'action' 项点击触发命令面板 / AI 抽屉
+ * 通过 inject('navAction') 拿到 App.vue 暴露的总线
+ */
+const navAction = inject('navAction', null)
+function onActionClick(item) {
+  if (!navAction) return
+  const fn = navAction[item.actionId]
+  if (typeof fn === 'function') fn()
+  buzz()
 }
 
 onMounted(async () => {
@@ -196,6 +243,12 @@ onMounted(async () => {
   -webkit-tap-highlight-color: transparent;
 }
 .mdl-card:active { transform: scale(.95); }
+.mdl-action {
+  background: var(--m-surface, #141c26);
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+}
 .mdl-card__ico {
   display: flex;
   align-items: center;
@@ -266,5 +319,33 @@ onMounted(async () => {
 .mdld-card__ico { display: flex; font-size: 18px; line-height: 1; color: var(--dp-text3); }
 .mdld-card.active { border-color: var(--dp-accent); color: var(--dp-accent); background: var(--dp-accent-faint); }
 .mdld-card.active .mdld-card__ico { color: var(--dp-accent); }
-.mdld-card__lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdld-card__lab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 动作项（命令面板 / AI 高级工具）：外观同卡片，语义是按钮，不跳路由。
+   快捷键标签换行到第二行 —— 与标题同行时会把 150px 宽的卡片标题挤成「命令…」 */
+.mdld-action {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mdld-action__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.mdld-action__text .mdld-card__lab { flex: none; }
+.mdld-card__kbd {
+  align-self: flex-start;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  letter-spacing: .04em;
+  color: var(--dp-text3);
+  background: var(--dp-accent-faint);
+  border: 1px solid var(--dp-line);
+}
 </style>

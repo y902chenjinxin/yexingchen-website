@@ -23,6 +23,15 @@ body {
   transition: background-color .45s ease, color .45s ease;
 }
 
+/* 表单控件默认**不继承** font-family —— 浏览器 UA 样式表给 button/input/select/textarea
+   单独指定了字体族，于是用 <button> 渲染的条目会掉出设计字体，中文回落到系统宋体。
+   症状：侧栏「智能」组里 RouterLink 渲染的「AI 对话」是设计字体，而 <button> 渲染的
+   「命令面板 / AI 高级工具」变成宋体且更粗更大，同一组内字体对不上（夜星截图）。
+   这里统一继承，是 normalize 的标准做法，也一次性堵住全站同类问题。 */
+button, input, select, textarea, optgroup {
+  font-family: inherit;
+}
+
 /* ========== 安全区 + 移动端触控 ==========
    viewport-fit=cover 下用 env(safe-area-inset-*) 避开刘海屏/挖孔屏/手势条 */
 :root {

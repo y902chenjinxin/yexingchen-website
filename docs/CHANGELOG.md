@@ -1,3 +1,76 @@
+## [v2.41.5] - 2026-09-30
+
+### 侧栏「智能」组字体对不上：`<button>` 不继承字体族 + `font: inherit` 简写压掉字号
+
+夜星截图反馈：同一组里「AI 对话」是设计字体，而「命令面板 / AI 高级工具」变成了宋体、
+更大更粗，且「AI 高级工具」被截断成「AI ...」。
+
+**两个独立成因，缺一个都还是对不上**
+
+1. **表单控件不继承 `font-family`**。浏览器 UA 样式表给 `button/input/select/textarea`
+   单独指定了字体族，所以用 `<button>` 渲染的条目会掉出设计字体，中文回落到系统宋体。
+   修法：`main.css` 的 Reset 段补 normalize 标准规则 `button, input, select, textarea, optgroup { font-family: inherit }`，
+   一次性堵住全站同类问题。
+2. **`.dsb-action { font: inherit }` 的简写把 `font-size` 一起重置了**。
+   `font` 简写会连带重置 `font-size` 为继承值（body 的 16px），而 `.dsb-action` 与 `.dsb-item`
+   同为单类选择器、特异性相同、靠后覆盖 —— 于是 `.dsb-item` 的 13px 被压掉，
+   按钮 16px / 链接 13px，字体第二次分叉。修法：改为只 `font-family: inherit`。
+
+**顺带修掉的截断**：侧栏内容区实测只有 139px，而「Shift+Ctrl+A」标签要占 97px，
+会把「AI 高级工具」压到 35px 可用宽度（需 67px）并截断。改为**行内不再显示快捷键标签**，
+快捷键只留在 `title` 提示里（`命令面板  (Ctrl+K)` / `AI 高级工具  (Shift+Ctrl+A)`）；
+桌面 `/modules` 兜底网格卡片宽裕，仍保留可见标签。
+
+**验收（实测数据，非目测）**：`scripts/verify_topbar_slim.js` 第 3 步新增断言 ——
+同组三条目 `font-family` / `font-size` 必须完全一致，且 `scrollWidth <= clientWidth`（不截断）。
+结果：三条均为 `-apple-system / 13px`，`labelW=139/139` 全完整。
+
+---
+
+### 顶栏瘦身：只留「提醒 + 账号」，⌘K 与 AI 高级工具迁入「智能」分组（SW `xuanhuang-v289`→`v290`）
+
+夜星：「顶栏这里要优化下，顶栏只保留提醒和账号。1、默认音乐、下载页面放在账号下面，
+点击昵称，在下拉框里选择；2、ctrl+k、AI 配置放智能模块里。」
+
+顶栏右侧原本是**五个**常驻操作（倒计时徽章 / 提醒中心 / ⌘K / AI 高级工具 / 账号），
+视觉噪声大、每个都只占 36px 却都在抢注意力。本次收敛成**两个**：
+
+| 原位置 | 去向 |
+| --- | --- |
+| 背景音乐（独立图标按钮） | 账号下拉 → 「背景音乐」（带开/关迷你开关） |
+| 下载 App（独立图标按钮） | 账号下拉 → 「下载手机软件」 |
+| ⌘K 命令面板 | 侧栏 / 手机模块目录 → 「智能」分组 → 命令面板 |
+| AI 高级工具 | 侧栏 / 手机模块目录 → 「智能」分组 → AI 高级工具 |
+
+顶栏剩下：**倒计时徽章 + 提醒中心**（同属「提醒」语义）与**账号**。
+
+**改动**
+
+- `frontend/src/components/GlobalTopBar.vue`：删掉音频 / 下载 / ⌘K / AI 四个独立按钮与其
+  `defineEmits`、`cmdKeyLabel` 死代码；账号下拉改为自渲染列表
+  （个人中心 / 背景音乐 / 下载手机软件 / 退出账号），背景音乐项直接反映并切换 `player.bgmEnabled`
+- `frontend/src/constants/navModules.js`：注册表新增 `kind:'action'` 条目类型
+  （不跳路由，由 `actionId` 触发面板），「智能」分组补入「命令面板」「AI 高级工具」；
+  新增 `formatKbd()` —— 注册表统一按 mac 写法存（`⌘K` / `⇧⌘A`），Windows/Linux 渲染为
+  `Ctrl+K` / `Shift+Ctrl+A`，避免在非 mac 机器上显示一个按不出来的组合键
+- `frontend/src/App.vue`：`provide('navAction')` 暴露「打开命令面板 / 打开 AI 抽屉」两个方法，
+  侧栏与手机模块目录 `inject` 后按 `actionId` 统一调起；移除顶栏已不存在的两个 emit 监听
+- `frontend/src/components/desktop/DesktopSidebar.vue`：action 项渲染为 `<button>`，点击调 `navAction`
+- `frontend/src/views/ModulesView.vue`：手机端同步支持 action 项；**手机端过滤掉 action 项** ——
+  命令面板与 AI 抽屉在 `App.vue` 里是 `v-if="!isMobile"`，手机上留着只会是「点一下什么也不发生」的空卡片；
+  桌面兜底网格（直接访问 `/modules`）完整保留并显示快捷键标签（换行到第二行，避免把标题挤成「命令…」）
+
+**验收（`scripts/verify_topbar_slim.js`，对生产构建 4173 取证，9 步全绿）**
+
+- 顶栏 icon 按钮只剩 `提醒中心` 一个，用户区在，⌘K 提示无残留
+- 账号下拉条目 = `个人中心 / 背景音乐 / 下载手机软件 / 退出账号`
+- 侧栏「智能」= `AI 对话 / 命令面板[Ctrl+K] / AI 高级工具[Shift+Ctrl+A]`，后两条点击分别开出命令面板与 AI 抽屉
+- 手机模块页「智能」只剩 `AI 对话`（action 项已过滤）；桌面 `/modules` 兜底页三条齐全且可点击开面板
+
+截图：`artifacts/topbar_user_panel.png`、`topbar_fallback_modules.png`、`topbar_smart_cmd.png`、`topbar_smart_ai.png`
+
+---
+
 ## [v2.41.4] - 2026-09-29
 
 ### 超管改密码豁免复杂度限制（SW `xuanhuang-v288`→`v289`）
