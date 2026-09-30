@@ -1,3 +1,30 @@
+## [v2.41.6] - 2026-09-30
+
+### 侧栏「智能」组按钮项颜色偏深：`color: inherit` 同特异性覆盖掉 `.dsb-item` 的弱化色
+
+夜星截图反馈：「命令面板 / AI 高级工具」的文字比「AI 对话」明显更深。
+
+**成因**：按钮项同时带 `.dsb-item dsb-action` 两个类。`.dsb-item` 定义了弱化色
+`color: var(--dp-text2)`，而 `.dsb-action` 又写了 `color: inherit` —— 两者同为**单类选择器、
+特异性相同**，`.dsb-action` 在样式表中靠后，于是靠后覆盖胜出：颜色从父级继承到正文色
+（`--dp-text`），弱化色被压掉。
+
+这与 v2.41.5 的字体问题**同源**（都是「同特异性 + 靠后覆盖」），上一轮只顾着修
+`font-size`，漏看了同一块里的 `color`。
+
+**修法**：删掉 `.dsb-action` 里的 `color: inherit`（`<button>` 的 UA 默认色本就被
+`.dsb-item` 覆盖，不需要这行），`hover` 也会自然走 `.dsb-item:hover`。
+
+**排查结论**：同功能另外两处**无此问题**，无需改动 ——
+桌面兜底页 `.mdld-action` 与手机端 `.mdl-action` 都未声明 `color`，
+自然继承 `.mdld-card` / `.mdl-card` 的弱化色。
+
+**验收**：`scripts/verify_topbar_slim.js` 第 3 步补了一条**颜色一致性断言**
+（同组三条目 `getComputedStyle().color` 必须相同）。实测三条均为 `rgb(82, 82, 91)`；
+线上产物 `assets/index-CDz-zXT5.css` 中 `.dsb-action` 已无 `color:inherit`。
+
+---
+
 ## [v2.41.5] - 2026-09-30
 
 ### 侧栏「智能」组字体对不上：`<button>` 不继承字体族 + `font: inherit` 简写压掉字号

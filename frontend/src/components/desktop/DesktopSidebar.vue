@@ -417,7 +417,11 @@ function invokeNavAction(item) {
      于是同一组里 RouterLink 是 13px、button 是 16px，字体再次对不上。
      字体族已由 main.css 的 `button { font-family: inherit }` 统一兜住。 */
   font-family: inherit;
-  color: inherit;
+  /* 这里**不能**写 `color: inherit`：button 同时带 .dsb-item 类，而 .dsb-action 与
+     .dsb-item 同为单类选择器、特异性相同、靠后覆盖 —— 一旦 inherit，就从父级拿到
+     正文色（--dp-text），把 .dsb-item 的弱化色（--dp-text2）压掉，
+     于是「命令面板 / AI 高级工具」比「AI 对话」明显更深（夜星截图）。
+     删掉即可让 .dsb-item 的 --dp-text2 正常生效，hover 也会走 .dsb-item:hover。 */
   width: 100%;
 }
 

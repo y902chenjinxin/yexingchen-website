@@ -130,8 +130,12 @@ const READ_SMART_GROUP = `(() => {
         const lab = n.querySelector('.dsb-label');
         const cs = lab ? getComputedStyle(lab) : null;
         const font = cs ? (cs.fontFamily.split(',')[0] + '/' + cs.fontSize) : null;
+        // 颜色也必须同组一致：.dsb-action 若写 color:inherit，同特异性靠后覆盖会拿到
+        // 正文色（--dp-text），比 .dsb-item 的弱化色（--dp-text2）明显更深
+        // （本段是模板字符串，注释里不要出现反引号，否则会截断字符串）
+        const color = cs ? cs.color : null;
         const clipped = lab ? lab.scrollWidth > lab.clientWidth + 1 : false;
-        if (label) out.push({ label, kind: isAction ? 'action' : 'route', kbd, font, clipped });
+        if (label) out.push({ label, kind: isAction ? 'action' : 'route', kbd, font, color, clipped });
         n = n.nextElementSibling;
       }
       break;
@@ -224,7 +228,7 @@ const READ_FALLBACK_SMART = `(() => {
   console.log('\n=== 3. 桌面侧栏「智能」分组 ===');
   const smart = JSON.parse(await evalJs(READ_SMART_GROUP));
   console.log('  智能分组条目:');
-  smart.forEach((it) => console.log('   -', it.label.padEnd(12, ' '), (it.kind === 'action' ? `[action kbd=${it.kbd}]` : '[route]').padEnd(22, ' '), it.font, it.clipped ? '❌截断' : '✅完整'));
+  smart.forEach((it) => console.log('   -', it.label.padEnd(12, ' '), (it.kind === 'action' ? `[action kbd=${it.kbd}]` : '[route]').padEnd(22, ' '), it.font, it.color, it.clipped ? '❌截断' : '✅完整'));
   const expectSmart = ['AI 对话', '命令面板', 'AI 高级工具'];
   if (JSON.stringify(smart.map(s => s.label)) !== JSON.stringify(expectSmart)) {
     throw new Error('智能分组内容不符：期望 ' + JSON.stringify(expectSmart) + ' 实际 ' + JSON.stringify(smart.map(s => s.label)));
@@ -234,6 +238,9 @@ const READ_FALLBACK_SMART = `(() => {
   // 字体必须全组一致：RouterLink 项与 <button> 项的 font-family / font-size 不能分叉
   const fonts = [...new Set(smart.map(s => s.font))];
   if (fonts.length !== 1) throw new Error('同组字体不一致：' + JSON.stringify(smart.map(s => s.label + '=' + s.font)));
+  // 颜色同理：按钮项不得比链接项更深
+  const colors = [...new Set(smart.map(s => s.color))];
+  if (colors.length !== 1) throw new Error('同组颜色不一致：' + JSON.stringify(smart.map(s => s.label + '=' + s.color)));
   // 标签不能被快捷键标签挤到截断
   const clipped = smart.filter(s => s.clipped).map(s => s.label);
   if (clipped.length) throw new Error('侧栏标签被截断：' + JSON.stringify(clipped));
