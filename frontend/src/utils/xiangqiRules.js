@@ -45,9 +45,10 @@ export function initialBoard() {
 
 /** 单子的伪合法目标（含吃子，不含「走完自己被将」的过滤）。
  *
- * opts.relaxed = true 供**翻棋（暗棋）**使用：棋子随机撒在整盘上，
- * 士/象/将不再受九宫与河界约束（否则被撒到界外就永远动不了），
- * 并且不启用「飞将」照面吃（暗子身份未知，照面规则会造成莫名其妙的胜负）。
+ * opts.relaxed = true 供**翻棋（暗棋）**使用：棋盘上没有「阵营半场」这个概念了，
+ * 所以放开三处限制 —— 士/象/将不再受九宫与河界约束（否则被发到界外就永远动不了）、
+ * 兵/卒按「单格位移」上下左右各一格（可横走、可后退），并且不启用「飞将」照面吃
+ * （暗子身份未知，照面规则会造成莫名其妙的胜负）。
  * 走法形态本身完全保留：士斜一格、象走田且塞象眼、将走一格、车直行、马蹩腿、炮隔子吃。
  */
 export function pieceTargets(b, from, opts = {}) {
@@ -126,9 +127,15 @@ export function pieceTargets(b, from, opts = {}) {
       }
     }
   } else if (t === 'P') {
-    const fwd = s === BLACK ? 1 : -1
-    push(x, y + fwd)
-    if (!onOwnSide(y, s)) { push(x + 1, y); push(x - 1, y) }   // 过河可横走
+    if (relaxed) {
+      // 暗棋：河界已整体放开（士/象/将都能越河），「只能前进」失去参照 ——
+      // 兵/卒按夜星口径归入「单格位移」，上下左右各一格（可横走、可后退，与将帅同款）。
+      for (const [dx, dy] of ORTHO) push(x + dx, y + dy)
+    } else {
+      const fwd = s === BLACK ? 1 : -1
+      push(x, y + fwd)
+      if (!onOwnSide(y, s)) { push(x + 1, y); push(x - 1, y) }   // 明棋：过河才可横走，永不后退
+    }
   }
   return out
 }

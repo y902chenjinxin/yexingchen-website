@@ -230,6 +230,26 @@ function check(name, pass, detail = '') {
     `子数=${a.pieces} 手数=${a.hist}（期望 32 子 / 0 手）`)
   await shot('A-明棋单机开局')
 
+  /* ============ A0. 明棋：兵在自己半场只有「向前」一个落点（不许因改暗棋而松动） ============ */
+  console.log('\n== A0. 明棋兵卒仍守原规则（只有前进） ==')
+  const p0 = await evalJs(`(() => {
+    const cells = [...document.querySelectorAll('.xq-cell')]
+    const i = cells.findIndex((c, k) => (k / 9 | 0) === 6 && /兵/.test(c.textContent))
+    if (i < 0) return { err: '第 7 行（y=6）找不到红兵' }
+    cells[i].click()
+    return { i }
+  })()`)
+  await new Promise(r => setTimeout(r, 400))
+  const p1 = await evalJs(`(() => {
+    const cells = [...document.querySelectorAll('.xq-cell')]
+    const t = cells.map((c, k) => (c.classList.contains('target') ? k : -1)).filter(k => k >= 0)
+    return { targets: t, forward: ${p0.i} - 9 }
+  })()`)
+  console.log(`   红兵 @${p0.i} → 落点 ${JSON.stringify(p1.targets)}（前进= ${p1.forward}）`)
+  check('明棋红兵在自家半场只有「向前」1 个落点', p1.targets.length === 1 && p1.targets[0] === p1.forward,
+    `落点=${JSON.stringify(p1.targets)}`)
+  await evalJs(`(() => { const c = document.querySelector('.xq-cell.sel'); if (c) c.click() })()`)
+
   /* ============ A2. 反向断言：玩家走一步后 AI 必须应一手 ============
      光验「开局不动」不够 —— 修过头会把 AI 彻底修死，所以必须证明它还下棋。 */
   console.log('\n== A2. 玩家走一步 → AI 应一手（防「把 AI 修死」） ==')
@@ -337,6 +357,65 @@ function check(name, pass, detail = '') {
   // 目标为 0 是规则允许的（周围全暗子挡死），只提示不判失败
   if (c2.targets === 0) console.log('   ⚠️  该子当前 0 个合法目标（周围全是暗子 → 规则上正常）')
   await shot('C-暗棋翻子后高亮')
+
+  /* ============ C2. 暗棋兵/卒 = 四向一格（含横走 / 后退，V2442-010） ============
+     断言口径：兵/卒的落点集合 === 「4 邻格里可走的那些格」（空 or 已翻开的敌子）。
+     旧规则（只能前进 + 过河才横走）下，自家半场的兵不会有横走/后退高亮 → 这条会红。 */
+  console.log('\n== C2. 暗棋兵/卒 —— 四向一格（可横走、可后退） ==')
+  let pawnIdx = -1
+  for (let k = 0; k < 12 && pawnIdx < 0; k++) {
+    pawnIdx = await evalJs(`(() => {
+      const cells = [...document.querySelectorAll('.xf-cell')]
+      return cells.findIndex(c => /[兵卒]/.test(c.querySelector('.xf-piece')?.textContent || ''))
+    })()`)
+    if (pawnIdx < 0) await flipAt()
+  }
+  let pawn = null
+  for (let k = 0; k < 4 && pawnIdx >= 0; k++) {
+    pawn = await evalJs(`(() => {
+      const cells = [...document.querySelectorAll('.xf-cell')]
+      const i = ${pawnIdx}
+      const el = cells[i]
+      el.click()
+      const p = el.querySelector('.xf-piece')
+      if (!p) return { err: '该格没有明子' }
+      const mine = p.className.includes('red') ? 'red' : 'black'
+      const x = i % 9, y = (i / 9) | 0
+      const nb = []
+      if (x > 0) nb.push(i - 1)
+      if (x < 8) nb.push(i + 1)
+      if (y > 0) nb.push(i - 9)
+      if (y < 9) nb.push(i + 9)
+      const movable = nb.filter(j => {
+        const q = cells[j]
+        const qp = q.querySelector('.xf-piece')
+        if (qp) return !qp.className.includes(mine)          // 已翻开的敌子可吃
+        return !q.querySelector('.xf-back')                  // 空格可走；暗子挡路不可吃
+      })
+      const targets = nb.filter(j => cells[j].classList.contains('target'))
+      const back = mine === 'red' ? i + 9 : i - 9            // 红兵朝上走 → 后退=y+1
+      const side = [i - 1, i + 1]
+      return { idx: i, glyph: p.textContent.trim(), sel: el.classList.contains('sel'),
+               movable: movable.slice().sort((a, b) => a - b),
+               targets: targets.slice().sort((a, b) => a - b),
+               backOk: movable.includes(back), backHit: targets.includes(back),
+               sideOk: side.some(s => movable.includes(s)), sideHit: side.some(s => targets.includes(s)) }
+    })()`)
+    if (pawn && pawn.sel) break
+    await flipAt()                                            // 不是本方颜色 → 翻一手换手再试
+  }
+  console.log('   兵/卒 @' + pawnIdx + ' 「' + (pawn && pawn.glyph) + '」'
+    + '  可走邻格 ' + JSON.stringify(pawn && pawn.movable)
+    + '  高亮 ' + JSON.stringify(pawn && pawn.targets)
+    + '  | 后退可选=' + (pawn && pawn.backOk) + ' 后退高亮=' + (pawn && pawn.backHit)
+    + ' 横向可选=' + (pawn && pawn.sideOk) + ' 横向高亮=' + (pawn && pawn.sideHit))
+  check('暗棋兵/卒可被选中（能验证）', !!(pawn && pawn.sel), JSON.stringify(pawn && pawn.movable))
+  check('暗棋兵/卒落点 == 四邻可走格（不受河界/前进限制）',
+    !!(pawn && JSON.stringify(pawn.movable) === JSON.stringify(pawn.targets)),
+    `可走 ${JSON.stringify(pawn && pawn.movable)} vs 高亮 ${JSON.stringify(pawn && pawn.targets)}`)
+  if (pawn && pawn.backOk) check('暗棋兵/卒「后退」在可选时确实高亮', pawn.backHit === true, `后退高亮=${pawn.backHit}`)
+  else console.log('   ⚠️  本局这枚兵/卒的后退格被占，未取到「后退」样本（引擎层 probe_pawn.mjs 已断言四向）')
+  await shot('C2-暗棋兵卒四向')
 
   /* ============ D. （SITE 模式）生产 SW 版本与本次构建一致 ============ */
   if (SITE) {
