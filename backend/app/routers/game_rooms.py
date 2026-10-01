@@ -123,24 +123,51 @@ def _ludo_turn_uid(db: Session, r: GameRoom) -> int:
     return cur
 
 
+def _can_undo(r: GameRoom, uid: int, stack: list, undo_used: dict[int, int]) -> bool:
+    """「我现在能不能悔棋」——必须与 `/undo` 的校验逐条对齐。
+
+    否则要么「按钮亮着、一点就报错」，要么反过来「明明能悔却灰着」。
+
+    v2.42.1 修的坑：后端**从未下发** can_undo，而前端悔棋按钮的 disabled 条件
+    正是它（`GomokuBoard.vue::canUndoOnline`）→ 在线对局的悔棋按钮永远置灰，
+    表现为「在线邀约的对局不支持悔棋」。
+    """
+    if r.status not in ("playing", "finished"):
+        return False
+    # finished 只有「悔掉制胜一手」这一种情况允许（与 /undo 一致）
+    if r.status == "finished" and r.end_reason != "win":
+        return False
+    if not stack or stack[-1][1] != uid:      # 只能悔自己刚下的那一手
+        return False
+    return undo_used.get(uid, 0) < UNDO_QUOTA
+
+
 def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session, replay=None) -> dict:
-    """补 my_seat / my_turn / undo_left。
+    """补 my_seat / my_turn / undo_left / undo_opp_left / can_undo。
 
     坑（v2.40.28 修）：轮次是房间的**全局**属性，必须查全局状态；
     用增量 moves 判断会在轮询（after_seq=last_seq）时误判，把棋盘锁死。
+
+    坑（v2.42.1 修）：悔棋配额与 can_undo 原先只写在 `status == playing` 分支内，
+    于是「赢棋后想悔棋翻盘」时这两个字段直接缺失，前端 `?? 3` 兜底成假的余量。
+    现在五子棋的这三项**与状态无关**，只有 my_turn 受状态约束。
     """
     out["my_seat"] = "black" if uid == _black_id(r) else "white"
+    if r.game == "gomoku":
+        _, stack, undo_used = replay if replay is not None else _replay_gomoku(db, r)
+        last_uid = stack[-1][1] if stack else None
+        out["my_turn"] = r.status == "playing" and (
+            (uid == _black_id(r)) if last_uid is None else (last_uid != uid)
+        )
+        out["undo_left"] = max(0, UNDO_QUOTA - undo_used.get(uid, 0))
+        opp = r.invitee_id if uid == r.owner_id else r.owner_id
+        out["undo_opp_left"] = max(0, UNDO_QUOTA - undo_used.get(opp, 0))
+        out["can_undo"] = _can_undo(r, uid, stack, undo_used)
+        return out
     if r.status != "playing":
         out["my_turn"] = False
     elif r.game == "ludo":
         out["my_turn"] = uid == _ludo_turn_uid(db, r)
-    elif r.game == "gomoku":
-        _, stack, undo_used = replay if replay is not None else _replay_gomoku(db, r)
-        last_uid = stack[-1][1] if stack else None
-        out["my_turn"] = (uid == _black_id(r)) if last_uid is None else (last_uid != uid)
-        out["undo_left"] = max(0, UNDO_QUOTA - undo_used.get(uid, 0))
-        opp = r.invitee_id if uid == r.owner_id else r.owner_id
-        out["undo_opp_left"] = max(0, UNDO_QUOTA - undo_used.get(opp, 0))
     else:
         last = _last_move(db, r.id)
         out["my_turn"] = (uid == _black_id(r)) if last is None else (last.user_id != uid)

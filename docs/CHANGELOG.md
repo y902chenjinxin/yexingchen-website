@@ -1,3 +1,34 @@
+## [v2.42.1] - 2026-10-01
+
+### 修：五子棋在线邀约的对局「不支持悔棋」
+
+夜星：「五子棋在线邀约的对局，不支持悔棋，需要优化」。
+
+**根因（后端单边漏字段）**：`_decorate_seat` **从未下发 `can_undo`**，而前端悔棋按钮的
+disabled 条件正是它（`GomokuBoard.vue::canUndoOnline = !!room.can_undo`）→ 按钮永远置灰，
+表现为「在线对局没有悔棋」。服务端 `/undo` 本身是好的，所以只调 API 的
+`scripts/verify_games_online.py` 一直是绿的 —— 这类「前后端各改一半」的漏字段，
+只有把两边的口径钉在一起才测得出来。
+
+**改动**（`backend/app/routers/game_rooms.py`）：
+- 新增 `_can_undo()`，与 `/undo` 的校验**逐条对齐**（playing/finished(win) 才可能、
+  最后一手必须是我、配额未用尽），避免「按钮亮着一点就报错」或反过来的假灰。
+- `_decorate_seat` 里五子棋分支提到状态判断**之前**：`undo_left / undo_opp_left /
+  can_undo` 现在**与状态无关**，只有 `my_turn` 受状态约束。原先这三项只写在
+  `status == playing` 分支内，导致赢棋后想「悔棋翻盘」时配额字段直接缺失、
+  前端 `?? 3` 兜底成假的余量（显示「余 3」但实际可能已用完）。
+
+**规则未变**：仍是每方每局 3 次、只能悔**自己刚下的那一手**（对方已应招则不可悔，
+悔的是「手滑落错位置」这个场景）。终局为 resign/leave/timeout 时不可悔，与 `/undo` 一致。
+
+**回归测试**：新增 `scripts/verify_undo_logic.py`（纯逻辑、不连库、不打生产，23 项全绿）。
+跑法：`backend\.venv\Scripts\python.exe scripts\verify_undo_logic.py`。
+
+**部署**：仅后端改动 → `deploy_backend.py`（`game_rooms.py` 已在白名单内）；
+**前端无改动，未重建、未改 SW 版本号**（版本徽标仍为 v2.42.0）。
+
+---
+
 ## [v2.42.0] - 2026-10-01
 
 ### 记账模块改造为「公私账」：三个资金池 + 手动调拨
