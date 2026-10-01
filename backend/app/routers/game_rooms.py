@@ -7,9 +7,11 @@
   （家庭场景，荣誉制），服务端记录 moves 事件流以便回放与观战。
 - 座位：默认 owner 执黑先行，建房时可切换（black_user_id）。
 - v2.40.34：
-  * **悔棋**：`{"undo":1}` 作为事件追加，重放时弹出上一手 → last_seq 单调递增，轮询游标不失效；
-    每方每局 3 次（服务端按事件流统计）。
+  * **悔棋**：`{"undo":N}` 作为事件追加，重放时弹出栈顶 N 手 → last_seq 单调递增，轮询游标不失效；
+    每方每局 3 次（服务端按事件流统计）。N=1 撤自己刚下的那手，N=2 连对方应招一起撤。
   * **对手退出**：`/leave` 主动告知 + `*_seen_at` 心跳兜底（90s），终局原因写 end_reason。
+- v2.42.1 / v2.42.2：见 `_undo_plies` / `_can_undo` 的注释 —— 补下发 `can_undo`，
+  并把「对方已应招」从「直接拒掉」改为「连同应招撤 2 手」。
 """
 from __future__ import annotations
 
@@ -90,6 +92,9 @@ def _replay_gomoku(db: Session, r: GameRoom):
 
     stack 是「有效落子栈」—— 悔棋即弹出栈顶，因此轮次/胜负都必须基于它，
     不能简单取最后一条 move（那会把被悔掉的一手当成最新手）。
+
+    悔棋事件是 `{"undo": N}`：N=1 撤自己刚下的那一手，N=2 连同对方的应招一起撤。
+    一次悔棋只扣 1 次配额，与撤几手无关。
     """
     board = [0] * (GK_N * GK_N)
     stack: list[tuple[int, int]] = []
@@ -97,9 +102,11 @@ def _replay_gomoku(db: Session, r: GameRoom):
     for mv in _moves(db, r.id):
         a = json.loads(mv.action or "{}")
         if a.get("undo"):
-            if stack:
-                idx, _ = stack.pop()
-                board[idx] = 0
+            plies = a["undo"] if a.get("undo") in (1, 2) else 1
+            for _ in range(plies):
+                if stack:
+                    idx, _ = stack.pop()
+                    board[idx] = 0
             undo_used[mv.user_id] = undo_used.get(mv.user_id, 0) + 1
         elif isinstance(a.get("idx"), int) and 0 <= a["idx"] < GK_N * GK_N:
             idx = a["idx"]
@@ -123,6 +130,25 @@ def _ludo_turn_uid(db: Session, r: GameRoom) -> int:
     return cur
 
 
+def _undo_plies(r: GameRoom, uid: int, stack: list) -> int:
+    """我能悔几手 —— 0 = 不可悔，1 = 撤自己刚下的那一手，2 = 对方已应招、连应招一起撤。
+
+    悔棋的唯一入口口径：`/undo` 的校验、下发给前端的 `can_undo` / `undo_plies`
+    都必须走这里，否则会出现「按钮亮着一点就报错」或反过来的假灰。
+
+    v2.42.2（夜星）：对方已应招时原来直接拒掉，而在线轮询 1.6s 一次，
+    等于悔棋窗口只有一两秒、形同虚设。改为「连同对方那一手一起撤 2 手」——
+    撤完回到我该行棋的局面，棋形与轮次都自洽（双方各让一手，谁也没多走）。
+    """
+    if not stack:
+        return 0
+    if stack[-1][1] == uid:
+        return 1                                   # 对方还没应招 → 只撤自己这手
+    if len(stack) >= 2 and stack[-2][1] == uid:
+        return 2                                   # 对方已应招 → 连同应招一起撤
+    return 0                                       # 最后一手不是我，也不是我的应招对象
+
+
 def _can_undo(r: GameRoom, uid: int, stack: list, undo_used: dict[int, int]) -> bool:
     """「我现在能不能悔棋」——必须与 `/undo` 的校验逐条对齐。
 
@@ -137,20 +163,20 @@ def _can_undo(r: GameRoom, uid: int, stack: list, undo_used: dict[int, int]) -> 
     # finished 只有「悔掉制胜一手」这一种情况允许（与 /undo 一致）
     if r.status == "finished" and r.end_reason != "win":
         return False
-    if not stack or stack[-1][1] != uid:      # 只能悔自己刚下的那一手
+    if _undo_plies(r, uid, stack) == 0:
         return False
     return undo_used.get(uid, 0) < UNDO_QUOTA
 
 
 def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session, replay=None) -> dict:
-    """补 my_seat / my_turn / undo_left / undo_opp_left / can_undo。
+    """补 my_seat / my_turn / undo_left / undo_opp_left / can_undo / undo_plies。
 
     坑（v2.40.28 修）：轮次是房间的**全局**属性，必须查全局状态；
     用增量 moves 判断会在轮询（after_seq=last_seq）时误判，把棋盘锁死。
 
     坑（v2.42.1 修）：悔棋配额与 can_undo 原先只写在 `status == playing` 分支内，
     于是「赢棋后想悔棋翻盘」时这两个字段直接缺失，前端 `?? 3` 兜底成假的余量。
-    现在五子棋的这三项**与状态无关**，只有 my_turn 受状态约束。
+    现在五子棋的这几项**与状态无关**，只有 my_turn 受状态约束。
     """
     out["my_seat"] = "black" if uid == _black_id(r) else "white"
     if r.game == "gomoku":
@@ -162,7 +188,10 @@ def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session, replay=None) -
         out["undo_left"] = max(0, UNDO_QUOTA - undo_used.get(uid, 0))
         opp = r.invitee_id if uid == r.owner_id else r.owner_id
         out["undo_opp_left"] = max(0, UNDO_QUOTA - undo_used.get(opp, 0))
-        out["can_undo"] = _can_undo(r, uid, stack, undo_used)
+        # can_undo 与 undo_plies 同源：plies>0 ⟺ 可悔，避免两者各算一套而互相打架
+        plies = _undo_plies(r, uid, stack)
+        out["undo_plies"] = plies if _can_undo(r, uid, stack, undo_used) else 0
+        out["can_undo"] = out["undo_plies"] > 0
         return out
     if r.status != "playing":
         out["my_turn"] = False
@@ -510,9 +539,11 @@ def room_undo(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """悔棋（仅五子棋）：追加 `{"undo":1}` 事件，重放时弹出上一手。
+    """悔棋（仅五子棋）：追加 `{"undo": N}` 事件，重放时弹出栈顶 N 手。
 
-    每方每局 3 次。只能悔**自己刚下的那一手**（对方已应招则不能悔）。
+    每方每局 3 次（一次悔棋扣 1 次，与撤几手无关）。
+    - 对方**还没应招** → N=1，只撤自己刚下的那一手；
+    - 对方**已经应招** → N=2，连同对方那一手一起撤（撤完回到我该行棋的局面）。
     若悔掉的正是制胜一手，房间从 finished 回到 playing。
     """
     r = _get_room(db, room_id)
@@ -527,9 +558,9 @@ def room_undo(
     _, stack, undo_used = _replay_gomoku(db, r)
     if not stack:
         raise_error(ErrCode.INVALID_PARAM, "还没有可悔的棋")
-    _, last_uid = stack[-1]
-    if last_uid != uid:
-        raise_error(ErrCode.INVALID_PARAM, "只能悔自己刚下的那一手")
+    plies = _undo_plies(r, uid, stack)
+    if plies == 0:
+        raise_error(ErrCode.INVALID_PARAM, "没有你可悔的棋（最后一手不是你下的）")
     if undo_used.get(uid, 0) >= UNDO_QUOTA:
         raise_error(ErrCode.INVALID_PARAM, f"本局悔棋次数已用完（每方 {UNDO_QUOTA} 次）")
 
@@ -539,7 +570,7 @@ def room_undo(
         room_id=r.id,
         seq=(last.seq if last else 0) + 1,
         user_id=uid,
-        action=json.dumps({"undo": 1}),
+        action=json.dumps({"undo": plies}),
     )
     db.add(mv)
     if r.status == "finished":

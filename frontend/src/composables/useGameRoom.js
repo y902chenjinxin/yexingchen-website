@@ -7,6 +7,7 @@
  *   g.join(roomId)                   // 接受邀请 / 恢复对局（重放全部事件）
  *   g.send({ idx: 112 })             // 我的落子（服务端校验轮次与占位）
  *   g.undo()                         // 悔棋（五子棋，每方每局 3 次）
+ *   g.undoPlies.value                // 这次悔棋会撤几手：1=只撤自己那手，2=连对方应招一起撤
  *   g.leave()                        // 主动离开（对方立即看到终局）
  *   g.myTurn.value                   // 是否轮到我（轮询驱动）
  *
@@ -38,6 +39,8 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
   const endReason = computed(() => room.value?.end_reason || '')
   const undoLeft = computed(() => room.value?.undo_left ?? 3)
   const undoOppLeft = computed(() => room.value?.undo_opp_left ?? 3)
+  // 这次悔棋会撤几手（服务端权威）：1=只撤自己刚下那手，2=对方已应招、连应招一起撤；0=不可悔
+  const undoPlies = computed(() => room.value?.undo_plies ?? 0)
   const opponentName = computed(() =>
     room.value ? (room.value.owner_id === myUserId.value ? room.value.invitee_name : room.value.owner_name) : '')
 
@@ -162,7 +165,7 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
   onBeforeUnmount(() => { stopPoll() })
   return {
     room, moves, status, mySeat, myTurn, myUserId, opponentName, error, joining,
-    endReason, undoLeft, undoOppLeft,
+    endReason, undoLeft, undoOppLeft, undoPlies,
     createInvite, join, send, undo, leave, leaveOnUnload, finish, decline, cancel, resign,
     startPoll, stopPoll, reset,
   }

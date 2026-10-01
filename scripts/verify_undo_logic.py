@@ -6,6 +6,9 @@
 （`GomokuBoard.vue::canUndoOnline`）→ 按钮永远置灰，表现为「在线对局不支持悔棋」。
 本测试把 `/undo` 的校验与下发给前端的字段钉在一起，防止再次只改一边。
 
+v2.42.2 起悔棋支持「撤 2 手」：对方已应招时，连同对方那一手一起撤（`_undo_plies` 返回 2），
+所以「最后一手是对方」不再等于「不可悔」—— 本文件里那条旧断言已按新口径改写。
+
 用法（仓库根目录，必须用后端 venv 的 python —— 要 import fastapi）：
     backend\\.venv\\Scripts\\python.exe scripts\\verify_undo_logic.py
 """
@@ -42,9 +45,20 @@ def stub_replay(stack, undo_used):
     gr._replay_gomoku = lambda db, r: ([0] * 225, list(stack), dict(undo_used))
 
 
-print("== _can_undo（须与 /undo 校验同口径）==")
+print("== _undo_plies（撤几手：1=只撤自己那手，2=连对方应招一起撤）==")
+check("最后一手是我 → 撤 1 手", gr._undo_plies(room(), 1, [(5, 1)]) == 1)
+check("对方已应招（我→对方）→ 连应招撤 2 手", gr._undo_plies(room(), 1, [(5, 1), (6, 2)]) == 2)
+check("我执白、对方已应招 → 撤 2 手", gr._undo_plies(room(), 2, [(5, 2), (6, 1)]) == 2)
+check("我执白、最后一手是我 → 撤 1 手", gr._undo_plies(room(), 2, [(5, 1), (6, 2)]) == 1)
+check("空栈 → 不可悔", gr._undo_plies(room(), 1, []) == 0)
+check("只有对方一手 → 不可悔", gr._undo_plies(room(), 1, [(5, 2)]) == 0)
+check("最后两手都是对方 → 不可悔", gr._undo_plies(room(), 1, [(5, 2), (6, 2)]) == 0)
+
+print("\n== _can_undo（须与 /undo 校验同口径）==")
 check("playing 且最后一手是我 → 可悔", gr._can_undo(room(), 1, [(5, 1)], {}) is True)
-check("playing 但最后一手是对方 → 不可悔", gr._can_undo(room(), 1, [(5, 2)], {}) is False)
+check("playing 但只有对方一手 → 不可悔", gr._can_undo(room(), 1, [(5, 2)], {}) is False)
+check("playing 且对方已应招 → 可悔（撤 2 手）", gr._can_undo(room(), 1, [(5, 1), (6, 2)], {}) is True)
+check("对方已应招但配额用尽（3/3）→ 不可悔", gr._can_undo(room(), 1, [(5, 1), (6, 2)], {1: 3}) is False)
 check("无子可悔 → 不可悔", gr._can_undo(room(), 1, [], {}) is False)
 check("配额用尽（3/3）→ 不可悔", gr._can_undo(room(), 1, [(5, 1)], {1: 3}) is False)
 check("配额剩 1 次 → 可悔", gr._can_undo(room(), 1, [(5, 1)], {1: 2}) is True)
@@ -64,12 +78,20 @@ out = gr._decorate_seat(room(), {}, 1, None)
 check("playing：最后一手是对方 → 轮到我", out["my_turn"] is True, str(out))
 check("playing：我方余量 = 3-1 = 2", out["undo_left"] == 2, str(out["undo_left"]))
 check("playing：对方余量 = 3", out["undo_opp_left"] == 3, str(out["undo_opp_left"]))
-check("playing：最后一手不是我 → can_undo False", out["can_undo"] is False)
+check("playing：对方已应招 → can_undo True（按钮该亮）", out["can_undo"] is True)
+check("playing：对方已应招 → 下发 undo_plies=2", out["undo_plies"] == 2, str(out.get("undo_plies")))
 
 stub_replay([(5, 1), (6, 2), (7, 1)], {})
 out = gr._decorate_seat(room(), {}, 1, None)
 check("playing：最后一手是我 → can_undo True（按钮该亮）", out["can_undo"] is True)
 check("playing：最后一手是我 → 不轮到我", out["my_turn"] is False)
+check("playing：最后一手是我 → undo_plies=1", out["undo_plies"] == 1, str(out.get("undo_plies")))
+
+# 对方已应招但配额用尽：plies 仍算出 2，但下发给前端的必须是 0（按钮置灰），两者不能打架
+stub_replay([(5, 1), (6, 2)], {1: 3})
+out = gr._decorate_seat(room(), {}, 1, None)
+check("playing：配额用尽 → undo_plies 下发 0", out["undo_plies"] == 0, str(out.get("undo_plies")))
+check("playing：配额用尽 → can_undo False", out["can_undo"] is False)
 
 # 终局态：配额与 can_undo 必须仍在 —— v2.42.1 修的第二个点
 stub_replay([(5, 2), (7, 1)], {})
@@ -79,6 +101,11 @@ check("finished(win)：undo_left 仍下发（不再靠前端 ?? 3 兜底）", "u
 check("finished(win)：undo_opp_left 仍下发", "undo_opp_left" in out)
 check("finished(win)：can_undo=True（可悔棋翻盘）", out["can_undo"] is True)
 check("finished(win)：我执黑 → 座位正确", out["my_seat"] == "black")
+
+# 对手制胜（最后一手是对方）→ 翻盘要连自己那手一起撤 2 手，才回到「我该行棋」的自洽局面
+stub_replay([(5, 1), (6, 2)], {})
+out = gr._decorate_seat(room(status="finished", end_reason="win"), {}, 1, None)
+check("finished(win)：制胜手是对方 → undo_plies=2", out["undo_plies"] == 2, str(out.get("undo_plies")))
 
 print("\n== 非五子棋不受影响 ==")
 other = SimpleNamespace(id=2, status="playing", end_reason=None, game="xiangqi",

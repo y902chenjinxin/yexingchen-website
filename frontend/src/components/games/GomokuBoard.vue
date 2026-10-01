@@ -54,13 +54,13 @@
         <template v-else-if="gRoom.status.value === 'playing'">
           <span>{{ gRoom.myTurn.value ? '轮到你落子' : '等对方落子…' }}</span>
           <button class="gk-btn" :disabled="!canUndoOnline" @click="undoOnline">
-            悔棋（你 {{ gRoom.undoLeft.value }} · 对方 {{ gRoom.undoOppLeft.value }}）
+            悔棋{{ gRoom.undoPlies.value === 2 ? '（连对方应招共撤 2 手）' : '' }}（你 {{ gRoom.undoLeft.value }} · 对方 {{ gRoom.undoOppLeft.value }}）
           </button>
           <button class="gk-btn" @click="askExit">退出对局（认输）</button>
         </template>
         <template v-else-if="gRoom.status.value === 'finished'">
           <span class="gk-result">{{ onlineResultText }}</span>
-          <button v-if="canUndoOnline" class="gk-btn" @click="undoOnline">悔棋翻盘（余 {{ gRoom.undoLeft.value }}）</button>
+          <button v-if="canUndoOnline" class="gk-btn" @click="undoOnline">悔棋翻盘{{ gRoom.undoPlies.value === 2 ? ' · 撤 2 手' : '' }}（余 {{ gRoom.undoLeft.value }}）</button>
           <button class="gk-btn primary" @click="reinviteSame">再来一局</button>
           <button class="gk-btn" @click="exitOnline">退出</button>
         </template>
@@ -263,13 +263,19 @@ const lastInviteeName = ref('')
 let exited = false               // 已自动退出，避免重复触发
 
 function onRemoteMove(action, userId) {
-  // 悔棋事件：弹出最后一手（双方事件流一致，重放结果一致）
+  // 悔棋事件：弹出栈顶 N 手 —— N=1 只撤自己刚下的那手，N=2 连同对方应招一起撤。
+  // 必须按 N 弹，只弹 1 手会让对方（只能靠轮询重放）的棋盘与自己错位。
   if (action?.undo) {
-    const idx = history.value.pop()
-    if (typeof idx === 'number') board.value[idx] = 0
+    const plies = action.undo === 2 ? 2 : 1
+    for (let i = 0; i < plies; i++) {
+      const idx = history.value.pop()
+      if (typeof idx === 'number') board.value[idx] = 0
+    }
     lastIdx.value = history.value[history.value.length - 1] ?? -1
     winLine.value = []; winner.value = 0; over.value = false
-    turn.value = myColor.value === HUMAN ? AI : HUMAN   // 悔棋方重新行棋
+    // 悔棋方重新行棋：按**座位**定色（与落子同一口径），两端重放结果才一致
+    const blackId = gRoom.room.value?.black_user_id
+    turn.value = (userId != null && blackId != null && userId === blackId) ? HUMAN : AI
     return
   }
   const srv = action?.idx
@@ -355,7 +361,7 @@ const localQuotaText = computed(() => {
   const q = undoLeft.value
   return mode.value === 'pvp' ? `悔棋余量 黑 ${q.black} · 白 ${q.white}` : `悔棋余量 ${q.black} 次`
 })
-/** 在线：服务端下发的 can_undo 才是权威（只有「最后一手是我下的」才可悔） */
+/** 在线：服务端下发的 can_undo 才是权威（最后一手是我下的 → 撤 1 手；对方已应招 → 连应招一起撤 2 手） */
 const canUndoOnline = computed(() => mode.value === 'online' && !!gRoom.room.value?.can_undo)
 
 watch(roomActive, (v) => { emit(v ? 'room-lock' : 'room-unlock') })
@@ -693,7 +699,7 @@ function undoLocal() {
   lastIdx.value = history.value[history.value.length - 1] ?? -1
 }
 
-/** 在线悔棋：服务端校验（只能悔自己刚下的那手 + 配额），回吐全量事件后本地重建 */
+/** 在线悔棋：服务端校验（撤 1~2 手 + 配额），回吐全量事件后本地重建 */
 async function undoOnline() {
   if (!canUndoOnline.value) return
   try {
