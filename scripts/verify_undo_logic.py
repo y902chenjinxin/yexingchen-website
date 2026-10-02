@@ -12,6 +12,7 @@ v2.42.2 起悔棋支持「撤 2 手」：对方已应招时，连同对方那一
 用法（仓库根目录，必须用后端 venv 的 python —— 要 import fastapi）：
     backend\\.venv\\Scripts\\python.exe scripts\\verify_undo_logic.py
 """
+import json
 import os
 import sys
 from pathlib import Path
@@ -107,13 +108,48 @@ stub_replay([(5, 1), (6, 2)], {})
 out = gr._decorate_seat(room(status="finished", end_reason="win"), {}, 1, None)
 check("finished(win)：制胜手是对方 → undo_plies=2", out["undo_plies"] == 2, str(out.get("undo_plies")))
 
-print("\n== 非五子棋不受影响 ==")
+print("\n== 象棋 / 翻棋：轮次按「有效动作栈」重放（v2.42.4）==")
+# 客户端权威游戏（象棋/翻棋/军棋）没有服务端栈，轮次靠 _replay_action_stack 推导：
+# 悔棋事件 `{"undo":N}` 必须**弹出**栈顶 N 手且自身不入栈，否则悔棋后 my_turn 会指错人、棋盘锁死。
 other = SimpleNamespace(id=2, status="playing", end_reason=None, game="xiangqi",
                         owner_id=1, invitee_id=2, black_user_id=1)
-gr._last_move = lambda db, rid: SimpleNamespace(user_id=2)
+
+
+def stub_moves(events):
+    """events: [(user_id, action_dict), ...] → 伪造 _moves 返回。"""
+    gr._moves = lambda db, rid: [
+        SimpleNamespace(seq=i + 1, user_id=u, action=json.dumps(a))
+        for i, (u, a) in enumerate(events)
+    ]
+
+
+stub_moves([(1, {"from": 1, "to": 2}), (2, {"from": 3, "to": 4}), (1, {"undo": 2})])
+check("悔 2 手后栈空（undo 不入栈）", gr._replay_action_stack(None, other) == [])
 out = gr._decorate_seat(other, {}, 1, None)
-check("象棋：上一手是对方 → 轮到我", out["my_turn"] is True, str(out))
+check("象棋：悔 2 手后仍轮到我", out["my_turn"] is True, str(out))
 check("象棋：不下发 can_undo（前端仅五子棋用）", "can_undo" not in out)
+
+stub_moves([(1, {"from": 1, "to": 2})])
+out = gr._decorate_seat(other, {}, 1, None)
+check("象棋：我刚走完 → 不轮到我", out["my_turn"] is False, str(out))
+out = gr._decorate_seat(other, {}, 2, None)
+check("象棋：我刚走完 → 轮到对方", out["my_turn"] is True, str(out))
+
+# 对方执先（black_user_id=2）：对方走 → 我走 → 我悔 1 手 → 栈顶回到对方那手 → 轮到我
+flip = SimpleNamespace(id=3, status="playing", end_reason=None, game="xiangqi_flip",
+                       owner_id=1, invitee_id=2, black_user_id=2)
+stub_moves([(2, {"flip": 40}), (1, {"from": 1, "to": 2}), (1, {"undo": 1})])
+out = gr._decorate_seat(flip, {}, 1, None)
+check("翻棋：悔 1 手后轮到我", out["my_turn"] is True, str(out))
+out = gr._decorate_seat(flip, {}, 2, None)
+check("翻棋：悔 1 手后不轮到对方", out["my_turn"] is False, str(out))
+
+# 栈空 = 还没人动 → 先手方（black_user_id）该走
+stub_moves([])
+check("开局：栈空 → 先手方 my_turn=True",
+      gr._decorate_seat(flip, {}, 2, None)["my_turn"] is True)
+check("开局：栈空 → 后手方 my_turn=False",
+      gr._decorate_seat(flip, {}, 1, None)["my_turn"] is False)
 
 print("\n===== " + ("全部通过" if not FAILED else f"{len(FAILED)} 项未通过: " + ", ".join(FAILED)) + " =====")
 sys.exit(1 if FAILED else 0)

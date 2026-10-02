@@ -38,6 +38,13 @@
           <span v-if="over" class="xf-result">{{ resultText }}</span>
           <span v-else class="xf-quota">{{ flippedCount }} / {{ PIECE_N }} 已翻</span>
           <button class="xf-btn" @click="restart">重开</button>
+          <button
+            class="xf-btn"
+            :disabled="!canUndoLocal"
+            :title="undoPlan.plies === 2 ? '连对方那一手一起撤 2 手' : '撤掉自己刚走的那一手'"
+            @click="undoLocal"
+          >悔棋</button>
+          <span class="xf-quota">{{ undoLabel }} · {{ history.length }} 手</span>
         </div>
 
         <!-- 在线横幅 -->
@@ -50,6 +57,12 @@
           </template>
           <template v-else-if="gRoom.status.value === 'playing'">
             <span>{{ gRoom.myTurn.value ? '轮到你翻子/走子' : '等对方行动…' }}</span>
+            <button
+              class="xf-btn"
+              :disabled="!canUndoOnline"
+              :title="undoPlan.plies === 2 ? '连对方那一手一起撤 2 手' : '撤掉自己刚走的那一手'"
+              @click="undoOnline"
+            >悔棋（余 {{ onlineUndoRemain }}）</button>
             <button class="xf-btn" @click="askExit">退出对局（认输）</button>
           </template>
           <template v-else-if="gRoom.status.value === 'finished'">
@@ -98,6 +111,7 @@
               target: targets.includes(i),
               last: lastIdx === i,
               cap: !!p && p.up && p.c !== turnColor && targets.includes(i),
+              incoming: !!anim && anim.to === i,
             }"
             :style="cellStyle(i)"
             :aria-label="ariaOf(i, p)"
@@ -113,6 +127,19 @@
               :class="[p.c === 'r' ? 'red' : 'black', { fresh: flipIdx === i }]"
             >{{ glyph(p) }}</span>
           </button>
+
+          <!-- 动效层：走子飞行 / 被吃子爆开 / 落点金环（纯视觉，pointer-events 全关） -->
+          <template v-if="anim">
+            <span :key="'fly' + anim.key" class="xf-fly" :style="flyStyle(anim)" @animationend="endAnim">
+              <span class="xf-piece" :class="anim.color === 'r' ? 'red' : 'black'">{{ anim.glyph }}</span>
+            </span>
+            <template v-if="anim.capGlyph">
+              <span :key="'dead' + anim.key" class="xf-fly xf-dead" :style="cellStyle(anim.to)">
+                <span class="xf-piece" :class="anim.capColor === 'r' ? 'red' : 'black'">{{ anim.capGlyph }}</span>
+              </span>
+              <span :key="'boom' + anim.key" class="xf-boom" :style="cellStyle(anim.to)"></span>
+            </template>
+          </template>
         </div>
       </div>
     </div>
@@ -147,7 +174,7 @@ import { useGameRoom } from '@/composables/useGameRoom'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
-import { COLS, ROWS, GLYPH, VAL, other, xOf, yOf, pieceTargets, flipDeal } from '@/utils/xiangqiRules'
+import { COLS, ROWS, GLYPH, VAL, BLACK, other, xOf, yOf, pieceTargets, flipDeal } from '@/utils/xiangqiRules'
 
 const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
 const props = defineProps({
@@ -280,6 +307,38 @@ const targets = computed(() => {
   return targetsOf(selIdx.value)
 })
 
+/* ---------- 走子 / 吃子动效（纯视觉层，不改棋局逻辑） ----------
+ * 翻子已有 xfFlipIn 翻牌动效；这里补走子飞行、被吃子爆开、落点金环三件套，
+ * 让「谁走到了哪、谁被吃了」一眼可辨。棋盘状态立即落地，动画只是盖在上面的浮层。 */
+const anim = ref(null)              // { key, from, to, color, glyph, capColor, capGlyph }
+let animSeq = 0
+let animTimer = null
+function playAnim(from, to, cap) {
+  const mover = cells.value[from]
+  if (!mover) return
+  anim.value = {
+    key: ++animSeq, from, to,
+    color: mover.c, glyph: glyph(mover),
+    capColor: cap ? cap.c : '', capGlyph: cap ? glyph(cap) : '',
+  }
+  clearTimeout(animTimer)
+  animTimer = setTimeout(() => { anim.value = null }, 700)   // 兜底：animationend 没到也要收摊
+}
+function endAnim() { clearTimeout(animTimer); anim.value = null }
+function flyStyle(a) {
+  const c = cellPx.value
+  const r = Math.round(c * 0.44)
+  return {
+    left: PAD + xOf(a.from) * c - r + 'px',
+    top: PAD + yOf(a.from) * c - r + 'px',
+    width: r * 2 + 'px',
+    height: r * 2 + 'px',
+    fontSize: Math.round(r * 0.98) + 'px',
+    '--dx': (xOf(a.to) - xOf(a.from)) * c + 'px',
+    '--dy': (yOf(a.to) - yOf(a.from)) * c + 'px',
+  }
+}
+
 /* ---------- 行动 ---------- */
 function doFlip(i) {
   const p = cells.value[i]
@@ -288,17 +347,22 @@ function doFlip(i) {
   if (!firstColor.value) firstColor.value = p.c
   flipIdx.value = i
   lastIdx.value = -1
-  history.value.push({ flip: i })
+  // by 在定色之后取：先手翻出的颜色即先手阵营；c 供悔棋时重算 firstColor
+  history.value.push({ flip: i, c: p.c, by: colorOf(turnIdx.value) })
   return true
 }
 function doMove(from, to) {
   const p = cells.value[from]
   const q = cells.value[to]
   if (!p || !p.up) return false
+  playAnim(from, to, q)
   if (q && q.up && q.t === 'K') kingDead.value = q.c     // 吃将/帅 → 立即终局
   cells.value[to] = p
   cells.value[from] = null
-  history.value.push({ from, to, cap: q ? q.t : '', capColor: q ? q.c : '' })
+  history.value.push({
+    from, to, by: colorOf(turnIdx.value),
+    cap: q ? q.t : '', capColor: q ? q.c : '',
+  })
   lastIdx.value = to
   flipIdx.value = -1
   return true
@@ -333,6 +397,97 @@ function sideHasAction(k) {
   return false
 }
 
+/* ---------- 悔棋（每方每局 3 次） ----------
+ * 口径与象棋明棋 / 五子棋在线一致：最后一手是我下的（对方还没应）→ 撤 1 手；
+ * 对方已经应了 → 连对方那一手一起撤 2 手（撤完回到我该走的局面）。
+ * 一次悔棋只扣 1 次配额，与撤几手无关。
+ * 双人同屏没有「我」，按「撤掉最后一手」算，配额记在被撤掉的那一方头上。
+ * 翻棋的「颜色」由先手翻出的第一枚子决定，悔棋若撤掉了定色那一翻，firstColor 需一并回退。 */
+const UNDO_QUOTA = 3
+const undoLeft = ref({ r: UNDO_QUOTA, b: UNDO_QUOTA })
+const onlineUndoUsed = ref({ r: 0, b: 0 })      // 在线：服务端不校验翻棋悔棋，配额在本地按事件流记
+const myColor = computed(() => colorOf(mode.value === 'online' ? myIdx.value : 0))
+const undoPlan = computed(() => {
+  const h = history.value
+  if (!h.length || over.value || thinking.value) return { plies: 0, color: '' }
+  if (mode.value === 'pvp') {
+    const color = h[h.length - 1].by || ''
+    return { plies: color ? 1 : 0, color }
+  }
+  const color = myColor.value
+  if (!color) return { plies: 0, color: '' }
+  if (h[h.length - 1].by === color) return { plies: 1, color }
+  if (h.length >= 2 && h[h.length - 2].by === color) return { plies: 2, color }
+  return { plies: 0, color }
+})
+const undoLabel = computed(() => (
+  mode.value === 'pvp'
+    ? `红 ${undoLeft.value.r} · 黑 ${undoLeft.value.b}`
+    : `悔棋余 ${undoLeft.value[myColor.value] ?? UNDO_QUOTA}`
+))
+const onlineUndoRemain = computed(() => Math.max(0,
+  (undoLeft.value[myColor.value] ?? UNDO_QUOTA) - (onlineUndoUsed.value[myColor.value] || 0)))
+const canUndoLocal = computed(() => (
+  mode.value !== 'online' && undoPlan.value.plies > 0
+  && (undoLeft.value[undoPlan.value.color] || 0) > 0
+))
+const canUndoOnline = computed(() => (
+  onlinePlaying.value && !over.value && undoPlan.value.plies > 0
+  && onlineUndoRemain.value > 0
+))
+
+/** 撤 n 手：逐手回滚（翻子重新扣回、走子连被吃子一起还原）并翻转轮次 */
+function popHistory(n) {
+  for (let k = 0; k < n; k++) {
+    const h = history.value.pop()
+    if (!h) break
+    if (typeof h.flip === 'number') {
+      const p = cells.value[h.flip]
+      if (p) p.up = false
+      lastIdx.value = -1
+    } else {
+      const b = cells.value.slice()
+      b[h.from] = b[h.to]
+      b[h.to] = h.capColor ? { c: h.capColor, t: h.cap, up: true } : null
+      cells.value = b
+      if (h.cap === 'K') kingDead.value = ''
+      lastIdx.value = h.from
+    }
+    turnIdx.value = 1 - turnIdx.value
+  }
+  const firstFlip = history.value.find(x => typeof x.flip === 'number')
+  firstColor.value = firstFlip ? firstFlip.c : ''
+  anim.value = null
+  flipIdx.value = -1
+  selIdx.value = -1
+  over.value = false
+  winnerColor.value = ''
+  settle()
+}
+function undoLocal() {
+  const { plies, color } = undoPlan.value
+  if (mode.value === 'online' || !plies) return
+  if ((undoLeft.value[color] || 0) <= 0) {
+    ElMessage.info(`「${color === RED ? '红' : '黑'}方」本局悔棋次数已用完`)
+    return
+  }
+  popHistory(plies)
+  undoLeft.value[color] -= 1
+}
+/** 在线悔棋：把 `{undo:N}` 当普通动作上报（翻棋是客户端权威，服务端只记事件流），
+ *  对方在下一轮轮询里按同一套重放规则弹出 N 手，两端棋盘保持一致。 */
+function undoOnline() {
+  if (!canUndoOnline.value) return
+  const plies = undoPlan.value.plies
+  const color = myColor.value
+  popHistory(plies)
+  onlineUndoUsed.value[color] += 1
+  gRoom.send({ undo: plies }).catch(() => { /* 下轮轮询以服务端事件流为准 */ })
+  // 悔棋后必然回到「我该走」的局面（撤 1 手或连对方那手一起撤 2 手，末手都归对方）。
+  // 乐观翻转 my_turn，免去最长 1.6s 的轮询空窗把棋盘锁住。
+  if (gRoom.room.value) gRoom.room.value.my_turn = true
+}
+
 /* ---------- 交互 ---------- */
 const localAiIdx = 1
 const aiTurn = computed(() => mode.value === 'easy' && turnIdx.value === localAiIdx)
@@ -344,13 +499,15 @@ const boardLocked = computed(() => {
 
 function tap(i) {
   if (boardLocked.value) return
-  const p = cells.value[i]
-  if (!p) { selIdx.value = -1; return }
-  if (!p.up) { act({ flip: i }); return }
+  // 「落点」必须先判：明子绝大多数走法是**走到空格**，而下面的空格分支是「取消选择」。
+  // 先走空格分支会把落点吃掉 → 明子只能吃子、永远走不动，整局就卡住了。
   if (selIdx.value >= 0 && targets.value.includes(i)) {
     act({ from: selIdx.value, to: i })
     return
   }
+  const p = cells.value[i]
+  if (!p) { selIdx.value = -1; return }
+  if (!p.up) { act({ flip: i }); return }
   if (p.c === turnColor.value) selIdx.value = i
   else selIdx.value = -1
 }
@@ -419,7 +576,16 @@ const lastInviteeName = ref('')
 let exited = false
 let finishedReported = false
 
-function onRemoteMove(action) {
+function onRemoteMove(action, userId) {
+  if (action?.undo) {
+    // 对方（或恢复对局时重放的自己）撤棋：两端按同一套规则弹出 N 手
+    const plies = action.undo === 2 ? 2 : 1
+    popHistory(plies)
+    const mine = Number(userId) === Number(gRoom.myUserId.value)
+    const c = mine ? myColor.value : (myColor.value ? other(myColor.value) : '')
+    if (c === RED || c === BLACK) onlineUndoUsed.value[c] += 1
+    return
+  }
   if (typeof action?.flip === 'number') doFlip(action.flip)
   else if (typeof action?.from === 'number' && typeof action?.to === 'number') doMove(action.from, action.to)
   else return
@@ -568,6 +734,9 @@ function resetWithSeed(id) {
   thinking.value = false
   onlineWinner.value = ''
   finishedReported = false
+  anim.value = null
+  undoLeft.value = { r: UNDO_QUOTA, b: UNDO_QUOTA }
+  onlineUndoUsed.value = { r: 0, b: 0 }
 }
 async function resumeMine() {
   try {
@@ -634,6 +803,9 @@ function clearLocal() {
   thinking.value = false
   onlineWinner.value = ''
   finishedReported = false
+  anim.value = null
+  undoLeft.value = { r: UNDO_QUOTA, b: UNDO_QUOTA }
+  onlineUndoUsed.value = { r: 0, b: 0 }
 }
 
 function setMode(k) {
@@ -674,7 +846,7 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
-  clearTimeout(timer); clearTimeout(saveTimer)
+  clearTimeout(timer); clearTimeout(saveTimer); clearTimeout(animTimer)
   if (roomActive.value) gRoom.leaveOnUnload()
 })
 </script>
@@ -924,6 +1096,37 @@ html[data-theme="night"] .xf-piece.black { color: #f2f6fc; text-shadow: 0 1px 3p
   to { transform: rotateY(0deg) scale(1); opacity: 1; }
 }
 
+/* ---------- 走子 / 吃子动效 ---------- */
+/* 飞行体：起点由内联 left/top 定位，位移交给 --dx/--dy（中段略微上抛，像被拎起来走） */
+.xf-fly {
+  position: absolute; z-index: 7; pointer-events: none;
+  animation: xfFly .32s cubic-bezier(.34, .72, .26, 1) forwards;
+}
+@keyframes xfFly {
+  0% { transform: translate(0, 0) scale(1); }
+  55% { transform: translate(calc(var(--dx) * .58), calc(var(--dy) * .58 - 5px)) scale(1.12); }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1); }
+}
+/* 被吃子：原地炸开淡出（本类写在 .xf-fly 之后，用来覆盖它的 animation） */
+.xf-dead { z-index: 6; animation: xfDead .32s ease-in forwards; }
+@keyframes xfDead {
+  0% { opacity: 1; transform: scale(1); }
+  30% { opacity: 1; transform: scale(1.18) rotate(-5deg); }
+  100% { opacity: 0; transform: scale(.4) rotate(22deg); }
+}
+/* 落点冲击环 */
+.xf-boom {
+  position: absolute; z-index: 6; pointer-events: none; border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(199, 169, 107, .95), 0 0 20px rgba(199, 169, 107, .6);
+  animation: xfBoom .34s ease-out forwards;
+}
+@keyframes xfBoom {
+  0% { transform: scale(.34); opacity: 1; }
+  100% { transform: scale(2.15); opacity: 0; }
+}
+/* 飞行期间先藏住落点上的真子，落定那一刻才显形（否则一子两影） */
+.xf-cell.incoming .xf-piece { opacity: 0; }
+
 .xf-cell.sel { box-shadow: 0 0 0 3px var(--yq-gold, #c7a96b), 0 0 14px rgba(199,169,107,.55); }
 .xf-cell.last { box-shadow: 0 0 0 2px rgba(80, 140, 200, .75); }
 .xf-cell.target { box-shadow: inset 0 0 0 3px rgba(199, 169, 107, .8); }
@@ -955,5 +1158,9 @@ html[data-theme="night"] .xf-piece.black { color: #f2f6fc; text-shadow: 0 1px 3p
 @media (max-width: 900px) {
   .xf-wrap.is-big { display: flex; flex-direction: column; }
   .xf-wrap.is-big .xf-side, .xf-wrap.is-big .xf-main { grid-column: auto; grid-row: auto; max-height: none; }
+}
+/* 系统开了「减少动态效果」时让动画瞬间结束（animationend 立刻触发 → 落点子即时显形，不留空档） */
+@media (prefers-reduced-motion: reduce) {
+  .xf-fly, .xf-dead, .xf-boom { animation-duration: .01ms; }
 }
 </style>

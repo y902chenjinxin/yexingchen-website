@@ -115,6 +115,29 @@ def _replay_gomoku(db: Session, r: GameRoom):
     return board, stack, undo_used
 
 
+def _replay_action_stack(db: Session, r: GameRoom) -> list[tuple[int, int]]:
+    """客户端权威游戏（象棋 / 翻棋 / 军棋等）的事件流 → 有效动作栈。
+
+    悔棋事件 `{"undo": N}` 弹出栈顶 N 手（**不**入栈），其余动作按序入栈。
+    轮次 = 「栈顶动作执行者」的对手；栈空 = 先手方（black_user_id）。
+
+    坑（v2.42.3 修）：轮次原先直接取「最后一条 move 的 user_id」，悔棋事件本身
+    也是一条 move，于是悔棋后服务端会把悔棋者自己当成刚走完的一方 →
+    双方 my_turn 全错、棋盘直接锁死。必须像五子棋那样按栈重放。
+    """
+    stack: list[tuple[int, int]] = []
+    for mv in _moves(db, r.id):
+        a = json.loads(mv.action or "{}")
+        if a.get("undo"):
+            plies = a["undo"] if a.get("undo") in (1, 2) else 1
+            for _ in range(plies):
+                if stack:
+                    stack.pop()
+        else:
+            stack.append((mv.seq, mv.user_id))
+    return stack
+
+
 def _ludo_turn_uid(db: Session, r: GameRoom) -> int:
     """飞行棋轮次：客户端把「掷骰 / 走子 / 跳过」都上报成事件，这里按流推导。
 
@@ -198,8 +221,10 @@ def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session, replay=None) -
     elif r.game == "ludo":
         out["my_turn"] = uid == _ludo_turn_uid(db, r)
     else:
-        last = _last_move(db, r.id)
-        out["my_turn"] = (uid == _black_id(r)) if last is None else (last.user_id != uid)
+        # 象棋 / 翻棋 / 军棋等「一步换人」的客户端权威游戏：按栈重放（含悔棋弹出）
+        stack = _replay_action_stack(db, r)
+        last_uid = stack[-1][1] if stack else None
+        out["my_turn"] = (uid == _black_id(r)) if last_uid is None else (last_uid != uid)
     return out
 
 

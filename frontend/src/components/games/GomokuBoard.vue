@@ -874,20 +874,30 @@ onBeforeUnmount(() => {
 .gk-board {
   position: relative;
   display: grid;
-  /* 内边距 = 半个格宽 + 8px 木框；总宽 = (N+1)*格宽 + 16px（measureCell 按此反算） */
+  /* 内边距 = 半个格宽 + 8px 板框；总宽 = (N+1)*格宽 + 16px（measureCell 按此反算） */
   padding: calc(var(--cell, 26px) / 2 + 8px);
-  background: linear-gradient(135deg, #e8d9b8, #dcc79a);
+  /* 冷调石板底：与水晶棋子（钢蓝+冷白）同色系，深子才压得住、白子才亮得起来。
+     高光落在左上 20%/10%，与棋子 specular（33%/26%）同向，光源一致。 */
+  background:
+    radial-gradient(120% 100% at 20% 10%, rgba(255,255,255,.9), transparent 62%),
+    linear-gradient(152deg, #eef3fa 0%, #dde5f0 52%, #c6d2e2 100%);
   border-radius: 14px;
   touch-action: manipulation; user-select: none;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15), 0 10px 30px rgba(20,30,40,.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(112,140,178,.30),
+    inset 0 1px 0 rgba(255,255,255,.9),
+    0 10px 30px rgba(24,44,74,.14);
   transform-origin: 50% 100%;
   transform: rotateX(var(--tilt, 0deg));
   transition: transform .3s cubic-bezier(.4, .1, .2, 1), filter .2s;
   will-change: transform;
-  --gk-line: rgba(40, 30, 10, .5);
+  --gk-line: rgba(66,98,140,.42);
 }
 .gk-wrap.is-big .gk-board {
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15), 0 30px 46px -22px rgba(45, 32, 14, .55);
+  box-shadow:
+    inset 0 0 0 1px rgba(112,140,178,.30),
+    inset 0 1px 0 rgba(255,255,255,.9),
+    0 30px 46px -22px rgba(24,44,74,.5);
 }
 .gk-board.locked { filter: saturate(.75) brightness(.94); pointer-events: none; }
 /* 网格线覆盖层：从第一个交叉点画到最后一个，间距 = 格宽 */
@@ -904,7 +914,7 @@ onBeforeUnmount(() => {
 }
 .gk-cell { border: none; padding: 0; background: transparent; cursor: pointer; position: relative; }
 /* 悬停提示：空格子上浮现淡影 */
-.gk-cell:hover::after { content: ''; position: absolute; inset: 30%; border-radius: 50%; background: rgba(30,20,0,.16); }
+.gk-cell:hover::after { content: ''; position: absolute; inset: 30%; border-radius: 50%; background: rgba(38,58,88,.20); }
 .gk-cell.last:hover::after, .gk-cell.win:hover::after { content: none; }
 .gk-stone { position: absolute; inset: 7%; border-radius: 50%; display: block; }
 /* 水晶棋子：一点高光 + 内部折射 + 边缘反光（黑白仍一眼可辨） */
@@ -984,13 +994,24 @@ onBeforeUnmount(() => {
 :root[data-theme="night"] .gk-banner.st-finished { background: rgba(199,169,107,.26); color: #f6f2e8; }
 :root[data-theme="night"] .gk-locknote { background: rgba(199,169,107,.22); color: #ded9ee; }
 :root[data-theme="night"] .gk-board {
-  background: linear-gradient(135deg, #6d5836, #4f3f26);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.55);
-  --gk-line: rgba(255, 236, 190, .5);
+  /* 夜色石板：比原来的深棕提亮一档且转冷，深蓝棋子从底上"浮"起来 */
+  background:
+    radial-gradient(120% 100% at 20% 10%, rgba(162,198,242,.26), transparent 62%),
+    linear-gradient(152deg, #66788f 0%, #4c5a70 52%, #38434f 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(190,216,248,.26),
+    inset 0 1px 0 rgba(255,255,255,.16),
+    0 12px 32px rgba(0,0,0,.55);
+  --gk-line: rgba(212,230,255,.42);
 }
 :root[data-theme="night"] .gk-wrap.is-big .gk-board {
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 30px 48px -22px rgba(0,0,0,.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(190,216,248,.26),
+    inset 0 1px 0 rgba(255,255,255,.16),
+    0 30px 48px -22px rgba(0,0,0,.8);
 }
+/* 夜色板上空位提示改用亮影（深影在中间调石板上看不见） */
+:root[data-theme="night"] .gk-cell:hover::after { background: rgba(226,238,255,.22); }
 :root[data-theme="night"] .gk-stone.black {
   background:
     radial-gradient(circle at 33% 26%, rgba(255,255,255,.8) 0 7%, rgba(255,255,255,.22) 20%, transparent 44%),
