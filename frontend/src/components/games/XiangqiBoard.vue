@@ -799,23 +799,23 @@ onBeforeUnmount(() => {
 }
 .xq-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: var(--yq-gold, #c7a96b); }
 
-/* ===== 棋盘：青玉 / 墨玉盘面 + 立体盘厚（与冷调玻璃棋子同调，不再是暖褐配冷玻璃） ===== */
+/* ===== 棋盘：冷调石板 + 立体盘厚（与冷调水晶棋子同色系，不再是青玉盘配冷玻璃） ===== */
 .xq-board {
   position: relative; border-radius: 16px;
   background:
-    radial-gradient(135% 100% at 50% -12%, rgba(255,255,255,.72), rgba(255,255,255,0) 58%),
-    repeating-linear-gradient(92deg, rgba(58,96,88,.05) 0 1px, rgba(0,0,0,0) 1px 6px),
-    linear-gradient(158deg, #e9f1ea 0%, #d2e1d7 46%, #b6ccc0 100%);
+    radial-gradient(135% 100% at 50% -12%, rgba(255,255,255,.82), rgba(255,255,255,0) 58%),
+    repeating-linear-gradient(92deg, rgba(58,88,130,.05) 0 1px, rgba(0,0,0,0) 1px 6px),
+    linear-gradient(158deg, #eef3fa 0%, #dbe4f0 46%, #c2d0e2 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.7),
-    inset 0 0 0 1px rgba(96,124,108,.35),
-    inset 0 -10px 22px -12px rgba(20,44,38,.4),
-    /* 盘厚：四层硬投影堆出「玉牌」侧壁，倾斜后像一块有厚度的桌面 */
-    0 8px 0 -1px #a6bbae,
-    0 15px 0 -2px #82988c,
-    0 22px 0 -3px #63776d,
-    0 29px 0 -6px #46574f,
-    0 46px 56px -22px rgba(20, 34, 30, .6);
+    inset 0 1px 0 rgba(255,255,255,.82),
+    inset 0 0 0 1px rgba(112,140,178,.34),
+    inset 0 -10px 22px -12px rgba(24,44,74,.36),
+    /* 盘厚：四层硬投影堆出「石板」侧壁，倾斜后像一块有厚度的桌面 */
+    0 8px 0 -1px #b3c1d3,
+    0 15px 0 -2px #93a4bb,
+    0 22px 0 -3px #7488a3,
+    0 29px 0 -6px #566a86,
+    0 46px 56px -22px rgba(24, 44, 74, .55);
   /* --tilt 由组件按「是否放大」下发；绕底边旋转 → 视觉宽度不超出原盒，不会横向溢出 */
   transform-origin: 50% 100%;
   transform: rotateX(var(--tilt, 0deg));
@@ -825,50 +825,50 @@ onBeforeUnmount(() => {
 .xq-wrap.is-big .xq-board {
   /* 平躺后的盘面更靠近观者，落影加大加柔，营造「桌面承托」感 */
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.7),
-    inset 0 0 0 1px rgba(96,124,108,.35),
-    inset 0 -12px 26px -12px rgba(20,44,38,.42),
-    0 10px 0 -1px #a6bbae,
-    0 19px 0 -2px #82988c,
-    0 28px 0 -4px #63776d,
-    0 37px 0 -8px #3f4f48,
-    0 66px 74px -28px rgba(18, 30, 27, .66);
+    inset 0 1px 0 rgba(255,255,255,.82),
+    inset 0 0 0 1px rgba(112,140,178,.34),
+    inset 0 -12px 26px -12px rgba(24,44,74,.38),
+    0 10px 0 -1px #b3c1d3,
+    0 19px 0 -2px #93a4bb,
+    0 28px 0 -4px #7488a3,
+    0 37px 0 -8px #4c5f7a,
+    0 66px 74px -28px rgba(20, 36, 62, .62);
 }
 html[data-theme="night"] .xq-board {
   background:
-    radial-gradient(135% 100% at 50% -12%, rgba(127,168,163,.2), rgba(0,0,0,0) 62%),
+    radial-gradient(135% 100% at 50% -12%, rgba(162,198,242,.22), rgba(0,0,0,0) 62%),
     repeating-linear-gradient(92deg, rgba(255,255,255,.025) 0 1px, rgba(0,0,0,0) 1px 6px),
-    linear-gradient(158deg, #223130 0%, #17211f 48%, #0c1211 100%);
+    linear-gradient(158deg, #66788f 0%, #4c5a70 52%, #38434f 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.12),
-    inset 0 0 0 1px rgba(199,169,107,.34),
-    inset 0 -12px 26px -12px rgba(0,0,0,.7),
-    0 8px 0 -1px #16211f,
-    0 15px 0 -2px #101917,
-    0 22px 0 -3px #0a1210,
-    0 29px 0 -6px #060c0b,
-    0 46px 58px -22px rgba(0,0,0,.88);
+    inset 0 1px 0 rgba(255,255,255,.14),
+    inset 0 0 0 1px rgba(190,216,248,.28),
+    inset 0 -12px 26px -12px rgba(0,0,0,.6),
+    0 8px 0 -1px #47556a,
+    0 15px 0 -2px #3a4658,
+    0 22px 0 -3px #2c3646,
+    0 29px 0 -6px #1e2632,
+    0 46px 58px -22px rgba(0,0,0,.82);
 }
 html[data-theme="night"] .xq-wrap.is-big .xq-board {
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.12),
-    inset 0 0 0 1px rgba(199,169,107,.34),
-    inset 0 -14px 30px -12px rgba(0,0,0,.72),
-    0 10px 0 -1px #16211f,
-    0 19px 0 -2px #101917,
-    0 28px 0 -4px #0a1210,
-    0 37px 0 -8px #040908,
-    0 66px 76px -28px rgba(0,0,0,.92);
+    inset 0 1px 0 rgba(255,255,255,.14),
+    inset 0 0 0 1px rgba(190,216,248,.28),
+    inset 0 -14px 30px -12px rgba(0,0,0,.64),
+    0 10px 0 -1px #47556a,
+    0 19px 0 -2px #3a4658,
+    0 28px 0 -4px #2c3646,
+    0 37px 0 -8px #171d26,
+    0 66px 76px -28px rgba(0,0,0,.88);
 }
 .xq-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.xq-svg :deep(line), .xq-svg :deep(rect) { stroke: rgba(146, 114, 52, .62); }
+.xq-svg :deep(line), .xq-svg :deep(rect) { stroke: rgba(56, 86, 126, .6); }
 html[data-theme="night"] .xq-svg :deep(line),
-html[data-theme="night"] .xq-svg :deep(rect) { stroke: rgba(199, 169, 107, .6); }
+html[data-theme="night"] .xq-svg :deep(rect) { stroke: rgba(212, 232, 255, .55); }
 .xq-svg :deep(text.xq-river) {
-  fill: rgba(138, 106, 46, .7); font-weight: 600; letter-spacing: .18em;
+  fill: rgba(52, 80, 118, .66); font-weight: 600; letter-spacing: .18em;
   font-family: "Songti SC", "STSong", "SimSun", serif;
 }
-html[data-theme="night"] .xq-svg :deep(text.xq-river) { fill: rgba(199, 169, 107, .66); }
+html[data-theme="night"] .xq-svg :deep(text.xq-river) { fill: rgba(206, 226, 255, .56); }
 
 .xq-cell {
   position: absolute; border-radius: 50%; padding: 0; cursor: pointer;
@@ -934,7 +934,7 @@ html[data-theme="night"] .xq-svg :deep(text.xq-river) { fill: rgba(199, 169, 107
     inset 0 0 0 1.6px rgba(255,255,255,.62),
     inset 2px 3px 7px rgba(255,255,255,.58),
     inset -3px -4px 10px rgba(96,122,156,.44),
-    0 4px 10px rgba(30, 48, 74, .34);
+    0 5px 12px rgba(24, 44, 74, .44);
 }
 .xq-piece::before {
   content: ''; position: absolute; inset: 0; border-radius: 50%;

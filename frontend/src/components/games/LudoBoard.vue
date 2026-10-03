@@ -10,7 +10,7 @@
           :class="{ active: !over && turnColor === c }"
           :style="{ '--pc': META[c].main }"
         >
-          <span class="lb-chip" :style="{ background: META[c].main }"></span>
+          <span class="lb-chip"></span>
           <div class="lb-ptxt">
             <b>{{ playerLabel(c) }}</b>
             <i>{{ seatStatus(c) }}</i>
@@ -103,9 +103,19 @@
           v-for="(rc, i) in TRACK"
           :key="'t' + i"
           class="lb-cell"
-          :class="{ 'own': ownTrackSet.has(i), 'fly': i === flyRing }"
+          :class="{
+            'own': ownTrackSet.has(i),
+            'fly': i === flyRing,
+            'evt': !!EVENT_CELLS[i],
+            ['evt-' + EVENT_CELLS[i]]: !!EVENT_CELLS[i],
+          }"
           :style="cellStyle(rc)"
-        ></div>
+        >
+          <template v-if="EVENT_CELLS[i]">
+            <span class="lb-evt-ico">{{ EVENT_META[EVENT_CELLS[i]].icon }}</span>
+            <span class="lb-evt-tag">{{ EVENT_META[EVENT_CELLS[i]].short }}</span>
+          </template>
+        </div>
 
         <!-- 归航通道 -->
         <template v-for="c in COLORS" :key="'h' + c">
@@ -127,7 +137,11 @@
           :style="p.style"
           :aria-label="`${playerLabel(p.color)}第${p.i + 1}架`"
           @click="onPieceClick(p)"
-        ><span>{{ p.i + 1 }}</span></button>
+        >
+          <svg class="lb-plane" viewBox="0 0 24 24" :style="{ transform: `rotate(${p.rot}deg)` }" aria-hidden="true">
+            <path d="M12 2.5C12.9 2.5 13.6 3.3 13.6 4.3L13.6 9.2L21.5 13.6L21.5 15.7L13.6 13.3L13.6 17.6L16 19.4L16 21.2L12 20L8 21.2L8 19.4L10.4 17.6L10.4 13.3L2.5 15.7L2.5 13.6L10.4 9.2L10.4 4.3C10.4 3.3 11.1 2.5 12 2.5Z" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -147,9 +161,19 @@
     </div>
 
     <p class="lb-hint">
-      掷 6 才能起飞 · 掷 6 或击落对方可再掷一次 · 踩到自己颜色前进 4 格 · 第 18 格触发飞行通道直飞 12 格 ·
-      需正好点数归航（超出弹回）· 四架全部归航者获胜
+      掷 1 或 6 均可起飞 · 掷 6 或击落对方可再掷一次 · 踩到自己颜色前进 4 格 · 第 18 格触发飞行通道直飞 12 格 ·
+      超出终点直接归航（不弹回）· 四架全部归航者获胜
     </p>
+
+    <div class="lb-legend">
+      <span class="lb-lg-title">事件格</span>
+      <span
+        v-for="(m, k) in EVENT_META"
+        :key="k"
+        class="lb-lg"
+        :class="'lg-' + k"
+      ><i>{{ m.icon }}</i>{{ m.name }} · {{ m.tip }}</span>
+    </div>
   </div>
 </template>
 
@@ -220,6 +244,23 @@ const HOME_START = 51
 const FINISH = 57
 const SHORTCUT_FROM = 18    // 第 18 格触发飞行通道
 const SHORTCUT_STEP = 12
+
+/* 事件格（大乱斗）：按「环上索引」布置，四色共享 —— 谁落上去都触发同一效果。
+ * 刻意避开各色起点（1/14/27/40）与飞行通道触发格（6/19/32/45），
+ * 免得「刚起飞」或「刚飞跃」时又被叠一层效果、读不清发生了什么。 */
+const EVENT_STEP = 3
+const EVENT_CELLS = {
+  3: 'boost', 17: 'boost', 30: 'boost',      // ⚡ 加速带：前进 3 格
+  8: 'trap', 21: 'trap', 36: 'trap',         // 🕳 陷阱：后退 3 格
+  11: 'warp', 25: 'warp', 43: 'warp',        // 🌀 虫洞：与最领先的对手换位
+  12: 'chest', 24: 'chest', 48: 'chest',     // 🎁 宝箱：额外再掷一次
+}
+const EVENT_META = {
+  boost: { icon: '⚡', name: '加速带', short: '加速', tip: '前进 3 格' },
+  trap: { icon: '🕳', name: '陷阱', short: '陷阱', tip: '后退 3 格' },
+  warp: { icon: '🌀', name: '虫洞', short: '虫洞', tip: '与领先对手换位' },
+  chest: { icon: '🎁', name: '宝箱', short: '宝箱', tip: '再掷一次' },
+}
 
 const META = {
   red: { name: '红方', main: '#e5484d', deep: '#a81f26' },
@@ -323,30 +364,82 @@ function cellOf(color, prog) {
   if (prog < FINISH) return HOME[color][prog - HOME_START]
   return null
 }
-/** 当前可走的棋子下标（掷 6 才能从基地起飞） */
+/** 机头朝向：按「当前格 → 下一格」的方向算角度（SVG 机头默认朝上，故 +90°）。
+ *  纯观感，不参与走子逻辑；基地 / 已归航 / 无下一格时回正。 */
+function dirAngle(color, prog) {
+  if (prog < 0 || prog >= FINISH) return 0
+  const a = cellOf(color, prog)
+  const b = cellOf(color, prog + 1)
+  if (!a || !b) return 0
+  const dy = b[0] - a[0], dx = b[1] - a[1]
+  if (!dx && !dy) return 0
+  return Math.round(Math.atan2(dy, dx) * 180 / Math.PI + 90)
+}
+/** 当前可走的棋子下标（掷 1 或 6 才能从基地起飞 —— 放宽起飞门槛，减少卡手） */
 function legalMoves(color, v) {
   const out = []
   pieces.value[color].forEach((pc, i) => {
     if (pc.prog === FINISH) return
-    if (pc.prog === -1) { if (v === 6) out.push(i); return }
+    if (pc.prog === -1) { if (v === 6 || v === 1) out.push(i); return }
     out.push(i)
   })
   return out
 }
 const legalIdx = computed(() => (phase.value === 'move' ? legalMoves(turnColor.value, dice.value) : []))
 
-/** 只计算不落地：把一手棋的完整结果算出来（供本地落地 / 在线发给对方重放） */
+/** 最领先的对手棋子（轨道上 prog 最大者）—— 虫洞换位的目标 */
+function leadingOpponent(color) {
+  let best = null
+  for (const oc of activeColors.value) {
+    if (oc === color) continue
+    pieces.value[oc].forEach((op, oi) => {
+      if (op.prog >= 1 && op.prog <= TRACK_MAX && (!best || op.prog > best.prog)) {
+        best = { color: oc, i: oi, prog: op.prog }
+      }
+    })
+  }
+  return best
+}
+
+/** 把「A 色某进度所在的环位」换算成「B 色落在同一环位的进度」；落在 B 色起点外/归航口则返回 null。
+ *  虫洞换位必须走这里 —— prog 是各色独立的进度，直接对调 prog 会落到不同格子。 */
+function sameRingProg(fromColor, prog, toColor) {
+  const ring = ringOf(fromColor, prog)
+  const p = ((ring - START[toColor]) % 52 + 52) % 52
+  return (p >= 1 && p <= TRACK_MAX) ? p : null
+}
+
+/** 只计算不落地：把一手棋的完整结果算出来（供本地落地 / 在线发给对方重放）。
+ *  事件格效果也在这里算好、一并写进 np/wp，重放端无需再算随机数。 */
 function resolve(color, i, v) {
   const from = pieces.value[color][i].prog
   let prog = from === -1 ? 0 : from + v
-  if (prog > FINISH) prog = 2 * FINISH - prog          // 超出终点 → 弹回
+  if (prog > FINISH) prog = FINISH                     // 取消精确归航：超出直接归航
   let fly = ''
   if (prog >= 1 && prog <= TRACK_MAX) {
     if (prog === SHORTCUT_FROM) {
       prog += SHORTCUT_STEP; fly = 'shortcut'
-      if (prog > FINISH) prog = 2 * FINISH - prog
+      if (prog > FINISH) prog = FINISH
     } else if (prog % 4 === 0 && prog + 4 <= TRACK_MAX) {
       prog += 4; fly = 'color'
+    }
+  }
+  // 事件格：落在带事件的格子上触发（按环上索引，四色共享）
+  let evt = ''
+  let wp = null                                        // 虫洞：把被换位的对手挪到哪
+  if (prog >= 1 && prog <= TRACK_MAX) {
+    const type = EVENT_CELLS[ringOf(color, prog)]
+    if (type === 'trap') {
+      evt = 'trap'; prog = Math.max(1, prog - EVENT_STEP)
+    } else if (type === 'boost') {
+      evt = 'boost'; prog = Math.min(FINISH, prog + EVENT_STEP)
+    } else if (type === 'chest') {
+      evt = 'chest'
+    } else if (type === 'warp') {
+      const t = leadingOpponent(color)
+      const mine = t && sameRingProg(t.color, t.prog, color)   // 我换到对手的环位
+      const his = t && sameRingProg(color, prog, t.color)      // 对手换到我的环位
+      if (t && mine != null && his != null) { evt = 'warp'; wp = [t.color, t.i, his]; prog = mine }
     }
   }
   const cap = []
@@ -355,11 +448,12 @@ function resolve(color, i, v) {
     for (const oc of activeColors.value) {
       if (oc === color) continue
       pieces.value[oc].forEach((op, oi) => {
+        if (wp && wp[0] === oc && wp[1] === oi) return    // 被虫洞换过来的对手不判击落
         if (op.prog >= 1 && op.prog <= TRACK_MAX && ringOf(oc, op.prog) === ring) cap.push([oc, oi])
       })
     }
   }
-  return { t: 'move', c: color, p: i, v, np: prog, cap, fly, extra: v === 6 || cap.length > 0 }
+  return { t: 'move', c: color, p: i, v, np: prog, cap, fly, evt, wp, extra: v === 6 || cap.length > 0 || evt === 'chest' }
 }
 
 /** 唯一落地入口：本地与在线共用（在线由对方重放同一事件） */
@@ -378,6 +472,11 @@ function applyEvent(ev) {
   if (!arr || typeof ev.p !== 'number' || !arr[ev.p]) return
   const from = arr[ev.p].prog
   arr[ev.p].prog = ev.np
+  if (ev.wp) {                                        // 虫洞：把被换位的对手挪到我这手原来的落点
+    const [oc, oi, back] = ev.wp
+    const op = pieces.value[oc]?.[oi]
+    if (op) op.prog = back
+  }
   for (const [oc, oi] of (ev.cap || [])) {
     const op = pieces.value[oc]?.[oi]
     if (op) op.prog = -1
@@ -386,6 +485,10 @@ function applyEvent(ev) {
   let msg = from === -1 ? `${label(ev.c)} 起飞` : `${label(ev.c)} 掷出 ${ev.v} 点`
   if (ev.fly === 'shortcut') msg += ' · 触发飞行通道 ✈️'
   else if (ev.fly === 'color') msg += ' · 踩到自己颜色，飞跃 ✈️'
+  if (ev.evt && EVENT_META[ev.evt]) {
+    const m = EVENT_META[ev.evt]
+    msg += ` · ${m.icon} ${m.name}（${m.tip}）`
+  }
   if ((ev.cap || []).length) msg += ` · 击落 ${ev.cap.map(([oc]) => label(oc)).join('、')}`
   if (ev.np === FINISH) msg += ' · 一架归航 🎉'
   addLog(msg)
@@ -402,7 +505,10 @@ function applyEvent(ev) {
   }
   if (ev.extra) {
     phase.value = 'roll'
-    addLog(ev.v === 6 ? `${label(ev.c)} 掷出 6 点，再掷一次` : `${label(ev.c)} 击落对方，再掷一次`)
+    if (ev.v === 6) addLog(`${label(ev.c)} 掷出 6 点，再掷一次`)
+    else if ((ev.cap || []).length) addLog(`${label(ev.c)} 击落对方，再掷一次`)
+    else if (ev.evt === 'chest') addLog(`${label(ev.c)} 宝箱奖励，再掷一次 🎁`)
+    else addLog(`${label(ev.c)} 再掷一次`)
   } else {
     endTurn(ev.c)
   }
@@ -568,6 +674,7 @@ const pieceViews = computed(() => {
         key: `${key}-${it.i}`,
         color: it.c,
         i: it.i,
+        rot: dirAngle(it.c, it.pc.prog),
         finished: it.pc.prog === FINISH,
         movable: isMovable(it.c, it.i),
         style: {
@@ -719,39 +826,56 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.lb-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+.lb-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; }
 
 /* ===== 玩家条 / 玻璃壳 ===== */
 .lb-shell {
-  width: 100%; max-width: 620px; border-radius: 18px; padding: 14px 16px;
-  background: linear-gradient(160deg, rgba(255,255,255,.78), rgba(255,255,255,.48));
-  border: 1px solid var(--dp-line, rgba(0,0,0,.1));
-  box-shadow: 0 8px 28px rgba(20,30,40,.08), inset 0 1px 0 rgba(255,255,255,.6);
-  display: flex; flex-direction: column; gap: 11px;
+  width: 100%; max-width: 640px; border-radius: 22px; padding: 16px 18px;
+  background: linear-gradient(150deg, rgba(255,255,255,.9), rgba(255,255,255,.55));
+  border: 1px solid var(--dp-line, rgba(0,0,0,.08));
+  box-shadow: 0 16px 44px -14px rgba(30,40,80,.28), inset 0 1px 0 rgba(255,255,255,.85);
+  backdrop-filter: blur(16px) saturate(1.35);
+  display: flex; flex-direction: column; gap: 12px;
 }
-.lb-players { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.lb-players { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .lb-player {
-  display: flex; align-items: center; gap: 9px; padding: 7px 12px; border-radius: 13px;
-  border: 1px solid transparent; transition: all .25s; min-width: 128px;
+  display: flex; align-items: center; gap: 10px; padding: 9px 15px; border-radius: 16px;
+  border: 1.5px solid transparent; min-width: 138px;
+  background: color-mix(in srgb, var(--pc, #c7a96b) 9%, rgba(255,255,255,.55));
+  transition: transform .26s cubic-bezier(.2,.8,.3,1), box-shadow .26s, border-color .26s, background .26s;
 }
 .lb-player.active {
-  border-color: var(--pc, #c7a96b); background: color-mix(in srgb, var(--pc, #c7a96b) 14%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc, #c7a96b) 16%, transparent);
+  border-color: var(--pc, #c7a96b);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--pc, #c7a96b) 26%, transparent),
+    color-mix(in srgb, var(--pc, #c7a96b) 8%, transparent));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc, #c7a96b) 15%, transparent),
+              0 10px 26px -8px color-mix(in srgb, var(--pc, #c7a96b) 65%, transparent);
+  transform: translateY(-1px);
 }
-.lb-chip { width: 16px; height: 16px; border-radius: 50%; flex: none; box-shadow: 0 2px 5px rgba(0,0,0,.28); }
+.lb-chip {
+  width: 20px; height: 20px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 32% 26%, color-mix(in srgb, var(--pc, #c7a96b) 42%, #fff), var(--pc, #c7a96b));
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--pc, #c7a96b) 55%, transparent), inset 0 1px 0 rgba(255,255,255,.6);
+}
 .lb-ptxt { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.lb-ptxt b { font-size: 13px; color: var(--dp-text, #18202a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92px; }
+.lb-ptxt b { font-size: 13.5px; font-weight: 700; color: var(--dp-text, #18202a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92px; }
 .lb-ptxt i { font-style: normal; font-size: 10.5px; color: var(--dp-text3, #8a8f98); }
-.lb-mini { display: flex; gap: 3px; margin-left: auto; }
-.lb-mini em { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,0,0,.14); }
-.lb-mini em.done { background: var(--pc, #c7a96b); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pc, #c7a96b) 25%, transparent); }
+.lb-mini { display: flex; gap: 4px; margin-left: auto; }
+.lb-mini em { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,.13); transition: all .25s; }
+.lb-mini em.done { background: var(--pc, #c7a96b); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pc, #c7a96b) 28%, transparent); }
 
-.lb-modes { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.lb-modes { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; }
 .lb-mode {
-  padding: 6px 14px; border-radius: 999px; border: 1px solid var(--dp-line, rgba(0,0,0,.12));
-  background: transparent; color: var(--dp-text2, #45505b); cursor: pointer; font-size: 12.5px; font-family: inherit; transition: all .2s;
+  padding: 7px 16px; border-radius: 999px; border: 1px solid var(--dp-line, rgba(0,0,0,.12));
+  background: rgba(255,255,255,.5); color: var(--dp-text2, #45505b); cursor: pointer; font-size: 12.5px; font-family: inherit;
+  transition: transform .18s, box-shadow .18s, background .18s, color .18s;
 }
-.lb-mode.on { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
+.lb-mode:hover { transform: translateY(-1px); }
+.lb-mode.on {
+  background: linear-gradient(135deg, #ffd977, #f0a93c); border-color: transparent; color: #4a2c05; font-weight: 700;
+  box-shadow: 0 6px 16px -4px rgba(224,140,40,.6);
+}
 .lb-mode:disabled { opacity: .38; cursor: not-allowed; }
 
 .lb-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
@@ -790,145 +914,216 @@ onBeforeUnmount(() => {
 /* ===== 棋盘 ===== */
 .lb-boardwrap { display: inline-block; }
 .lb-board {
-  position: relative; width: min(92vw, 620px); aspect-ratio: 1 / 1;
-  border-radius: 16px; background: linear-gradient(135deg, #efe6d2, #ddcfae);
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.16), 0 12px 34px rgba(20,30,40,.14);
+  position: relative; width: min(92vw, 640px); aspect-ratio: 1 / 1;
+  border-radius: 24px; container-type: size;
+  background:
+    radial-gradient(88% 68% at 10% 4%, rgba(96, 224, 196, .38), rgba(96, 224, 196, 0) 60%),
+    radial-gradient(84% 64% at 94% 14%, rgba(255, 158, 200, .36), rgba(255, 158, 200, 0) 62%),
+    radial-gradient(96% 74% at 76% 98%, rgba(142, 174, 255, .38), rgba(142, 174, 255, 0) 60%),
+    radial-gradient(120% 90% at 50% -12%, rgba(255, 255, 255, .95), rgba(255, 255, 255, 0) 62%),
+    linear-gradient(135deg, #f2f7ff 0%, #ece9ff 46%, #fff0f6 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.9),
+    0 0 0 6px rgba(255,255,255,.4),
+    0 30px 70px -26px rgba(96, 92, 210, .42),
+    0 26px 56px -20px rgba(40,50,95,.42);
   touch-action: manipulation; user-select: none; transition: filter .2s;
-  --lb-line: rgba(60,45,20,.28);
-  --lb-empty: rgba(255,255,255,.5);
+  --lb-line: rgba(96,116,158,.2);
+  --lb-empty: rgba(255,255,255,.68);
 }
-.lb-board.locked { filter: saturate(.72) brightness(.95); }
+.lb-board.locked { filter: saturate(.7) brightness(.96); }
 .lb-board.locked .lb-piece { cursor: default; }
 
 /* 基地 */
 .lb-base {
-  position: absolute; border-radius: 12px;
-  background: color-mix(in srgb, var(--pc) 26%, #fff);
-  border: 2px solid color-mix(in srgb, var(--pc) 60%, #fff);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.5);
+  position: absolute; border-radius: 16px;
+  background: radial-gradient(circle at 30% 24%, color-mix(in srgb, var(--pc) 34%, #fff), color-mix(in srgb, var(--pc) 16%, #fff));
+  border: 2px solid color-mix(in srgb, var(--pc) 62%, #fff);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 8px 20px -8px color-mix(in srgb, var(--pc) 60%, transparent);
 }
-.lb-base.dim { opacity: .35; }
+.lb-base.dim { opacity: .3; }
 .lb-slot {
   position: absolute; width: 15%; aspect-ratio: 1/1; border-radius: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(255,255,255,.55); box-shadow: inset 0 0 0 1px rgba(0,0,0,.1);
+  background: rgba(255,255,255,.72); box-shadow: inset 0 0 0 1px rgba(0,0,0,.09), 0 1px 2px rgba(0,0,0,.06);
 }
 
 /* 中心归航区 */
 .lb-center {
-  position: absolute; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  position: absolute; border-radius: 12px; display: flex; align-items: center; justify-content: center;
   background:
     conic-gradient(from 45deg,
-      color-mix(in srgb, #e5484d 55%, #fff) 0 25%,
-      color-mix(in srgb, #2f9e63 55%, #fff) 25% 50%,
-      color-mix(in srgb, #e0a020 55%, #fff) 50% 75%,
-      color-mix(in srgb, #2f80d8 55%, #fff) 75% 100%);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.7), 0 3px 10px rgba(0,0,0,.12);
+      #f2757a 0 25%, #4fbe86 25% 50%, #f2be4a 50% 75%, #4f9de6 75% 100%);
+  box-shadow: inset 0 0 0 2.5px rgba(255,255,255,.85), 0 6px 18px -4px rgba(30,40,80,.4);
 }
-.lb-center-star { font-size: 13px; color: rgba(255,255,255,.95); text-shadow: 0 1px 3px rgba(0,0,0,.35); }
+.lb-center-star { font-size: 15px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.35); }
 
 /* 轨道格 / 归航通道格 */
 .lb-cell {
   position: absolute; box-sizing: border-box;
-  background: var(--lb-empty); border: 1px solid var(--lb-line); border-radius: 3px;
+  background: var(--lb-empty); border: 1px solid var(--lb-line); border-radius: 6px;
 }
-.lb-cell.own { background: rgba(199,169,107,.4); }
+.lb-cell.own { background: linear-gradient(135deg, rgba(255,214,110,.72), rgba(255,186,72,.56)); border-color: rgba(224,150,40,.4); }
+/* 事件格：四色共享的特殊格，用颜色 + 图标 + 短名一起区分类型（只看图看不懂） */
+.lb-cell.evt {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+  background: color-mix(in srgb, var(--evt, #888) 34%, #fff);
+  border-color: color-mix(in srgb, var(--evt, #888) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--evt, #888) 40%, transparent);
+}
+.lb-cell.evt-boost { --evt: #22b573; }
+.lb-cell.evt-trap  { --evt: #f0564f; }
+.lb-cell.evt-warp  { --evt: #8a5cf0; }
+.lb-cell.evt-chest { --evt: #f0a91c; }
+.lb-evt-ico { font-size: clamp(9px, 2.8cqw, 18px); line-height: 1; }
+.lb-evt-tag {
+  margin-top: 1px; font-size: clamp(6.5px, 2.05cqw, 11px); font-weight: 800; letter-spacing: -.2px;
+  color: color-mix(in srgb, var(--evt, #666) 82%, #1b2233);
+}
 .lb-cell.fly::after {
   content: '✈'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font-size: 9px; color: rgba(60,45,20,.6);
+  font-size: clamp(8px, 2.2cqw, 14px); color: rgba(70,95,140,.7);
 }
-.lb-cell.home { border-color: rgba(255,255,255,.65); box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); }
+.lb-cell.home { border-color: rgba(255,255,255,.8); box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
 .lb-cell.home.dim { opacity: .3; }
 
-/* 棋子 */
+/* 棋子：圆润机身 + 白色飞机 */
 .lb-piece {
   position: absolute; transform: translate(-50%, -50%); aspect-ratio: 1/1; padding: 0;
-  border-radius: 50%; border: 2px solid rgba(255,255,255,.9); cursor: pointer;
-  background: radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--pc) 55%, #fff), var(--pcd));
-  box-shadow: 0 2px 6px rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 2px solid rgba(255,255,255,.95); cursor: pointer;
+  background: radial-gradient(circle at 32% 26%, color-mix(in srgb, var(--pc) 46%, #fff), var(--pcd));
+  box-shadow: 0 3px 9px rgba(10,20,45,.42), inset 0 -2px 6px rgba(0,0,0,.24), inset 0 2px 5px rgba(255,255,255,.45);
+  display: flex; align-items: center; justify-content: center;
   transition: left .26s ease, top .26s ease, width .2s ease, transform .2s ease; z-index: 3;
 }
-.lb-piece span { font-size: 9px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
-.lb-piece.movable { z-index: 5; animation: lbfloat 1.1s ease-in-out infinite; box-shadow: 0 0 0 3px rgba(255,255,255,.85), 0 0 12px 3px color-mix(in srgb, var(--pc) 70%, transparent); }
-.lb-piece.movable:hover { transform: translate(-50%, -50%) scale(1.14); }
-.lb-piece.finished { border-color: #f6d76b; box-shadow: 0 0 0 2px rgba(246,215,107,.9), 0 2px 8px rgba(0,0,0,.3); }
+.lb-plane {
+  width: 78%; height: 78%; fill: rgba(255,255,255,.97);
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.42));
+  transition: transform .3s ease;
+}
+.lb-piece.movable {
+  z-index: 6; animation: lbfloat 1.1s ease-in-out infinite;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.92), 0 0 18px 6px color-mix(in srgb, var(--pc) 72%, transparent), 0 3px 9px rgba(10,20,45,.42);
+}
+.lb-piece.movable:hover { transform: translate(-50%, -50%) scale(1.16); }
+.lb-piece.finished { border-color: #ffd977; box-shadow: 0 0 0 2px rgba(255,217,119,.95), 0 0 14px 4px rgba(255,200,60,.6), 0 2px 8px rgba(0,0,0,.3); }
 @keyframes lbfloat { 50% { transform: translate(-50%, -50%) scale(1.09) } }
 
 /* ===== 控制区 ===== */
 .lb-ctrl {
-  width: 100%; max-width: 620px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
-  padding: 12px 16px; border-radius: 16px;
-  background: linear-gradient(160deg, rgba(255,255,255,.7), rgba(255,255,255,.42));
-  border: 1px solid var(--dp-line, rgba(0,0,0,.1)); box-shadow: 0 6px 20px rgba(20,30,40,.07);
+  width: 100%; max-width: 640px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  padding: 14px 18px; border-radius: 20px;
+  background: linear-gradient(150deg, rgba(255,255,255,.82), rgba(255,255,255,.5));
+  border: 1px solid var(--dp-line, rgba(0,0,0,.08));
+  box-shadow: 0 12px 32px -12px rgba(30,40,80,.3);
+  backdrop-filter: blur(14px) saturate(1.3);
 }
 .lb-dicebox { display: flex; align-items: center; gap: 12px; }
 .lb-dice {
-  width: 46px; height: 46px; flex: none; border-radius: 11px; padding: 6px; box-sizing: border-box;
-  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 2px;
-  background: linear-gradient(160deg, #fff, #e9e3d4); border: 1px solid rgba(0,0,0,.16);
-  box-shadow: 0 3px 9px rgba(20,30,40,.18), inset 0 1px 0 #fff;
+  width: 54px; height: 54px; flex: none; border-radius: 15px; padding: 8px; box-sizing: border-box;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 2.5px;
+  background: linear-gradient(155deg, #ffffff, #eef0f7);
+  border: 1px solid rgba(90,110,150,.22);
+  box-shadow: 0 6px 16px -4px rgba(30,40,80,.35), inset 0 1px 0 #fff;
 }
 .lb-dice.rolling { animation: lbroll .32s ease; }
 @keyframes lbroll { 50% { transform: rotate(180deg) scale(.86) } }
 .lb-dice i { border-radius: 50%; }
-.lb-dice i.on { background: radial-gradient(circle at 35% 30%, #4a4a4a, #111); }
+.lb-dice i.on { background: radial-gradient(circle at 35% 30%, #6b5cff, #2b1fa8); }
 .lb-roll {
-  padding: 10px 20px; border-radius: 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit;
-  border: 1px solid var(--yq-gold, #c7a96b); background: var(--yq-gold, #c7a96b); color: #fff;
-  box-shadow: 0 4px 12px rgba(199,169,107,.35); transition: all .18s;
+  padding: 12px 26px; border-radius: 15px; font-size: 15px; font-weight: 800; letter-spacing: .4px;
+  cursor: pointer; font-family: inherit; border: none; color: #4a2c05;
+  background: linear-gradient(135deg, #ffdd85, #f2ad3f 55%, #e5841f);
+  box-shadow: 0 8px 22px -6px rgba(224,140,40,.75), inset 0 1px 0 rgba(255,255,255,.65);
+  transition: transform .16s, box-shadow .16s, filter .16s;
 }
+.lb-roll:not(:disabled):hover { transform: translateY(-2px); filter: brightness(1.05); }
 .lb-roll:disabled { opacity: .45; cursor: default; box-shadow: none; }
-.lb-roll:not(:disabled):hover { filter: brightness(1.06); }
-.lb-log { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 2px; }
+.lb-log { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 190px; display: flex; flex-direction: column; gap: 3px; }
 .lb-log li { font-size: 11.5px; line-height: 1.55; color: var(--dp-text3, #8a8f98); }
-.lb-log li.fresh { color: var(--dp-text, #18202a); font-weight: 600; }
+.lb-log li.fresh { color: var(--dp-text, #18202a); font-weight: 700; }
 
-.lb-hint { max-width: 620px; font-size: 11px; line-height: 1.75; color: var(--dp-text3, #8a8f98); text-align: center; margin: 0; }
+.lb-hint { max-width: 640px; font-size: 11.5px; line-height: 1.8; color: var(--dp-text3, #8a8f98); text-align: center; margin: 0; }
+
+/* 事件格图例 */
+.lb-legend { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 640px; font-size: 11.5px; }
+.lb-lg-title { font-weight: 700; color: var(--dp-text3, #8a8f98); }
+.lb-lg {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 13px; border-radius: 999px;
+  font-weight: 600; color: var(--dp-text2, #45505b);
+  background: color-mix(in srgb, var(--evt, #888) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--evt, #888) 34%, transparent);
+}
+.lb-lg i { font-style: normal; font-size: 13px; }
+.lb-lg.lg-boost { --evt: #22b573; }
+.lb-lg.lg-trap  { --evt: #f0564f; }
+.lb-lg.lg-warp  { --evt: #8a5cf0; }
+.lb-lg.lg-chest { --evt: #f0a91c; }
 
 @media (max-width: 520px) {
-  .lb-shell { padding: 11px 12px; }
-  .lb-player { min-width: 104px; padding: 6px 9px; }
-  .lb-ptxt b { max-width: 66px; font-size: 12px; }
-  .lb-board { width: min(96vw, 620px); }
-  .lb-ctrl { padding: 10px 12px; gap: 10px; }
+  .lb-shell { padding: 12px 13px; border-radius: 18px; }
+  .lb-player { min-width: 108px; padding: 7px 10px; }
+  .lb-ptxt b { max-width: 68px; font-size: 12px; }
+  .lb-board { width: min(96vw, 640px); border-radius: 20px; }
+  .lb-ctrl { padding: 11px 13px; gap: 11px; border-radius: 16px; }
   .lb-log { min-width: 140px; }
+  .lb-dice { width: 46px; height: 46px; border-radius: 13px; padding: 6px; }
+  .lb-roll { padding: 10px 18px; font-size: 13.5px; }
 }
 
-/* ===== 夜间主题：深色玻璃壳 + 深木纹棋盘（此前白壳压黑底发灰看不清） ===== */
+/* ===== 夜间主题：深空靛蓝玻璃 + 夜光棋盘（此前白壳压黑底发灰看不清） ===== */
 :root[data-theme="night"] .lb-shell,
 :root[data-theme="night"] .lb-online,
 :root[data-theme="night"] .lb-ctrl {
-  background: linear-gradient(160deg, rgba(38,44,58,.94), rgba(22,26,36,.92));
-  border-color: rgba(199,169,107,.3);
-  box-shadow: 0 8px 28px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
+  background: linear-gradient(150deg, rgba(38,44,72,.92), rgba(20,24,42,.94));
+  border-color: rgba(140,150,220,.24);
+  box-shadow: 0 16px 44px -14px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.08);
 }
-:root[data-theme="night"] .lb-ptxt b { color: #f2eee4; }
-:root[data-theme="night"] .lb-ptxt i { color: #b9b3cc; }
-:root[data-theme="night"] .lb-mini em { background: rgba(255,255,255,.18); }
-:root[data-theme="night"] .lb-online-title { color: #f2eee4; }
+:root[data-theme="night"] .lb-player { background: color-mix(in srgb, var(--pc, #c7a96b) 16%, rgba(255,255,255,.04)); }
+:root[data-theme="night"] .lb-ptxt b { color: #f2f0fa; }
+:root[data-theme="night"] .lb-ptxt i { color: #a9a6c8; }
+:root[data-theme="night"] .lb-mini em { background: rgba(255,255,255,.16); }
+:root[data-theme="night"] .lb-online-title { color: #f2f0fa; }
 :root[data-theme="night"] .lb-online-desc,
 :root[data-theme="night"] .lb-quota,
-:root[data-theme="night"] .lb-log li { color: #b9b3cc; }
-:root[data-theme="night"] .lb-log li.fresh { color: #f6f2e8; }
-:root[data-theme="night"] .lb-status { color: #ded9ee; }
-:root[data-theme="night"] .lb-hint { color: #a9a3bd; }
-:root[data-theme="night"] .lb-btn { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); color: #ece7dc; }
+:root[data-theme="night"] .lb-log li { color: #a9a6c8; }
+:root[data-theme="night"] .lb-log li.fresh { color: #f6f4ff; }
+:root[data-theme="night"] .lb-status { color: #d8d5ee; }
+:root[data-theme="night"] .lb-hint { color: #9d99bb; }
+:root[data-theme="night"] .lb-btn { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); color: #ece9f8; }
 :root[data-theme="night"] .lb-btn.primary { background: #c7a96b; border-color: #c7a96b; color: #1a1509; }
-:root[data-theme="night"] .lb-mode { color: #ded9ee; border-color: rgba(255,255,255,.2); }
-:root[data-theme="night"] .lb-mode.on { background: #c7a96b; border-color: #c7a96b; color: #1a1509; }
+:root[data-theme="night"] .lb-mode { color: #d8d5ee; border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.05); }
+:root[data-theme="night"] .lb-mode.on { background: linear-gradient(135deg, #ffd977, #f0a93c); border-color: transparent; color: #2a1a03; }
 
-:root[data-theme="night"] .lb-banner.st-waiting { background: rgba(199,169,107,.2); color: #ded9ee; }
-:root[data-theme="night"] .lb-banner.st-playing { background: rgba(127,168,163,.22); color: #ded9ee; }
-:root[data-theme="night"] .lb-banner.st-finished { background: rgba(199,169,107,.26); color: #f6f2e8; }
-:root[data-theme="night"] .lb-locknote { background: rgba(199,169,107,.22); color: #ded9ee; }
+:root[data-theme="night"] .lb-banner.st-waiting { background: rgba(199,169,107,.2); color: #d8d5ee; }
+:root[data-theme="night"] .lb-banner.st-playing { background: rgba(127,168,163,.22); color: #d8d5ee; }
+:root[data-theme="night"] .lb-banner.st-finished { background: rgba(199,169,107,.26); color: #f6f4ff; }
+:root[data-theme="night"] .lb-locknote { background: rgba(199,169,107,.22); color: #d8d5ee; }
 :root[data-theme="night"] .lb-board {
-  background: linear-gradient(135deg, #6d5836, #4b3c24);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 12px 34px rgba(0,0,0,.6);
-  --lb-line: rgba(255,236,190,.32);
-  --lb-empty: rgba(255,255,255,.13);
+  background:
+    radial-gradient(120% 90% at 50% -12%, rgba(140,150,220,.28), rgba(140,150,220,0) 60%),
+    linear-gradient(135deg, #232a52 0%, #1b1f3e 45%, #241a3a 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.14),
+    0 0 0 6px rgba(255,255,255,.06),
+    0 26px 56px -20px rgba(0,0,0,.8);
+  --lb-line: rgba(150,165,220,.3);
+  --lb-empty: rgba(255,255,255,.1);
 }
-:root[data-theme="night"] .lb-cell.fly::after { color: rgba(255,236,190,.75); }
-:root[data-theme="night"] .lb-base { background: color-mix(in srgb, var(--pc) 32%, #201c26); border-color: color-mix(in srgb, var(--pc) 70%, #fff); }
-:root[data-theme="night"] .lb-slot { background: rgba(0,0,0,.32); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
-:root[data-theme="night"] .lb-dice { background: linear-gradient(160deg, #efe9da, #cfc7b3); border-color: rgba(0,0,0,.3); }
+:root[data-theme="night"] .lb-cell.fly::after { color: rgba(190,205,255,.8); }
+:root[data-theme="night"] .lb-cell.evt {
+  background: color-mix(in srgb, var(--evt, #888) 46%, #171b30);
+  border-color: color-mix(in srgb, var(--evt, #888) 62%, transparent);
+}
+:root[data-theme="night"] .lb-evt-tag { color: #eef0ff; }
+:root[data-theme="night"] .lb-legend,
+:root[data-theme="night"] .lb-lg-title { color: #a9a6c8; }
+:root[data-theme="night"] .lb-lg { color: #d8d5ee; background: color-mix(in srgb, var(--evt, #888) 30%, transparent); }
+:root[data-theme="night"] .lb-cell.own { background: linear-gradient(135deg, rgba(255,214,110,.5), rgba(255,186,72,.36)); border-color: rgba(224,150,40,.35); }
+:root[data-theme="night"] .lb-base {
+  background: radial-gradient(circle at 30% 24%, color-mix(in srgb, var(--pc) 40%, #1b1f38), color-mix(in srgb, var(--pc) 22%, #1b1f38));
+  border-color: color-mix(in srgb, var(--pc) 68%, #fff);
+}
+:root[data-theme="night"] .lb-slot { background: rgba(0,0,0,.34); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+:root[data-theme="night"] .lb-dice { background: linear-gradient(155deg, #eef0f7, #c9cede); border-color: rgba(0,0,0,.3); }
 </style>
