@@ -41,7 +41,14 @@ GAMES = {
     "junqi": "军棋",
     "junqi_flip": "军棋翻棋",
     "ludo": "飞行棋",
+    # v2.43 棋牌三件套
+    "guandan": "掼蛋",
+    "mahjong": "麻将",
+    "monopoly": "大富翁",
 }
+
+# 底注档位（豆）
+STAKES = (100, 500, 2000)
 
 # 五子棋棋盘常量（服务端胜负判定用）
 GK_N = 15
@@ -53,6 +60,8 @@ class RoomIn(BaseModel):
     game: str
     invitee_user_id: int
     first: str = "me"      # 'me'=我执黑先行 / 'other'=对方执黑先行（v2.40.27 切换先手）
+    base_stake: int = 100  # v2.43 牌类底注档位（100/500/2000 豆）
+    ai_seats: int = 0      # v2.43 人数不足时自动补的机器人数
 
 
 class MoveIn(BaseModel):
@@ -244,6 +253,8 @@ def _room_to_out(r: GameRoom, names: dict[int, str], after_seq: int = 0, db: Ses
         "status": r.status,
         "winner_id": r.winner_id,
         "end_reason": r.end_reason or "",
+        "base_stake": int(r.base_stake or 100),
+        "ai_seats": int(r.ai_seats or 0),
         "created_at": str(r.created_at) if r.created_at else "",
         "updated_at": str(r.updated_at) if r.updated_at else "",
     }
@@ -318,6 +329,8 @@ def create_room(
         status="waiting",
         black_user_id=current_user["user_id"] if req.first == "me" else req.invitee_user_id,
         invite_code=secrets.token_hex(3),   # 6 位短码，防误入不防攻击
+        base_stake=req.base_stake if req.base_stake in STAKES else 100,
+        ai_seats=max(0, min(7, int(req.ai_seats or 0))),
         owner_seen_at=now,
     )
     db.add(r)

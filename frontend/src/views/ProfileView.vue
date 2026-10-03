@@ -112,6 +112,9 @@
         </div>
       </div>
 
+      <!-- 棋牌三件套：积分中心 / 战绩 / 家庭排行榜（v2.43） -->
+      <GameWalletPanel />
+
       <!-- 账号：切换 / 退出（v2.40.30，APK「我的」里原本没有任何登出入口） -->
       <div class="info-card account-card">
         <div class="card-header">
@@ -214,6 +217,7 @@ import { ElMessage } from 'element-plus'
 import { ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import BackButton from '@/components/BackButton.vue'
+import GameWalletPanel from '@/components/games/GameWalletPanel.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePrefsStore } from '@/stores/prefs'
 import { usePwaInstall } from '@/composables/usePwaInstall'

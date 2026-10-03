@@ -158,6 +158,13 @@ BACKEND_FILES = [
     # ---- v2.42 公私账：流水增加资金池归属（fund / fund_to + transfer 类型）----
     (os.path.join(ROOT, "backend", "alembic", "versions", "a7b8c9d0e1f2_finance_funds.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/a7b8c9d0e1f2_finance_funds.py"),
+    # ---- v2.43 棋牌三件套：积分/欢乐豆经济系统 + 底注/AI 席位 ----
+    (os.path.join(ROOT, "backend", "app", "models", "game_economy.py"),   f"{REMOTE_BASE}/backend/app/models/game_economy.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "game_economy.py"),  f"{REMOTE_BASE}/backend/app/routers/game_economy.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "c9d0e1f2a3b4_game_economy.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/c9d0e1f2a3b4_game_economy.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "e2f3a4b5c6d7_game_room_stake.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/e2f3a4b5c6d7_game_room_stake.py"),
 ]
 
 

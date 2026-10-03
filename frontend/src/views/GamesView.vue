@@ -1,5 +1,5 @@
 <template>
-  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 数独 · 扫雷 · 贪吃蛇">
+  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇">
     <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill }">
       <!-- ===== 左：游戏类型 ===== -->
       <aside v-show="!isBig" class="gm-rail">
@@ -149,6 +149,9 @@ const ICON = {
   snake: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h7a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3h2"/><rect x="2" y="15.5" width="2.6" height="2.6" rx="1" fill="currentColor" stroke="none"/><circle cx="18.6" cy="4.6" r="1.5" fill="currentColor" stroke="none"/></svg>',
   xiangqi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.6 6.6h16.8M3.6 17.4h16.8M6.6 3.6v16.8M17.4 3.6v16.8"/><circle cx="12" cy="12" r="4.4"/><path d="M9.9 12h4.2M12 9.9v4.2"/></svg>',
   xiangqi_flip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="4.4" width="8.4" height="15.2" rx="2"/><path d="M6.4 9.4h2.4M6.4 12h2.4M6.4 14.6h2.4"/><path d="M15.4 9a4.4 4.4 0 0 1 0 6"/><path d="M15.2 7.2l.5 2-2 .4"/></svg>',
+  guandan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8.4" y="3.6" width="9" height="13" rx="1.8" transform="rotate(12 12.9 10.1)"/><rect x="6.6" y="6.4" width="9" height="13" rx="1.8"/><path d="M9.4 10.6h3.4M9.4 13.2h2.2"/></svg>',
+  mahjong: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="3.4" width="8" height="11" rx="1.6"/><rect x="12.6" y="6.6" width="8" height="11" rx="1.6"/><path d="M6 7.2h3.2M6 10.2h3.2M15 10.4h3.2M15 13.4h3.2"/><path d="M8 17.8h8v2.6H8z"/></svg>',
+  monopoly: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4"/><rect x="6.4" y="6.4" width="11.2" height="11.2" rx="1.6"/><path d="M6.4 10.4h11.2M10.4 6.4v11.2"/><circle cx="17.2" cy="17.2" r="1.5" fill="currentColor" stroke="none"/></svg>',
   junqi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 21V3.4"/><path d="M6.2 4.4h11.2l-2.5 3.3 2.5 3.3H6.2"/></svg>',
   junqi_flip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="4.6" width="8" height="14.8" rx="2"/><path d="M5.9 9.2h2.6M5.9 12h2.6M5.9 14.8h2.6"/><path d="M15.4 9a4.4 4.4 0 0 1 0 6"/><path d="M15.2 7.2l.5 2-2 .4"/></svg>',
 }
@@ -286,18 +289,19 @@ const gamelist = [
     ],
   },
   {
-    key: 'ludo', label: '飞行棋', tag: '中国规则 · 大屏', group: '棋类', big: true,
-    desc: '掷 6 起飞、踩同色飞跃、飞行通道直飞；双人/三人/四人同屏，或在线邀请家人。',
+    key: 'ludo', label: '飞行棋', tag: '中国规则 · 大乱斗', group: '棋类', big: true,
+    desc: '掷 1/6 起飞、踩同色飞跃、飞行通道直飞；事件格大乱斗（加速带/陷阱/虫洞/宝箱）；双人/三人/四人同屏，或在线邀请家人。',
     icon: ICON.ludo,
     component: defineAsyncComponent(() => import('@/components/games/LudoBoard.vue')),
     rules: [
       '目标：把自己的 4 架飞机全部送回中心「归航」，先完成者获胜。',
-      '起飞：掷出 6 点才能从基地起飞到起点。',
+      '起飞：掷出 1 点或 6 点都能从基地起飞到起点。',
       '再掷：掷出 6 点、或击落对方飞机，都可以再掷一次。',
       '同色格：踩到自己颜色的格子，可以再前进 4 格。',
       '飞行通道：走到第 18 格会触发飞行通道，直接向前飞 12 格。',
-      '归航：必须用正好的点数进入终点，超出会弹回相应格数。',
+      '归航：超出终点直接归航，不再弹回（加快残局）。',
       '击落：落到对方飞机所在格，把它送回基地。',
+      '事件格：⚡加速带前进 3 格 · 🕳陷阱后退 3 格 · 🌀虫洞与最领先的对手交换位置 · 🎁宝箱额外再掷一次。',
       '操作：点「掷骰」→ 点要走的飞机；模式支持双人/三人/四人同屏，或在线邀请家人（2 人）。',
     ],
     modes: [
@@ -305,6 +309,73 @@ const gamelist = [
       { key: 'pvp3', label: '三人同屏', hint: '红绿黄混战，谁先归航' },
       { key: 'pvp4', label: '四人同屏', hint: '四色全上，最热闹' },
       { key: 'online', label: '在线 · 邀请对战', hint: '建房邀请家人，跨设备同步' },
+    ],
+  },
+  /* ---------- 牌类（v2.43 棋牌三件套） ---------- */
+  {
+    key: 'guandan', label: '掼蛋', tag: '4 人 · 2v2 · AI 补位', group: '牌类', big: true,
+    desc: '两副牌 108 张，红桃级牌「逢人配」当百搭；双上升 3 级、一三升 2 级、一四升 1 级。人数不足由机器人自动补位。',
+    icon: ICON.guandan,
+    component: defineAsyncComponent(() => import('@/components/games/GuandanBoard.vue')),
+    rules: [
+      '目标：两队（对家为一队）比谁先「打过 A」。每人 27 张，两副牌共 108 张（含 4 张王）。',
+      '级牌：本局以己方当前级数为主级牌，级牌大小仅次于王。',
+      '逢人配：红桃级牌是百搭牌，可当除王以外的任意一张牌用（凑顺子、对子、炸弹都行），牌面上会标「配」。',
+      '牌型：单张 / 对子 / 三张 / 三带二 / 顺子（5 张连续）/ 三连对（木板）/ 钢板（两组三张）/ 炸弹（4 张以上同点）/ 同花顺 / 四大天王。',
+      '比大小：同牌型比点数；炸弹可压任意非炸弹；同花顺大于 5 张炸弹，6 张炸弹大于同花顺，四大天王最大。',
+      '出牌：轮到你时「压牌」或「不要」，其余三家都不要则由你重新起牌；手牌出完即退出本局。',
+      '升级：一方两人包揽第 1、2 名（双上）升 3 级；第 1、3 名（一三）升 2 级；第 1、4 名升 1 级。',
+      '人数：单人＝1 真人 + 3 AI；双人＝2 真人同屏 + 2 AI；四人＝4 真人同屏。',
+    ],
+    modes: [
+      { key: 'solo', label: '单人 · 3 个 AI', hint: '1 个真人 + 3 个机器人，随时开一局' },
+      { key: 'duo', label: '双人 · 2 个 AI', hint: '2 个真人同屏 + 2 个机器人补位' },
+      { key: 'quad', label: '四人同屏', hint: '4 个真人轮流上手，一台设备打完' },
+    ],
+  },
+  {
+    key: 'mahjong', label: '四川麻将', tag: '血战到底 · AI 补位', group: '牌类', big: true,
+    desc: '万/条/筒 108 张，定缺开局，碰杠胡齐全；胡牌不下桌、血战到底，流局查大叫查花猪。',
+    icon: ICON.mahjong,
+    component: defineAsyncComponent(() => import('@/components/games/MahjongBoard.vue')),
+    rules: [
+      '牌张：只用万 / 条 / 筒 各 1–9，每种 4 张，共 108 张，没有风牌与箭牌。',
+      '定缺：开局每人必须选一门花色作为「缺门」，手上不能留缺门牌，必须先打完才能碰、杠、胡。',
+      '摸打：庄家 14 张起手，其余 13 张；轮流摸一张、打一张。',
+      '碰杠：别人打出的牌自己有 2 张相同可碰；明杠（别人打的 + 自己 3 张）/ 暗杠（自己摸到 4 张）/ 补杠（碰过的牌再摸到第 4 张）。',
+      '胡牌：4 组面子（顺子或刻子）+ 1 对将；或「七对」。必须缺一门。',
+      '番型：平胡 1 番、对对胡 2 番、清一色 4 番、七对 4 番、龙七对 8 番、将将胡 4 番、金钩钓 4 番；杠上花 / 杠上炮 / 抢杠胡 / 海底捞月各 +1 番；每有一组 4 张相同（含杠）加 1 番（根）。',
+      '血战到底：有人胡牌后该玩家下桌不再摸打，其余人继续打，直到 3 家都胡或牌墙摸完。',
+      '流局：未听牌者赔听牌者「大叫」；手上还留着缺门牌的是「花猪」，要赔给每家。',
+      '听牌提示：真人玩家手牌实时算出「听哪些牌」，显示在牌桌上方。',
+      '人数：单人＝1 真人 + 3 AI；双人＝2 真人同屏 + 2 AI；四人＝4 真人同屏。',
+    ],
+    modes: [
+      { key: 'solo', label: '单人 · 3 个 AI', hint: '1 个真人 + 3 个机器人' },
+      { key: 'duo', label: '双人 · 2 个 AI', hint: '2 个真人同屏 + 2 个机器人补位' },
+      { key: 'quad', label: '四人同屏', hint: '4 个真人轮流摸打' },
+    ],
+  },
+  {
+    key: 'monopoly', label: '大富翁', tag: '8 人 · 等距 3D 棋盘', group: '牌类', big: true,
+    desc: '14×14 等距 3D 棋盘共 52 格，8 位角色各有绝技、8 张道具卡；买房收租、升级建筑，最后存活者获胜。',
+    icon: ICON.monopoly,
+    component: defineAsyncComponent(() => import('@/components/games/MonopolyBoard.vue')),
+    rules: [
+      '目标：掷骰前进、买地收租，让对手全部破产，最后存活者获胜。',
+      '开局：每人 50000 豆启动资金；棋盘 52 格，含地产、机会、命运、监狱、起点等格子。',
+      '买地：停在无主地块可选择买下；停在他人地块需付租金，地块等级越高租金越贵。',
+      '建设：在自己成组的地块上可以升级建筑（🏠），提高租金。',
+      '角色技能：8 位角色各有一次性绝技，如掷骰加成、免租一次、七折强买、均富等。',
+      '道具卡：8 种道具（路障 / 传送 / 免费卡 / 均富卡 / 购地卡 / 转向卡 / 怪兽卡 / 天使卡），关键时刻扭转局势。',
+      '破产保护：现金不足时进入清算，全部地产变卖后仍不足即破产出局。',
+      '人数：2–8 人，人数不足由机器人自动补位；支持同屏轮流与「3D / 平面」视角切换。',
+    ],
+    modes: [
+      { key: 'p2', label: '2 人', hint: '1 真人 + 1 AI，快节奏' },
+      { key: 'p4', label: '4 人', hint: '2 真人 + 2 AI，经典局' },
+      { key: 'p6', label: '6 人', hint: '2 真人 + 4 AI，混战' },
+      { key: 'p8', label: '8 人', hint: '2 真人 + 6 AI，全场最热闹' },
     ],
   },
   {
@@ -355,7 +426,7 @@ const gamelist = [
   },
 ]
 const ALL = Object.fromEntries(gamelist.map(g => [g.key, g]))
-const groups = ['棋类', '益智', '休闲']
+const groups = ['棋类', '牌类', '益智', '休闲']
   .map(name => ({ name, items: gamelist.filter(g => g.group === name) }))
   .filter(g => g.items.length)
 

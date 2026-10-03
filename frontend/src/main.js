@@ -43,6 +43,8 @@ import './assets/styles/desktop-theme-day.css'
 import './assets/styles/desktop-product.css'
 // 工具岛各页的窄屏兜底（预览元素不撑破、按钮不被压扁等）：放最后，保证能兜住
 import './assets/styles/tool-mobile.css'
+// 棋牌三件套（掼蛋/麻将/大富翁）独立牌桌皮肤：仅 .gt- 前缀，退出游戏即恢复全站主题
+import './assets/styles/game-table.css'
 
 const app = createApp(App)
 

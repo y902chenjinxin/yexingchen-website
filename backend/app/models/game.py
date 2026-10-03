@@ -23,6 +23,9 @@ class GameRoom(Base):
     black_user_id = Column(Integer, nullable=True)       # 执黑先行者（建房时可选「我 / 对方」，默认房主）
     invite_code = Column(String(12), default="")
     end_reason = Column(String(20), nullable=True)       # 终局原因：win/resign/leave/timeout/draw
+    # v2.43 棋牌三件套：底注档位 + AI 补位席位（麻将/掼蛋/大富翁共用）
+    base_stake = Column(Integer, nullable=False, default=100)   # 100 / 500 / 2000 豆
+    ai_seats = Column(Integer, nullable=False, default=0)       # 开房时自动补的机器人数
     owner_seen_at = Column(DateTime, nullable=True)      # 房主心跳（对手退出检测用）
     invitee_seen_at = Column(DateTime, nullable=True)    # 受邀人心跳
     created_at = Column(DateTime, default=datetime.now)

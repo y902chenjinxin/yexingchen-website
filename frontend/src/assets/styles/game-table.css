@@ -1,0 +1,288 @@
+/* 棋牌三件套 · 独立牌桌皮肤（v2.43）
+ *
+ * 参考腾讯棋牌质感：绒面桌布 / 拟真立体牌面 / 四方位席位 / 胶囊操作按钮。
+ * 作用域：只使用 .gt- 前缀，且仅在游戏页容器内生效；不进玄黄主题 token，
+ * 退出游戏即恢复全站主题（「独立皮肤」硬约束）。
+ *
+ * 所有动效都带 prefers-reduced-motion 降级。
+ */
+
+.gt-shell {
+  --gt-felt-1: #1d5c46;
+  --gt-felt-2: #0f3a2c;
+  --gt-felt-3: #082019;
+  --gt-gold: #e9c877;
+  --gt-gold-deep: #a9812f;
+  --gt-ink: #f2f6f3;
+  --gt-ink-dim: #a9c1b7;
+  --gt-line: rgba(255, 255, 255, .16);
+  --gt-glass: rgba(255, 255, 255, .09);
+  --gt-shadow: 0 18px 44px -20px rgba(0, 0, 0, .75);
+
+  position: relative;
+  width: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  color: var(--gt-ink);
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(255, 255, 255, .10), transparent 60%),
+    linear-gradient(160deg, var(--gt-felt-1), var(--gt-felt-2) 58%, var(--gt-felt-3));
+  box-shadow: var(--gt-shadow);
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 绒面织物纹理 + 暗角 */
+.gt-shell::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .022) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .05) 0 2px, transparent 2px 4px);
+}
+.gt-shell::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(115% 78% at 50% 42%, transparent 52%, rgba(0, 0, 0, .42));
+}
+.gt-shell > * { position: relative; z-index: 1; }
+
+/* 掼蛋/扑克风：蓝绿渐变桌布 */
+.gt-shell.gt-skin-blue {
+  --gt-felt-1: #16506b;
+  --gt-felt-2: #0d3450;
+  --gt-felt-3: #061d2e;
+}
+
+/* ---------- 席位 ---------- */
+.gt-seat {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 12px 7px 7px; border-radius: 999px;
+  border: 1px solid var(--gt-line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .05));
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  box-shadow: 0 8px 20px -14px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .22);
+  transition: box-shadow .25s, border-color .25s, transform .25s;
+  max-width: 210px;
+}
+.gt-seat.is-active {
+  border-color: var(--gt-gold);
+  box-shadow: 0 0 0 1px var(--gt-gold), 0 0 22px -2px rgba(233, 200, 119, .65);
+}
+.gt-seat.is-out { opacity: .48; filter: grayscale(.6); }
+.gt-seat-av {
+  width: 34px; height: 34px; flex: none; border-radius: 50%;
+  display: grid; place-items: center; font-size: 17px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, .08));
+  border: 1px solid rgba(255, 255, 255, .3);
+}
+.gt-seat-tx { min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; }
+.gt-seat-name {
+  font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 110px;
+}
+.gt-seat-sub { font-size: 10.5px; color: var(--gt-ink-dim); font-variant-numeric: tabular-nums; }
+.gt-seat-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 999px; flex: none;
+  background: rgba(233, 200, 119, .2); color: var(--gt-gold);
+  border: 1px solid rgba(233, 200, 119, .4);
+}
+
+/* 豆子胶囊 */
+.gt-beans {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 999px; font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, .3); border: 1px solid rgba(233, 200, 119, .35);
+  color: var(--gt-gold);
+}
+
+/* ---------- 操作胶囊 ---------- */
+.gt-actions {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;
+}
+.gt-btn {
+  appearance: none; font-family: inherit; cursor: pointer;
+  padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  color: #2a1d05;
+  border: 1px solid rgba(255, 255, 255, .35);
+  background: linear-gradient(180deg, #f4dc9c, #d9b65f);
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 255, 255, .6);
+  transition: transform .16s, filter .16s, box-shadow .16s;
+}
+.gt-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+.gt-btn:active:not(:disabled) { transform: translateY(0); }
+.gt-btn:disabled { opacity: .42; cursor: not-allowed; filter: grayscale(.5); }
+.gt-btn.ghost {
+  color: var(--gt-ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06));
+  border-color: var(--gt-line);
+}
+.gt-btn.danger {
+  color: #fff; background: linear-gradient(180deg, #d9534f, #a8342f);
+  border-color: rgba(255, 255, 255, .28);
+}
+.gt-btn.sm { padding: 5px 12px; font-size: 12px; }
+
+/* ---------- 扑克牌（拟真立体） ---------- */
+.gt-card {
+  position: relative; flex: none;
+  width: 62px; height: 88px; border-radius: 7px;
+  background: linear-gradient(160deg, #fff, #eef1f4);
+  border: 1px solid rgba(0, 0, 0, .22);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .28), 0 8px 16px -10px rgba(0, 0, 0, .8);
+  color: #1b1b1b; user-select: none;
+  transition: transform .16s, box-shadow .16s;
+}
+.gt-card.is-red { color: #c62828; }
+.gt-card .r {
+  position: absolute; top: 3px; left: 5px; font-size: 15px; font-weight: 800; line-height: 1;
+}
+.gt-card .s { position: absolute; top: 17px; left: 6px; font-size: 13px; line-height: 1; }
+.gt-card .big {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 30px; opacity: .2;
+}
+.gt-card .tag {
+  position: absolute; right: 4px; bottom: 4px; font-size: 9.5px; font-weight: 700;
+  padding: 1px 4px; border-radius: 4px; color: #7a4b00;
+  background: rgba(233, 200, 119, .95); border: 1px solid rgba(0, 0, 0, .18);
+}
+.gt-card.is-back {
+  background:
+    repeating-linear-gradient(45deg, #2a5f9e 0 5px, #1d4a80 5px 10px);
+  border-color: rgba(255, 255, 255, .3);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .3), 0 8px 16px -10px rgba(0, 0, 0, .8);
+}
+.gt-card.is-back::after {
+  content: ''; position: absolute; inset: 5px; border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, .35);
+}
+.gt-card.pickable { cursor: pointer; }
+.gt-card.pickable:hover { transform: translateY(-9px); box-shadow: 0 3px 0 rgba(0,0,0,.28), 0 14px 22px -12px rgba(0,0,0,.9); }
+.gt-card.is-sel {
+  transform: translateY(-13px);
+  box-shadow: 0 0 0 2px var(--gt-gold), 0 14px 22px -12px rgba(0, 0, 0, .9);
+}
+
+/* ---------- 麻将牌（立体侧边） ---------- */
+.gt-tile {
+  position: relative; flex: none;
+  width: 40px; height: 54px; border-radius: 5px 5px 4px 4px;
+  background: linear-gradient(175deg, #fdfbf4 0%, #f3efe2 62%, #ddd6c2 100%);
+  border: 1px solid #c9c2ad;
+  box-shadow: 0 4px 0 #b9b19b, 0 9px 14px -9px rgba(0, 0, 0, .85);
+  color: #23331f; user-select: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: transform .16s, box-shadow .16s;
+}
+.gt-tile .num { font-size: 20px; font-weight: 800; line-height: 1; }
+.gt-tile .suit { font-size: 11px; line-height: 1.1; margin-top: 2px; }
+.gt-tile.is-red { color: #b3261e; }
+.gt-tile.pickable { cursor: pointer; }
+.gt-tile.pickable:hover { transform: translateY(-7px); }
+.gt-tile.is-sel {
+  transform: translateY(-11px);
+  box-shadow: 0 0 0 2px var(--gt-gold), 0 4px 0 #b9b19b, 0 12px 18px -10px rgba(0, 0, 0, .9);
+}
+.gt-tile.is-back {
+  background: linear-gradient(175deg, #4f8fc0, #2f6b9c);
+  border-color: #24557d; box-shadow: 0 4px 0 #1c4665, 0 9px 14px -9px rgba(0, 0, 0, .85);
+}
+.gt-tile.mini { width: 26px; height: 35px; border-radius: 4px; }
+.gt-tile.mini .num { font-size: 13px; }
+.gt-tile.mini .suit { font-size: 8px; }
+.gt-tile.is-dim { opacity: .42; filter: grayscale(.5); }
+
+/* 已亮出的副露 */
+.gt-meld {
+  display: flex; gap: 3px; padding: 3px 5px; border-radius: 7px;
+  background: rgba(0, 0, 0, .22); border: 1px solid var(--gt-line);
+}
+
+/* ---------- 通用信息条 ---------- */
+.gt-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: 12px;
+  background: rgba(0, 0, 0, .26); border: 1px solid var(--gt-line);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.gt-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px; font-size: 11.5px;
+  background: rgba(255, 255, 255, .1); border: 1px solid var(--gt-line);
+  font-variant-numeric: tabular-nums;
+}
+.gt-pill.gold { background: rgba(233, 200, 119, .16); border-color: rgba(233, 200, 119, .45); color: var(--gt-gold); }
+.gt-title { font-size: 14px; font-weight: 700; letter-spacing: .02em; }
+.gt-sub { font-size: 11.5px; color: var(--gt-ink-dim); }
+.gt-spacer { flex: 1; }
+
+/* 桌布上印的玩法/底分说明 */
+.gt-watermark {
+  position: absolute; inset: auto 0 12px 0; text-align: center;
+  font-size: 11px; letter-spacing: .3em; color: rgba(255, 255, 255, .13);
+  pointer-events: none; user-select: none;
+}
+
+/* 结算遮罩（页内，不弹窗） */
+.gt-over {
+  position: absolute; inset: 0; z-index: 6; display: grid; place-items: center;
+  background: rgba(4, 14, 11, .72); backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px); padding: 18px;
+}
+.gt-over-card {
+  width: min(420px, 100%); text-align: center; padding: 22px 20px;
+  border-radius: 18px; border: 1px solid rgba(233, 200, 119, .45);
+  background: linear-gradient(165deg, rgba(30, 62, 50, .96), rgba(9, 26, 21, .96));
+  box-shadow: 0 26px 60px -22px rgba(0, 0, 0, .95);
+}
+.gt-over-card h3 { margin: 0 0 6px; font-size: 21px; color: var(--gt-gold); }
+.gt-over-card p { margin: 0 0 14px; font-size: 12.5px; color: var(--gt-ink-dim); line-height: 1.8; }
+
+/* 提示条 */
+.gt-toast {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  z-index: 8; padding: 7px 16px; border-radius: 999px; font-size: 12.5px;
+  background: rgba(0, 0, 0, .72); border: 1px solid var(--gt-gold);
+  color: var(--gt-gold); white-space: nowrap;
+  animation: gt-toast-in .22s ease-out;
+}
+@keyframes gt-toast-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* 发牌飞入 / 出牌抛掷 */
+@keyframes gt-deal {
+  from { opacity: 0; transform: translateY(-26px) scale(.86) rotate(-6deg); }
+  to { opacity: 1; transform: none; }
+}
+.gt-anim-deal { animation: gt-deal .3s ease-out both; }
+
+@keyframes gt-play {
+  0% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-16px) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+.gt-anim-play { animation: gt-play .34s ease-out; }
+
+@keyframes gt-pop {
+  from { opacity: 0; transform: scale(.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+.gt-anim-pop { animation: gt-pop .22s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-anim-deal, .gt-anim-play, .gt-anim-pop, .gt-toast { animation: none !important; }
+  .gt-card, .gt-tile, .gt-btn, .gt-seat { transition: none !important; }
+}
+
+/* 横屏容器：手机/窄屏时把牌桌旋转为横向视野（PRD 硬要求：三款全部横屏） */
+.gt-landscape {
+  width: 100%; overflow-x: auto; overflow-y: hidden;
+}
+@media (max-width: 900px) {
+  .gt-landscape { -webkit-overflow-scrolling: touch; }
+  .gt-landscape > .gt-shell { min-width: 860px; }
+}
