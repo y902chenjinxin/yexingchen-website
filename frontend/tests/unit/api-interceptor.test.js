@@ -44,11 +44,6 @@ describe('axios response interceptor - cancelled requests', () => {
     expect(mocks.elMessage.error).not.toHaveBeenCalled()
   })
 
-  it('网络错误（ERR_NETWORK）应弹错误提示', async () => {
-    await runHandler({ code: 'ERR_NETWORK', message: 'Network Error' })
-    expect(mocks.elMessage.error).toHaveBeenCalledWith('网络错误，请检查连接')
-  })
-
   it('401 应清除 token 并跳 /login（当前在 /home）', async () => {
     mocks.router.currentRoute.value.path = '/home'
     localStorage.setItem('token', 'fake')

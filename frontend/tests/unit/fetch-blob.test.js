@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+// 顶层静态导入：workbench.js 的模块图（含 Vue Router）在收集期完成转换。
+// 早期写成用例内 `await import('@/api/workbench')`，首次转换计入 5s 用例超时，
+// 全套串行跑时偶发超时（单跑 ~1.9s、全量跑偶超 5s）。vi.mock 会被提升到该导入之前，router 仍被 mock。
+import { workbenchApi } from '@/api/workbench'
 
 /**
  * 验证 workbenchApi.assets.fetchBlob 在调用时：
@@ -53,7 +57,6 @@ afterEach(() => {
 describe('workbenchApi.assets.fetchBlob', () => {
   it('uses native fetch and sends Bearer token', async () => {
     localStorage.setItem('token', 'test-token-abc')
-    const { workbenchApi } = await import('@/api/workbench')
     const r = await workbenchApi.assets.fetchBlob(42, 'preview')
     expect(r.blob).toBe(mockBlob)
     expect(r.mime).toBe('image/png')
@@ -64,7 +67,6 @@ describe('workbenchApi.assets.fetchBlob', () => {
 
   it('does not send Authorization when no token', async () => {
     localStorage.removeItem('token')
-    const { workbenchApi } = await import('@/api/workbench')
     await workbenchApi.assets.fetchBlob(7, 'download')
     expect(lastFetchArgs.url).toBe('/api/workbench/assets/7/download')
     expect(lastFetchArgs.init.headers.Authorization).toBeUndefined()
@@ -77,7 +79,6 @@ describe('workbenchApi.assets.fetchBlob', () => {
       text: async () => 'forbidden',
       headers: { get: () => null },
     }))
-    const { workbenchApi } = await import('@/api/workbench')
     await expect(workbenchApi.assets.fetchBlob(1, 'preview')).rejects.toMatchObject({
       status: 403,
     })
@@ -92,7 +93,6 @@ describe('workbenchApi.assets.fetchBlob', () => {
       headers: { get: () => null },
     }))
     const router = (await import('@/router')).default
-    const { workbenchApi } = await import('@/api/workbench')
     await expect(workbenchApi.assets.fetchBlob(9, 'preview')).rejects.toMatchObject({
       status: 401,
     })
@@ -102,7 +102,6 @@ describe('workbenchApi.assets.fetchBlob', () => {
 
   it('passes through arbitrary kind (preview|download) verbatim', async () => {
     localStorage.setItem('token', 'tok')
-    const { workbenchApi } = await import('@/api/workbench')
     await workbenchApi.assets.fetchBlob(11, 'preview')
     expect(lastFetchArgs.url).toBe('/api/workbench/assets/11/preview')
     await workbenchApi.assets.fetchBlob(11, 'download')
