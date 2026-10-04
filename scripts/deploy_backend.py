@@ -165,6 +165,16 @@ BACKEND_FILES = [
      f"{REMOTE_BASE}/backend/alembic/versions/c9d0e1f2a3b4_game_economy.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "e2f3a4b5c6d7_game_room_stake.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/e2f3a4b5c6d7_game_room_stake.py"),
+    # ---- v2.44 牌类在线对局：多席牌桌引擎（掼蛋/麻将/大富翁）+ 路由 + 迁移 ----
+    #      引擎是新增目录 app/games/，不登记则线上 import 直接失败（路由 404/500）。
+    (os.path.join(ROOT, "backend", "app", "games", "__init__.py"),      f"{REMOTE_BASE}/backend/app/games/__init__.py"),
+    (os.path.join(ROOT, "backend", "app", "games", "base.py"),          f"{REMOTE_BASE}/backend/app/games/base.py"),
+    (os.path.join(ROOT, "backend", "app", "games", "guandan.py"),       f"{REMOTE_BASE}/backend/app/games/guandan.py"),
+    (os.path.join(ROOT, "backend", "app", "games", "mahjong.py"),       f"{REMOTE_BASE}/backend/app/games/mahjong.py"),
+    (os.path.join(ROOT, "backend", "app", "games", "monopoly.py"),      f"{REMOTE_BASE}/backend/app/games/monopoly.py"),
+    (os.path.join(ROOT, "backend", "app", "routers", "game_tables.py"), f"{REMOTE_BASE}/backend/app/routers/game_tables.py"),
+    (os.path.join(ROOT, "backend", "alembic", "versions", "f3a4b5c6d7e8_game_tables.py"),
+     f"{REMOTE_BASE}/backend/alembic/versions/f3a4b5c6d7e8_game_tables.py"),
 ]
 
 
@@ -222,6 +232,8 @@ def cexec(cmd, wait=True, timeout=300):
 
 
 print("== 1/4 upload backend files ==")
+# app/games/ 是 v2.44 新增目录，远端不存在时 sftp.put 会直接失败 → 先建目录（幂等）
+cexec(f"mkdir -p {REMOTE_BASE}/backend/app/games")
 for local, remote in BACKEND_FILES:
     if not os.path.exists(local):
         print("SKIP missing:", local)

@@ -135,7 +135,7 @@
  *           且第三方是同屏多人、无联机能力，无法「邀请家人」。现在支持 2/3/4 人同屏 + 在线邀请。
  */
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, defineAsyncComponent } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
@@ -325,12 +325,12 @@ const gamelist = [
       '比大小：同牌型比点数；炸弹可压任意非炸弹；同花顺大于 5 张炸弹，6 张炸弹大于同花顺，四大天王最大。',
       '出牌：轮到你时「压牌」或「不要」，其余三家都不要则由你重新起牌；手牌出完即退出本局。',
       '升级：一方两人包揽第 1、2 名（双上）升 3 级；第 1、3 名（一三）升 2 级；第 1、4 名升 1 级。',
-      '人数：单人＝1 真人 + 3 AI；双人＝2 真人同屏 + 2 AI；四人＝4 真人同屏。',
+      '进贡：一局结束败方进贡最大的一张牌（红桃级牌不贡）；双下两家都贡，两张贡牌比大小，大的给头游；收贡方回一张 ≤10 的牌。合计两张大王可抗贡。',
+      '人数：单人练习＝1 真人 + 3 AI；在线＝建房邀请家人，空位由机器人补位。',
     ],
     modes: [
       { key: 'solo', label: '单人 · 3 个 AI', hint: '1 个真人 + 3 个机器人，随时开一局' },
-      { key: 'duo', label: '双人 · 2 个 AI', hint: '2 个真人同屏 + 2 个机器人补位' },
-      { key: 'quad', label: '四人同屏', hint: '4 个真人轮流上手，一台设备打完' },
+      { key: 'online', label: '在线 · 邀请家人', hint: '建房邀请家人，跨设备同步' },
     ],
   },
   {
@@ -348,12 +348,12 @@ const gamelist = [
       '血战到底：有人胡牌后该玩家下桌不再摸打，其余人继续打，直到 3 家都胡或牌墙摸完。',
       '流局：未听牌者赔听牌者「大叫」；手上还留着缺门牌的是「花猪」，要赔给每家。',
       '听牌提示：真人玩家手牌实时算出「听哪些牌」，显示在牌桌上方。',
-      '人数：单人＝1 真人 + 3 AI；双人＝2 真人同屏 + 2 AI；四人＝4 真人同屏。',
+      '刮风下雨：明杠即时收 1 倍底注（刮风）、暗杠即时收 2 倍底注（下雨），胡牌时再按番结算。',
+      '人数：单人练习＝1 真人 + 3 AI；在线＝建房邀请家人，空位由机器人补位。',
     ],
     modes: [
       { key: 'solo', label: '单人 · 3 个 AI', hint: '1 个真人 + 3 个机器人' },
-      { key: 'duo', label: '双人 · 2 个 AI', hint: '2 个真人同屏 + 2 个机器人补位' },
-      { key: 'quad', label: '四人同屏', hint: '4 个真人轮流摸打' },
+      { key: 'online', label: '在线 · 邀请家人', hint: '建房邀请家人，跨设备同步' },
     ],
   },
   {
@@ -369,13 +369,15 @@ const gamelist = [
       '角色技能：8 位角色各有一次性绝技，如掷骰加成、免租一次、七折强买、均富等。',
       '道具卡：8 种道具（路障 / 传送 / 免费卡 / 均富卡 / 购地卡 / 转向卡 / 怪兽卡 / 天使卡），关键时刻扭转局势。',
       '破产保护：现金不足时进入清算，全部地产变卖后仍不足即破产出局。',
-      '人数：2–8 人，人数不足由机器人自动补位；支持同屏轮流与「3D / 平面」视角切换。',
+      '交易 / 拍卖 / 抵押：玩家间可随时发起地块 + 现金交易；停在无主地不买则触发全场拍卖；可抵押地产换现金、按利息赎回。',
+      '人数：单人练习＝1 真人 + N AI；在线＝建房邀请家人，空位由机器人补位。',
     ],
     modes: [
-      { key: 'p2', label: '2 人', hint: '1 真人 + 1 AI，快节奏' },
-      { key: 'p4', label: '4 人', hint: '2 真人 + 2 AI，经典局' },
-      { key: 'p6', label: '6 人', hint: '2 真人 + 4 AI，混战' },
-      { key: 'p8', label: '8 人', hint: '2 真人 + 6 AI，全场最热闹' },
+      { key: 'p2', label: '单人 · 1 AI', hint: '1 真人 + 1 机器人，快节奏' },
+      { key: 'p4', label: '单人 · 3 AI', hint: '1 真人 + 3 机器人，经典局' },
+      { key: 'p6', label: '单人 · 5 AI', hint: '1 真人 + 5 机器人，混战' },
+      { key: 'p8', label: '单人 · 7 AI', hint: '1 真人 + 7 机器人，全场最热闹' },
+      { key: 'online', label: '在线 · 邀请家人', hint: '建房邀请家人（2–8 人），跨设备同步' },
     ],
   },
   {
@@ -426,6 +428,8 @@ const gamelist = [
   },
 ]
 const ALL = Object.fromEntries(gamelist.map(g => [g.key, g]))
+/** v2.44：走「独立等待房 + 服务端权威」的牌类（在线模式导航到 /tool/games/table/new） */
+const TABLE_GAMES = new Set(['guandan', 'mahjong', 'monopoly'])
 const groups = ['棋类', '牌类', '益智', '休闲']
   .map(name => ({ name, items: gamelist.filter(g => g.group === name) }))
   .filter(g => g.items.length)
@@ -473,6 +477,11 @@ function pick(key) {
 }
 
 function startGame(modeKey) {
+  // 牌类「在线」走独立等待房页（服务端权威发牌），不进本页内嵌棋盘
+  if (modeKey === 'online' && TABLE_GAMES.has(tab.value)) {
+    router.push(`/tool/games/table/new?game=${tab.value}`)
+    return
+  }
   clearGame(tab.value)         // 开新局 → 旧存档作废
   refreshSaves()
   chosenMode.value = modeKey
@@ -531,6 +540,7 @@ onBeforeUnmount(() => { document.body.style.overflow = ''; raiseHost(false) })
  * 兜底也只是亡羊补牢）。这里直接改 history，不触发 vue-router 导航，状态原地保留。
  * 保留 history.state（含 router 内部字段），避免前进/后退信息错乱。 */
 const route = useRoute()
+const router = useRouter()
 
 function enterRoom(id, game) {
   pendingRoom.value = { id, game }
@@ -547,6 +557,11 @@ watch(() => route.query.room, (v) => {
   const id = Number(v) || 0
   const game = String(route.query.game || '')
   if (!id || !ALL[game]) return
+  // 牌类邀请走独立牌桌页（服务端权威），不进本页内嵌棋盘
+  if (TABLE_GAMES.has(game)) {
+    router.replace(`/tool/games/table/${id}`)
+    return
+  }
   enterRoom(id, game)
   try { window.history.replaceState(window.history.state, '', route.path) } catch { /* 忽略 */ }
 }, { immediate: true })

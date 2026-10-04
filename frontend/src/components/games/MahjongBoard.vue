@@ -6,7 +6,7 @@
         <span class="gt-title">四川麻将 · 血战到底</span>
         <span class="gt-pill gold">第 {{ roundNo }} 局</span>
         <span class="gt-pill">余牌 {{ wall.length }}</span>
-        <span v-if="missing[0]" class="gt-pill">你的缺门 {{ M.SUIT_NAME[missing[0]] }}</span>
+        <span v-if="myMissing" class="gt-pill">你的缺门 {{ M.SUIT_NAME[myMissing] }}</span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
           {{ muted ? '🔇' : '🔊' }}
@@ -157,7 +157,7 @@
       </footer>
 
       <!-- ===== 定缺（页内，不弹窗） ===== -->
-      <div v-if="phase === 'dingque'" class="gt-over">
+      <div v-if="showDingque" class="gt-over">
         <div class="gt-over-card">
           <h3>定缺</h3>
           <p>
@@ -213,9 +213,10 @@
  * 简化声明（与引擎注释一致）：
  * 1. 点炮只取「一家胡」（标准血战支持一炮多响，这里按优先级单家结算）。
  * 2. 流局不做「查大叫 / 查花猪」赔付，直接按已胡番数结算。
- * 3. 在线开房（服务端权威发牌）为后续项，本期为本地同屏。
+ * 3. 在线开房（v2.44）：服务端权威发牌，前端只渲染投影、动作 emit('act') 上抛；
+ *    本地同屏（solo/duo/quad）逻辑完全不变，在线分支统一走 `isOnline`。
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as M from '@/utils/games/mahjong.js'
 import { sfx, setMuted, isMuted } from '@/utils/games/sfx'
 import { loadGame, saveGame } from '@/utils/gameSave'
@@ -228,8 +229,15 @@ const props = defineProps({
   bare: { type: Boolean, default: true },
   big: { type: Boolean, default: false },
   joinRoomId: { type: Number, default: 0 },
+  // v2.44 在线：服务端投影渲染，动作 emit 给等待房页转 /act
+  online: { type: Boolean, default: false },
+  onlineView: { type: Object, default: null },
+  onlineSeat: { type: Number, default: 0 },
+  seatNames: { type: Array, default: () => [] },
+  acting: { type: Boolean, default: false },
+  isHost: { type: Boolean, default: false },
 })
-const emit = defineEmits(['exit', 'room-lock', 'room-unlock'])
+const emit = defineEmits(['exit', 'room-lock', 'room-unlock', 'act', 'rematch'])
 
 const SAVE_KEY = 'mahjong'
 const SEAT_LABEL = { 0: '你', 1: '右家', 2: '对家', 3: '左家' }
@@ -266,6 +274,8 @@ const toast = ref('')
 const muted = ref(isMuted())
 
 /* ---------- 派生 ---------- */
+const isOnline = computed(() => props.online)
+const oSeat = computed(() => Number(props.onlineSeat ?? 0))
 const HUMAN_SEATS = computed(() => {
   if (mode.value === 'solo') return [0]
   if (mode.value === 'duo') return [0, 2]
@@ -274,35 +284,68 @@ const HUMAN_SEATS = computed(() => {
 function isHuman(s) { return HUMAN_SEATS.value.includes(s) }
 
 const viewSeat = computed(() => {
+  if (isOnline.value) return oSeat.value
   if (phase.value === 'dingque') return dingqueSeat.value
   if (isHuman(turn.value) && !out.value[turn.value]) return turn.value
   return HUMAN_SEATS.value[0]
 })
+/** 定缺浮层：在线只在轮到自己定缺时展示，避免暴露/误操作他人缺门 */
+const showDingque = computed(() =>
+  phase.value === 'dingque'
+  && (!isOnline.value || (props.onlineView?.me?.options || []).includes('missing')))
+/** 顶栏「你的缺门」：本地固定座位 0，在线取自己座位 */
+const myMissing = computed(() => (isOnline.value ? missing.value[oSeat.value] : missing.value[0]))
 const viewHand = computed(() => hands.value[viewSeat.value] || [])
 const viewDrawn = computed(() =>
   (turn.value === viewSeat.value && drawn.value) ? drawn.value : null)
-const canDiscard = computed(() =>
-  phase.value === 'playing' && !pending.value
-  && isHuman(turn.value) && !out.value[turn.value] && turn.value === viewSeat.value)
+const canDiscard = computed(() => {
+  if (isOnline.value) {
+    if (props.acting) return false
+    return (props.onlineView?.me?.options || []).includes('discard')
+  }
+  return phase.value === 'playing' && !pending.value
+  && isHuman(turn.value) && !out.value[turn.value] && turn.value === viewSeat.value
+})
 
 const poolOfView = computed(() =>
   viewDrawn.value ? viewHand.value.concat([viewDrawn.value]) : viewHand.value.slice())
 
 const canZimo = computed(() => {
+  if (isOnline.value) {
+    if (props.acting) return false
+    return (props.onlineView?.me?.options || []).includes('hu')
+  }
   if (!canDiscard.value) return false
   return M.canHu(poolOfView.value, melds.value[turn.value].length, missing.value[turn.value])
 })
 const ankongs = computed(() => {
+  if (isOnline.value) {
+    if (props.acting || !(props.onlineView?.me?.options || []).includes('ankong')) return []
+    return props.onlineView?.me?.ankongs || []
+  }
   if (!canDiscard.value) return []
   return M.findAnkongs(hands.value[turn.value])
 })
 const bugangs = computed(() => {
+  if (isOnline.value) {
+    if (props.acting || !(props.onlineView?.me?.options || []).includes('bugang')) return []
+    return props.onlineView?.me?.bugangs || []
+  }
   if (!canDiscard.value) return []
   const h = drawn.value ? hands.value[turn.value].concat([drawn.value]) : hands.value[turn.value]
   return M.findBugangs(h, melds.value[turn.value])
 })
 
 const statusLine = computed(() => {
+  if (isOnline.value) {
+    if (phase.value === 'settled') return '本局结束，等房主「再来一局」'
+    if (phase.value === 'dingque') {
+      return turn.value === oSeat.value ? '请选择缺门' : `等 ${seatName(turn.value)} 定缺…`
+    }
+    if (pending.value) return '请选择「碰 / 杠 / 胡 / 过」'
+    if (turn.value === oSeat.value) return '点一张牌选中，再点「出牌」'
+    return `等 ${seatName(turn.value)} 行动…`
+  }
   if (phase.value === 'settled') return '本局结束，点「再来一局」继续'
   if (phase.value === 'dingque') return '请先定缺'
   if (pending.value) return '请选择「碰 / 杠 / 胡 / 过」'
@@ -311,9 +354,10 @@ const statusLine = computed(() => {
   return '点一张牌选中，再点「出牌」'
 })
 
-/** 听牌提示：打哪张、听哪些 */
+/** 听牌提示：打哪张、听哪些。在线仅在自己可出牌时计算（只读自己的手牌，不涉暗信息） */
 const tingInfo = computed(() => {
   if (phase.value !== 'playing') return []
+  if (isOnline.value && !canDiscard.value) return []
   const seat = viewSeat.value
   const h = hands.value[seat]
   if (h.length % 3 !== 1) return []
@@ -342,15 +386,27 @@ function meldTiles(md) {
   const n = md.type === 'pong' ? 3 : 4
   return Array.from({ length: n }, () => md.tile)
 }
-function backCount(s) { return hands.value[s].length }
+function backCount(s) {
+  if (isOnline.value) return props.onlineView?.players?.[s]?.hand_count ?? 0
+  return hands.value[s].length
+}
 function countIn(hand, tile) {
   return hand.filter(t => t.suit === tile.suit && t.rank === tile.rank).length
 }
 function seatName(s) {
+  if (isOnline.value) {
+    if (s === oSeat.value) return '你'
+    return props.seatNames[s] || `座位${s + 1}`
+  }
   if (isHuman(s)) return s === 0 ? '你' : `玩家${s === 2 ? '二' : s === 1 ? '一' : '三'}`
   return SEAT_LABEL[s]
 }
 function seatAvatar(s) {
+  if (isOnline.value) {
+    if (s === oSeat.value) return '🙂'
+    // 服务端 AI 席位命名为「机器人N」（见 game_tables 补位逻辑），据此区分机器人 / 真人
+    return String(props.seatNames[s] || '').startsWith('机器人') ? '🤖' : '🙃'
+  }
   if (isHuman(s)) return s === 0 ? '🙂' : '🙃'
   return AI_AVATARS[s]
 }
@@ -363,6 +419,10 @@ function seatCls(s) {
 }
 function seatSub(s) {
   if (out.value[s]) return '已胡下桌'
+  if (isOnline.value) {
+    const p = props.onlineView?.players?.[s]
+    return `${p?.hand_count ?? 0} 张 · 副露 ${(p?.melds || []).length}`
+  }
   return `${hands.value[s].length} 张 · 副露 ${melds.value[s].length}`
 }
 function suitCount(seat, suit) {
@@ -377,8 +437,66 @@ function toastMsg(t) {
 }
 function log(t) { logs.value.unshift(t); logs.value = logs.value.slice(0, 8) }
 
+/* ---------- 在线：服务端投影 → 展示态 ---------- */
+const PHASE_MAP = { missing: 'dingque', playing: 'playing', finished: 'settled' }
+function syncFromView(v) {
+  if (!v) return
+  const me = v.me || {}
+  // 服务端 me.hand 已含刚摸的 last_draw；本地模板把「刚摸」单列渲染，这里拆开避免重复
+  const hand = (me.hand || []).slice()
+  const drawnTile = me.last_draw || null
+  if (drawnTile) {
+    const i = hand.findIndex(t => t.id === drawnTile.id)
+    if (i >= 0) hand.splice(i, 1)
+  }
+  const nextHands = [[], [], [], []]
+  nextHands[oSeat.value] = hand
+  hands.value = nextHands
+  melds.value = [0, 1, 2, 3].map(s => v.players?.[s]?.melds || [])
+  discards.value = [0, 1, 2, 3].map(s => v.players?.[s]?.discards || [])
+  missing.value = [0, 1, 2, 3].map(s => v.players?.[s]?.missing || '')
+  out.value = [0, 1, 2, 3].map(s => !!v.players?.[s]?.hu)
+  turn.value = (v.turn === null || v.turn === undefined) ? -1 : v.turn
+  drawn.value = drawnTile
+  lastDiscard.value = v.last_discard || null
+  wall.value = new Array(v.wall_left || 0)
+  phase.value = PHASE_MAP[v.phase] || 'playing'
+  roundNo.value = v.round_no || 1
+  dealer.value = v.dealer ?? 0
+  dingqueSeat.value = oSeat.value
+  logs.value = v.logs || []
+  const cl = v.claim
+  pending.value = (cl && cl.seat === oSeat.value)
+    ? { seat: cl.seat, from: cl.from, tile: cl.tile, kinds: (cl.options || []).slice() }
+    : null
+  const huInfo = v.result?.hu_info || {}
+  const hus = (v.result?.hu || []).map(s => {
+    const hi = huInfo[String(s)] || {}
+    return { seat: s, fan: hi.fan || 0, names: hi.names || [], zimo: !!hi.zimo, from: hi.from }
+  })
+  huResults.value = hus
+  if (v.result) {
+    const delta = Number((v.result.deltas || {})[String(oSeat.value)] || 0)
+    result.value = {
+      reason: hus.length ? 'hu' : 'liuju',
+      hus,
+      delta,
+      title: !hus.length ? '流局' : delta > 0 ? '本局小赚' : delta < 0 ? '本局小亏' : '本局平局',
+    }
+  } else {
+    result.value = null
+  }
+  const ids = new Set(hand.map(t => t.id).concat(drawnTile ? [drawnTile.id] : []))
+  if (selId.value !== null && !ids.has(selId.value)) selId.value = null
+}
+watch(() => props.onlineView, (v) => { if (isOnline.value) syncFromView(v) }, { immediate: true, deep: true })
+
+/* ---------- 在线：动作上抛 ---------- */
+function actOnline(action) { emit('act', action) }
+
 /* ---------- 开局 ---------- */
 function newRound() {
+  if (isOnline.value) return   // 在线由服务端发牌，前端不本地开新局
   const deck = M.shuffle(M.buildDeck())
   wall.value = deck.slice(52)
   hands.value = [0, 1, 2, 3].map(i => M.sortHand(deck.slice(i * 13, i * 13 + 13)))
@@ -403,6 +521,7 @@ function newRound() {
 }
 
 function nextRound() {
+  if (isOnline.value) { emit('rematch'); return }
   roundNo.value++
   newRound()
 }
@@ -431,6 +550,7 @@ function autoMissing(seat) {
 }
 
 function chooseMissing(suit) {
+  if (isOnline.value) { sfx.pick(); actOnline({ type: 'missing', suit }); return }
   missing.value[dingqueSeat.value] = suit
   sfx.pick()
   const rest = pendingDingqueHumans.value
@@ -595,6 +715,11 @@ function doKongFromDiscard(seat, tile, from) {
 }
 
 function doAnkong(tileInfo) {
+  if (isOnline.value) {
+    sfx.kong()
+    actOnline({ type: 'ankong', tile: { suit: tileInfo.suit, rank: tileInfo.rank } })
+    return
+  }
   const seat = turn.value
   const h = hands.value[seat]
   let removed = 0
@@ -609,6 +734,11 @@ function doAnkong(tileInfo) {
 }
 
 function doBugang(tileInfo) {
+  if (isOnline.value) {
+    sfx.kong()
+    actOnline({ type: 'bugang', tile: { suit: tileInfo.suit, rank: tileInfo.rank } })
+    return
+  }
   const seat = turn.value
   const h = hands.value[seat]
   let removed = false
@@ -653,6 +783,7 @@ function doHu(seat, tile, from, zimo) {
 
 function doZimo() {
   if (!canZimo.value) return
+  if (isOnline.value) { sfx.win(); actOnline({ type: 'hu' }); return }
   const seat = turn.value
   doHu(seat, null, null, true)
   if (checkRoundEnd()) return
@@ -670,6 +801,7 @@ function discardSel() {
   const pool = poolOfView.value
   const t = pool.find(x => x.id === selId.value)
   if (!t) return
+  if (isOnline.value) { sfx.play(); actOnline({ type: 'discard', tile_id: t.id }); return }
   doDiscard(turn.value, t)
 }
 function doHint() {
@@ -686,6 +818,13 @@ function doHint() {
 function onReact(kind) {
   const p = pending.value
   if (!p) return
+  if (isOnline.value) {
+    if (kind === 'hu') sfx.win()
+    else if (kind === 'kong') sfx.kong()
+    else if (kind === 'pong') sfx.pong()
+    actOnline({ type: kind })
+    return
+  }
   if (kind === 'pass') {
     pending.value = null
     reactQueue.value.shift()
@@ -716,11 +855,13 @@ function onReact(kind) {
 let aiTimer = null
 function scheduleAI() {
   clearTimeout(aiTimer)
+  if (isOnline.value) return   // 在线由服务端 AI 推进
   if (phase.value !== 'playing') return
   if (isHuman(turn.value) || out.value[turn.value]) return
   aiTimer = setTimeout(aiTurn, 640)
 }
 function aiTurn() {
+  if (isOnline.value) return
   if (phase.value !== 'playing') return
   const s = turn.value
   if (isHuman(s) || out.value[s]) return
@@ -778,7 +919,8 @@ function endRound(reason) {
   if (win) sfx.win()
   else if (delta < 0) sfx.lose()
   saveState()
-  reportSettle('mahjong', win ? 'win' : 'lose', win ? STAKE : -STAKE, STAKE).catch(() => {})
+  // 在线结算由服务端负责，本地不再重复上报经济
+  if (!isOnline.value) reportSettle('mahjong', win ? 'win' : 'lose', win ? STAKE : -STAKE, STAKE).catch(() => {})
 }
 
 /* ---------- 存档 ---------- */
@@ -798,12 +940,13 @@ function restoreLocal() {
 
 /* ---------- 退出 ---------- */
 function doExit() {
-  saveState()
+  if (!isOnline.value) saveState()
   emit('exit')
 }
 
 /* ---------- 生命周期 ---------- */
 onMounted(() => {
+  if (isOnline.value) { syncFromView(props.onlineView); return }
   if (props.resume && restoreLocal()) toastMsg('已接着上一局继续')
   newRound()
 })

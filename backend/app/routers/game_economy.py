@@ -113,6 +113,22 @@ def _add_beans(db: Session, w: GameWallet, amount: int, source: str,
     ))
 
 
+def get_wallet(db: Session, uid: int, create: bool = True) -> GameWallet | None:
+    """公开入口：取（必要时创建）某人的钱包。牌桌对局结算复用。"""
+    return _wallet(db, uid, create)
+
+
+def grant_beans(db: Session, w: GameWallet, amount: int, source: str,
+                note: str = "", peer_id: int | None = None) -> None:
+    """公开入口：变更欢乐豆并落流水（amount 可正可负）。"""
+    _add_beans(db, w, amount, source, note, peer_id)
+
+
+def grant_points(db: Session, w: GameWallet, amount: int, source: str, note: str = "") -> None:
+    """公开入口：变更积分并落流水。"""
+    _add_points(db, w, amount, source, note)
+
+
 def _wallet_view(w: GameWallet, uid: int, db: Session) -> dict:
     today = _today()
     signin_today = w.last_signin_date == today
@@ -137,7 +153,7 @@ def _wallet_view(w: GameWallet, uid: int, db: Session) -> dict:
 
 
 @router.get("/wallet")
-def get_wallet(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def wallet_get(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     uid = current_user["user_id"]
     w = _wallet(db, uid)
     db.commit()

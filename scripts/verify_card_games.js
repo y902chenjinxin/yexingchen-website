@@ -347,6 +347,90 @@ async function openGame(label, modeLabel) {
   check('掼蛋四席位（对家/左家/右家 + 自己手牌区）', g.seats === 3, `seats=${g.seats}`)
   await shot('card_guandan_start.png')
 
+  /* ---- v2.44 UI 打磨断言（PRD §7.1/§7.2/§7.3） ---- */
+  // (a) 手牌一屏展示全：不出现横向滚动
+  const fit = await evalJs(`(() => {
+    const h = document.querySelector('.gd-hand')
+    if (!h) return JSON.stringify({ err: 'no-hand' })
+    const cards = [...h.querySelectorAll('.gt-card')]
+    const last = cards[cards.length - 1]
+    const hr = h.getBoundingClientRect()
+    const lr = last ? last.getBoundingClientRect() : null
+    return JSON.stringify({
+      n: cards.length,
+      overflow: h.scrollWidth - h.clientWidth,
+      rightGap: lr ? Math.round(hr.right - lr.right) : null,
+      overlap: getComputedStyle(h).getPropertyValue('--gd-overlap').trim(),
+    })
+  })()`)
+  const f = JSON.parse(fit || '{}')
+  check('掼蛋手牌一屏展示全（无横向滚动）', f.overflow !== undefined && f.overflow <= 1, fit)
+  check('掼蛋手牌自适应重叠生效（27 张全显）',
+    f.n === 27 && !!f.overlap && f.overlap !== '0px', `overlap=${f.overlap}`)
+
+  // (b) 右侧出牌历史竖栏（可上下滑动）
+  const his = await evalJs(`(() => {
+    const p = document.querySelector('.gd-history')
+    if (!p) return JSON.stringify({ ok: false })
+    const list = p.querySelector('.gd-history-list')
+    const cs = getComputedStyle(list)
+    return JSON.stringify({
+      ok: true,
+      head: p.querySelector('.gd-history-head span')?.innerText || '',
+      scrollable: cs.overflowY === 'auto' || cs.overflowY === 'scroll',
+      items: list.querySelectorAll('.gd-his').length,
+    })
+  })()`)
+  const hs = JSON.parse(his || '{}')
+  check('掼蛋右侧出牌历史竖栏存在且可上下滑动',
+    hs.ok === true && hs.scrollable === true && (hs.head || '').includes('出牌'), his)
+
+  // (c) PC：Shift + 首尾点选 → 区间全选
+  await evalJs(`(() => {
+    const cards = [...document.querySelectorAll('.gd-hand .gt-card.pickable')]
+    if (cards.length < 6) return 'too-few'
+    const fire = (el, shift) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, shiftKey: shift }))
+    fire(cards[0], false)
+    fire(cards[4], true)
+    return 'fired'
+  })()`)
+  await new Promise(r => setTimeout(r, 300))
+  const selN = await evalJs(`document.querySelectorAll('.gd-hand .gt-card.is-sel').length`)
+  check('掼蛋 PC Shift + 首尾区间选牌（选中 5 张）', selN === 5, `sel=${selN}`)
+  await shot('card_guandan_shiftsel.png')
+  const resetSel = () => evalJs(`(() => { const b=[...document.querySelectorAll('.gd-actions .gt-btn')].find(x=>x.innerText.includes('重选')); if(b) b.click(); return true })()`)
+  await resetSel()
+  await new Promise(r => setTimeout(r, 200))
+
+  // (d) 手机端：滑动划选（划过 5 张依次选中）
+  //   mobile:false —— 只开触控仿真，避免 viewport meta 缩放导致 Input 坐标与
+  //   getBoundingClientRect 的 CSS 像素错位（曾表现为 5 个落点只命中 3 张）。
+  await send('Emulation.setDeviceMetricsOverride', { width: 1000, height: 660, deviceScaleFactor: 1, mobile: false })
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 })
+  await new Promise(r => setTimeout(r, 700))
+  await evalJs(`(() => { const h=document.querySelector('.gd-hand'); if(h) h.scrollIntoView({block:'center'}); return true })()`)
+  await new Promise(r => setTimeout(r, 600))
+  const pts = JSON.parse(await evalJs(`JSON.stringify([...document.querySelectorAll('.gd-hand .gt-card.pickable')].slice(0,5).map(c => {
+    const r = c.getBoundingClientRect(); return { x: r.left + 8, y: r.top + r.height / 2 }
+  }))`) || '[]')
+  if (pts.length === 5) {
+    await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: pts[0].x, y: pts[0].y, id: 1 }] })
+    for (let i = 1; i < 5; i++) {
+      await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: pts[i].x, y: pts[i].y, id: 1 }] })
+      await new Promise(r => setTimeout(r, 90))
+    }
+    await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await new Promise(r => setTimeout(r, 400))
+  }
+  const selIdx = await evalJs(`JSON.stringify([...document.querySelectorAll('.gd-hand .gt-card')].map((c,i)=>c.classList.contains('is-sel')?i:-1).filter(i=>i>=0))`)
+  const swipeN = JSON.parse(selIdx || '[]').length
+  check('掼蛋手机端滑动划选（划过 5 张全选）', swipeN === 5, `selIdx=${selIdx} pts=${pts.length}`)
+  await shot('card_guandan_swipe.png', { width: 1000, height: 660 })
+  await send('Emulation.setTouchEmulationEnabled', { enabled: false })
+  await send('Emulation.clearDeviceMetricsOverride')
+  await resetSel()
+  await new Promise(r => setTimeout(r, 300))
+
   // 出牌：若轮到自己，点「提示」→「出牌」；否则等 AI 先走
   const acted = await evalJs(`(() => {
     const btns = [...document.querySelectorAll('.gd-actions .gt-btn')]
@@ -370,11 +454,13 @@ async function openGame(label, modeLabel) {
   const playedOk = await waitUntil(`document.querySelectorAll('.gd-center-cards .gt-card').length > 0`, 15000)
   const gd2 = await evalJs(`JSON.stringify({
     centerCards: document.querySelectorAll('.gd-center-cards .gt-card').length,
-    log: [...document.querySelectorAll('.gd-center-log span')].map(s => s.innerText).slice(0, 3),
+    log: [...document.querySelectorAll('.gd-history-list .gd-his')].map(s => s.innerText).slice(0, 3),
     hand: document.querySelectorAll('.gd-hand .gt-card').length,
     centerText: (document.querySelector('.gd-center')?.innerText || '').slice(0, 120),
   })`)
   check('掼蛋有出牌发生（中央出牌区有牌）', playedOk, gd2)
+  const hisN = await evalJs(`document.querySelectorAll('.gd-history-list .gd-his').length`)
+  check('掼蛋出牌后历史栏出现记录', hisN > 0, `items=${hisN}`)
   await shot('card_guandan_play.png')
   await backToList()
 
@@ -443,8 +529,8 @@ async function openGame(label, modeLabel) {
   await backToList()
 
   /* ================= 大富翁 ================= */
-  console.log('\n== 5. 大富翁（2 人） ==')
-  await openGame('大富翁', '2 人')
+  console.log('\n== 5. 大富翁（单人 · 1 AI） ==')
+  await openGame('大富翁', '单人 · 1 AI')
   const mpOk = await waitFor('.gt-shell.mp', 10000)
   await settle()
   const mp = await evalJs(`JSON.stringify({

@@ -5,7 +5,7 @@
 """
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
 
 from app.database import Base
 
@@ -28,6 +28,15 @@ class GameRoom(Base):
     ai_seats = Column(Integer, nullable=False, default=0)       # 开房时自动补的机器人数
     owner_seen_at = Column(DateTime, nullable=True)      # 房主心跳（对手退出检测用）
     invitee_seen_at = Column(DateTime, nullable=True)    # 受邀人心跳
+    # v2.44 多席在线牌桌（掼蛋 / 麻将 / 大富翁）：沿用同一张表，靠 table_mode 分流
+    table_mode = Column(String(20), nullable=False, default="duel")  # duel=双人棋类 / table=多席牌桌
+    host_id = Column(Integer, nullable=True)             # 房主（换位 / 踢人 / 开局）
+    seats = Column(JSON, nullable=False, default=list)   # [{seat,user_id,is_ai,name,joined,online_at}]
+    config = Column(JSON, nullable=False, default=dict)  # 牌桌配置（席位数 / 组队 / 地图 / 缺门…）
+    game_state = Column(JSON, nullable=False, default=dict)  # 服务端私有态（含各家手牌，绝不下发）
+    turn_seat = Column(Integer, nullable=True)           # 当前行动席位
+    deadline_at = Column(DateTime, nullable=True)        # 操作倒计时（如还贡 30s）
+    round_no = Column(Integer, nullable=False, default=0)  # 局数（再来一局 +1）
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

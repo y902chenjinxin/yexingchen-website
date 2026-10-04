@@ -89,39 +89,98 @@
           <template v-if="!game.over">
             <button
               class="gt-btn"
-              :disabled="busy || cur.isAI || game.rolling"
+              :disabled="rollDisabled"
               @click="rollAndMove"
             >🎲 掷骰前进</button>
             <button
               v-if="canBuy"
               class="gt-btn"
-              :disabled="busy"
+              :disabled="isOnline ? acting : busy"
               @click="buyHere"
             >购地 {{ fmt(hereCell.price) }}</button>
             <button
               v-if="canBuild"
               class="gt-btn ghost"
-              :disabled="busy"
+              :disabled="isOnline ? acting : busy"
               @click="buildHere"
             >盖房 {{ fmt(buildCost(hereCell)) }} → Lv{{ hereCell.level + 1 }}</button>
             <button
-              v-if="cur.skill && !cur.skillUsed && SKILLS[cur.skill].target === 'self'"
+              v-if="cur.skill && !cur.skillUsed && SKILLS[cur.skill].target === 'self' && (!isOnline || oIsMyTurn)"
               class="gt-btn ghost"
-              :disabled="busy || cur.isAI"
+              :disabled="isOnline ? acting : (busy || cur.isAI)"
               @click="useSkill"
             >✨ {{ SKILLS[cur.skill].name }}</button>
             <button
-              v-for="it in cur.items"
+              v-for="it in (isOnline && !oIsMyTurn ? [] : cur.items)"
               :key="it"
               class="gt-btn ghost"
-              :disabled="busy || cur.isAI"
+              :disabled="isOnline ? acting : (busy || cur.isAI)"
               :title="ITEMS[it].desc"
               @click="useItem(it)"
             >{{ ITEMS[it].icon }} {{ ITEMS[it].name }}</button>
+            <!-- 在线专属：服务端驱动回合的补充操作 -->
+            <template v-if="isOnline">
+              <button v-if="oOpts.buy" class="gt-btn ghost" :disabled="acting" @click="skipBuy">放弃 · 拍卖</button>
+              <button v-if="oOpts.end_turn" class="gt-btn" :disabled="acting" @click="endTurnAct">结束回合</button>
+              <button v-if="oOpts.pay_jail" class="gt-btn" :disabled="acting" @click="payJail">缴纳罚金出狱</button>
+              <button v-if="oOpts.roll_jail" class="gt-btn ghost" :disabled="acting" @click="rollJail">掷骰出狱</button>
+            </template>
           </template>
           <template v-else>
             <button class="gt-btn" @click="restart">🔁 再来一局</button>
           </template>
+        </div>
+
+        <!-- 在线：地块经营（升级 / 抵押 / 赎回） -->
+        <div
+          v-if="isOnline && oIsMyTurn && (oOpts.upgrade.length || oOpts.mortgage.length || oOpts.redeem.length)"
+          class="mp-manage"
+        >
+          <template v-if="oOpts.upgrade.length">
+            <div class="mp-here-h">可盖房</div>
+            <div class="gt-actions">
+              <button v-for="t in oOpts.upgrade" :key="'u' + t" class="gt-btn ghost sm" :disabled="acting" @click="upgradeTile(t)">{{ boardName(t) }}</button>
+            </div>
+          </template>
+          <template v-if="oOpts.mortgage.length">
+            <div class="mp-here-h">可抵押</div>
+            <div class="gt-actions">
+              <button v-for="t in oOpts.mortgage" :key="'m' + t" class="gt-btn ghost sm" :disabled="acting" @click="mortgageTile(t)">{{ boardName(t) }}</button>
+            </div>
+          </template>
+          <template v-if="oOpts.redeem.length">
+            <div class="mp-here-h">可赎回</div>
+            <div class="gt-actions">
+              <button v-for="t in oOpts.redeem" :key="'r' + t" class="gt-btn ghost sm" :disabled="acting" @click="redeemTile(t)">{{ boardName(t) }}</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- 在线：拍卖（页内，不弹窗） -->
+        <div v-if="isOnline && oAuction" class="mp-auction">
+          <div class="mp-here-h">拍卖 · {{ boardName(oAuction.tile) }}</div>
+          <div class="mp-here-b">
+            <b>最高 {{ fmt(oAuction.high) }} 豆</b>
+            <i>{{ oAuction.high_seat >= 0 ? seatLabel(oAuction.high_seat) + ' 领先' : '尚无人出价' }}</i>
+          </div>
+          <div v-if="oAuction.turn === oSeat" class="gt-actions">
+            <input v-model.number="bidAmount" class="mp-bid" type="number" :min="oAuction.high + 1" />
+            <button class="gt-btn sm" :disabled="acting" @click="doBid">出价</button>
+            <button class="gt-btn ghost sm" :disabled="acting" @click="passBid">放弃</button>
+          </div>
+          <i v-else>等待 {{ seatLabel(oAuction.turn) }} 出价…</i>
+        </div>
+
+        <!-- 在线：收到的交易（页内，不弹窗） -->
+        <div v-if="isOnline && oTrades.length" class="mp-trades">
+          <div class="mp-here-h">收到交易</div>
+          <div v-for="tr in oTrades" :key="tr.id" class="mp-trade-row">
+            <i>{{ seatLabel(tr.from) }}：{{ bundleText(tr.give) }} 换 {{ bundleText(tr.want) }}</i>
+            <div class="gt-actions">
+              <button class="gt-btn sm" :disabled="acting" @click="acceptTrade(tr.id)">接受</button>
+              <button class="gt-btn ghost sm" :disabled="acting" @click="rejectTrade(tr.id)">拒绝</button>
+            </div>
+          </div>
         </div>
 
         <!-- 家庭豆子 -->
@@ -168,8 +227,15 @@ const props = defineProps({
   initialMode: { type: String, default: 'p4' },
   bare: { type: Boolean, default: false },
   big: { type: Boolean, default: false },
+  // v2.44 在线：服务端投影渲染，动作 emit 给等待房页转 /act
+  online: { type: Boolean, default: false },
+  onlineView: { type: Object, default: null },
+  onlineSeat: { type: Number, default: 0 },
+  seatNames: { type: Array, default: () => [] },
+  acting: { type: Boolean, default: false },
+  isHost: { type: Boolean, default: false },
 })
-const emit = defineEmits(['exit', 'room-lock', 'room-unlock'])
+const emit = defineEmits(['exit', 'room-lock', 'room-unlock', 'act', 'rematch'])
 
 /* ---------------- 静态数据 ---------------- */
 const BOARD_N = 14          // 14×14 环，共 52 格
@@ -285,6 +351,46 @@ function say(msg) {
 }
 function log(msg) { game.log.push(msg); if (game.log.length > 120) game.log.splice(0, 40) }
 
+/* ---------------- 在线：派生（服务端投影） ---------------- */
+const isOnline = computed(() => props.online)
+const oSeat = computed(() => Number(props.onlineSeat ?? 0))
+const oView = computed(() => props.onlineView || {})
+const oTable = computed(() => oView.value.table || {})
+const oOpts = computed(() => {
+  const o = oView.value.me?.options || {}
+  return {
+    roll: false, buy: false, end_turn: false,
+    upgrade: [], mortgage: [], redeem: [],
+    pay_jail: false, roll_jail: false, ...o,
+  }
+})
+const oAuction = computed(() => oTable.value.auction || null)
+/** 待我处理的交易（服务端只保留 pending） */
+const oTrades = computed(() =>
+  (oTable.value.trades || []).filter((t) => t.status === 'pending' && t.to === oSeat.value))
+const oIsMyTurn = computed(() => isOnline.value && oView.value.turn === oSeat.value)
+const rollDisabled = computed(() => (isOnline.value
+  ? (props.acting || !oOpts.value.roll)
+  : (busy.value || cur.value.isAI || game.rolling)))
+const bidAmount = ref(0)
+
+/** 座位标签：在线用 seatNames，本地用玩家名 */
+function seatLabel(s) {
+  if (isOnline.value) return s === oSeat.value ? '你' : (props.seatNames?.[s] || `座位${s + 1}`)
+  return game.players[s]?.name || `玩家${s + 1}`
+}
+/** 交易礼包文案 */
+function bundleText(b) {
+  if (!b) return '—'
+  const parts = []
+  if (b.cash) parts.push(`${fmt(b.cash)}豆`)
+  if (b.tiles?.length) parts.push(`${b.tiles.length}块地`)
+  if (b.items?.length) parts.push(`${b.items.length}张卡`)
+  return parts.join('+') || '—'
+}
+/** 地块名（拍卖/交易展示用） */
+function boardName(idx) { return game.cells[idx]?.name || `#${idx}` }
+
 const cur = computed(() => game.players[game.curIdx] || { items: [], props: {}, cash: 0, id: 0, avatar: '?' })
 const cells = computed(() => game.cells)
 const hereCell = computed(() => game.cells[cur.value.pos] || { name: '—' })
@@ -302,15 +408,24 @@ const hereHint = computed(() => {
   })[t] || ''
 })
 const phaseText = computed(() => {
+  if (isOnline.value) {
+    const v = oView.value
+    if (v.finished || v.phase === 'finished') return '对局结束'
+    if (v.phase === 'auction') return '拍卖中'
+    if (v.turn === oSeat.value) return props.acting ? '提交中' : '轮到你了'
+    return `${seatLabel(v.turn)} 行动中`
+  }
   if (game.over) return '对局结束'
   if (game.rolling) return '掷骰中'
   return cur.value.isAI ? `${cur.value.name} 思考中` : '轮到你了'
 })
 const canBuy = computed(() => {
+  if (isOnline.value) return !!oOpts.value.buy
   const c = hereCell.value
   return !cur.value.isAI && c.price && c.owner == null && cur.value.cash >= c.price && !game.over
 })
 const canBuild = computed(() => {
+  if (isOnline.value) return oOpts.value.upgrade.includes(hereCell.value.idx)
   const c = hereCell.value
   return !cur.value.isAI && c.price && c.owner === cur.value.id && c.level < 4 && cur.value.cash >= buildCost(c) && !game.over
 })
@@ -320,9 +435,10 @@ function fmt(n) {
   if (Math.abs(v) >= 10000) return (v / 10000).toFixed(v % 10000 === 0 ? 0 : 1) + '万'
   return String(v)
 }
-function buildCost(c) { return Math.round((c.price || 0) * 0.6) }
+function buildCost(c) { return c.build != null ? c.build : Math.round((c.price || 0) * 0.6) }
 function rentOf(c) {
   if (!c || !c.price || c.owner == null) return 0
+  if (Array.isArray(c.rents)) return c.rents[Math.min(c.level || 0, c.rents.length - 1)] || 0
   const base = Math.round(c.price * 0.12)
   return Math.round(base * (1 + c.level * 0.9))
 }
@@ -365,7 +481,7 @@ function playerCount() {
 function newGame() {
   buildCells()
   const n = playerCount()
-  const humans = n >= 4 ? 2 : 1          // 4 人以上给 2 个真人位（同屏轮流）
+  const humans = 1                         // v2.44：同屏多人下线，本地练习固定 1 真人 + N AI
   const skillKeys = Object.keys(SKILLS)
   game.players = []
   for (let i = 0; i < n; i++) {
@@ -396,7 +512,10 @@ function newGame() {
   busy.value = false
 }
 
-function restart() { newGame(); say('新的一局开始了') }
+function restart() {
+  if (isOnline.value) { emit('rematch'); return }
+  newGame(); say('新的一局开始了')
+}
 
 /* ---------------- 金钱 ---------------- */
 function pay(p, amount) {
@@ -444,6 +563,7 @@ function tokensRefresh() { /* 触发 tokensAt 重算 */ game.cells = [...game.ce
 
 /* ---------------- 掷骰与落点结算 ---------------- */
 async function rollAndMove() {
+  if (isOnline.value) { emit('act', { type: 'roll' }); return }
   if (busy.value || game.over) return
   const p = cur.value
   if (!p.alive) return nextTurn()
@@ -481,6 +601,7 @@ async function rollAndMove() {
 }
 
 function endTurn() {
+  if (isOnline.value) return   // 在线由服务端推进回合
   if (game.over) return
   const p = cur.value
   p.freeRent = false
@@ -551,6 +672,7 @@ async function resolveLanding(p) {
 
 /* ---------------- 玩家操作 ---------------- */
 function buyHere() {
+  if (isOnline.value) { emit('act', { type: 'buy' }); return }
   const p = cur.value, c = hereCell.value
   if (c.owner != null || p.cash < c.price) return
   p.cash -= c.price
@@ -560,6 +682,7 @@ function buyHere() {
 }
 
 function buildHere() {
+  if (isOnline.value) { emit('act', { type: 'upgrade', tile: hereCell.value.idx }); return }
   const p = cur.value, c = hereCell.value
   if (c.owner !== p.id || c.level >= 4) return
   const cost = buildCost(c)
@@ -570,6 +693,11 @@ function buildHere() {
 }
 
 function useSkill() {
+  if (isOnline.value) {
+    // 服务端技能需要 tile/pos 参数：tile 取当前格（强买/拆迁/抄底），pos 取前进 6 格（忍者）
+    emit('act', { type: 'skill', tile: hereCell.value.idx, pos: (cur.value.pos + 6) % 52 })
+    return
+  }
   const p = cur.value
   if (!p.skill || p.skillUsed) return
   const s = p.skill
@@ -615,6 +743,20 @@ function useSkill() {
 }
 
 function useItem(it) {
+  if (isOnline.value) {
+    const idx = ITEM_KEYS.indexOf(it)
+    if (idx < 0) return
+    // 服务端道具：怪兽卡需 tile；路障卡需 target_seat（取首个存活对手）
+    // 传送卡需选择目标格，本期无选格 UI，暂不携带 pos（服务端会提示目标不合法）
+    const action = { type: 'use_item', item: idx }
+    if (it === 'monster') action.tile = hereCell.value.idx
+    if (it === 'barrier') {
+      const other = game.players.find((p) => p.id !== oSeat.value && p.alive)
+      if (other) action.target_seat = other.id
+    }
+    emit('act', action)
+    return
+  }
   const p = cur.value
   const i = p.items.indexOf(it)
   if (i < 0) return
@@ -652,6 +794,7 @@ function useItem(it) {
 
 /* ---------------- AI ---------------- */
 async function aiTurn() {
+  if (isOnline.value) return   // 在线 AI 由服务端驱动
   if (game.over) return
   const p = cur.value
   if (!p?.isAI || !p.alive) return
@@ -681,10 +824,82 @@ async function finish(winner) {
 
 const stake = ref(100)
 
+/* ---------------- 在线：服务端投影 → 本地展示态 ---------------- */
+const CHAR_KEYS = ['reroll', 'freerent', 'forcebuy', 'demolish', 'doublerent', 'blink', 'equalize', 'bargain']
+const ITEM_KEYS = ['barrier', 'teleport', 'freecard', 'equalcard', 'buycard', 'turncard', 'monster', 'angel']
+const KIND_TYPE = { property: 'city', start: 'start', chance: 'chance', item: 'item', tax: 'tax', jail: 'jail', goto_jail: 'gotojail', parking: 'park' }
+
+/** 把服务端 view(state, seat) 投影映射到既有展示 ref，模板无需改字段名 */
+function syncFromView(v) {
+  if (!v) return
+  const t = v.table || {}
+  const owner = t.owner || []
+  game.cells = (t.board || []).map((bt) => ({
+    idx: bt.idx,
+    type: KIND_TYPE[bt.kind] || bt.kind,
+    name: bt.name,
+    price: bt.price || 0,
+    group: bt.group,
+    groupColor: bt.kind === 'property' ? (GROUPS[bt.group]?.color || '#8a8a8a') : undefined,
+    build: bt.build,
+    rents: bt.rents,
+    owner: owner[bt.idx] == null || owner[bt.idx] < 0 ? null : owner[bt.idx],
+    level: t.level?.[bt.idx] || 0,
+    hl: false,
+  }))
+  const propsOf = (s) => {
+    const o = {}
+    owner.forEach((ow, i) => { if (ow === s) o[i] = true })
+    return o
+  }
+  game.players = (v.players || []).map((sp) => ({
+    id: sp.seat,
+    name: sp.seat === oSeat.value ? '你' : (props.seatNames?.[sp.seat] || `座位${sp.seat + 1}`),
+    avatar: sp.seat === oSeat.value ? '🙂' : '🤖',
+    isAI: sp.seat !== oSeat.value,
+    cash: sp.cash,
+    pos: sp.pos,
+    props: propsOf(sp.seat),
+    items: (sp.items || []).map((i) => ITEM_KEYS[i]).filter(Boolean),
+    alive: sp.alive,
+    jailTurns: sp.in_jail || 0,
+    skill: CHAR_KEYS[sp.character] || null,
+    skillUsed: sp.seat === oSeat.value ? ((v.me?.skill_left ?? 0) <= 0) : false,
+    freeRent: false,
+    doubleRent: false,
+    immune: false,
+  }))
+  game.curIdx = (v.turn == null) ? 0 : v.turn
+  game.dice = t.last_dice || [1, 1]
+  game.rolling = false
+  game.over = null
+  if (v.result) {
+    const win = v.result.winner === oSeat.value
+    const delta = v.result.deltas?.[oSeat.value] ?? 0
+    game.over = { win, title: `${seatLabel(v.result.winner)} 获胜`, delta }
+  }
+}
+watch(() => props.onlineView, (v) => { if (isOnline.value) syncFromView(v) }, { immediate: true, deep: true })
+watch(oAuction, (a) => { if (a) bidAmount.value = (a.high || 0) + 500 })
+
+/* ---------------- 在线：动作上抛 ---------------- */
+function skipBuy() { if (isOnline.value) emit('act', { type: 'skip_buy' }) }
+function endTurnAct() { if (isOnline.value) emit('act', { type: 'end_turn' }) }
+function payJail() { if (isOnline.value) emit('act', { type: 'pay_jail' }) }
+function rollJail() { if (isOnline.value) emit('act', { type: 'roll_jail' }) }
+function upgradeTile(idx) { if (isOnline.value) emit('act', { type: 'upgrade', tile: idx }) }
+function mortgageTile(idx) { if (isOnline.value) emit('act', { type: 'mortgage', tile: idx }) }
+function redeemTile(idx) { if (isOnline.value) emit('act', { type: 'redeem', tile: idx }) }
+function doBid() { if (isOnline.value) emit('act', { type: 'bid', amount: Number(bidAmount.value) || 0 }) }
+function passBid() { if (isOnline.value) emit('act', { type: 'pass_bid' }) }
+function acceptTrade(id) { if (isOnline.value) emit('act', { type: 'trade_accept', id }) }
+function rejectTrade(id) { if (isOnline.value) emit('act', { type: 'trade_reject', id }) }
+
 /* ---------------- 生命周期 ---------------- */
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)) }
 
 onMounted(async () => {
+  if (isOnline.value) { syncFromView(props.onlineView); return }
   newGame()
   emit('room-lock')
   try {
@@ -696,6 +911,7 @@ onMounted(async () => {
 })
 
 watch(() => game.curIdx, () => {
+  if (isOnline.value) return   // 在线由服务端推进
   const p = cur.value
   if (p?.isAI && !game.over && !busy.value) setTimeout(() => aiTurn(), 480)
 })
@@ -808,6 +1024,21 @@ watch(() => game.curIdx, () => {
 .mp-here-b i { font-style: normal; font-size: 11px; color: var(--gt-ink-dim); }
 
 .mp-ops { justify-content: flex-start; }
+/* 在线：经营 / 拍卖 / 交易（页内块，非弹窗） */
+.mp-manage, .mp-auction, .mp-trades {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 9px 11px; border-radius: 12px;
+  background: rgba(0, 0, 0, .26); border: 1px solid var(--gt-line);
+}
+.mp-manage .gt-actions, .mp-auction .gt-actions, .mp-trade-row .gt-actions { flex-wrap: wrap; gap: 6px; }
+.mp-trade-row { display: flex; flex-direction: column; gap: 4px; }
+.mp-trade-row i { font-style: normal; font-size: 11px; color: var(--gt-ink-dim); }
+.mp-auction .mp-here-b i { font-style: normal; font-size: 11px; color: var(--gt-ink-dim); }
+.mp-bid {
+  width: 88px; padding: 4px 8px; border-radius: 8px;
+  background: rgba(0, 0, 0, .3); color: var(--gt-ink, #eee);
+  border: 1px solid var(--gt-line); font-size: 12px;
+}
 .mp-wallet { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
 
 @media (max-width: 900px) {

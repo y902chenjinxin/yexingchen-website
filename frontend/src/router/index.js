@@ -199,6 +199,14 @@ const routes = [
     component: () => import('@/views/GamesView.vue'),
     meta: { requiresAuth: true }
   },
+  // v2.44 牌类在线对局：独立等待房 / 牌桌宿主（掼蛋 / 麻将 / 大富翁）
+  //   /tool/games/table/new?game=guandan → 建房表单；/tool/games/table/:id → 进房
+  {
+    path: '/tool/games/table/:id',
+    name: 'GameTable',
+    component: () => import('@/views/GameTableView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 内置 打字测速
   {
     path: '/tool/typing',

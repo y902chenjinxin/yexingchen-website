@@ -63,6 +63,7 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import AiToolsDrawer from '@/components/workbench/AiToolsDrawer.vue'
 import { checkFestivalNotice } from '@/utils/festivalNotice'
 import { gameRoomsApi } from '@/api/gameRooms'
+import { gameTablesApi } from '@/api/gameTables'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useIsMobile } from '@/composables/useIsMobile'
 
@@ -209,6 +210,7 @@ onMounted(async () => {
   onBeforeUnmount(() => { if (extendTimer) clearInterval(extendTimer) })
   onBeforeUnmount(() => { if (themeTimer) clearInterval(themeTimer) })
   onBeforeUnmount(() => { if (inviteTimer) clearInterval(inviteTimer) })
+  onBeforeUnmount(() => { if (tableInviteTimer) clearInterval(tableInviteTimer) })
 
   /* ---------- 棋类游戏 · 对局邀请轮询（v2.40.25）----------
    * 家人建房邀请你后，这里每 5s 查一次；弹窗接受 → 直接跳进对局。
@@ -244,6 +246,40 @@ onMounted(async () => {
   }
   var inviteTimer = setInterval(pollGameInvites, INVITE_POLL_MS)
   if (auth.isLoggedIn) setTimeout(pollGameInvites, 1200)
+
+  /* ---------- 牌类牌桌 · 入座邀请轮询（v2.44）----------
+   * 家人开牌桌邀请你后，这里每 5s 查一次；接受 → 直接进独立牌桌页。
+   * 与棋类邀请分开轮询：牌桌是「多席 + 服务端权威」，走 /game/rooms/invites。 */
+  const tableInviteSeen = new Set()
+  async function pollTableInvites() {
+    if (!auth.isLoggedIn) return
+    try {
+      const res = await gameTablesApi.invites()
+      for (const inv of (res?.data?.list || [])) {
+        const key = 't' + inv.id
+        if (tableInviteSeen.has(key)) continue
+        tableInviteSeen.add(key)
+        const hostSeat = (inv.seats || []).find(s => s.user_id === inv.host_id)
+        const hostName = hostSeat?.name || '家人'
+        ElMessageBox.confirm(
+          `「${hostName}」邀你入座「${inv.game_name}」牌桌`,
+          '牌桌邀请',
+          { confirmButtonText: '接受，入座', cancelButtonText: '拒绝', type: 'info' },
+        ).then(async () => {
+          try {
+            await gameTablesApi.join(inv.id)
+          } catch (e) {
+            tableInviteSeen.delete(key)
+            ElMessage.warning(e?.response?.data?.msg || '入座失败，请稍后再试')
+            return
+          }
+          router.push(`/tool/games/table/${inv.id}`)
+        }).catch(() => { gameTablesApi.decline(inv.id).catch(() => {}) })
+      }
+    } catch { /* 静默 */ }
+  }
+  var tableInviteTimer = setInterval(pollTableInvites, INVITE_POLL_MS)
+  if (auth.isLoggedIn) setTimeout(pollTableInvites, 1800)
 })
 </script>
 

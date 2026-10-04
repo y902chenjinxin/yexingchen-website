@@ -135,14 +135,25 @@
   transition: transform .16s, box-shadow .16s;
 }
 .gt-card.is-red { color: #c62828; }
-.gt-card .r {
-  position: absolute; top: 3px; left: 5px; font-size: 15px; font-weight: 800; line-height: 1;
+/* 左上角：点数 + 花色（手牌密集重叠时唯一露出的窗口，必须最清晰） */
+.gt-card .c-tl {
+  position: absolute; top: 3px; left: 5px;
+  display: flex; flex-direction: column; align-items: center; line-height: 1;
 }
-.gt-card .s { position: absolute; top: 17px; left: 6px; font-size: 13px; line-height: 1; }
-.gt-card .big {
+.gt-card .c-tl b { font-size: 15px; font-weight: 800; letter-spacing: -.02em; }
+.gt-card .c-tl i { font-style: normal; font-size: 12px; margin-top: 1px; }
+/* 中央大花色水印 */
+.gt-card .c-mid {
   position: absolute; inset: 0; display: grid; place-items: center;
-  font-size: 30px; opacity: .2;
+  font-size: 30px; opacity: .16; pointer-events: none;
 }
+/* 右下角镜像角标 */
+.gt-card .c-br {
+  position: absolute; right: 4px; bottom: 3px; transform: rotate(180deg);
+  display: flex; flex-direction: column; align-items: center; line-height: 1; opacity: .75;
+}
+.gt-card .c-br b { font-size: 11px; font-weight: 800; }
+.gt-card .c-br i { font-style: normal; font-size: 9.5px; margin-top: 1px; }
 .gt-card .tag {
   position: absolute; right: 4px; bottom: 4px; font-size: 9.5px; font-weight: 700;
   padding: 1px 4px; border-radius: 4px; color: #7a4b00;
@@ -158,11 +169,35 @@
   content: ''; position: absolute; inset: 5px; border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, .35);
 }
+
+/* 特殊牌：王（暖金底）/ 级牌（金边）/ 逢人配（红金边 + 角标） */
+.gt-card.is-joker {
+  background: linear-gradient(160deg, #fffaf0, #f4e3bd);
+  border-color: rgba(169, 129, 47, .55);
+}
+.gt-card.is-joker .c-tl b { font-size: 13px; }
+.gt-card.is-joker .c-mid { opacity: .42; font-size: 26px; }
+.gt-card.is-level {
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .28), 0 8px 16px -10px rgba(0, 0, 0, .8),
+    inset 0 0 0 2px rgba(233, 200, 119, .95);
+}
+.gt-card.is-wild {
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .28), 0 8px 16px -10px rgba(0, 0, 0, .8),
+    inset 0 0 0 2px rgba(214, 92, 92, .95);
+}
+.gt-card.is-wild .c-tl b { color: #b3261e; }
+
+/* 选中 / 悬停放大预览（手牌密集时靠它看清单张） */
 .gt-card.pickable { cursor: pointer; }
-.gt-card.pickable:hover { transform: translateY(-9px); box-shadow: 0 3px 0 rgba(0,0,0,.28), 0 14px 22px -12px rgba(0,0,0,.9); }
-.gt-card.is-sel {
-  transform: translateY(-13px);
-  box-shadow: 0 0 0 2px var(--gt-gold), 0 14px 22px -12px rgba(0, 0, 0, .9);
+.gt-card.pickable:hover {
+  transform: translateY(-14px) scale(1.06);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .28), 0 16px 26px -12px rgba(0, 0, 0, .95);
+}
+.gt-card.is-sel,
+.gt-card.pickable.is-sel:hover {
+  transform: translateY(-16px);
+  box-shadow: 0 0 0 2px var(--gt-gold), 0 0 16px -2px rgba(233, 200, 119, .75),
+    0 16px 26px -12px rgba(0, 0, 0, .95);
 }
 
 /* ---------- 麻将牌（立体侧边） ---------- */
