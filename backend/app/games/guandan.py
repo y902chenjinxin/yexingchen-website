@@ -542,10 +542,12 @@ def _next_active(st: dict, frm: int) -> int:
     return frm
 
 
-def _end_round(st: dict, events: list[dict]) -> None:
-    for s in range(4):
-        if s not in st["finished"]:
-            st["finished"].append(s)
+def _end_round(st: dict, events: list[dict], last_seat: int | None = None) -> None:
+    rest = [s for s in range(4) if s not in st["finished"]]
+    if last_seat is not None and last_seat in rest:
+        rest.remove(last_seat)
+        rest.append(last_seat)          # 主动退出者（认输）名次排最后
+    st["finished"].extend(rest)
     ranking = st["finished"][:4]
     up = _upgrade_for(ranking)
     win_team = TEAM_OF[ranking[0]]
@@ -837,3 +839,16 @@ class GuandanEngine(TableEngine):
 
     def result(self, state: dict) -> dict | None:
         return state.get("result")
+
+    def abort(self, state: dict, seats: list[dict],
+              quit_seat: int | None = None) -> tuple[dict, list[dict]] | None:
+        """有人中途退出：本局立即收摊，按当前名次结算。
+
+        已出完的按出完先后定名次，未出完的按座位号补位；主动退出者（quit_seat）排最后。
+        """
+        if state.get("phase") == "finished":
+            return None
+        st = copy_state(state)
+        events: list[dict] = []
+        _end_round(st, events, last_seat=quit_seat)
+        return st, events

@@ -128,6 +128,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
+import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { gameRoomsApi } from '@/api/gameRooms'
 import { familyMembers } from '@/api/lifeExtra'
@@ -325,7 +326,14 @@ const resultText = computed(() => {
   if (winner.value === 3) return `🤝 和棋 · ${scoreLine.value}`
   return `${winner.value === BLACK ? '⚫ 黑胜' : '⚪ 白胜'} · ${scoreLine.value}`
 })
-const canUndo = computed(() => history.value.length > 0 && !thinking.value && !isOnline.value)
+/** v2.44.3 防连悔：同一方悔棋后须等对手落子才能再悔（本地由 useUndoGuard 维护） */
+const undoGuard = useUndoGuard()
+/** 本地悔棋会撤掉哪一方：双人=最后一手的落子方；单机=我方（撤自己 + AI 应招） */
+const localUndoColor = computed(() => (mode.value === 'pvp'
+  ? (history.value[history.value.length - 1]?.turn ?? BLACK)
+  : BLACK))
+const canUndo = computed(() => history.value.length > 0 && !thinking.value && !isOnline.value
+  && !undoGuard.blocked(localUndoColor.value))
 const passLabel = computed(() => (passes.value ? '停手即终局' : '停一手'))
 
 /* ---------- 棋盘几何 ----------
@@ -436,16 +444,19 @@ function play(idx) {
   const mover = turn.value
   applyMove(idx, mover)
   turn.value = 3 - mover
+  undoGuard.noteMove(mover)      // 对手落子 → 解除「刚悔棋那一方」的连悔封锁
   if (isOnline.value) { gRoom.send({ idx }).catch(() => {}) ; return }
   if (mode.value !== 'pvp' && turn.value === aiColor) scheduleAi()
 }
 function doPass() {
   // 记一手「停手」（不落子，只推进轮次）
+  const mover = turn.value
   history.value.push({ snapshot: board.value.slice(), koPoint: koPoint.value, turn: turn.value, lastIdx: lastIdx.value, capBlack: captured.black, capWhite: captured.white })
   passes.value++
   koPoint.value = -1
   lastIdx.value = -1
   turn.value = 3 - turn.value
+  undoGuard.noteMove(mover)      // 对手停一手 → 同样解除连悔封锁
   if (passes.value >= 2) finishByScore()
 }
 function pass() {
@@ -481,6 +492,7 @@ function restartLocal() {
   scoreLine.value = ''
   thinking.value = false
   history.value = []
+  undoGuard.reset()
   nextTick(measureCell)
 }
 function restart() {
@@ -490,6 +502,7 @@ function restart() {
 }
 function undo() {
   if (!canUndo.value) return
+  const undoColor = localUndoColor.value
   clearTimeout(aiTimer)
   thinking.value = false
   const steps = mode.value === 'pvp' ? 1 : Math.min(2, history.value.length)
@@ -506,6 +519,7 @@ function undo() {
     winner.value = 0
     scoreLine.value = ''
   }
+  undoGuard.markUndo(undoColor)
 }
 
 /* ---------- AI（入门级） ---------- */
@@ -615,6 +629,7 @@ function restoreLocal() {
   captured.white = s.capWhite || 0
   history.value = []          // 续局不保留悔棋栈（存档体积考虑）
   over.value = false
+  undoGuard.reset()
   ElMessage.success('已继续上一局（续局后不能悔棋）')
   nextTick(measureCell)
   return true

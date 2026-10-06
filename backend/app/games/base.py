@@ -65,6 +65,16 @@ class TableEngine:
         其中 deltas 是**底注倍数**（正=赢，负=输）；未结束返回 None。"""
         return None
 
+    def abort(self, state: dict, seats: list[dict],
+              quit_seat: int | None = None) -> tuple[dict, list[dict]] | None:
+        """中途终止：有人退出时按**当前局势**补出终局（名次 / 结算），返回 ``(state, events)``。
+
+        与 `on_timeout` 不同，这里不是「代打一手」而是「就地收摊」——让已进行到一半的牌局
+        也能产出合法的 `result()`，避免「人走了、桌子还挂着、又打不完」。
+        ``quit_seat`` 是主动退出者（退出＝认输，名次应排最后）。引擎不支持则返回 None。
+        """
+        return None
+
 
 # ---------- 工具 ----------
 

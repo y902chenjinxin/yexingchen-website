@@ -145,6 +145,7 @@
 import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
+import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
@@ -355,8 +356,13 @@ const lastMoverColor = computed(() => {
 const localQuotaLeft = computed(() =>
   mode.value === 'pvp' ? (lastMoverColor.value === AI ? undoLeft.value.white : undoLeft.value.black)
     : undoLeft.value.black)
+/** 本地悔棋会撤掉哪一方：双人=最后一手的落子方；单机=我方（撤自己 + AI 应招） */
+const localUndoColor = computed(() => (mode.value === 'pvp' ? lastMoverColor.value : HUMAN))
+/** v2.44.3 防连悔：同一方悔棋后须等对手落子才能再悔（本地由 useUndoGuard 维护，在线看服务端） */
+const undoGuard = useUndoGuard()
 const canUndoLocal = computed(() =>
-  mode.value !== 'online' && !thinking.value && history.value.length > 0 && localQuotaLeft.value > 0)
+  mode.value !== 'online' && !thinking.value && history.value.length > 0 && localQuotaLeft.value > 0
+  && !undoGuard.blocked(localUndoColor.value))
 const localQuotaText = computed(() => {
   const q = undoLeft.value
   return mode.value === 'pvp' ? `悔棋余量 黑 ${q.black} · 白 ${q.white}` : `悔棋余量 ${q.black} 次`
@@ -453,6 +459,7 @@ function clearLocal() {
   thinking.value = false
   onlineWinner.value = ''
   undoLeft.value = { black: UNDO_QUOTA, white: UNDO_QUOTA }
+  undoGuard.reset()
 }
 /* ---------- 本地存档：退出/返回首页后可从「第一步」续上（在线局不存） ---------- */
 const SAVE_KEY = 'gomoku'
@@ -493,6 +500,7 @@ function restoreLocal() {
   undoLeft.value = s.undoLeft && typeof s.undoLeft.black === 'number'
     ? { black: s.undoLeft.black, white: s.undoLeft.white ?? UNDO_QUOTA }
     : { black: UNDO_QUOTA, white: UNDO_QUOTA }
+  undoGuard.reset()
   return true
 }
 watch([board, over], saveLocal, { deep: true })
@@ -603,6 +611,7 @@ function place(idx) {
   history.value.push(idx)
   board.value[idx] = turn.value
   lastIdx.value = idx
+  undoGuard.noteMove(turn.value)      // 对手落子 → 解除「刚悔棋那一方」的连悔封锁
   const line = checkWinFrom(board.value, idx, turn.value)
   if (line) { winLine.value = line; winner.value = turn.value; over.value = true }
   else if (openAreaFull()) { over.value = true }
@@ -686,6 +695,7 @@ function undoLocal() {
     if (color === AI) undoLeft.value.white = Math.max(0, undoLeft.value.white - 1)
     else undoLeft.value.black = Math.max(0, undoLeft.value.black - 1)
     turn.value = color || HUMAN          // 撤掉谁的手，就还谁走
+    undoGuard.markUndo(color)
   } else {
     const steps = history.value.length >= 2 ? 2 : 1
     for (let i = 0; i < steps && history.value.length; i++) {
@@ -694,6 +704,7 @@ function undoLocal() {
     }
     undoLeft.value.black = Math.max(0, undoLeft.value.black - 1)
     turn.value = HUMAN
+    undoGuard.markUndo(HUMAN)
   }
   over.value = false; winner.value = 0; winLine.value = []
   lastIdx.value = history.value[history.value.length - 1] ?? -1

@@ -75,7 +75,8 @@
             </div>
             <div class="gtv-head-ops">
               <button class="gtv-btn ghost" @click="refresh">刷新</button>
-              <button class="gtv-btn ghost" @click="leaveRoom">退出</button>
+              <button v-if="!room.is_host" class="gtv-btn ghost" @click="leaveRoom">退出</button>
+              <button class="gtv-btn ghost danger" @click="dissolveRoom">解散牌桌</button>
             </div>
           </header>
 
@@ -133,7 +134,8 @@
               {{ isMyTurn ? '轮到你' : `等 ${seatName(view.turn)} 行动` }}
             </span>
             <button class="gtv-btn ghost" @click="enterFullscreen">全屏</button>
-            <button class="gtv-btn ghost" @click="leaveRoom">退出牌桌</button>
+            <button class="gtv-btn ghost danger" @click="dissolveRoom">解散牌桌</button>
+            <button class="gtv-btn ghost" title="退出＝认输，本局立即按当前名次结算" @click="leaveRoom">退出对局（认输）</button>
           </div>
 
           <div ref="stageRef" class="gtv-viewstage" :class="{ 'is-fs': fullscreen }">
@@ -155,18 +157,21 @@
                 :big="true"
                 @act="onAct"
                 @rematch="doRematch"
-                @exit="goBack"
+                @exit="leaveRoom"
               />
             </div>
           </div>
 
-          <!-- 全屏右侧竖栏：游戏说明 / 退出全屏 / 返回列表 -->
+          <!-- 全屏右侧竖栏：游戏说明 / 退出全屏 / 解散牌桌 / 返回列表 -->
           <nav v-if="fullscreen" class="gtv-rail" aria-label="牌桌操作">
             <button class="gtv-rail-btn" @click="showHelp = true">
               <i aria-hidden="true">📖</i><span>游戏说明</span>
             </button>
             <button class="gtv-rail-btn" @click="exitFullscreen">
               <i aria-hidden="true">⤡</i><span>退出全屏</span>
+            </button>
+            <button class="gtv-rail-btn danger" @click="dissolveRoom">
+              <i aria-hidden="true">⛔</i><span>解散牌桌</span>
             </button>
             <button class="gtv-rail-btn" @click="goBack">
               <i aria-hidden="true">↩</i><span>返回列表</span>
@@ -306,7 +311,8 @@ const isMyTurn = computed(() => t.isMyTurn.value)
 /** 空态文案：区分「进入中 / 已解散 / 不存在」 */
 const emptyText = computed(() => {
   if (loading.value) return '正在进入牌桌…'
-  if (room.value?.status === 'abandoned') return '牌桌已解散（房主已离开或长时间无操作）'
+  if (room.value?.status === 'dissolved') return '牌桌已解散（有人解散了本桌，可回列表重新开一局）'
+  if (room.value?.status === 'abandoned') return '牌桌已失效（长时间无操作）'
   return '牌桌不存在或已结束'
 })
 
@@ -435,6 +441,15 @@ async function leaveRoom() {
   goBack()
 }
 
+/** 解散整桌：任何在座家人都可；不判输赢（已开局会退还底注），随后回列表 */
+async function dissolveRoom() {
+  error.value = ''
+  try { await t.dissolve() } catch (e) {
+    ElMessage.warning(e?.msg || e?.response?.data?.detail || '解散失败')
+  }
+  goBack()
+}
+
 function goBack() { router.push('/tool/games') }
 
 /* ---------- 生命周期 ---------- */
@@ -536,6 +551,9 @@ onBeforeUnmount(() => {
 .gtv-btn.primary { background: linear-gradient(160deg, #c7a96b, #b2914f); color: #241d0c; border-color: transparent; font-weight: 700; }
 .gtv-btn.primary:disabled, .gtv-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 .gtv-btn.ghost { background: transparent; }
+.gtv-btn.danger { color: #c85050; border-color: rgba(200,80,80,.4); }
+.gtv-btn.danger:hover { border-color: rgba(200,80,80,.75); background: rgba(200,80,80,.1); }
+:root[data-theme="night"] .gtv-btn.danger { color: #e78b8b; border-color: rgba(231,139,139,.45); }
 :root[data-theme="night"] .gtv-btn { background: rgba(255,255,255,.08); color: #f2eee4; }
 .gtv-btn.primary { color: #241d0c; }
 .gtv-hint { font-size: 12.5px; color: var(--dp-text3, #8a8f98); }
@@ -631,6 +649,8 @@ onBeforeUnmount(() => {
   transition: border-color .2s, transform .15s;
 }
 .gtv-rail-btn:hover { border-color: var(--yq-gold, #c7a96b); transform: translateY(-1px); }
+.gtv-rail-btn.danger { border-color: rgba(231,139,139,.5); }
+.gtv-rail-btn.danger:hover { border-color: #e78b8b; }
 .gtv-rail-btn i { font-style: normal; font-size: 16px; line-height: 1; }
 .gtv-rail-btn.sm { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 12px; }
 .gtv-rail-hint {

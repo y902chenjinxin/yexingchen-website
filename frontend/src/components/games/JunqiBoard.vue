@@ -144,6 +144,7 @@
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
+import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
@@ -471,6 +472,7 @@ function act(a) {
   else ok = doMove(a.from, a.to)
   if (!ok) return
   history.value.push({ a, snap, before })
+  undoGuard.noteMove(String(before))   // 对手走一手 → 解除「刚悔棋那一方」的连悔封锁
   if (mode.value === 'online') gRoom.send(a).catch(() => { /* 下轮轮询以服务端事件流为准 */ })
   if (ok === 'flag') {
     over.value = true
@@ -597,7 +599,15 @@ function aiChoose() {
 }
 
 /* ---------- 悔棋（仅本地） ---------- */
-const canUndo = computed(() => mode.value !== 'online' && !thinking.value && history.value.length > 0 && !over.value)
+/** v2.44.3 防连悔：同一方悔棋后须等对手走一手才能再悔（按座位号记账） */
+const undoGuard = useUndoGuard()
+/** 本地悔棋撤的是哪个座位刚走的那一手 */
+const localUndoSeat = computed(() => {
+  const h = history.value[history.value.length - 1]
+  return h ? String(h.before) : ''
+})
+const canUndo = computed(() => mode.value !== 'online' && !thinking.value && history.value.length > 0
+  && !over.value && !undoGuard.blocked(localUndoSeat.value))
 function undoLocal() {
   if (!canUndo.value) return
   const h = history.value.pop()
@@ -609,6 +619,7 @@ function undoLocal() {
   freshIdx.value = -1
   over.value = false
   winnerColor.value = ''
+  undoGuard.markUndo(String(h.before))
 }
 
 /* ---------- 在线对战 ---------- */
@@ -773,6 +784,7 @@ function resetWithSeed(id) {
   thinking.value = false
   onlineWinner.value = ''
   finishedReported = false
+  undoGuard.reset()
 }
 async function resumeMine() {
   try {
@@ -819,6 +831,7 @@ function restoreLocal() {
   lastIdx.value = s.lastIdx ?? -1
   over.value = false
   winnerColor.value = ''
+  undoGuard.reset()
   settle()
   return true
 }
@@ -839,6 +852,7 @@ function clearLocal() {
   thinking.value = false
   onlineWinner.value = ''
   finishedReported = false
+  undoGuard.reset()
 }
 function setMode(k) {
   if (roomLocked.value && k !== mode.value) { ElMessage.warning('对局进行中 —— 先点「退出对局」再切换模式'); return }

@@ -171,6 +171,7 @@
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
+import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
@@ -349,6 +350,7 @@ function doFlip(i) {
   lastIdx.value = -1
   // by 在定色之后取：先手翻出的颜色即先手阵营；c 供悔棋时重算 firstColor
   history.value.push({ flip: i, c: p.c, by: colorOf(turnIdx.value) })
+  undoGuard.noteMove(colorOf(turnIdx.value))   // 对手翻子 → 解除「刚悔棋那一方」的连悔封锁
   return true
 }
 function doMove(from, to) {
@@ -363,6 +365,7 @@ function doMove(from, to) {
     from, to, by: colorOf(turnIdx.value),
     cap: q ? q.t : '', capColor: q ? q.c : '',
   })
+  undoGuard.noteMove(colorOf(turnIdx.value))   // 对手走子 → 解除「刚悔棋那一方」的连悔封锁
   lastIdx.value = to
   flipIdx.value = -1
   return true
@@ -406,6 +409,8 @@ function sideHasAction(k) {
 const UNDO_QUOTA = 3
 const undoLeft = ref({ r: UNDO_QUOTA, b: UNDO_QUOTA })
 const onlineUndoUsed = ref({ r: 0, b: 0 })      // 在线：服务端不校验翻棋悔棋，配额在本地按事件流记
+/** v2.44.3 防连悔：本地同一方悔棋后须等对手走一手才能再悔；在线看服务端 undo_blocked */
+const undoGuard = useUndoGuard()
 const myColor = computed(() => colorOf(mode.value === 'online' ? myIdx.value : 0))
 const undoPlan = computed(() => {
   const h = history.value
@@ -430,10 +435,12 @@ const onlineUndoRemain = computed(() => Math.max(0,
 const canUndoLocal = computed(() => (
   mode.value !== 'online' && undoPlan.value.plies > 0
   && (undoLeft.value[undoPlan.value.color] || 0) > 0
+  && !undoGuard.blocked(undoPlan.value.color)
 ))
 const canUndoOnline = computed(() => (
   onlinePlaying.value && !over.value && undoPlan.value.plies > 0
   && onlineUndoRemain.value > 0
+  && !gRoom.undoBlocked.value
 ))
 
 /** 撤 n 手：逐手回滚（翻子重新扣回、走子连被吃子一起还原）并翻转轮次 */
@@ -473,6 +480,7 @@ function undoLocal() {
   }
   popHistory(plies)
   undoLeft.value[color] -= 1
+  undoGuard.markUndo(color)
 }
 /** 在线悔棋：把 `{undo:N}` 当普通动作上报（翻棋是客户端权威，服务端只记事件流），
  *  对方在下一轮轮询里按同一套重放规则弹出 N 手，两端棋盘保持一致。 */
@@ -482,6 +490,7 @@ function undoOnline() {
   const color = myColor.value
   popHistory(plies)
   onlineUndoUsed.value[color] += 1
+  undoGuard.markUndo(color)
   gRoom.send({ undo: plies }).catch(() => { /* 下轮轮询以服务端事件流为准 */ })
   // 悔棋后必然回到「我该走」的局面（撤 1 手或连对方那手一起撤 2 手，末手都归对方）。
   // 乐观翻转 my_turn，免去最长 1.6s 的轮询空窗把棋盘锁住。
@@ -589,6 +598,7 @@ function onRemoteMove(action, userId) {
   if (typeof action?.flip === 'number') doFlip(action.flip)
   else if (typeof action?.from === 'number' && typeof action?.to === 'number') doMove(action.from, action.to)
   else return
+  undoGuard.noteMove(history.value[history.value.length - 1]?.by || '')
   turnIdx.value = 1 - turnIdx.value
   settle()
 }
@@ -737,6 +747,7 @@ function resetWithSeed(id) {
   anim.value = null
   undoLeft.value = { r: UNDO_QUOTA, b: UNDO_QUOTA }
   onlineUndoUsed.value = { r: 0, b: 0 }
+  undoGuard.reset()
 }
 async function resumeMine() {
   try {
@@ -782,6 +793,7 @@ function restoreLocal() {
   over.value = false
   winnerColor.value = ''
   kingDead.value = ''
+  undoGuard.reset()
   settle()
   return true
 }
@@ -806,6 +818,7 @@ function clearLocal() {
   anim.value = null
   undoLeft.value = { r: UNDO_QUOTA, b: UNDO_QUOTA }
   onlineUndoUsed.value = { r: 0, b: 0 }
+  undoGuard.reset()
 }
 
 function setMode(k) {

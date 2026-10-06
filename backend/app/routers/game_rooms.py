@@ -200,7 +200,8 @@ def _undo_plies(r: GameRoom, uid: int, stack: list) -> int:
     return 0                                       # 最后一手不是我，也不是我的应招对象
 
 
-def _can_undo(r: GameRoom, uid: int, stack: list, undo_used: dict[int, int]) -> bool:
+def _can_undo(r: GameRoom, uid: int, stack: list, undo_used: dict[int, int],
+              blocked: bool = False) -> bool:
     """「我现在能不能悔棋」——必须与 `/undo` 的校验逐条对齐。
 
     否则要么「按钮亮着、一点就报错」，要么反过来「明明能悔却灰着」。
@@ -208,11 +209,15 @@ def _can_undo(r: GameRoom, uid: int, stack: list, undo_used: dict[int, int]) -> 
     v2.42.1 修的坑：后端**从未下发** can_undo，而前端悔棋按钮的 disabled 条件
     正是它（`GomokuBoard.vue::canUndoOnline`）→ 在线对局的悔棋按钮永远置灰，
     表现为「在线邀约的对局不支持悔棋」。
+
+    v2.44.3：`blocked` = 上一次悔棋就是本人（对手还没走），此时不可再悔。
     """
     if r.status not in ("playing", "finished"):
         return False
     # finished 只有「悔掉制胜一手」这一种情况允许（与 /undo 一致）
     if r.status == "finished" and r.end_reason != "win":
+        return False
+    if blocked:
         return False
     if _undo_plies(r, uid, stack) == 0:
         return False
@@ -228,8 +233,13 @@ def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session, replay=None) -
     坑（v2.42.1 修）：悔棋配额与 can_undo 原先只写在 `status == playing` 分支内，
     于是「赢棋后想悔棋翻盘」时这两个字段直接缺失，前端 `?? 3` 兜底成假的余量。
     现在五子棋的这几项**与状态无关**，只有 my_turn 受状态约束。
+
+    v2.44.3：补下发 `undo_blocked` —— 「上一次悔棋就是你、对手还没走」时为 true，
+    前端据此把悔棋按钮置灰；所有游戏统一（客户端权威的象棋/军棋也要）。
     """
     out["my_seat"] = "black" if uid == _black_id(r) else "white"
+    blocked = _undo_blocked_uid(db, r.id) == uid
+    out["undo_blocked"] = blocked
     if r.game == "gomoku":
         _, stack, undo_used = replay if replay is not None else _replay_gomoku(db, r)
         last_uid = stack[-1][1] if stack else None
@@ -241,7 +251,7 @@ def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session, replay=None) -
         out["undo_opp_left"] = max(0, UNDO_QUOTA - undo_used.get(opp, 0))
         # can_undo 与 undo_plies 同源：plies>0 ⟺ 可悔，避免两者各算一套而互相打架
         plies = _undo_plies(r, uid, stack)
-        out["undo_plies"] = plies if _can_undo(r, uid, stack, undo_used) else 0
+        out["undo_plies"] = plies if _can_undo(r, uid, stack, undo_used, blocked) else 0
         out["can_undo"] = out["undo_plies"] > 0
         return out
     if r.status != "playing":
@@ -543,6 +553,18 @@ def room_move(
     action = req.action or {}
     winner_id = None
 
+    # v2.44.3：客户端权威的游戏（象棋/翻棋/军棋…）把悔棋当普通动作上报，
+    # 这里补一层「不能连续悔棋」校验，避免前端按钮失效时被绕过。
+    if action.get("undo"):
+        if r.game == "gomoku":
+            raise_error(ErrCode.INVALID_PARAM, "五子棋悔棋请走 /undo")
+        if _undo_blocked_uid(db, r.id) == uid:
+            raise_error(ErrCode.INVALID_PARAM, "不能连续悔棋，等对方走一手后再悔")
+        if action["undo"] not in (1, 2):
+            raise_error(ErrCode.INVALID_PARAM, "悔棋步数不合法")
+        if not _replay_action_stack(db, r):
+            raise_error(ErrCode.INVALID_PARAM, "还没有可悔的棋")
+
     if r.game == "gomoku":
         board, stack, _ = _replay_gomoku(db, r)
         last_uid = stack[-1][1] if stack else None
@@ -602,6 +624,9 @@ def room_undo(
     - 对方**还没应招** → N=1，只撤自己刚下的那一手；
     - 对方**已经应招** → N=2，连同对方那一手一起撤（撤完回到我该行棋的局面）。
     若悔掉的正是制胜一手，房间从 finished 回到 playing。
+
+    v2.44.3：同一方**不能连续悔棋** —— 悔过一次后必须等对手走出真实一手才能再悔
+    （自己接着走一手不算解锁），由 `_undo_blocked_uid` 判定。
     """
     r = _get_room(db, room_id)
     uid = current_user["user_id"]
@@ -612,6 +637,8 @@ def room_undo(
         raise_error(ErrCode.INVALID_PARAM, "对局已结束，无法悔棋")
     if r.status not in ("playing", "finished"):
         raise_error(ErrCode.INVALID_PARAM, "对局不在进行中")
+    if _undo_blocked_uid(db, r.id) == uid:
+        raise_error(ErrCode.INVALID_PARAM, "不能连续悔棋，等对方走一手后再悔")
     _, stack, undo_used = _replay_gomoku(db, r)
     if not stack:
         raise_error(ErrCode.INVALID_PARAM, "还没有可悔的棋")

@@ -24,18 +24,22 @@ export const gameTablesApi = {
   /** 动作：出牌 / 摸打 / 碰杠胡 / 还贡 / 买地 / 拍卖 / 交易 / 抵押 */
   act: (id, action) => api.post(`/game/rooms/${id}/act`, { action }),
   rematch: (id) => api.post(`/game/rooms/${id}/rematch`),
-  leave: (id) => api.post(`/game/rooms/${id}/leave`),
+  /** 退出：显式退出＝认输（对局中会就地结算整局）；soft=true 为「页面切走」兜底，仅转托管 */
+  leave: (id, soft = false) => api.post(`/game/rooms/${id}/leave${soft ? '?soft=1' : ''}`),
+  /** 解散牌桌：任何在座家人都可；不判输赢，已开局则退还底注 */
+  dissolve: (id) => api.post(`/game/rooms/${id}/dissolve`),
   heartbeat: (id) => api.post(`/game/rooms/${id}/heartbeat`),
 }
 
 /** 页面卸载 / 切走时通知服务端「我离开了牌桌」。
+ *  soft=1 → 只转托管 / 刷心跳，**不结束牌局**（一次刷新不该废掉整桌）。
  *  keepalive 才能在 pagehide 阶段发出；sendBeacon 不能自定义 Authorization 头，故用 fetch。 */
 export function beaconTableLeave(roomId) {
   if (!roomId) return
   try {
     const token = localStorage.getItem('token')
     const base = api.defaults?.baseURL || '/api'
-    fetch(`${base}/game/rooms/${roomId}/leave`, {
+    fetch(`${base}/game/rooms/${roomId}/leave?soft=1`, {
       method: 'POST',
       keepalive: true,
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },

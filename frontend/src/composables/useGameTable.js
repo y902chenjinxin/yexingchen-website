@@ -137,6 +137,15 @@ export function useGameTable() {
     stopPoll(); stopBeat()
   }
 
+  /** 解散牌桌：不判输赢，已开局则退还底注（任何在座家人都可发起） */
+  async function dissolve() {
+    if (room.value?.id) {
+      const res = await gameTablesApi.dissolve(room.value.id)
+      apply(res?.data)
+    }
+    stopPoll(); stopBeat()
+  }
+
   async function decline(roomId) {
     try { await gameTablesApi.decline(roomId || room.value?.id) } catch { /* 忽略 */ }
     stopPoll(); stopBeat()
@@ -148,7 +157,7 @@ export function useGameTable() {
     view.value = null
   }
 
-  /** 页面关闭 / 切走兜底：通知服务端让出席位或转托管 */
+  /** 页面关闭 / 切走兜底：只转托管 / 刷心跳，**不结束牌局**（soft=1） */
   function leaveOnUnload() {
     if (room.value?.id && ['waiting', 'playing'].includes(room.value.status)) {
       beaconTableLeave(room.value.id)
@@ -160,7 +169,7 @@ export function useGameTable() {
   return {
     room, view, error, busy, loading,
     myUserId, status, gameKey, mySeat, seats, isHost, phase, turn, isMyTurn, finished,
-    create, join, seatOp, start, act, rematch, leave, decline, refresh, reset, leaveOnUnload,
+    create, join, seatOp, start, act, rematch, leave, dissolve, decline, refresh, reset, leaveOnUnload,
     startPoll, stopPoll,
   }
 }

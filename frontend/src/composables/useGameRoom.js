@@ -41,6 +41,8 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
   const undoOppLeft = computed(() => room.value?.undo_opp_left ?? 3)
   // 这次悔棋会撤几手（服务端权威）：1=只撤自己刚下那手，2=对方已应招、连应招一起撤；0=不可悔
   const undoPlies = computed(() => room.value?.undo_plies ?? 0)
+  // 上一次悔棋就是本人、对手还没走 → 不可再悔（v2.44.3 防连悔）
+  const undoBlocked = computed(() => !!room.value?.undo_blocked)
   const opponentName = computed(() =>
     room.value ? (room.value.owner_id === myUserId.value ? room.value.invitee_name : room.value.owner_name) : '')
 
@@ -165,7 +167,7 @@ export function useGameRoom(game, { onRemoteMove, onStatus } = {}) {
   onBeforeUnmount(() => { stopPoll() })
   return {
     room, moves, status, mySeat, myTurn, myUserId, opponentName, error, joining,
-    endReason, undoLeft, undoOppLeft, undoPlies,
+    endReason, undoLeft, undoOppLeft, undoPlies, undoBlocked,
     createInvite, join, send, undo, leave, leaveOnUnload, finish, decline, cancel, resign,
     startPoll, stopPoll, reset,
   }

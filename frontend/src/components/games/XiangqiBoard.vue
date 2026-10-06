@@ -155,6 +155,7 @@
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
+import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
@@ -312,6 +313,8 @@ function flyStyle(a) {
 const UNDO_QUOTA = 3
 const undoLeft = ref({ r: UNDO_QUOTA, b: UNDO_QUOTA })
 const onlineUndoUsed = ref({ r: 0, b: 0 })      // 在线：服务端不校验象棋悔棋，配额在本地按事件流记
+/** v2.44.3 防连悔：本地同一方悔棋后须等对手走一手才能再悔；在线看服务端 undo_blocked */
+const undoGuard = useUndoGuard()
 const undoPlan = computed(() => {
   const h = history.value
   if (!h.length || over.value || thinking.value) return { plies: 0, color: '' }
@@ -332,6 +335,7 @@ const undoLabel = computed(() => (
 const canUndoOnline = computed(() => (
   onlinePlaying.value && !over.value && undoPlan.value.plies > 0
   && undoLeft.value[mySide.value] > onlineUndoUsed.value[mySide.value]
+  && !gRoom.undoBlocked.value
 ))
 
 /* ---------- 交互 ---------- */
@@ -360,6 +364,7 @@ function doMove(from, to) {
   const cap = board.value[to]
   playAnim(from, to, cap)
   history.value.push({ from, to, cap, by: turn.value })
+  undoGuard.noteMove(turn.value)      // 对手走子 → 解除「刚悔棋那一方」的连悔封锁
   board.value = applyMove(board.value, from, to)
   selIdx.value = -1
   lastIdx.value = to
@@ -412,6 +417,7 @@ function maybeScheduleAI() {
 const canUndoLocal = computed(() => (
   mode.value !== 'online' && undoPlan.value.plies > 0
   && (undoLeft.value[undoPlan.value.color] || 0) > 0
+  && !undoGuard.blocked(undoPlan.value.color)
 ))
 /** 撤 n 手：逐手回滚棋盘并翻转轮次（翻 n 次自然回到该走的一方） */
 function popHistory(n) {

@@ -309,6 +309,57 @@ def _pre_deduct(db: Session, room: GameRoom) -> None:
             grant_beans(db, w, -stake, "game_stake", f"{_label(room.game)} 底注预扣")
 
 
+def _refund_stake(db: Session, room: GameRoom) -> None:
+    """退还开局时预扣的底注（牌局被解散 / 未产出输赢时用），只退真人。"""
+    if room.game not in PRE_DEDUCT:
+        return
+    stake = int(room.base_stake or 100)
+    for s in normalize_seats(room.seats):
+        if s["is_ai"] or not s["user_id"]:
+            continue
+        w = get_wallet(db, s["user_id"])
+        if w is not None:
+            grant_beans(db, w, stake, "game_stake_refund", f"{_label(room.game)} 解散退还底注")
+
+
+def _dissolve(db: Session, room: GameRoom, reason: str) -> None:
+    """解散牌桌：**不判输赢**，若本局已开局则退还预扣底注，随后置为终态。
+
+    与「退出」区分：退出＝认输，按名次结算；解散＝整桌取消，谁也不输不赢。
+    """
+    if room.status == "playing" and room.game_state:
+        try:
+            settled = get_engine(room.game).result(room.game_state) is not None
+        except Exception:  # noqa: BLE001 — 引擎异常不应挡住解散
+            settled = False
+        if not settled:
+            _refund_stake(db, room)
+    room.status = "dissolved"
+    room.end_reason = reason
+    room.deadline_at = None
+    room.updated_at = _now()
+
+
+def _end_round_on_leave(db: Session, room: GameRoom, quit_seat: int | None = None) -> None:
+    """有人中途退出 → 本局立即收摊并按当前名次结算（避免「人走了、桌子还挂着」）。"""
+    events: list[dict] = []
+    out = None
+    if room.game_state:
+        try:
+            out = get_engine(room.game).abort(
+                room.game_state, _eff_seats(normalize_seats(room.seats)), quit_seat=quit_seat)
+        except Exception:  # noqa: BLE001 — 引擎异常兜底：按空结果结算（退还底注）
+            out = None
+    if out:
+        state, events = out
+    else:
+        state = room.game_state or {}
+    _settle(db, room, state)
+    _persist(db, room, state, events)
+    room.status = "finished"
+    room.end_reason = "leave"
+
+
 # ---------- 视图 ----------
 
 def _room_meta(room: GameRoom, names: dict[int, str], uid: int) -> dict:
@@ -422,6 +473,16 @@ def create_table(req: CreateIn, db: Session = Depends(get_db),
     names = name_map(db)
     seat_count = _seat_count_for(req.game_key, req.seat_count)
     stake = req.base_stake if int(req.base_stake) in (100, 500, 2000) else 100
+    # 建房前先解散本人遗留的「等待中」牌桌：不保留旧桌，保证每次新建邀请都能开新的一局
+    for old in (
+        db.query(GameRoom)
+        .filter(GameRoom.household_id == HOUSEHOLD_ID, GameRoom.table_mode == "table",
+                GameRoom.host_id == uid, GameRoom.status == "waiting")
+        .all()
+    ):
+        old.status = "dissolved"
+        old.end_reason = "replaced"
+        old.updated_at = _now()
     room = GameRoom(
         household_id=HOUSEHOLD_ID,
         game=req.game_key,
@@ -489,6 +550,8 @@ def join_table(room_id: int, db: Session = Depends(get_db),
                current_user: dict = Depends(get_current_user)):
     uid = current_user["user_id"]
     room = _get_room(db, room_id)
+    if room.status in ("dissolved", "abandoned"):
+        raise_error(ErrCode.INVALID_PARAM, "牌桌已解散，请让房主重新邀请")
     seats = normalize_seats(room.seats)
     hit = None
     for s in seats:
@@ -713,19 +776,56 @@ def rematch_table(room_id: int, db: Session = Depends(get_db),
     return ResponseBase(msg=f"第 {room.round_no} 局开始", data=_project(room, name_map(db), uid))
 
 
+@router.post("/rooms/{room_id}/dissolve", response_model=ResponseBase)
+def dissolve_table(room_id: int, db: Session = Depends(get_db),
+                   current_user: dict = Depends(get_current_user)):
+    """解散牌桌：**任何在座家人**都可发起；等待中 / 对局中都可。
+
+    不判输赢；若本局已开局则退还预扣底注。用于「不保留桌子」——取消整桌、换个新局。
+    """
+    uid = current_user["user_id"]
+    room = _get_room(db, room_id)
+    _ensure_seated(room, uid)
+    if room.status not in ("waiting", "playing"):
+        raise_error(ErrCode.INVALID_PARAM, "牌局已结束，无需解散")
+    _dissolve(db, room, "dissolve")
+    db.commit()
+    db.refresh(room)
+    log_action(db, uid, "update", "game_table", room.id, detail=f"解散了{_label(room.game)}牌桌")
+    return ResponseBase(msg="牌桌已解散", data=_project(room, name_map(db), uid))
+
+
 @router.post("/rooms/{room_id}/leave", response_model=ResponseBase)
-def leave_table(room_id: int, db: Session = Depends(get_db),
+def leave_table(room_id: int, soft: bool = False, db: Session = Depends(get_db),
                 current_user: dict = Depends(get_current_user)):
-    """主动退出：等待中 → 让出席位；对局中 → 托管给 AI，牌局继续（不判负）。"""
+    """主动退出。
+
+    - ``soft=1``（页面切走 / 刷新兜底）：对局中 → 托管给 AI，牌局继续（人回来即夺回）；
+      等待中 → 仅刷新心跳。**绝不结束牌局**，避免一次刷新就废掉整桌。
+    - 显式退出：等待中 → 房主解散整桌 / 受邀者让出席位；对局中 → **本局立即收摊并按当前名次结算**，
+      避免「人走了、桌子还挂着、又打不完」。
+    """
     uid = current_user["user_id"]
     room = _get_room(db, room_id)
     seats = normalize_seats(room.seats)
     seat = seat_index(seats, uid)
     if seat is None:
         raise_error(ErrCode.AUTH_PERMISSION_DENIED, "你不在这个牌桌上")
+
+    if soft:
+        if room.status == "playing":
+            for s in seats:
+                if s["seat"] == seat:
+                    s["autopilot"] = True
+                    s["online_at"] = None
+            room.seats = seats
+        room.updated_at = _now()
+        db.commit()
+        return ResponseBase(msg="已离开")
+
     if room.status == "waiting":
         if uid == room.host_id:
-            room.status = "abandoned"
+            _dissolve(db, room, "leave")
         else:
             for s in seats:
                 if s["seat"] == seat:
@@ -734,13 +834,11 @@ def leave_table(room_id: int, db: Session = Depends(get_db),
                     s["joined"] = False
                     s["online_at"] = None
             room.seats = seats
+            room.updated_at = _now()
+    elif room.status == "playing":
+        _end_round_on_leave(db, room, quit_seat=seat)
     else:
-        for s in seats:
-            if s["seat"] == seat:
-                s["autopilot"] = True
-                s["online_at"] = None
-        room.seats = seats
-    room.updated_at = _now()
+        room.updated_at = _now()
     db.commit()
     return ResponseBase(msg="已退出")
 

@@ -865,3 +865,13 @@ class MahjongEngine(TableEngine):
 
     def result(self, state: dict) -> dict | None:
         return state.get("result")
+
+    def abort(self, state: dict, seats: list[dict],
+              quit_seat: int | None = None) -> tuple[dict, list[dict]] | None:
+        """有人中途退出：本局立即收摊，按当前分数结算（血战未打完的部分不再补）。"""
+        if state.get("phase") == "finished":
+            return None
+        st = copy_state(state)
+        events: list[dict] = []
+        self._end_game(st, events)
+        return st, events

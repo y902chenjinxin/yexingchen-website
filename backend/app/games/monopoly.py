@@ -354,6 +354,16 @@ class MonopolyEngine(TableEngine):
             "deltas": deltas,
         }
 
+    def abort(self, state: dict, seats: list[dict],
+              quit_seat: int | None = None) -> tuple[dict, list[dict]] | None:
+        """有人中途退出：本局立即收摊，按当前净资产排名结算。"""
+        if state.get("phase") == "finished":
+            return None
+        st = copy_state(state)
+        events: list[dict] = []
+        self._finish(st, events)
+        return st, events
+
     # ---------------- 动作入口 ----------------
 
     def apply(self, state: dict, seat: int, action: dict) -> tuple[dict, list[dict]]:
