@@ -117,8 +117,13 @@
         </div>
 
         <!-- 对局 / 结算（仅进行中或刚结束才渲染牌桌；abandoned 等终态走下方空态） -->
-        <div v-else-if="room && (room.status === 'playing' || room.status === 'finished')" class="gtv-boardwrap">
-          <div class="gtv-boardhead">
+        <div
+          v-else-if="room && (room.status === 'playing' || room.status === 'finished')"
+          class="gtv-boardwrap"
+          :class="{ 'is-fs': fullscreen }"
+        >
+          <!-- 顶部横条：全屏（放大）时隐藏，功能移到右侧竖栏 -->
+          <div v-if="!fullscreen" class="gtv-boardhead">
             <span class="gtv-pill">{{ gameLabel }}</span>
             <span class="gtv-pill">房号 {{ room.id }}</span>
             <span class="gtv-pill">底注 {{ baseStake }}</span>
@@ -127,23 +132,63 @@
             <span v-if="view && view.turn !== null && view.turn !== undefined" class="gtv-turnpill" :class="{ mine: isMyTurn }">
               {{ isMyTurn ? '轮到你' : `等 ${seatName(view.turn)} 行动` }}
             </span>
+            <button class="gtv-btn ghost" @click="enterFullscreen">全屏</button>
             <button class="gtv-btn ghost" @click="leaveRoom">退出牌桌</button>
           </div>
 
-          <component
-            :is="boardComp"
-            :key="room.id + '-' + room.round_no"
-            online
-            :online-view="view"
-            :online-seat="room.my_seat ?? 0"
-            :seat-names="seatNames"
-            :is-host="room.is_host"
-            :acting="busy"
-            :big="true"
-            @act="onAct"
-            @rematch="doRematch"
-            @exit="goBack"
-          />
+          <div ref="stageRef" class="gtv-viewstage" :class="{ 'is-fs': fullscreen }">
+            <div
+              ref="zoomRef"
+              class="gtv-viewzoom"
+              :class="{ 'is-fs': fullscreen }"
+              :style="fullscreen ? zoomStyle : {}"
+            >
+              <component
+                :is="boardComp"
+                :key="room.id + '-' + room.round_no"
+                online
+                :online-view="view"
+                :online-seat="room.my_seat ?? 0"
+                :seat-names="seatNames"
+                :is-host="room.is_host"
+                :acting="busy"
+                :big="true"
+                @act="onAct"
+                @rematch="doRematch"
+                @exit="goBack"
+              />
+            </div>
+          </div>
+
+          <!-- 全屏右侧竖栏：游戏说明 / 退出全屏 / 返回列表 -->
+          <nav v-if="fullscreen" class="gtv-rail" aria-label="牌桌操作">
+            <button class="gtv-rail-btn" @click="showHelp = true">
+              <i aria-hidden="true">📖</i><span>游戏说明</span>
+            </button>
+            <button class="gtv-rail-btn" @click="exitFullscreen">
+              <i aria-hidden="true">⤡</i><span>退出全屏</span>
+            </button>
+            <button class="gtv-rail-btn" @click="goBack">
+              <i aria-hidden="true">↩</i><span>返回列表</span>
+            </button>
+            <span class="gtv-rail-hint">双指缩放<br>单指拖动</span>
+          </nav>
+
+          <!-- 游戏说明（页内抽屉，非居中弹窗） -->
+          <transition name="gtv-drawer">
+            <div v-if="showHelp" class="gtv-help" @click.self="showHelp = false">
+              <aside class="gtv-help-panel" role="dialog" aria-label="游戏说明">
+                <header class="gtv-help-head">
+                  <b>{{ gameLabel }} · 玩法说明</b>
+                  <button class="gtv-rail-btn sm" aria-label="关闭说明" @click="showHelp = false">✕</button>
+                </header>
+                <ol class="gtv-help-list">
+                  <li v-for="(r, i) in helpRules" :key="i">{{ r }}</li>
+                </ol>
+                <button class="gtv-btn primary" @click="showHelp = false">知道了</button>
+              </aside>
+            </div>
+          </transition>
         </div>
 
         <!-- 加载 / 空态 / 已解散 -->
@@ -159,7 +204,7 @@
         <div class="gtv-rotate-card">
           <div class="gtv-rotate-ic">📱</div>
           <b>请横屏游玩</b>
-          <p>牌桌在横屏下才能完整展示。若设备支持，会自动帮你转过去。</p>
+          <p>牌桌在横屏下才能完整展示，已为你自动铺满一屏；双指可缩放、单指可拖动。</p>
           <button class="gtv-btn ghost" @click="showRotate = false">知道了</button>
         </div>
       </div>
@@ -178,12 +223,16 @@
  *
  * 服务端权威：手牌由后端保管，前端只渲染 `view` 投影；动作走 `useGameTable().act()`。
  * 三款牌桌（掼蛋 / 麻将 / 大富翁）共用本页，靠 `game_key` 选板子。
+ *
+ * 全屏（v2.44.1）：隐藏顶部横条，改由右侧竖栏提供「游戏说明 / 退出全屏 / 返回列表」；
+ * 手机端进入牌桌即自动全屏，牌桌按逻辑画布等比缩放铺满一屏，支持双指缩放 / 单指拖动。
  */
-import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { useGameTable } from '@/composables/useGameTable'
+import { usePinchZoom } from '@/composables/usePinchZoom'
 import { familyMembers } from '@/api/lifeExtra'
 import { useIsMobile } from '@/composables/useIsMobile'
 
@@ -201,6 +250,30 @@ const stakes = [
   { value: 500, label: '500 豆 · 标准' },
   { value: 2000, label: '2000 豆 · 豪局' },
 ]
+const HELP = {
+  guandan: [
+    '两副牌 108 张，4 人分两队：你与对家一队，左右两家一队。',
+    '逢人配：红桃级牌可当除大小王以外的任意一张牌。',
+    '牌型：单张 / 对子 / 三张 / 三带二 / 顺子（5 张）/ 三连对（6 张）/ 钢板（6 张）/ 炸弹（4 张及以上）/ 同花顺 / 四大天王。',
+    '比大小：同牌型同张数比点数；炸弹压普通牌型，同花顺大于 5 张以下的炸弹，四大天王最大。',
+    '升级：双上（头游、二游同队）+3 级，一三 +2 级，一四 +1 级；先打过 A 的一方整场获胜。',
+    '进贡：上局输方按名次向赢方各进贡一张牌（逢人配除外），赢方各还一张 ≤10 的牌；进贡方合计持有两张大王可抗贡。',
+  ],
+  mahjong: [
+    '四川麻将 · 血战到底，仅用万 / 条 / 筒 108 张，不含字牌。',
+    '定缺：开局每人选一门作为缺门，该门牌必须先打完，之后才能碰、杠、胡。',
+    '不能吃，只能碰与杠；有人胡牌后不下桌，继续打到牌墙摸完（血战到底）。',
+    '刮风下雨：明杠 / 暗杠即时结算，由其余玩家付分。',
+    '番型：平胡、对对胡、清一色、七对、龙七对、金钩钓、杠上花、杠上炮、抢杠胡等。',
+  ],
+  monopoly: [
+    '掷骰前进，落在无主地块可购买，落在他人地块需付租金。',
+    '同色地块集齐后可升级加盖，租金大幅提升。',
+    '机会 / 命运格触发随机事件；税格缴税；监狱格暂停行动。',
+    '在线对局支持拍卖、交易与道具等玩法。',
+    '现金为负即破产出局，最后存活者获胜。',
+  ],
+}
 
 const mode = ref('create')            // create | room
 const gameKey = ref('guandan')
@@ -210,6 +283,8 @@ const seatCount = ref(4)
 const families = ref([])
 const error = ref('')
 const showRotate = ref(false)
+const showHelp = ref(false)
+const fullscreen = ref(false)
 const isMobile = useIsMobile()
 
 const room = t.room
@@ -221,6 +296,7 @@ const meta = computed(() => GAME_META[gameKey.value] || GAME_META.guandan)
 const gameLabel = computed(() => meta.value.label)
 const pageTitle = computed(() => (mode.value === 'create' ? `开桌 · ${gameLabel.value}` : `牌桌 · ${gameLabel.value}`))
 const pageSubtitle = computed(() => '服务端权威发牌 · 跨设备同步 · 空位机器人补位')
+const helpRules = computed(() => HELP[gameKey.value] || HELP.guandan)
 
 const boardComp = computed(() => defineAsyncComponent(meta.value.comp))
 const seatNames = computed(() => (room.value?.seats || []).map(s => s.name || '家人'))
@@ -233,6 +309,54 @@ const emptyText = computed(() => {
   if (room.value?.status === 'abandoned') return '牌桌已解散（房主已离开或长时间无操作）'
   return '牌桌不存在或已结束'
 })
+
+/* ---------- 全屏 + 缩放/拖动 ---------- */
+const stageRef = ref(null)
+const zoomRef = ref(null)
+const { style: zoomStyle, ready: zoomReady, measure: zoomMeasure, bind: zoomBind } = usePinchZoom(
+  stageRef, () => fullscreen.value,
+)
+let unbindZoom = null
+let measureTimer = null
+let contentRO = null
+
+function scheduleMeasure() {
+  clearTimeout(measureTimer)
+  let tries = 0
+  const tick = () => {
+    zoomMeasure()
+    if (!zoomReady.value && tries++ < 40) measureTimer = setTimeout(tick, 60)
+  }
+  nextTick(() => requestAnimationFrame(tick))
+}
+
+function enterFullscreen() {
+  fullscreen.value = true
+  // lock() 返回 Promise，多数浏览器会异步 reject；不接住会变成未处理拒绝（控制台报错）
+  try { screen.orientation?.lock?.('landscape')?.catch?.(() => {}) } catch { /* 忽略 */ }
+}
+function exitFullscreen() {
+  fullscreen.value = false
+  try { screen.orientation?.unlock?.() } catch { /* 忽略 */ }
+}
+
+watch(fullscreen, async (v) => {
+  unbindZoom?.()
+  unbindZoom = null
+  contentRO?.disconnect()
+  contentRO = null
+  if (!v) return
+  await nextTick()
+  unbindZoom = zoomBind(stageRef.value)
+  scheduleMeasure()
+  // 牌桌是异步组件：挂载/换局/内容变化后重新量一次，保证「铺满一屏」始终按最新尺寸算
+  if (typeof ResizeObserver !== 'undefined' && zoomRef.value) {
+    contentRO = new ResizeObserver(() => { if (fullscreen.value) scheduleMeasure() })
+    contentRO.observe(zoomRef.value)
+  }
+})
+
+function onResize() { if (fullscreen.value) scheduleMeasure() }
 
 function seatName(seat) {
   const s = (room.value?.seats || []).find(x => x.seat === seat)
@@ -337,13 +461,20 @@ onMounted(async () => {
   if (isMobile.value) {
     showRotate.value = true
     try { await screen.orientation?.lock?.('landscape') } catch { /* 多数浏览器不允许，忽略 */ }
+    // 手机端进入牌桌默认全屏：一屏放下整张牌桌
+    if (mode.value === 'room') fullscreen.value = true
   }
+  window.addEventListener('resize', onResize)
 })
 
 function onUnload() { t.leaveOnUnload() }
 window.addEventListener('pagehide', onUnload)
 onBeforeUnmount(() => {
   window.removeEventListener('pagehide', onUnload)
+  window.removeEventListener('resize', onResize)
+  clearTimeout(measureTimer)
+  unbindZoom?.()
+  contentRO?.disconnect()
   t.leaveOnUnload()
 })
 </script>
@@ -452,6 +583,86 @@ onBeforeUnmount(() => {
 .gtv-turnpill.mine { background: rgba(199,169,107,.24); color: #7a5f1d; }
 :root[data-theme="night"] .gtv-turnpill.mine { color: #f0d79a; }
 
+/* ---------- 全屏牌桌 ---------- */
+.gtv-boardwrap.is-fs {
+  position: fixed; inset: 0; z-index: 3000; display: block; padding: 0;
+  background: radial-gradient(120% 90% at 50% 0%, #123a2e, #061410 70%);
+}
+.gtv-viewstage.is-fs {
+  position: absolute; top: 0; left: 0; right: 64px; bottom: 0;
+  overflow: hidden; touch-action: none; overscroll-behavior: none;
+}
+/* 逻辑画布：按桌面布局渲染，再整体等比缩放到一屏。
+   宽高由 usePinchZoom 内联给出（宽随舞台宽高比、高固定），故此处 1280×720 仅作 JS 就绪前的兜底。 */
+.gtv-viewzoom.is-fs {
+  position: absolute; top: 0; left: 0; width: 1280px; height: 720px;
+  transform-origin: 0 0; will-change: transform;
+}
+/* 中间层 .gt-landscape 必须给出确定高度：否则 .gt-shell 的 height:100% 会解析成 auto，
+   高度退回内容尺寸（大富翁方棋盘 760 + padding ≈ 788 > 720）→ fit 被高度卡住 → 左右留黑边。 */
+.gtv-viewzoom.is-fs :deep(.gt-landscape) { height: 100%; }
+/* 牌桌外壳撑满逻辑画布：这样外壳宽高比 = 舞台宽高比，等比缩放后两轴都铺满 */
+.gtv-viewzoom.is-fs :deep(.gt-shell) { width: 100%; height: 100%; min-height: 0; }
+/* 全屏时顶栏横条让位，牌桌本体顶到最上 */
+.gtv-boardwrap.is-fs :deep(.gd-top),
+.gtv-boardwrap.is-fs :deep(.mj-top),
+.gtv-boardwrap.is-fs :deep(.mp-side-bar) { display: none; }
+
+/* 全屏画布按**桌面布局**渲染后再整体缩放，故需抵消牌桌自身针对窄屏的响应式收窄：
+   否则手机横屏（viewport ≤1100px）下大富翁右栏会被折到棋盘下方，整块被压得极小。 */
+.gtv-viewzoom.is-fs :deep(.mp) { grid-template-columns: minmax(0, 1fr) 306px; min-height: 640px; }
+.gtv-viewzoom.is-fs :deep(.mp-cname) { font-size: 9px; }
+/* 方棋盘受可用高度约束（否则 760px 见方撑破 720 逻辑高度，等比缩放后左右留黑边） */
+.gtv-viewzoom.is-fs :deep(.mp-board) { max-height: 100%; }
+
+/* 右侧竖向三按钮 */
+.gtv-rail {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+  z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.gtv-rail-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  width: 52px; padding: 8px 4px; border-radius: 14px; cursor: pointer;
+  font-family: inherit; font-size: 10.5px; line-height: 1.15; text-align: center;
+  color: #f2eee4; border: 1px solid rgba(233,200,119,.34);
+  background: linear-gradient(180deg, rgba(30,52,44,.9), rgba(12,26,21,.9));
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 20px -12px rgba(0,0,0,.9);
+  transition: border-color .2s, transform .15s;
+}
+.gtv-rail-btn:hover { border-color: var(--yq-gold, #c7a96b); transform: translateY(-1px); }
+.gtv-rail-btn i { font-style: normal; font-size: 16px; line-height: 1; }
+.gtv-rail-btn.sm { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 12px; }
+.gtv-rail-hint {
+  writing-mode: vertical-rl; font-size: 9.5px; letter-spacing: .12em;
+  color: rgba(242,238,228,.5); text-align: center; line-height: 1.4;
+}
+
+/* 游戏说明抽屉（页内右侧滑入，非居中弹窗） */
+.gtv-help {
+  position: fixed; inset: 0; z-index: 3100;
+  background: rgba(4,12,10,.5); backdrop-filter: blur(3px);
+}
+.gtv-help-panel {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: min(88vw, 380px); display: flex; flex-direction: column; gap: 14px;
+  padding: 18px 18px 22px; overflow-y: auto;
+  background: linear-gradient(165deg, rgba(26,48,41,.98), rgba(8,22,18,.98));
+  border-left: 1px solid rgba(233,200,119,.4);
+  box-shadow: -20px 0 50px -20px rgba(0,0,0,.95);
+}
+.gtv-help-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gtv-help-head b { font-size: 15px; color: var(--yq-gold, #c7a96b); }
+.gtv-help-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
+.gtv-help-list li { font-size: 12.5px; line-height: 1.7; color: #e6e2d6; }
+.gtv-help-panel .gtv-btn { align-self: flex-start; }
+.gtv-drawer-enter-active, .gtv-drawer-leave-active { transition: opacity .2s ease; }
+.gtv-drawer-enter-active .gtv-help-panel, .gtv-drawer-leave-active .gtv-help-panel {
+  transition: transform .24s ease;
+}
+.gtv-drawer-enter-from, .gtv-drawer-leave-to { opacity: 0; }
+.gtv-drawer-enter-from .gtv-help-panel, .gtv-drawer-leave-to .gtv-help-panel { transform: translateX(100%); }
+
 /* 加载 */
 .gtv-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 20px; }
 .gtv-spin {
@@ -478,4 +689,9 @@ onBeforeUnmount(() => {
 :root[data-theme="night"] .gtv-rotate-card b { color: #f2eee4; }
 
 .gtv-error { margin: 12px 0 0; font-size: 13px; color: #c85050; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gtv-drawer-enter-active, .gtv-drawer-leave-active,
+  .gtv-drawer-enter-active .gtv-help-panel, .gtv-drawer-leave-active .gtv-help-panel { transition: none; }
+}
 </style>

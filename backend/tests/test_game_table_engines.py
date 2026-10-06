@@ -11,6 +11,7 @@ from app.games.guandan import (
     can_beat,
     detect_pattern,
     level_text,
+    _advance_turn,
     _return_ok,
     _tribute_plan,
 )
@@ -104,7 +105,8 @@ def test_guandan_tribute_flow():
 
 
 def test_guandan_tribute_plan_double_loss():
-    """双下：胜方（0/2 同队）拿 1、2 名 → 对方两人都进贡，大的给头游、小的给二游，贡牌大者先出。"""
+    """双下：胜方（0/2 同队）拿 1、2 名 → 对方两人都进贡（不区分三游/末游），
+    贡牌由玩家手动选，故 plan 只给出「谁贡给谁」，先由三游选牌。"""
     st = {
         "level": 2,
         "hands": [
@@ -116,11 +118,11 @@ def test_guandan_tribute_plan_double_loss():
     }
     plan = _tribute_plan(st, [0, 2, 1, 3])
     assert plan["resisted"] is False
-    assert len(plan["pairs"]) == 2
-    # seat1 的 K 比 seat3 的 5 大 → 给头游 seat0
-    big = next(p for p in plan["pairs"] if p["card"]["rank"] == 13)
-    assert big["to"] == 0
-    assert plan["leader"] == 1
+    assert plan["pairs"] == []                      # 贡牌手动选，此处不预置
+    assert len(plan["givers"]) == 2
+    assert {(g["from"], g["to"]) for g in plan["givers"]} == {(1, 0), (3, 2)}
+    assert plan["turn"] == 1                        # 先由三游（seat1）选贡牌
+    assert plan["leader"] is None
 
 
 def test_guandan_tribute_plan_single_loss():
@@ -136,9 +138,37 @@ def test_guandan_tribute_plan_single_loss():
     }
     plan = _tribute_plan(st, [0, 1, 2, 3])
     assert plan["resisted"] is False
-    assert len(plan["pairs"]) == 1
-    assert plan["pairs"][0]["from"] == 3
-    assert plan["pairs"][0]["to"] == 0
+    assert len(plan["givers"]) == 1
+    assert plan["givers"][0]["from"] == 3
+    assert plan["givers"][0]["to"] == 0
+    assert plan["turn"] == 3
+
+
+def test_guandan_double_loss_ends_round_immediately():
+    """双下（头游、二游同队）→ 本局立即结束，不再让其余两家争三游/末游。"""
+    st = {
+        "phase": "playing",
+        "level": 2,
+        "team_levels": [2, 2],
+        "hands": [[], [], [], []],
+        "finished": [0, 2],          # 0/2 同队（TEAM_OF: 0→队0, 2→队0）
+        "turn": 1,
+        "target": None,
+        "last_play": None,
+        "pass_count": 0,
+        "history": [],
+        "logs": [],
+        "ranking": [],
+        "result": None,
+        "round_no": 1,
+    }
+    events = []
+    _advance_turn(st, events)
+    assert st["phase"] == "finished"
+    assert st["ranking"][:2] == [0, 2]
+    assert st["result"]["up"] == 3           # 双下 +3 级
+    assert st["result"]["win_team"] == 0
+    assert any(e.get("kind") == "finish" for e in events)
 
 
 def test_guandan_resist_tribute():

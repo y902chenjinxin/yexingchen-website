@@ -4,8 +4,12 @@
 保持一致（同屏练习用 JS，在线用本文件），差异仅在本文件补齐 PRD §6.1 的**进贡 / 还贡 / 抗贡**。
 
 阶段机：
-``tribute``（进贡，系统自动挑牌）→ ``return``（还贡，手动选 ≤10，30s 倒计时）
+``tribute``（进贡，**手动选牌、无倒计时**）→ ``return``（还贡，手动选 ≤10，**无倒计时**）
 → ``playing``（正常出牌）→ ``finished``（结算，含 ``deltas`` 底注倍数）。
+
+双下（头游与二游同队）时本局**立即结束**（其余两家互为队友，不再争三游/末游），
+三游、末游各进一张，头游、二游各还一张；
+进贡方合计持两张大王则抗贡，由头游直接起牌。
 
 牌值：大王 17 > 小王 16 > 级牌 15 > 其余 2..14。逢人配 = 红桃级牌，可当除王外任意牌。
 """
@@ -443,46 +447,56 @@ def _pick_return(hand: list[dict], level: int) -> dict:
 
 
 def _tribute_plan(st: dict, ranking: list[int]) -> dict:
-    """按 PRD §6.1 生成进贡方案：双下两人都进贡，单下末游进贡。"""
+    """按 PRD §6.1 生成进贡方案。
+
+    - 双下（头游与二游同队）：三游 → 头游、末游 → 二游，两家各进一张、各还一张。
+    - 单下：末游 → 头游。
+    - 抗贡：进贡方合计持有两张大王则不进贡，由头游直接起牌。
+
+    ``givers`` 只描述「谁贡给谁」，**具体贡哪张牌由玩家手动选**（v2.44.1 起）。
+    """
     first = int(ranking[0])
     partner = (first + 2) % 4
     pos = ranking.index(partner)
-    losers = [int(ranking[2]), int(ranking[3])] if pos == 1 else [int(ranking[3])]
-
-    big_count = sum(1 for s in losers for c in st["hands"][s] if c.get("joker") == "big")
-    if big_count >= 2:
-        # 抗贡：进贡方合计持有两张大王 → 不进贡，由上一局头游先出牌
-        return {"pairs": [], "resisted": True, "leader": first, "returns": []}
-
-    picks = [(s, _pick_tribute(st["hands"][s], st["level"])) for s in losers]
-    pairs: list[dict] = []
     if pos == 1:
-        picks.sort(key=lambda x: _card_value(x[1], st["level"]), reverse=True)
-        for (s, card), to in zip(picks, [first, partner]):
-            pairs.append({"from": s, "to": to, "card": card})
+        givers = [{"from": int(ranking[2]), "to": first},
+                  {"from": int(ranking[3]), "to": partner}]
     else:
-        pairs.append({"from": losers[0], "to": first, "card": picks[0][1]})
+        givers = [{"from": int(ranking[3]), "to": first}]
 
-    leader = max(pairs, key=lambda p: _card_value(p["card"], st["level"]))["from"]
-    return {"pairs": pairs, "resisted": False, "leader": leader, "returns": []}
+    big_count = sum(1 for g in givers for c in st["hands"][g["from"]]
+                    if c.get("joker") == "big")
+    if big_count >= 2:
+        return {"givers": [], "pairs": [], "returns": [], "resisted": True,
+                "leader": first, "turn": first}
+
+    return {"givers": givers, "pairs": [], "returns": [], "resisted": False,
+            "leader": None, "turn": givers[0]["from"]}
 
 
-def _run_tribute(st: dict, events: list[dict]) -> None:
+def _do_tribute(st: dict, seat: int, card: dict, events: list[dict]) -> None:
+    """进贡一手：手动选牌（逢人配不能贡），选完推进到下一位或转入还贡阶段。"""
     tr = st["tribute"]
-    for p in tr["pairs"]:
-        _move_card(st["hands"][p["from"]], st["hands"][p["to"]], p["card"]["id"])
-        events.append({"kind": "tribute", "seat": p["from"], "to": p["to"], "card": p["card"]})
-        _log(st, f"{p['from']} 号位向 {p['to']} 号位进贡 {_card_text(p['card'])}")
-    if tr["pairs"]:
-        tr["returns"] = [{"from": p["to"], "to": p["from"]} for p in tr["pairs"]]
-        st["phase"] = "return"
-        st["turn"] = tr["returns"][0]["from"]
-    else:
-        st["phase"] = "playing"
-        st["turn"] = tr["leader"]
-        st["target"] = None
-        st["last_play"] = None
-        st["pass_count"] = 0
+    item = next((g for g in tr["givers"] if g["from"] == seat), None)
+    if item is None:
+        raise TableError("你不需要进贡")
+    if _is_wild(card, st["level"]):
+        raise TableError("逢人配（红桃级牌）不能用于进贡")
+    _move_card(st["hands"][seat], st["hands"][item["to"]], card["id"])
+    tr["pairs"].append({"from": seat, "to": item["to"], "card": card})
+    events.append({"kind": "tribute", "seat": seat, "to": item["to"], "card": card})
+    _history(st, {"kind": "tribute", "seat": seat, "to": item["to"], "card": card})
+    _log(st, f"{seat} 号位向 {item['to']} 号位进贡 {_card_text(card)}")
+
+    done = {p["from"] for p in tr["pairs"]}
+    nxt = next((g["from"] for g in tr["givers"] if g["from"] not in done), None)
+    if nxt is not None:
+        st["turn"] = nxt
+        return
+    tr["leader"] = max(tr["pairs"], key=lambda p: _card_value(p["card"], st["level"]))["from"]
+    tr["returns"] = [{"from": p["to"], "to": p["from"]} for p in tr["pairs"]]
+    st["phase"] = "return"
+    st["turn"] = tr["returns"][0]["from"]
 
 
 def _do_return(st: dict, seat: int, card: dict, events: list[dict]) -> None:
@@ -492,6 +506,7 @@ def _do_return(st: dict, seat: int, card: dict, events: list[dict]) -> None:
         raise TableError("你不需要还贡")
     _move_card(st["hands"][seat], st["hands"][item["to"]], card["id"])
     events.append({"kind": "return", "seat": seat, "to": item["to"], "card": card})
+    _history(st, {"kind": "return", "seat": seat, "to": item["to"], "card": card})
     _log(st, f"{seat} 号位还贡 {_card_text(card)} 给 {item['to']} 号位")
     tr["returns"].remove(item)
     if tr["returns"]:
@@ -553,6 +568,12 @@ def _end_round(st: dict, events: list[dict]) -> None:
 
 def _advance_turn(st: dict, events: list[dict]) -> None:
     if st["phase"] != "playing":
+        return
+    # 双下：头游与二游同队 → 本局立即结束。其余两家互为队友，不必再争三游/末游，
+    # 两人一律各进贡一张（PRD §6.1）。
+    if (len(st["finished"]) >= 2
+            and TEAM_OF[st["finished"][0]] == TEAM_OF[st["finished"][1]]):
+        _end_round(st, events)
         return
     if len(st["finished"]) >= 3:
         _end_round(st, events)
@@ -666,10 +687,10 @@ class GuandanEngine(TableEngine):
         }
         if len(ranking_prev) == 4:
             plan = _tribute_plan(st, ranking_prev)
-            if plan["pairs"] or plan["resisted"]:
+            if plan["givers"] or plan["resisted"]:
                 st["tribute"] = plan
-                st["phase"] = "tribute"
-                st["turn"] = None
+                st["phase"] = "tribute" if plan["givers"] else "playing"
+                st["turn"] = plan["turn"]
                 _log(st, "抗贡成功，不进贡" if plan["resisted"] else "进贡阶段")
         return st
 
@@ -687,11 +708,19 @@ class GuandanEngine(TableEngine):
             for s in range(4)
         ]
         me = {"seat": seat, "hand": st["hands"][seat] if 0 <= seat < 4 else []}
-        if st["phase"] == "return" and st.get("turn") == seat:
+        me["tribute_pending"] = False
+        me["return_pending"] = False
+        if st["phase"] == "tribute":
+            tr = st.get("tribute") or {}
+            g = next((x for x in tr.get("givers", []) if x["from"] == seat), None)
+            if g and st.get("turn") == seat:
+                me["tribute_pending"] = True
+                me["tribute_to"] = g["to"]
+                me["tribute_options"] = [c for c in st["hands"][seat]
+                                         if not _is_wild(c, st["level"])]
+        elif st["phase"] == "return" and st.get("turn") == seat:
             me["return_pending"] = True
             me["return_options"] = [c for c in st["hands"][seat] if _return_ok(c, st["level"])]
-        else:
-            me["return_pending"] = False
         return {
             "phase": st["phase"],
             "turn": st.get("turn"),
@@ -715,6 +744,18 @@ class GuandanEngine(TableEngine):
         st = copy_state(state)
         events: list[dict] = []
         act = str(action.get("type") or "")
+
+        if st["phase"] == "tribute":
+            if seat != st.get("turn"):
+                raise TableError("还没轮到你")
+            cid = action.get("card_id")
+            if cid is None:
+                raise TableError("请选择要进贡的牌")
+            card = next((c for c in st["hands"][seat] if c["id"] == int(cid)), None)
+            if card is None:
+                raise TableError("这张牌不在你手里")
+            _do_tribute(st, seat, card, events)
+            return st, events
 
         if st["phase"] == "return":
             if seat != st.get("turn"):
@@ -761,7 +802,11 @@ class GuandanEngine(TableEngine):
         events: list[dict] = []
 
         if st["phase"] == "tribute":
-            _run_tribute(st, events)
+            seat = st.get("turn")
+            if seat is None or seat not in ai:
+                return None
+            card = _pick_tribute(st["hands"][seat], st["level"])
+            _do_tribute(st, seat, card, events)
             return st, events
         if st["phase"] == "return":
             if st.get("turn") in ai:
@@ -787,19 +832,8 @@ class GuandanEngine(TableEngine):
         return st, events
 
     def on_timeout(self, state: dict, seats: list[dict]) -> tuple[dict, list[dict]] | None:
-        from app.games.base import ai_seats
-
-        st = copy_state(state)
-        if st["phase"] != "return":
-            return None
-        seat = st.get("turn")
-        if seat is None or seat in ai_seats(seats):
-            return None
-        events: list[dict] = []
-        card = _pick_return(st["hands"][seat], st["level"])
-        _do_return(st, seat, card, events)
-        _log(st, f"{seat} 号位还贡超时，自动代还")
-        return st, events
+        # 掼蛋已取消进贡/还贡倒计时（v2.44.1）：真人没点就等着，不自动代打。
+        return None
 
     def result(self, state: dict) -> dict | None:
         return state.get("result")

@@ -358,6 +358,30 @@ export function genCandidates(hand, level) {
   return out
 }
 
+/**
+ * 枚举手牌里所有「同花顺」组合（逢人配可补位），供「同花顺」按钮循环归集。
+ * 返回值为卡片数组的列表，按牌型大小（key）升序，去重。
+ */
+export function findFlushBombs(hand, level) {
+  const out = []
+  const seen = new Set()
+  for (let a = 1; a <= 10; a++) {
+    const seq = seqRanks(a, 5)
+    for (const s of SUITS) {
+      const fl = buildFlush(hand, level, s, seq)
+      if (!fl || fl.length !== 5) continue
+      const pat = detectPattern(fl, level)
+      if (!pat || pat.type !== 'flushbomb') continue
+      const key = fl.map(c => c.id).sort((x, y) => x - y).join(',')
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({ cards: fl, key: pat.key })
+    }
+  }
+  out.sort((x, y) => x.key - y.key)
+  return out.map(x => x.cards)
+}
+
 /* ---------------- AI 出牌 ---------------- */
 
 /**

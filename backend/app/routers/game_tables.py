@@ -176,7 +176,14 @@ def _append_events(db: Session, room: GameRoom, events: list[dict]) -> int:
     return seq
 
 
-def _deadline_for(state: dict) -> datetime | None:
+def _deadline_for(game: str, state: dict) -> datetime | None:
+    """超时兜底的截止时间。
+
+    掼蛋自 v2.44.1 起取消进贡/还贡倒计时（真人必须手动选牌），故不设 deadline；
+    其余游戏暂无需要倒计时的阶段。
+    """
+    if game == "guandan":
+        return None
     if state.get("phase") == "return":
         return _now().replace(microsecond=0) + timedelta(seconds=RETURN_DEADLINE)
     return None
@@ -211,7 +218,7 @@ def _persist(db: Session, room: GameRoom, state: dict, events: list[dict]) -> No
     _append_events(db, room, events)
     if state.get("phase") == "finished":
         room.status = "finished"
-    room.deadline_at = _deadline_for(state)
+    room.deadline_at = _deadline_for(room.game, state)
 
 
 def _record_stats(db: Session, uid: int, game_key: str, result: str) -> int:
