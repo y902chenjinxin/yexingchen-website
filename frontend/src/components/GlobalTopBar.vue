@@ -47,6 +47,47 @@
         </button>
         <template #dropdown>
           <div class="tb-alert-panel" @click.stop>
+            <!-- 段 0：对局邀请（v2.45）—— 错过弹窗也能补看，就地接受/拒绝 -->
+            <template v-if="inviteItems.length">
+              <div class="tb-alert-section">
+                <div class="tb-panel-title">
+                  <span>
+                    <el-icon><Trophy /></el-icon>
+                    对局邀请
+                    <span class="tb-section-count tb-section-count--alert">{{ inviteItems.length }}</span>
+                  </span>
+                </div>
+                <div
+                  v-for="inv in inviteItems"
+                  :key="inv.key"
+                  class="tb-alert-item kind-invite"
+                  :class="{ unread: inviteNewKeys.has(inv.key) }"
+                >
+                  <span class="tb-alert-kind" :class="inv.kind === 'chess' ? 'kind-chess' : 'kind-table'">
+                    {{ inv.kind === 'chess' ? '棋局' : '牌桌' }}
+                  </span>
+                  <span class="tb-alert-name">
+                    {{ inv.fromName }} <i>{{ inv.gameName }}</i>
+                  </span>
+                  <div class="tb-invite-acts">
+                    <button
+                      class="tb-invite-btn accept"
+                      :disabled="inviteBusy.has(inv.key)"
+                      @click.stop="onInviteAccept(inv)"
+                    >接受</button>
+                    <button
+                      class="tb-invite-btn decline"
+                      :disabled="inviteBusy.has(inv.key)"
+                      @click.stop="onInviteDecline(inv)"
+                    >拒绝</button>
+                  </div>
+                  <span class="tb-alert-meta">{{ agoLabel(inv.createdAt) }}发起 · 等你应招</span>
+                  <span v-if="inviteNewKeys.has(inv.key)" class="tb-alert-newdot" aria-label="新"></span>
+                </div>
+              </div>
+              <div class="tb-alert-divider"></div>
+            </template>
+
             <!-- 段 1：待办提醒 -->
             <div class="tb-alert-section">
               <div class="tb-panel-title">
@@ -191,9 +232,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElNotification } from 'element-plus'
+import { ElNotification, ElMessage } from 'element-plus'
 import {
-  User, SwitchButton, Headset, CaretBottom, Cellphone, Promotion, Calendar, Bell, List, TrendCharts,
+  User, SwitchButton, Headset, CaretBottom, Cellphone, Promotion, Calendar, Bell, List, TrendCharts, Trophy,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
@@ -201,6 +242,7 @@ import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { listHomeCountdowns } from '@/api/countdown'
 import { stocksApi } from '@/api/stocks'
 import { workbenchApi } from '@/api/workbench'
+import { useGameInvites, agoLabel } from '@/composables/useGameInvites'
 
 /* ---- 倒计时徽章（#3）：最近一条未过期的 count_down 倒计时 + 展开面板 ---- */
 const cdList = ref([])
@@ -251,13 +293,54 @@ function priorityLabel(p) {
   return '中优'
 }
 
-const totalUnread = computed(() => alertUnread.value + taskItems.value.length)
+/* ---- 对局邀请（v2.45）：数据由 App.vue 启动的 useGameInvites 单例轮询提供 ----
+ * 角标口径 = 待处理邀请条数：只在接受/拒绝/对方撤回后减少，看过不清零。 */
+const {
+  invites: inviteItems,
+  newKeys: inviteNewKeys,
+  markSeen: markInvitesSeen,
+  refresh: refreshInvites,
+  accept: acceptInvite,
+  decline: declineInvite,
+} = useGameInvites()
+const inviteBusy = ref(new Set())
+function setInviteBusy(key, on) {
+  const s = new Set(inviteBusy.value)
+  if (on) s.add(key); else s.delete(key)
+  inviteBusy.value = s
+}
+async function onInviteAccept(inv) {
+  if (inviteBusy.value.has(inv.key)) return
+  setInviteBusy(inv.key, true)
+  try {
+    await acceptInvite(inv)
+    router.push(inv.route)
+  } catch (e) {
+    ElMessage.warning(e?.response?.data?.msg || '接受失败，请稍后再试')
+  } finally {
+    setInviteBusy(inv.key, false)
+  }
+}
+async function onInviteDecline(inv) {
+  if (inviteBusy.value.has(inv.key)) return
+  setInviteBusy(inv.key, true)
+  try {
+    await declineInvite(inv)
+  } catch (e) {
+    ElMessage.warning(e?.response?.data?.msg || '操作失败，请稍后再试')
+  } finally {
+    setInviteBusy(inv.key, false)
+  }
+}
+
+const totalUnread = computed(() => alertUnread.value + taskItems.value.length + inviteItems.value.length)
 const alertDotTone = computed(() => {
-  if (alertUnread.value > 0) return 'is-alert'
+  if (alertUnread.value > 0 || inviteItems.value.length > 0) return 'is-alert'
   return 'is-task'
 })
 const alertTitle = computed(() => {
   const parts = []
+  if (inviteItems.value.length) parts.push(`对局邀请 ${inviteItems.value.length}`)
   if (taskItems.value.length) parts.push(`待办 ${taskItems.value.length}`)
   if (alertUnread.value) parts.push(`目标价预警 ${alertUnread.value}`)
   if (parts.length) return `提醒：${parts.join(' · ')} 条`
@@ -352,6 +435,10 @@ function onAlertPanelToggle(open) {
   if (open) {
     loadAlerts(false)
     loadTasks(false)
+    refreshInvites()
+  } else {
+    // 关闭面板时才算「看过」—— 打开期间「新」标记仍可见，方便一眼找到刚到的邀请
+    markInvitesSeen()
   }
 }
 /* 账号下拉开关不做事（命令由 li 自带 click 处理），保留占位避免后续忘记 */
@@ -605,6 +692,28 @@ onUnmounted(() => {
   font-style: normal; font-weight: 600;
   color: var(--lj-seal, var(--yq-gold));
 }
+
+/* ---- 对局邀请（v2.45）：无点击跳转，操作由右侧两个按钮承担 ---- */
+.tb-alert-item.kind-invite { grid-template-columns: 44px 1fr auto; cursor: default; }
+.tb-alert-item.kind-invite:hover { background: rgba(216, 80, 79, .05); }
+.tb-alert-kind.kind-chess { background: rgba(127, 168, 163, .16); color: var(--yq-rain, #7fa8a3); }
+.tb-alert-kind.kind-table { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold, #c7a96b); }
+.tb-invite-acts { display: inline-flex; gap: 6px; align-self: center; }
+.tb-invite-btn {
+  border: 1px solid transparent; border-radius: 999px;
+  padding: 3px 12px; font-size: 11.5px; line-height: 1.5; cursor: pointer;
+  font-family: inherit;
+  transition: all .18s;
+}
+.tb-invite-btn.accept {
+  background: rgba(63, 150, 142, .14); color: #3F968E; border-color: rgba(63, 150, 142, .35);
+}
+.tb-invite-btn.accept:hover:not(:disabled) { background: #3F968E; color: #fff; }
+.tb-invite-btn.decline {
+  background: transparent; color: var(--lj-text-2); border-color: var(--lj-line);
+}
+.tb-invite-btn.decline:hover:not(:disabled) { color: var(--lj-seal); border-color: var(--lj-seal); }
+.tb-invite-btn:disabled { opacity: .5; cursor: default; }
 
 @media (max-width: 767px) {
   .tb-icon-btn { width: 40px; height: 44px; }

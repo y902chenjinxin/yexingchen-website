@@ -24,6 +24,9 @@
     <!-- 登录后移动端：底部两 Tab 主导航（主页/我的） -->
     <MobileTabBar v-if="!showInitialLoading && auth.isLoggedIn && isMobile" />
 
+    <!-- 移动端悬浮对局邀请胶囊（v2.45）：移动端没有桌面顶栏，邀请需要独立入口 -->
+    <MobileInviteDock v-if="!showInitialLoading && auth.isLoggedIn && isMobile" />
+
     <!-- 登录后桌面端：AI 入口改由顶栏 ✺ 按钮 + Cmd/Ctrl+Shift+A 全局快捷键直达（v2.39.8 移除右下角 FAB，避免右下角拥挤） -->
 
     <!-- 全局命令面板 ⌘K / Ctrl+K（登录后可用；移动端隐藏以免误触） -->
@@ -56,15 +59,15 @@ import { usePrefsStore, applyTheme } from '@/stores/prefs'
 import GlobalTopBar from '@/components/GlobalTopBar.vue'
 import DesktopSidebar from '@/components/desktop/DesktopSidebar.vue'
 import MobileTabBar from '@/components/MobileTabBar.vue'
+import MobileInviteDock from '@/components/mobile/MobileInviteDock.vue'
 import MobileFullPlayer from '@/components/mobile/MobileFullPlayer.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import AiToolsDrawer from '@/components/workbench/AiToolsDrawer.vue'
 import { checkFestivalNotice } from '@/utils/festivalNotice'
-import { gameRoomsApi } from '@/api/gameRooms'
-import { gameTablesApi } from '@/api/gameTables'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElNotification } from 'element-plus'
+import { useGameInvites } from '@/composables/useGameInvites'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 // WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
@@ -81,6 +84,27 @@ const keepAliveNames = computed(() => isMobile.value ? ['WorkbenchView', 'Module
 
 // 移动端全屏播放器开关
 const fullPlayer = ref(false)
+
+/* 对局邀请单例（棋类 + 牌类）：顶栏面板 / 移动端胶囊 / 新到提示共用一份数据 */
+const gameInvites = useGameInvites()
+
+/* 新到邀请的角标提示：非阻塞、不打断操作；接受/拒绝在顶栏面板或移动端胶囊里做 */
+function onInviteArrivals(list) {
+  const first = list[0]
+  if (!first) return
+  const extra = list.length > 1 ? `（另有 ${list.length - 1} 条）` : ''
+  const mobile = isMobile.value
+  const hint = mobile ? '点右上角「对局邀请」查看' : '点右上角 🔔 查看'
+  ElNotification({
+    title: '🎮 收到对局邀请',
+    message: `「${first.fromName}」邀你来一局${first.gameName}${extra} · ${hint}`,
+    type: 'info',
+    duration: 6000,
+    // 移动端胶囊就贴右上角，提示若也放右上会正好盖住它 —— 挪到右下（抬高避开底部 Tab 栏）
+    position: mobile ? 'bottom-right' : 'top-right',
+    offset: mobile ? 76 : 16,
+  })
+}
 
 // 桌宠偏好按用户隔离：登录用户或切换账号时重新绑定，读取各自的 localStorage 记录
 watch(
@@ -209,77 +233,13 @@ onMounted(async () => {
 
   onBeforeUnmount(() => { if (extendTimer) clearInterval(extendTimer) })
   onBeforeUnmount(() => { if (themeTimer) clearInterval(themeTimer) })
-  onBeforeUnmount(() => { if (inviteTimer) clearInterval(inviteTimer) })
-  onBeforeUnmount(() => { if (tableInviteTimer) clearInterval(tableInviteTimer) })
+  onBeforeUnmount(() => gameInvites.stop())
 
-  /* ---------- 棋类游戏 · 对局邀请轮询（v2.40.25）----------
-   * 家人建房邀请你后，这里每 5s 查一次；弹窗接受 → 直接跳进对局。
-   * 轮询而非 WebSocket：回合制场景足够，实现与重连都简单。
-   * v2.40.34：间隔 25s→5s、首探 6s→1.2s —— 夜星反馈「等太久」，现在 5~10s 内到达。 */
-  const INVITE_POLL_MS = 5000
-  const inviteSeen = new Set()
-  async function pollGameInvites() {
-    if (!auth.isLoggedIn) return
-    try {
-      const res = await gameRoomsApi.invites()
-      for (const inv of (res?.data?.list || [])) {
-        if (inviteSeen.has(inv.id)) continue
-        inviteSeen.add(inv.id)
-        ElMessageBox.confirm(
-          `「${inv.owner_name}」邀请你来一局${inv.game_name}`,
-          '对局邀请',
-          { confirmButtonText: '接受，开打！', cancelButtonText: '拒绝', type: 'info' },
-        ).then(async () => {
-          // ⚠️ accept 失败**不能**落到下面的 catch —— 那会被当成「用户点了拒绝」而把房间 decline 掉，
-          // 表现就是「点了接受，房间却没了、进不去对局」。这里单独兜住并允许下次重弹。
-          try {
-            await gameRoomsApi.accept(inv.id)
-          } catch (e) {
-            inviteSeen.delete(inv.id)
-            ElMessage.warning(e?.response?.data?.msg || '接受失败，请稍后再试')
-            return
-          }
-          router.push(`/tool/games?room=${inv.id}&game=${inv.game}`)
-        }).catch(() => { gameRoomsApi.decline(inv.id).catch(() => {}) })
-      }
-    } catch { /* 静默 */ }
-  }
-  var inviteTimer = setInterval(pollGameInvites, INVITE_POLL_MS)
-  if (auth.isLoggedIn) setTimeout(pollGameInvites, 1200)
-
-  /* ---------- 牌类牌桌 · 入座邀请轮询（v2.44）----------
-   * 家人开牌桌邀请你后，这里每 5s 查一次；接受 → 直接进独立牌桌页。
-   * 与棋类邀请分开轮询：牌桌是「多席 + 服务端权威」，走 /game/rooms/invites。 */
-  const tableInviteSeen = new Set()
-  async function pollTableInvites() {
-    if (!auth.isLoggedIn) return
-    try {
-      const res = await gameTablesApi.invites()
-      for (const inv of (res?.data?.list || [])) {
-        const key = 't' + inv.id
-        if (tableInviteSeen.has(key)) continue
-        tableInviteSeen.add(key)
-        const hostSeat = (inv.seats || []).find(s => s.user_id === inv.host_id)
-        const hostName = hostSeat?.name || '家人'
-        ElMessageBox.confirm(
-          `「${hostName}」邀你入座「${inv.game_name}」牌桌`,
-          '牌桌邀请',
-          { confirmButtonText: '接受，入座', cancelButtonText: '拒绝', type: 'info' },
-        ).then(async () => {
-          try {
-            await gameTablesApi.join(inv.id)
-          } catch (e) {
-            tableInviteSeen.delete(key)
-            ElMessage.warning(e?.response?.data?.msg || '入座失败，请稍后再试')
-            return
-          }
-          router.push(`/tool/games/table/${inv.id}`)
-        }).catch(() => { gameTablesApi.decline(inv.id).catch(() => {}) })
-      }
-    } catch { /* 静默 */ }
-  }
-  var tableInviteTimer = setInterval(pollTableInvites, INVITE_POLL_MS)
-  if (auth.isLoggedIn) setTimeout(pollTableInvites, 1800)
+  /* ---------- 对局邀请（棋类 + 牌类）统一轮询（v2.45）----------
+   * 轮询结果只落 `useGameInvites` 单例，由顶栏提醒面板 / 移动端胶囊共同消费；
+   * 这里只负责「新到一条时弹一个非阻塞角标提示」。
+   * 旧实现用 ElMessageBox 居中确认框：一次性、错过就没了，且违反全站无弹窗约定。 */
+  gameInvites.start(onInviteArrivals)
 })
 </script>
 

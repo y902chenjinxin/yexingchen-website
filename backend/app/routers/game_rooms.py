@@ -21,6 +21,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -49,6 +50,12 @@ GAMES = {
 
 # 底注档位（豆）
 STAKES = (100, 500, 2000)
+
+# 本路由只处理**双人棋局**；多席牌桌（table_mode="table"，走 game_tables.py）与本路由共用
+# game_rooms 表，必须在查询处显式排除，否则牌桌邀请会同时出现在「棋局」和「牌桌」两处
+# （v2.45 取证发现：同一条牌桌邀请被棋类 /invites 与 /rooms/mine 重复返回）。
+# 列是 v2.44 新增的，老行可能为 NULL → coalesce 兜底成 duel，避免 `!= "table"` 把 NULL 行误过滤掉。
+_DUEL_ONLY = func.coalesce(GameRoom.table_mode, "duel") != "table"
 
 # 五子棋棋盘常量（服务端胜负判定用）
 GK_N = 15
@@ -306,7 +313,11 @@ def _room_to_out(r: GameRoom, names: dict[int, str], after_seq: int = 0, db: Ses
 
 
 def _get_room(db: Session, room_id: int) -> GameRoom:
-    r = db.query(GameRoom).filter(GameRoom.id == room_id, GameRoom.household_id == HOUSEHOLD_ID).first()
+    r = (
+        db.query(GameRoom)
+        .filter(GameRoom.id == room_id, GameRoom.household_id == HOUSEHOLD_ID, _DUEL_ONLY)
+        .first()
+    )
     if not r:
         raise_error(ErrCode.NOT_FOUND, "房间不存在")
     return r
@@ -382,6 +393,7 @@ def my_invites(
         db.query(GameRoom)
         .filter(
             GameRoom.household_id == HOUSEHOLD_ID,
+            _DUEL_ONLY,
             GameRoom.invitee_id == current_user["user_id"],
             GameRoom.status == "waiting",
         )
@@ -402,6 +414,7 @@ def my_rooms(
         db.query(GameRoom)
         .filter(
             GameRoom.household_id == HOUSEHOLD_ID,
+            _DUEL_ONLY,
             (GameRoom.owner_id == uid) | (GameRoom.invitee_id == uid),
             GameRoom.status.in_(["waiting", "playing", "finished"]),
         )
