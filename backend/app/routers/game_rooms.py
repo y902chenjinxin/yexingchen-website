@@ -87,6 +87,25 @@ def _last_move(db: Session, room_id: int) -> GameMove | None:
     )
 
 
+def _undo_blocked_uid(db: Session, room_id: int) -> int | None:
+    """同一方不能**连续**悔棋 —— 返回当前被禁止悔棋的 uid（无则 None）。
+
+    规则（v2.44.3）：某人悔棋后，必须等**对手**走出真实的一手，才能再次悔棋。
+    自己接着再走一手**不算**解锁 —— 否则「悔 → 走 → 悔 → 走」可无限刷，
+    等于变相连续悔棋（在线五子棋曾可一路悔到空盘）。
+
+    口径：取事件流里最后一条悔棋事件；若其后出现过「别人的非悔棋动作」则视为已解锁。
+    """
+    last_undo_uid: int | None = None
+    for mv in _moves(db, room_id):
+        a = json.loads(mv.action or "{}")
+        if a.get("undo"):
+            last_undo_uid = mv.user_id
+        elif last_undo_uid is not None and mv.user_id != last_undo_uid:
+            last_undo_uid = None
+    return last_undo_uid
+
+
 def _black_id(r: GameRoom) -> int:
     return r.black_user_id or r.owner_id
 
