@@ -158,6 +158,28 @@
           <span class="gt-sub gd-status">{{ statusLine }}</span>
         </div>
 
+        <!-- 进贡 / 还贡全局横幅：谁贡给谁（贡了哪张）一目了然。
+             机器人之间的进贡在服务端瞬间完成，没有这条横幅就完全隐形，
+             用户会以为进贡逻辑不存在（V24616-001）。 -->
+        <div v-if="tributePhaseVisible" class="gd-tribute-banner" aria-live="polite">
+          <span class="gd-tb-title">{{ tributePhaseLabel }}</span>
+          <span v-if="tributeResisted" class="gd-tb-item">
+            双方合计两张大王 · 抗贡成立，由头游 {{ seatName(tributeLeader) }} 直接出牌
+          </span>
+          <template v-else>
+            <span
+              v-for="(g, i) in tributePlan"
+              :key="i"
+              class="gd-tb-item"
+              :class="{ done: !!g.card, mine: g.from === oSeat || g.to === oSeat }"
+            >
+              {{ seatName(g.from) }} → {{ seatName(g.to) }}
+              <i v-if="g.card" class="gd-tb-card" :class="{ red: isRed(g.card) }">{{ cardText(g.card) }}{{ cardSuit(g.card) }}</i>
+              <em v-else class="gd-tb-pending">待{{ tributePhaseLabel }}</em>
+            </span>
+          </template>
+        </div>
+
         <!-- 操作区：次要工具（提示/重选/同花顺/顺子）收成小号弱按钮，主力只留「不要 / 出牌」两个大按钮 -->
         <div class="gt-actions gd-actions" v-if="!tributePending && !returnPending">
           <button class="gt-btn ghost sm" :disabled="!canAct" @click="doHint">提示</button>
@@ -453,9 +475,11 @@ const viewTing = computed(() => {
 const statusLine = computed(() => {
   if (phase.value === 'settled') return isOnline.value ? '本局结束，等房主「再来一局」' : '本局结束，点「再来一局」继续'
   if (isOnline.value && props.onlineView?.phase === 'tribute') {
-    return tributePending.value
-      ? `请选择一张牌进贡给 ${seatName(tributeTo.value)}`
-      : '等对方进贡…'
+    if (tributeResisted.value) return '抗贡成立，不进贡'
+    if (tributePending.value) return `请选择一张牌进贡给 ${seatName(tributeTo.value)}`
+    const waiting = tributePlan.value.filter(g => !g.card)
+      .map(g => `${seatName(g.from)} → ${seatName(g.to)}`).join('、')
+    return waiting ? `进贡中：${waiting}` : '等对方进贡…'
   }
   if (isOnline.value && props.onlineView?.phase === 'return') {
     return turn.value === oSeat.value ? '请选择一张 ≤10 的牌还贡' : '等对方还贡…'
@@ -473,6 +497,27 @@ const tributePending = computed(() =>
   isOnline.value && props.onlineView?.phase === 'tribute' && !!props.onlineView?.me?.tribute_pending)
 const tributeOptions = computed(() => props.onlineView?.me?.tribute_options || [])
 const tributeTo = computed(() => props.onlineView?.me?.tribute_to ?? null)
+
+/* ---------- 进贡横幅：从服务端 tribute 计划直接读「谁贡给谁」 ----------
+ * givers = 计划（谁→谁）；pairs = 已完成的贡（含牌）；returns = 还贡计划。
+ * 抗贡（双方合计两张大王）时服务端不给 givers，只给 resisted + leader。 */
+const tributeInfo = computed(() => (isOnline.value ? props.onlineView?.tribute : null) || null)
+const tributePhaseVisible = computed(() =>
+  ['tribute', 'return'].includes(props.onlineView?.phase) && !!tributeInfo.value)
+const tributeResisted = computed(() => !!tributeInfo.value?.resisted)
+const tributeLeader = computed(() => tributeInfo.value?.leader ?? null)
+const tributePhaseLabel = computed(() => (props.onlineView?.phase === 'return' ? '还贡' : '进贡'))
+const tributePlan = computed(() => {
+  const tr = tributeInfo.value
+  if (!tr || tr.resisted) return []
+  if (props.onlineView?.phase === 'return') {
+    return (tr.returns || []).map(r => ({ from: r.from, to: r.to, card: r.card || null }))
+  }
+  const done = new Map((tr.pairs || []).map(p => [p.from, p.card]))
+  return (tr.givers || []).map(g => ({
+    from: g.from, to: g.to, card: done.get(g.from) || null,
+  }))
+})
 /** 只有「轮到自己选贡牌 + 服务端确实给了截止时间」才显示倒计时 */
 const showCountdown = computed(() => (returnPending.value || tributePending.value) && leftSec.value > 0)
 
@@ -534,26 +579,42 @@ const flyStyle = computed(() => {
   return { '--fx0': a.x, '--fy0': a.y, '--fx1': b.x, '--fy1': b.y }
 })
 let flyTimer = null
-let flyPrimed = false
 const seenFly = new Set()
 function flyKey(h) { return `${h.kind}:${h.seat}:${h.to}:${h.card?.id}` }
-function primeFly() {
-  flyPrimed = true
-  seenFly.clear()
-  for (const h of history.value) {
-    if (h.kind === 'tribute' || h.kind === 'return') seenFly.add(flyKey(h))
-  }
+/* 进贡 / 还贡动画走**队列**逐个播：一局最多 4 笔（双下进 2 还 2），首屏补放也不乱。
+ * 🔴 旧版 onMounted 里 primeFly() 把首屏 history 里已有的贡牌记录全部标记「已看过」——
+ * 而换局时 GameTableView 用 :key="roomId-roundNo" 整组件重挂载，机器人间的进贡在
+ * 服务端瞬间完成后组件才挂载 → 动画永远不播、toast 也不出，用户完全看不到进贡
+ * 发生过（V24616-001「人机不进贡」的实际观感）。现在反过来：history 里的贡牌条目
+ * 一律视为未播过，入队逐个飞 + toast；seenFly 只防同一条目重复播放。 */
+const flyQueue = []
+let flyBusy = false
+function enqueueFly(h) {
+  flyQueue.push(h)
+  drainFly()
+}
+function drainFly() {
+  if (flyBusy) return
+  const h = flyQueue.shift()
+  if (!h) return
+  flyBusy = true
+  flyCard.value = { card: h.card, from: h.seat, to: h.to }
+  toastMsg(
+    `${seatName(h.seat)} 向 ${seatName(h.to)} ${h.kind === 'tribute' ? '进贡' : '还贡'} ${cardText(h.card)}${cardSuit(h.card)}`,
+    2600,
+  )
+  clearTimeout(flyTimer)
+  flyTimer = setTimeout(() => { flyCard.value = null; flyBusy = false; drainFly() }, 1150)
 }
 watch(history, (list) => {
-  if (!flyPrimed) return
-  const h = list[0]
-  if (!h || (h.kind !== 'tribute' && h.kind !== 'return')) return
-  const k = flyKey(h)
-  if (seenFly.has(k)) return
-  seenFly.add(k)
-  flyCard.value = { card: h.card, from: h.seat, to: h.to }
-  clearTimeout(flyTimer)
-  flyTimer = setTimeout(() => { flyCard.value = null }, 1000)
+  // history 最新在前；补放时按发生顺序（旧→新）播
+  const items = list.filter(h => h.kind === 'tribute' || h.kind === 'return').reverse()
+  for (const h of items) {
+    const k = flyKey(h)
+    if (seenFly.has(k)) continue
+    seenFly.add(k)
+    enqueueFly(h)
+  }
 }, { deep: true })
 
 /* ---------- 手牌自适应重叠（一屏展示全，不滑动） ---------- */
@@ -627,10 +688,10 @@ function seatCls(s) {
 }
 function toggleMute() { muted.value = !muted.value; setMuted(muted.value) }
 let toastTimer = null
-function toastMsg(t) {
+function toastMsg(t, ms = 1800) {
   toast.value = t
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { toast.value = '' }, 1800)
+  toastTimer = setTimeout(() => { toast.value = '' }, ms)
 }
 
 /* ---------- 出牌历史 ---------- */
@@ -1074,7 +1135,6 @@ onMounted(() => {
   tickTimer = setInterval(tickLeft, 1000)
   if (isOnline.value) {
     syncFromView(props.onlineView)
-    primeFly()
     return
   }
   if (props.resume && restoreLocal()) toastMsg('已接着上一局继续')
@@ -1378,6 +1438,28 @@ watch(() => viewHand.value.length, () => {
 .gd-timer { color: var(--gt-gold); font-variant-numeric: tabular-nums; }
 .gd-timer.urgent { color: #ff8f7d; }
 .gd-return-tip .gd-timer { margin-left: 8px; font-weight: 700; }
+/* 进贡/还贡横幅：跟在信息条下方，金框墨底，谁→谁（含贡牌）一眼可读 */
+.gd-tribute-banner {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 4px 14px;
+  padding: 4px 12px; border-radius: 10px;
+  background: color-mix(in srgb, var(--gt-gold, #c9a227) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gt-gold, #c9a227) 38%, transparent);
+  font-size: 12.5px; color: var(--gt-ink, #efe9db);
+}
+.gd-tb-title {
+  font-weight: 800; color: var(--gt-gold, #c9a227);
+  padding-right: 10px; border-right: 1px solid color-mix(in srgb, var(--gt-gold, #c9a227) 35%, transparent);
+}
+.gd-tb-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.gd-tb-item.done { opacity: 0.62; }
+.gd-tb-item.mine { color: var(--gt-gold, #c9a227); font-weight: 700; }
+.gd-tb-card { font-style: normal; font-weight: 700; }
+.gd-tb-card.red { color: #ff8f7d; }
+.gd-tb-pending {
+  font-style: normal; font-size: 11px; opacity: 0.75;
+  border: 1px solid currentColor; border-radius: 999px; padding: 0 6px;
+}
 .gd-wait-host { margin: 8px 0 0; font-size: 12.5px; color: var(--gt-ink-dim, #b9b3a6); }
 
 @media (max-width: 900px) {
