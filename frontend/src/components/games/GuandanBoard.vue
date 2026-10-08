@@ -78,7 +78,9 @@
                     <span v-if="isWildCard(c)" class="tag">配</span>
                   </span>
                 </template>
-                <p v-else class="gd-center-empty">{{ phase === 'playing' ? '本轮先手' : '本局结束' }}</p>
+                <!-- 开局空态不再写文案：head 的胶囊已经是「本轮先手」，
+                     「轮到谁出牌」又常驻右上角；这里再写一遍就是同一句话出现两次。 -->
+                <p v-else-if="phase !== 'playing'" class="gd-center-empty">本局结束</p>
               </div>
             </div>
 
