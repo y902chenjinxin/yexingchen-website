@@ -1,23 +1,22 @@
 <template>
   <!--
-    麻将牌面 · 纯矢量（v2.46.1 重绘）
+    麻将牌面 · 纯矢量
 
-    旧版问题（夜星反馈）：
-      · 万 —— 上方汉字数字 56px、下方「萬」52px 且基线压到 y=126，
-        字身一路顶出 140 的 viewBox 被裁掉一截 → 看着「数字大、文字小」；
-      · 条 —— 3/5/7 条的竹节行距不等（间隙 10 / 2 / 2），整张牌「上面挤、下面空」；
-      · 筒 —— 蓝绿都压得很灰（#1c4e8a / #1c6b41），十几种排布在同一屏里几乎同色。
-
-    本版：万牌按「上数字 / 下萬字」重排并让萬字明显更大；条牌改为等距网格；
-    筒牌按传统牌面的「红 / 墨绿 / 蓝」三色规则重排（详见下方 TONG_LAYOUT 注释），
-    而不是每张牌单色或随意配蓝绿。
+    设计依据（对照真实牌面，v2.46.4 重绘万 / 条；筒牌 v2.46.3 已对齐传统配色，本版不动）：
+      · 万 —— 中文维基《麻将牌》：**顶部蓝色的是中文数字，底部红色的是「萬」字**；
+        且「大多数麻将牌，伍萬都采用大写数字「伍」」。所以本版：数字化（一…九，五用伍）
+        置于上方、蓝色；「萬」置于下方、红色，字身略大于数字化（约 1.3 : 1，真牌即如此）。
+      · 条 —— 竹节条：偶数条全绿，奇数的 5 条中心、7 条顶上一根为红；1 条是幺鸡。
+        旧版用两种几乎同色的绿交替（#0d8a5c / #12945f），小尺寸下看着是「花花的脏斑」，
+        本版统一成一支竹子的画法：绿身 + 中段竹节暗线 + 左侧高光，红的那根单独上色。
+      · 筒 —— 见 TONG_LAYOUT（红 / 墨绿 / 蓝三色传统排布）。
     坐标一律以 viewBox 100×140 为准，实际尺寸由外层 .gt-tile 决定，故怎么缩放都清晰。
   -->
   <svg class="mj-face" viewBox="0 0 100 140" aria-hidden="true" focusable="false">
-    <!-- ===== 万：上「汉字数字」小、下「萬」大（真实麻将的比例，萬字占下半张） ===== -->
+    <!-- ===== 万：上「蓝数字」下「红萬」 ===== -->
     <template v-if="suit === 'wan'">
-      <text class="f-num" x="50" y="41">{{ NUM_CN[rank] }}</text>
-      <text class="f-wan" x="50" y="101">萬</text>
+      <text class="f-num" x="50" y="38">{{ NUM_CN[rank] }}</text>
+      <text class="f-wan" x="50" y="100">萬</text>
     </template>
 
     <!-- ===== 筒：圆点阵（外彩环 + 白瓷底 + 彩心，仿铜钱的钱肉/方孔） ===== -->
@@ -52,32 +51,30 @@
         <path d="M64 44 L79 50 L64 55 Z" fill="#e0a52a" />
         <circle cx="57" cy="44" r="3" fill="#fffdf7" />
         <circle cx="58" cy="44" r="1.5" fill="#171717" />
-        <path d="M48 30 C52 20 60 20 63 27" fill="none" stroke="#d02f28" stroke-width="4" stroke-linecap="round" />
+        <path d="M48 30 C52 20 60 20 63 27" fill="none" stroke="#d21f26" stroke-width="4" stroke-linecap="round" />
         <line x1="47" y1="104" x2="43" y2="124" stroke="#e0a52a" stroke-width="3.4" stroke-linecap="round" />
         <line x1="58" y1="104" x2="62" y2="124" stroke="#e0a52a" stroke-width="3.4" stroke-linecap="round" />
         <line x1="36" y1="125" x2="50" y2="125" stroke="#e0a52a" stroke-width="3" stroke-linecap="round" />
         <line x1="55" y1="125" x2="69" y2="125" stroke="#e0a52a" stroke-width="3" stroke-linecap="round" />
       </g>
-      <!-- 竹节条（2~9 条） -->
+      <!-- 竹节条（2~9 条）：一根竹子 = 绿身 + 中段竹节暗线 + 左侧高光 -->
       <g v-else>
         <g v-for="(s, i) in tiaoSticks" :key="i">
           <rect
             :x="s.x - s.w / 2" :y="s.y - s.h / 2" :width="s.w" :height="s.h"
-            :rx="s.w / 2.4" :fill="s.c"
+            :rx="s.w / 2.06" :fill="s.c"
           />
+          <!-- 左侧竖向高光：让圆柱有体积感（细到 1px 也还能看出「竹子」而不是「色块」） -->
           <line
-            :x1="s.x - s.w / 2 + 2" :x2="s.x + s.w / 2 - 2"
-            :y1="s.y - s.h / 6" :y2="s.y - s.h / 6"
-            stroke="rgba(255,255,255,.55)" stroke-width="2"
+            :x1="s.x - s.w * 0.22" :x2="s.x - s.w * 0.22"
+            :y1="s.y - s.h / 2 + s.w * 0.55" :y2="s.y + s.h / 2 - s.w * 0.55"
+            :stroke="s.hi" :stroke-width="Math.max(1.2, s.w * 0.16)" stroke-linecap="round"
           />
+          <!-- 竹节：中段一道深色横线（真牌上就是这一道把一根竹子分成两节） -->
           <line
-            :x1="s.x - s.w / 2 + 2" :x2="s.x + s.w / 2 - 2"
-            :y1="s.y + s.h / 6" :y2="s.y + s.h / 6"
-            stroke="rgba(255,255,255,.55)" stroke-width="2"
-          />
-          <line
-            :x1="s.x" :x2="s.x" :y1="s.y - s.h / 2 + 3" :y2="s.y + s.h / 2 - 3"
-            stroke="rgba(0,0,0,.18)" stroke-width="1.6"
+            :x1="s.x - s.w * 0.34" :x2="s.x + s.w * 0.34"
+            :y1="s.y" :y2="s.y"
+            :stroke="s.node" :stroke-width="Math.max(1.4, s.w * 0.2)" stroke-linecap="round"
           />
         </g>
       </g>
@@ -94,10 +91,10 @@ const props = defineProps({
   rank: { type: Number, required: true },   // 1..9
 })
 
-const NUM_CN = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' }
+/* 万：传统牌「伍萬」用大写数字「伍」，其余用一二三四六七八九 */
+const NUM_CN = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '伍', 6: '六', 7: '七', 8: '八', 9: '九' }
 
-/* 高饱和三色：旧值（#1c4e8a / #1c6b41 / #b3261e）在深绿桌布上发灰，
-   十几种筒子排布挤在一起时几乎分不出谁是谁 */
+/* 高饱和三色（筒 / 条共用）：在深绿桌布上不发灰 */
 const BLUE = '#1657c9'
 const GREEN = '#0b8a4d'
 const RED = '#d21f26'
@@ -113,7 +110,6 @@ const RED = '#d21f26'
  *  · 百度百科「筒子」条目：传统用红色与墨绿交替染筒，**唯四筒和八筒不着红**。
  *  → 两张资料合并后，1/2/3/5/6/7/9 都带红，只有 4/8 是纯蓝绿，本表即按此落地。
  *  · 一筒是「大饼」：一个多色同心大圆，外红环 + 内绿环 + 红心。
- *  · 二筒「眼镜」：上红下绿两圆（夜星记忆的配色，也符合「除四/八筒都带红」）。
  */
 const TONG_LAYOUT = {
   1: [
@@ -185,11 +181,14 @@ const TONG_LAYOUT = {
 
 const tongDots = computed(() => TONG_LAYOUT[props.rank] || TONG_LAYOUT[1])
 
-/** 竹节条：{x, y, w, h, c}。
- *  行距一律取「(140 - 2×14) / 行数」，上下留白各 14 —— 旧版 3/5/7 条各行间距
- *  分别为 10 / 2 / 2，整张牌重心偏上，看着「分布不均匀」。 */
+/**
+ * 竹节条：{x, y, h}（+ 可选 red）。
+ * 行距一律取「(140 − 2×14) / 行数」，上下留白各 14 —— 旧版 3/5/7 条各行间距
+ * 分别为 10 / 2 / 2，整张牌重心偏上，看着「分布不均匀」。
+ * 规则：2/3/4/6/8/9 全绿；5 条中心一根红；7 条顶上一根红（传统牌面）。
+ */
 const TIAO_LAYOUT = {
-  2: [{ x: 34, y: 70, h: 64 }, { x: 66, y: 70, h: 64 }],
+  2: [{ x: 50, y: 42, h: 52 }, { x: 50, y: 100, h: 52 }],
   3: [
     { x: 50, y: 38, h: 40 },
     { x: 32, y: 102, h: 40 }, { x: 68, y: 102, h: 40 },
@@ -229,26 +228,31 @@ const TIAO_LAYOUT = {
 
 const tiaoSticks = computed(() => {
   const rows = TIAO_LAYOUT[props.rank] || TIAO_LAYOUT[2]
-  return rows.map((s, i) => ({
-    ...s,
-    w: Math.max(12, Math.min(16, s.h * 0.5)),
-    c: s.red ? RED : (i % 2 === 1 ? '#0d8a5c' : '#12945f'),
-  }))
+  return rows.map((s) => {
+    const w = Math.max(12, Math.min(17, s.h * 0.52))
+    return {
+      ...s,
+      w,
+      // 全部同一支绿：旧版两种几乎同色的绿交替，小尺寸下像脏斑
+      c: s.red ? RED : GREEN,
+      hi: s.red ? 'rgba(255,255,255,.42)' : 'rgba(255,255,255,.34)',
+      node: s.red ? 'rgba(96,10,14,.42)' : 'rgba(4,66,34,.5)',
+    }
+  })
 })
 </script>
 
 <style scoped>
 .mj-face { display: block; width: 100%; height: 100%; }
-/* 万：数字在上（36px），「萬」在下（56px）—— 旧版两者都是 5x px 且萬字被下缘裁掉，
-   于是观感成了「数字大、文字小」 */
+/* 万：上「数字化」（蓝，本字号的 0.76 倍），下「萬」（红，略大）—— 真牌即上小下大 */
 .f-num {
-  font-size: 36px; font-weight: 700; fill: #17457f;
+  font-size: 44px; font-weight: 700; fill: #14549e;
   text-anchor: middle; dominant-baseline: central;
-  font-family: "Songti SC", "SimSun", "Noto Serif SC", "STSong", serif;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", "HarmonyOS Sans SC", serif;
 }
 .f-wan {
-  font-size: 56px; font-weight: 700; fill: #c62828;
+  font-size: 58px; font-weight: 700; fill: #c62828;
   text-anchor: middle; dominant-baseline: central;
-  font-family: "Songti SC", "SimSun", "Noto Serif SC", "STSong", serif;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", "HarmonyOS Sans SC", serif;
 }
 </style>

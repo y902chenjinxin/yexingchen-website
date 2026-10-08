@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>棋牌渲染沙盒（本地，仅开发用）</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #0a1512; overflow: hidden; }
+      #probe { height: 100%; }
+      /* 横向视口（720×360）：不旋转，直接看 CSS 真实布局，便于读坐标 */
+      #probe-rot { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+      /* 复刻 GamesView 的竖屏兜底：整块牌桌转 90° 当横屏视野 */
+      @media (orientation: portrait) {
+        #probe-rot {
+          width: 100vh; height: 100vw;
+          transform: rotate(90deg) translateY(-100%);
+          transform-origin: top left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 复刻线上外壳：#app.is-mobile（手机端覆盖层都挂在这个前缀上） -->
+    <div id="app" class="is-mobile"><div id="probe"></div></div>
+    <script type="module" src="/_probe.js"></script>
+  </body>
+</html>

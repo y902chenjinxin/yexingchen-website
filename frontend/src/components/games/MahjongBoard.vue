@@ -49,7 +49,10 @@
           </div>
         </div>
 
-        <!-- 中央：四方弃牌（上=对家 / 下=自己 / 左=左家 / 右=右家）+ 中心信息 -->
+        <!-- 中央：四方弃牌（上=对家 / 下=自己 / 左=左家 / 右=右家）
+             旧版中央还有个「最近舍牌 + 战报」信息盒，它在 grid 里占 minmax(0,1fr) 整列，
+             把左右两家的弃牌挤到桌外、上下两家只剩一行 —— 实测弃牌区只有 403×28px。
+             现在信息全部搬到下方信息条（.mj-handbar，本来就有位置），中央整块还给弃牌。 -->
         <div class="mj-center">
           <div class="mj-dis mj-dis-up">
             <span
@@ -67,18 +70,6 @@
               class="gt-tile mini"
               :class="suitCls(t)"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
-          </div>
-
-          <div class="mj-center-info">
-            <span v-if="lastDiscard" class="mj-last-tile gt-anim-play">
-              <span class="gt-tile"><MahjongTileFace :suit="faceSuit(lastDiscard.tile)" :rank="lastDiscard.tile.rank" /></span>
-            </span>
-            <b v-if="lastDiscard" class="mj-center-who">{{ seatName(lastDiscard.seat) }} 打出</b>
-            <b v-else class="mj-center-who">开局</b>
-            <i v-if="phase === 'playing' && !pending" class="mj-center-turn">轮到 {{ seatName(turn) }}</i>
-            <div class="mj-log">
-              <span v-for="(l, i) in logs.slice(0, 3)" :key="i">{{ l }}</span>
-            </div>
           </div>
 
           <div class="mj-dis mj-dis-right">
@@ -101,28 +92,34 @@
         </div>
       </div>
 
-      <!-- ===== 听牌提示 ===== -->
-      <div v-if="phase === 'playing' && viewSeat !== null" class="mj-tingbar">
-        <span class="mj-ting-label">听牌提示</span>
-        <template v-if="tingInfo.length">
-          <span v-for="(info, i) in tingInfo.slice(0, 4)" :key="i" class="mj-ting-item">
-            打 <b>{{ tileText(info.tile) }}</b> 听
-            <b>{{ info.waits.map(tileText).join(' / ') }}</b>
-          </span>
-        </template>
-        <span v-else class="mj-ting-none">尚未听牌</span>
-      </div>
-
-      <!-- ===== 底部：手牌 + 操作 ===== -->
+      <!-- ===== 底部：信息条 + 手牌 + 操作 =====
+           信息条一行装完「最近舍牌 / 轮到谁 / 手牌 / 余牌 / 缺门 / 听牌」——
+           旧版听牌另起一整行（.mj-tingbar），在一屏只有 360px 高的横屏里白吃 38px，
+           弃牌区因此被压到 28px 高。现在一行到底，高度全让给牌桌。 -->
       <footer class="mj-bottom">
         <div class="mj-handbar">
-          <span class="gt-pill gold">{{ seatName(viewSeat) }}的手牌 · {{ viewHand.length }} 张</span>
-          <!-- 全屏时顶栏被隐藏，余牌 / 缺门这类关键信息挪到这里，保证一直可见 -->
+          <span v-if="lastDiscard" class="mj-lastmini">
+            <span class="gt-tile mini" :class="suitCls(lastDiscard.tile)">
+              <MahjongTileFace :suit="faceSuit(lastDiscard.tile)" :rank="lastDiscard.tile.rank" />
+            </span>
+            <em>{{ seatName(lastDiscard.seat) }} 打出</em>
+          </span>
+          <span v-else class="gt-sub">开局</span>
+          <span v-if="phase === 'playing' && !pending" class="gt-pill gold">轮到 {{ seatName(turn) }}</span>
+          <span class="gt-pill">{{ seatName(viewSeat) }}手牌 {{ viewHand.length }}</span>
           <span class="gt-pill">余牌 {{ wall.length }}</span>
-          <span v-if="myMissing" class="gt-pill">缺门 {{ M.SUIT_NAME[myMissing] }}</span>
-          <span v-if="melds[viewSeat]?.length" class="gt-pill">副露 {{ melds[viewSeat].length }} 组</span>
+          <span v-if="myMissing" class="gt-pill">缺 {{ M.SUIT_NAME[myMissing] }}</span>
+          <span v-if="melds[viewSeat]?.length" class="gt-pill">副露 {{ melds[viewSeat].length }}</span>
           <span class="gt-spacer"></span>
-          <span class="gt-sub">{{ statusLine }}</span>
+          <span v-if="phase === 'playing' && viewSeat !== null" class="mj-ting-inline">
+            <em class="mj-ting-label">听牌</em>
+            <template v-if="tingInfo.length">
+              <span v-for="(info, i) in tingInfo.slice(0, 3)" :key="i" class="mj-ting-item">
+                打<b>{{ tileText(info.tile) }}</b>听<b>{{ info.waits.map(tileText).join('/') }}</b>
+              </span>
+            </template>
+            <em v-else class="mj-ting-none">尚未听牌</em>
+          </span>
         </div>
 
         <div class="mj-hand" :style="{ '--ntiles': Math.max(1, handTiles.length) }">
@@ -993,8 +990,10 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column; gap: 8px;
   padding: 10px 14px 12px; min-height: 600px;
   /* --gt-h 由 JS 按实际渲染高度写入（上限 760），迷你牌/手牌尺寸都跟着它走，
-     这样同一套 CSS 在手机横屏（约 390 高）与桌面大屏都能自动取到合适的牌面大小 */
-  --mini-w: clamp(15px, calc(var(--gt-h, 420px) * 0.046), 25px);
+     这样同一套 CSS 在手机横屏（约 390 高）与桌面大屏都能自动取到合适的牌面大小。
+     系数 0.056：手机横屏 --gt-h≈360 → 迷你牌约 20px 宽（旧值 0.046 只有 16.6px，
+     弃牌小到看不清牌面）。 */
+  --mini-w: clamp(17px, calc(var(--gt-h, 420px) * 0.056), 28px);
   --mini-h: calc(var(--mini-w) * 1.38);
 }
 .mj.is-big { min-height: calc(100vh - 150px); }
@@ -1026,10 +1025,14 @@ onBeforeUnmount(() => {
     inset 0 0 60px -10px rgba(0, 0, 0, .55);
 }
 .mj-seat { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0; }
-.mj-seat-top { grid-area: top; align-items: center; }
+/* 对家：座位牌 + 副露 + 手牌背面**并排一行**。
+   旧版是竖排三行，一个「对家」就吃掉桌高的一半（实测 77px／桌高 131px），
+   中央弃牌只剩 28px 高 —— 这就是「出牌区间缩小了好多」。并排后这一行只要 ~34px。 */
+.mj-seat-top { grid-area: top; flex-direction: row; align-items: center; justify-content: center; gap: 8px; }
+.mj-seat-top .gt-seat { max-width: 200px; flex: none; }
+.mj-seat-top .mj-melds, .mj-seat-top .mj-backs { flex: 0 1 auto; }
 .mj-seat-left { grid-area: left; align-items: flex-start; }
 .mj-seat-right { grid-area: right; align-items: flex-end; }
-.mj-seat-top .gt-seat { max-width: 260px; }
 
 /* ---------- 副露 / 手牌背面 ----------
  * 对家（上）横排；**左右两家必须竖排**。
@@ -1052,80 +1055,60 @@ onBeforeUnmount(() => {
 .mj-backs.is-v .gt-tile { flex: 1 1 0; height: auto; min-height: 5px; max-height: var(--mini-h); }
 .mj-melds.is-v .gt-tile { flex: 1 1 0; height: auto; min-height: 7px; max-height: var(--mini-h); }
 
-/* 中央：四方弃牌围成一圈（上=对家 / 下=自己 / 左=左家 / 右=右家），中心放最近舍牌与战报 */
+/* 中央：整块交给四方弃牌（上=对家 / 下=自己 / 左=左家 / 右=右家）。
+   2 列 × 3 行，四家各占一条边，**每一条都拿 minmax(0,1fr)** —— 不再有「信息盒独占 1fr
+   宽度、弃牌只剩一行的窄条」那种分配（旧版实测中央只有 403×28px）。 */
 .mj-center {
   grid-area: center; min-width: 0; min-height: 0;
-  display: grid; gap: 4px;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas: "up up up" "left info right" "down down down";
-  padding: 8px; border-radius: 14px;
+  display: grid; gap: 3px 6px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "up    up"
+    "left  right"
+    "down  down";
+  padding: 6px; border-radius: 14px;
   background: rgba(0, 0, 0, .2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
 }
-/* 弃牌一律用 grid 明确行列数，不再依赖 flex-wrap 的「空间不够就多开一列」——
-   那正是左右两方看起来「横着摆」的另一条成因。 */
-.mj-dis { display: grid; gap: 2px; min-width: 0; min-height: 0; }
-/* 上下两家：按容器宽度自动铺列（窄屏列少、宽屏列多），多了换行 */
-.mj-dis-up, .mj-dis-down {
+/* 弃牌一律用「按容器宽度自动铺列 + 溢出隐藏」的 grid：牌面尺寸恒定，不因牌数变化而抖。
+   上下两家横排（对家靠上、自己靠下），左右两家也横排但各自贴左／贴右，
+   整体仍然是「四家围一圈」的观感，而每条边都能用满整条边长。 */
+.mj-dis {
+  display: grid; gap: 2px; min-width: 0; min-height: 0;
   grid-template-columns: repeat(auto-fill, var(--mini-w));
-  justify-content: center;
+  overflow: hidden;
 }
-.mj-dis-up { grid-area: up; align-content: flex-start; }
-.mj-dis-down { grid-area: down; align-content: flex-end; }
-/* 左右两家：每列按可用高度自动铺满，多出的**向外**再起一列 */
-.mj-dis-left, .mj-dis-right {
-  grid-auto-flow: column;
-  grid-template-rows: repeat(auto-fill, var(--mini-h));
-  align-content: center;
-}
-.mj-dis-left { grid-area: left; justify-content: start; }
-.mj-dis-right { grid-area: right; justify-content: end; }
+.mj-dis-up { grid-area: up; align-content: start; justify-content: center; }
+.mj-dis-down { grid-area: down; align-content: end; justify-content: center; }
+.mj-dis-left { grid-area: left; align-content: center; justify-content: start; }
+.mj-dis-right { grid-area: right; align-content: center; justify-content: end; }
 
-.mj-center-info {
-  grid-area: info; min-width: 0; min-height: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  padding: 4px 10px; border-radius: 12px;
-  background: radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, .08), rgba(0, 0, 0, .2));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
-}
-.mj-last-tile { display: block; animation: gt-pop .22s ease-out both; }
-.mj-center-who { font-size: 12px; color: var(--gt-ink); letter-spacing: .02em; }
-.mj-center-turn {
-  font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--gt-gold);
-  text-shadow: 0 0 12px rgba(233, 200, 119, .45);
-}
-.mj-log { display: flex; flex-direction: column; align-items: center; gap: 1px; max-width: 100%; }
-.mj-log span {
-  font-size: 10.5px; color: rgba(255, 255, 255, .5);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-}
-
-/* ===== 听牌条 ===== */
-.mj-tingbar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 7px 12px; border-radius: 12px;
-  background: rgba(233, 200, 119, .1);
-  box-shadow: inset 0 0 0 1px rgba(233, 200, 119, .28), inset 3px 0 0 var(--gt-gold);
-}
-.mj-ting-label { font-size: 11.5px; font-weight: 700; color: var(--gt-gold); }
-.mj-ting-item { font-size: 11.5px; color: var(--gt-ink-dim); }
+/* ===== 底部信息条 ===== */
+/* 一行到底、不换行：换行会把好不容易让给牌桌的高度又吃回去 */
+.mj-handbar { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow: hidden; min-height: 0; }
+/* 最近一张舍牌：小牌 + 「谁打出」，替代旧版中央那个大信息盒 */
+.mj-lastmini { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+.mj-lastmini em { font-style: normal; font-size: 11.5px; color: var(--gt-ink-dim); white-space: nowrap; }
+.mj-ting-inline { display: inline-flex; align-items: center; gap: 8px; flex: 0 1 auto; overflow: hidden; }
+.mj-ting-label { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--gt-gold); flex: none; }
+.mj-ting-item { font-size: 11.5px; color: var(--gt-ink-dim); white-space: nowrap; }
 .mj-ting-item b { color: var(--gt-ink); font-weight: 700; }
-.mj-ting-none { font-size: 11.5px; color: var(--gt-ink-dim); }
+.mj-ting-none { font-style: normal; font-size: 11.5px; color: var(--gt-ink-dim); white-space: nowrap; }
 
 /* ===== 底部 ===== */
-.mj-bottom { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
-.mj-handbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-/* 手牌铺满可用宽度：牌宽 = min(按屏高算的上限, 按张数均分)，
-   高按 5:7 跟着走 —— 手机横屏约 52~62px 宽，电脑大屏约 89px，都比旧版 40px 大一截。
+.mj-bottom { display: flex; flex-direction: column; gap: 5px; min-height: 0; }
+/* 手牌铺满可用宽度：牌宽 = min(按屏高算的上限, 按张数均分)。
+   系数 0.14（旧 0.155）：手机横屏约 50px 宽 / 70px 高，仍然比旧版 40px 大，
+   但省出的 8px 全给了上方牌桌 —— 一屏只有 360px 高时，每一像素都要算。
    上留白 = 选中上浮(-11px) + 落影，俯视时不至于被裁。 */
 .mj-hand {
   display: flex; gap: 3px; align-items: flex-end; justify-content: center;
-  padding: 18px 4px 6px; min-height: 0; flex-wrap: nowrap;
+  padding: 12px 4px 4px; min-height: 0; flex-wrap: nowrap;
 }
 .mj-hand .gt-tile {
   width: min(
-    calc(var(--gt-h, 420px) * 0.155),
+    calc(var(--gt-h, 420px) * 0.14),
     calc((100% - (var(--ntiles, 14) - 1) * 3px) / var(--ntiles, 14))
   );
   height: auto; aspect-ratio: 5 / 7;

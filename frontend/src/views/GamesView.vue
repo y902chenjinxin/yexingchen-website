@@ -1001,20 +1001,24 @@ watch(() => route.query.room, (v) => {
 .gtv-viewzoom.is-fs :deep(.gd-top),
 .gtv-viewzoom.is-fs :deep(.mj-top) { display: none; }
 /* min-height 必须放开（旧版写死 640px，手机横屏画布仅 ~390 高 → 外壳溢出被裁，
-   表现为「大富翁全屏下方看不到」）；方棋盘改高度驱动 */
+   表现为「大富翁全屏下方看不到」）。 */
 .gtv-viewzoom.is-fs :deep(.mp) {
-  grid-template-columns: minmax(0, 1fr) clamp(148px, 19%, 230px);
+  grid-template-columns: minmax(0, 1fr) clamp(140px, 20%, 210px);
   /* V2463-003：光放开 min-height 还不够 —— `.mp` 是 grid，行高没定义时行高＝内容高，
      `.mp-boardwrap` 因此拿不到「确定高度」，`.mp-board` 的 height:100% 解析成 auto，
      棋盘退回按内容宽度撑（约 300px），外面套一大圈黑边 = 「没法全屏」。
      这里显式给唯一一行 1fr，让棋盘区吃满画布高度。 */
   grid-template-rows: minmax(0, 1fr);
+  padding: 8px; gap: 8px;
   height: 100%;
   min-height: 0;
 }
 .gtv-viewzoom.is-fs :deep(.mp-boardwrap) { min-height: 0; }
-.gtv-viewzoom.is-fs :deep(.mp-cname) { font-size: 9px; }
-.gtv-viewzoom.is-fs :deep(.mp-board) { height: 100%; width: auto; max-width: 100%; max-height: 100%; }
+/* ⚠️ 这里**不要**再覆盖 `.mp-board` 的宽高。
+   旧版写 `height:100%; width:auto`，在 flex 容器里 Chrome 会先按内容宽度定 flex base size、
+   再套 height:100% → 棋盘被拉成 514×336 的长方形（实测），格子变 20×48：
+   名字压价格、环不成方、下缘溢出被裁 —— 就是夜星说的「地图被盖住」。
+   现在棋盘尺寸由组件里 JS 量出的正方形 `--mp-size` 决定，宽高都是确定 px。 */
 
 /* 右上角 ☰：默认半透明低调，点开才铺开面板；牌桌本体占满整屏 */
 .gtv-fsmenu {

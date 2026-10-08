@@ -2,7 +2,7 @@
   <div class="gt-landscape">
     <div class="gt-shell mp" :class="{ 'is-tilt': tilt }">
       <!-- ===== 棋盘 ===== -->
-      <div class="mp-boardwrap">
+      <div ref="boardWrapRef" class="mp-boardwrap" :style="boardWrapStyle">
         <div class="mp-board" :style="{ '--n': BOARD_N }">
           <!-- 52 格 -->
           <div
@@ -52,8 +52,8 @@
               <b class="mp-turn-name">{{ cur.name }}</b>
             </div>
 
-            <!-- 玩家一排（原在右栏，占掉一半宽度还看不全）：
-                 头像 / 名字 / 现金 / 地产都摊在棋盘中央，轮到谁就地高亮 -->
+            <!-- 玩家 2×2 紧凑卡（原在右栏，占掉一半宽度还看不全）：
+                 头像 / 名字 / 现金·地产·道具都摊在棋盘中央，轮到谁就地发光 -->
             <div class="mp-players">
               <div
                 v-for="p in game.players"
@@ -65,7 +65,7 @@
                 <span class="mp-pav" :style="{ background: COLORS[p.id] }">{{ p.avatar }}</span>
                 <span class="mp-ptx">
                   <b>{{ p.name }}<em v-if="p.skill"> · {{ SKILLS[p.skill].name }}</em></b>
-                  <i>💰 {{ fmt(p.cash) }} · 地 {{ ownedCount(p) }} · 具 {{ p.items.length }}</i>
+                  <i>{{ fmt(p.cash) }} · 地{{ ownedCount(p) }} · 具{{ p.items.length }}</i>
                 </span>
                 <span v-if="!p.alive" class="gt-seat-badge">破产</span>
               </div>
@@ -97,14 +97,15 @@
           <button class="gt-btn ghost sm" @click="$emit('exit')">退出</button>
         </div>
 
-        <!-- 当前地块：作为下方操作按钮的上下文（购地 / 盖房都是针对它） -->
+        <!-- 当前地块 + 欢乐豆：合成一块两行（旧版「当前所在」标题占一行、豆子又单独一块，
+             右栏堆了 8 个盒子，手机横屏下比棋盘还抢眼）。操作按钮就在下面，指向这里的地块。 -->
         <div class="mp-here">
-          <div class="mp-here-h">当前所在</div>
-          <div class="mp-here-b">
+          <div class="mp-here-row">
             <b>{{ hereCell.name }}</b>
-            <i v-if="hereCell.price">地价 {{ fmt(hereCell.price) }} · 租金 {{ fmt(rentOf(hereCell)) }}</i>
-            <i v-else>{{ hereHint }}</i>
+            <span class="gt-beans">🪙 {{ fmt(wallet.beans) }}</span>
           </div>
+          <i v-if="hereCell.price">地价 {{ fmt(hereCell.price) }} · 租金 {{ fmt(rentOf(hereCell)) }}</i>
+          <i v-else>{{ hereHint }}</i>
         </div>
 
         <!-- 操作区 -->
@@ -206,11 +207,7 @@
           </div>
         </div>
 
-        <!-- 家庭豆子 -->
-        <div class="mp-wallet">
-          <span class="gt-sub">我的欢乐豆</span>
-          <span class="gt-beans">🪙 {{ fmt(wallet.beans) }}</span>
-        </div>
+        <!-- 家庭豆子：已并入「当前地块」那块，不再单占一个盒子 -->
       </aside>
 
       <!-- 结算（页内，不弹窗） -->
@@ -368,6 +365,29 @@ const busy = ref(false)
 const tilt = ref(false)
 const toast = ref('')
 const wallet = reactive({ beans: 0 })
+
+/* ---------------- 棋盘尺寸（正方形，且由容器算出来） ----------------
+ * 为什么必须用 JS 量：`.mp-board` 是 14×14 的 grid。
+ *   ① `aspect-ratio: 1` + `width: auto` + `height: 100%` 在 flex 容器里，Chrome 会先按
+ *      「内容宽度」定 flex base size，再套 height:100% —— 结果棋盘被拉成 514×336 的
+ *      长方形（实测），格子变 20×48，名字与价格互相压字、环也不成方。
+ *   ② 高度不是确定值时 `grid-template-rows: repeat(14, 1fr)` 退化成 content 尺寸，
+ *      14 行加起来 630px 直接溢出 336px 的棋盘（实测 scrollHeight=630），下边的格子被裁。
+ * → 由 JS 量容器可用宽高，取 min（并保留桌面端 760 上限）写进 `--mp-size`，
+ *   宽高都是确定 px 值，上面两个问题一次性消失。 */
+const boardWrapRef = ref(null)
+const boardSize = ref(0)
+let boardRO = null
+const boardWrapStyle = computed(() => (boardSize.value ? { '--mp-size': boardSize.value + 'px' } : {}))
+function measureBoard() {
+  const el = boardWrapRef.value
+  if (!el) return
+  const w = el.clientWidth
+  const h = el.clientHeight
+  if (!w || !h) return
+  const s = Math.floor(Math.min(w, h, 760))
+  if (s > 0 && Math.abs(s - boardSize.value) > 1) boardSize.value = s
+}
 
 let toastTimer = null
 let onlineRollTimer = null
@@ -984,6 +1004,11 @@ function rejectTrade(id) { if (isOnline.value) emit('act', { type: 'trade_reject
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)) }
 
 onMounted(async () => {
+  measureBoard()
+  if (typeof ResizeObserver !== 'undefined' && boardWrapRef.value) {
+    boardRO = new ResizeObserver(measureBoard)
+    boardRO.observe(boardWrapRef.value)
+  }
   if (isOnline.value) { syncFromView(props.onlineView); return }
   newGame()
   emit('room-lock')
@@ -1004,31 +1029,38 @@ watch(() => game.curIdx, () => {
 onBeforeUnmount(() => {
   clearTimeout(toastTimer)
   clearTimeout(onlineRollTimer)
+  boardRO?.disconnect()
+  boardRO = null
 })
 </script>
 
 <style scoped>
 .mp {
   /* 右栏收窄：玩家列表搬去棋盘中央后，这里只剩「当前地块 / 操作 / 钱包」，
-     306px 的宽度是在浪费棋盘的地盘 */
-  display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: 12px;
-  padding: 12px; min-height: 640px;
+     306px 的宽度是在浪费棋盘的地盘；留白也一并收紧，省下的都给棋盘 */
+  display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 10px;
+  padding: 10px; min-height: 640px;
 }
 @media (max-width: 1100px) { .mp { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- 棋盘 ---- */
-.mp-boardwrap { perspective: 1500px; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+.mp-boardwrap { perspective: 1500px; display: grid; place-items: center; min-width: 0; min-height: 0; }
 .mp-board {
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--n), 1fr);
   grid-template-rows: repeat(var(--n), 1fr);
-  width: min(100%, 760px); aspect-ratio: 1;
-  gap: 3px;
+  /* 宽高都取 JS 量出来的 `--mp-size`（见 script 里的说明）：一定是正方形，
+     而且两个方向都是确定 px，`repeat(14, 1fr)` 才不会退化成内容高度、把棋盘撑爆。
+     未测量到之前退回旧写法，保证首帧不塌。 */
+  width: var(--mp-size, min(100%, 760px));
+  height: var(--mp-size, auto);
+  aspect-ratio: 1;
+  gap: 2px;
   transform-style: preserve-3d;
   /* 棋盘底：与麻将同色系的墨绿绒布。旧版棋盘没有底色，52 个彩色格子直接浮在
      深色背景上，视觉上「很碎、很吵」—— 加一层绒布把格子收进一个整体里。 */
-  padding: 9px; border-radius: 16px; box-sizing: border-box;
+  padding: 7px; border-radius: 16px; box-sizing: border-box;
   background: linear-gradient(158deg, #1d6049 0%, #134230 58%, #0b2a1f 100%);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, .09),
@@ -1036,35 +1068,44 @@ onBeforeUnmount(() => {
 }
 .mp.is-tilt .mp-board { transform: rotateX(15deg) scale(.985); }
 
+/* 单格尺寸 = (棋盘 − padding 14 − 13 道间隙 26) / 14。
+   棋盘上所有字号 / 令牌 / 色条都按它等比给：桌面大棋盘（760 → 格 51px）字大，
+   手机横屏小棋盘（约 344 → 格 21px）字小，但**始终落在格内**，不会再出现
+   「成都」压「重庆」那种互相盖字。 */
+.mp-board { --mp-cell: calc((var(--mp-size, 760px) - 40px) / 14); }
+
 .mp-cell {
-  position: relative; border-radius: 5px;
+  position: relative; border-radius: 4px;
   /* 气泡要上浮出格子，故不能裁切；圆角靠自身 background 保证 */
   overflow: visible;
   /* 统一象牙底：类型靠顶部色条区分，底色一律低饱和 —— 旧版 7 种高饱和渐变同时出现时很吵 */
   background: linear-gradient(170deg, #fdfbf6, #f0eadd);
   border: 1px solid rgba(122, 106, 74, .26);
-  box-shadow: 0 3px 0 rgba(96, 80, 50, .4), 0 7px 11px -8px rgba(0, 0, 0, .75);
+  box-shadow: 0 2px 0 rgba(96, 80, 50, .36), 0 6px 10px -8px rgba(0, 0, 0, .7);
   display: flex; flex-direction: column;
-  color: #2b2413; min-width: 0;
+  color: #2b2413; min-width: 0; padding: 0;
   transition: box-shadow .2s, filter .2s;
 }
-.mp-cell.hl { box-shadow: 0 0 0 2px var(--gt-gold), 0 3px 0 rgba(96, 80, 50, .4); }
+.mp-cell.hl { box-shadow: 0 0 0 2px var(--gt-gold), 0 2px 0 rgba(96, 80, 50, .36); }
 /* 顶部色条：min-height 而非 height —— 格子放不下时房子图标要能把它撑开
    （.mp-cell 现在是 overflow:visible，写死 5px 会让房子跑到格子外） */
 .mp-cell-top {
-  min-height: 5px; background: rgba(120, 100, 60, .26); border-radius: 4px 4px 0 0;
-  display: flex; align-items: center; justify-content: center;
+  min-height: 3px; height: calc(var(--mp-cell) * 0.15);
+  background: rgba(120, 100, 60, .26); border-radius: 3px 3px 0 0;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-.mp-houses { display: block; font-size: 6.5px; line-height: 1; text-align: center; }
+.mp-houses { display: block; font-size: 5.5px; line-height: 1; text-align: center; }
 .mp-cell-body {
   flex: 1; min-height: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 1px; padding: 1px;
+  align-items: center; justify-content: center; gap: 0; padding: 0 1px;
+  overflow: hidden;
 }
 .mp-cname {
-  font-size: 9px; font-weight: 700; line-height: 1.05; text-align: center;
-  word-break: break-all; max-width: 100%;
+  font-size: clamp(6.5px, calc(var(--mp-cell) * 0.34), 11px);
+  font-weight: 700; line-height: 1.02; text-align: center;
+  max-width: 100%; overflow: hidden; white-space: nowrap;
 }
-.mp-cprice { font-style: normal; font-size: 7.5px; opacity: .72; }
+.mp-cprice { font-style: normal; font-size: clamp(6px, calc(var(--mp-cell) * 0.26), 8.5px); opacity: .7; line-height: 1; }
 /* 类型底：低饱和版（旧版 #ffe9a8 / #f0d7d0 / #dceaf7 … 太艳） */
 .mp-cell.t-start { background: linear-gradient(170deg, #fdf6e2, #f5e8c2); }
 .mp-cell.t-jail, .mp-cell.t-gotojail { background: linear-gradient(170deg, #f9efeb, #eedad2); }
@@ -1087,7 +1128,9 @@ onBeforeUnmount(() => {
   gap: 1px; justify-content: center;
 }
 .mp-tok {
-  width: 13px; height: 13px; border-radius: 50%; font-size: 8px;
+  width: clamp(9px, calc(var(--mp-cell) * 0.48), 18px);
+  height: clamp(9px, calc(var(--mp-cell) * 0.48), 18px);
+  border-radius: 50%; font-size: clamp(6px, calc(var(--mp-cell) * 0.3), 10px);
   display: grid; place-items: center; color: #fff;
   border: 1px solid rgba(255, 255, 255, .85);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .55);
@@ -1122,32 +1165,36 @@ onBeforeUnmount(() => {
 .mp-float.k-item { background: #6b4fbf; color: #fff; }
 .mp-float.k-info { background: rgba(22, 32, 28, .94); color: #f2eee0; }
 
-/* ---- 中央区 ---- */
+/* ---- 中央区 ----
+   棋盘中央只有 ~283px 见方，必须当「定高容器」排版。
+   旧版 .mp-players 用 flex-wrap：4 张卡各 ~250px 宽 → 换行成 4 行（实测 166px），
+   中央内容被顶到 319px（容器 283px）→ 首行溢出到棋盘上沿、日志溢出到下沿。
+   现在玩家卡改 2×2 网格 + 整体 overflow 裁切，内容总高 ~223px，稳落在 259px 内容盒内。 */
 .mp-center {
   grid-column: 2 / 14; grid-row: 2 / 14;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  padding: 12px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px; border-radius: 12px; overflow: hidden;
   background: radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .1), rgba(0, 0, 0, .22));
   border: 1px solid var(--gt-line);
 }
-.mp-center-head { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.mp-center-head { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 
 /* 当前行动者：谁在动、什么颜色，一眼可见（旧版只在右栏玩家列表里高亮，容易被忽略） */
-.mp-turn { display: flex; align-items: center; gap: 8px; }
+.mp-turn { display: flex; align-items: center; gap: 7px; }
 .mp-turn-av {
-  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
-  font-size: 16px; border: 2px solid rgba(255, 255, 255, .5);
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; border: 2px solid rgba(255, 255, 255, .5);
   box-shadow: 0 4px 12px -4px rgba(0, 0, 0, .8);
 }
-.mp-turn-name { font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+.mp-turn-name { font-size: 14px; font-weight: 700; letter-spacing: .02em; }
 
 /* 骰子：尺寸用固定值 —— 牌桌全屏是「逻辑画布 + 整体缩放」，vw/vh 拿到的是真实视口，
    在缩放画布里会算错（桌面放大后骰子会大得离谱）。 */
-.mp-dice { display: flex; gap: 12px; --mdy-size: 42px; }
+.mp-dice { display: flex; gap: 12px; --mdy-size: 42px; flex: none; }
 
 .mp-log {
-  width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 4px;
-  font-size: 12px; color: var(--gt-ink-dim); text-align: center;
+  width: 100%; display: flex; flex-direction: column; gap: 2px;
+  font-size: 11px; color: var(--gt-ink-dim); text-align: center;
 }
 .mp-log-row {
   animation: gt-pop .2s ease-out both;
@@ -1157,31 +1204,37 @@ onBeforeUnmount(() => {
   .mp-float { animation-duration: .01ms; }
 }
 
-/* ---- 右侧（只剩「当前地块 + 操作 + 钱包」，玩家列表已挪进棋盘中央） ---- */
+/* ---- 右侧（只剩「棋局信息 + 操作」，玩家列表已挪进棋盘中央） ---- */
 .mp-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 
-/* 玩家一排：横向胶囊，铺在棋盘中央；轮到谁那枚就地发光 */
+/* 玩家 2×2：一张紧凑卡 = 头像 + 名字(技能) + 现金·地产·道具。
+   中央宽 ~259px → 两列各 ~126px，长名字走省略号；轮到谁那枚就地发光 */
 .mp-players {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 6px;
   width: 100%; min-width: 0;
 }
+.mp-players > :only-child { grid-column: 1 / -1; }
 .mp-pcard {
-  display: flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 999px;
+  display: flex; align-items: center; gap: 5px; padding: 3px 7px 3px 3px; border-radius: 10px;
   background: rgba(0, 0, 0, .3); border: 1px solid var(--gt-line);
-  max-width: 100%; min-width: 0;
+  min-width: 0;
 }
 .mp-pcard.on { border-color: var(--gt-gold); box-shadow: 0 0 14px -3px rgba(233, 200, 119, .75); }
 .mp-pcard.out { opacity: .45; }
 .mp-pav {
-  width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center;
-  font-size: 12px; border: 1px solid rgba(255, 255, 255, .45);
+  width: 19px; height: 19px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-size: 10px; border: 1px solid rgba(255, 255, 255, .45);
 }
 .mp-ptx { min-width: 0; display: flex; flex-direction: column; gap: 0; }
-.mp-ptx b { font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mp-ptx b em { font-style: normal; font-weight: 400; color: var(--gt-gold); font-size: 10px; }
-.mp-ptx i { font-style: normal; font-size: 10px; color: var(--gt-ink-dim); font-variant-numeric: tabular-nums; }
+.mp-ptx b { font-size: 10.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-ptx b em { font-style: normal; font-weight: 400; color: var(--gt-gold); font-size: 9px; }
+.mp-ptx i { font-style: normal; font-size: 9.5px; color: var(--gt-ink-dim); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.mp-here { padding: 9px 11px; border-radius: 12px; background: rgba(0, 0, 0, .26); border: 1px solid var(--gt-line); }
+.mp-here { padding: 8px 10px; border-radius: 12px; background: rgba(0, 0, 0, .26); border: 1px solid var(--gt-line); display: flex; flex-direction: column; gap: 2px; }
+.mp-here-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mp-here-row b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-here-row .gt-beans { font-size: 12px; flex: none; }
+.mp-here > i { font-style: normal; font-size: 11px; color: var(--gt-ink-dim); }
 .mp-here-h { font-size: 10.5px; color: var(--gt-ink-dim); margin-bottom: 3px; }
 .mp-here-b { display: flex; flex-direction: column; gap: 2px; }
 .mp-here-b b { font-size: 14px; }
@@ -1208,7 +1261,7 @@ onBeforeUnmount(() => {
   background: rgba(0, 0, 0, .3); color: var(--gt-ink, #eee);
   border: 1px solid var(--gt-line); font-size: 12px;
 }
-.mp-wallet { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
+
 
 @media (max-width: 900px) {
   .mp { min-height: 0; }
