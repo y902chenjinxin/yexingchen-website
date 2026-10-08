@@ -91,6 +91,20 @@
   个人卡从「两列窄卡」改**单人一行**（头像｜名字+累计｜金额，右侧金额不变形）；
   流水行图标 34px、主列可截断、金额固定右对齐、操作按钮贴右。
 
+#### 交付记录
+
+- 提交 `bba61aa`（10 files，+459/-62）；
+- 本轮**只有前端变更**（无 model / router 改动），故不跑后端部署；
+- 前端 `dist-deploy33`（306 文件）→ 生产，SW `v316`，`home=200`；
+- 产物核验：`sw=v316` / `APP v2.46.3`；麻将新色 `#1657c9 / #0b8a4d / #d21f26` 与
+  `ring:!0 / solid:!0` 进包、旧 `#1259b5` 残留 **0**；
+  `GamesView` 与 `GameTableView` 的 `.gtv-viewzoom.is-fs .mp` 均含
+  `grid-template-rows:minmax(0,1fr)` 与 `height:100%`、`.mp-boardwrap{min-height:0}`；
+  `.mr-row` 含 `user-select:none; touch-action:pan-y; -webkit-touch-callout:none`；
+  模块页收敛层（`.tk-page…` 容器、工具条、grid 降级）与 `.manage-pane{display:block}`、
+  记账 `.fin-row-main{overflow:hidden}` / `.fin-fund-badge{flex:0 1 auto}` 全部命中。
+- 按既定约定**未做线上浏览器取证**，由夜星自行上线验收。
+
 ---
 
 ## [v2.46.2] - 2026-10-08
