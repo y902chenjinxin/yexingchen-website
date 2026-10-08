@@ -122,6 +122,7 @@
           </span>
         </div>
 
+        <div class="mj-handrow">
         <div class="mj-hand" ref="handRef" :style="{ '--ntiles': Math.max(1, handTiles.length) }" @pointerdown="onHandDown">
           <span
             v-for="t in viewHand"
@@ -187,6 +188,7 @@
             </b>
             上滑手牌直接打出
           </em>
+        </div>
         </div>
       </footer>
 
@@ -1190,13 +1192,30 @@ onBeforeUnmount(() => {
 }
 /* 弃牌：flex + wrap，牌宽恒定（不随牌数抖动），溢出裁切。
    上下两家横排、各自居中 → 牌堆正对自己；
-   左右两家竖排（一列往下摞，满了自动起第二列）→ 像手机麻将那样贴在两侧。 */
+   左右两家也改**横排**（牌身横躺 ±90°），且朝中缝靠拢（justify 到内侧）——
+   旧版竖排一列往下摞，满了起第二列，越摞越高越宽，把中央高度吃光还显得乱；
+   横排单行只吃 --mini-w 一层高度，牌堆聚在中央，界面不再被撑开。 */
 .mj-dis { display: flex; gap: 2px; min-width: 0; min-height: 0; overflow: hidden; }
 .mj-dis > .gt-tile { flex: none; }
 .mj-dis-up { grid-area: up; flex-flow: row wrap; justify-content: center; align-content: flex-start; }
 .mj-dis-down { grid-area: down; flex-flow: row wrap; justify-content: center; align-content: flex-end; }
-.mj-dis-left { grid-area: left; flex-flow: column wrap; justify-content: center; align-content: flex-start; }
-.mj-dis-right { grid-area: right; flex-flow: column wrap; justify-content: center; align-content: flex-end; }
+.mj-dis-left { grid-area: left; flex-flow: row wrap; justify-content: flex-end; align-content: center; }
+.mj-dis-right { grid-area: right; flex-flow: row wrap; justify-content: flex-start; align-content: center; }
+/* 左右两家弃牌：牌身横躺 —— 布局盒宽高先互换（长边横向），牌面 SVG 反向转 ±90° 补回来
+   （transform 不参与布局，必须换盒子尺寸才能让横排间距正确）。
+   旋转方向：牌面朝向桌心 —— 左家牌顶指向右（rotate 90°），右家牌顶指向左（rotate -90°），
+   与「打牌时牌顶推向桌心」的真实方位一致。 */
+.mj .mj-dis-left > .gt-tile, .mj .mj-dis-right > .gt-tile { width: var(--mini-h); height: var(--mini-w); }
+.mj .mj-dis-left > .gt-tile > :deep(svg) {
+  right: auto; bottom: auto; left: 50%; top: 50%;
+  width: var(--mini-w); height: var(--mini-h);
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.mj .mj-dis-right > .gt-tile > :deep(svg) {
+  right: auto; bottom: auto; left: 50%; top: 50%;
+  width: var(--mini-w); height: var(--mini-h);
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
 
 /* ===== 底部信息条 ===== */
 /* 一行到底、不换行：换行会把好不容易让给牌桌的高度又吃回去 */
@@ -1216,12 +1235,17 @@ onBeforeUnmount(() => {
 
 /* ===== 底部 ===== */
 .mj-bottom { display: flex; flex-direction: column; gap: 5px; min-height: 0; }
+/* 手牌与操作按钮**同行**：按钮跟在手牌（含缺牌/摸牌）后面，省掉独立按钮行的整行高度。
+   手牌 flex:1 内部继续居中；按钮 flex:none 贴在手牌右侧。
+   牌宽公式的百分比以手牌盒实际宽为基准，按钮占掉的空间自动摊进均分项，
+   全屏 1280 逻辑宽下手牌仍由 0.12×屏高的上限封顶，不会被压小。 */
+.mj-handrow { display: flex; align-items: flex-end; gap: 8px; min-height: 0; }
 /* 手牌铺满可用宽度：牌宽 = min(按屏高算的上限, 按张数均分)。
    系数 0.12（0.14 → 0.12）：手机横屏约 43px 宽 / 60px 高，仍比最早的 40px 大，
-   但省出的 12px 全给了上方牌桌 —— 一屏只有 360px 高时，每一像素都要算，
-   而弃牌区（左右两家的竖排块）恰恰是最缺高度的地方。
+   但省出的 12px 全给了上方牌桌 —— 一屏只有 360px 高时，每一像素都要算。
    上留白 11px = 选中上浮(-11px) + 落影，不能小于 11，否则选中的牌会顶到信息条上。 */
 .mj-hand {
+  flex: 1 1 auto;
   display: flex; gap: 3px; align-items: flex-end; justify-content: center;
   padding: 11px 4px 3px; min-height: 0; flex-wrap: nowrap;
   /* 手牌整块接管纵向手势（上滑出牌）—— 否则浏览器会把纵向位移当成滚页面，
@@ -1239,8 +1263,9 @@ onBeforeUnmount(() => {
 .mj .gt-tile > :deep(svg) { position: absolute; inset: 0; }
 .mj-hand-empty { margin: 0 auto; font-size: 12px; color: var(--gt-ink-dim); }
 /* 出牌 / 自摸 / 提示：全局 .gt-btn 是 8px/18px（39px 高），一屏 360px 的横屏里偏奢侈，
-   这里收成 6px/16px（约 32px）。手牌尺寸**不动** —— 那是玩家最常碰的东西。 */
-.mj-actions { justify-content: center; }
+   这里收成 6px/16px（约 32px）。手牌尺寸**不动** —— 那是玩家最常碰的东西。
+   与手牌同行后不再整行居中，靠左跟在手牌后面即可。 */
+.mj-actions { justify-content: flex-start; flex: 0 0 auto; margin-bottom: 3px; }
 .mj-actions .gt-btn { padding: 6px 16px; font-size: 12.5px; }
 
 /* ===== 牌：象牙白 + 玉质感 =====
