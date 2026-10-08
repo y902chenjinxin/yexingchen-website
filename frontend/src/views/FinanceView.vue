@@ -513,16 +513,16 @@
             <div v-if="!(funds.personal_by_member || []).length" class="fin-chart-empty">还没有个人零花记录</div>
           </div>
 
-          <!-- 展开的成员流水（就在卡片区下方，口径 = 这个人的全部流水） -->
+          <!-- 展开的成员流水（就在卡片区下方，口径 = 这个人的个人零花进出） -->
           <div v-if="pcardOpen" class="fin-ptxns glass">
             <header class="fin-ptxns-head">
-              <b>{{ pcardOpenName }}的流水</b>
-              <span class="fin-ptxns-sub">共 {{ pcardTotal }} 笔</span>
+              <b>{{ pcardOpenName }}的个人零花</b>
+              <span class="fin-ptxns-sub">共 {{ pcardTotal }} 笔 · 与上方金额同口径</span>
               <button class="fin-ptxns-x" @click="closePcard">收起</button>
             </header>
 
             <div v-if="pcardLoading" class="fin-chart-empty">加载中…</div>
-            <div v-else-if="!pcardTxns.length" class="fin-chart-empty">这个人还没有流水</div>
+            <div v-else-if="!pcardTxns.length" class="fin-chart-empty">这个人还没有个人零花流水</div>
             <template v-else>
               <div class="fin-list">
                 <div v-for="row in pcardTxns" :key="row.id" class="fin-row">
@@ -530,15 +530,14 @@
                   <div class="fin-row-main">
                     <div class="fin-row-top">
                       <span class="fin-row-cat">{{ row.category }}</span>
+                      <!-- 面板已锁定个人零花，普通进出不用再重复徽标；只有调拨要标出方向 -->
                       <button
+                        v-if="row.type === 'transfer'"
                         class="fin-fund-badge"
-                        :class="[row.fund, { todo: row.fund === 'none' && row.type !== 'transfer' }]"
+                        :class="row.fund"
                         title="点击修改归属"
                         @click="openEdit(row)"
-                      >
-                        <template v-if="row.type === 'transfer'">{{ row.fund_label }} → {{ row.fund_to_label }}</template>
-                        <template v-else>{{ row.fund === 'none' ? '未归类' : row.fund_label }}</template>
-                      </button>
+                      >{{ row.fund_label }} → {{ row.fund_to_label }}</button>
                       <span class="fin-row-note">{{ row.note }}</span>
                     </div>
                     <div class="fin-row-date">{{ fmtDay(row.occurred_at) }}</div>
@@ -1226,8 +1225,9 @@ function onFilterChange() {
 }
 
 /* ---------- 个人零花：点某人的金额卡片 → 在下方展开他/她的流水 ----------
- * 口径：这个人名下的**全部流水**（不额外按资金池过滤），行内保留资金池徽标，
- * 既能看到「个人零花」的进出，也不会漏掉公款/存款记录。
+ * 口径：**只统计这个人的「个人零花」进出**，与卡片上「累计转入 / 已花 / 余额」
+ * 同口径（后端 /funds 的 personal 拆分同样是 fund=personal 涉及的流水）。
+ * 不带这个过滤会把该人的公款/存款/未归类也捞出来，与卡片数字对不上。
  * 同时只展开一个人；再点同一张卡（或点「收起」）即折叠。 */
 const pcardOpen = ref(null)        // 展开中的成员 user_id
 const pcardTxns = ref([])
@@ -1249,12 +1249,20 @@ function isPcardOpen(p) {
 async function loadPcardTxns() {
   if (pcardOpen.value == null) return
   pcardLoading.value = true
+  const params = () => ({
+    size: pcardSize,
+    member_user_id: pcardOpen.value,
+    fund: 'personal',   // 只看这个人的个人零花，与卡片金额同口径
+  })
   try {
-    const res = await financeApi.list({
-      page: pcardPage.value,
-      size: pcardSize,
-      member_user_id: pcardOpen.value,
-    })
+    let page = pcardPage.value
+    let res = await financeApi.list({ ...params(), page })
+    // 把某条流水的归属改出个人零花后，当前页可能被清空：退回第 1 页重取一次
+    if (!(res.data.list || []).length && (res.data.total || 0) > 0 && page > 1) {
+      page = 1
+      pcardPage.value = 1
+      res = await financeApi.list({ ...params(), page })
+    }
     pcardTxns.value = res.data.list || []
     pcardTotal.value = res.data.total || 0
   } catch {
@@ -1488,6 +1496,8 @@ async function save() {
     form.editing = false
     form.editingId = null
     await Promise.all([loadPeriodStats(), reload(1), loadFunds(), loadPoolTxns()])
+    // 展开面板按个人零花过滤，改归属后那条可能不再属于本池 → 同步刷新
+    if (pcardOpen.value != null) loadPcardTxns()
   } finally {
     saving.value = false
   }
