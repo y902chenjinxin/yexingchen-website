@@ -1,10 +1,12 @@
-"""四川麻将 · 血战到底 服务端引擎（v2.44）。
+"""四川麻将 · 胡牌即结束 服务端引擎（v2.46.10）。
 
 只用 万(m)/条(s)/筒(p) 各 1–9 共 108 张，无风牌箭牌。规则与前端 `utils/games/mahjong.js`
 一致，本文件补齐 PRD §6.2 的**刮风下雨**（明杠即时收 1 倍底注 / 暗杠即时收 2 倍底注）。
 
 阶段机：``missing``（定缺）→ ``playing``（摸打 / 碰杠胡）→ ``finished``。
-血战到底：胡牌者下桌不再摸打，其余人继续，直到 3 家胡或牌墙摸完。
+**胡牌即结束**（v2.46.10 起，不再是血战到底）：任意一家胡牌（自摸或点炮）本局立即收摊，
+其余人不补摸补打；一炮只取**一家**胡（放炮者下家起逆时针就近优先），不存在一炮多响。
+牌墙摸完仍无人胡 = 流局。
 
 ``state["score"]`` 以**底注倍数**为单位累计（含刮风下雨的即时收豆），
 路由层据此换算成豆子结算；刮风下雨另外落 ``gang_pay`` 事件供即时提示。
@@ -614,7 +616,8 @@ class MahjongEngine(TableEngine):
         events.append({"kind": "draw", "seat": seat})
 
     def _advance_draw_from(self, st: dict, frm: int, events: list[dict]) -> None:
-        if len(st["hu"]) >= 3 or not st["wall"]:
+        # 胡牌即结束：只要有一家胡了（st["hu"] 非空），本局立刻收摊，不再补摸补打。
+        if st["hu"] or not st["wall"]:
             self._end_game(st, events)
             return
         nxt = self._next_alive(st, frm)
@@ -624,6 +627,7 @@ class MahjongEngine(TableEngine):
         self._draw(st, nxt, events)
 
     def _next_alive(self, st: dict, frm: int) -> int | None:
+        """胡牌即结束后本方法只在无人胡时用到（理论上恒有解）；保留给防御性调用。"""
         for i in range(1, 5):
             s = (frm + i) % 4
             if s not in st["hu"]:
@@ -654,9 +658,15 @@ class MahjongEngine(TableEngine):
             self._advance_draw_from(st, seat, events)
 
     def _find_claim(self, st: dict, tile: dict, from_seat: int, passed: list[int]):
+        """找这张弃牌的响应者：从放炮者**下家起逆时针**扫，胡 > 杠 > 碰。
+
+        胡牌即结束 → 点炮只取**一家**，所以扫到第一个能胡的座位就定下来（就近优先，
+        不存在一炮多响）；没人能胡时再按同样顺序找杠 / 碰。
+        """
         best = None
-        for s in range(4):
-            if s == from_seat or s in st["hu"] or s in passed:
+        for off in range(1, 4):
+            s = (from_seat + off) % 4
+            if s in st["hu"] or s in passed:
                 continue
             hand = st["hands"][s]
             if has_missing(_counts(hand), st["missing"][s]):
@@ -674,6 +684,8 @@ class MahjongEngine(TableEngine):
             pr = 3 if "hu" in opts else (2 if "kong" in opts else 1)
             if best is None or pr > best[0]:
                 best = (pr, s, opts)
+                if pr == 3:
+                    break      # 最近的能胡者即本局赢家，后面不必再看
         return (best[1], best[2]) if best else None
 
     def _resolve_claim(self, st: dict, seat: int, act: str, events: list[dict]) -> None:
@@ -868,7 +880,7 @@ class MahjongEngine(TableEngine):
 
     def abort(self, state: dict, seats: list[dict],
               quit_seat: int | None = None) -> tuple[dict, list[dict]] | None:
-        """有人中途退出：本局立即收摊，按当前分数结算（血战未打完的部分不再补）。"""
+        """有人中途退出：本局立即收摊，按当前分数结算（本局未胡完的部分不再补）。"""
         if state.get("phase") == "finished":
             return None
         st = copy_state(state)

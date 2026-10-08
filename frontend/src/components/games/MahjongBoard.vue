@@ -4,7 +4,7 @@
       <!-- ===== 顶栏 ===== -->
       <header class="mj-top">
         <span class="gt-title">四川麻将</span>
-        <span class="gt-pill gold">血战到底 · 第 {{ roundNo }} 局</span>
+        <span class="gt-pill gold">胡牌即结束 · 第 {{ roundNo }} 局</span>
         <span class="gt-pill">余牌 {{ wall.length }}</span>
         <span v-if="myMissing" class="gt-pill">你的缺门 {{ M.SUIT_NAME[myMissing] }}</span>
         <span class="gt-spacer"></span>
@@ -232,20 +232,21 @@
       </div>
 
       <div v-if="toast" class="gt-toast">{{ toast }}</div>
-      <div class="gt-watermark">四 川 麻 将 · 血 战 到 底 · 定 缺 开 局</div>
+      <div class="gt-watermark">四 川 麻 将 · 胡 牌 即 结 束 · 定 缺 开 局</div>
     </div>
   </div>
 </template>
 
 <script setup>
-/** 四川麻将 · 血战到底 牌桌（v2.43）。
+/** 四川麻将 · 胡牌即结束 牌桌（v2.46.10）。
  *
  * 纯前端同屏对局：solo = 1 真人 + 3 AI；duo = 2 真人同屏 + 2 AI；quad = 4 真人轮流。
  * 规则核心在 `utils/games/mahjong.js`（和牌判定 / 番种 / 听牌 / 向听 / AI）。
  * 视觉走 `assets/styles/game-table.css` 的独立牌桌皮肤，不污染全站玄黄主题。
  *
  * 简化声明（与引擎注释一致）：
- * 1. 点炮只取「一家胡」（标准血战支持一炮多响，这里按优先级单家结算）。
+ * 1. **胡牌即结束**（v2.46.10 起，不再是血战到底）：任一家胡牌本局立即收摊，其余人不补打；
+ *    点炮只取「一家胡」，按「放炮者下家起逆时针」就近优先，不存在一炮多响。
  * 2. 流局不做「查大叫 / 查花猪」赔付，直接按已胡番数结算。
  * 3. 在线开房（v2.44）：服务端权威发牌，前端只渲染投影、动作 emit('act') 上抛；
  *    本地同屏（solo/duo/quad）逻辑完全不变，在线分支统一走 `isOnline`。
@@ -298,7 +299,7 @@ const hands = ref([[], [], [], []])
 const melds = ref([[], [], [], []])
 const discards = ref([[], [], [], []])
 const missing = ref(['', '', '', ''])
-const out = ref([false, false, false, false])   // 已胡下桌
+const out = ref([false, false, false, false])   // 本局已胡（胡牌即结束 → 一局最多一家为 true）
 const turn = ref(0)
 const drawn = ref(null)
 const lastDiscard = ref(null)
@@ -310,6 +311,8 @@ const result = ref(null)
 const pending = ref(null)          // { seat, from, tile, kinds }
 const reactQueue = ref([])
 const reactFrom = ref(null)
+/** 本张弃牌上已经选过「不胡」的座位：顺延给下一家（胡牌即结束，一炮只取一家） */
+const huDeclined = ref([])
 const dingqueSeat = ref(0)
 const toast = ref('')
 const muted = ref(isMuted())
@@ -462,7 +465,7 @@ function seatCls(s) {
   return { 'is-active': isTurn(s) && !out.value[s], 'is-out': out.value[s] }
 }
 function seatSub(s) {
-  if (out.value[s]) return '已胡下桌'
+  if (out.value[s]) return '本局胡牌'
   if (isOnline.value) {
     const p = props.onlineView?.players?.[s]
     return `${p?.hand_count ?? 0} 张 · 副露 ${(p?.melds || []).length}`
@@ -553,6 +556,7 @@ function newRound() {
   pending.value = null
   reactQueue.value = []
   reactFrom.value = null
+  huDeclined.value = []
   drawn.value = null
   lastDiscard.value = null
   selId.value = null
@@ -635,8 +639,11 @@ function nextDraw(from) {
   drawFor(s)
 }
 
+/** 胡牌即结束：**任一家**胡牌（自摸 / 点炮）本局立刻收摊，不再血战继续。
+ *  v2.46.10 之前这里是 `>= 3`（血战到底：打到三家胡或牌墙摸完），一局时间太长、
+ *  且真人在手机上常常「胡完还得陪三家打完」。 */
 function checkRoundEnd() {
-  if (out.value.filter(Boolean).length >= 3) { endRound('allhu'); return true }
+  if (out.value.some(Boolean)) { endRound('hu'); return true }
   return false
 }
 
@@ -656,28 +663,22 @@ function doDiscard(seat, tile) {
   selId.value = null
   log(`${seatName(seat)} 打出 ${tileText(tile)}`)
   sfx.play()
+  huDeclined.value = []          // 每张新弃牌的「不胡」名单重新开始
   resolveReactions(seat, tile)
 }
 
 /* ---------- 反应（胡 / 杠 / 碰） ---------- */
 function resolveReactions(from, tile) {
   if (phase.value !== 'playing') return
-  // 1) 胡（点炮）：优先级最高
-  const huSeats = []
-  for (const s of [0, 1, 2, 3]) {
-    if (s === from || out.value[s]) continue
-    if (M.canHu(hands.value[s].concat([tile]), melds.value[s].length, missing.value[s])) huSeats.push(s)
-  }
-  if (huSeats.length) {
-    const aiHu = huSeats.filter(s => !isHuman(s))
-    for (const s of aiHu) doHu(s, tile, from, false)
-    const humanSeat = huSeats.find(s => isHuman(s))
-    if (humanSeat != null && !out.value[humanSeat]) {
-      pending.value = { seat: humanSeat, from, tile, kinds: ['hu'] }
-      return
-    }
-    if (checkRoundEnd()) return
-    nextDraw(from)
+  // 1) 胡（点炮）：胡牌即结束 —— 从放炮者**下家起逆时针**找第一家能胡的，只此一家。
+  //    旧版把「所有能胡的 AI」都判胡（血战的一炮多响），现在扫到第一个就结束本局。
+  for (let off = 1; off <= 3; off++) {
+    const s = (from + off) % 4
+    if (out.value[s] || huDeclined.value.includes(s)) continue
+    if (!M.canHu(hands.value[s].concat([tile]), melds.value[s].length, missing.value[s])) continue
+    if (isHuman(s)) { pending.value = { seat: s, from, tile, kinds: ['hu'] }; return }
+    doHu(s, tile, from, false)
+    checkRoundEnd()
     return
   }
   // 2) 杠 / 碰：按座次。手上还留着缺门牌的一律跳过（定缺后必须先打完才能碰 / 杠）
@@ -932,7 +933,14 @@ function onReact(kind) {
     return
   }
   if (kind === 'pass') {
+    const p = pending.value
     pending.value = null
+    // 点炮胡被放弃：记下这家后继续往后找（胡牌即结束，一炮只取一家，但不该被放弃者卡死）
+    if (p && p.kinds.length === 1 && p.kinds[0] === 'hu') {
+      huDeclined.value.push(p.seat)
+      resolveReactions(p.from, p.tile)
+      return
+    }
     reactQueue.value.shift()
     stepReactions()
     return
@@ -940,8 +948,7 @@ function onReact(kind) {
   if (kind === 'hu') {
     pending.value = null
     doHu(p.seat, p.tile, p.from, false)
-    if (checkRoundEnd()) return
-    nextDraw(p.from)
+    checkRoundEnd()
     return
   }
   if (kind === 'pong') {
@@ -1045,7 +1052,9 @@ function endRound(reason) {
 function saveState() {
   saveGame(SAVE_KEY, {
     mode: mode.value,
-    summary: `第 ${roundNo.value} 局 · ${huResults.value.length} 家胡`,
+    summary: huResults.value.length
+      ? `第 ${roundNo.value} 局 · ${seatName(huResults.value[0].seat)}胡`
+      : `第 ${roundNo.value} 局 · 流局`,
     roundNo: roundNo.value,
   })
 }

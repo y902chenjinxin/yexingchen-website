@@ -46,6 +46,13 @@ const nofs = params.get('nofs') === '1'
    不传 seat 是看不到旋转的）。座位名固定用「甲乙丙丁」，方便肉眼核对谁被摆到了哪一边。 */
 const seatParam = params.get('seat')
 const SEAT_CN = ['甲', '乙', '丙', '丁']
+/* ?mode=solo → 用 **本地单人练习**（1 真人 + 3 AI）挂载。默认 'p4' 是「四家都是真人」的
+   本地同屏形态（定缺/出牌都等人点），跑规则回归时必须换成 solo 才能让 AI 自己推进。 */
+const MODE = params.get('mode') || 'p4'
+/* 暴露组件实例给自动化脚本（本地沙盒专用，不进生产入口）：
+   规则回归脚本据此直接读写组件状态、调用内部方法，把一局牌快进到想验的那个瞬间。 */
+const compRef = ref(null)
+if (typeof window !== 'undefined') window.__probeComp = compRef
 
 function makeOnlineView(seat) {
   const dealt = G.deal(2)
@@ -142,14 +149,15 @@ const app = createApp({
       h('div', { id: 'probe-rot', class: 'gm-root is-big is-fill' + (nofs ? '' : ' is-fsfit') }, [
         nofs
           ? h('div', { class: 'gm-play' }, [
-              h(Comp, { bare: true, big: true, 'game-key': key, 'initial-mode': 'p4' }),
+              h(Comp, { ref: compRef, bare: true, big: true, 'game-key': key, 'initial-mode': MODE }),
             ])
           : h('div', { class: 'gm-play is-fsfit' }, [
               h('div', { ref: stageRef, class: 'gtv-viewstage is-fs' }, [
                 h('div', { class: 'gtv-viewzoom is-fs', style: style.value }, [
                   seatParam === null
-                    ? h(Comp, { bare: true, big: true, 'game-key': key, 'initial-mode': 'p4' })
+                    ? h(Comp, { ref: compRef, bare: true, big: true, 'game-key': key, 'initial-mode': MODE })
                     : h(Comp, {
+                        ref: compRef,
                         bare: true, big: true, 'game-key': key,
                         online: true,
                         'online-seat': Number(seatParam),
