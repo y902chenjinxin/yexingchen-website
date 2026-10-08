@@ -87,7 +87,15 @@
 - `npx vite build --outDir dist-deploy35` → 产物内容核验：`xuanhuang-v318`、`APP_VERSION v2.46.5`
   均已进包（`grep` 构建产物确认）。
 - 本地探针渲染：麻将四方弃牌各自贴边归位、掼蛋右上角「轮到 你 出牌」常驻 + 零重叠。
-- **本轮未做线上取证**（按夜星约定）；后端含新字段，已跑 `deploy_backend_full.py` 部署。
+- **本轮未做线上取证**（按夜星约定）。
+
+#### 部署结果（2026-10-08）
+- 后端 `deploy_backend_full.py`：`health=200`、PM2 `yexingchen-backend` online；
+  `/api/docs` → **404**（生产判定生效）。
+- 前端 `DEPLOY_DIST=dist-deploy35`：`uploaded files: 306`、远端 SW `xuanhuang-v318`、`home=200`；
+  生产入口 `assets/index-DX-p2MtW.js` == 本地构建，自洽。
+- 部署前后 `git status` 均空 → 未夹带并发会话改动。
+- 注：压缩把 `2000/3000` 写成科学计数法 `2e3/3e3`，产物核验按此 grep。
 
 ---
 
