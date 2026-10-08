@@ -249,6 +249,7 @@ import { useGameTable } from '@/composables/useGameTable'
 import { usePinchZoom } from '@/composables/usePinchZoom'
 import { familyMembers } from '@/api/lifeExtra'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { useImmersive } from '@/composables/useImmersive'
 
 const route = useRoute()
 const router = useRouter()
@@ -300,6 +301,15 @@ const showHelp = ref(false)
 const fullscreen = ref(false)
 const menuOpen = ref(false)      // 全屏右上角 ☰ 菜单
 const { isMobile } = useIsMobile()
+/* 全屏牌桌期间进入沉浸态：收起移动端 Tab 栏 / 桌宠 / 播放条（否则 Tab 栏会压住牌桌底部） */
+const { enterImmersive, exitImmersive } = useImmersive()
+let immersiveOn = false
+function syncImmersive(on) {
+  if (on === immersiveOn) return
+  immersiveOn = on
+  if (on) enterImmersive()
+  else exitImmersive()
+}
 
 const room = t.room
 const view = t.view
@@ -358,6 +368,7 @@ function exitFullscreen() {
 
 watch(fullscreen, async (v) => {
   menuOpen.value = false
+  syncImmersive(v)
   unbindZoom?.()
   unbindZoom = null
   contentRO?.disconnect()
@@ -495,6 +506,7 @@ onMounted(async () => {
 function onUnload() { t.leaveOnUnload() }
 window.addEventListener('pagehide', onUnload)
 onBeforeUnmount(() => {
+  syncImmersive(false)
   window.removeEventListener('pagehide', onUnload)
   window.removeEventListener('resize', onResize)
   clearTimeout(measureTimer)
@@ -612,8 +624,10 @@ onBeforeUnmount(() => {
 :root[data-theme="night"] .gtv-turnpill.mine { color: #f0d79a; }
 
 /* ---------- 全屏牌桌 ---------- */
+/* z-index 1600：高于移动端底部 Tab 栏(1500)与桌宠(1800)之外的一切常驻层，
+   又低于 ElMessage/ElNotification(2000 起) —— 牌局内的提示条仍然可见。 */
 .gtv-boardwrap.is-fs {
-  position: fixed; inset: 0; z-index: 3000; display: block; padding: 0;
+  position: fixed; inset: 0; z-index: 1600; display: block; padding: 0;
   background: radial-gradient(120% 90% at 50% 0%, #123a2e, #061410 70%);
 }
 .gtv-viewstage.is-fs {

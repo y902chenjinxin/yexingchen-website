@@ -25,23 +25,44 @@
                 v-for="p in tokensAt(c.idx)"
                 :key="p.id"
                 class="mp-tok"
+                :class="{ 'is-now': p.id === cur.id && !game.over }"
                 :style="{ background: COLORS[p.id] }"
                 :title="p.name"
               >{{ p.avatar }}</span>
             </div>
+            <!-- 落点反馈气泡：谁在这块地上花了 / 赚了多少，落在棋盘上直接可见 -->
+            <span
+              v-for="f in floatersAt(c.idx)"
+              :key="f.id"
+              class="mp-float"
+              :class="'k-' + f.kind"
+            >{{ f.text }}</span>
           </div>
 
-          <!-- 中央信息区 -->
+          <!-- 中央信息区：当前行动者 + 骰子 + 行动流水 -->
           <div class="mp-center">
             <div class="mp-center-head">
               <span class="gt-pill gold">第 {{ game.round }} 轮</span>
               <span class="gt-pill">{{ phaseText }}</span>
             </div>
-            <div class="mp-dice" :class="{ rolling: game.rolling }">
-              <span v-for="(d, i) in game.dice" :key="i" class="mp-die">{{ DICE_FACE[d] }}</span>
+
+            <!-- 当前行动者：谁在动、什么颜色，一眼可见 -->
+            <div v-if="!game.over" class="mp-turn">
+              <span class="mp-turn-av" :style="{ background: COLORS[cur.id] }">{{ cur.avatar }}</span>
+              <b class="mp-turn-name">{{ cur.name }}</b>
             </div>
+
+            <div class="mp-dice">
+              <MonopolyDice
+                v-for="(d, i) in game.dice"
+                :key="i"
+                :value="d"
+                :rolling="game.rolling"
+              />
+            </div>
+
             <div class="mp-log">
-              <div v-for="(l, i) in game.log.slice(-6)" :key="i" class="mp-log-row">{{ l }}</div>
+              <div v-for="(l, i) in game.log.slice(-5)" :key="i" class="mp-log-row">{{ l }}</div>
             </div>
           </div>
         </div>
@@ -219,8 +240,10 @@
  * 8 角色各带 1 个主动技能，8 张道具卡踩「道具格」随机抽。
  * 信息全公开 → 规则全部前端计算（与既有棋类一致），结算走 /api/game/settle 记战绩与豆子。
  */
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { reportSettle, gameEconomyApi } from '@/api/gameEconomy'
+import { sfx } from '@/utils/games/sfx'
+import MonopolyDice from '@/components/games/MonopolyDice.vue'
 
 const props = defineProps({
   gameKey: { type: String, default: 'monopoly' },
@@ -242,8 +265,6 @@ const BOARD_N = 14          // 14×14 环，共 52 格
 const START_CASH = 50000
 
 const COLORS = ['#e05a5a', '#4a90d9', '#3fae7a', '#e0a83f', '#9b6bd6', '#39bcc4', '#d6709b', '#7d8fa8']
-
-const DICE_FACE = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
 
 const SKILLS = {
   reroll:  { name: '掷骰加成', desc: '本回合可重掷一次骰子', target: 'self' },
@@ -344,6 +365,7 @@ const toast = ref('')
 const wallet = reactive({ beans: 0 })
 
 let toastTimer = null
+let onlineRollTimer = null
 function say(msg) {
   toast.value = msg
   clearTimeout(toastTimer)
@@ -561,6 +583,36 @@ function moveBy(p, steps) {
 
 function tokensRefresh() { /* 触发 tokensAt 重算 */ game.cells = [...game.cells] }
 
+/* ---------------- 落点气泡：把「这块地上发生了什么」直接画在棋盘上 ----------------
+ * 旧版所有反馈只进中央那行小字 log，玩家根本不知道刚扣的钱是因为什么。 */
+const floaters = ref([])
+let floatSeq = 0
+const FLOAT_MS = 1500
+function floatAt(idx, text, kind = 'info') {
+  const id = ++floatSeq
+  floaters.value.push({ id, idx, text, kind })
+  setTimeout(() => { floaters.value = floaters.value.filter((f) => f.id !== id) }, FLOAT_MS)
+}
+function floatersAt(idx) { return floaters.value.filter((f) => f.idx === idx) }
+
+/** 逐格推进：让「走到哪、路上经过什么」在棋盘上看得见。
+ *  旧版 moveBy 是一次性瞬移，玩家只能从中央 log 里的一行字猜发生了什么。 */
+const STEP_MS = 105
+async function animateMove(p, steps) {
+  for (let i = 0; i < steps; i++) {
+    const before = p.pos
+    p.pos = (p.pos + 1) % 52
+    if (p.pos < before) {
+      p.cash += 2000
+      log(`${p.name} 经过起点，领取 2000 豆`)
+      floatAt(p.pos, '+2000', 'gain')
+    }
+    tokensRefresh()
+    await sleep(STEP_MS)
+  }
+  return p.pos
+}
+
 /* ---------------- 掷骰与落点结算 ---------------- */
 async function rollAndMove() {
   if (isOnline.value) { emit('act', { type: 'roll' }); return }
@@ -588,13 +640,14 @@ async function rollAndMove() {
   const d1 = 1 + Math.floor(Math.random() * 6)
   const d2 = 1 + Math.floor(Math.random() * 6)
   game.dice = [d1, d2]
-  await sleep(360)
+  sfx.dice()
+  // 620ms：让骰子的 3D 翻滚 + 落定弹跳完整播完（旧版 360ms 太短，看着像闪了一下）
+  await sleep(620)
   game.rolling = false
   const steps = d1 + d2
   log(`🎲 ${p.name} 掷出 ${d1}+${d2}=${steps}`)
-  moveBy(p, steps)
-  tokensRefresh()
-  await sleep(160)
+  await animateMove(p, steps)
+  await sleep(140)
   await resolveLanding(p)
   busy.value = false
   endTurn()
@@ -627,45 +680,63 @@ async function resolveLanding(p) {
     if (c.owner == null) {
       // 无主：AI 自动判断是否购买
       if (p.isAI) {
-        if (p.cash > c.price * 1.6) { p.cash -= c.price; grantCell(p, c.idx); log(`🏙 ${p.name} 买下 ${c.name}（${fmt(c.price)}）`) }
-        else log(`${p.name} 放弃购买 ${c.name}`)
+        if (p.cash > c.price * 1.6) {
+          p.cash -= c.price; grantCell(p, c.idx)
+          log(`🏙 ${p.name} 买下 ${c.name}（${fmt(c.price)}）`)
+          floatAt(c.idx, `-${fmt(c.price)} 购地`, 'buy')
+        } else log(`${p.name} 放弃购买 ${c.name}`)
       }
     } else if (c.owner !== p.id) {
       const owner = game.players[c.owner]
       if (!owner?.alive) { c.owner = null; c.level = 0; return }
-      if (p.freeRent) { log(`${p.name} 使用免租，跳过 ${c.name} 租金`); return }
-      if (p.immune) { log(`${p.name} 的天使卡免除了 ${c.name} 租金`); return }
+      if (p.freeRent) {
+        log(`${p.name} 使用免租，跳过 ${c.name} 租金`)
+        floatAt(c.idx, '免租', 'info')
+        return
+      }
+      if (p.immune) {
+        log(`${p.name} 的天使卡免除了 ${c.name} 租金`)
+        floatAt(c.idx, '😇 免疫', 'info')
+        return
+      }
       let rent = rentOf(c)
       if (p.doubleRent) rent *= 2
       log(`💸 ${p.name} 向 ${owner.name} 支付 ${c.name} 租金 ${fmt(rent)} 豆`)
       p.cash -= rent
       owner.cash += rent
+      floatAt(c.idx, `-${fmt(rent)} 租`, 'pay')
       if (p.cash < 0) pay(p, 0)
     } else if (p.isAI && c.level < 4 && p.cash > buildCost(c) * 2.2) {
       p.cash -= buildCost(c); c.level += 1
       log(`🏠 ${p.name} 把 ${c.name} 升到 Lv${c.level}`)
+      floatAt(c.idx, `Lv${c.level} 加盖`, 'buy')
     }
   } else if (c.type === 'chance') {
     const card = CHANCE[Math.floor(Math.random() * CHANCE.length)]
     log(`🃏 机会：${card.text}`)
+    floatAt(c.idx, card.text, 'info')
     card.fn(p, game)
   } else if (c.type === 'fate') {
     const card = FATE[Math.floor(Math.random() * FATE.length)]
     log(`🎴 命运：${card.text}`)
+    floatAt(c.idx, card.text, 'info')
     card.fn(p, game)
   } else if (c.type === 'tax') {
     const t = Math.round(p.cash * 0.08)
     log(`🧾 ${p.name} 缴税 ${fmt(t)} 豆`)
+    floatAt(c.idx, `-${fmt(t)} 税`, 'pay')
     pay(p, t)
   } else if (c.type === 'item') {
     const keys = Object.keys(ITEMS)
     const it = keys[Math.floor(Math.random() * keys.length)]
     p.items.push(it)
     log(`🎁 ${p.name} 获得道具「${ITEMS[it].name}」`)
+    floatAt(c.idx, `${ITEMS[it].icon} ${ITEMS[it].name}`, 'item')
   } else if (c.type === 'gotojail') {
     p.pos = 13
     p.jailTurns = 1
     log(`🚔 ${p.name} 被送进监狱`)
+    floatAt(13, '🚔 入狱', 'info')
   }
   tokensRefresh()
 }
@@ -678,6 +749,7 @@ function buyHere() {
   p.cash -= c.price
   grantCell(p, c.idx)
   log(`🏙 ${p.name} 买下 ${c.name}（${fmt(c.price)}）`)
+  floatAt(c.idx, `-${fmt(c.price)} 购地`, 'buy')
   tokensRefresh()
 }
 
@@ -690,6 +762,7 @@ function buildHere() {
   p.cash -= cost
   c.level += 1
   log(`🏠 ${p.name} 把 ${c.name} 升到 Lv${c.level}（租金 ${fmt(rentOf(c))}）`)
+  floatAt(c.idx, `-${fmt(cost)} 加盖 Lv${c.level}`, 'buy')
 }
 
 function useSkill() {
@@ -870,8 +943,15 @@ function syncFromView(v) {
     immune: false,
   }))
   game.curIdx = (v.turn == null) ? 0 : v.turn
-  game.dice = t.last_dice || [1, 1]
-  game.rolling = false
+  // 在线：服务端掷出新点数时本地补播一次翻滚，否则玩家只看到数字「跳变」，
+  // 完全没有「在掷骰」的感觉（单机走 rollAndMove，那边自己驱动动画）
+  const nd = t.last_dice || [1, 1]
+  if (nd[0] !== game.dice[0] || nd[1] !== game.dice[1]) {
+    game.rolling = true
+    clearTimeout(onlineRollTimer)
+    onlineRollTimer = setTimeout(() => { game.rolling = false }, 620)
+  }
+  game.dice = nd
   game.over = null
   if (v.result) {
     const win = v.result.winner === oSeat.value
@@ -915,6 +995,11 @@ watch(() => game.curIdx, () => {
   const p = cur.value
   if (p?.isAI && !game.over && !busy.value) setTimeout(() => aiTurn(), 480)
 })
+
+onBeforeUnmount(() => {
+  clearTimeout(toastTimer)
+  clearTimeout(onlineRollTimer)
+})
 </script>
 
 <style scoped>
@@ -934,21 +1019,36 @@ watch(() => game.curIdx, () => {
   width: min(100%, 760px); aspect-ratio: 1;
   gap: 3px;
   transform-style: preserve-3d;
+  /* 棋盘底：与麻将同色系的墨绿绒布。旧版棋盘没有底色，52 个彩色格子直接浮在
+     深色背景上，视觉上「很碎、很吵」—— 加一层绒布把格子收进一个整体里。 */
+  padding: 9px; border-radius: 16px; box-sizing: border-box;
+  background: linear-gradient(158deg, #1d6049 0%, #134230 58%, #0b2a1f 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .09),
+    inset 0 0 56px -14px rgba(0, 0, 0, .65);
 }
 .mp.is-tilt .mp-board { transform: rotateX(15deg) scale(.985); }
 
 .mp-cell {
-  position: relative; border-radius: 5px; overflow: hidden;
-  background: linear-gradient(170deg, #f6f1e4, #e7dfcc);
-  border: 1px solid rgba(120, 100, 60, .35);
-  box-shadow: 0 4px 0 rgba(90, 74, 44, .45), 0 8px 12px -8px rgba(0, 0, 0, .8);
+  position: relative; border-radius: 5px;
+  /* 气泡要上浮出格子，故不能裁切；圆角靠自身 background 保证 */
+  overflow: visible;
+  /* 统一象牙底：类型靠顶部色条区分，底色一律低饱和 —— 旧版 7 种高饱和渐变同时出现时很吵 */
+  background: linear-gradient(170deg, #fdfbf6, #f0eadd);
+  border: 1px solid rgba(122, 106, 74, .26);
+  box-shadow: 0 3px 0 rgba(96, 80, 50, .4), 0 7px 11px -8px rgba(0, 0, 0, .75);
   display: flex; flex-direction: column;
   color: #2b2413; min-width: 0;
   transition: box-shadow .2s, filter .2s;
 }
-.mp-cell.hl { box-shadow: 0 0 0 2px var(--gt-gold), 0 4px 0 rgba(90, 74, 44, .45); }
-.mp-cell-top { height: 5px; background: rgba(120, 100, 60, .3); }
-.mp-houses { display: block; font-size: 6px; line-height: 5px; text-align: center; }
+.mp-cell.hl { box-shadow: 0 0 0 2px var(--gt-gold), 0 3px 0 rgba(96, 80, 50, .4); }
+/* 顶部色条：min-height 而非 height —— 格子放不下时房子图标要能把它撑开
+   （.mp-cell 现在是 overflow:visible，写死 5px 会让房子跑到格子外） */
+.mp-cell-top {
+  min-height: 5px; background: rgba(120, 100, 60, .26); border-radius: 4px 4px 0 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.mp-houses { display: block; font-size: 6.5px; line-height: 1; text-align: center; }
 .mp-cell-body {
   flex: 1; min-height: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 1px; padding: 1px;
@@ -958,13 +1058,22 @@ watch(() => game.curIdx, () => {
   word-break: break-all; max-width: 100%;
 }
 .mp-cprice { font-style: normal; font-size: 7.5px; opacity: .72; }
-.mp-cell.t-start { background: linear-gradient(170deg, #ffe9a8, #f3cf72); }
-.mp-cell.t-jail, .mp-cell.t-gotojail { background: linear-gradient(170deg, #f0d7d0, #dfb4a8); }
-.mp-cell.t-park { background: linear-gradient(170deg, #d7ecdc, #b6d8c0); }
-.mp-cell.t-chance { background: linear-gradient(170deg, #dceaf7, #bcd6ee); }
-.mp-cell.t-fate { background: linear-gradient(170deg, #ecdcf5, #d5bceb); }
-.mp-cell.t-tax { background: linear-gradient(170deg, #f6e2c8, #e9c79a); }
-.mp-cell.t-item { background: linear-gradient(170deg, #fbe6ef, #f0c6d9); }
+/* 类型底：低饱和版（旧版 #ffe9a8 / #f0d7d0 / #dceaf7 … 太艳） */
+.mp-cell.t-start { background: linear-gradient(170deg, #fdf6e2, #f5e8c2); }
+.mp-cell.t-jail, .mp-cell.t-gotojail { background: linear-gradient(170deg, #f9efeb, #eedad2); }
+.mp-cell.t-park { background: linear-gradient(170deg, #eef6f0, #dbeade); }
+.mp-cell.t-chance { background: linear-gradient(170deg, #f0f5fb, #dde8f4); }
+.mp-cell.t-fate { background: linear-gradient(170deg, #f6f1fb, #e6ddf2); }
+.mp-cell.t-tax { background: linear-gradient(170deg, #fcf3e8, #f2e3cd); }
+.mp-cell.t-item { background: linear-gradient(170deg, #fdf3f7, #f2e0e9); }
+/* 顶部色条按类型着色（有主时被行内的业主色覆盖，优先级正确） */
+.mp-cell.t-start .mp-cell-top { background: #d8ab38; }
+.mp-cell.t-jail .mp-cell-top, .mp-cell.t-gotojail .mp-cell-top { background: #b98577; }
+.mp-cell.t-park .mp-cell-top { background: #6faa84; }
+.mp-cell.t-chance .mp-cell-top { background: #6d9ad4; }
+.mp-cell.t-fate .mp-cell-top { background: #9a7fd0; }
+.mp-cell.t-tax .mp-cell-top { background: #c79a5c; }
+.mp-cell.t-item .mp-cell-top { background: #c98bb0; }
 
 .mp-tokens {
   position: absolute; inset: auto 1px 1px 1px; display: flex; flex-wrap: wrap;
@@ -975,7 +1084,36 @@ watch(() => game.curIdx, () => {
   display: grid; place-items: center; color: #fff;
   border: 1px solid rgba(255, 255, 255, .85);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .55);
+  transition: transform .18s ease, box-shadow .18s ease;
 }
+/* 轮到谁动，谁的令牌亮一圈金边 —— 配合中央的「当前行动者」一起指认 */
+.mp-tok.is-now {
+  border-color: var(--gt-gold);
+  box-shadow: 0 0 0 2px rgba(233, 200, 119, .8), 0 1px 3px rgba(0, 0, 0, .6);
+  transform: scale(1.14);
+}
+
+/* ---- 落点气泡：谁在这块地上花了 / 赚了多少 ---- */
+.mp-float {
+  position: absolute; left: 50%; top: 40%; z-index: 9;
+  max-width: 96px; padding: 2px 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; line-height: 1.25; text-align: center;
+  pointer-events: none; white-space: normal;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 5px 14px -5px rgba(0, 0, 0, .85);
+  animation: mp-float-up 1.5s cubic-bezier(.2, .8, .3, 1) both;
+}
+@keyframes mp-float-up {
+  0% { opacity: 0; transform: translate(-50%, -20%) scale(.7); }
+  16% { opacity: 1; transform: translate(-50%, -60%) scale(1.06); }
+  72% { opacity: 1; transform: translate(-50%, -125%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -190%) scale(.94); }
+}
+.mp-float.k-buy { background: #2f8f5b; color: #fff; }
+.mp-float.k-pay { background: #c0453c; color: #fff; }
+.mp-float.k-gain { background: #d8a12a; color: #2b2410; }
+.mp-float.k-item { background: #6b4fbf; color: #fff; }
+.mp-float.k-info { background: rgba(22, 32, 28, .94); color: #f2eee0; }
 
 /* ---- 中央区 ---- */
 .mp-center {
@@ -986,18 +1124,31 @@ watch(() => game.curIdx, () => {
   border: 1px solid var(--gt-line);
 }
 .mp-center-head { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.mp-dice { display: flex; gap: 10px; font-size: 44px; line-height: 1; color: var(--gt-gold); }
-.mp-dice.rolling { animation: mp-shake .32s linear infinite; }
-@keyframes mp-shake {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  25% { transform: translateY(-4px) rotate(-8deg); }
-  75% { transform: translateY(4px) rotate(8deg); }
+
+/* 当前行动者：谁在动、什么颜色，一眼可见（旧版只在右栏玩家列表里高亮，容易被忽略） */
+.mp-turn { display: flex; align-items: center; gap: 8px; }
+.mp-turn-av {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 16px; border: 2px solid rgba(255, 255, 255, .5);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, .8);
 }
+.mp-turn-name { font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+
+/* 骰子：尺寸用固定值 —— 牌桌全屏是「逻辑画布 + 整体缩放」，vw/vh 拿到的是真实视口，
+   在缩放画布里会算错（桌面放大后骰子会大得离谱）。 */
+.mp-dice { display: flex; gap: 12px; --mdy-size: 42px; }
+
 .mp-log {
-  width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 3px;
-  font-size: 11.5px; color: var(--gt-ink-dim); text-align: center;
+  width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 4px;
+  font-size: 12px; color: var(--gt-ink-dim); text-align: center;
 }
-.mp-log-row { animation: gt-pop .2s ease-out both; }
+.mp-log-row {
+  animation: gt-pop .2s ease-out both;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mp-float { animation-duration: .01ms; }
+}
 
 /* ---- 右侧 ---- */
 .mp-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }

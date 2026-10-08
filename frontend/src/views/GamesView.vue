@@ -199,6 +199,7 @@ import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
 import { usePinchZoom } from '@/composables/usePinchZoom'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { useImmersive } from '@/composables/useImmersive'
 
 const ICON = {
   gomoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><circle cx="9" cy="9" r="2" fill="currentColor" stroke="none"/></svg>',
@@ -511,6 +512,17 @@ const cur = computed(() => ALL[tab.value] || {})
 const runKey = computed(() => `${tab.value}-${runId.value}`)
 
 const { isMobile } = useIsMobile()
+/* 全屏舞台时进入沉浸态：收起移动端 Tab 栏 / 桌宠 / 播放条。
+ * 舞台自身 z-index 只有 400，而 Tab 栏是 fixed z-index:1500 —— 单机玩掼蛋时
+ * Tab 栏会直接压在牌桌底部（手牌与「出牌/不要/提示」按钮点不到）。 */
+const { enterImmersive, exitImmersive } = useImmersive()
+let immersiveOn = false
+function syncImmersive(on) {
+  if (on === immersiveOn) return
+  immersiveOn = on
+  if (on) enterImmersive()
+  else exitImmersive()
+}
 const isCardGame = computed(() => TABLE_GAMES.has(tab.value))
 /** 手机端 + 牌类 + 全屏：走「等比缩放铺满一屏」，与在线牌桌同一套手感 */
 const fitActive = computed(() => isMobile.value && isBig.value && isCardGame.value)
@@ -647,11 +659,13 @@ function raiseHost(on) {
 }
 watch(isBig, async (v) => {
   document.body.style.overflow = v ? 'hidden' : ''
+  syncImmersive(v)
   await nextTick()
   raiseHost(v)
 })
 onBeforeUnmount(() => {
   document.body.style.overflow = ''
+  syncImmersive(false)
   raiseHost(false)
   window.removeEventListener('resize', onFitResize)
   clearTimeout(fitTimer)
@@ -699,9 +713,11 @@ watch(() => route.query.room, (v) => {
   display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 18px;
   align-items: start; width: 100%;
 }
-/* 大屏：压过应用侧栏(90/95)与顶栏，整屏沉浸；头部吸顶，保证「退出全屏/返回列表」随时可点 */
+/* 大屏：压过应用侧栏(90/95)、顶栏，以及移动端底部 Tab 栏(1500)。
+   抬到 1600 而不是更高：ElMessage/ElNotification 从 2000 起递增，
+   再高会把牌局内的提示条一起盖掉。 */
 .gm-root.is-big .gm-stage {
-  position: fixed; inset: 0; z-index: 400; overflow-y: auto;
+  position: fixed; inset: 0; z-index: 1600; overflow-y: auto;
   background: var(--dp-bg, #f7f5f0); padding: 14px 24px 36px;
 }
 .gm-root.is-big .gm-head {

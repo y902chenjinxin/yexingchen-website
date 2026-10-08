@@ -1,5 +1,5 @@
 <template>
-  <div id="app" :class="{ 'is-mobile': isMobile }">
+  <div id="app" :class="{ 'is-mobile': isMobile, 'is-immersive': immersive }">
     <el-config-provider :locale="zhCn">
     <!-- Skip Link键盘导航 -->
     <a href="#main-content" class="skip-link">跳转到内容</a>
@@ -21,11 +21,12 @@
     <!-- 登录后桌面端：左侧导航（默认展开，可收起，按玉简分组；顶栏不动） -->
     <DesktopSidebar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
 
-    <!-- 登录后移动端：底部两 Tab 主导航（主页/我的） -->
-    <MobileTabBar v-if="!showInitialLoading && auth.isLoggedIn && isMobile" />
+    <!-- 登录后移动端：底部两 Tab 主导航（主页/我的）。牌桌沉浸期间收起，
+         否则它（fixed z-index:1500）会压在牌桌底部操作区上 -->
+    <MobileTabBar v-if="!showInitialLoading && auth.isLoggedIn && isMobile && !immersive" />
 
     <!-- 移动端悬浮对局邀请胶囊（v2.45）：移动端没有桌面顶栏，邀请需要独立入口 -->
-    <MobileInviteDock v-if="!showInitialLoading && auth.isLoggedIn && isMobile" />
+    <MobileInviteDock v-if="!showInitialLoading && auth.isLoggedIn && isMobile && !immersive" />
 
     <!-- 登录后桌面端：AI 入口改由顶栏 ✺ 按钮 + Cmd/Ctrl+Shift+A 全局快捷键直达（v2.39.8 移除右下角 FAB，避免右下角拥挤） -->
 
@@ -35,11 +36,12 @@
     <!-- AI 高级工具抽屉（v2.39）：改写/解释/语义搜索/长期记忆/Agent/OCR/用量 -->
     <AiToolsDrawer v-if="auth.isLoggedIn && !isMobile" v-model:open="aiToolsOpen" />
 
-    <!-- 登录后全站常驻桌宠（音乐岛内容列表页隐藏：桌宠固定右下会压住列表行/最后一张卡片） -->
-    <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn && showWhale" />
+    <!-- 登录后全站常驻桌宠（音乐岛内容列表页隐藏：桌宠固定右下会压住列表行/最后一张卡片；
+         牌桌沉浸期间也收起，右下角会挡住牌桌） -->
+    <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn && showWhale && !immersive" />
 
-    <!-- 登录后全站底部播放条（播放时出现）-->
-    <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn" @open-full="fullPlayer = true" />
+    <!-- 登录后全站底部播放条（播放时出现）；牌桌沉浸期间收起 -->
+    <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn && !immersive" @open-full="fullPlayer = true" />
 
     <!-- 移动端全屏播放器（点迷你播放条信息区展开） -->
     <MobileFullPlayer v-if="isMobile" v-model="fullPlayer" />
@@ -69,6 +71,7 @@ import { checkFestivalNotice } from '@/utils/festivalNotice'
 import { ElNotification } from 'element-plus'
 import { useGameInvites } from '@/composables/useGameInvites'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { useImmersive } from '@/composables/useImmersive'
 
 // WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
 const WhaleCompanion = defineAsyncComponent(() => import('@/components/effects/WhaleCompanion.vue'))
@@ -78,6 +81,8 @@ const route = useRoute()
 const auth = useAuthStore()
 const prefs = usePrefsStore()
 const { isMobile } = useIsMobile()
+// 牌桌等全屏对局的沉浸态：置位期间收起底部 Tab 栏 / 桌宠 / 播放条
+const { immersive } = useImmersive()
 
 // 移动端缓存三个底部 Tab 首页组件（切 Tab 不重挂载、不闪白）；桌面 include 为空 → 不缓存
 const keepAliveNames = computed(() => isMobile.value ? ['WorkbenchView', 'ModulesView', 'ProfileView'] : [])
@@ -253,6 +258,10 @@ onMounted(async () => {
 /* ========== 移动端（沉浸式 + 底部两 Tab）：内容整体垫高，避免被 Tab 栏遮挡 ========== */
 #app.is-mobile {
   padding-bottom: calc(72px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+/* 牌桌全屏：Tab 栏已收起，垫高必须一并去掉，否则牌桌下方空出一条 */
+#app.is-mobile.is-immersive {
+  padding-bottom: 0;
 }
 /* 播放条在移动端悬浮于两 Tab 栏之上 */
 #app.is-mobile .npbar {

@@ -140,15 +140,13 @@
           <span class="gt-sub">{{ statusLine }}</span>
         </div>
 
+        <!-- 划选手势：pointerdown 落在手牌区，pointermove / up 由脚本挂到 window
+             —— 手指滑出牌区（往上飘 / 划到牌桌）时仍能收到事件，不会半途断掉 -->
         <div
           class="gd-hand"
           ref="handRef"
           :style="{ '--gd-overlap': overlap + 'px' }"
           @pointerdown="onHandDown"
-          @pointermove="onHandMove"
-          @pointerup="onHandUp"
-          @pointercancel="onHandUp"
-          @lostpointercapture="onHandUp"
         >
           <span
             v-for="(c, i) in viewHand"
@@ -763,19 +761,31 @@ function cardIndexAt(x, y, ignoreY = false) {
   return hit
 }
 function applySwipe(idx) {
-  if (idx === swipeLast || idx < 0) return
+  if (idx < 0) return
+  /* 快速滑动时 pointermove 会跳点（一次 move 可能跨过好几张牌），只处理「当前命中的那一张」
+     会表现为「划过 5 张只选中 2 张、中间漏掉」。这里补全 [上次命中, 本次命中] 之间的全部牌，
+     并用 swipeCovered 去重，避免来回划过同一张时反复触发音效。 */
+  const from = swipeLast < 0 ? idx : Math.min(swipeLast, idx)
+  const to = swipeLast < 0 ? idx : Math.max(swipeLast, idx)
   swipeLast = idx
-  const id = viewHand.value[idx]?.id
-  if (id == null) return
-  const has = sel.value.includes(id)
-  if (swipeMode && !has) sel.value.push(id)
-  else if (!swipeMode && has) sel.value = sel.value.filter(x => x !== id)
-  sfx.pick()
+  let changed = false
+  for (let i = from; i <= to; i++) {
+    if (swipeCovered.has(i)) continue
+    swipeCovered.add(i)
+    const id = viewHand.value[i]?.id
+    if (id == null) continue
+    const has = sel.value.includes(id)
+    if (swipeMode && !has) { sel.value.push(id); changed = true }
+    else if (!swipeMode && has) { sel.value = sel.value.filter(x => x !== id); changed = true }
+  }
+  if (changed) sfx.pick()
 }
-/* 划选走 Pointer Events + setPointerCapture：
- * 旧版用 touch 事件挂在手牌容器上，手指一旦滑出容器（往上飘一点）就收不到 move，
- * 表现为「划一半断掉 / 选不全」；捕获指针后事件始终回到本元素，不会丢。 */
+/* 划选走 Pointer Events，但监听挂在 window 上，**不依赖 setPointerCapture**：
+ * 部分 WebView 会在元素因选中而重渲染（class / transform 变化）时提前丢失指针捕获，
+ * 触发 lostpointercapture → 表现为「划一半就断」。挂 window 则手指滑到手牌区外
+ * （往上飘、划到牌桌上）也持续收得到事件，划回起点同样不断。 */
 let dragId = null
+let swipeCovered = new Set()
 function onHandDown(e) {
   if (!canAct.value) return
   if (e.pointerType === 'mouse' && e.button !== 0) return
@@ -784,9 +794,12 @@ function onHandDown(e) {
   if (idx < 0) return
   swipeMode = !sel.value.includes(viewHand.value[idx].id)
   swipeLast = -1
+  swipeCovered = new Set()
   suppressClick = true
   dragId = e.pointerId
-  try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* 老浏览器忽略 */ }
+  window.addEventListener('pointermove', onHandMove, { passive: false })
+  window.addEventListener('pointerup', onHandUp)
+  window.addEventListener('pointercancel', onHandUp)
   applySwipe(idx)
 }
 function onHandMove(e) {
@@ -795,13 +808,13 @@ function onHandMove(e) {
   applySwipe(cardIndexAt(e.clientX, e.clientY, true))
 }
 function onHandUp(e) {
-  if (dragId !== null && e.pointerId !== undefined && dragId !== e.pointerId) return
-  if (e.pointerId !== undefined) {
-    try { e.currentTarget?.releasePointerCapture?.(e.pointerId) } catch { /* 已自动释放 */ }
-  }
+  if (e && e.pointerId !== undefined && dragId !== null && e.pointerId !== dragId) return
   dragId = null
   swipeMode = null
   swipeLast = -1
+  window.removeEventListener('pointermove', onHandMove)
+  window.removeEventListener('pointerup', onHandUp)
+  window.removeEventListener('pointercancel', onHandUp)
   // 触控结束后浏览器还会补发一次 click，留足窗口抑制它，避免把最后一张又点掉
   setTimeout(() => { suppressClick = false }, 350)
 }
@@ -877,6 +890,10 @@ onBeforeUnmount(() => {
   clearTimeout(toastTimer)
   clearTimeout(flyTimer)
   if (ro) ro.disconnect()
+  // 划选期间被卸载：window 上的手势监听必须摘掉，否则残留到下一个页面
+  window.removeEventListener('pointermove', onHandMove)
+  window.removeEventListener('pointerup', onHandUp)
+  window.removeEventListener('pointercancel', onHandUp)
 })
 watch(() => viewHand.value.length, () => {
   flushIdx.value = 0
