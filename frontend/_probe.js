@@ -77,6 +77,42 @@ function makeOnlineView(seat) {
   }
 }
 
+/* ?g=mj&seat=1 → 麻将**在线投影**：按服务端 view() 的真实形状合成（绝对座位，
+   不做任何旋转 —— 旋转必须由组件的 povSeat 投影完成），验证「下=自己、
+   左=上家、右=下家」。对家固定塞一组碰、每家 3 张弃牌，肉眼可核对。 */
+function makeMjOnlineView(seat) {
+  let id = 8000
+  const T = (suit, rank) => ({ id: id++, suit, rank })
+  const hand = [
+    T('m', 1), T('m', 2), T('m', 3), T('m', 5), T('m', 6), T('m', 7), T('m', 9),
+    T('p', 1), T('p', 2), T('p', 3), T('p', 7), T('p', 8), T('p', 9),
+  ]
+  return {
+    phase: 'playing',
+    turn: (seat + 1) % 4,
+    dealer: 0,
+    round_no: 2,
+    wall_left: 55,
+    players: [0, 1, 2, 3].map((s) => ({
+      seat: s,
+      hand_count: 13,
+      melds: s === (seat + 2) % 4 ? [{ type: 'pong', tile: { id: 770, suit: 'm', rank: 8 }, from: seat }] : [],
+      discards: [T('m', 4), T('p', 5), T('s', 7)],
+      missing: 's',
+      is_turn: false,
+      hu: false,
+      hu_info: null,
+      score: 0,
+    })),
+    me: { seat, hand, melds: [], missing: 's', last_draw: null, options: [] },
+    claim: null,
+    last_discard: { seat: (seat + 1) % 4, tile: { id: 799, suit: 's', rank: 7 } },
+    history: [],
+    logs: ['1 号位打出 7条'],
+    result: null,
+  }
+}
+
 /* 牌面检视台（?g=tiles）：三门 × 1~9，上下两档尺寸（大牌 / 弃牌 mini），
    直接复用 .mj .gt-tile 的样式，所以看到的就是牌桌上的样子 */
 function TileWall() {
@@ -161,7 +197,9 @@ const app = createApp({
                         bare: true, big: true, 'game-key': key,
                         online: true,
                         'online-seat': Number(seatParam),
-                        'online-view': makeOnlineView(Number(seatParam)),
+                        'online-view': key === 'mj'
+                          ? makeMjOnlineView(Number(seatParam))
+                          : makeOnlineView(Number(seatParam)),
                         'seat-names': SEAT_CN,
                       }),
                 ]),

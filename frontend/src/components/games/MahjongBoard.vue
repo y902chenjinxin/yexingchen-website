@@ -27,7 +27,6 @@
             <span class="gt-seat-av">{{ seatAvatar(p.seat) }}</span>
             <span class="gt-seat-tx">
               <b class="gt-seat-name">{{ seatName(p.seat) }}</b>
-              <i class="gt-seat-sub">{{ seatSub(p.seat) }}</i>
             </span>
             <span v-if="isTurn(p.seat) && !out[p.seat]" class="gt-seat-badge">出牌中</span>
             <span v-else-if="out[p.seat]" class="gt-seat-badge">已胡</span>
@@ -49,14 +48,15 @@
           </div>
         </div>
 
-        <!-- 中央：四方弃牌（上=对家 / 下=自己 / 左=左家 / 右=右家）
+        <!-- 中央：四方弃牌（上=对家 / 下=自己 / 左=左家 / 右=右家），座位号全部过
+             disSeats 投影 —— 在线时以自己的座位为原点，而不是写死的 0 号位视角。
              旧版中央还有个「最近舍牌 + 战报」信息盒，它在 grid 里占 minmax(0,1fr) 整列，
              把左右两家的弃牌挤到桌外、上下两家只剩一行 —— 实测弃牌区只有 403×28px。
              现在信息全部搬到下方信息条（.mj-handbar，本来就有位置），中央整块还给弃牌。 -->
         <div class="mj-center">
           <div class="mj-dis mj-dis-up">
             <span
-              v-for="t in discards[2]"
+              v-for="t in discards[disSeats.up]"
               :key="t.id"
               class="gt-tile mini"
               :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
@@ -65,7 +65,7 @@
 
           <div class="mj-dis mj-dis-left">
             <span
-              v-for="t in discards[3]"
+              v-for="t in discards[disSeats.left]"
               :key="t.id"
               class="gt-tile mini"
               :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
@@ -74,7 +74,7 @@
 
           <div class="mj-dis mj-dis-right">
             <span
-              v-for="t in discards[1]"
+              v-for="t in discards[disSeats.right]"
               :key="t.id"
               class="gt-tile mini"
               :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
@@ -83,7 +83,7 @@
 
           <div class="mj-dis mj-dis-down">
             <span
-              v-for="t in discards[0]"
+              v-for="t in discards[disSeats.down]"
               :key="t.id"
               class="gt-tile mini"
               :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
@@ -123,6 +123,18 @@
         </div>
 
         <div class="mj-handrow">
+        <!-- 自己的碰 / 杠副露：旧版只给个「副露 N」文字计数，牌面不展示 ——
+             碰了什么全靠记。现在跟其他三家一样用迷你牌摆在手牌左侧。 -->
+        <div v-if="ownMelds.length" class="mj-ownmelds">
+          <span v-for="(md, i) in ownMelds" :key="i" class="gt-meld">
+            <span
+              v-for="(t, k) in meldTiles(md)"
+              :key="k"
+              class="gt-tile mini"
+              :class="suitCls(t)"
+            ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
+          </span>
+        </div>
         <div class="mj-hand" ref="handRef" :style="{ '--ntiles': Math.max(1, handTiles.length) }" @pointerdown="onHandDown">
           <span
             v-for="t in viewHand"
@@ -282,12 +294,6 @@ const SAVE_KEY = 'mahjong'
 const SEAT_LABEL = { 0: '你', 1: '右家', 2: '对家', 3: '左家' }
 const AI_AVATARS = { 1: '🐯', 2: '🦊', 3: '🐼' }
 const REACT_NAME = { hu: '胡', kong: '杠', pong: '碰' }
-/** 三家席位的方位与排布方向：对家横排，左右家竖排（v2.46 起不再四个方向都横着摆） */
-const PANEL_SEATS = [
-  { seat: 2, cls: 'mj-seat-top', dir: 'is-h' },
-  { seat: 3, cls: 'mj-seat-left', dir: 'is-v' },
-  { seat: 1, cls: 'mj-seat-right', dir: 'is-v' },
-]
 const STAKE = 100
 const BASE = 10
 
@@ -328,6 +334,24 @@ const HUMAN_SEATS = computed(() => {
   return [0, 1, 2, 3]
 })
 function isHuman(s) { return HUMAN_SEATS.value.includes(s) }
+
+/** V24613-004：席位/弃牌一律过 povSeat 投影 —— 本地以 0 号位（你）为原点；
+ *  在线以自己的座位为原点（我坐 1 号位，左边就是 0 号位、右边是 2 号位），
+ *  不再写死「下=0 号位」的绝对摆位。与掼蛋 povSeat（V2467-001）同一规矩。 */
+const povSeat = computed(() => (isOnline.value ? oSeat.value : 0))
+const relSeat = (rel) => (povSeat.value + rel) % 4
+/** 三家席位面板：对家（rel2）横排在上，上家（rel3）在左、下家（rel1）在右（竖排） */
+const PANEL_SEATS = computed(() => [
+  { seat: relSeat(2), cls: 'mj-seat-top', dir: 'is-h' },
+  { seat: relSeat(3), cls: 'mj-seat-left', dir: 'is-v' },
+  { seat: relSeat(1), cls: 'mj-seat-right', dir: 'is-v' },
+])
+/** 中央四方弃牌的座位投影：下=自己、右=下家、上=对家、左=上家 */
+const disSeats = computed(() => ({
+  up: relSeat(2), left: relSeat(3), right: relSeat(1), down: povSeat.value,
+}))
+/** 自己（底部视角）的碰 / 杠副露：手牌左侧摆牌面，替代旧版「副露 N」纯计数 */
+const ownMelds = computed(() => melds.value[viewSeat.value] || [])
 
 const viewSeat = computed(() => {
   if (isOnline.value) return oSeat.value
@@ -465,14 +489,6 @@ function seatAvatar(s) {
 function isTurn(s) { return phase.value === 'playing' && turn.value === s }
 function seatCls(s) {
   return { 'is-active': isTurn(s) && !out.value[s], 'is-out': out.value[s] }
-}
-function seatSub(s) {
-  if (out.value[s]) return '本局胡牌'
-  if (isOnline.value) {
-    const p = props.onlineView?.players?.[s]
-    return `${p?.hand_count ?? 0} 张 · 副露 ${(p?.melds || []).length}`
-  }
-  return `${hands.value[s].length} 张 · 副露 ${melds.value[s].length}`
 }
 function suitCount(seat, suit) {
   return hands.value[seat].filter(t => t.suit === suit).length
@@ -1104,6 +1120,10 @@ onBeforeUnmount(() => {
      弃牌小到看不清牌面）。 */
   --mini-w: clamp(17px, calc(var(--gt-h, 420px) * 0.056), 28px);
   --mini-h: calc(var(--mini-w) * 1.38);
+  /* 弃牌专用尺寸（V24613-003）：比副露/牌背的 --mini-w 小一档（0.056 → 0.047），
+     同样多的牌占的面积少 ~30%，中央能容纳更多弃牌也不显挤 */
+  --dis-w: clamp(14px, calc(var(--gt-h, 420px) * 0.047), 23px);
+  --dis-h: calc(var(--dis-w) * 1.38);
 }
 .mj.is-big { min-height: calc(100vh - 150px); }
 .mj-top {
@@ -1140,10 +1160,12 @@ onBeforeUnmount(() => {
    并排后还要再压：`.gt-seat` 全局是「34px 头像 + 7px 上下 padding + 边框」= 50px 高，
    在一屏 360px 的横屏里太奢侈 → 这里把对家的座位牌压到 34px 左右。 */
 .mj-seat-top { grid-area: top; flex-direction: row; align-items: center; justify-content: center; gap: 8px; }
-.mj-seat-top .gt-seat { max-width: 190px; flex: none; padding: 2px 9px 2px 3px; gap: 7px; }
-.mj-seat-top .gt-seat-av { width: 26px; height: 26px; font-size: 13px; }
-.mj-seat-top .gt-seat-name { font-size: 11.5px; max-width: 92px; }
-.mj-seat-top .gt-seat-sub { font-size: 10px; }
+/* V24613-001：座位卡只留「头像 + 名字 + 徽标」——「X 张 · 副露 N」子行删掉，
+   张数牌背已经摆着、副露有自己的牌面（自家副露也在手牌左侧摆出来了），
+   纯文字重复一遍只是白占宽度。头像/内边距同步再收一档。 */
+.mj-seat-top .gt-seat { max-width: 150px; flex: none; padding: 1px 8px 1px 2px; gap: 6px; }
+.mj-seat-top .gt-seat-av { width: 24px; height: 24px; font-size: 12px; }
+.mj-seat-top .gt-seat-name { font-size: 11.5px; max-width: 88px; }
 .mj-seat-top .mj-melds, .mj-seat-top .mj-backs { flex: 0 1 auto; }
 .mj-seat-left { grid-area: left; align-items: flex-start; }
 .mj-seat-right { grid-area: right; align-items: flex-end; }
@@ -1206,15 +1228,18 @@ onBeforeUnmount(() => {
    （transform 不参与布局，必须换盒子尺寸才能让列内间距正确）。
    旋转方向：牌面朝向桌心 —— 左家牌顶指向右（rotate 90°），右家牌顶指向左（rotate -90°），
    与「打牌时牌顶推向桌心」的真实方位一致。 */
-.mj .mj-dis-left > .gt-tile.mini, .mj .mj-dis-right > .gt-tile.mini { width: var(--mini-h); height: var(--mini-w); }
+/* 弃牌专用小尺寸（V24613-003）：必须用 .mj 前缀提特异性压过 `.mj .gt-tile.mini`；
+   放在左右互换规则**之前**，让横躺规则（同特异性、靠后）赢过它 */
+.mj .mj-dis > .gt-tile.mini { width: var(--dis-w); height: var(--dis-h); }
+.mj .mj-dis-left > .gt-tile.mini, .mj .mj-dis-right > .gt-tile.mini { width: var(--dis-h); height: var(--dis-w); }
 .mj .mj-dis-left > .gt-tile > :deep(svg) {
   right: auto; bottom: auto; left: 50%; top: 50%;
-  width: var(--mini-w); height: var(--mini-h);
+  width: var(--dis-w); height: var(--dis-h);
   transform: translate(-50%, -50%) rotate(90deg);
 }
 .mj .mj-dis-right > .gt-tile > :deep(svg) {
   right: auto; bottom: auto; left: 50%; top: 50%;
-  width: var(--mini-w); height: var(--mini-h);
+  width: var(--dis-w); height: var(--dis-h);
   transform: translate(-50%, -50%) rotate(-90deg);
 }
 
@@ -1241,6 +1266,13 @@ onBeforeUnmount(() => {
    牌宽公式的百分比以手牌盒实际宽为基准，按钮占掉的空间自动摊进均分项，
    全屏 1280 逻辑宽下手牌仍由 0.12×屏高的上限封顶，不会被压小。 */
 .mj-handrow { display: flex; align-items: flex-end; gap: 8px; min-height: 0; }
+/* 自己的碰 / 杠副露（V24613-002）：迷你牌横排，flex:none 不参与手牌均分；
+   牌宽用 --mini-w（跟别家副露一致），多了往右推手牌、绝不换行溢出 */
+.mj-ownmelds {
+  display: flex; gap: 4px; align-items: flex-end;
+  flex: 0 1 auto; min-width: 0; overflow: hidden; padding-bottom: 3px;
+}
+.mj-ownmelds .gt-meld { display: inline-flex; gap: 1px; flex: none; }
 /* 手牌铺满可用宽度：牌宽 = min(按屏高算的上限, 按张数均分)。
    系数 0.12（0.14 → 0.12）：手机横屏约 43px 宽 / 60px 高，仍比最早的 40px 大，
    但省出的 12px 全给了上方牌桌 —— 一屏只有 360px 高时，每一像素都要算。
