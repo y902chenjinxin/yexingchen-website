@@ -1,3 +1,44 @@
+## [v2.45.1] - 2026-10-08
+
+### 手机端「旧壳残影 / 样式全丢」根治：缺资源回 404 + 入口不缓存
+
+夜星发来手机端截图：一屏「牌桌邀请」+ 一个巨大的黑色 `i` 图标（Element Plus
+的 info 图标被撑成整屏）。经取证，这不是当前版本的渲染，而是**老构建残留**：
+
+- 截图里的「牌桌邀请」标题只存在于 v2.45.0 之前的 `ElMessageBox` 实现，
+  线上 v2.45.0 的 JS 里该字符串出现 **0 次**（`MobileInviteDock` 已就位）。
+- 线上 `GET /assets/<不存在的文件>.css` 返回的是 **HTTP 200 + `text/html`**
+  （nginx `location /assets/ { try_files $uri /index.html; }`）——
+  于是「样式表被一段 HTML 顶替」→ 图标没有尺寸约束 → 撑成整屏。
+
+**根因链**：部署会整体替换 `dist/`，老壳引用的旧 chunk 随即消失；而入口
+`index.html` 没有 `Cache-Control`（走浏览器启发式缓存，可存活数小时），
+于是「老壳 + 新磁盘」的窗口期里，旧 chunk 请求被 SPA fallback 顶成 HTML，
+再被浏览器 / SW 当作 JS / CSS 缓存下来 —— 刷新也不会自愈。
+
+**改法**
+
+- nginx：`location /assets/` 由 `try_files $uri /index.html` 改为 `try_files $uri =404`
+  （`.mjs/.onnx/.wasm` 那条正则 location 同步改），并补 `expires 7d`（内容哈希可长缓存）。
+- nginx：新增 `location = /index.html` 与 `location = /sw.js` → `expires -1`
+  （= `Cache-Control: no-cache`）。用 `expires` 而非 `add_header`，因为
+  `add_header` 一旦出现在 location 里会覆盖 server 级继承（COOP 会丢）。
+- SW：新增「HTML 冒充资源」防御 —— `/assets/**` 的响应若 `Content-Type: text/html`
+  则不缓存，并删除已中毒的旧条目让它自愈；命中缓存前也先做同样的体检。
+- 版本：SW `v309 → v310`（激活时清掉可能中毒的 `v309-static`），APP `v2.45.0 → v2.45.1`。
+- 仓库里的 `nginx/yexingchen.cn.conf` 之前是**严重过期的参考副本**（与服务端实际配置
+  不一致），本次按服务端现状重写并与修复同步，作为唯一可信副本。
+
+**取证**
+
+- `scripts/_probe_mobile_dock.js`：移动端胶囊在 `/workbench`、`/modules`、`/profile`、
+  `/tool/games`、`/finance/book`、`/notes`、`/life/weight`、`/finance/market` 八个路由
+  全部 `exists: true` 且 `elementFromPoint` 命中自身（没被遮挡）。
+- `scripts/_probe_dock_action.js`：胶囊「拒绝」→ 胶囊消失 → 后端待处理邀请归零 →
+  换页刷新后不复活。
+- 线上：`GET /assets/<不存在>.css` 应为 **404**；`GET /` 与 `/sw.js` 应带
+  `Cache-Control: no-cache`。
+
 ## [v2.45.0] - 2026-10-07
 
 ### 对局邀请「收不到」修复：持久入口 + 非阻塞提示

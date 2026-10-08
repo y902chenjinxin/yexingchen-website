@@ -10,7 +10,7 @@
  * 不缓存：跨源资源（CDN/字体/统计）。
  * 注册失败不应阻塞应用启动（main.js 中已 try/catch）。
  */
-const VERSION = 'xuanhuang-v309'
+const VERSION = 'xuanhuang-v310'
 const STATIC_CACHE = `${VERSION}-static`
 
 self.addEventListener('install', (event) => {
@@ -69,11 +69,29 @@ self.addEventListener('fetch', (event) => {
   // 首帧壳（/ 与 index.html）网络优先：每次导航都必须拿到最新入口，避免旧壳残影
   const isShell = url.pathname === '/' || url.pathname === '/index.html'
 
+  /* 「HTML 冒充资源」防御（v2.45.1）
+   *
+   * 部署会整体替换 dist/，老壳引用的旧 chunk 随即从磁盘消失。若此时服务器把
+   * 缺失的 chunk 顶成 SPA fallback（HTTP 200 + text/html），浏览器会把这段 HTML
+   * 当 JS / CSS 用 —— 症状是「样式全丢、图标巨大」，而且一旦被本 SW 缓存就
+   * **刷新也不会好**。服务器侧已改成缺文件回 404（见 nginx/yexingchen.cn.conf），
+   * 这里再兜一层：识别到 text/html 就不缓存，并清掉已经中毒的旧条目让其自愈。 */
+  const wantsAsset = url.pathname.startsWith('/assets/')
+  const isHtmlPoison = (res) => {
+    if (!res || !wantsAsset) return false
+    const ct = (res.headers.get('content-type') || '').toLowerCase()
+    return ct.includes('text/html')
+  }
+
   event.respondWith(
     caches.open(STATIC_CACHE).then((cache) => {
       const networkFirst = () =>
         fetch(req)
           .then((response) => {
+            if (isHtmlPoison(response)) {
+              cache.delete(req).catch(() => {})
+              return new Response('', { status: 404, statusText: 'asset-missing' })
+            }
             if (response && response.status === 200 && response.type === 'basic') {
               cache.put(req, response.clone()).catch(() => {})
             }
@@ -83,7 +101,12 @@ self.addEventListener('fetch', (event) => {
       if (isShell) {
         return networkFirst()
       }
-      return cache.match(req).then((cached) => (cached || networkFirst()))
+      return cache.match(req).then((cached) => {
+        if (cached && !isHtmlPoison(cached)) return cached
+        // 中毒条目：删掉再回源，别让「HTML 当 CSS」一直粘着
+        if (cached) cache.delete(req).catch(() => {})
+        return networkFirst()
+      })
     })
   )
 })
