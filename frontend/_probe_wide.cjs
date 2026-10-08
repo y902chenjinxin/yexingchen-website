@@ -37,6 +37,7 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
     }
     await page.waitForTimeout(2200)
     if (c.g === 'mj') {
+      // 定缺不能选手上没有的花色：每次都挑持有最多的一门；打完/结算的页内浮层直接摘掉
       for (let i = 0; i < 6; i++) {
         const btns = await page.$$('.gt-over-card .gt-btn')
         if (!btns.length) break
@@ -53,6 +54,27 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
       }
       await page.evaluate(() => document.querySelectorAll('.gt-over').forEach((e) => e.remove()))
       await page.waitForTimeout(1200)
+      // 自己打几张，把四家的弃牌都喂出来。注意 AI 现在要 2~3s 才出一张，
+      // 所以必须**等轮到自己**（手牌带 .pickable）再点，不能盲点。
+      const rounds = Number(new URLSearchParams(await page.url().split('?')[1] || '').get('rounds') || 8)
+      for (let i = 0; i < rounds; i++) {
+        let ready = false
+        for (let w = 0; w < 25; w++) {
+          if (await page.$('.mj-hand .gt-tile.pickable')) { ready = true; break }
+          await page.waitForTimeout(400)
+        }
+        if (!ready) break
+        try {
+          const tiles = await page.$$('.mj-hand .gt-tile.pickable')
+          await tiles[Math.floor(Math.random() * tiles.length)].click()
+          await page.waitForTimeout(300)
+          const play = await page.$('.mj-actions .gt-btn')
+          if (play) await play.click()
+        } catch { /* 忽略 */ }
+        await page.waitForTimeout(600)
+      }
+      await page.evaluate(() => document.querySelectorAll('.gt-over').forEach((e) => e.remove()))
+      await page.waitForTimeout(400)
     }
 
     const info = await page.evaluate(() => {
@@ -111,6 +133,77 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
         mjTable: box('.mj-table'),
         mjCenter: box('.mj-center'),
         mjTableKids: kids('.mj-table'),
+        // 底部各段占高 —— 弃牌区能长多高完全由这里决定
+        mjBottom: box('.mj-bottom'),
+        mjHandbar: box('.mj-handbar'),
+        mjHand: box('.mj-hand'),
+        mjActions: box('.mj-actions'),
+        mjSeatTop: box('.mj-seat-top'),
+        mjSeatCard: box('.mj-seat-top .gt-seat'),
+        mjShell: box('.gt-shell.mj'),
+        mjPadding: (() => { const el = document.querySelector('.gt-shell.mj'); if (!el) return null; const c = getComputedStyle(el); return `${c.paddingTop}/${c.paddingBottom} gap=${c.rowGap}` })(),
+        mjTablePadding: (() => { const el = document.querySelector('.mj-table'); if (!el) return null; const c = getComputedStyle(el); return `${c.paddingTop}/${c.paddingBottom} gap=${c.rowGap}` })(),
+        // 四方弃牌各自落在哪 —— 判断「牌有没有放在自己那边」的依据
+        mjDis: ['.mj-dis-up', '.mj-dis-left', '.mj-dis-right', '.mj-dis-down'].map((sel) => {
+          const el = document.querySelector(sel)
+          if (!el) return { sel, missing: true }
+          const r = el.getBoundingClientRect()
+          const k = el.querySelector('.gt-tile')
+          const kr = k ? k.getBoundingClientRect() : null
+          return {
+            sel,
+            box: { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y) },
+            n: el.children.length,
+            cols: getComputedStyle(el).gridTemplateColumns,
+            st: getComputedStyle(el).gridArea,
+            tile: kr ? { w: Math.round(kr.width), h: Math.round(kr.height), x: Math.round(kr.x), y: Math.round(kr.y) } : null,
+          }
+        }),
+        mjSeatBoxes: ['.mj-seat-top', '.mj-seat-left', '.mj-seat-right', '.mj-seat-bottom'].map((sel) => ({
+          sel, ...(box(sel) || { missing: true }),
+        })),
+
+        /* ---------- 掼蛋 ---------- */
+        gdTable: box('.gd-table'),
+        gdMain: box('.gd-main'),
+        gdCenter: box('.gd-center'),
+        gdCards: box('.gd-center-cards'),
+        gdRowTop: box('.gd-row-top'),
+        gdTurn: box('.gd-turnbox'),
+        gdTurnText: (() => { const el = q('.gd-turnbox'); return el ? el.textContent.replace(/\s+/g, ' ').trim() : null })(),
+        gdHistory: box('.gd-history'),
+        gdHistoryPos: (() => { const el = q('.gd-history'); return el ? getComputedStyle(el).position : null })(),
+        gdSeats: ['.gd-row-top .gt-seat', '.gd-row-mid .gt-seat', '.gd-row-mid .gt-seat:last-of-type'].map((sel) => box(sel)),
+        gdBottom: box('.gd-bottom'),
+        gdHand: box('.gd-hand'),
+        gdHandKids: (() => { const el = q('.gd-hand'); return el ? el.children.length : null })(),
+        gdCard: box('.gd .gt-card'),
+        gdActions: box('.gd-actions'),
+        // 重叠检测：「挤一块」的硬证据 —— 任何一对相交都算问题
+        gdOverlaps: (() => {
+          const rects = {
+            '出牌记录': q('.gd-history'),
+            '左家': q('.gd-row-mid .gt-seat'),
+            '右家': q('.gd-row-mid .gt-seat:last-of-type'),
+            '中央区': q('.gd-center'),
+            '轮到谁': q('.gd-turnbox'),
+            '对家': q('.gd-row-top .gt-seat'),
+            '出的牌': q('.gd-center-cards'),
+          }
+          const keys = Object.keys(rects)
+          const out = []
+          for (let i = 0; i < keys.length; i++) {
+            for (let j = i + 1; j < keys.length; j++) {
+              const a = rects[keys[i]]; const b = rects[keys[j]]
+              if (!a || !b) continue
+              const ra = a.getBoundingClientRect(); const rb = b.getBoundingClientRect()
+              const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left)
+              const h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
+              if (w > 1 && h > 1) out.push(`${keys[i]}×${keys[j]} ${Math.round(w)}×${Math.round(h)}`)
+            }
+          }
+          return out
+        })(),
       }
     })
     console.log('===== ' + c.name + ' =====')

@@ -10,10 +10,10 @@
       <header class="gd-top">
         <span class="gt-title">掼蛋</span>
         <span class="gt-pill gold">主级 {{ G.levelText(roundLevel) }}</span>
-        <span class="gd-score" :title="`第 ${roundNo} 局 · 我方 ${G.levelText(teamLevel[0])} / 对方 ${G.levelText(teamLevel[1])}`">
-          <i class="me">我方 {{ G.levelText(teamLevel[0]) }}</i>
+        <span class="gd-score" :title="`第 ${roundNo} 局 · 我方 ${G.levelText(myLevel)} / 对方 ${G.levelText(oppLevel)}`">
+          <i class="me">我方 {{ G.levelText(myLevel) }}</i>
           <em>·</em>
-          <i class="op">对方 {{ G.levelText(teamLevel[1]) }}</i>
+          <i class="op">对方 {{ G.levelText(oppLevel) }}</i>
         </span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
@@ -27,6 +27,15 @@
         <div class="gd-main">
           <!-- 对家 -->
           <div class="gd-row gd-row-top">
+            <!-- 轮到谁出牌：钉在牌区右上角，常驻不消失。
+                 旧版把「轮到 X 出牌」放在中央 `.gd-center-empty` 里，而那段只在**还没有人出过牌**
+                 时渲染 —— 只要有人出了第一手，轮到谁的提示就永远消失了
+                 （夜星：「轮到谁出牌都不展示」）。现改成常驻胶囊，轮到自己时变金底高亮。 -->
+            <span class="gd-turnbox" :class="{ 'is-me': turn === oSeat, 'is-done': turn < 0 }">
+              <em>轮到</em>
+              <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
+              <i>出牌</i>
+            </span>
             <div class="gt-seat" :class="seatCls(2)">
               <span class="gt-seat-av">{{ seatAvatar(2) }}</span>
               <span class="gt-seat-tx">
@@ -69,9 +78,7 @@
                     <span v-if="isWildCard(c)" class="tag">配</span>
                   </span>
                 </template>
-                <p v-else class="gd-center-empty">
-                  {{ phase === 'playing' ? '轮到 ' + seatName(turn) + ' 出牌' : '本局结束' }}
-                </p>
+                <p v-else class="gd-center-empty">{{ phase === 'playing' ? '本轮先手' : '本局结束' }}</p>
               </div>
             </div>
 
@@ -135,7 +142,7 @@
           <span class="gd-hand-tag">{{ seatName(viewSeat) }} · {{ viewHand.length }} 张</span>
           <!-- 全屏时顶栏被收起，级牌与比分改由这条承载，保证一直可见；非全屏时隐藏以免与顶栏重复 -->
           <span class="gd-scorebar">
-            主级 {{ G.levelText(roundLevel) }} · 我方 {{ G.levelText(teamLevel[0]) }} / 对方 {{ G.levelText(teamLevel[1]) }}
+            主级 {{ G.levelText(roundLevel) }} · 我方 {{ G.levelText(myLevel) }} / 对方 {{ G.levelText(oppLevel) }}
           </span>
           <span class="gt-spacer"></span>
           <span v-if="viewTing.length" class="gd-mini">可出 {{ viewTing.length }}</span>
@@ -237,11 +244,11 @@
       <!-- ===== 结算（页内，不弹窗） ===== -->
       <div v-if="phase === 'settled'" class="gt-over">
         <div class="gt-over-card">
-          <h3>{{ matchOver ? (roundResult.winTeam === 0 ? '我方打过 A，全场获胜！' : '对方打过 A，本场落败') : (roundResult.winTeam === 0 ? '我方升级！' : '对方升级') }}</h3>
+          <h3>{{ matchOver ? (iWon ? '我方打过 A，全场获胜！' : '对方打过 A，本场落败') : (iWon ? '我方升级！' : '对方升级') }}</h3>
           <p>
             名次：<b>{{ roundResult.order.map(s => seatName(s)).join(' → ') }}</b><br>
-            升级：{{ roundResult.winTeam === 0 ? '我方' : '对方' }} +{{ roundResult.up }} 级<br>
-            当前级数：我方 {{ G.levelText(teamLevel[0]) }} · 对方 {{ G.levelText(teamLevel[1]) }}
+            升级：{{ iWon ? '我方' : '对方' }} +{{ roundResult.up }} 级<br>
+            当前级数：我方 {{ G.levelText(myLevel) }} · 对方 {{ G.levelText(oppLevel) }}
           </p>
           <div class="gt-actions">
             <button v-if="!isOnline || isHost" class="gt-btn" @click="nextRound">再来一局</button>
@@ -295,12 +302,16 @@ const emit = defineEmits(['exit', 'room-lock', 'room-unlock', 'act', 'rematch'])
 
 const SAVE_KEY = 'guandan'
 const SEAT_LABEL = { 0: '你', 1: '右家', 2: '对家', 3: '左家' }
+/** 同屏 p4 时各座位的名字后缀（0 号位固定叫「你」，不在此表内） */
+const HUMAN_CN = { 1: '二', 2: '三', 3: '四' }
 const AI_AVATARS = { 1: '🐯', 2: '🦊', 3: '🐼' }
 
-/* 尺寸基准：牌大小跟着牌桌可用高度走 —— 手机横屏约 64×91，电脑大屏约 88×125。
-   旧版固定 62×88 且整张牌桌被等比缩到 0.54，手机上只有 33px 宽，既看不清也点不准。 */
+/* 尺寸基准：牌大小跟着牌桌可用高度走 —— 手机横屏约 49×70，电脑大屏约 88×125。
+   旧版固定 62×88 且整张牌桌被等比缩到 0.54，手机上只有 33px 宽，既看不清也点不准。
+   系数 0.165 → 0.135：0.165 时手牌高 84px，占掉 360px 画布的四分之一，牌桌只剩 153px，
+   中央出牌区（min-height 96）塞不下、向上压住对家座位 —— 这就是「横屏挤在一块」。 */
 const { rootRef, rootH } = useRootHeight()
-const cardW = computed(() => Math.round(Math.min(88, Math.max(46, (rootH.value || 420) * 0.165))))
+const cardW = computed(() => Math.round(Math.min(88, Math.max(44, (rootH.value || 420) * 0.135))))
 const cardH = computed(() => Math.round(cardW.value * 1.42))
 
 /* ---------- 状态 ---------- */
@@ -326,6 +337,24 @@ const firstSeat = ref(0)
 /* ---------- 派生 ---------- */
 const isOnline = computed(() => props.online)
 const oSeat = computed(() => Number(props.onlineSeat ?? 0))
+
+/**
+ * 我方是**哪一队** —— 不能再写死 team 0（V2465-006）。
+ *
+ * 掼蛋的 TEAM_OF = {0:0, 1:1, 2:0, 3:1}（对家为队友）。单机时真人固定坐 0 号位 → 我方 = team 0；
+ * 但在线开房时真人可能落在 **1 或 3 号位**，那时我方其实是 team 1。
+ * `seatName()` 会把真人所在座位显示成「你」，而升级计算用的是 `TEAM_OF[ranking[0]]` ——
+ * 两边口径不一致，于是「你」拿了第一却显示「对方升级」，级数也整个调了个个儿
+ * （夜星的截图：名次「你 → …」+「升级：对方 +1 级」）。
+ * 现在统一：所有「我方 / 对方」都由 myTeam / oppTeam 推出。
+ */
+const myTeam = computed(() => (isOnline.value ? (G.TEAM_OF[oSeat.value] ?? 0) : 0))
+const oppTeam = computed(() => 1 - myTeam.value)
+const myLevel = computed(() => teamLevel.value[myTeam.value])
+const oppLevel = computed(() => teamLevel.value[oppTeam.value])
+/** 本局是否我方赢（按我方队伍判定，不按 team 0） */
+const iWon = computed(() => roundResult.value.winTeam === myTeam.value)
+
 const HUMAN_SEATS = computed(() => {
   if (isOnline.value) return (props.onlineView?.players || []).map(p => p.seat)
   if (mode.value === 'solo') return [0]
@@ -483,7 +512,9 @@ function seatName(s) {
     return props.seatNames[s] || `座位${s + 1}`
   }
   if (s === 0) return '你'
-  return HUMAN_SEATS.value.includes(s) ? `玩家${s === 2 ? '二' : '三'}` : SEAT_LABEL[s]
+  // 同屏 p4：0 号位已经叫「你」，其余按座位号排「玩家二 / 三 / 四」。
+  // 旧写法 `玩家${s === 2 ? '二' : '三'}` 会让 **1 号与 3 号座位都叫「玩家三」**。
+  return HUMAN_SEATS.value.includes(s) ? `玩家${HUMAN_CN[s] || s + 1}` : SEAT_LABEL[s]
 }
 function seatAvatar(s) {
   if (isOnline.value) {
@@ -662,7 +693,7 @@ function endRound() {
   phase.value = 'settled'
   pushHistory({ kind: 'finish', ranking: order, up, winTeam })
   if (matchOver.value) sfx.win()
-  else if (winTeam === 0) sfx.win()
+  else if (winTeam === myTeam.value) sfx.win()
   else sfx.lose()
   saveState()
 }
@@ -683,13 +714,23 @@ function nextRound() {
 }
 
 /* ---------- AI ---------- */
+/**
+ * 机器人「思考时间」：旧值 720ms，三家机器人连着出牌，真人根本反应不过来
+ * （夜星：「机器人出来时，不管有没有牌，都控制在 2-3s 左右」）。
+ * 出牌与过牌走的是同一个 aiTurn，所以这一个延时把两种情况都覆盖了；
+ * 2.0~3.0s 随机，避免三家像节拍器。
+ */
+const AI_THINK_MIN = 2000
+const AI_THINK_MAX = 3000
+function aiThink() { return AI_THINK_MIN + Math.floor(Math.random() * (AI_THINK_MAX - AI_THINK_MIN)) }
+
 let aiTimer = null
 function scheduleAI() {
   clearTimeout(aiTimer)
   if (isOnline.value) return   // 在线由服务端 AI 推进
   if (phase.value !== 'playing') return
   if (HUMAN_SEATS.value.includes(turn.value)) return
-  aiTimer = setTimeout(aiTurn, 720)
+  aiTimer = setTimeout(aiTurn, aiThink())
 }
 function aiTurn() {
   if (phase.value !== 'playing') return
@@ -871,7 +912,7 @@ function doHint() {
 function saveState() {
   saveGame(SAVE_KEY, {
     mode: mode.value,
-    summary: `第 ${roundNo.value} 局 · 我方 ${G.levelText(teamLevel.value[0])} / 对方 ${G.levelText(teamLevel.value[1])}`,
+    summary: `第 ${roundNo.value} 局 · 我方 ${G.levelText(myLevel.value)} / 对方 ${G.levelText(oppLevel.value)}`,
     teamLevel: teamLevel.value.slice(),
     roundLevel: roundLevel.value,
     roundNo: roundNo.value,
@@ -928,8 +969,10 @@ watch(() => viewHand.value.length, () => {
 <style scoped>
 .gd-wrap { width: 100%; }
 .gd {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 10px 12px 12px; min-height: 520px;
+  display: flex; flex-direction: column; gap: 6px;
+  /* 全屏一屏只有 360px 高，外壳留白每一点都要算：旧 10/12 + gap8 → 新 6/8 + gap6，
+     省下的 12px 全给牌桌（见 .gd-table / .gd-center 的注释）。 */
+  padding: 6px 10px 8px; min-height: 520px;
 }
 .gd.is-big { min-height: calc(100vh - 140px); }
 
@@ -968,7 +1011,7 @@ watch(() => viewHand.value.length, () => {
 .gd-table {
   position: relative;
   flex: 1; min-height: 0; display: flex; gap: 10px;
-  padding: 10px; border-radius: 16px;
+  padding: 8px; border-radius: 16px;
   /* 墨绿绒布（与麻将、大富翁同一色系）：旧版只是一层极淡的白雾叠在深色壳上，
      牌桌与外壳分不出边界，52 张牌像浮在空气里 */
   background:
@@ -981,17 +1024,43 @@ watch(() => viewHand.value.length, () => {
 }
 .gd-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .gd-row { display: flex; align-items: center; }
-.gd-row-top { justify-content: center; }
-.gd-row-mid { flex: 1; min-height: 0; justify-content: space-between; align-items: center; gap: 8px; }
+.gd-row-top { justify-content: center; position: relative; }
+/* 对家座位压扁到 ~34px：全局 .gt-seat 是 34px 头像 + 7px 上下 padding = 50px 高，
+   一屏 360px 的横屏里太奢侈（它和中央出牌区抢的正是同一份高度）。 */
+.gd-row-top .gt-seat { padding: 2px 9px 2px 3px; gap: 7px; }
+.gd-row-top .gt-seat-av { width: 26px; height: 26px; font-size: 13px; }
+.gd-row-top .gt-seat-name { font-size: 11.5px; max-width: 92px; }
+.gd-row-top .gt-seat-sub { font-size: 10px; }
+.gd-row-mid { flex: 1; min-height: 0; justify-content: space-between; align-items: center; gap: 14px; }
 .gd-seat-side { flex-direction: column; text-align: center; max-width: 96px; padding: 8px 6px; }
 .gd-seat-side .gt-seat-tx { align-items: center; }
 .gd-seat-side .gt-seat-name { max-width: 84px; }
 
+/* 轮到谁出牌：牌区右上角，常驻。轮到自己时金底高亮（一眼看出该我动了） */
+.gd-turnbox {
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 5px 12px; border-radius: 999px;
+  background: rgba(0, 0, 0, .42);
+  border: 1px solid rgba(233, 200, 119, .45);
+  box-shadow: 0 0 18px -7px rgba(233, 200, 119, .55);
+  white-space: nowrap;
+}
+.gd-turnbox em, .gd-turnbox i { font-style: normal; font-size: 11px; color: var(--gt-ink-dim); }
+.gd-turnbox b { font-size: 15px; font-weight: 700; color: var(--gt-gold); letter-spacing: .02em; }
+.gd-turnbox.is-me {
+  background: linear-gradient(180deg, rgba(244, 220, 156, .96), rgba(217, 182, 95, .96));
+  border-color: rgba(255, 255, 255, .5);
+  box-shadow: 0 0 22px -4px rgba(233, 200, 119, .95);
+}
+.gd-turnbox.is-me b, .gd-turnbox.is-me em, .gd-turnbox.is-me i { color: #2a1d05; }
+.gd-turnbox.is-done { opacity: .55; }
+
 /* 中央出牌区 */
 .gd-center {
-  flex: 1; min-width: 0; min-height: 96px; display: flex; flex-direction: column;
+  flex: 1; min-width: 0; min-height: 84px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;
-  padding: 10px; border-radius: 14px;
+  padding: 8px; border-radius: 14px;
   background: rgba(0, 0, 0, .13); border: 1px solid rgba(255, 255, 255, .07);
 }
 .gd-center-head { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
@@ -1001,19 +1070,18 @@ watch(() => viewHand.value.length, () => {
 .gd-center .gt-card { width: calc(var(--card-w, 62px) * 0.94); height: calc(var(--card-h, 88px) * 0.94); }
 .gd-center-empty { margin: 0; font-size: 12.5px; color: var(--gt-ink-dim); }
 
-/* 出牌记录：浮在牌桌左下的浮层，收起时只是一个胶囊，不占牌桌宽度 */
+/* 出牌记录：牌桌**右侧真正的竖栏**（不再是 absolute 浮层）。
+   旧版是 `position:absolute; left:10px; bottom:10px; width:190px` 的浮层 ——
+   它正压在左家的座位牌上（截图里 左家的「15 张」被盖掉半截），
+   长起来还会压住中央出的牌；三样东西叠在一起，就是「横屏挤在一块」的主因。
+   改成 flex 列后彻底不重叠，窗内自己滚动回看。 */
 .gd-history {
-  position: absolute; left: 10px; bottom: 10px; z-index: 4;
-  width: 190px; max-height: calc(100% - 20px); max-width: 60%;
+  flex: 0 0 176px; align-self: stretch; min-height: 0;
   display: flex; flex-direction: column; gap: 6px;
-  border-radius: 12px; padding: 8px 6px 8px 8px;
-  background: rgba(6, 18, 26, .86); border: 1px solid var(--gt-line);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px; padding: 7px 6px 7px 8px;
+  background: rgba(6, 18, 26, .5); border: 1px solid var(--gt-line);
 }
-.gd-history.is-collapsed {
-  width: auto; max-width: none; padding: 4px 6px;
-  background: rgba(6, 18, 26, .6);
-}
+.gd-history.is-collapsed { flex: 0 0 106px; padding: 4px 6px; }
 .gd-history.is-collapsed .gd-history-head { padding: 0 2px; gap: 5px; }
 .gd-history-head {
   display: flex; align-items: center; gap: 6px;
@@ -1030,7 +1098,8 @@ watch(() => viewHand.value.length, () => {
 .gd-history-toggle:hover { color: var(--gt-ink); border-color: rgba(233, 200, 119, .5); }
 .gd-history-list {
   margin: 0; padding: 2px 4px 2px 0; list-style: none;
-  max-height: 96px; overflow-y: auto;
+  /* 右侧竖栏整条高度都给列表（旧版是 96px 的浮层小窗） */
+  flex: 1; min-height: 0; max-height: none; overflow-y: auto;
   display: flex; flex-direction: column; gap: 4px;
   scrollbar-width: thin; overscroll-behavior: contain;
 }
@@ -1082,7 +1151,7 @@ watch(() => viewHand.value.length, () => {
 }
 
 /* 底部手牌 */
-.gd-bottom { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.gd-bottom { display: flex; flex-direction: column; gap: 4px; flex: none; }
 .gd-bottom-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .gd-hand-tag { font-size: 12.5px; font-weight: 600; color: var(--gt-gold); }
 /* 全屏才出现的级牌 / 比分（此时顶栏已收起，靠它兜住信息） */
@@ -1112,6 +1181,9 @@ watch(() => viewHand.value.length, () => {
 
 /* 操作区：次要工具收成小号弱按钮，「不要 / 出牌」是大按钮主力（腾讯棋牌同款主次关系） */
 .gd-actions { justify-content: center; gap: 8px; }
+/* 提示/重选/同花顺/不要/出牌：全局 .gt-btn 是 8px/18px（39px 高），
+   一屏 360px 的横屏里偏奢侈，收成 6px/16px（约 33px）。手牌尺寸不动。 */
+.gd-actions .gt-btn { padding: 6px 16px; font-size: 12.5px; }
 .gd-act-gap { width: 10px; flex: none; }
 .gd-play {
   min-width: 96px;

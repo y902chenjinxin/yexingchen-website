@@ -73,13 +73,15 @@ export function useGameTable() {
     }, HEARTBEAT_MS)
   }
 
-  async function create(gameKeyStr, { inviteeUserIds = [], baseStake = 100, seatCount = null, config = {} } = {}) {
+  async function create(gameKeyStr, { inviteeUserIds = [], teammateUserIds = [], baseStake = 100, seatCount = null, config = {} } = {}) {
     busy.value = true
     error.value = ''
     try {
       const res = await gameTablesApi.create({
         game_key: gameKeyStr,
         invitee_user_ids: inviteeUserIds,
+        // 掼蛋 2v2：标记谁是队友（服务端把人排到房主对家的 2 号位），其余为对手
+        teammate_user_ids: teammateUserIds,
         base_stake: baseStake,
         seat_count: seatCount,
         config,

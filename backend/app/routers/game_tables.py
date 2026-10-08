@@ -49,6 +49,8 @@ ANYTIME_ACTS = {"trade_offer", "trade_accept", "trade_reject"}
 class CreateIn(BaseModel):
     game_key: str
     invitee_user_ids: list[int] = []
+    # 掼蛋 2v2：这批被邀请人里谁是「队友」（坐房主对家的 2 号位），其余是对手
+    teammate_user_ids: list[int] = []
     seat_count: int | None = None
     base_stake: int = 100
     config: dict = {}
@@ -97,26 +99,62 @@ def _seat_count_for(game: str, requested: int | None) -> int:
     return int(eng.seat_count)
 
 
-def _make_seats(host_id: int, invitees: list[int], seat_count: int, names: dict[int, str]) -> list[dict]:
+def _make_seats(host_id: int, invitees: list[int], seat_count: int,
+                names: dict[int, str], teammate_ids: list[int] | None = None) -> list[dict]:
+    """座位分配：**0 号位固定是房主**。
+
+    掼蛋是 2v2，`TEAM_OF = {0:0, 1:1, 2:0, 3:1}` —— 0↔2 面对面为队友、1↔3 为队友，
+    所以「谁是队友」等价于「谁坐 2 号位」。
+    旧版按邀请顺序依次塞进 1/2/3 号位：第二个被邀请的人**被动变成队友**，房主无从选择
+    （夜星：「建房邀请要支持选择成为队友或对手」）。现在按前端传来的 `teammate_ids`
+    把标了「队友」的人优先排到 2 号位，其余填对手位 1 / 3；没标队友就留空，开局由 AI 补位。
+    """
     now = _now().isoformat()
-    seats: list[dict] = [{
-        "seat": 0, "user_id": host_id, "is_ai": False,
-        "name": names.get(host_id, "家人"), "joined": True, "online_at": now, "autopilot": False,
-    }]
+    tset = {int(x) for x in (teammate_ids or [])}
+    pool = [u for u in invitees if u != host_id]
     used = {host_id}
-    for uid in invitees:
-        if len(seats) >= seat_count or uid in used:
+    line: list[int] = [0] * seat_count
+    line[0] = host_id
+
+    mates = [u for u in pool if u in tset]
+    foes = [u for u in pool if u not in tset]
+    # 4 席 = 掼蛋这种 2v2：2 号位是队友位，1 / 3 是对手位
+    slots: list[tuple[int, list[int]]] = ([(2, mates), (1, foes), (3, foes)] if seat_count == 4
+                                         else [(i, foes) for i in range(1, seat_count)])
+
+    def place(idx: int, cands: list[int]) -> None:
+        for u in cands:
+            if u not in used:
+                used.add(u)
+                line[idx] = u
+                return
+
+    for idx, cands in slots:
+        place(idx, cands)
+    # 兜底：标了多个「队友」或非 4 席游戏时，剩下的人按顺序填进还空着的位置
+    for u in pool:
+        if u in used:
             continue
-        used.add(uid)
-        seats.append({
-            "seat": len(seats), "user_id": uid, "is_ai": False,
-            "name": names.get(uid, "家人"), "joined": False, "online_at": None, "autopilot": False,
-        })
-    while len(seats) < seat_count:
-        seats.append({
-            "seat": len(seats), "user_id": 0, "is_ai": False,
-            "name": "空位", "joined": False, "online_at": None, "autopilot": False,
-        })
+        for idx in range(1, seat_count):
+            if line[idx] == 0:
+                line[idx] = u
+                used.add(u)
+                break
+
+    seats: list[dict] = []
+    for idx in range(seat_count):
+        uid = line[idx]
+        if uid:
+            seats.append({
+                "seat": idx, "user_id": uid, "is_ai": False,
+                "name": names.get(uid, "家人"),
+                "joined": idx == 0, "online_at": now if idx == 0 else None, "autopilot": False,
+            })
+        else:
+            seats.append({
+                "seat": idx, "user_id": 0, "is_ai": False,
+                "name": "空位", "joined": False, "online_at": None, "autopilot": False,
+            })
     return seats
 
 
@@ -472,6 +510,8 @@ def create_table(req: CreateIn, db: Session = Depends(get_db),
             invitees.append(iid)
     names = name_map(db)
     seat_count = _seat_count_for(req.game_key, req.seat_count)
+    # 只有真正进入了邀请名单的人才能被标成队友（前端可能传来被过滤掉 / 非家人的 id）
+    mates = [u for u in (int(x) for x in (req.teammate_user_ids or [])) if u in invitees]
     stake = req.base_stake if int(req.base_stake) in (100, 500, 2000) else 100
     # 建房前先解散本人遗留的「等待中」牌桌：不保留旧桌，保证每次新建邀请都能开新的一局
     for old in (
@@ -491,7 +531,7 @@ def create_table(req: CreateIn, db: Session = Depends(get_db),
         status="waiting",
         table_mode="table",
         host_id=uid,
-        seats=_make_seats(uid, invitees, seat_count, names),
+        seats=_make_seats(uid, invitees, seat_count, names, mates),
         config=dict(req.config or {}),
         base_stake=stake,
         invite_code=secrets.token_hex(3),

@@ -360,24 +360,6 @@ const bugangs = computed(() => {
   return M.findBugangs(h, melds.value[turn.value])
 })
 
-const statusLine = computed(() => {
-  if (isOnline.value) {
-    if (phase.value === 'settled') return '本局结束，等房主「再来一局」'
-    if (phase.value === 'dingque') {
-      return turn.value === oSeat.value ? '请选择缺门' : `等 ${seatName(turn.value)} 定缺…`
-    }
-    if (pending.value) return '请选择「碰 / 杠 / 胡 / 过」'
-    if (turn.value === oSeat.value) return '点一张牌选中，再点「出牌」'
-    return `等 ${seatName(turn.value)} 行动…`
-  }
-  if (phase.value === 'settled') return '本局结束，点「再来一局」继续'
-  if (phase.value === 'dingque') return '请先定缺'
-  if (pending.value) return '请选择「碰 / 杠 / 胡 / 过」'
-  if (!isHuman(turn.value)) return `${SEAT_LABEL[turn.value]} 思考中…`
-  if (turn.value !== viewSeat.value) return `轮到 ${SEAT_LABEL[turn.value]}`
-  return '点一张牌选中，再点「出牌」'
-})
-
 /** 听牌提示：打哪张、听哪些。在线仅在自己可出牌时计算（只读自己的手牌，不涉暗信息） */
 const tingInfo = computed(() => {
   if (phase.value !== 'playing') return []
@@ -878,13 +860,23 @@ function onReact(kind) {
 }
 
 /* ---------- AI ---------- */
+/**
+ * 电脑出牌的「思考时间」。
+ * 旧值 640ms：三家机器人连着出，牌刚翻过去下一张就来了，真人根本看不清谁打了什么
+ * （夜星：「打麻将时的速度很快，控制在 2-3s」）。
+ * 现在统一 2.0~3.0s 随机 —— 固定值会让三家像节拍器，随机更接近真人。
+ */
+const AI_THINK_MIN = 2000
+const AI_THINK_MAX = 3000
+function aiThink() { return AI_THINK_MIN + Math.floor(Math.random() * (AI_THINK_MAX - AI_THINK_MIN)) }
+
 let aiTimer = null
 function scheduleAI() {
   clearTimeout(aiTimer)
   if (isOnline.value) return   // 在线由服务端 AI 推进
   if (phase.value !== 'playing') return
   if (isHuman(turn.value) || out.value[turn.value]) return
-  aiTimer = setTimeout(aiTurn, 640)
+  aiTimer = setTimeout(aiTurn, aiThink())
 }
 function aiTurn() {
   if (isOnline.value) return
@@ -987,8 +979,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .mj {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 10px 14px 12px; min-height: 600px;
+  display: flex; flex-direction: column; gap: 6px;
+  /* 全屏一屏只有 360px 高，外框留白与间距每一点都要算：
+     旧 10/12 + gap8 → 新 6/8 + gap6，省下的 12px 全给牌桌（见 .mj-table 注释）。 */
+  padding: 6px 10px 8px; min-height: 600px;
   /* --gt-h 由 JS 按实际渲染高度写入（上限 760），迷你牌/手牌尺寸都跟着它走，
      这样同一套 CSS 在手机横屏（约 390 高）与桌面大屏都能自动取到合适的牌面大小。
      系数 0.056：手机横屏 --gt-h≈360 → 迷你牌约 20px 宽（旧值 0.046 只有 16.6px，
@@ -1015,7 +1009,7 @@ onBeforeUnmount(() => {
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "top top top" "left center right";
-  padding: 10px 12px; border-radius: 18px;
+  padding: 8px 10px; border-radius: 18px;
   /* 绒布：中心一圈微亮的墨绿，外缘压暗，做出「桌面」而非「色块」的观感 */
   background:
     radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .1), transparent 55%),
@@ -1027,9 +1021,14 @@ onBeforeUnmount(() => {
 .mj-seat { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0; }
 /* 对家：座位牌 + 副露 + 手牌背面**并排一行**。
    旧版是竖排三行，一个「对家」就吃掉桌高的一半（实测 77px／桌高 131px），
-   中央弃牌只剩 28px 高 —— 这就是「出牌区间缩小了好多」。并排后这一行只要 ~34px。 */
+   中央弃牌只剩 28px 高 —— 这就是「出牌区间缩小了好多」。
+   并排后还要再压：`.gt-seat` 全局是「34px 头像 + 7px 上下 padding + 边框」= 50px 高，
+   在一屏 360px 的横屏里太奢侈 → 这里把对家的座位牌压到 34px 左右。 */
 .mj-seat-top { grid-area: top; flex-direction: row; align-items: center; justify-content: center; gap: 8px; }
-.mj-seat-top .gt-seat { max-width: 200px; flex: none; }
+.mj-seat-top .gt-seat { max-width: 190px; flex: none; padding: 2px 9px 2px 3px; gap: 7px; }
+.mj-seat-top .gt-seat-av { width: 26px; height: 26px; font-size: 13px; }
+.mj-seat-top .gt-seat-name { font-size: 11.5px; max-width: 92px; }
+.mj-seat-top .gt-seat-sub { font-size: 10px; }
 .mj-seat-top .mj-melds, .mj-seat-top .mj-backs { flex: 0 1 auto; }
 .mj-seat-left { grid-area: left; align-items: flex-start; }
 .mj-seat-right { grid-area: right; align-items: flex-end; }
@@ -1055,40 +1054,46 @@ onBeforeUnmount(() => {
 .mj-backs.is-v .gt-tile { flex: 1 1 0; height: auto; min-height: 5px; max-height: var(--mini-h); }
 .mj-melds.is-v .gt-tile { flex: 1 1 0; height: auto; min-height: 7px; max-height: var(--mini-h); }
 
-/* 中央：整块交给四方弃牌（上=对家 / 下=自己 / 左=左家 / 右=右家）。
-   2 列 × 3 行，四家各占一条边，**每一条都拿 minmax(0,1fr)** —— 不再有「信息盒独占 1fr
-   宽度、弃牌只剩一行的窄条」那种分配（旧版实测中央只有 403×28px）。 */
+/* 中央：四方弃牌围成一圈（上=对家 / 下=自己 / 左=左家 / 右=右家）。
+   行高分配改成 `auto / 1fr / auto`：上下两条横排只吃一张牌的高度，
+   省下的全部给中间那条 —— 左右两家的**竖排**弃牌块需要这份高度（旧版三等分后每条只有 26px）。
+   ⚠️ 旧版这里有个隐蔽 bug：`.mj-dis` 用 `grid-template-columns: repeat(auto-fill, var(--mini-w))`
+   —— 17 条轨道把整行宽度**全部占满**，于是 `justify-content: center` 完全失效（没有空位可居中），
+   四家的牌一律从容器**左边缘**开始铺 → 上下两家与左家的弃牌全叠在中央同一条竖列上，
+   看着就是「一堆牌乱堆在中间，不是摆在自己那边」。现在改 flex：内容宽度由牌数决定，
+   居中 / 贴边才真正生效。 */
 .mj-center {
   grid-area: center; min-width: 0; min-height: 0;
-  display: grid; gap: 3px 6px;
+  display: grid; gap: 2px 6px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
     "up    up"
     "left  right"
     "down  down";
-  padding: 6px; border-radius: 14px;
+  padding: 5px; border-radius: 14px;
   background: rgba(0, 0, 0, .2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
 }
-/* 弃牌一律用「按容器宽度自动铺列 + 溢出隐藏」的 grid：牌面尺寸恒定，不因牌数变化而抖。
-   上下两家横排（对家靠上、自己靠下），左右两家也横排但各自贴左／贴右，
-   整体仍然是「四家围一圈」的观感，而每条边都能用满整条边长。 */
-.mj-dis {
-  display: grid; gap: 2px; min-width: 0; min-height: 0;
-  grid-template-columns: repeat(auto-fill, var(--mini-w));
-  overflow: hidden;
-}
-.mj-dis-up { grid-area: up; align-content: start; justify-content: center; }
-.mj-dis-down { grid-area: down; align-content: end; justify-content: center; }
-.mj-dis-left { grid-area: left; align-content: center; justify-content: start; }
-.mj-dis-right { grid-area: right; align-content: center; justify-content: end; }
+/* 弃牌：flex + wrap，牌宽恒定（不随牌数抖动），溢出裁切。
+   上下两家横排、各自居中 → 牌堆正对自己；
+   左右两家竖排（一列往下摞，满了自动起第二列）→ 像手机麻将那样贴在两侧。 */
+.mj-dis { display: flex; gap: 2px; min-width: 0; min-height: 0; overflow: hidden; }
+.mj-dis > .gt-tile { flex: none; }
+.mj-dis-up { grid-area: up; flex-flow: row wrap; justify-content: center; align-content: flex-start; }
+.mj-dis-down { grid-area: down; flex-flow: row wrap; justify-content: center; align-content: flex-end; }
+.mj-dis-left { grid-area: left; flex-flow: column wrap; justify-content: center; align-content: flex-start; }
+.mj-dis-right { grid-area: right; flex-flow: column wrap; justify-content: center; align-content: flex-end; }
 
 /* ===== 底部信息条 ===== */
 /* 一行到底、不换行：换行会把好不容易让给牌桌的高度又吃回去 */
 .mj-handbar { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow: hidden; min-height: 0; }
-/* 最近一张舍牌：小牌 + 「谁打出」，替代旧版中央那个大信息盒 */
+/* 最近一张舍牌：小牌 + 「谁打出」，替代旧版中央那个大信息盒。
+   这张小牌是整条信息条的高度来源（28px），单独收小到 22px —— 一行文字不值得占 28px。
+   注意选择器必须写成 `.mj .mj-lastmini .gt-tile.mini`：下面那条 `.mj .gt-tile.mini`
+   特异性完全相同，靠后的会赢，只写 `.mj-lastmini .gt-tile.mini` 是不生效的。 */
 .mj-lastmini { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+.mj .mj-lastmini .gt-tile.mini { width: 16px; height: 22px; }
 .mj-lastmini em { font-style: normal; font-size: 11.5px; color: var(--gt-ink-dim); white-space: nowrap; }
 .mj-ting-inline { display: inline-flex; align-items: center; gap: 8px; flex: 0 1 auto; overflow: hidden; }
 .mj-ting-label { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--gt-gold); flex: none; }
@@ -1099,16 +1104,17 @@ onBeforeUnmount(() => {
 /* ===== 底部 ===== */
 .mj-bottom { display: flex; flex-direction: column; gap: 5px; min-height: 0; }
 /* 手牌铺满可用宽度：牌宽 = min(按屏高算的上限, 按张数均分)。
-   系数 0.14（旧 0.155）：手机横屏约 50px 宽 / 70px 高，仍然比旧版 40px 大，
-   但省出的 8px 全给了上方牌桌 —— 一屏只有 360px 高时，每一像素都要算。
-   上留白 = 选中上浮(-11px) + 落影，俯视时不至于被裁。 */
+   系数 0.12（0.14 → 0.12）：手机横屏约 43px 宽 / 60px 高，仍比最早的 40px 大，
+   但省出的 12px 全给了上方牌桌 —— 一屏只有 360px 高时，每一像素都要算，
+   而弃牌区（左右两家的竖排块）恰恰是最缺高度的地方。
+   上留白 11px = 选中上浮(-11px) + 落影，不能小于 11，否则选中的牌会顶到信息条上。 */
 .mj-hand {
   display: flex; gap: 3px; align-items: flex-end; justify-content: center;
-  padding: 12px 4px 4px; min-height: 0; flex-wrap: nowrap;
+  padding: 11px 4px 3px; min-height: 0; flex-wrap: nowrap;
 }
 .mj-hand .gt-tile {
   width: min(
-    calc(var(--gt-h, 420px) * 0.14),
+    calc(var(--gt-h, 420px) * 0.12),
     calc((100% - (var(--ntiles, 14) - 1) * 3px) / var(--ntiles, 14))
   );
   height: auto; aspect-ratio: 5 / 7;
@@ -1116,7 +1122,10 @@ onBeforeUnmount(() => {
 /* 牌面 SVG 铺满整张牌（绝对定位，避免百分比高度在 aspect-ratio 盒子里解析不确定） */
 .mj .gt-tile > :deep(svg) { position: absolute; inset: 0; }
 .mj-hand-empty { margin: 0 auto; font-size: 12px; color: var(--gt-ink-dim); }
+/* 出牌 / 自摸 / 提示：全局 .gt-btn 是 8px/18px（39px 高），一屏 360px 的横屏里偏奢侈，
+   这里收成 6px/16px（约 32px）。手牌尺寸**不动** —— 那是玩家最常碰的东西。 */
 .mj-actions { justify-content: center; }
+.mj-actions .gt-btn { padding: 6px 16px; font-size: 12.5px; }
 
 /* ===== 牌：象牙白 + 玉质感 =====
    覆盖全局 .gt-tile 那套「浅色平面 + 单层投影」的塑料感：改成三层阴影 ——

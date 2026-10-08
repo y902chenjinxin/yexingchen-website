@@ -28,6 +28,29 @@
               </button>
               <p v-if="!families.length" class="gtv-empty">家庭里还没有其他账号可以邀请。</p>
             </div>
+
+            <!-- 队伍选择：只有掼蛋是 2v2。你和「队友」坐对家，另外两人是对手；
+                 空着的座位开局由机器人补（机器人自动站到对面 / 对面两人）。 -->
+            <div v-if="isTeamGame && invitees.length" class="gtv-teams">
+              <p class="gtv-teams-tip">
+                掼蛋是 2v2：你坐在 1 号位，<b>队友</b>坐正对面，其余为<b>对手</b>。默认第一个邀请的人当队友，可随时改。
+              </p>
+              <div v-for="uid in invitees" :key="uid" class="gtv-team-row">
+                <span class="gtv-team-name">{{ nameOf(uid) }}</span>
+                <div class="gtv-chips">
+                  <button
+                    class="gtv-chip"
+                    :class="{ on: !mateIds.includes(uid) }"
+                    @click="setRole(uid, false)"
+                  >对手</button>
+                  <button
+                    class="gtv-chip"
+                    :class="{ on: mateIds.includes(uid) }"
+                    @click="setRole(uid, true)"
+                  >队友</button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div v-if="gameKey === 'monopoly'" class="gtv-field">
@@ -97,6 +120,12 @@
                 <template v-else-if="s.joined">掉线托管</template>
                 <template v-else>待入座</template>
               </i>
+              <!-- 掼蛋 2v2：把「谁是我队友」直接标在席位上，开局前一眼可核对 -->
+              <span
+                v-if="isTeamGame"
+                class="gtv-seat-team"
+                :class="s.seat % 2 === (room.my_seat ?? 0) % 2 ? 'mate' : 'foe'"
+              >{{ s.seat % 2 === (room.my_seat ?? 0) % 2 ? (s.seat === room.my_seat ? '我方' : '队友') : '对手' }}</span>
               <button
                 v-if="room.is_host && s.user_id && s.seat !== room.my_seat && !s.is_ai"
                 class="gtv-kick"
@@ -293,6 +322,8 @@ const HELP = {
 const mode = ref('create')            // create | room
 const gameKey = ref('guandan')
 const invitees = ref([])
+/** 掼蛋 2v2：这批被邀请人里谁是「队友」（服务端把人排到房主正对的 2 号位） */
+const mateIds = ref([])
 const baseStake = ref(100)
 const seatCount = ref(4)
 const families = ref([])
@@ -318,6 +349,8 @@ const loading = t.loading
 
 const meta = computed(() => GAME_META[gameKey.value] || GAME_META.guandan)
 const gameLabel = computed(() => meta.value.label)
+/** 只有掼蛋是 2v2（麻将 / 大富翁都是各自为战），队伍选择仅对它出现 */
+const isTeamGame = computed(() => gameKey.value === 'guandan')
 const pageTitle = computed(() => (mode.value === 'create' ? `开桌 · ${gameLabel.value}` : `牌桌 · ${gameLabel.value}`))
 const pageSubtitle = computed(() => '服务端权威发牌 · 跨设备同步 · 空位机器人补位')
 const helpRules = computed(() => HELP[gameKey.value] || HELP.guandan)
@@ -401,8 +434,32 @@ function seatAvatar(s) {
 
 function toggleInvitee(uid) {
   const i = invitees.value.indexOf(uid)
-  if (i >= 0) invitees.value.splice(i, 1)
-  else invitees.value.push(uid)
+  if (i >= 0) {
+    invitees.value.splice(i, 1)
+    // 取消邀请时一起清掉他/她的队伍标记，避免留下幽灵 id 被后端忽略
+    const m = mateIds.value.indexOf(uid)
+    if (m >= 0) mateIds.value.splice(m, 1)
+    return
+  }
+  invitees.value.push(uid)
+  // 掼蛋 2v2：第一个被邀请的人默认当队友（坐房主对家的 2 号位），其余默认对手。
+  // 只是**默认值**，下面每人都能点标签改；已经有队友了就不再自动加。
+  if (isTeamGame.value && !mateIds.value.length) mateIds.value.push(uid)
+}
+
+/** 把某个被邀请人设成队友 / 对手。队友位只有一个（房主正对的 2 号位），设新的会顶掉旧的。 */
+function setRole(uid, isMate) {
+  if (isMate) {
+    mateIds.value = [uid]
+    return
+  }
+  const i = mateIds.value.indexOf(uid)
+  if (i >= 0) mateIds.value.splice(i, 1)
+}
+
+function nameOf(uid) {
+  const m = families.value.find((x) => x.user_id === uid)
+  return m?.display_name || '家人'
 }
 
 async function loadFamilies() {
@@ -418,6 +475,8 @@ async function doCreate() {
     const seat = gameKey.value === 'monopoly' ? seatCount.value : null
     await t.create(gameKey.value, {
       inviteeUserIds: invitees.value,
+      // 只有 2v2 的掼蛋才带队伍信息；其余游戏传空数组
+      teammateUserIds: isTeamGame.value ? mateIds.value : [],
       baseStake: baseStake.value,
       seatCount: seat,
     })
@@ -563,6 +622,21 @@ onBeforeUnmount(() => {
 .gtv-chip.on { border-color: var(--yq-gold, #c7a96b); background: rgba(199,169,107,.18); font-weight: 600; }
 :root[data-theme="night"] .gtv-chip { background: rgba(255,255,255,.06); color: #f2eee4; }
 
+/* ---------- 掼蛋 2v2 的队伍选择（队友 / 对手） ---------- */
+.gtv-teams {
+  margin-top: 10px; padding: 10px 12px; border-radius: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+  background: rgba(199, 169, 107, .08);
+  border: 1px solid rgba(199, 169, 107, .35);
+}
+.gtv-teams-tip { margin: 0; font-size: 12px; line-height: 1.55; color: var(--dp-text3, #8a8f98); }
+.gtv-teams-tip b { color: var(--yq-gold, #c7a96b); font-weight: 700; }
+.gtv-team-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gtv-team-name { flex: 1; min-width: 72px; font-size: 13px; font-weight: 600; color: var(--dp-text, #18202a); }
+:root[data-theme="night"] .gtv-team-name { color: #f2eee4; }
+.gtv-team-row .gtv-chips { flex: none; }
+.gtv-team-row .gtv-chip { padding: 5px 14px; font-size: 12.5px; }
+
 .gtv-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 .gtv-btn {
   padding: 9px 18px; border-radius: 12px; cursor: pointer; font-family: inherit; font-size: 13.5px;
@@ -599,6 +673,16 @@ onBeforeUnmount(() => {
 .gtv-seat-name { font-size: 14px; color: var(--dp-text, #18202a); }
 :root[data-theme="night"] .gtv-seat-name { color: #f2eee4; }
 .gtv-seat-tag { font-style: normal; font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
+/* 掼蛋 2v2 阵营标签：队友/我方金边、对手中性灰，开局前一眼核对 */
+.gtv-seat-team {
+  margin-top: 2px; padding: 1px 9px; border-radius: 999px;
+  font-size: 11px; line-height: 1.7; letter-spacing: .04em;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.gtv-seat-team.mate { border-color: var(--yq-gold, #c7a96b); color: #8a6d29; background: rgba(199,169,107,.16); }
+.gtv-seat-team.foe { border-color: var(--dp-line, rgba(0,0,0,.12)); color: var(--dp-text3, #8a8f98); background: rgba(0,0,0,.04); }
+:root[data-theme="night"] .gtv-seat-team.mate { color: #f0d79a; }
+:root[data-theme="night"] .gtv-seat-team.foe { background: rgba(255,255,255,.06); color: rgba(242,238,228,.62); }
 .gtv-kick {
   position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%;
   border: none; cursor: pointer; font-size: 11px; line-height: 1;

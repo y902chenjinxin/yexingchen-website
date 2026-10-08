@@ -1,3 +1,96 @@
+## [v2.46.5] - 2026-10-08
+
+### 棋牌第六轮：麻将弃牌归位 + 双方节奏放到 2~3s + 掼蛋横屏重排 / 右上角轮次 / 结算纠偏 / 建房选阵营（SW `v317`→`v318`）
+
+> 夜星第六轮反馈六条：①麻将出的牌没放在自己这边，很怪异，节奏要 2-3s ②建房邀请要能选「队友 / 对手」
+> ③掼蛋头像/牌/轮到谁出挤一块，**轮到谁出根本没展示**，要放右上角显眼处 ④掼蛋机器人出来不管有没有牌都 2-3s
+> ⑤掼蛋 UI 太丑，横屏挤一块 ⑥掼蛋结算写反了（对方输我方升级，展示的不是）。
+> 按约定**不做线上浏览器取证**，验收口径 = `eslint` + 生产构建 + 产物内容核验 + 本地探针渲染，夜星自己上线看。
+
+本轮沿用 `frontend/_probe_wide.cjs`（横向探针视口 **720×360**，orientation=landscape → 媒体查询不生效 →
+**屏幕坐标 == CSS 坐标**，读溢出/重叠不必脑内转 90°）做前后对比，数字均为实测。
+
+#### 一、麻将：弃牌没放在自己这边（V2465-001）
+
+**根因**：`.mj-dis` 用 `grid-template-columns: repeat(auto-fill, var(--mini-w))` —— auto-fill 会**占满整行**，
+轨道数刚好铺满容器宽度后 `justify-content` **没有任何空位可居中**，四家的弃牌一律从容器左上角开始铺，
+所以左右两家「飘在中间偏左」、上下两家也挤在一起，看着像一堆散牌。
+
+**修法**：弃牌区改 `display:flex` + 按方位分 `flex-flow`，四周各自贴边：
+
+```css
+.mj-dis-up    { flex-flow: row wrap;    justify-content: center; align-content: flex-start; }
+.mj-dis-down  { flex-flow: row wrap;    justify-content: center; align-content: flex-end; }
+.mj-dis-left  { flex-flow: column wrap; justify-content: center; align-content: flex-start; }
+.mj-dis-right { flex-flow: column wrap; justify-content: center; align-content: flex-end; }
+```
+
+#### 二、麻将：出牌区间太小 + 出牌节奏太快（V2465-002/003）
+
+- **区间**：牌桌只有 173px（底部吃掉 157px：手牌 80 / 操作 39 / 信息条 28）。压外壳 `gap`/`padding`、
+  对家座位 50→34px、信息条小牌 28→22px、操作按钮 39→35px、手牌系数 `0.14`→`0.12` →
+  **牌桌 173 → 198、中央弃牌区 97 → 142**（顺带修掉 `.mj-lastmini .gt-tile.mini` 与
+  `.mj .gt-tile.mini` 同特异性被后者覆盖的问题，改写成 `.mj .mj-lastmini .gt-tile.mini`）。
+- **节奏**：`setTimeout(aiTurn, 640)` → `aiThink()` 随机 **2000~3000ms**（`AI_THINK_MIN/MAX`），
+  出牌与过牌同一入口，不会再「一秒三手」。
+
+#### 三、掼蛋：轮到谁出牌完全没展示（V2465-004）
+
+**根因**：这行字只写在 `.gd-center-empty` 里，而 `v-else` 保证**一旦有人出过牌就整个不再渲染** ——
+所以实测中「轮到谁」在开局第一手之后永远消失。**修法**：搬到牌桌**右上角常驻胶囊**（`.gd-turnbox`），
+`position:absolute; right:0` 相对 `.gd-row-top` 居中，轮到自己时整颗换成金底深字（`.is-me`）；
+中央文案只留「本轮先手 / 本局结束」避免和右上重复。
+
+#### 四、掼蛋：横屏挤一块（V2465-005）
+
+三条量化根因，逐条拆：
+
+| 量（逻辑画布 720×360） | 旧 | 新 |
+| --- | --- | --- |
+| `.gd-history`（出牌记录） | `position:absolute` **浮层压住左家座位** | 改**右栏**（`flex:0 0 176px`，收起 106px），列表 `flex:1` 内部滚动 |
+| `.gd-center { min-height }` | 96px（中行只有 ~107px，**向上溢出压住对家座位，实测重叠 9px**） | 84px，`padding` 10→8 |
+| 压牌宽 `cardW` 系数 | `rootH * 0.165`（手牌高 105px） | `rootH * 0.135`（手牌 88px） |
+| 对家座位 | 50px 高 | 34px（`padding/gap/字号`同步收） |
+| 外壳/牌桌 padding | `gap 8 / padding 10 12 12`、牌桌 `10px` | `gap 6 / padding 6 10 8`、牌桌 `8px` |
+| **牌桌高** | **153** | **188** |
+| **元素两两重叠** | **9px** | **0** |
+
+#### 五、掼蛋：机器人节奏太快（V2465-006）
+
+`setTimeout(aiTurn, 720)` → `aiThink()` 随机 **2000~3000ms**，**不管手里有没有牌**都走这一处
+（出牌与「过」共用），节奏统一。
+
+#### 六、掼蛋：结算升降级写反（V2465-007）
+
+**根因**：`seatName()` 按 `oSeat` 显示「你」，但顶栏/底栏/结算三处的「我方 / 对方」是**硬编码 team 0**。
+单机时真人固定坐 0 号位（team 0），恰好对得上；**在线牌桌真人可能坐 1 或 3 号位 → 我方其实是 team 1**，
+于是「我方升级」全被显示成对方的等级。**修法**：引入 `myTeam/oppTeam/myLevel/oppLevel/iWon`
+（`myTeam = isOnline ? TEAM_OF[oSeat] : 0`），顶栏 `gd-score`、底栏 `gd-scorebar`、结算 `<h3>`/`<p>`
+四处文案 + 音效 `sfx.win()` + `saveState()` 的 summary 全部改走这组计算属性。
+顺带修同名 bug：4 人同屏时 1 号与 3 号座位**都叫「玩家三」** → 用 `HUMAN_CN = {1:'二',2:'三',3:'四'}` 区分。
+
+#### 七、建房邀请可指定阵营（V2465-008，含后端）
+
+**根因**：后端 `_make_seats()` 按邀请顺序把人依次塞进 1/2/3 号位，而 `TEAM_OF={0:0,1:1,2:0,3:1}`
+决定了**第二个被邀请的人被动变成队友**，房主无从选择。**修法**：
+
+- 后端 `CreateIn` 新增 `teammate_user_ids: list[int]`；`_make_seats(..., teammate_ids)`
+  把标了队友的人**优先排 2 号位**（队友位），其余填 1/3（对手位）→ 只对 `seat_count == 4` 的掼蛋生效，
+  其它游戏保持原顺序填充。
+- 前端建房面板新增「阵营」块（`.gtv-teams`）：每个被邀请人一行，`对手 | 队友` 两颗 chips 二选一，
+  **同一时间只能有一位队友**（掼蛋 2v2 语义），首个被邀请人默认成队友；
+  等待房席位卡加 `我方 / 队友 / 对手` 标签（按 `seat % 2 == mySeat % 2` 判定）供开局前核对。
+
+#### 验证
+
+- `npx eslint frontend/src/{components/games/MahjongBoard.vue,components/games/GuandanBoard.vue,views/GameTableView.vue,composables/useGameTable.js}` → 0 error。
+- `npx vite build --outDir dist-deploy35` → 产物内容核验：`xuanhuang-v318`、`APP_VERSION v2.46.5`
+  均已进包（`grep` 构建产物确认）。
+- 本地探针渲染：麻将四方弃牌各自贴边归位、掼蛋右上角「轮到 你 出牌」常驻 + 零重叠。
+- **本轮未做线上取证**（按夜星约定）；后端含新字段，已跑 `deploy_backend_full.py` 部署。
+
+---
+
 ## [v2.46.4] - 2026-10-08
 
 ### 移动端第五轮：麻将万牌按真牌重绘 + 弃牌区放回 3.6 倍 + 大富翁中央区重排（SW `v316`→`v317`）
