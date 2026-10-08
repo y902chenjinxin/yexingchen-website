@@ -83,8 +83,11 @@
 
 #### 交付记录
 
+- 提交 `0bc001b`（14 files，+785/-206），**先 commit 再部署**；
 - 本轮**只有前端变更**（无 model / router 改动），故不跑后端部署；
-- 前端 `dist-deploy34` → 生产，SW `v316`→`v317`，`APP_VERSION v2.46.3`→`v2.46.4`；
+- 前端 `dist-deploy34` → 生产：`uploaded files: 306`、远端 `sw = xuanhuang-v317`、`home=200`；
+  `APP_VERSION v2.46.3`→`v2.46.4`；
+- 部署前后各核一次 `git status`，均为**空** → 本次上线没有夹带其它并发会话的未提交改动；
 - 产物核验：`sw=v317` / `APP v2.46.4`；麻将万牌蓝 `#14549e`、红 `#c62828`、
   条牌统一绿 `#0b8a4d`、2 条竖排坐标 `y:42 / y:100` 均进包，旧 `#1a1a1a` 残留 **0**；
   大富翁 `.mp-players{grid-template-columns:repeat(2,minmax(0,1fr))}` 与 `.mp-center{overflow:hidden}`
