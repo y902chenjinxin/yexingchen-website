@@ -1,6 +1,6 @@
 <template>
   <div class="gt-landscape">
-    <div class="gt-shell mj" :class="{ 'is-big': big }">
+    <div ref="rootRef" class="gt-shell mj" :class="{ 'is-big': big }" :style="{ '--gt-h': rootH + 'px' }">
       <!-- ===== 顶栏 ===== -->
       <header class="mj-top">
         <span class="gt-title">四川麻将 · 血战到底</span>
@@ -14,73 +14,89 @@
         <button class="gt-btn sm ghost" @click="doExit">退出对局</button>
       </header>
 
-      <!-- ===== 牌桌 ===== -->
+      <!-- ===== 牌桌：三家席位 + 中央（四方弃牌） ===== -->
       <div class="mj-table">
-        <!-- 对家 / 左右家 -->
+        <!-- 对家 / 左家 / 右家：席位 + 副露 + 手牌背面（左右家竖排，对家横排） -->
         <div
-          v-for="s in PANEL_SEATS"
-          :key="s"
+          v-for="p in PANEL_SEATS"
+          :key="p.seat"
           class="mj-seat"
-          :class="seatAreaCls(s)"
+          :class="p.cls"
         >
-          <div class="gt-seat" :class="seatCls(s)">
-            <span class="gt-seat-av">{{ seatAvatar(s) }}</span>
+          <div class="gt-seat" :class="seatCls(p.seat)">
+            <span class="gt-seat-av">{{ seatAvatar(p.seat) }}</span>
             <span class="gt-seat-tx">
-              <b class="gt-seat-name">{{ seatName(s) }}</b>
-              <i class="gt-seat-sub">{{ seatSub(s) }}</i>
+              <b class="gt-seat-name">{{ seatName(p.seat) }}</b>
+              <i class="gt-seat-sub">{{ seatSub(p.seat) }}</i>
             </span>
-            <span v-if="isTurn(s) && !out[s]" class="gt-seat-badge">出牌中</span>
-            <span v-else-if="out[s]" class="gt-seat-badge">已胡</span>
+            <span v-if="isTurn(p.seat) && !out[p.seat]" class="gt-seat-badge">出牌中</span>
+            <span v-else-if="out[p.seat]" class="gt-seat-badge">已胡</span>
           </div>
 
-          <div v-if="melds[s].length" class="mj-melds">
-            <span v-for="(md, i) in melds[s]" :key="i" class="gt-meld">
+          <div v-if="melds[p.seat].length" class="mj-melds" :class="p.dir">
+            <span v-for="(md, i) in melds[p.seat]" :key="i" class="gt-meld">
               <span
                 v-for="(t, k) in meldTiles(md)"
                 :key="k"
                 class="gt-tile mini"
                 :class="suitCls(t)"
-              ><span class="num">{{ t.rank }}</span></span>
+              ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
             </span>
           </div>
 
-          <div class="mj-backs">
-            <span v-for="n in backCount(s)" :key="n" class="gt-tile mini is-back"></span>
-          </div>
-
-          <div class="mj-discards">
-            <span
-              v-for="t in discards[s]"
-              :key="t.id"
-              class="gt-tile mini"
-              :class="suitCls(t)"
-            ><span class="num">{{ t.rank }}</span></span>
+          <div class="mj-backs" :class="p.dir">
+            <span v-for="n in backCount(p.seat)" :key="n" class="gt-tile mini is-back"></span>
           </div>
         </div>
 
-        <!-- 中央：最近舍牌 + 战报 -->
-        <div class="mj-seat mj-center">
-          <div class="mj-center-head">
-            <span v-if="lastDiscard" class="gt-pill gold">
-              {{ seatName(lastDiscard.seat) }} 打出 {{ tileText(lastDiscard.tile) }}
-            </span>
-            <span v-else class="gt-pill">开局</span>
-            <span v-if="phase === 'playing' && !pending" class="gt-pill">
-              轮到 {{ seatName(turn) }}
-            </span>
-          </div>
-          <div class="mj-center-tile">
+        <!-- 中央：四方弃牌（上=对家 / 下=自己 / 左=左家 / 右=右家）+ 中心信息 -->
+        <div class="mj-center">
+          <div class="mj-dis mj-dis-up">
             <span
-              v-if="lastDiscard"
-              class="gt-tile gt-anim-play"
-              :class="suitCls(lastDiscard.tile)"
-            >
-              <span class="num">{{ lastDiscard.tile.rank }}</span>
-              <span class="suit">{{ M.SUIT_GLYPH[lastDiscard.tile.suit] }}</span>
-            </span>
+              v-for="t in discards[2]"
+              :key="t.id"
+              class="gt-tile mini"
+              :class="suitCls(t)"
+            ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
-          <div class="mj-log">
-            <span v-for="(l, i) in logs.slice(0, 4)" :key="i">{{ l }}</span>
+
+          <div class="mj-dis mj-dis-left">
+            <span
+              v-for="t in discards[3]"
+              :key="t.id"
+              class="gt-tile mini"
+              :class="suitCls(t)"
+            ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
+          </div>
+
+          <div class="mj-center-info">
+            <span v-if="lastDiscard" class="mj-last-tile gt-anim-play">
+              <span class="gt-tile"><MahjongTileFace :suit="faceSuit(lastDiscard.tile)" :rank="lastDiscard.tile.rank" /></span>
+            </span>
+            <b v-if="lastDiscard" class="mj-center-who">{{ seatName(lastDiscard.seat) }} 打出</b>
+            <b v-else class="mj-center-who">开局</b>
+            <i v-if="phase === 'playing' && !pending" class="mj-center-turn">轮到 {{ seatName(turn) }}</i>
+            <div class="mj-log">
+              <span v-for="(l, i) in logs.slice(0, 3)" :key="i">{{ l }}</span>
+            </div>
+          </div>
+
+          <div class="mj-dis mj-dis-right">
+            <span
+              v-for="t in discards[1]"
+              :key="t.id"
+              class="gt-tile mini"
+              :class="suitCls(t)"
+            ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
+          </div>
+
+          <div class="mj-dis mj-dis-down">
+            <span
+              v-for="t in discards[0]"
+              :key="t.id"
+              class="gt-tile mini"
+              :class="suitCls(t)"
+            ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
         </div>
       </div>
@@ -101,12 +117,15 @@
       <footer class="mj-bottom">
         <div class="mj-handbar">
           <span class="gt-pill gold">{{ seatName(viewSeat) }}的手牌 · {{ viewHand.length }} 张</span>
+          <!-- 全屏时顶栏被隐藏，余牌 / 缺门这类关键信息挪到这里，保证一直可见 -->
+          <span class="gt-pill">余牌 {{ wall.length }}</span>
+          <span v-if="myMissing" class="gt-pill">缺门 {{ M.SUIT_NAME[myMissing] }}</span>
           <span v-if="melds[viewSeat]?.length" class="gt-pill">副露 {{ melds[viewSeat].length }} 组</span>
           <span class="gt-spacer"></span>
           <span class="gt-sub">{{ statusLine }}</span>
         </div>
 
-        <div class="mj-hand">
+        <div class="mj-hand" :style="{ '--ntiles': Math.max(1, handTiles.length) }">
           <span
             v-for="t in viewHand"
             :key="t.id"
@@ -114,8 +133,7 @@
             :class="[suitCls(t), { pickable: canDiscard, 'is-sel': selId === t.id }]"
             @click="pick(t)"
           >
-            <span class="num">{{ t.rank }}</span>
-            <span class="suit">{{ M.SUIT_GLYPH[t.suit] }}</span>
+            <MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" />
           </span>
           <span
             v-if="viewDrawn"
@@ -123,10 +141,9 @@
             :class="[suitCls(viewDrawn), { pickable: canDiscard, 'is-sel': selId === viewDrawn.id }]"
             @click="pick(viewDrawn)"
           >
-            <span class="num">{{ viewDrawn.rank }}</span>
-            <span class="suit">{{ M.SUIT_GLYPH[viewDrawn.suit] }}</span>
+            <MahjongTileFace :suit="faceSuit(viewDrawn)" :rank="viewDrawn.rank" />
           </span>
-          <p v-if="!viewHand.length && !viewDrawn" class="mj-hand-empty">— 无手牌 —</p>
+          <p v-if="!handTiles.length" class="mj-hand-empty">— 无手牌 —</p>
         </div>
 
         <!-- 反应窗口：碰 / 杠 / 胡 / 过 -->
@@ -221,6 +238,8 @@ import * as M from '@/utils/games/mahjong.js'
 import { sfx, setMuted, isMuted } from '@/utils/games/sfx'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { reportSettle } from '@/api/gameEconomy'
+import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
+import { useRootHeight } from '@/composables/useRootHeight'
 
 const props = defineProps({
   gameKey: { type: String, default: 'mahjong' },
@@ -243,7 +262,12 @@ const SAVE_KEY = 'mahjong'
 const SEAT_LABEL = { 0: '你', 1: '右家', 2: '对家', 3: '左家' }
 const AI_AVATARS = { 1: '🐯', 2: '🦊', 3: '🐼' }
 const REACT_NAME = { hu: '胡', kong: '杠', pong: '碰' }
-const PANEL_SEATS = [2, 3, 1]
+/** 三家席位的方位与排布方向：对家横排，左右家竖排（v2.46 起不再四个方向都横着摆） */
+const PANEL_SEATS = [
+  { seat: 2, cls: 'mj-seat-top', dir: 'is-h' },
+  { seat: 3, cls: 'mj-seat-left', dir: 'is-v' },
+  { seat: 1, cls: 'mj-seat-right', dir: 'is-v' },
+]
 const STAKE = 100
 const BASE = 10
 
@@ -298,6 +322,9 @@ const myMissing = computed(() => (isOnline.value ? missing.value[oSeat.value] : 
 const viewHand = computed(() => hands.value[viewSeat.value] || [])
 const viewDrawn = computed(() =>
   (turn.value === viewSeat.value && drawn.value) ? drawn.value : null)
+/** 手牌 + 刚摸的那张（手牌尺寸按这个数均分可用宽度） */
+const handTiles = computed(() =>
+  viewDrawn.value ? viewHand.value.concat([viewDrawn.value]) : viewHand.value)
 const canDiscard = computed(() => {
   if (isOnline.value) {
     if (props.acting) return false
@@ -377,6 +404,11 @@ const tingInfo = computed(() => {
 })
 
 /* ---------- 小工具 ---------- */
+/** 花色键（m/s/p）→ 牌面组件的花纹名 */
+function faceSuit(t) {
+  if (!t) return 'wan'
+  return t.suit === 'm' ? 'wan' : t.suit === 's' ? 'tiao' : 'tong'
+}
 function suitCls(t) {
   if (!t) return ''
   return t.suit === 'm' ? 'is-wan' : t.suit === 's' ? 'is-tiao' : 'is-tong'
@@ -411,9 +443,6 @@ function seatAvatar(s) {
   return AI_AVATARS[s]
 }
 function isTurn(s) { return phase.value === 'playing' && turn.value === s }
-function seatAreaCls(s) {
-  return s === 2 ? 'mj-seat-top' : s === 3 ? 'mj-seat-left' : 'mj-seat-right'
-}
 function seatCls(s) {
   return { 'is-active': isTurn(s) && !out.value[s], 'is-out': out.value[s] }
 }
@@ -945,6 +974,9 @@ function doExit() {
 }
 
 /* ---------- 生命周期 ---------- */
+/* ---------- 尺寸基准：把实际渲染高度写进 --gt-h，迷你牌/手牌据此定尺寸 ---------- */
+const { rootRef, rootH } = useRootHeight()
+
 onMounted(() => {
   if (isOnline.value) { syncFromView(props.onlineView); return }
   if (props.resume && restoreLocal()) toastMsg('已接着上一局继续')
@@ -958,8 +990,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .mj {
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 8px;
   padding: 12px 16px 14px; min-height: 600px;
+  /* --gt-h 由 JS 按实际渲染高度写入（上限 760），迷你牌/手牌尺寸都跟着它走，
+     这样同一套 CSS 在手机横屏（约 390 高）与桌面大屏都能自动取到合适的牌面大小 */
+  --mini-w: clamp(16px, calc(var(--gt-h, 420px) * 0.048), 26px);
+  --mini-h: calc(var(--mini-w) * 1.4);
 }
 .mj.is-big { min-height: calc(100vh - 150px); }
 .mj-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -968,40 +1004,57 @@ onBeforeUnmount(() => {
 .mj-table {
   flex: 1; min-height: 0;
   display: grid; gap: 8px;
-  grid-template-columns: 1fr minmax(0, 1.3fr) 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "top top top" "left center right";
   padding: 10px; border-radius: 16px;
   background: radial-gradient(90% 70% at 50% 40%, rgba(255, 255, 255, .07), transparent 70%);
   border: 1px solid var(--gt-line);
 }
-.mj-seat { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mj-seat { display: flex; flex-direction: column; gap: 5px; min-width: 0; min-height: 0; }
 .mj-seat-top { grid-area: top; align-items: center; }
 .mj-seat-left { grid-area: left; align-items: flex-start; }
 .mj-seat-right { grid-area: right; align-items: flex-end; }
 .mj-seat-top .gt-seat { max-width: 260px; }
 
-.mj-melds { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
-.mj-backs { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
-.mj-seat-left .mj-backs, .mj-seat-right .mj-backs { max-width: 100%; }
-.mj-discards {
-  display: flex; flex-wrap: wrap; gap: 2px; justify-content: center;
-  max-width: 240px; max-height: 96px; overflow-y: auto;
-  padding: 4px; border-radius: 8px; background: rgba(0, 0, 0, .18);
-  border: 1px solid var(--gt-line);
-}
-.mj-seat-left .mj-discards, .mj-seat-right .mj-discards { max-width: 132px; }
+/* 副露 / 手牌背面：对家横排；左右家竖排（column wrap 满了自动分列）—— 不再四方都横着摆。
+   竖排必须给出确定高度，否则 column wrap 不会换列（一行挂到底）。 */
+.mj-melds { display: flex; gap: 3px; }
+.mj-backs { display: flex; gap: 3px; }
+.mj-melds.is-h, .mj-backs.is-h { flex-flow: row wrap; justify-content: center; }
+.mj-melds.is-v, .mj-backs.is-v { flex-flow: column wrap; align-content: flex-start; }
+.mj-melds.is-v { flex: 0 1 auto; max-height: 42%; }
+.mj-backs.is-v { flex: 1 1 auto; min-height: 0; }
+.mj-seat-right .mj-melds.is-v, .mj-seat-right .mj-backs.is-v { align-content: flex-end; }
 
-/* 中央 */
+/* 中央：四方弃牌围成一圈（上=对家 / 下=自己 / 左=左家 / 右=右家），中心放最近舍牌与战报 */
 .mj-center {
-  grid-area: center; align-items: center; justify-content: center; gap: 8px;
-  padding: 12px; border-radius: 14px;
+  grid-area: center; min-width: 0; min-height: 0;
+  display: grid; gap: 5px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "up up up" "left info right" "down down down";
+  padding: 8px; border-radius: 14px;
   background: rgba(0, 0, 0, .22); border: 1px solid var(--gt-line);
 }
-.mj-center-head { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.mj-center-tile { min-height: 60px; display: grid; place-items: center; }
-.mj-log { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-.mj-log span { font-size: 11px; color: rgba(255, 255, 255, .5); }
+.mj-dis { display: flex; gap: 2px; min-width: 0; min-height: 0; }
+.mj-dis-up { grid-area: up; flex-flow: row wrap; justify-content: center; align-content: flex-start; max-height: calc(var(--mini-h) * 2 + 4px); }
+.mj-dis-down { grid-area: down; flex-flow: row wrap; justify-content: center; align-content: flex-end; max-height: calc(var(--mini-h) * 2 + 4px); }
+.mj-dis-left { grid-area: left; flex-flow: column wrap; align-content: flex-start; }
+.mj-dis-right { grid-area: right; flex-flow: column wrap; align-content: flex-end; }
+
+.mj-center-info {
+  grid-area: info; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+}
+.mj-last-tile { display: block; animation: gt-pop .22s ease-out both; }
+.mj-center-who { font-size: 12px; color: var(--gt-ink); }
+.mj-center-turn { font-style: normal; font-size: 11.5px; color: var(--gt-gold); }
+.mj-log { display: flex; flex-direction: column; align-items: center; gap: 1px; max-width: 100%; }
+.mj-log span {
+  font-size: 10.5px; color: rgba(255, 255, 255, .5);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
 
 /* ===== 听牌条 ===== */
 .mj-tingbar {
@@ -1015,15 +1068,28 @@ onBeforeUnmount(() => {
 .mj-ting-none { font-size: 11.5px; color: var(--gt-ink-dim); }
 
 /* ===== 底部 ===== */
-.mj-bottom { display: flex; flex-direction: column; gap: 8px; }
+.mj-bottom { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
 .mj-handbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* 手牌铺满可用宽度：牌宽 = min(按屏高算的上限, 按张数均分)，
+   高按 5:7 跟着走 —— 手机横屏约 52~62px 宽，电脑大屏约 89px，都比旧版 40px 大一截 */
 .mj-hand {
-  display: flex; gap: 3px; overflow-x: auto; overflow-y: visible;
-  padding: 16px 4px 10px; min-height: 96px; align-items: flex-end;
-  scrollbar-width: thin;
+  display: flex; gap: 3px; align-items: flex-end; justify-content: center;
+  padding: 12px 4px 6px; min-height: 0; flex-wrap: nowrap;
 }
+.mj-hand .gt-tile {
+  width: min(
+    calc(var(--gt-h, 420px) * 0.155),
+    calc((100% - (var(--ntiles, 14) - 1) * 3px) / var(--ntiles, 14))
+  );
+  height: auto; aspect-ratio: 5 / 7;
+}
+/* 牌面 SVG 铺满整张牌（绝对定位，避免百分比高度在 aspect-ratio 盒子里解析不确定） */
+.mj .gt-tile > :deep(svg) { position: absolute; inset: 0; }
 .mj-hand-empty { margin: 0 auto; font-size: 12px; color: var(--gt-ink-dim); }
 .mj-actions { justify-content: center; }
+
+/* 迷你牌（背面 / 弃牌 / 副露）尺寸跟随屏高 */
+.gt-tile.mini { width: var(--mini-w); height: var(--mini-h); border-radius: 3px; }
 
 /* 花色着色 */
 .gt-tile.is-wan { color: #b3261e; }

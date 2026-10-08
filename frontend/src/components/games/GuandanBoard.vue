@@ -1,6 +1,11 @@
 <template>
   <div class="gt-landscape gd-wrap">
-    <div class="gt-shell gt-skin-blue gd" :class="{ 'is-big': big }">
+    <div
+      ref="rootRef"
+      class="gt-shell gt-skin-blue gd"
+      :class="{ 'is-big': big }"
+      :style="{ '--gt-h': rootH + 'px', '--card-w': cardW + 'px', '--card-h': cardH + 'px' }"
+    >
       <!-- ===== 顶栏 ===== -->
       <header class="gd-top">
         <span class="gt-title">掼蛋</span>
@@ -126,6 +131,9 @@
       <footer class="gd-bottom">
         <div class="gd-bottom-bar">
           <span class="gt-pill gold">{{ seatName(viewSeat) }}的手牌 · {{ viewHand.length }} 张</span>
+          <!-- 全屏时顶栏被隐藏，级牌信息挪到这里，保证一直可见 -->
+          <span class="gt-pill">主级 {{ G.levelText(roundLevel) }}</span>
+          <span class="gt-pill">我方 {{ G.levelText(teamLevel[0]) }} · 对方 {{ G.levelText(teamLevel[1]) }}</span>
           <span v-if="viewTing.length" class="gt-pill">可出：{{ viewTing.length }} 种</span>
           <span v-if="canAct" class="gt-pill">已选 {{ sel.length }} 张</span>
           <span class="gt-spacer"></span>
@@ -136,10 +144,11 @@
           class="gd-hand"
           ref="handRef"
           :style="{ '--gd-overlap': overlap + 'px' }"
-          @touchstart="onHandTouchStart"
-          @touchmove="onHandTouchMove"
-          @touchend="onHandTouchEnd"
-          @touchcancel="onHandTouchEnd"
+          @pointerdown="onHandDown"
+          @pointermove="onHandMove"
+          @pointerup="onHandUp"
+          @pointercancel="onHandUp"
+          @lostpointercapture="onHandUp"
         >
           <span
             v-for="(c, i) in viewHand"
@@ -262,6 +271,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as G from '@/utils/games/guandan.js'
 import { sfx, setMuted, isMuted } from '@/utils/games/sfx'
 import { loadGame, saveGame } from '@/utils/gameSave'
+import { useRootHeight } from '@/composables/useRootHeight'
 
 const props = defineProps({
   gameKey: { type: String, default: 'guandan' },
@@ -283,7 +293,12 @@ const emit = defineEmits(['exit', 'room-lock', 'room-unlock', 'act', 'rematch'])
 const SAVE_KEY = 'guandan'
 const SEAT_LABEL = { 0: '你', 1: '右家', 2: '对家', 3: '左家' }
 const AI_AVATARS = { 1: '🐯', 2: '🦊', 3: '🐼' }
-const CARD_W = 62
+
+/* 尺寸基准：牌大小跟着牌桌可用高度走 —— 手机横屏约 64×91，电脑大屏约 88×125。
+   旧版固定 62×88 且整张牌桌被等比缩到 0.54，手机上只有 33px 宽，既看不清也点不准。 */
+const { rootRef, rootH } = useRootHeight()
+const cardW = computed(() => Math.round(Math.min(88, Math.max(46, (rootH.value || 420) * 0.165))))
+const cardH = computed(() => Math.round(cardW.value * 1.42))
 
 /* ---------- 状态 ---------- */
 const mode = ref(props.initialMode || 'solo')
@@ -381,7 +396,7 @@ function cycleFlush() {
 }
 
 /* ---------- 出牌记录小窗：默认展开最近 3 条，可收起 ---------- */
-const histOpen = ref(true)
+const histOpen = ref(false)
 
 /* ---------- 进贡 / 还贡飞牌动画 ---------- */
 const SEAT_ANCHOR = {
@@ -428,11 +443,14 @@ let ro = null
 const overlap = computed(() => {
   const n = viewHand.value.length
   const avail = handW.value
+  const w = cardW.value
   if (!n || !avail || n < 2) return 0
-  const need = n * CARD_W
+  const need = n * w
   if (need <= avail) return 0
   const o = (need - avail) / (n - 1)
-  return Math.min(CARD_W - 22, Math.max(0, o))   // 每张至少露 22px（够看左上角点数花色）
+  // 每张至少露出「点数 + 花色」的一栏（约为牌宽的 30%，且不超过 26px）
+  const minShow = Math.max(18, Math.min(26, w * 0.3))
+  return Math.min(w - minShow, Math.max(0, o))
 })
 function measureHand() {
   // clientWidth 含左右各 4px padding，扣掉才是真正可摆牌的内容宽
@@ -718,7 +736,7 @@ function onPick(c, idx, ev) {
 /** 划选命中：**按几何位置**取 x 处最上层（索引最大）的牌，而不是 elementFromPoint。
  *  原因：选中的牌会加 `z-index: 5` 抬到邻牌之上，elementFromPoint 会被上一张已选牌
  *  截胡 —— 表现为「划过 5 张只选中第 0/2/4 张」（隔一张漏一张）。
- *  牌是线性排布，布局在划选期间不变，故在 touchstart 缓存一次矩形即可。 */
+ *  牌是线性排布，布局在划选期间不变，故在按下时缓存一次矩形即可。 */
 let cardRects = []
 function cacheCardRects() {
   cardRects = []
@@ -728,10 +746,16 @@ function cacheCardRects() {
     cardRects.push({ i, left: r.left, right: r.right })
   })
 }
-function cardIndexAt(x, y) {
+/** ignoreY=true 用于「已捕获指针的划选中」：手指横向滑动时难免上下飘，
+ *  此时只按 x 命中，划回起点也不会因为飘出手牌区而断掉。 */
+function cardIndexAt(x, y, ignoreY = false) {
   if (!handRef.value) return -1
-  const hr = handRef.value.getBoundingClientRect()
-  if (y < hr.top - 24 || y > hr.bottom + 24) return -1
+  if (!ignoreY) {
+    const hr = handRef.value.getBoundingClientRect()
+    // 容差按牌高给（原先固定 24px，牌变大后反而不够宽容）
+    const pad = Math.max(28, cardH.value * 0.5)
+    if (y < hr.top - pad || y > hr.bottom + pad) return -1
+  }
   let hit = -1
   for (const c of cardRects) {
     if (x >= c.left && x <= c.right) hit = c.i
@@ -748,24 +772,34 @@ function applySwipe(idx) {
   else if (!swipeMode && has) sel.value = sel.value.filter(x => x !== id)
   sfx.pick()
 }
-function onHandTouchStart(e) {
+/* 划选走 Pointer Events + setPointerCapture：
+ * 旧版用 touch 事件挂在手牌容器上，手指一旦滑出容器（往上飘一点）就收不到 move，
+ * 表现为「划一半断掉 / 选不全」；捕获指针后事件始终回到本元素，不会丢。 */
+let dragId = null
+function onHandDown(e) {
   if (!canAct.value) return
+  if (e.pointerType === 'mouse' && e.button !== 0) return
   cacheCardRects()
-  const t = e.touches[0]
-  const idx = cardIndexAt(t.clientX, t.clientY)
+  const idx = cardIndexAt(e.clientX, e.clientY)
   if (idx < 0) return
   swipeMode = !sel.value.includes(viewHand.value[idx].id)
   swipeLast = -1
   suppressClick = true
+  dragId = e.pointerId
+  try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* 老浏览器忽略 */ }
   applySwipe(idx)
 }
-function onHandTouchMove(e) {
-  if (swipeMode === null) return
+function onHandMove(e) {
+  if (swipeMode === null || dragId !== e.pointerId) return
   if (e.cancelable) e.preventDefault()
-  const t = e.touches[0]
-  applySwipe(cardIndexAt(t.clientX, t.clientY))
+  applySwipe(cardIndexAt(e.clientX, e.clientY, true))
 }
-function onHandTouchEnd() {
+function onHandUp(e) {
+  if (dragId !== null && e.pointerId !== undefined && dragId !== e.pointerId) return
+  if (e.pointerId !== undefined) {
+    try { e.currentTarget?.releasePointerCapture?.(e.pointerId) } catch { /* 已自动释放 */ }
+  }
+  dragId = null
   swipeMode = null
   swipeLast = -1
   // 触控结束后浏览器还会补发一次 click，留足窗口抑制它，避免把最后一张又点掉
@@ -853,16 +887,27 @@ watch(() => viewHand.value.length, () => {
 <style scoped>
 .gd-wrap { width: 100%; }
 .gd {
-  display: flex; flex-direction: column; gap: 10px;
-  padding: 12px 16px 14px; min-height: 560px;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px 12px; min-height: 520px;
 }
 .gd.is-big { min-height: calc(100vh - 140px); }
+
+/* 牌尺寸跟随牌桌高度（JS 写入 --card-w / --card-h）；牌面字号按牌宽等比缩放 */
+.gd .gt-card { width: var(--card-w, 62px); height: var(--card-h, 88px); }
+.gd .gt-card .c-tl b { font-size: calc(var(--card-w, 62px) * 0.245); }
+.gd .gt-card .c-tl i { font-size: calc(var(--card-w, 62px) * 0.2); }
+.gd .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.5); }
+.gd .gt-card .c-br b { font-size: calc(var(--card-w, 62px) * 0.17); }
+.gd .gt-card .c-br i { font-size: calc(var(--card-w, 62px) * 0.155); }
+.gd .gt-card .tag { font-size: calc(var(--card-w, 62px) * 0.15); }
+.gd .gt-card.is-joker .c-tl b { font-size: calc(var(--card-w, 62px) * 0.21); }
 
 /* 顶栏 */
 .gd-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-/* 牌桌：主区 + 右侧历史竖栏 */
+/* 牌桌：主区 + 右上角出牌记录（浮层，默认收起，不占牌桌宽度） */
 .gd-table {
+  position: relative;
   flex: 1; min-height: 0; display: flex; gap: 10px;
   padding: 10px; border-radius: 16px;
   background: radial-gradient(90% 70% at 50% 40%, rgba(255, 255, 255, .07), transparent 70%);
@@ -878,23 +923,31 @@ watch(() => viewHand.value.length, () => {
 
 /* 中央出牌区 */
 .gd-center {
-  flex: 1; min-width: 0; min-height: 150px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 8px;
-  padding: 12px; border-radius: 14px;
+  flex: 1; min-width: 0; min-height: 96px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  padding: 10px; border-radius: 14px;
   background: rgba(0, 0, 0, .22); border: 1px solid var(--gt-line);
 }
 .gd-center-head { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.gd-center-cards { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; min-height: 90px; align-items: center; }
+.gd-center-cards { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; min-height: 60px; align-items: center; }
+/* 中央已出的牌略小于手牌，避免多张时把牌桌撑爆 */
+.gd-center .gt-card { width: calc(var(--card-w, 62px) * 0.82); height: calc(var(--card-h, 88px) * 0.82); }
 .gd-center-empty { margin: 0; font-size: 12.5px; color: var(--gt-ink-dim); }
 
-/* 右侧出牌历史小窗（默认露最近 3 条，窗内滚动，可收起） */
+/* 出牌记录：浮在牌桌左下的浮层，收起时只是一个胶囊，不占牌桌宽度 */
 .gd-history {
-  width: 196px; flex: none; align-self: flex-start; max-height: 100%;
+  position: absolute; left: 10px; bottom: 10px; z-index: 4;
+  width: 190px; max-height: calc(100% - 20px); max-width: 60%;
   display: flex; flex-direction: column; gap: 6px;
   border-radius: 12px; padding: 8px 6px 8px 8px;
-  background: rgba(0, 0, 0, .26); border: 1px solid var(--gt-line);
+  background: rgba(6, 18, 26, .86); border: 1px solid var(--gt-line);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
-.gd-history.is-collapsed { width: auto; min-width: 116px; }
+.gd-history.is-collapsed {
+  width: auto; max-width: none; padding: 4px 6px;
+  background: rgba(6, 18, 26, .6);
+}
+.gd-history.is-collapsed .gd-history-head { padding: 0 2px; gap: 5px; }
 .gd-history-head {
   display: flex; align-items: center; gap: 6px;
   font-size: 11.5px; font-weight: 600; color: var(--gt-ink-dim);
@@ -962,12 +1015,15 @@ watch(() => viewHand.value.length, () => {
 }
 
 /* 底部手牌 */
-.gd-bottom { display: flex; flex-direction: column; gap: 8px; }
+.gd-bottom { display: flex; flex-direction: column; gap: 6px; flex: none; }
 .gd-bottom-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .gd-hand {
   display: flex; gap: 0; justify-content: center; align-items: flex-end;
-  padding: 16px 4px 8px; min-height: 112px;
+  /* 上留白正好是选中上浮的高度，牌不会被裁 */
+  padding: calc(var(--card-h, 88px) * 0.2) 4px 4px; min-height: 0;
   overflow: visible;
+  touch-action: none;            /* 划选时既不滚动页面也不触发双指缩放 */
+  -webkit-user-select: none; user-select: none;
 }
 .gd-hand .gt-card { margin-right: calc(-1 * var(--gd-overlap, 0px)); }
 .gd-hand .gt-card:last-child { margin-right: 0; }

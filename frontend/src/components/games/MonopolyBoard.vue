@@ -925,7 +925,7 @@ watch(() => game.curIdx, () => {
 @media (max-width: 1100px) { .mp { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- 棋盘 ---- */
-.mp-boardwrap { perspective: 1500px; display: flex; align-items: center; justify-content: center; }
+.mp-boardwrap { perspective: 1500px; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
 .mp-board {
   position: relative;
   display: grid;
@@ -1000,8 +1000,8 @@ watch(() => game.curIdx, () => {
 .mp-log-row { animation: gt-pop .2s ease-out both; }
 
 /* ---- 右侧 ---- */
-.mp-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.mp-players { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.mp-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.mp-players { display: flex; flex-direction: column; gap: 6px; max-height: 34%; overflow-y: auto; }
 .mp-pcard {
   display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-radius: 12px;
   background: rgba(0, 0, 0, .24); border: 1px solid var(--gt-line);
@@ -1023,7 +1023,12 @@ watch(() => game.curIdx, () => {
 .mp-here-b b { font-size: 14px; }
 .mp-here-b i { font-style: normal; font-size: 11px; color: var(--gt-ink-dim); }
 
-.mp-ops { justify-content: flex-start; }
+/* 操作区吸底常驻：右栏再长也不会把「掷骰 / 购地 / 盖房」挤出屏幕（全屏时右栏内部滚动） */
+.mp-ops {
+  justify-content: flex-start; position: sticky; bottom: -2px; z-index: 2;
+  padding: 8px 0 2px;
+  background: linear-gradient(180deg, rgba(6, 22, 18, 0), rgba(6, 22, 18, .94) 38%);
+}
 /* 在线：经营 / 拍卖 / 交易（页内块，非弹窗） */
 .mp-manage, .mp-auction, .mp-trades {
   display: flex; flex-direction: column; gap: 5px;

@@ -3,10 +3,14 @@
  *
  * 只在 `active()` 为真时接管手势（全屏模式）；未激活时返回空样式，布局与改造前完全一致。
  *
- * 基准是「自适应比例 fit」：把牌桌外壳（`.gt-shell`）等比缩放到刚好放进舞台。
- * 逻辑画布高度固定（`opts.height`，默认 720px），宽度按**舞台宽高比**实时算出
- * （`w = h * stageW / stageH`）—— 这样画布与舞台同比例，等比缩放后两轴都严丝合缝铺满，
- * 不会出现一侧留黑边。用户的双指缩放是在此基准上的相对倍数（zoom=1 即铺满一屏），单指拖动平移。
+ * **缩放基准（v2.46 重做）**：以参考设计尺寸（默认 1280×720）为准，只放大不缩小。
+ *   zoom = clamp(min(stageW/1280, stageH/720), 1, maxUpscale)
+ *   canvas = stage / zoom
+ *
+ * 为什么这么改：旧版是「宽度随舞台宽高比、高度固定 720」再等比缩小铺满。手机横屏舞台
+ * 只有约 780×390，zoom 被压到 0.54 —— 牌桌里的牌、字全部被砍半（掼蛋的牌只剩 33px 宽，
+ * 摸不准也划不动）。现在手机上一律 **1:1 原生渲染**，牌桌按真实 CSS 像素布局，牌自然就大；
+ * 只有舞台大于参考尺寸（桌面大屏）时才等比放大，最多 `maxUpscale` 倍，避免牌大得离谱。
  *
  * 牌桌自身有交互的区域（手牌划选、记录滚动、按钮）通过 NO_PAN 选择器排除，不参与平移。
  */
@@ -19,19 +23,22 @@ const NO_PAN = [
 ].join(',')
 
 export function usePinchZoom(stageRef, active, opts = {}) {
-  const minZoom = opts.minZoom ?? 0.5
-  const maxZoom = opts.maxZoom ?? 4
-  const logicalH = opts.height ?? 720
+  const refW = opts.refW ?? 1280      // 参考设计宽（桌面布局按这个宽度调好的）
+  const refH = opts.refH ?? 720       // 参考设计高
+  const maxUpscale = opts.maxUpscale ?? 1.75
+  const minZoom = opts.minZoom ?? 1   // 相对基准的最小倍数：1 = 不许缩到比「铺满」更小
+  const maxZoom = opts.maxZoom ?? 3
 
-  const scale = ref(1)      // 当前绝对缩放（已含 fit）
+  const scale = ref(1)      // 当前绝对缩放（fit 即基准）
   const tx = ref(0)
   const ty = ref(0)
   const ready = ref(false)
-  const canvasW = ref(1280)   // 逻辑画布宽度（按舞台宽高比算）
+  const canvasW = ref(refW)   // 逻辑画布宽 = 舞台宽 / 基准缩放
+  const canvasH = ref(refH)
 
   let fit = 1
-  let natW = 1
-  let natH = 1
+  let natW = refW
+  let natH = refH
 
   function stageEl() { return stageRef.value }
   function shellEl() { return stageRef.value?.querySelector('.gt-shell') }
@@ -64,20 +71,25 @@ export function usePinchZoom(stageRef, active, opts = {}) {
 
   async function measure() {
     const stage = stageEl()
-    const shell = shellEl()
-    if (!stage || !shell) return
+    if (!stage) return
     const sw = stage.clientWidth || 1
     const sh = stage.clientHeight || 1
-    // 画布宽度跟随舞台宽高比；变化 >1px 才写，避免 ResizeObserver 自激振荡
-    const w = Math.max(360, Math.round(logicalH * (sw / sh)))
-    if (Math.abs(w - canvasW.value) > 1) {
-      canvasW.value = w
+    // 基准缩放：只放大不缩小（手机 1:1 原生；桌面大屏等比放大，上限 maxUpscale）
+    const zoom = Math.max(1, Math.min(maxUpscale, Math.min(sw / refW, sh / refH)))
+    const cw = Math.max(240, Math.round(sw / zoom))
+    const ch = Math.max(180, Math.round(sh / zoom))
+    if (Math.abs(cw - canvasW.value) > 1 || Math.abs(ch - canvasH.value) > 1) {
+      canvasW.value = cw
+      canvasH.value = ch
       await nextTick()
     }
+    const shell = shellEl()
+    // 牌桌是异步组件：外壳还没挂上就先不定 ready，让外层重试循环继续；
+    // 此期间 style 走「100% / 不缩放」兜底，画面正确只是没做放大。
+    if (!shell) return
     natW = shell.offsetWidth || canvasW.value
-    natH = shell.offsetHeight || logicalH
-    // 同比例下 sw/natW 与 sh/natH 相等，取较小者兜底浮点误差
-    fit = Math.max(0.12, Math.min(3, Math.min(sw / natW, sh / natH)))
+    natH = shell.offsetHeight || canvasH.value
+    fit = Math.max(0.2, Math.min(sw / natW, sh / natH))
     ready.value = true
     reset()
   }
@@ -165,25 +177,16 @@ export function usePinchZoom(stageRef, active, opts = {}) {
     ty.value = ny
   }
 
-  function onDblClick() {
-    if (!active()) return
-    if (Math.abs(scale.value - fit) < 0.01) {
-      scale.value = Math.min(fit * maxZoom, fit * 1.8)
-      center()
-    } else {
-      reset()
-    }
-  }
-
-  const style = computed(() => (active() && ready.value)
-    ? {
-      // 逻辑画布：宽按舞台宽高比算出、高固定 logicalH —— 与舞台同比例，
-      // 等比缩放后两轴都铺满（fx=fy=1），不会一侧留黑边。
+  const style = computed(() => {
+    if (!active()) return {}
+    // 未测量完成：先铺满舞台 1:1，保证任何时候都不会「只显示左上角」
+    if (!ready.value) return { width: '100%', height: '100%', transform: 'none' }
+    return {
       width: `${canvasW.value}px`,
-      height: `${logicalH}px`,
+      height: `${canvasH.value}px`,
       transform: `translate(${tx.value}px, ${ty.value}px) scale(${scale.value})`,
     }
-    : {})
+  })
 
   /** 绑定到舞台元素；返回解绑函数 */
   function bind(el) {
@@ -193,14 +196,12 @@ export function usePinchZoom(stageRef, active, opts = {}) {
     el.addEventListener('touchend', onEnd)
     el.addEventListener('touchcancel', onEnd)
     el.addEventListener('wheel', onWheel, { passive: false })
-    el.addEventListener('dblclick', onDblClick)
     return () => {
       el.removeEventListener('touchstart', onStart)
       el.removeEventListener('touchmove', onMove)
       el.removeEventListener('touchend', onEnd)
       el.removeEventListener('touchcancel', onEnd)
       el.removeEventListener('wheel', onWheel)
-      el.removeEventListener('dblclick', onDblClick)
     }
   }
 

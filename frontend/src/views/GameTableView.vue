@@ -162,21 +162,39 @@
             </div>
           </div>
 
-          <!-- 全屏右侧竖栏：游戏说明 / 退出全屏 / 解散牌桌 / 返回列表 -->
-          <nav v-if="fullscreen" class="gtv-rail" aria-label="牌桌操作">
-            <button class="gtv-rail-btn" @click="showHelp = true">
-              <i aria-hidden="true">📖</i><span>游戏说明</span>
-            </button>
-            <button class="gtv-rail-btn" @click="exitFullscreen">
-              <i aria-hidden="true">⤡</i><span>退出全屏</span>
-            </button>
-            <button class="gtv-rail-btn danger" @click="dissolveRoom">
-              <i aria-hidden="true">⛔</i><span>解散牌桌</span>
-            </button>
-            <button class="gtv-rail-btn" @click="goBack">
-              <i aria-hidden="true">↩</i><span>返回列表</span>
-            </button>
-          </nav>
+          <!-- 全屏操作入口：常驻 4 按钮会让牌桌像「带边框的窗口」，改为右上角一个低调的 ☰，
+               点开才有选项；菜单里的信息（房号/底注/局数）也随之从顶部横条收进来。 -->
+          <div v-if="fullscreen" class="gtv-fsmenu" :class="{ 'is-open': menuOpen }">
+            <button
+              class="gtv-fsmenu-btn"
+              :aria-expanded="menuOpen ? 'true' : 'false'"
+              aria-label="牌桌菜单"
+              @click="menuOpen = !menuOpen"
+            >{{ menuOpen ? '✕' : '☰' }}</button>
+
+            <transition name="gtv-pop">
+              <div v-if="menuOpen" class="gtv-fsmenu-panel">
+                <div class="gtv-fsmenu-info">
+                  <span>{{ gameLabel }}</span>
+                  <span>房号 {{ room.id }}</span>
+                  <span>底注 {{ baseStake }}</span>
+                  <span>第 {{ room.round_no }} 局</span>
+                </div>
+                <button class="gtv-fsmenu-item" @click="menuOpen = false; showHelp = true">
+                  <i aria-hidden="true">📖</i><span>游戏说明</span>
+                </button>
+                <button class="gtv-fsmenu-item" @click="menuOpen = false; exitFullscreen()">
+                  <i aria-hidden="true">⤡</i><span>退出全屏</span>
+                </button>
+                <button class="gtv-fsmenu-item danger" @click="menuOpen = false; dissolveRoom()">
+                  <i aria-hidden="true">⛔</i><span>解散牌桌</span>
+                </button>
+                <button class="gtv-fsmenu-item" @click="goBack">
+                  <i aria-hidden="true">↩</i><span>返回列表</span>
+                </button>
+              </div>
+            </transition>
+          </div>
 
           <!-- 游戏说明（页内抽屉，非居中弹窗） -->
           <transition name="gtv-drawer">
@@ -184,7 +202,7 @@
               <aside class="gtv-help-panel" role="dialog" aria-label="游戏说明">
                 <header class="gtv-help-head">
                   <b>{{ gameLabel }} · 玩法说明</b>
-                  <button class="gtv-rail-btn sm" aria-label="关闭说明" @click="showHelp = false">✕</button>
+                  <button class="gtv-help-x" aria-label="关闭说明" @click="showHelp = false">✕</button>
                 </header>
                 <ol class="gtv-help-list">
                   <li v-for="(r, i) in helpRules" :key="i">{{ r }}</li>
@@ -280,6 +298,7 @@ const families = ref([])
 const error = ref('')
 const showHelp = ref(false)
 const fullscreen = ref(false)
+const menuOpen = ref(false)      // 全屏右上角 ☰ 菜单
 const { isMobile } = useIsMobile()
 
 const room = t.room
@@ -333,10 +352,12 @@ function enterFullscreen() {
 }
 function exitFullscreen() {
   fullscreen.value = false
+  menuOpen.value = false
   try { screen.orientation?.unlock?.() } catch { /* 忽略 */ }
 }
 
 watch(fullscreen, async (v) => {
+  menuOpen.value = false
   unbindZoom?.()
   unbindZoom = null
   contentRO?.disconnect()
@@ -596,7 +617,7 @@ onBeforeUnmount(() => {
   background: radial-gradient(120% 90% at 50% 0%, #123a2e, #061410 70%);
 }
 .gtv-viewstage.is-fs {
-  position: absolute; top: 0; left: 0; right: 64px; bottom: 0;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   overflow: hidden; touch-action: none; overscroll-behavior: none;
 }
 /* 逻辑画布：按桌面布局渲染，再整体等比缩放到一屏。
@@ -608,40 +629,74 @@ onBeforeUnmount(() => {
 /* 中间层 .gt-landscape 必须给出确定高度：否则 .gt-shell 的 height:100% 会解析成 auto，
    高度退回内容尺寸（大富翁方棋盘 760 + padding ≈ 788 > 720）→ fit 被高度卡住 → 左右留黑边。 */
 .gtv-viewzoom.is-fs :deep(.gt-landscape) { height: 100%; }
-/* 牌桌外壳撑满逻辑画布：这样外壳宽高比 = 舞台宽高比，等比缩放后两轴都铺满 */
-.gtv-viewzoom.is-fs :deep(.gt-shell) { width: 100%; height: 100%; min-height: 0; }
+/* 牌桌外壳撑满逻辑画布：这样外壳宽高比 = 舞台宽高比，等比缩放后两轴都铺满。
+   min-width:0 抵消牌桌自身 @media(max-width:900px) 的 860px 硬宽（手机横屏正落在该区间）。 */
+.gtv-viewzoom.is-fs :deep(.gt-shell) { width: 100%; height: 100%; min-height: 0; min-width: 0; }
 /* 全屏时顶栏横条让位，牌桌本体顶到最上 */
 .gtv-boardwrap.is-fs :deep(.gd-top),
-.gtv-boardwrap.is-fs :deep(.mj-top),
-.gtv-boardwrap.is-fs :deep(.mp-side-bar) { display: none; }
+.gtv-boardwrap.is-fs :deep(.mj-top) { display: none; }
 
-/* 全屏画布按**桌面布局**渲染后再整体缩放，故需抵消牌桌自身针对窄屏的响应式收窄：
-   否则手机横屏（viewport ≤1100px）下大富翁右栏会被折到棋盘下方，整块被压得极小。 */
-.gtv-viewzoom.is-fs :deep(.mp) { grid-template-columns: minmax(0, 1fr) 306px; min-height: 640px; }
+/* 全屏画布按**桌面布局**渲染后再整体缩放，故需抵消牌桌自身针对窄屏的响应式收窄。
+   注意 `min-height` 必须放开：旧版这里写死 640px，而手机横屏画布只有 ~390 高，
+   外壳被强制 640 高 → 溢出部分被舞台 overflow:hidden 裁掉 —— 这就是「大富翁全屏下方看不到」。 */
+.gtv-viewzoom.is-fs :deep(.mp) {
+  grid-template-columns: minmax(0, 1fr) clamp(206px, 25%, 306px);
+  min-height: 0;
+}
 .gtv-viewzoom.is-fs :deep(.mp-cname) { font-size: 9px; }
-/* 方棋盘受可用高度约束（否则 760px 见方撑破 720 逻辑高度，等比缩放后左右留黑边） */
-.gtv-viewzoom.is-fs :deep(.mp-board) { max-height: 100%; }
+/* 方棋盘改为「高度驱动」：先吃满可用高度，宽度按 1:1 推出来，不再超框也不留黑边 */
+.gtv-viewzoom.is-fs :deep(.mp-board) { height: 100%; width: auto; max-width: 100%; max-height: 100%; }
 
-/* 右侧竖向三按钮 */
-.gtv-rail {
-  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
-  z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 10px;
+/* 右上角 ☰：默认半透明低调，点开才铺开面板；牌桌本体占满整屏（舞台不再为按钮留白） */
+.gtv-fsmenu {
+  position: absolute; top: 10px; right: 10px; z-index: 6;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
 }
-.gtv-rail-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  width: 52px; padding: 8px 4px; border-radius: 14px; cursor: pointer;
-  font-family: inherit; font-size: 10.5px; line-height: 1.15; text-align: center;
-  color: #f2eee4; border: 1px solid rgba(233,200,119,.34);
-  background: linear-gradient(180deg, rgba(30,52,44,.9), rgba(12,26,21,.9));
+.gtv-fsmenu-btn {
+  width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; font-size: 17px; line-height: 1;
+  color: #f2eee4; border: 1px solid rgba(233, 200, 119, .3);
+  background: linear-gradient(180deg, rgba(24, 46, 38, .72), rgba(10, 22, 18, .72));
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 8px 20px -12px rgba(0,0,0,.9);
-  transition: border-color .2s, transform .15s;
+  box-shadow: 0 8px 22px -14px rgba(0, 0, 0, .9);
+  opacity: .5; transition: opacity .22s, border-color .22s, transform .15s;
 }
-.gtv-rail-btn:hover { border-color: var(--yq-gold, #c7a96b); transform: translateY(-1px); }
-.gtv-rail-btn.danger { border-color: rgba(231,139,139,.5); }
-.gtv-rail-btn.danger:hover { border-color: #e78b8b; }
-.gtv-rail-btn i { font-style: normal; font-size: 16px; line-height: 1; }
-.gtv-rail-btn.sm { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 12px; }
+.gtv-fsmenu:hover .gtv-fsmenu-btn,
+.gtv-fsmenu.is-open .gtv-fsmenu-btn { opacity: 1; border-color: var(--yq-gold, #c7a96b); }
+.gtv-fsmenu-btn:active { transform: scale(.94); }
+.gtv-fsmenu-panel {
+  display: flex; flex-direction: column; gap: 6px;
+  min-width: 168px; padding: 10px; border-radius: 16px;
+  border: 1px solid rgba(233, 200, 119, .34);
+  background: linear-gradient(180deg, rgba(26, 48, 41, .96), rgba(9, 22, 18, .96));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 18px 44px -20px rgba(0, 0, 0, .95);
+}
+.gtv-fsmenu-info {
+  display: flex; flex-wrap: wrap; gap: 5px; padding-bottom: 7px; margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+.gtv-fsmenu-info span {
+  font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, .1); color: var(--gt-ink-dim, #a9c1b7);
+}
+.gtv-fsmenu-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 12px; border-radius: 11px; cursor: pointer;
+  font-family: inherit; font-size: 13px; text-align: left;
+  color: #f2eee4; border: 1px solid transparent; background: rgba(255, 255, 255, .07);
+  transition: border-color .18s, background .18s;
+}
+.gtv-fsmenu-item:hover { border-color: rgba(233, 200, 119, .55); background: rgba(233, 200, 119, .12); }
+.gtv-fsmenu-item i { font-style: normal; font-size: 15px; }
+.gtv-fsmenu-item.danger { color: #e78b8b; }
+.gtv-fsmenu-item.danger:hover { border-color: rgba(231, 139, 139, .6); background: rgba(231, 139, 139, .12); }
+.gtv-pop-enter-active, .gtv-pop-leave-active { transition: opacity .16s ease, transform .16s ease; }
+.gtv-pop-enter-from, .gtv-pop-leave-to { opacity: 0; transform: translateY(-6px) scale(.96); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gtv-fsmenu-btn, .gtv-pop-enter-active, .gtv-pop-leave-active { transition: none; }
+}
 
 /* 游戏说明抽屉（页内右侧滑入，非居中弹窗） */
 .gtv-help {
@@ -658,6 +713,12 @@ onBeforeUnmount(() => {
 }
 .gtv-help-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .gtv-help-head b { font-size: 15px; color: var(--yq-gold, #c7a96b); }
+.gtv-help-x {
+  width: 30px; height: 30px; flex: none; border-radius: 50%; cursor: pointer;
+  font-family: inherit; font-size: 13px; line-height: 1; color: #f2eee4;
+  border: 1px solid rgba(233, 200, 119, .34); background: rgba(255, 255, 255, .08);
+}
+.gtv-help-x:hover { border-color: var(--yq-gold, #c7a96b); }
 .gtv-help-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
 .gtv-help-list li { font-size: 12.5px; line-height: 1.7; color: #e6e2d6; }
 .gtv-help-panel .gtv-btn { align-self: flex-start; }
