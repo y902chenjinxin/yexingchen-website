@@ -36,25 +36,25 @@
               <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
               <i>出牌</i>
             </span>
-            <div class="gt-seat" :class="seatCls(2)">
-              <span class="gt-seat-av">{{ seatAvatar(2) }}</span>
+            <div class="gt-seat" :class="seatCls(topSeat)">
+              <span class="gt-seat-av">{{ seatAvatar(topSeat) }}</span>
               <span class="gt-seat-tx">
-                <b class="gt-seat-name">{{ seatName(2) }}</b>
-                <i class="gt-seat-sub">{{ seatSub(2) }}</i>
+                <b class="gt-seat-name">{{ seatName(topSeat) }}</b>
+                <i class="gt-seat-sub">{{ seatSub(topSeat) }}</i>
               </span>
-              <span v-if="isTurn(2)" class="gt-seat-badge">出牌中</span>
+              <span v-if="isTurn(topSeat)" class="gt-seat-badge">出牌中</span>
             </div>
           </div>
 
           <div class="gd-row gd-row-mid">
             <!-- 左家 -->
-            <div class="gt-seat gd-seat-side" :class="seatCls(3)">
-              <span class="gt-seat-av">{{ seatAvatar(3) }}</span>
+            <div class="gt-seat gd-seat-side" :class="seatCls(leftSeat)">
+              <span class="gt-seat-av">{{ seatAvatar(leftSeat) }}</span>
               <span class="gt-seat-tx">
-                <b class="gt-seat-name">{{ seatName(3) }}</b>
-                <i class="gt-seat-sub">{{ seatSub(3) }}</i>
+                <b class="gt-seat-name">{{ seatName(leftSeat) }}</b>
+                <i class="gt-seat-sub">{{ seatSub(leftSeat) }}</i>
               </span>
-              <span v-if="isTurn(3)" class="gt-seat-badge">出牌中</span>
+              <span v-if="isTurn(leftSeat)" class="gt-seat-badge">出牌中</span>
             </div>
 
             <!-- 中央：本轮出牌 -->
@@ -85,13 +85,13 @@
             </div>
 
             <!-- 右家 -->
-            <div class="gt-seat gd-seat-side" :class="seatCls(1)">
-              <span class="gt-seat-av">{{ seatAvatar(1) }}</span>
+            <div class="gt-seat gd-seat-side" :class="seatCls(rightSeat)">
+              <span class="gt-seat-av">{{ seatAvatar(rightSeat) }}</span>
               <span class="gt-seat-tx">
-                <b class="gt-seat-name">{{ seatName(1) }}</b>
-                <i class="gt-seat-sub">{{ seatSub(1) }}</i>
+                <b class="gt-seat-name">{{ seatName(rightSeat) }}</b>
+                <i class="gt-seat-sub">{{ seatSub(rightSeat) }}</i>
               </span>
-              <span v-if="isTurn(1)" class="gt-seat-badge">出牌中</span>
+              <span v-if="isTurn(rightSeat)" class="gt-seat-badge">出牌中</span>
             </div>
           </div>
         </div>
@@ -138,7 +138,9 @@
         </aside>
       </div>
 
-      <!-- ===== 底部：手牌 + 操作 ===== -->
+      <!-- ===== 底部：信息条 → 操作 → 手牌 =====
+           操作区放在**手牌上方**（夜星：「把操作按钮都放在牌的上方，看着顺眼、也好点击操作，
+           也不影响出牌的顺滑」）—— 手牌贴底、按钮在其正上方，视线不必在牌堆下方找按钮。 -->
       <footer class="gd-bottom">
         <div class="gd-bottom-bar">
           <span class="gd-hand-tag">{{ seatName(viewSeat) }} · {{ viewHand.length }} 张</span>
@@ -147,9 +149,77 @@
             主级 {{ G.levelText(roundLevel) }} · 我方 {{ G.levelText(myLevel) }} / 对方 {{ G.levelText(oppLevel) }}
           </span>
           <span class="gt-spacer"></span>
+          <span v-if="showCountdown" class="gd-mini gd-timer" :class="{ urgent: leftSec <= 60 }">
+            ⏳ 贡牌剩余 {{ mmss(leftSec) }}
+          </span>
           <span v-if="viewTing.length" class="gd-mini">可出 {{ viewTing.length }}</span>
           <span v-if="canAct" class="gd-mini" :class="{ on: sel.length }">已选 {{ sel.length }}</span>
           <span class="gt-sub gd-status">{{ statusLine }}</span>
+        </div>
+
+        <!-- 操作区：次要工具（提示/重选/同花顺/顺子）收成小号弱按钮，主力只留「不要 / 出牌」两个大按钮 -->
+        <div class="gt-actions gd-actions" v-if="!tributePending && !returnPending">
+          <button class="gt-btn ghost sm" :disabled="!canAct" @click="doHint">提示</button>
+          <button class="gt-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
+          <button
+            class="gt-btn ghost sm"
+            :disabled="!flushCombos.length"
+            :title="flushCombos.length ? `点击轮换同花顺（共 ${flushCombos.length} 组，从大到小）` : '手上没有同花顺'"
+            @click="cycleFlush"
+          >同花顺<em v-if="flushCombos.length > 1" class="gd-btn-count">{{ flushCombos.length }}</em></button>
+          <button
+            class="gt-btn ghost sm"
+            :disabled="!seqGroups.length"
+            :title="seqGroups.length ? `点击轮换顺子（共 ${seqGroups.length} 组，同花顺优先）` : '手上没有顺子'"
+            @click="cycleSeq"
+          >顺子<em v-if="seqGroups.length > 1" class="gd-btn-count">{{ seqGroups.length }}</em></button>
+          <span class="gd-act-gap"></span>
+          <button class="gt-btn gd-pass" :disabled="!canAct || !target" @click="doPass">不要</button>
+          <button class="gt-btn gd-play" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
+        </div>
+
+        <!-- 进贡（在线 · 手动选牌，逢人配不能贡；服务端 5 分钟未选则自动代选） -->
+        <div v-else-if="tributePending" class="gd-return gd-tribute">
+          <div class="gd-return-tip">
+            进贡：点一张牌进贡给 {{ seatName(tributeTo) }}（逢人配不能进贡）
+            <b v-if="leftSec" class="gd-timer" :class="{ urgent: leftSec <= 60 }">{{ mmss(leftSec) }} 后自动代选</b>
+          </div>
+          <div class="gd-return-cards">
+            <span
+              v-for="c in tributeOptions"
+              :key="c.id"
+              class="gt-card pickable"
+              :class="cardCls(c)"
+              @click="doTribute(c)"
+            >
+              <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+              <span class="c-mid">{{ cardSuit(c) }}</span>
+              <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+            </span>
+            <p v-if="!tributeOptions.length" class="gd-hand-empty">没有可进贡的牌</p>
+          </div>
+        </div>
+
+        <!-- 还贡（在线 · 仅轮到本人时；服务端要求 ≤10，5 分钟未选则自动代选） -->
+        <div v-else-if="returnPending" class="gd-return">
+          <div class="gd-return-tip">
+            还贡：点一张 ≤10 的牌还给对方（不能还级牌 / 王）
+            <b v-if="leftSec" class="gd-timer" :class="{ urgent: leftSec <= 60 }">{{ mmss(leftSec) }} 后自动代选</b>
+          </div>
+          <div class="gd-return-cards">
+            <span
+              v-for="c in returnOptions"
+              :key="c.id"
+              class="gt-card pickable"
+              :class="cardCls(c)"
+              @click="doReturn(c)"
+            >
+              <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+              <span class="c-mid">{{ cardSuit(c) }}</span>
+              <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+            </span>
+            <p v-if="!returnOptions.length" class="gd-hand-empty">手上没有 ≤10 的牌可还</p>
+          </div>
         </div>
 
         <!-- 划选手势：pointerdown 落在手牌区，pointermove / up 由脚本挂到 window
@@ -174,59 +244,6 @@
             <span v-if="isWildCard(c)" class="tag">配</span>
           </span>
           <p v-if="!viewHand.length" class="gd-hand-empty">— 无手牌 —</p>
-        </div>
-
-        <!-- 操作区：次要工具（提示/重选/同花顺）收成小号弱按钮，主力只留「不要 / 出牌」两个大按钮 -->
-        <div class="gt-actions gd-actions" v-if="!tributePending && !returnPending">
-          <button class="gt-btn ghost sm" :disabled="!canAct" @click="doHint">提示</button>
-          <button class="gt-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
-          <button
-            class="gt-btn ghost sm"
-            :disabled="!flushCombos.length"
-            :title="flushCombos.length ? '点击循环切换同花顺组合' : '手上没有同花顺'"
-            @click="cycleFlush"
-          >同花顺<em v-if="flushCombos.length > 1" class="gd-btn-count">{{ flushCombos.length }}</em></button>
-          <span class="gd-act-gap"></span>
-          <button class="gt-btn gd-pass" :disabled="!canAct || !target" @click="doPass">不要</button>
-          <button class="gt-btn gd-play" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
-        </div>
-
-        <!-- 进贡（在线 · 手动选牌，逢人配不能贡） -->
-        <div v-else-if="tributePending" class="gd-return gd-tribute">
-          <div class="gd-return-tip">进贡：点一张牌进贡给 {{ seatName(tributeTo) }}（逢人配不能进贡）</div>
-          <div class="gd-return-cards">
-            <span
-              v-for="c in tributeOptions"
-              :key="c.id"
-              class="gt-card pickable"
-              :class="cardCls(c)"
-              @click="doTribute(c)"
-            >
-              <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-              <span class="c-mid">{{ cardSuit(c) }}</span>
-              <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-            </span>
-            <p v-if="!tributeOptions.length" class="gd-hand-empty">没有可进贡的牌</p>
-          </div>
-        </div>
-
-        <!-- 还贡（在线 · 仅轮到本人时；服务端要求 ≤10） -->
-        <div v-else-if="returnPending" class="gd-return">
-          <div class="gd-return-tip">还贡：点一张 ≤10 的牌还给对方（不能还级牌 / 王）</div>
-          <div class="gd-return-cards">
-            <span
-              v-for="c in returnOptions"
-              :key="c.id"
-              class="gt-card pickable"
-              :class="cardCls(c)"
-              @click="doReturn(c)"
-            >
-              <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-              <span class="c-mid">{{ cardSuit(c) }}</span>
-              <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-            </span>
-            <p v-if="!returnOptions.length" class="gd-hand-empty">手上没有 ≤10 的牌可还</p>
-          </div>
         </div>
       </footer>
 
@@ -299,6 +316,8 @@ const props = defineProps({
   seatNames: { type: Array, default: () => [] },
   acting: { type: Boolean, default: false },
   isHost: { type: Boolean, default: false },
+  /** 服务端给的「操作截止时间」（ISO 本地时间，仅供还贡/进贡倒计时展示） */
+  deadlineAt: { type: String, default: '' },
 })
 const emit = defineEmits(['exit', 'room-lock', 'room-unlock', 'act', 'rematch'])
 
@@ -369,8 +388,35 @@ const viewSeat = computed(() => {
   if (HUMAN_SEATS.value.includes(turn.value)) return turn.value
   return HUMAN_SEATS.value[0]
 })
-const viewHand = computed(() =>
-  isOnline.value ? (props.onlineView?.me?.hand || []) : (hands.value[viewSeat.value] || []))
+
+/**
+ * 牌桌**视角座位**：整张桌按它旋转 90°，让「我」永远坐在牌桌下方（V2467-001）。
+ *
+ * 旧版把座位写死成「0=下 1=右 2=上 3=左」，只有房主（0 号位）看到的方位是对的；
+ * 我坐到 1/3 号位时，自己的牌在下方、人却在牌桌右侧，看着非常别扭
+ * （夜星：「方位在哪，视角就转到哪，现在都是房主视角，很怪异」）。
+ *
+ * 在线 = 我的真实座位；单机 = 第一个真人座位。**同屏 p4 不做逐人翻转**：
+ * 那会每换一个人出牌整桌就转 90°，比不转更晕。
+ */
+const povSeat = computed(() => (isOnline.value ? oSeat.value : (HUMAN_SEATS.value[0] ?? 0)))
+const topSeat = computed(() => (povSeat.value + 2) % 4)
+const rightSeat = computed(() => (povSeat.value + 1) % 4)
+const leftSeat = computed(() => (povSeat.value + 3) % 4)
+
+/** 手牌「汇总到左侧」用的钉住顺序（见 viewHand）；只由同花顺/顺子按钮写入 */
+const pinned = ref([])
+
+const viewHand = computed(() => {
+  const base = isOnline.value ? (props.onlineView?.me?.hand || []) : (hands.value[viewSeat.value] || [])
+  if (!pinned.value.length) return base
+  // 被钉住的牌按 pinned 的顺序排到最左，其余保持原来的理牌顺序
+  const rank = new Map()
+  pinned.value.forEach((id, i) => rank.set(id, i))
+  const head = base.filter(c => rank.has(c.id)).sort((a, b) => rank.get(a.id) - rank.get(b.id))
+  const tail = base.filter(c => !rank.has(c.id))
+  return head.length ? head.concat(tail) : base
+})
 /** 别家手牌张数：在线从投影取，本地从 hands 取 */
 function handCount(s) {
   if (isOnline.value) return props.onlineView?.players?.[s]?.hand_count ?? 0
@@ -415,36 +461,70 @@ const tributePending = computed(() =>
   isOnline.value && props.onlineView?.phase === 'tribute' && !!props.onlineView?.me?.tribute_pending)
 const tributeOptions = computed(() => props.onlineView?.me?.tribute_options || [])
 const tributeTo = computed(() => props.onlineView?.me?.tribute_to ?? null)
+/** 只有「轮到自己选贡牌 + 服务端确实给了截止时间」才显示倒计时 */
+const showCountdown = computed(() => (returnPending.value || tributePending.value) && leftSec.value > 0)
 
-/* ---------- 同花顺：一键归集并循环切换 ---------- */
+/* ---------- 同花顺 / 顺子：一键归集到最左 + 轮换 ----------
+ * 三条都是夜星定的规则：
+ *  1) 组合按牌型**从大到小**（见 guandan.js 的 seqCombos）—— 第一次点给的是**最大**的一组，
+ *     6~9 张同花时也就是「默认汇总最大的同花顺」；再点依次换小的，转完一圈回到最大；
+ *  2) 「汇总到左侧」＝把这一组钉到手牌最左（pinned），马上要出的 5 张一眼可见；
+ *     清空选中 / 出完牌后自动复位，不会永久打乱理牌顺序；
+ *  3) 「顺子」按钮的候选是 **同花顺优先，其次普通顺子**（优先级 同花顺 > 顺子）。
+ * 归集结果同时写进 sel，点完可以直接「出牌」。
+ */
 const flushCombos = computed(() => G.findFlushBombs(viewHand.value, roundLevel.value))
+const seqGroups = computed(() => G.findSeqGroups(viewHand.value, roundLevel.value))
 const flushIdx = ref(0)
-function cycleFlush() {
-  const combos = flushCombos.value
-  if (!combos.length) { toastMsg('手上没有同花顺'); return }
-  if (flushIdx.value >= combos.length) flushIdx.value = 0
-  sel.value = combos[flushIdx.value].map(c => c.id)
-  toastMsg(`同花顺 ${flushIdx.value + 1}/${combos.length}`)
-  flushIdx.value = (flushIdx.value + 1) % combos.length
+const seqIdx = ref(0)
+
+function gather(combos, idxRef, label) {
+  if (!combos.length) { toastMsg(`手上没有${label}`); return }
+  if (idxRef.value >= combos.length) idxRef.value = 0
+  const cards = combos[idxRef.value]
+  sel.value = cards.map(c => c.id)
+  // 摆到最左时按牌值从小到大排，读起来就是「6 7 8 9 10」这种顺子
+  pinned.value = cards.slice()
+    .sort((a, b) => G.cardValue(a, roundLevel.value) - G.cardValue(b, roundLevel.value))
+    .map(c => c.id)
+  toastMsg(`${label} ${idxRef.value + 1}/${combos.length}`)
+  idxRef.value = (idxRef.value + 1) % combos.length
   sfx.pick()
+}
+function cycleFlush() { gather(flushCombos.value, flushIdx, '同花顺') }
+function cycleSeq() { gather(seqGroups.value, seqIdx, '顺子') }
+
+/* ---------- 贡牌倒计时（服务端 5 分钟未选则自动代选） ---------- */
+const leftSec = ref(0)
+let tickTimer = null
+function tickLeft() {
+  const t = props.deadlineAt ? Date.parse(props.deadlineAt) : NaN
+  leftSec.value = Number.isNaN(t) ? 0 : Math.max(0, Math.round((t - Date.now()) / 1000))
+}
+function mmss(sec) {
+  const s = Math.max(0, Math.floor(sec))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
 /* ---------- 出牌记录小窗：默认展开最近 3 条，可收起 ---------- */
 const histOpen = ref(false)
 
 /* ---------- 进贡 / 还贡飞牌动画 ---------- */
-const SEAT_ANCHOR = {
+/** 屏幕四个方位的锚点：0=下(我) 1=右 2=上 3=左 —— 与牌桌的视角旋转保持一致 */
+const SCREEN_ANCHOR = {
   0: { x: '50%', y: '84%' },
   1: { x: '84%', y: '52%' },
   2: { x: '50%', y: '16%' },
   3: { x: '16%', y: '52%' },
 }
+/** 座位号 → 屏幕方位：视角座位永远落在下方（3 号位在我左手边，以此类推） */
+function screenPos(s) { return ((Number(s) - povSeat.value) % 4 + 4) % 4 }
 const flyCard = ref(null)        // { card, from, to }
 const flyStyle = computed(() => {
   const f = flyCard.value
   if (!f) return {}
-  const a = SEAT_ANCHOR[f.from] || SEAT_ANCHOR[0]
-  const b = SEAT_ANCHOR[f.to] || SEAT_ANCHOR[2]
+  const a = SCREEN_ANCHOR[screenPos(f.from)]
+  const b = SCREEN_ANCHOR[screenPos(f.to)]
   return { '--fx0': a.x, '--fy0': a.y, '--fx1': b.x, '--fy1': b.y }
 })
 let flyTimer = null
@@ -944,6 +1024,10 @@ onMounted(() => {
     ro.observe(handRef.value)
   }
   measureHand()
+  // 贡牌倒计时：本地每秒自算剩余时间，不额外请求（死亡时间来自服务端 deadline_at）
+  tickLeft()
+  clearInterval(tickTimer)
+  tickTimer = setInterval(tickLeft, 1000)
   if (isOnline.value) {
     syncFromView(props.onlineView)
     primeFly()
@@ -956,16 +1040,23 @@ onBeforeUnmount(() => {
   clearTimeout(aiTimer)
   clearTimeout(toastTimer)
   clearTimeout(flyTimer)
+  clearInterval(tickTimer)
   if (ro) ro.disconnect()
   // 划选期间被卸载：window 上的手势监听必须摘掉，否则残留到下一个页面
   window.removeEventListener('pointermove', onHandMove)
   window.removeEventListener('pointerup', onHandUp)
   window.removeEventListener('pointercancel', onHandUp)
 })
+watch(() => props.deadlineAt, tickLeft)
+// 手牌张数一变（发牌 / 出牌 / 换局）→ 轮换指针与「汇总到左侧」都复位
 watch(() => viewHand.value.length, () => {
   flushIdx.value = 0
+  seqIdx.value = 0
+  pinned.value = []
   requestAnimationFrame(measureHand)
 })
+// 取消所有选中 → 手牌回到原有的理牌顺序（汇总只在「选着的时候」生效）
+watch(() => sel.value.length, (n) => { if (!n) pinned.value = [] })
 </script>
 
 <style scoped>
@@ -1214,6 +1305,10 @@ watch(() => viewHand.value.length, () => {
 .gd-return { display: flex; flex-direction: column; gap: 6px; padding: 6px 2px; }
 .gd-return-tip { font-size: 12.5px; color: var(--gt-ink-dim, #b9b3a6); text-align: center; }
 .gd-return-cards { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+/* 贡牌倒计时：服务端 5 分钟未选会自动代选一张，剩最后 1 分钟变红提醒 */
+.gd-timer { color: var(--gt-gold); font-variant-numeric: tabular-nums; }
+.gd-timer.urgent { color: #ff8f7d; }
+.gd-return-tip .gd-timer { margin-left: 8px; font-weight: 700; }
 .gd-wait-host { margin: 8px 0 0; font-size: 12.5px; color: var(--gt-ink-dim, #b9b3a6); }
 
 @media (max-width: 900px) {

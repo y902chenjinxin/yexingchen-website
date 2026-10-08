@@ -8,7 +8,7 @@
  *
  * 用法：npx vite --port 5199   然后打开 /_probe.html?g=mp（大富翁）/ ?g=mj（麻将）
  */
-import { createApp, h, ref, computed, onMounted, nextTick } from 'vue'
+import { createApp, h, ref, onMounted, nextTick } from 'vue'
 import { createPinia } from 'pinia'
 
 /* 与 main.js 保持同一套样式（顺序一致），否则牌面会因缺 .gt-tile 基础样式而错位 */
@@ -31,10 +31,39 @@ import MonopolyBoard from '@/components/games/MonopolyBoard.vue'
 import GuandanBoard from '@/components/games/GuandanBoard.vue'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
 import { usePinchZoom } from '@/composables/usePinchZoom'
+import * as G from '@/utils/games/guandan.js'
 
 const COMPONENTS = { mj: MahjongBoard, mp: MonopolyBoard, gd: GuandanBoard }
-const key = new URLSearchParams(location.search).get('g') || 'mp'
+const params = new URLSearchParams(location.search)
+const key = params.get('g') || 'mp'
 const Comp = COMPONENTS[key] || MonopolyBoard
+/* ?g=gd&seat=1 → 用**在线投影**跑掼蛋，验证「视角跟着我的座位转」（本地单机永远坐 0 号位，
+   不传 seat 是看不到旋转的）。座位名固定用「甲乙丙丁」，方便肉眼核对谁被摆到了哪一边。 */
+const seatParam = params.get('seat')
+const SEAT_CN = ['甲', '乙', '丙', '丁']
+
+function makeOnlineView(seat) {
+  const dealt = G.deal(2)
+  // 固定塞 6 张黑桃 3~8 进我的手牌 → 一定有同花顺可点（否则随机手牌常常没同花顺，
+  // 「汇总到最左」这条就没法稳定取证）
+  const hand = dealt[seat].slice()
+  const extra = [3, 4, 5, 6, 7, 8].map((r, i) => ({ id: 9000 + i, suit: '♠', rank: r, joker: null }))
+  hand.splice(0, 6, ...extra)
+  return {
+    phase: 'playing',
+    turn: (seat + 1) % 4,
+    level: 2,
+    round_no: 2,
+    team_levels: [3, 2],
+    me: { hand, tribute_pending: false, tribute_options: [], return_options: [] },
+    players: [0, 1, 2, 3].map((s) => ({
+      seat: s, rank: 0, hand_count: dealt[s].length, team: G.TEAM_OF[s],
+    })),
+    target: null,
+    last_play: null,
+    history: [],
+  }
+}
 
 /* 牌面检视台（?g=tiles）：三门 × 1~9，上下两档尺寸（大牌 / 弃牌 mini），
    直接复用 .mj .gt-tile 的样式，所以看到的就是牌桌上的样子 */
@@ -108,7 +137,15 @@ const app = createApp({
         h('div', { class: 'gm-play is-fsfit' }, [
           h('div', { ref: stageRef, class: 'gtv-viewstage is-fs' }, [
             h('div', { class: 'gtv-viewzoom is-fs', style: style.value }, [
-              h(Comp, { bare: true, big: true, 'game-key': key, 'initial-mode': 'p4' }),
+              seatParam === null
+                ? h(Comp, { bare: true, big: true, 'game-key': key, 'initial-mode': 'p4' })
+                : h(Comp, {
+                    bare: true, big: true, 'game-key': key,
+                    online: true,
+                    'online-seat': Number(seatParam),
+                    'online-view': makeOnlineView(Number(seatParam)),
+                    'seat-names': SEAT_CN,
+                  }),
             ]),
           ]),
         ]),

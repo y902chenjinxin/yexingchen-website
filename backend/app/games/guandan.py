@@ -834,7 +834,35 @@ class GuandanEngine(TableEngine):
         return st, events
 
     def on_timeout(self, state: dict, seats: list[dict]) -> tuple[dict, list[dict]] | None:
-        # 掼蛋已取消进贡/还贡倒计时（v2.44.1）：真人没点就等着，不自动代打。
+        """贡牌超时兜底（v2.46.7）：进贡 / 还贡 5 分钟内没手动选牌 → 自动代选一张合法牌。
+
+        v2.44.1 曾把倒计时整个取消（怕代打违背真人意愿），代价是真人挂机时整桌无限等待、
+        服务端也推不动。现在折中：给足 5 分钟（`GUANDAN_*_DEADLINE`），真忘了才代选，
+        选的也是「手上最大的一张进贡 / 最小的合法一张还贡」，不会比手选更差。
+        """
+        st = copy_state(state)
+        events: list[dict] = []
+        phase = st.get("phase")
+        seat = st.get("turn")
+        tr = st.get("tribute") or {}
+        if seat is None:
+            return None
+        if phase == "tribute":
+            if not any(g.get("from") == seat for g in tr.get("givers", [])):
+                return None
+            card = _pick_tribute(st["hands"][seat], st["level"])
+            if card is None or _is_wild(card, st["level"]):
+                return None   # 手上只剩逢人配（理论上不可能），不代打，交给真人
+            _do_tribute(st, seat, card, events)
+            return st, events
+        if phase == "return":
+            if not any(r.get("from") == seat for r in tr.get("returns", [])):
+                return None
+            card = _pick_return(st["hands"][seat], st["level"])
+            if card is None:
+                return None
+            _do_return(st, seat, card, events)
+            return st, events
         return None
 
     def result(self, state: dict) -> dict | None:

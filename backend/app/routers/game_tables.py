@@ -36,7 +36,13 @@ TABLE_GAMES = {"guandan": "掼蛋", "mahjong": "麻将", "monopoly": "大富翁"
 # 掉线 30s → AI 接管；房间 30 分钟无心跳 → 销毁
 OFFLINE_SECONDS = 30
 ROOM_TTL_MINUTES = 30
-RETURN_DEADLINE = 30            # 还贡倒计时（秒）
+RETURN_DEADLINE = 30            # 其他牌桌的还贡倒计时（秒）
+# 掼蛋的进贡 / 还贡：v2.44.1 曾把倒计时整个取消（怕代打违背真人意愿），代价是真人挂机时
+# 整桌无限等待、服务端也推不动（没有 deadline 就等于永远不触发兜底）。
+# v2.46.7 起给足 5 分钟 —— 夜星：「还贡牌时间改为 5 分钟，有充分时间考虑」；
+# 5 分钟足够慢慢想，真忘了也会自动代选一张合法牌，牌局不会卡死。
+GUANDAN_TRIBUTE_DEADLINE = 300
+GUANDAN_RETURN_DEADLINE = 300
 
 # 预扣底注的游戏（结算时「退还底注 + 净输赢」）；大富翁按资产净变化直接结算
 PRE_DEDUCT = {"guandan", "mahjong"}
@@ -217,12 +223,18 @@ def _append_events(db: Session, room: GameRoom, events: list[dict]) -> int:
 def _deadline_for(game: str, state: dict) -> datetime | None:
     """超时兜底的截止时间。
 
-    掼蛋自 v2.44.1 起取消进贡/还贡倒计时（真人必须手动选牌），故不设 deadline；
-    其余游戏暂无需要倒计时的阶段。
+    掼蛋的进贡 / 还贡自 v2.46.7 起给 **5 分钟**（`GUANDAN_*_DEADLINE`）：
+    真人手动选牌，但挂机时由 `on_timeout` 自动代选一张合法牌，牌局不会无限卡住。
+    其余游戏暂无需要倒计时的阶段（`RETURN_DEADLINE` 保留给历史行为）。
     """
+    phase = state.get("phase")
     if game == "guandan":
+        if phase == "tribute":
+            return _now().replace(microsecond=0) + timedelta(seconds=GUANDAN_TRIBUTE_DEADLINE)
+        if phase == "return":
+            return _now().replace(microsecond=0) + timedelta(seconds=GUANDAN_RETURN_DEADLINE)
         return None
-    if state.get("phase") == "return":
+    if phase == "return":
         return _now().replace(microsecond=0) + timedelta(seconds=RETURN_DEADLINE)
     return None
 
@@ -231,24 +243,36 @@ def _advance(db: Session, room: GameRoom, state: dict, events: list[dict]) -> tu
     """让引擎自行推进：AI 行动 / 发牌 / 进贡 / 超时兜底，直到轮到真人或结束。"""
     eng = get_engine(room.game)
     seats = _eff_seats(normalize_seats(room.seats))
-    for _ in range(400):
-        out = eng.step_ai(state, seats)
-        if out is None:
-            break
-        state, evs = out
-        events.extend(evs)
-    # 还贡超时兜底
+
+    def drive(st: dict) -> dict:
+        for _ in range(400):
+            out = eng.step_ai(st, seats)
+            if out is None:
+                break
+            st, evs = out
+            events.extend(evs)
+        return st
+
+    state = drive(state)
+    # 进贡 / 还贡超时兜底
     dl = _parse_dt(room.deadline_at)
     if dl and _now() > dl:
         out = eng.on_timeout(state, seats)
         if out:
             state, evs = out
             events.extend(evs)
+            # 代选之后可能正好轮到 AI，接着推进（否则要等下一次轮询才动）
+            state = drive(state)
     return state, events
 
 
 def _persist(db: Session, room: GameRoom, state: dict, events: list[dict]) -> None:
     _settle_gangs(db, room, events)   # 刮风下雨：即时收豆（早于最终结算）
+    # ⚠️ 倒计时**只在「阶段 / 轮到谁」变化时重算**。
+    # GET /rooms/{id}（前端每 2~3s 轮询一次）也会走到 _persist；若每次都无脑重置，
+    # deadline 就会被无限往后推 5 分钟，超时兜底永远不触发。
+    prev = room.game_state if isinstance(room.game_state, dict) else {}
+    moved_on = (prev.get("phase"), prev.get("turn")) != (state.get("phase"), state.get("turn"))
     room.game_state = state
     room.turn_seat = state.get("turn")
     room.seats = normalize_seats(room.seats)   # 保证 JSON 列变更被 SQLAlchemy 感知
@@ -256,7 +280,8 @@ def _persist(db: Session, room: GameRoom, state: dict, events: list[dict]) -> No
     _append_events(db, room, events)
     if state.get("phase") == "finished":
         room.status = "finished"
-    room.deadline_at = _deadline_for(room.game, state)
+    if moved_on or not room.deadline_at:
+        room.deadline_at = _deadline_for(room.game, state)
 
 
 def _record_stats(db: Session, uid: int, game_key: str, result: str) -> int:

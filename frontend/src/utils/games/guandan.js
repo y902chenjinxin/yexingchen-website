@@ -359,27 +359,63 @@ export function genCandidates(hand, level) {
 }
 
 /**
- * 枚举手牌里所有「同花顺」组合（逢人配可补位），供「同花顺」按钮循环归集。
- * 返回值为卡片数组的列表，按牌型大小（key）升序，去重。
+ * 枚举 5 张连续牌的候选组合，**按牌型大小降序**（大的在前）。
+ *
+ * 「同花顺 / 顺子」按钮的轮换顺序就吃这个顺序：夜星要的是
+ * 「6~9 张同花默认先汇总**最大**的同花顺，再点才依次换小的」，
+ * 所以这里从 a=10 往 a=1 扫，同 key 去重。
+ * 逢人配（红桃级牌）由 buildFlush / buildSeq 就地补位 —— 大的一组先被枚举到，
+ * 天然优先拿到逢人配，即「红心牌默认配给大的同花顺」。
+ *
+ * @param {boolean} sameSuit true=只连同花顺（5 张同花色）；
+ *                           false=普通顺子（花色不限；整组同花的会被 detectPattern 判成
+ *                           同花顺，这里剔除，避免与同花顺那组重复）
  */
-export function findFlushBombs(hand, level) {
+function seqCombos(hand, level, sameSuit) {
   const out = []
   const seen = new Set()
-  for (let a = 1; a <= 10; a++) {
+  for (let a = 10; a >= 1; a--) {
     const seq = seqRanks(a, 5)
-    for (const s of SUITS) {
-      const fl = buildFlush(hand, level, s, seq)
-      if (!fl || fl.length !== 5) continue
-      const pat = detectPattern(fl, level)
-      if (!pat || pat.type !== 'flushbomb') continue
-      const key = fl.map(c => c.id).sort((x, y) => x - y).join(',')
+    const groups = sameSuit
+      ? SUITS.map(s => buildFlush(hand, level, s, seq))
+      : [buildSeq(hand, level, seq, 1)]
+    for (const cs of groups) {
+      if (!cs || cs.length !== 5) continue
+      const pat = detectPattern(cs, level)
+      if (!pat) continue
+      if (sameSuit ? pat.type !== 'flushbomb' : pat.type !== 'straight') continue
+      const key = cs.map(c => c.id).sort((x, y) => x - y).join(',')
       if (seen.has(key)) continue
       seen.add(key)
-      out.push({ cards: fl, key: pat.key })
+      out.push({ cards: cs, key: pat.key })
     }
   }
-  out.sort((x, y) => x.key - y.key)
+  out.sort((x, y) => y.key - x.key)
   return out.map(x => x.cards)
+}
+
+/**
+ * 手牌里所有「同花顺」组合（逢人配可补位），供「同花顺」按钮轮换归集。
+ * 按牌型大小 **从大到小**（第一次点给的就是最大的一组）。
+ */
+export function findFlushBombs(hand, level) {
+  return seqCombos(hand, level, true)
+}
+
+/**
+ * 「顺子」按钮的候选：**同花顺优先，其次普通顺子**（夜星：「优先级为同花顺>顺子」）。
+ * 同花顺一组从大到小排在前面，普通顺子去重后接在后面。
+ */
+export function findSeqGroups(hand, level) {
+  const flushes = seqCombos(hand, level, true)
+  const seen = new Set(flushes.map(cs => cs.map(c => c.id).sort((x, y) => x - y).join(',')))
+  const straights = seqCombos(hand, level, false).filter((cs) => {
+    const k = cs.map(c => c.id).sort((x, y) => x - y).join(',')
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+  return [...flushes, ...straights]
 }
 
 /* ---------------- AI 出牌 ---------------- */

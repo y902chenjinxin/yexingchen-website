@@ -13,6 +13,9 @@ const CASES = [
   { g: 'mp', name: 'wide-monopoly' },
   { g: 'mj', name: 'wide-mahjong' },
   { g: 'gd', name: 'wide-guandan' },
+  // 在线视角：我坐 1 / 3 号位时，牌桌该按我的方位转（本地单机永远坐 0 号位，看不出旋转）
+  { g: 'gd', seat: 1, name: 'wide-guandan-seat1' },
+  { g: 'gd', seat: 3, name: 'wide-guandan-seat3' },
 ]
 const only = process.argv[2]
 const list = only ? CASES.filter((c) => c.g === only) : CASES
@@ -29,7 +32,7 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
     page.on('console', (m) => { if (m.type() === 'error') logs.push('err: ' + m.text()) })
     page.on('pageerror', (e) => logs.push('pageerror: ' + e.message))
     try {
-      await page.goto(`http://[::1]:5199/_probe.html?g=${c.g}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+      await page.goto(`http://[::1]:5199/_probe.html?g=${c.g}${c.seat === undefined ? '' : '&seat=' + c.seat}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
     } catch (e) {
       console.log('===== ' + c.name + ' 打开失败 =====\n' + e.message)
       await page.close()
@@ -75,6 +78,44 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
       }
       await page.evaluate(() => document.querySelectorAll('.gt-over').forEach((e) => e.remove()))
       await page.waitForTimeout(400)
+    }
+
+    let gather = null
+    if (c.g === 'gd') {
+      // 点「同花顺」验证：①是否把这一组汇总到手牌**最左**；②顺序是否从小到大
+      gather = []
+      for (const label of ['同花顺', '顺子']) {
+        const btns = await page.$$('.gd-actions .gt-btn')
+        let hit = null
+        for (const b of btns) {
+          const t = (await b.innerText()).replace(/\s+/g, '')
+          if (t.startsWith(label)) hit = b
+        }
+        if (!hit) { gather.push({ label, missing: true }); continue }
+        const disabled = await hit.isDisabled()
+        if (disabled) { gather.push({ label, disabled: true }); continue }
+        await hit.click()
+        await page.waitForTimeout(350)
+        const snap = await page.evaluate(() => {
+          const cards = Array.from(document.querySelectorAll('.gd-hand .gt-card'))
+          const txt = (el) => el.textContent.replace(/\s+/g, '').slice(0, 3)
+          return {
+            selCount: cards.filter((el) => el.classList.contains('is-sel')).length,
+            headSelected: cards.slice(0, 5).every((el) => el.classList.contains('is-sel')),
+            head: cards.slice(0, 6).map(txt),
+            tailHead: cards.slice(5, 8).map(txt),
+          }
+        })
+        gather.push({ label, ...snap })
+        await page.screenshot({ path: `../artifacts/_probe/${c.name}-${label}.png` })
+        // 取消选中，回到原顺序，好让下一个按钮从干净状态开始
+        const re = await page.$$('.gd-actions .gt-btn')
+        for (const b of re) {
+          const t = (await b.innerText()).replace(/\s+/g, '')
+          if (t.startsWith('重选')) await b.click()
+        }
+        await page.waitForTimeout(250)
+      }
     }
 
     const info = await page.evaluate(() => {
@@ -174,6 +215,17 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
         gdHistory: box('.gd-history'),
         gdHistoryPos: (() => { const el = q('.gd-history'); return el ? getComputedStyle(el).position : null })(),
         gdSeats: ['.gd-row-top .gt-seat', '.gd-row-mid .gt-seat', '.gd-row-mid .gt-seat:last-of-type'].map((sel) => box(sel)),
+        // 「视角跟不跟着我的座位转」的文本证据：三家各显示谁
+        gdSeatNames: ['.gd-row-top .gt-seat .gt-seat-name', '.gd-row-mid .gt-seat .gt-seat-name', '.gd-row-mid .gt-seat:last-of-type .gt-seat-name']
+          .map((sel) => { const el = q(sel); return el ? el.textContent.trim() : null }),
+        gdHandTag: (() => { const el = q('.gd-hand-tag'); return el ? el.textContent.trim() : null })(),
+        gdTimer: (() => { const el = q('.gd-timer'); return el ? el.textContent.replace(/\s+/g, ' ').trim() : null })(),
+        // 操作按钮是否在手牌**上方**（夜星第 5 条）
+        gdActionsAboveHand: (() => {
+          const a = q('.gd-actions'); const h = q('.gd-hand')
+          if (!a || !h) return null
+          return { actionsY: Math.round(a.getBoundingClientRect().y), handY: Math.round(h.getBoundingClientRect().y), above: a.getBoundingClientRect().y < h.getBoundingClientRect().y }
+        })(),
         gdBottom: box('.gd-bottom'),
         gdHand: box('.gd-hand'),
         gdHandKids: (() => { const el = q('.gd-hand'); return el ? el.children.length : null })(),
@@ -208,6 +260,7 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
     })
     console.log('===== ' + c.name + ' =====')
     console.log(JSON.stringify(info, null, 1))
+    if (gather) console.log('GATHER: ' + JSON.stringify(gather))
     if (logs.length) console.log('LOGS: ' + logs.slice(0, 6).join(' | '))
     await page.screenshot({ path: `../artifacts/_probe/${c.name}.png` })
     for (const [sel, tag] of [['.mp-center', 'w-mp-center'], ['.mp-side', 'w-mp-side'], ['.mp-dice', 'w-mp-dice'], ['.mj-center', 'w-mj-center']]) {

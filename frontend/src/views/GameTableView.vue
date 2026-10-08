@@ -182,6 +182,7 @@
                 :online-seat="room.my_seat ?? 0"
                 :seat-names="seatNames"
                 :is-host="room.is_host"
+                :deadline-at="room.deadline_at || ''"
                 :acting="busy"
                 :big="true"
                 @act="onAct"
