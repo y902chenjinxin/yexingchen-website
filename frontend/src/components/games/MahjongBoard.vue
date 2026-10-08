@@ -122,6 +122,39 @@
           </span>
         </div>
 
+        <!-- 反应窗口：碰 / 杠 / 胡 / 过（v2.46.14：从手牌右侧移到手牌上方独立一行） -->
+        <div v-if="pending" class="gt-actions mj-actions">
+          <span class="gt-pill gold">可操作：{{ pending.kinds.map(k => REACT_NAME[k]).join(' / ') }}</span>
+          <button v-if="pending.kinds.includes('hu')" class="gt-btn" @click="onReact('hu')">胡</button>
+          <button v-if="pending.kinds.includes('kong')" class="gt-btn" @click="onReact('kong')">杠</button>
+          <button v-if="pending.kinds.includes('pong')" class="gt-btn" @click="onReact('pong')">碰</button>
+          <button class="gt-btn ghost" @click="onReact('pass')">过</button>
+        </div>
+
+        <!-- 自己回合的操作 -->
+        <div v-else class="gt-actions mj-actions">
+          <button class="gt-btn" :disabled="!canDiscard || selId === null" @click="discardSel">出牌</button>
+          <button class="gt-btn" :disabled="!canDiscard || !canZimo" @click="doZimo">自摸</button>
+          <button
+            v-if="canDiscard && ankongs.length"
+            class="gt-btn ghost"
+            @click="doAnkong(ankongs[0])"
+          >暗杠 {{ tileText(ankongs[0]) }}</button>
+          <button
+            v-if="canDiscard && bugangs.length"
+            class="gt-btn ghost"
+            @click="doBugang(bugangs[0])"
+          >补杠 {{ tileText(bugangs[0]) }}</button>
+          <button class="gt-btn ghost" :disabled="!canDiscard" @click="doHint">提示</button>
+          <!-- 手机手势提示：灰掉的缺门牌只能打，上滑即可直接打出（不必先点选再点按钮） -->
+          <em v-if="canDiscard" class="mj-hint">
+            <b v-if="viewMissing && handTiles.some(t => t.suit === viewMissing)">
+              {{ M.SUIT_NAME[viewMissing] }}缺未清 · 不能碰杠
+            </b>
+            上滑手牌直接打出
+          </em>
+        </div>
+
         <div class="mj-handrow">
         <!-- 自己的碰 / 杠副露：旧版只给个「副露 N」文字计数，牌面不展示 ——
              碰了什么全靠记。现在跟其他三家一样用迷你牌摆在手牌左侧。 -->
@@ -167,39 +200,6 @@
             <MahjongTileFace :suit="faceSuit(viewDrawn)" :rank="viewDrawn.rank" />
           </span>
           <p v-if="!handTiles.length" class="mj-hand-empty">— 无手牌 —</p>
-        </div>
-
-        <!-- 反应窗口：碰 / 杠 / 胡 / 过 -->
-        <div v-if="pending" class="gt-actions mj-actions">
-          <span class="gt-pill gold">可操作：{{ pending.kinds.map(k => REACT_NAME[k]).join(' / ') }}</span>
-          <button v-if="pending.kinds.includes('hu')" class="gt-btn" @click="onReact('hu')">胡</button>
-          <button v-if="pending.kinds.includes('kong')" class="gt-btn" @click="onReact('kong')">杠</button>
-          <button v-if="pending.kinds.includes('pong')" class="gt-btn" @click="onReact('pong')">碰</button>
-          <button class="gt-btn ghost" @click="onReact('pass')">过</button>
-        </div>
-
-        <!-- 自己回合的操作 -->
-        <div v-else class="gt-actions mj-actions">
-          <button class="gt-btn" :disabled="!canDiscard || selId === null" @click="discardSel">出牌</button>
-          <button class="gt-btn" :disabled="!canDiscard || !canZimo" @click="doZimo">自摸</button>
-          <button
-            v-if="canDiscard && ankongs.length"
-            class="gt-btn ghost"
-            @click="doAnkong(ankongs[0])"
-          >暗杠 {{ tileText(ankongs[0]) }}</button>
-          <button
-            v-if="canDiscard && bugangs.length"
-            class="gt-btn ghost"
-            @click="doBugang(bugangs[0])"
-          >补杠 {{ tileText(bugangs[0]) }}</button>
-          <button class="gt-btn ghost" :disabled="!canDiscard" @click="doHint">提示</button>
-          <!-- 手机手势提示：灰掉的缺门牌只能打，上滑即可直接打出（不必先点选再点按钮） -->
-          <em v-if="canDiscard" class="mj-hint">
-            <b v-if="viewMissing && handTiles.some(t => t.suit === viewMissing)">
-              {{ M.SUIT_NAME[viewMissing] }}缺未清 · 不能碰杠
-            </b>
-            上滑手牌直接打出
-          </em>
         </div>
         </div>
       </footer>
@@ -1261,9 +1261,8 @@ onBeforeUnmount(() => {
 
 /* ===== 底部 ===== */
 .mj-bottom { display: flex; flex-direction: column; gap: 5px; min-height: 0; }
-/* 手牌与操作按钮**同行**：按钮跟在手牌（含缺牌/摸牌）后面，省掉独立按钮行的整行高度。
-   手牌 flex:1 内部继续居中；按钮 flex:none 贴在手牌右侧。
-   牌宽公式的百分比以手牌盒实际宽为基准，按钮占掉的空间自动摊进均分项，
+/* v2.46.14：操作按钮从手牌右侧移到手牌**上方**独立一行（夜星：按钮放麻将上方）。
+   手牌 flex:1 铺满整行；牌宽公式的百分比以手牌盒实际宽为基准。
    全屏 1280 逻辑宽下手牌仍由 0.12×屏高的上限封顶，不会被压小。 */
 .mj-handrow { display: flex; align-items: flex-end; gap: 8px; min-height: 0; }
 /* 自己的碰 / 杠副露（V24613-002）：迷你牌横排，flex:none 不参与手牌均分；
@@ -1295,10 +1294,11 @@ onBeforeUnmount(() => {
 /* 牌面 SVG 铺满整张牌（绝对定位，避免百分比高度在 aspect-ratio 盒子里解析不确定） */
 .mj .gt-tile > :deep(svg) { position: absolute; inset: 0; }
 .mj-hand-empty { margin: 0 auto; font-size: 12px; color: var(--gt-ink-dim); }
-/* 出牌 / 自摸 / 提示：全局 .gt-btn 是 8px/18px（39px 高），一屏 360px 的横屏里偏奢侈，
-   这里收成 6px/16px（约 32px）。手牌尺寸**不动** —— 那是玩家最常碰的东西。
-   与手牌同行后不再整行居中，靠左跟在手牌后面即可。 */
-.mj-actions { justify-content: flex-start; flex: 0 0 auto; margin-bottom: 3px; }
+/* 出牌 / 自摸 / 提示（V24614-001）：独立一行贴在手牌上方、**右对齐** ——
+   原先挤在手牌右侧，横屏 360px 高时 14+ 张牌把按钮压得很窄。
+   全局 .gt-btn 是 8px/18px（39px 高）偏奢侈，这里收成 6px/16px（约 32px），
+   独立行的整行高度从牌桌里出 —— 牌面尺寸**不动**，那是玩家最常碰的东西。 */
+.mj-actions { justify-content: flex-end; margin-bottom: 1px; }
 .mj-actions .gt-btn { padding: 6px 16px; font-size: 12.5px; }
 
 /* ===== 牌：象牙白 + 玉质感 =====
