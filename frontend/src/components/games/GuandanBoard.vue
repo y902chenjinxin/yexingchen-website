@@ -407,18 +407,27 @@ const topSeat = computed(() => (povSeat.value + 2) % 4)
 const rightSeat = computed(() => (povSeat.value + 1) % 4)
 const leftSeat = computed(() => (povSeat.value + 3) % 4)
 
-/** 手牌「汇总到左侧」用的钉住顺序（见 viewHand）；只由同花顺/顺子按钮写入 */
-const pinned = ref([])
-
+/** 手牌展示顺序：**同花顺 / 顺子自动理到最左、永不复位**（夜星 2026-10-09：
+ *  「同花顺和顺子就理好放在左侧，不收回去，可以快速理清牌」——旧版要点按钮才钉、
+ *  出完牌 / 清空选中就复位，理好的牌又散回去）。
+ *  规则：组按 findSeqGroups 的顺序（同花顺优先、组间从大到小）逐组取用；
+ *  与已取组重叠的组整组跳过（同一张不重复钉）；组内按牌值从小到大排，
+ *  读起来就是「6 7 8 9 10」；剩余牌保持原理牌顺序跟在后面。
+ *  手牌一变（摸牌 / 出牌 / 贡牌）自动重算 —— 还成顺的继续钉着，散了的自然归位。 */
 const viewHand = computed(() => {
   const base = isOnline.value ? (props.onlineView?.me?.hand || []) : (hands.value[viewSeat.value] || [])
-  if (!pinned.value.length) return base
-  // 被钉住的牌按 pinned 的顺序排到最左，其余保持原来的理牌顺序
-  const rank = new Map()
-  pinned.value.forEach((id, i) => rank.set(id, i))
-  const head = base.filter(c => rank.has(c.id)).sort((a, b) => rank.get(a.id) - rank.get(b.id))
-  const tail = base.filter(c => !rank.has(c.id))
-  return head.length ? head.concat(tail) : base
+  if (phase.value === 'settled' || !base.length) return base
+  const groups = G.findSeqGroups(base, roundLevel.value)
+  if (!groups.length) return base
+  const used = new Set()
+  const head = []
+  for (const cs of groups) {
+    if (cs.some(c => used.has(c.id))) continue
+    cs.slice()
+      .sort((a, b) => G.cardValue(a, roundLevel.value) - G.cardValue(b, roundLevel.value))
+      .forEach(c => { used.add(c.id); head.push(c) })
+  }
+  return head.length ? head.concat(base.filter(c => !used.has(c.id))) : base
 })
 /** 别家手牌张数：在线从投影取，本地从 hands 取 */
 function handCount(s) {
@@ -467,14 +476,12 @@ const tributeTo = computed(() => props.onlineView?.me?.tribute_to ?? null)
 /** 只有「轮到自己选贡牌 + 服务端确实给了截止时间」才显示倒计时 */
 const showCountdown = computed(() => (returnPending.value || tributePending.value) && leftSec.value > 0)
 
-/* ---------- 同花顺 / 顺子：一键归集到最左 + 轮换 ----------
- * 三条都是夜星定的规则：
+/* ---------- 同花顺 / 顺子：一键选中 + 轮换 ----------
+ * 夜星定的规则（v2.46.15 起「放到最左」是**自动**的，见 viewHand；按钮只管选中）：
  *  1) 组合按牌型**从大到小**（见 guandan.js 的 seqCombos）—— 第一次点给的是**最大**的一组，
- *     6~9 张同花时也就是「默认汇总最大的同花顺」；再点依次换小的，转完一圈回到最大；
- *  2) 「汇总到左侧」＝把这一组钉到手牌最左（pinned），马上要出的 5 张一眼可见；
- *     清空选中 / 出完牌后自动复位，不会永久打乱理牌顺序；
- *  3) 「顺子」按钮的候选是 **同花顺优先，其次普通顺子**（优先级 同花顺 > 顺子）。
- * 归集结果同时写进 sel，点完可以直接「出牌」。
+ *     6~9 张同花时也就是「默认选中最大的同花顺」；再点依次换小的，转完一圈回到最大；
+ *  2) 「顺子」按钮的候选是 **同花顺优先，其次普通顺子**（优先级 同花顺 > 顺子）；
+ *  3) 点按钮同时把这一组写进 sel，直接「出牌」即可。
  */
 const flushCombos = computed(() => G.findFlushBombs(viewHand.value, roundLevel.value))
 const seqGroups = computed(() => G.findSeqGroups(viewHand.value, roundLevel.value))
@@ -486,10 +493,6 @@ function gather(combos, idxRef, label) {
   if (idxRef.value >= combos.length) idxRef.value = 0
   const cards = combos[idxRef.value]
   sel.value = cards.map(c => c.id)
-  // 摆到最左时按牌值从小到大排，读起来就是「6 7 8 9 10」这种顺子
-  pinned.value = cards.slice()
-    .sort((a, b) => G.cardValue(a, roundLevel.value) - G.cardValue(b, roundLevel.value))
-    .map(c => c.id)
   toastMsg(`${label} ${idxRef.value + 1}/${combos.length}`)
   idxRef.value = (idxRef.value + 1) % combos.length
   sfx.pick()
@@ -1089,15 +1092,12 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointercancel', onHandUp)
 })
 watch(() => props.deadlineAt, tickLeft)
-// 手牌张数一变（发牌 / 出牌 / 换局）→ 轮换指针与「汇总到左侧」都复位
+// 手牌张数一变（发牌 / 出牌 / 换局）→ 轮换指针复位；顺子的「理到最左」是自动的，无需复位
 watch(() => viewHand.value.length, () => {
   flushIdx.value = 0
   seqIdx.value = 0
-  pinned.value = []
   requestAnimationFrame(measureHand)
 })
-// 取消所有选中 → 手牌回到原有的理牌顺序（汇总只在「选着的时候」生效）
-watch(() => sel.value.length, (n) => { if (!n) pinned.value = [] })
 </script>
 
 <style scoped>

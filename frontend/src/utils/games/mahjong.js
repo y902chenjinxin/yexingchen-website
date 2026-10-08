@@ -1,10 +1,12 @@
-/** 四川麻将 · 胡牌即结束 规则引擎（v2.46.10）。
+/** 四川麻将 · 胡牌即结束 规则引擎（v2.46.15）。
  *
  * 纯 JS，无 Vue 依赖：牌堆 / 和牌判定 / 听牌计算 / 向听数 / 番种 / AI 决策。
  *
  * 规则口径（与 PRD 一致）：
- * - 只用 万(m) / 条(s) / 筒(p) 各 1–9，每种 4 张，共 108 张；无风牌、无箭牌。
- * - 定缺：开局每人选一门「缺」，手上不能留缺门牌，缺门未打完不能碰/杠/胡。
+ * - 万(m) / 条(s) / 筒(p) 各 1–9 每种 4 张，共 108 张；**另加箭牌（字）**：
+ *   红中 / 发财 / 白板 各 4 张（v2.46.15 起，共 120 张）。字牌只能刻/对，**不成顺子**。
+ * - 定缺：开局每人选一门「缺」（万/条/筒/字 四选一），手上不能留缺门牌，
+ *   缺门未打完不能碰/杠/胡。
  * - 和牌型：4 组面子（顺子/刻子）+ 1 对将；或 7 对（含龙七对）。
  * - **胡牌即结束**（v2.46.10 起，不再是血战到底）：任一家胡牌（自摸或点炮）本局立即收摊，
  *   其余人不补摸补打；一炮只取**一家**胡（放炮者下家起逆时针就近优先），不存在一炮多响。
@@ -12,13 +14,17 @@
  *   杠上花·杠上炮·抢杠胡·海底捞月 各 +1；每根（4 张相同，含杠）+1。
  */
 
-export const SUITS = ['m', 's', 'p']
-export const SUIT_NAME = { m: '万', s: '条', p: '筒' }
+export const SUITS = ['m', 's', 'p', 'z']
+export const SUIT_NAME = { m: '万', s: '条', p: '筒', z: '字' }
+/** 字牌的显示名（tileText / 胡牌提示用） */
+export const HONOR_NAME = { 1: '红中', 2: '发财', 3: '白板' }
+/** 每门花色的牌种数：数字牌 1–9，字牌只有 中/發/白 三种 */
+export const RANKS = { m: 9, s: 9, p: 9, z: 3 }
 export const RANK_TEXT = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' }
 /** 显示用：一筒 / 三条 / 五万；牌面数字优先，副标写花色 */
 export const SUIT_GLYPH = { m: '萬', s: '條', p: '筒' }
 
-/** 27 个点位 → 索引 */
+/** 36 个点位 → 索引：m=0..8, s=9..17, p=18..26, z=27..29（30..35 留空恒为 0） */
 export function idxOf(suit, rank) {
   return SUITS.indexOf(suit) * 9 + (rank - 1)
 }
@@ -30,7 +36,7 @@ export function buildDeck() {
   const tiles = []
   let id = 0
   for (const suit of SUITS) {
-    for (let rank = 1; rank <= 9; rank++) {
+    for (let rank = 1; rank <= RANKS[suit]; rank++) {
       for (let k = 0; k < 4; k++) tiles.push({ id: id++, suit, rank })
     }
   }
@@ -50,28 +56,29 @@ export function sortHand(hand) {
   return hand.slice().sort((a, b) => idxOf(a.suit, a.rank) - idxOf(b.suit, b.rank))
 }
 
-/** 手牌 → 27 长度计数数组 */
+/** 手牌 → 36 长度计数数组 */
 export function counts(tiles) {
-  const c = new Array(27).fill(0)
+  const c = new Array(36).fill(0)
   for (const t of tiles) c[idxOf(t.suit, t.rank)]++
   return c
 }
 
 /* ---------------- 和牌判定 ---------------- */
 
-/** 递归拆面子：need = 还需多少组面子（顺子或刻子） */
+/** 递归拆面子：need = 还需多少组面子（顺子或刻子）。
+ *  字牌（i>=27）只有刻子，没有顺子。 */
 function trySets(c, need) {
   if (need === 0) return c.every(x => x === 0)
   let i = 0
-  while (i < 27 && c[i] === 0) i++
-  if (i === 27) return false
+  while (i < 36 && c[i] === 0) i++
+  if (i === 36) return false
   if (c[i] >= 3) {
     c[i] -= 3
     if (trySets(c, need - 1)) { c[i] += 3; return true }
     c[i] += 3
   }
   const rank = i % 9
-  if (rank <= 6 && c[i + 1] > 0 && c[i + 2] > 0) {
+  if (i < 27 && rank <= 6 && c[i + 1] > 0 && c[i + 2] > 0) {
     c[i]--; c[i + 1]--; c[i + 2]--
     if (trySets(c, need - 1)) { c[i]++; c[i + 1]++; c[i + 2]++; return true }
     c[i]++; c[i + 1]++; c[i + 2]++
@@ -82,7 +89,7 @@ function trySets(c, need) {
 /** 标准型（4 面子 + 1 将）：concealed 张数须为 3n+2，melds 为已亮出的面子数 */
 export function isStandardHu(c, meldCount) {
   const need = 4 - meldCount
-  for (let i = 0; i < 27; i++) {
+  for (let i = 0; i < 36; i++) {
     if (c[i] >= 2) {
       c[i] -= 2
       const ok = trySets(c, need)
@@ -96,7 +103,7 @@ export function isStandardHu(c, meldCount) {
 /** 七对：14 张全对（杠算两对）；返回 { ok, quads } */
 export function isSevenPairs(c) {
   let pairs = 0, quads = 0
-  for (let i = 0; i < 27; i++) {
+  for (let i = 0; i < 36; i++) {
     const n = c[i]
     if (n === 0) continue
     if (n % 2 !== 0) return { ok: false, quads: 0 }
@@ -106,22 +113,22 @@ export function isSevenPairs(c) {
   return { ok: pairs === 7, quads }
 }
 
-/** 是否清一色（只有一门） */
+/** 是否清一色（只有一门；纯字牌也算「字一色」，走同一番） */
 export function isFlush(c) {
   const used = new Set()
-  for (let i = 0; i < 27; i++) if (c[i] > 0) used.add(Math.floor(i / 9))
+  for (let i = 0; i < 36; i++) if (c[i] > 0) used.add(Math.floor(i / 9))
   return used.size === 1
 }
 
 /** 是否对对胡（全刻子，无顺子） */
 export function isAllTriplets(c) {
   // 将牌 1 对 + 其余全刻子
-  for (let i = 0; i < 27; i++) {
+  for (let i = 0; i < 36; i++) {
     if (c[i] >= 2) {
       const copy = c.slice()
       copy[i] -= 2
       let ok = true
-      for (let j = 0; j < 27; j++) {
+      for (let j = 0; j < 36; j++) {
         if (copy[j] === 0) continue
         if (copy[j] === 3) continue
         ok = false; break
@@ -132,10 +139,11 @@ export function isAllTriplets(c) {
   return false
 }
 
-/** 是否将将胡（全部是 2/5/8） */
+/** 是否将将胡（全部是 2/5/8；字牌不算） */
 export function isAllEyes(c) {
-  for (let i = 0; i < 27; i++) {
+  for (let i = 0; i < 36; i++) {
     if (c[i] === 0) continue
+    if (i >= 27) return false
     const rank = (i % 9) + 1
     if (![2, 5, 8].includes(rank)) return false
   }
@@ -197,7 +205,7 @@ export function scoreHu(hand, melds = [], flags = {}) {
 
   // 根：4 张相同（含杠）
   let gen = 0
-  for (let i = 0; i < 27; i++) if (c[i] === 4) gen++
+  for (let i = 0; i < 36; i++) if (c[i] === 4) gen++
   if (gen > 0) { fan += gen; names.push(`根×${gen}`) }
 
   if (flags.gangFlower) { fan += 1; names.push('杠上花') }
@@ -210,13 +218,13 @@ export function scoreHu(hand, melds = [], flags = {}) {
 
 /* ---------------- 听牌 / 向听 ---------------- */
 
-/** 13 张（或 3n+1）手牌听哪些牌 → [{suit,rank}] */
+/** 13 张（或 3n+1）手牌听哪些牌 → [{suit,rank}]（字牌只探 中/發/白 三种） */
 export function tingTiles(hand, meldCount, missing) {
   const out = []
   if (hand.length % 3 !== 1) return out
   for (const suit of SUITS) {
     if (suit === missing) continue
-    for (let rank = 1; rank <= 9; rank++) {
+    for (let rank = 1; rank <= RANKS[suit]; rank++) {
       const probe = { id: -1, suit, rank }
       const test = hand.concat([probe])
       if (canHu(test, meldCount, missing)) out.push({ suit, rank })
@@ -232,13 +240,14 @@ export function shanten(hand, meldCount = 0) {
   let best = 8
 
   const eyes = [-1]
-  for (let i = 0; i < 27; i++) if (c[i] >= 2) eyes.push(i)
+  for (let i = 0; i < 36; i++) if (c[i] >= 2) eyes.push(i)
 
   for (const e of eyes) {
     const copy = c.slice()
     if (e >= 0) copy[e] -= 2
     let sets = 0
-    for (let i = 0; i < 27; i++) while (copy[i] >= 3) { copy[i] -= 3; sets++ }
+    for (let i = 0; i < 36; i++) while (copy[i] >= 3) { copy[i] -= 3; sets++ }
+    // 顺子只在数字牌里成立（i<27）；字牌没有任何顺子搭法
     for (let i = 0; i < 27; i++) {
       const rank = i % 9
       while (rank <= 6 && copy[i] > 0 && copy[i + 1] > 0 && copy[i + 2] > 0) {
@@ -247,7 +256,7 @@ export function shanten(hand, meldCount = 0) {
     }
     let partials = 0
     const rest = copy.slice()
-    for (let i = 0; i < 27; i++) {
+    for (let i = 0; i < 36; i++) {
       while (rest[i] >= 2 && sets + partials < need) { rest[i] -= 2; partials++ }
     }
     for (let i = 0; i < 27; i++) {
@@ -271,7 +280,7 @@ export function shanten(hand, meldCount = 0) {
   // 七对向听（仅门清时才有意义）
   if (meldCount === 0) {
     let pairs = 0, kinds = 0
-    for (let i = 0; i < 27; i++) { if (c[i] > 0) kinds++; pairs += Math.floor(c[i] / 2) }
+    for (let i = 0; i < 36; i++) { if (c[i] > 0) kinds++; pairs += Math.floor(c[i] / 2) }
     const sp = 6 - pairs + Math.max(0, 7 - kinds)
     if (sp < best) best = sp
   }
@@ -286,12 +295,16 @@ export function usefulCount(hand, meldCount, missing) {
 
 /* ---------------- AI 决策 ---------------- */
 
-/** 缺门牌优先打；其次打孤张、边张 */
+/** 缺门牌优先打；其次打孤张、边张。字牌没有相邻搭牌，只有刻/对价值。 */
 function tileScore(c, i) {
   const rank = (i % 9) + 1
   let s = 0
   if (c[i] >= 3) s += 6
   else if (c[i] === 2) s += 4
+  if (i >= 27) {
+    if (c[i] === 1) s -= 1   // 孤张字牌没有顺子搭法，价值最低
+    return s
+  }
   if (rank >= 3 && rank <= 7) s += 2
   if (c[i + 1] > 0 || c[i - 1] > 0) s += 1
   if (i % 9 <= 7 && c[i + 1] > 0) s += 1
@@ -373,7 +386,7 @@ export function aiWantHu(hand, meldCount, missing) {
 export function findAnkongs(hand) {
   const c = counts(hand)
   const out = []
-  for (let i = 0; i < 27; i++) if (c[i] === 4) out.push(tileOf(i))
+  for (let i = 0; i < 36; i++) if (c[i] === 4) out.push(tileOf(i))
   return out
 }
 

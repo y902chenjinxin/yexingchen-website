@@ -84,6 +84,19 @@
         </g>
       </g>
     </template>
+
+    <!-- ===== 字（箭牌）：红中 / 发财 / 白板（v2.46.15 新增，样式对照传统牌面） =====
+         · 红中 —— 大红「中」字居中；
+         · 发财 —— 墨绿「發」（繁体，真牌即繁体）；
+         · 白板 —— 传统是「空板」：蓝色矩形框（多层框最常见），中间什么都不印。 -->
+    <template v-else-if="suit === 'zi'">
+      <text v-if="rank === 1" class="f-zhong" x="50" y="72">中</text>
+      <text v-else-if="rank === 2" class="f-fa" x="50" y="72">發</text>
+      <g v-else>
+        <rect x="24" y="31" width="52" height="78" rx="4" fill="none" stroke="#1657c9" stroke-width="5" />
+        <rect x="35" y="42" width="30" height="56" rx="2" fill="none" stroke="#1657c9" stroke-width="2.5" />
+      </g>
+    </template>
   </svg>
 </template>
 
@@ -92,8 +105,8 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  suit: { type: String, required: true },   // wan | tiao | tong
-  rank: { type: Number, required: true },   // 1..9
+  suit: { type: String, required: true },   // wan | tiao | tong | zi
+  rank: { type: Number, required: true },   // 1..9；zi 只用 1..3（中/發/白）
 })
 
 /* 万：传统牌「伍萬」用大写数字「伍」，其余用一二三四六七八九 */
@@ -281,6 +294,17 @@ const tiaoSticks = computed(() => {
 }
 .f-wan {
   font-size: 58px; font-weight: 700; fill: #c62828;
+  text-anchor: middle; dominant-baseline: central;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", "HarmonyOS Sans SC", serif;
+}
+/* 字牌：红中（大红）/ 发财（墨绿「發」）—— 与萬同族衬线，白板是纯框不走字体 */
+.f-zhong {
+  font-size: 64px; font-weight: 700; fill: #c62828;
+  text-anchor: middle; dominant-baseline: central;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", "HarmonyOS Sans SC", serif;
+}
+.f-fa {
+  font-size: 56px; font-weight: 700; fill: #0f9152;
   text-anchor: middle; dominant-baseline: central;
   font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", "HarmonyOS Sans SC", serif;
 }

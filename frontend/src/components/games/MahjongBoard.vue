@@ -448,16 +448,20 @@ const tingInfo = computed(() => {
 })
 
 /* ---------- 小工具 ---------- */
-/** 花色键（m/s/p）→ 牌面组件的花纹名 */
+/** 花色键（m/s/p/z）→ 牌面组件的花纹名 */
 function faceSuit(t) {
   if (!t) return 'wan'
-  return t.suit === 'm' ? 'wan' : t.suit === 's' ? 'tiao' : 'tong'
+  return t.suit === 'm' ? 'wan' : t.suit === 's' ? 'tiao' : t.suit === 'z' ? 'zi' : 'tong'
 }
 function suitCls(t) {
   if (!t) return ''
-  return t.suit === 'm' ? 'is-wan' : t.suit === 's' ? 'is-tiao' : 'is-tong'
+  return t.suit === 'm' ? 'is-wan' : t.suit === 's' ? 'is-tiao' : t.suit === 'z' ? 'is-zi' : 'is-tong'
 }
-function tileText(t) { return t ? `${t.rank}${M.SUIT_NAME[t.suit]}` : '' }
+function tileText(t) {
+  if (!t) return ''
+  // 字牌显示 红中/发财/白板，数字牌显示 3万 / 7条 这种
+  return t.suit === 'z' ? (M.HONOR_NAME[t.rank] || `${t.rank}字`) : `${t.rank}${M.SUIT_NAME[t.suit]}`
+}
 function meldTiles(md) {
   const n = md.type === 'pong' ? 3 : 4
   return Array.from({ length: n }, () => md.tile)
@@ -1338,6 +1342,7 @@ onBeforeUnmount(() => {
 .mj .gt-tile.is-wan { --tile-accent: #b3261e; }
 .mj .gt-tile.is-tiao { --tile-accent: #1f6b3a; }
 .mj .gt-tile.is-tong { --tile-accent: #1b4f8a; }
+.mj .gt-tile.is-zi { --tile-accent: #9a7b1e; }
 .mj .gt-tile.is-drawn {
   margin-left: 12px;
   box-shadow:

@@ -1,7 +1,8 @@
-"""四川麻将 · 胡牌即结束 服务端引擎（v2.46.10）。
+"""四川麻将 · 胡牌即结束 服务端引擎（v2.46.15）。
 
-只用 万(m)/条(s)/筒(p) 各 1–9 共 108 张，无风牌箭牌。规则与前端 `utils/games/mahjong.js`
-一致，本文件补齐 PRD §6.2 的**刮风下雨**（明杠即时收 1 倍底注 / 暗杠即时收 2 倍底注）。
+万(m)/条(s)/筒(p) 各 1–9 共 108 张，**另加箭牌（字）红中/发财/白板各 4 张（v2.46.15 起，
+共 120 张）**。字牌只能刻/对、不成顺子。规则与前端 `utils/games/mahjong.js` 一致，
+本文件补齐 PRD §6.2 的**刮风下雨**（明杠即时收 1 倍底注 / 暗杠即时收 2 倍底注）。
 
 阶段机：``missing``（定缺）→ ``playing``（摸打 / 碰杠胡）→ ``finished``。
 **胡牌即结束**（v2.46.10 起，不再是血战到底）：任意一家胡牌（自摸或点炮）本局立即收摊，
@@ -15,8 +16,10 @@ from __future__ import annotations
 
 from app.games.base import TableEngine, TableError, copy_state, register, rng
 
-SUITS = ["m", "s", "p"]
-SUIT_NAME = {"m": "万", "s": "条", "p": "筒"}
+SUITS = ["m", "s", "p", "z"]
+SUIT_NAME = {"m": "万", "s": "条", "p": "筒", "z": "字"}
+HONOR_NAME = {1: "红中", 2: "发财", 3: "白板"}
+RANKS = {"m": 9, "s": 9, "p": 9, "z": 3}
 RANK_TEXT = {1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六", 7: "七", 8: "八", 9: "九"}
 
 # 刮风下雨：明杠（直杠）放杠者付 1 倍底注；暗杠每家付 2 倍；补杠每家付 1 倍
@@ -34,6 +37,8 @@ def tile_of(i: int) -> dict:
 
 
 def tile_text(t: dict) -> str:
+    if t["suit"] == "z":
+        return HONOR_NAME.get(t["rank"], str(t["rank"]))
     return f"{RANK_TEXT.get(t['rank'], t['rank'])}{SUIT_NAME.get(t['suit'], t['suit'])}"
 
 
@@ -41,7 +46,7 @@ def _build_deck() -> list[dict]:
     tiles: list[dict] = []
     i = 0
     for suit in SUITS:
-        for rank in range(1, 10):
+        for rank in range(1, RANKS[suit] + 1):
             for _ in range(4):
                 tiles.append({"id": i, "suit": suit, "rank": rank})
                 i += 1
@@ -53,7 +58,7 @@ def _sort_hand(hand: list[dict]) -> list[dict]:
 
 
 def _counts(tiles: list[dict]) -> list[int]:
-    c = [0] * 27
+    c = [0] * 36
     for t in tiles:
         c[idx_of(t["suit"], t["rank"])] += 1
     return c
@@ -65,9 +70,9 @@ def _try_sets(c: list[int], need: int) -> bool:
     if need == 0:
         return all(x == 0 for x in c)
     i = 0
-    while i < 27 and c[i] == 0:
+    while i < 36 and c[i] == 0:
         i += 1
-    if i == 27:
+    if i == 36:
         return False
     if c[i] >= 3:
         c[i] -= 3
@@ -76,7 +81,7 @@ def _try_sets(c: list[int], need: int) -> bool:
         if ok:
             return True
     rank = i % 9
-    if rank <= 6 and c[i + 1] > 0 and c[i + 2] > 0:
+    if i < 27 and rank <= 6 and c[i + 1] > 0 and c[i + 2] > 0:
         c[i] -= 1
         c[i + 1] -= 1
         c[i + 2] -= 1
@@ -91,7 +96,7 @@ def _try_sets(c: list[int], need: int) -> bool:
 
 def is_standard_hu(c: list[int], meld_count: int) -> bool:
     need = 4 - meld_count
-    for i in range(27):
+    for i in range(36):
         if c[i] >= 2:
             c[i] -= 2
             ok = _try_sets(c, need)
@@ -103,7 +108,7 @@ def is_standard_hu(c: list[int], meld_count: int) -> bool:
 
 def is_seven_pairs(c: list[int]) -> dict:
     pairs = quads = 0
-    for i in range(27):
+    for i in range(36):
         n = c[i]
         if n == 0:
             continue
@@ -116,25 +121,27 @@ def is_seven_pairs(c: list[int]) -> dict:
 
 
 def is_flush(c: list[int]) -> bool:
-    used = {i // 9 for i in range(27) if c[i] > 0}
+    used = {i // 9 for i in range(36) if c[i] > 0}
     return len(used) == 1
 
 
 def is_all_eyes(c: list[int]) -> bool:
-    for i in range(27):
+    for i in range(36):
         if c[i] == 0:
             continue
+        if i >= 27:
+            return False   # 字牌不算将将胡的 2/5/8
         if ((i % 9) + 1) not in (2, 5, 8):
             return False
     return True
 
 
 def _is_all_triplets_hand(ch: list[int], meld_count: int) -> bool:
-    for i in range(27):
+    for i in range(36):
         if ch[i] >= 2:
             copy = ch[:]
             copy[i] -= 2
-            if all(copy[j] % 3 == 0 for j in range(27)):
+            if all(copy[j] % 3 == 0 for j in range(36)):
                 return True
     return False
 
@@ -187,7 +194,7 @@ def score_hu(hand: list[dict], melds: list[dict], flags: dict | None = None) -> 
         fan = max(fan, 4)
         names.append("金钩钓")
 
-    gen = sum(1 for i in range(27) if c[i] == 4)
+    gen = sum(1 for i in range(36) if c[i] == 4)
     if gen:
         fan += gen
         names.append(f"根×{gen}")
@@ -214,7 +221,7 @@ def ting_tiles(hand: list[dict], meld_count: int, missing: str | None) -> list[d
     for suit in SUITS:
         if suit == missing:
             continue
-        for rank in range(1, 10):
+        for rank in range(1, RANKS[suit] + 1):
             probe = {"id": -1, "suit": suit, "rank": rank}
             if can_hu(hand + [probe], meld_count, missing):
                 out.append({"suit": suit, "rank": rank})
@@ -225,16 +232,17 @@ def shanten(hand: list[dict], meld_count: int = 0) -> int:
     c = _counts(hand)
     need = 4 - meld_count
     best = 8
-    eyes = [-1] + [i for i in range(27) if c[i] >= 2]
+    eyes = [-1] + [i for i in range(36) if c[i] >= 2]
     for e in eyes:
         copy = c[:]
         if e >= 0:
             copy[e] -= 2
         sets = 0
-        for i in range(27):
+        for i in range(36):
             while copy[i] >= 3:
                 copy[i] -= 3
                 sets += 1
+        # 顺子只在数字牌（i<27）里成立；字牌没有任何顺子搭法
         for i in range(27):
             rank = i % 9
             while rank <= 6 and copy[i] > 0 and copy[i + 1] > 0 and copy[i + 2] > 0:
@@ -244,7 +252,7 @@ def shanten(hand: list[dict], meld_count: int = 0) -> int:
                 sets += 1
         partials = 0
         rest = copy[:]
-        for i in range(27):
+        for i in range(36):
             while rest[i] >= 2 and sets + partials < need:
                 rest[i] -= 2
                 partials += 1
@@ -268,7 +276,7 @@ def shanten(hand: list[dict], meld_count: int = 0) -> int:
 
     if meld_count == 0:
         pairs = kinds = 0
-        for i in range(27):
+        for i in range(36):
             if c[i] > 0:
                 kinds += 1
             pairs += c[i] // 2
@@ -287,6 +295,10 @@ def _tile_score(c: list[int], i: int) -> int:
         s += 6
     elif c[i] == 2:
         s += 4
+    if i >= 27:
+        if c[i] == 1:
+            s -= 1   # 孤张字牌没有顺子搭法，价值最低
+        return s
     if 3 <= rank <= 7:
         s += 2
     if (i + 1 < 27 and c[i + 1] > 0) or (i - 1 >= 0 and c[i - 1] > 0):
@@ -352,7 +364,7 @@ def ai_want_kong(hand: list[dict], tile: dict, missing: str | None) -> bool:
 
 def find_ankongs(hand: list[dict]) -> list[dict]:
     c = _counts(hand)
-    return [tile_of(i) for i in range(27) if c[i] == 4]
+    return [tile_of(i) for i in range(36) if c[i] == 4]
 
 
 def find_bugangs(hand: list[dict], melds: list[dict]) -> list[dict]:
@@ -525,7 +537,7 @@ class MahjongEngine(TableEngine):
                 raise TableError("还没轮到你定缺")
             suit = action.get("suit")
             if suit not in SUITS:
-                raise TableError("请选择缺门（万/条/筒）")
+                raise TableError("请选择缺门（万/条/筒/字）")
             st["missing"][seat] = suit
             _log(st, f"{seat} 号位定缺 {SUIT_NAME[suit]}")
             _history(st, {"kind": "missing", "seat": seat, "suit": suit})
