@@ -118,14 +118,14 @@ function makeMjOnlineView(seat) {
 function TileWall() {
   const size = new URLSearchParams(location.search).get('size') || 'big'
   const minis = size === 'mini'
-  const suits = ['wan', 'tiao', 'tong']
-  const NAME = { wan: '万', tiao: '条', tong: '筒' }
+  const suits = ['wan', 'tiao', 'tong', 'zi']
+  const NAME = { wan: '万', tiao: '条', tong: '筒', zi: '字' }
   const tileW = minis ? 26 : 56
   const gap = minis ? 4 : 10
   return () =>
     h('div', { class: 'gt-shell mj', style: 'padding:12px;display:block;min-height:0' }, [
       h('div', { style: `display:grid;grid-template-columns:repeat(9,${tileW}px);gap:${gap}px` },
-        suits.flatMap((s) => [1, 2, 3, 4, 5, 6, 7, 8, 9].map((r) => h('div', {
+        suits.flatMap((s) => (s === 'zi' ? [1, 2, 3] : [1, 2, 3, 4, 5, 6, 7, 8, 9]).map((r) => h('div', {
           style: 'display:flex;flex-direction:column;gap:3px;align-items:center',
           key: s + r,
         }, [
