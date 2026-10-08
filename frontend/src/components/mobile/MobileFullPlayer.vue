@@ -11,35 +11,39 @@
           </button>
         </header>
 
-        <!-- 封面旋钮 -->
-        <div class="mfp-art" :class="{ spin: player.isPlaying }">
-          <div class="mfp-art-inner">
-            <span class="mfp-note" aria-hidden="true">♪</span>
-            <div class="mfp-art-glint"></div>
+        <!-- 中段：封面 / 曲目信息 / 进度。空间不足时只滚动这一段，
+             底部控制键永远钉在屏幕内，避免上一首/下一首被挤出可视区 -->
+        <div class="mfp-body">
+          <!-- 封面旋钮 -->
+          <div class="mfp-art" :class="{ spin: player.isPlaying }">
+            <div class="mfp-art-inner">
+              <span class="mfp-note" aria-hidden="true">♪</span>
+              <div class="mfp-art-glint"></div>
+            </div>
           </div>
-        </div>
-        <!-- 加载态（无曲目） -->
-        <div v-if="!player.curItem" class="mfp-empty">暂无播放内容</div>
+          <!-- 加载态（无曲目） -->
+          <div v-if="!player.curItem" class="mfp-empty">暂无播放内容</div>
 
-        <!-- 曲目信息 -->
-        <div class="mfp-meta">
-          <h2 class="mfp-track">{{ player.curItem?.title || '未知曲目' }}</h2>
-          <p class="mfp-artist">{{ player.curItem?.artist || '佚名' }}</p>
-        </div>
+          <!-- 曲目信息 -->
+          <div class="mfp-meta">
+            <h2 class="mfp-track">{{ player.curItem?.title || '未知曲目' }}</h2>
+            <p class="mfp-artist">{{ player.curItem?.artist || '佚名' }}</p>
+          </div>
 
-        <!-- 进度 -->
-        <div class="mfp-progress">
-          <input
-            v-if="player.duration"
-            type="range" class="mfp-range"
-            :value="ratio" min="0" max="1" step="0.001"
-            :style="{ '--fill': (ratio * 100) + '%' }"
-            @input="onSeek"
-            aria-label="播放进度"
-          />
-          <div class="mfp-times">
-            <span>{{ fmt(player.progress) }}</span>
-            <span>{{ fmt(player.duration) }}</span>
+          <!-- 进度 -->
+          <div class="mfp-progress">
+            <input
+              v-if="player.duration"
+              type="range" class="mfp-range"
+              :value="ratio" min="0" max="1" step="0.001"
+              :style="{ '--fill': (ratio * 100) + '%' }"
+              @input="onSeek"
+              aria-label="播放进度"
+            />
+            <div class="mfp-times">
+              <span>{{ fmt(player.progress) }}</span>
+              <span>{{ fmt(player.duration) }}</span>
+            </div>
           </div>
         </div>
 
@@ -202,18 +206,36 @@ function fmt(sec) {
 }
 .mfp-sheet {
   width: 100%;
+  /* svh = 最小视口高度：地址栏收起/展开都不会把底部控制键顶出屏幕 */
   height: 88vh;
+  height: 88svh;
+  max-height: 88svh;
   border-radius: 26px 26px 0 0;
   background: linear-gradient(180deg, rgba(26,36,44,.96), rgba(16,24,32,.98));
   -webkit-backdrop-filter: saturate(160%) blur(24px);
   backdrop-filter: saturate(160%) blur(24px);
   border-top: 1px solid rgba(255,255,255,.1);
   box-shadow: 0 -30px 70px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
-  padding: 10px 26px calc(40px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 22px calc(20px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   display: flex; flex-direction: column;
   align-items: center;
+  overflow: hidden;              /* 由 .mfp-body 承担滚动，外壳自身不外溢 */
 }
+/* 中段（封面/信息/进度）：唯一可滚动区，flex 收缩后不会把控制键挤出屏幕。
+   首尾用 margin:auto 让内容在富余空间里居中，溢出时自动退化为可滚动、不裁切顶部。 */
+.mfp-body {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex; flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.mfp-body > .mfp-art { margin-top: auto; }
+.mfp-body > .mfp-progress { margin-bottom: auto; }
 .mfp-handle {
   width: 44px; height: 5px; border-radius: 999px;
   background: rgba(255,255,255,.22); margin: 2px auto 10px; flex: none;
@@ -236,8 +258,8 @@ function fmt(sec) {
 /* 封面旋钮 */
 .mfp-art {
   position: relative;
-  width: min(62vw, 260px); height: min(62vw, 260px);
-  margin: 6vh 0 24px; flex: none;
+  width: min(62vw, 240px); height: min(62vw, 240px);
+  margin: 18px 0 22px; flex: none;
   border-radius: 50%;
   background: radial-gradient(circle at 32% 26%, rgba(255,255,255,.2), transparent 46%),
     conic-gradient(from 20deg, #3a5b6e, #2c4a5c, #3d6a7a, #2f4f62, #3a5b6e);
@@ -268,7 +290,7 @@ function fmt(sec) {
 }
 .mfp-artist { margin: 6px 0 0; font-size: 14px; color: rgba(200,215,220,.6); }
 
-.mfp-progress { width: 100%; flex: none; margin-top: 26px; }
+.mfp-progress { width: 100%; flex: none; margin-top: 20px; }
 .mfp-range {
   -webkit-appearance: none; appearance: none;
   width: 100%; height: 5px; border-radius: 5px;
@@ -285,8 +307,9 @@ function fmt(sec) {
 }
 
 .mfp-controls {
-  display: flex; align-items: center; justify-content: center; gap: 32px; margin-top: auto; flex: none;
-  padding-bottom: 6px;
+  display: flex; align-items: center; justify-content: center; gap: 30px;
+  margin-top: 16px; flex: none;
+  padding-bottom: 4px;
 }
 .mfp-controls-2 {
   display: flex; align-items: center; justify-content: center; gap: 24px;
@@ -366,6 +389,80 @@ function fmt(sec) {
 .mfp-react { width: 28px; height: 28px; margin-left: 3px; fill: #fff; }
 .mfp-pause { width: 28px; height: 28px; fill: #fff; }
 .mfp-stop { width: 26px; height: 26px; fill: currentColor; }
+
+/* ---------- 小屏 / 矮屏自适应 ----------
+   目标：无论机型多矮，上一首 / 播放 / 下一首都留在屏幕内，绝不被挤出可视区 */
+@media (max-width: 380px) {
+  .mfp-sheet { padding-left: 16px; padding-right: 16px; }
+  .mfp-track { font-size: 20px; }
+  .mfp-controls { gap: 22px; }
+  .mfp-controls-2 { gap: 16px; }
+  .mfp-step { width: 48px; height: 48px; }
+  .mfp-main { width: 68px; height: 68px; }
+  .mfp-side { width: 44px; height: 44px; }
+}
+
+/* 矮屏（iPhone SE / 横屏）：压缩封面与间距，一屏放下全部控件 */
+@media (max-height: 720px) {
+  .mfp-art { width: min(46vw, 168px); height: min(46vw, 168px); }
+  .mfp-note { font-size: 24px; }
+  .mfp-progress { margin-top: 14px; }
+  .mfp-controls { margin-top: 10px; }
+  .mfp-controls-2 { margin-top: 10px; }
+  .mfp-qmeta { margin-top: 8px; }
+  .mfp-nav { margin-bottom: 6px; }
+}
+@media (max-height: 600px) {
+  .mfp-art { width: min(34vw, 120px); height: min(34vw, 120px); }
+  .mfp-nav { margin-bottom: 2px; }
+}
+
+/* ---------- 横屏：左封面 / 右控制 两栏，一屏放下 ----------
+   手机横屏只有 350~430 高，竖排（封面 + 信息 + 进度 + 两排控制）必然被挤爆
+   —— 上一首/下一首会掉出可视区。横屏改为左右两栏：左边封面占满高度，
+   右边自上而下「标题 → 进度 → 控制 → 模式排 → 队列」。
+   .mfp-body 用 display:contents 打散，让它的子元素直接参与 sheet 的网格。 */
+@media (orientation: landscape) and (max-height: 600px) {
+  .mfp-sheet {
+    height: 100svh;
+    max-height: 100svh;
+    border-radius: 0;
+    padding: 6px 24px calc(8px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: auto auto 1fr auto auto auto auto;
+    grid-template-areas:
+      "hd    hd"
+      "nav   nav"
+      "art   meta"
+      "art   prog"
+      "art   ctrl"
+      "art   ctrl2"
+      "art   qmeta";
+    column-gap: 26px;
+    overflow: hidden;
+  }
+  .mfp-handle { grid-area: hd; }
+  .mfp-nav { grid-area: nav; margin-bottom: 4px; }
+  /* 打散中段容器：mfp-art / mfp-meta / mfp-progress 变成 sheet 的直接网格项 */
+  .mfp-body { display: contents; }
+  /* 覆盖 .mfp-body > .mfp-art 的 margin:auto（在网格里会被推歪） */
+  .mfp-body > .mfp-art { grid-area: art; margin: 0; align-self: center; justify-self: center; }
+  .mfp-meta { grid-area: meta; align-self: end; text-align: left; }
+  .mfp-track { font-size: 19px; }
+  .mfp-artist { font-size: 12.5px; }
+  .mfp-progress { grid-area: prog; margin: 10px 0 0; align-self: start; }
+  .mfp-body > .mfp-progress { margin-bottom: 0; }
+  .mfp-controls { grid-area: ctrl; margin-top: 10px; gap: 26px; padding-bottom: 0; }
+  .mfp-main { width: 60px; height: 60px; }
+  .mfp-step { width: 44px; height: 44px; }
+  .mfp-controls-2 { grid-area: ctrl2; margin-top: 8px; gap: 18px; }
+  .mfp-qmeta { grid-area: qmeta; margin-top: 6px; }
+  .mfp-empty { grid-area: meta; align-self: end; }
+  /* 横屏高度本来就紧，封面按高度而不是宽度收敛，避免顶破两栏 */
+  .mfp-art { width: min(38vh, 220px); height: min(38vh, 220px); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .mfp-art.spin { animation: none; }

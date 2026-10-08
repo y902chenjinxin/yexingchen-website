@@ -628,25 +628,63 @@ function fmt(sec) {
 .npmenu-enter-active, .npmenu-leave-active { transition: opacity .14s ease, transform .14s ease; }
 .npmenu-enter-from, .npmenu-leave-to { opacity: 0; transform: translateY(6px); }
 
-/* ---------- 移动端：保持横向铺开，缩小各部分 ---------- */
+/* ---------- 移动端：一屏内排下，绝不横向溢出 ----------
+   窄屏下 base 里「固定 280px 信息区 + min-width 200px 进度条 + 若干 flex:none 按钮」
+   合计远超屏宽，会把右侧的进度条/最小化按钮挤出屏幕（用户反馈的「有一段漏在外面」）。
+   这里改为：左右贴边 + 信息区可压缩 + 收起进度条与模式切换（都挪到全屏播放页），
+   只留「封面标题 / 上一首 / 播放暂停 / 下一首 / 最小化」这五个关键元素。 */
 @media (max-width: 768px) {
   .npbar {
-    width: calc(100% - 20px);
-    left: 10px;
-    bottom: calc(14px + var(--safe-bottom));
-    height: 56px;
-    gap: 10px;
-    padding: 0 10px 0 8px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    transform: none;
+    bottom: calc(14px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+    height: 58px;
+    gap: 8px;
+    padding: 0 10px;
   }
-  .np-volume { display: none; }
-  .np-info { width: 140px; gap: 8px; }
+  .np-info { flex: 1 1 auto; width: auto; min-width: 0; gap: 8px; }
+  .np-cover { width: 34px; height: 34px; }
+  .np-note { font-size: 17px; }
+  .np-title { font-size: 13px; }
+  .np-artist { font-size: 11px; }
+  .np-progress,
+  .np-mode-wrap,
+  .np-volume,
+  .np-close { display: none; }
+  .np-btn { width: 36px; height: 36px; }
+  .np-toggle { width: 44px; height: 44px; }
+  .np-toggle svg { width: 20px; height: 20px; }
+  .np-min { width: 34px; height: 34px; }
+}
+
+/* ---------- 手机横屏（≈844×390、932×430）：宽度过了 768px，上面的移动端规则不命中，
+   会套回桌面布局（280px 信息区 + min-width 200px 进度条），844px 里横向排不下 —— 用户
+   反馈的「右边漏在外面」在横屏下会复现。这里补一条横屏分支，沿用同一套精简元素。 */
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 769px) {
+  .npbar {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    transform: none;
+    bottom: calc(10px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+    height: 54px;
+    gap: 8px;
+    padding: 0 10px;
+  }
+  .np-info { flex: 1 1 auto; width: auto; min-width: 0; gap: 8px; }
   .np-cover { width: 32px; height: 32px; }
   .np-note { font-size: 16px; }
-  .np-progress { min-width: 100px; }
-  .np-mode { height: 30px; padding: 0 8px; font-size: 11px; }
-  .np-mode svg { width: 12px; height: 12px; }
-  .np-step, .np-btn { width: 30px; height: 30px; }
-  .np-toggle { width: 36px; height: 36px; }
+  .np-title { font-size: 13px; }
+  .np-artist { font-size: 11px; }
+  .np-progress,
+  .np-mode-wrap,
+  .np-volume,
   .np-close { display: none; }
+  .np-btn { width: 34px; height: 34px; }
+  .np-toggle { width: 42px; height: 42px; }
+  .np-toggle svg { width: 19px; height: 19px; }
+  .np-min { width: 32px; height: 32px; }
 }
 </style>

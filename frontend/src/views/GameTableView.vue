@@ -176,7 +176,6 @@
             <button class="gtv-rail-btn" @click="goBack">
               <i aria-hidden="true">↩</i><span>返回列表</span>
             </button>
-            <span class="gtv-rail-hint">双指缩放<br>单指拖动</span>
           </nav>
 
           <!-- 游戏说明（页内抽屉，非居中弹窗） -->
@@ -204,15 +203,7 @@
         </div>
       </section>
 
-      <!-- 手机端横屏提示（PRD §7.6） -->
-      <div v-if="showRotate" class="gtv-rotate">
-        <div class="gtv-rotate-card">
-          <div class="gtv-rotate-ic">📱</div>
-          <b>请横屏游玩</b>
-          <p>牌桌在横屏下才能完整展示，已为你自动铺满一屏；双指可缩放、单指可拖动。</p>
-          <button class="gtv-btn ghost" @click="showRotate = false">知道了</button>
-        </div>
-      </div>
+      <!-- 手机端进入牌桌即自动全屏 + 尝试锁横屏，牌桌等比缩放铺满一屏（不再弹文案提示） -->
 
       <p v-if="error" class="gtv-error">{{ error }}</p>
     </div>
@@ -287,10 +278,9 @@ const baseStake = ref(100)
 const seatCount = ref(4)
 const families = ref([])
 const error = ref('')
-const showRotate = ref(false)
 const showHelp = ref(false)
 const fullscreen = ref(false)
-const isMobile = useIsMobile()
+const { isMobile } = useIsMobile()
 
 const room = t.room
 const view = t.view
@@ -474,7 +464,6 @@ onMounted(async () => {
     await enterRoom(Number(id))
   }
   if (isMobile.value) {
-    showRotate.value = true
     try { await screen.orientation?.lock?.('landscape') } catch { /* 多数浏览器不允许，忽略 */ }
     // 手机端进入牌桌默认全屏：一屏放下整张牌桌
     if (mode.value === 'room') fullscreen.value = true
@@ -653,10 +642,6 @@ onBeforeUnmount(() => {
 .gtv-rail-btn.danger:hover { border-color: #e78b8b; }
 .gtv-rail-btn i { font-style: normal; font-size: 16px; line-height: 1; }
 .gtv-rail-btn.sm { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 12px; }
-.gtv-rail-hint {
-  writing-mode: vertical-rl; font-size: 9.5px; letter-spacing: .12em;
-  color: rgba(242,238,228,.5); text-align: center; line-height: 1.4;
-}
 
 /* 游戏说明抽屉（页内右侧滑入，非居中弹窗） */
 .gtv-help {
@@ -692,21 +677,7 @@ onBeforeUnmount(() => {
 }
 @keyframes gtv-spin { to { transform: rotate(360deg); } }
 
-/* 横屏提示 */
-.gtv-rotate {
-  position: fixed; inset: 0; z-index: 3300; display: grid; place-items: center;
-  background: rgba(10,14,20,.6); backdrop-filter: blur(6px);
-}
-.gtv-rotate-card {
-  width: min(86vw, 340px); padding: 26px 22px; border-radius: 20px; text-align: center;
-  background: linear-gradient(160deg, rgba(255,255,255,.96), rgba(248,245,238,.94));
-  box-shadow: 0 20px 50px rgba(0,0,0,.3);
-}
-:root[data-theme="night"] .gtv-rotate-card { background: linear-gradient(160deg, rgba(38,44,58,.98), rgba(22,26,36,.97)); }
-.gtv-rotate-ic { font-size: 34px; }
-.gtv-rotate-card b { display: block; margin: 8px 0 6px; font-size: 16px; color: var(--dp-text, #18202a); }
-.gtv-rotate-card p { margin: 0 0 14px; font-size: 12.5px; color: var(--dp-text3, #8a8f98); }
-:root[data-theme="night"] .gtv-rotate-card b { color: #f2eee4; }
+/* 横屏提示已移除：手机端进桌即自动全屏并等比铺满一屏，不再用文案打断操作 */
 
 .gtv-error { margin: 12px 0 0; font-size: 13px; color: #c85050; }
 

@@ -318,7 +318,7 @@ import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { downloadMusicTemplate, getMusicUploaders } from '@/api/music'
 
-const isMobile = useIsMobile()
+const { isMobile } = useIsMobile()
 const musicStore = useMusicStore()
 const player = usePlayerStore()
 const bgm = useBgmLibraryStore()

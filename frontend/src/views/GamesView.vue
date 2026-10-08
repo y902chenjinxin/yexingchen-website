@@ -1,6 +1,6 @@
 <template>
   <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇">
-    <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill }">
+    <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill, 'is-fsfit': fitActive }">
       <!-- ===== 左：游戏类型 ===== -->
       <aside v-show="!isBig" class="gm-rail">
         <div v-for="grp in groups" :key="grp.name" class="gm-grp">
@@ -93,13 +93,60 @@
           </div>
 
           <!-- 第二步：对局 -->
-          <div v-else class="gm-play">
-            <div v-if="showRules && cur.rules?.length" class="gm-rules gm-rules--play">
+          <div v-else class="gm-play" :class="{ 'is-fsfit': fitActive }">
+            <div v-if="showRules && cur.rules?.length && !fitActive" class="gm-rules gm-rules--play">
               <div v-for="(r, ri) in cur.rules" :key="ri" class="gm-rule">
                 <i class="gm-rule-dot"></i>{{ r }}
               </div>
             </div>
+
+            <!-- 牌类（掼蛋/麻将/大富翁）手机端：进桌即全屏 + 尝试锁横屏，牌桌按逻辑画布等比缩放铺满一屏，
+                 不再左右滑动；只留右侧竖栏的关键按钮，其余文案全部收起 -->
+            <template v-if="fitActive">
+              <div class="gm-fsfit">
+                <div ref="fitStageRef" class="gtv-viewstage is-fs">
+                  <div ref="fitZoomRef" class="gtv-viewzoom is-fs" :style="fitStyle">
+                    <component
+                      :is="cur.component"
+                      :key="runKey"
+                      :game-key="cur.key"
+                      :initial-mode="chosenMode"
+                      :board-size="chosenBoard"
+                      :resume="resumeFlag"
+                      :bare="true"
+                      :big="true"
+                      @exit="backToList"
+                    />
+                  </div>
+                </div>
+                <nav class="gtv-rail" aria-label="牌桌操作">
+                  <button class="gtv-rail-btn" @click="showRules = !showRules">
+                    <i aria-hidden="true">📖</i><span>{{ showRules ? '收起说明' : '游戏说明' }}</span>
+                  </button>
+                  <button class="gtv-rail-btn" @click="toggleBig">
+                    <i aria-hidden="true">⤡</i><span>退出全屏</span>
+                  </button>
+                  <button class="gtv-rail-btn" @click="backToList">
+                    <i aria-hidden="true">↩</i><span>返回列表</span>
+                  </button>
+                </nav>
+              </div>
+              <div v-if="showRules && cur.rules?.length" class="gm-help" @click.self="showRules = false">
+                <aside class="gm-help-panel" role="dialog" aria-label="游戏说明">
+                  <header class="gm-help-head">
+                    <b>{{ cur.label }} · 玩法说明</b>
+                    <button class="gtv-rail-btn sm" aria-label="关闭说明" @click="showRules = false">✕</button>
+                  </header>
+                  <ol class="gm-help-list">
+                    <li v-for="(r, ri) in cur.rules" :key="ri">{{ r }}</li>
+                  </ol>
+                  <button class="gm-op" @click="showRules = false">知道了</button>
+                </aside>
+              </div>
+            </template>
+
             <component
+              v-else
               :is="cur.component"
               :key="runKey"
               :game-key="cur.key"
@@ -134,11 +181,13 @@
  *           原方案的「选择人数」弹层被 iframe 高度裁切，点了人数看不到「开始游戏」按钮（表现为点了没反应），
  *           且第三方是同屏多人、无联机能力，无法「邀请家人」。现在支持 2/3/4 人同屏 + 在线邀请。
  */
-import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
+import { usePinchZoom } from '@/composables/usePinchZoom'
+import { useIsMobile } from '@/composables/useIsMobile'
 
 const ICON = {
   gomoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><circle cx="9" cy="9" r="2" fill="currentColor" stroke="none"/></svg>',
@@ -449,6 +498,59 @@ const showRules = ref(false)   // 「游戏说明」内联展开（无弹窗）
 const cur = computed(() => ALL[tab.value] || {})
 const runKey = computed(() => `${tab.value}-${runId.value}`)
 
+const { isMobile } = useIsMobile()
+const isCardGame = computed(() => TABLE_GAMES.has(tab.value))
+/** 手机端 + 牌类 + 全屏：走「等比缩放铺满一屏」，与在线牌桌同一套手感 */
+const fitActive = computed(() => isMobile.value && isBig.value && isCardGame.value)
+
+/* ---------- 手机端牌桌：进桌全屏 + 尝试锁横屏，牌桌按逻辑画布等比缩放铺满一屏 ----------
+ * 复用 usePinchZoom：逻辑画布高固定、宽随舞台宽高比，等比缩放后两轴都铺满，不再左右滑动。 */
+const fitStageRef = ref(null)
+const fitZoomRef = ref(null)
+const { style: fitStyle, ready: fitReady, measure: fitMeasure, bind: fitBind } = usePinchZoom(
+  fitStageRef, () => fitActive.value,
+)
+let unbindFit = null
+let fitTimer = null
+let fitRO = null
+
+function scheduleFit() {
+  clearTimeout(fitTimer)
+  let tries = 0
+  const tick = () => {
+    fitMeasure()
+    if (!fitReady.value && tries++ < 40) fitTimer = setTimeout(tick, 60)
+  }
+  nextTick(() => requestAnimationFrame(tick))
+}
+
+watch(fitActive, async (v) => {
+  unbindFit?.()
+  unbindFit = null
+  fitRO?.disconnect()
+  fitRO = null
+  if (!v) {
+    try { screen.orientation?.unlock?.() } catch { /* 忽略 */ }
+    return
+  }
+  // 多数浏览器会异步 reject；不接住会变成未处理拒绝（控制台报错）
+  try { screen.orientation?.lock?.('landscape')?.catch?.(() => {}) } catch { /* 忽略 */ }
+  await nextTick()
+  unbindFit = fitBind(fitStageRef.value)
+  scheduleFit()
+  // 牌桌是异步组件：挂载 / 换局 / 内容变化后重新量一次，保证「铺满一屏」按最新尺寸算
+  if (typeof ResizeObserver !== 'undefined' && fitZoomRef.value) {
+    fitRO = new ResizeObserver(() => { if (fitActive.value) scheduleFit() })
+    fitRO.observe(fitZoomRef.value)
+  }
+})
+
+function onFitResize() { if (fitActive.value) scheduleFit() }
+onMounted(() => {
+  window.addEventListener('resize', onFitResize)
+  if (fitActive.value) scheduleFit()
+})
+
 const saves = reactive({})
 function refreshSaves() {
   for (const g of gamelist) saves[g.key] = loadGame(g.key)
@@ -488,6 +590,9 @@ function startGame(modeKey) {
   resumeFlag.value = false
   phase.value = 'play'
   runId.value += 1
+  // 手机端牌类（掼蛋/麻将/大富翁）：开局即全屏 = 自动横屏 + 等比铺满一屏，
+  // 不用再让用户手点「放大」；桌面端与棋类不受影响
+  if (isMobile.value && TABLE_GAMES.has(tab.value)) isBig.value = true
 }
 
 function resumeGame() {
@@ -497,6 +602,7 @@ function resumeGame() {
   resumeFlag.value = true
   phase.value = 'play'
   runId.value += 1
+  if (isMobile.value && TABLE_GAMES.has(tab.value)) isBig.value = true
 }
 
 function backToList() {
@@ -531,7 +637,14 @@ watch(isBig, async (v) => {
   await nextTick()
   raiseHost(v)
 })
-onBeforeUnmount(() => { document.body.style.overflow = ''; raiseHost(false) })
+onBeforeUnmount(() => {
+  document.body.style.overflow = ''
+  raiseHost(false)
+  window.removeEventListener('resize', onFitResize)
+  clearTimeout(fitTimer)
+  unbindFit?.()
+  fitRO?.disconnect()
+})
 
 /* ---------- 从全局邀请弹窗跳进来（/tool/games?room=ID&game=gomoku） ----------
  * ⚠️ 清 URL 参数**绝不能**用 router.replace({query:{}})：App.vue 的 RouterView 是
@@ -787,6 +900,78 @@ watch(() => route.query.room, (v) => {
 /* ===== 第二步：对局 ===== */
 .gm-play { display: flex; flex-direction: column; align-items: center; width: 100%; }
 .gm-root.is-big .gm-play { max-width: 1000px; margin: 0 auto; }
+
+/* ===== 牌类手机端：进桌全屏 + 横屏，牌桌等比缩放铺满一屏（不再左右滑动） ===== */
+.gm-root.is-fsfit .gm-stage { padding: 0; gap: 0; }
+.gm-root.is-fsfit .gm-head { display: none; }
+.gm-play.is-fsfit {
+  display: block; width: 100%; height: 100%; flex: 1 1 auto; min-height: 0; max-width: none;
+}
+.gm-fsfit { position: absolute; inset: 0; }
+
+/* 舞台：牌桌按逻辑画布渲染后整体等比缩放；双指缩放 / 单指拖动由 usePinchZoom 接管 */
+.gtv-viewstage.is-fs {
+  position: absolute; top: 0; left: 0; right: 64px; bottom: 0;
+  overflow: hidden; touch-action: none; overscroll-behavior: none;
+}
+.gtv-viewzoom.is-fs {
+  position: absolute; top: 0; left: 0; width: 1280px; height: 720px;
+  transform-origin: 0 0; will-change: transform;
+}
+.gtv-viewzoom.is-fs :deep(.gt-landscape) { height: 100%; }
+/* min-width:0 —— 抵消牌桌自身 @media(max-width:900px) 的 860px 硬宽，改由等比缩放铺满 */
+.gtv-viewzoom.is-fs :deep(.gt-shell) { width: 100%; height: 100%; min-height: 0; min-width: 0; }
+.gtv-viewzoom.is-fs :deep(.mp) { grid-template-columns: minmax(0, 1fr) 306px; min-height: 640px; }
+.gtv-viewzoom.is-fs :deep(.mp-cname) { font-size: 9px; }
+.gtv-viewzoom.is-fs :deep(.mp-board) { max-height: 100%; }
+
+/* 右侧竖栏：只留关键按钮，冗余文案一律收起 */
+.gtv-rail {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+  z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.gtv-rail-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  width: 52px; padding: 8px 4px; border-radius: 14px; cursor: pointer;
+  font-family: inherit; font-size: 10.5px; line-height: 1.15; text-align: center;
+  color: #f2eee4; border: 1px solid rgba(233,200,119,.34);
+  background: linear-gradient(180deg, rgba(30,52,44,.9), rgba(12,26,21,.9));
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 20px -12px rgba(0,0,0,.9);
+  transition: border-color .2s, transform .15s;
+}
+.gtv-rail-btn:hover { border-color: var(--yq-gold, #c7a96b); transform: translateY(-1px); }
+.gtv-rail-btn i { font-style: normal; font-size: 16px; line-height: 1; }
+.gtv-rail-btn.sm { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 12px; }
+
+/* 游戏说明：页内右侧滑入抽屉，非居中弹窗 */
+.gm-help {
+  position: fixed; inset: 0; z-index: 3100;
+  background: rgba(4,12,10,.5); backdrop-filter: blur(3px);
+}
+.gm-help-panel {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: min(88vw, 380px); display: flex; flex-direction: column; gap: 14px;
+  padding: 18px 18px 22px; overflow-y: auto;
+  background: linear-gradient(165deg, rgba(26,48,41,.98), rgba(8,22,18,.98));
+  border-left: 1px solid rgba(233,200,119,.4);
+  box-shadow: -20px 0 50px -20px rgba(0,0,0,.95);
+}
+.gm-help-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gm-help-head b { font-size: 15px; color: var(--yq-gold, #c7a96b); }
+.gm-help-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
+.gm-help-list li { font-size: 12.5px; line-height: 1.7; color: #e6e2d6; }
+.gm-help-panel .gm-op { align-self: flex-start; }
+
+/* 竖屏兜底：锁横屏失败时把整块牌桌转 90° 当作横屏视野，手机转正即自动复原 */
+@media (orientation: portrait) {
+  .gm-root.is-fsfit .gm-fsfit {
+    position: fixed; top: 0; left: 0;
+    width: 100vh; height: 100vw;
+    transform: rotate(90deg) translateY(-100%);
+    transform-origin: top left;
+  }
+}
 
 @media (max-width: 860px) {
   .gm-root { grid-template-columns: 1fr; gap: 12px; }

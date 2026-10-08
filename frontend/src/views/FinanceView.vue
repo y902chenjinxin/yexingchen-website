@@ -490,14 +490,92 @@
       <template v-if="activeTab === 'personal'">
         <section class="fin-panel">
           <div class="fin-pcards">
-            <div v-for="p in funds.personal_by_member || []" :key="p.user_id" class="fin-pcard glass">
+            <!-- 点整张金额卡片 → 在下方展开这个人的流水明细（再点收起） -->
+            <div
+              v-for="p in funds.personal_by_member || []"
+              :key="p.user_id"
+              class="fin-pcard glass"
+              :class="{ on: isPcardOpen(p) }"
+              role="button"
+              tabindex="0"
+              :aria-expanded="isPcardOpen(p) ? 'true' : 'false'"
+              @click="togglePcard(p)"
+              @keydown.enter.prevent="togglePcard(p)"
+              @keydown.space.prevent="togglePcard(p)"
+            >
               <span class="fin-pcard-avatar">{{ p.avatar }}</span>
               <span class="fin-pcard-name">{{ p.name }}</span>
               <span class="fin-pcard-val" :class="{ neg: p.balance < 0 }">¥ {{ money(p.balance) }}</span>
               <span v-if="p.balance < 0" class="fin-pool-over">已透支</span>
               <span class="fin-pcard-sub">累计转入 ¥ {{ money(p.inflow) }} · 已花 ¥ {{ money(p.outflow) }}</span>
+              <span class="fin-pcard-toggle">{{ isPcardOpen(p) ? '收起流水' : '看流水 ›' }}</span>
             </div>
             <div v-if="!(funds.personal_by_member || []).length" class="fin-chart-empty">还没有个人零花记录</div>
+          </div>
+
+          <!-- 展开的成员流水（就在卡片区下方，口径 = 这个人的全部流水） -->
+          <div v-if="pcardOpen" class="fin-ptxns glass">
+            <header class="fin-ptxns-head">
+              <b>{{ pcardOpenName }}的流水</b>
+              <span class="fin-ptxns-sub">共 {{ pcardTotal }} 笔</span>
+              <button class="fin-ptxns-x" @click="closePcard">收起</button>
+            </header>
+
+            <div v-if="pcardLoading" class="fin-chart-empty">加载中…</div>
+            <div v-else-if="!pcardTxns.length" class="fin-chart-empty">这个人还没有流水</div>
+            <template v-else>
+              <div class="fin-list">
+                <div v-for="row in pcardTxns" :key="row.id" class="fin-row">
+                  <div class="fin-row-icon">{{ row.category_icon }}</div>
+                  <div class="fin-row-main">
+                    <div class="fin-row-top">
+                      <span class="fin-row-cat">{{ row.category }}</span>
+                      <button
+                        class="fin-fund-badge"
+                        :class="[row.fund, { todo: row.fund === 'none' && row.type !== 'transfer' }]"
+                        title="点击修改归属"
+                        @click="openEdit(row)"
+                      >
+                        <template v-if="row.type === 'transfer'">{{ row.fund_label }} → {{ row.fund_to_label }}</template>
+                        <template v-else>{{ row.fund === 'none' ? '未归类' : row.fund_label }}</template>
+                      </button>
+                      <span class="fin-row-note">{{ row.note }}</span>
+                    </div>
+                    <div class="fin-row-date">{{ fmtDay(row.occurred_at) }}</div>
+                  </div>
+                  <div class="fin-row-amt" :class="row.type">
+                    {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
+                  </div>
+                  <div class="fin-row-ops">
+                    <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                    <el-popconfirm
+                      title="确认删除这条流水？"
+                      confirm-button-text="删除"
+                      cancel-button-text="取消"
+                      width="220"
+                      @confirm="del(row)"
+                    >
+                      <template #reference>
+                        <button class="fin-op danger" title="删除">🗑</button>
+                      </template>
+                    </el-popconfirm>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="pcardTotal > pcardSize" class="fin-pager">
+                <span class="fin-pager-info">共 {{ pcardTotal }} 笔</span>
+                <el-pagination
+                  layout="prev, pager, next"
+                  :total="pcardTotal"
+                  :page-size="pcardSize"
+                  :current-page="pcardPage"
+                  background
+                  size="small"
+                  @current-change="onPcardPage"
+                />
+              </div>
+            </template>
           </div>
 
           <div class="fin-chart glass">
@@ -1146,6 +1224,67 @@ function onFilterChange() {
   unclassifiedOnly.value = false
   return reload(1)
 }
+
+/* ---------- 个人零花：点某人的金额卡片 → 在下方展开他/她的流水 ----------
+ * 口径：这个人名下的**全部流水**（不额外按资金池过滤），行内保留资金池徽标，
+ * 既能看到「个人零花」的进出，也不会漏掉公款/存款记录。
+ * 同时只展开一个人；再点同一张卡（或点「收起」）即折叠。 */
+const pcardOpen = ref(null)        // 展开中的成员 user_id
+const pcardTxns = ref([])
+const pcardTotal = ref(0)
+const pcardPage = ref(1)
+const pcardSize = 10
+const pcardLoading = ref(false)
+
+const pcardOpenName = computed(() => {
+  const hit = (funds.value.personal_by_member || [])
+    .find((p) => String(p.user_id) === String(pcardOpen.value))
+  return hit ? hit.name : '成员'
+})
+
+function isPcardOpen(p) {
+  return pcardOpen.value != null && String(pcardOpen.value) === String(p.user_id)
+}
+
+async function loadPcardTxns() {
+  if (pcardOpen.value == null) return
+  pcardLoading.value = true
+  try {
+    const res = await financeApi.list({
+      page: pcardPage.value,
+      size: pcardSize,
+      member_user_id: pcardOpen.value,
+    })
+    pcardTxns.value = res.data.list || []
+    pcardTotal.value = res.data.total || 0
+  } catch {
+    pcardTxns.value = []
+    pcardTotal.value = 0
+  } finally {
+    pcardLoading.value = false
+  }
+}
+
+async function togglePcard(p) {
+  if (isPcardOpen(p)) {
+    closePcard()
+    return
+  }
+  pcardOpen.value = p.user_id
+  pcardPage.value = 1
+  await loadPcardTxns()
+}
+
+function closePcard() {
+  pcardOpen.value = null
+  pcardTxns.value = []
+  pcardTotal.value = 0
+}
+
+function onPcardPage(p) {
+  pcardPage.value = p
+  loadPcardTxns()
+}
 const showImportHelp = ref(false)
 async function exportCsv() {
   let start, end
@@ -1356,10 +1495,12 @@ async function save() {
 async function del(row) {
   await financeApi.remove(row.id)
   await Promise.all([loadPeriodStats(), loadList(), loadFunds(), loadPoolTxns()])
+  // 若正展开着某个人的流水，删完要同步刷新，否则残留已删除的那条
+  if (pcardOpen.value != null) loadPcardTxns()
 }
 
-// 切 Tab 时按需拉单池流水（只有存款/公款两页需要）
-watch(activeTab, () => { loadPoolTxns() })
+// 切 Tab 时按需拉单池流水（只有存款/公款两页需要）；顺带收起个人零花的展开态
+watch(activeTab, () => { loadPoolTxns(); closePcard() })
 
 onMounted(() => {
   loadCategories()
@@ -1604,15 +1745,32 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 /* 放在着色规则之后，透支时盖过池子主色（同特异性、靠后生效） */
 .fin-pool-hero .fin-pool-hero-val.neg { color: var(--lj-vermilion); }
 
-/* 个人零花：每人一张卡 */
+/* 个人零花：每人一张卡（整卡可点，点开在下方展开这个人的流水） */
 .fin-pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
 .fin-pcard { display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
-  padding: 18px; border-radius: 16px; }
+  padding: 18px; border-radius: 16px; cursor: pointer;
+  transition: border-color .2s, transform .15s, box-shadow .2s; }
+.fin-pcard:hover { border-color: var(--lj-line-strong); transform: translateY(-1px); }
+.fin-pcard:focus-visible { outline: 2px solid var(--yq-gold, #c7a96b); outline-offset: 2px; }
+.fin-pcard.on { border-color: var(--yq-gold, #c7a96b);
+  box-shadow: 0 10px 26px -18px rgba(199,169,107,.9); }
 .fin-pcard-avatar { font-size: 20px; line-height: 1; }
 .fin-pcard-name { font-size: 13px; color: var(--lj-text-2); letter-spacing: .08em; }
 .fin-pcard-val { font-size: 25px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .fin-pcard-val.neg { color: var(--lj-vermilion); }
 .fin-pcard-sub { font-size: 11.5px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
+.fin-pcard-toggle { margin-top: 2px; font-size: 11.5px; letter-spacing: .06em;
+  color: var(--yq-gold, #c7a96b); }
+
+/* 展开的成员流水面板 */
+.fin-ptxns { margin-top: 14px; padding: 16px 18px; border-radius: 16px; }
+.fin-ptxns-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.fin-ptxns-head b { font-size: 14px; font-weight: 600; letter-spacing: .06em; color: var(--lj-text); }
+.fin-ptxns-sub { font-size: 12px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
+.fin-ptxns-x { margin-left: auto; border: 1px solid var(--lj-line); background: transparent;
+  color: var(--lj-text-2); font-family: var(--font-serif); font-size: 12px;
+  padding: 4px 13px; border-radius: 999px; cursor: pointer; transition: all .2s; }
+.fin-ptxns-x:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
 
 /* 批量改归属条 */
 .fin-batch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px;
@@ -1756,6 +1914,10 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   .fin-pool-hero { padding: 16px; }
   .fin-pool-hero-val { font-size: 26px; }
   .fin-pcard { padding: 15px; }
+  /* 展开的成员流水：窄屏收紧内边距，金额列不被挤掉 */
+  .fin-ptxns { padding: 12px 12px 14px; margin-top: 10px; }
+  .fin-ptxns-head { flex-wrap: wrap; gap: 6px; }
+  .fin-ptxns-x { margin-left: 0; }
   .fin-tab-item { padding: 8px 13px; font-size: 12.5px; }
   .fin-transfer-row { gap: 6px; }
   .fin-batch-clear { margin-left: 0; }
