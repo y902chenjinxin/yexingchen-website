@@ -78,6 +78,20 @@
 `gd.is-big .gd-top` / `mj.is-big .mj-top` 全屏时收起（关键信息各自的底栏都有一份），
 `GamesView` 补上与 `GameTableView` 一致的同名兜底规则。牌桌顶到画布最上，多出的高度全给棋盘。
 
+#### 七、回归脚本
+
+新增 `scripts/verify_guandan_swipe.js` —— 复刻旋转画布下的主轴投影算法，喂入**旋转 90° 后的
+屏幕 AABB** 做断言，并把**旧算法**跑同一批坐标做对照：
+旧实现 **26/27 张错位、恒返回同一索引**（这就是「只能拉起第一张」的机制），
+新实现 27/27 全对，正向 / 反向划选覆盖率均为 27/27。
+
+#### 部署
+
+- 后端 `deploy_backend_full.py`：141 文件；`alembic upgrade` 无新迁移（no-op）；PM2 重启后 **health=200**。
+- 前端 `deploy_frontend.py`（`DEPLOY_DIST=dist-deploy32`）：306 文件；SW `xuanhuang-v315`；**home=200**。
+- commit：`ae7df5f`（主改动，14 files +811/-155）+ `3e99136`（划选回归脚本）。
+- **本轮未做线上浏览器取证**（按既定约定由夜星自行上线验收）。
+
 ---
 
 ## [v2.46.1] - 2026-10-08
