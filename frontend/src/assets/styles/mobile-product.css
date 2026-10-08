@@ -503,4 +503,168 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 #app.is-mobile .island-inner-tool .cd-empty-text { color: var(--m-text); font-size: 16px; }
 #app.is-mobile .island-inner-tool .cd-empty .el-button { min-height: 40px; margin-top: 4px; border-radius: var(--m-radius-sm); }
 
+/* =====================================================================
+ * 第四轮 · 模块页手机端收敛（v2.46.3）
+ * ---------------------------------------------------------------------
+ * 夜星反馈：手机端只有工作台首页好看，点进其它模块「像把网页端页面塞进去」，特别拥挤。
+ * 根因：这些模块页只带桌面断点（760 / 900 / 1100），没有 `#app.is-mobile` 覆盖 ——
+ *   ① 顶部仍保留桌面「避让 60px 全局顶栏」的 84~88px 内边距（手机端没有那根顶栏，纯白空）；
+ *   ② 多列 grid 在窄屏只降到 2 列，390px 下每列不到 180px；
+ *   ③ 工具条的输入框写死 min-width:160~220px，窄屏必然换行且行高失控；
+ *   ④ 宽表格只靠 overflow-x 兜底，内边距与字号仍是桌面值。
+ * 本层统一收口；选择器与各页面**实际存在的 class** 对齐（已逐类确认）。
+ * ===================================================================== */
+
+/* ---- ① 页面容器：收掉桌面顶栏留白，统一 16px 侧边与底部 TabBar 余量 ---- */
+#app.is-mobile :is(.tk-page, .sb-page, .li-page, .va-page, .wd-page, .sd-page, .dh-page, .trash-page, .fd-page, .qk-page, .fin-page) {
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 0 calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  background: var(--m-bg) !important;
+  color: var(--m-text);
+}
+#app.is-mobile :is(.tk-inner, .sb-inner, .li-inner, .va-inner, .wd-inner, .sd-inner, .dh-inner, .ct-inner) {
+  padding: 0 16px 10px !important;
+  max-width: 720px;
+  margin: 0 auto;
+}
+#app.is-mobile .trash-page, #app.is-mobile .dh-page, #app.is-mobile .fd-page, #app.is-mobile .qk-page { padding-left: 16px !important; padding-right: 16px !important; }
+
+/* ---- ② 页头标题：手机端不再 26~30px 的金色大字 ---- */
+#app.is-mobile :is(.tk-title, .sb-title, .li-title, .va-title, .wd-title, .sd-title, .dh-title, .fd-title, .qk-title, .ct-title, .trash-title) {
+  font-size: 22px !important;
+  font-weight: 760 !important;
+  letter-spacing: -.03em !important;
+  line-height: 1.2 !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--m-text) !important;
+}
+#app.is-mobile :is(.tk-sub, .sb-sub, .li-sub, .va-sub, .wd-sub, .sd-sub) { color: var(--m-text-2) !important; font-size: 12.5px !important; }
+
+/* ---- ③ 工具条：不再靠 min-width 硬撑，输入框独占一行，其余等分换行 ---- */
+#app.is-mobile :is(.tk-toolbar, .sb-toolbar, .li-toolbar, .va-toolbar, .wd-toolbar, .ct-toolbar, .life-tb, .manage-toolbar) {
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+#app.is-mobile :is(.tk-toolbar, .sb-toolbar, .li-toolbar, .va-toolbar, .wd-toolbar, .ct-toolbar, .life-tb, .manage-toolbar) > .el-input,
+#app.is-mobile :is(.manage-toolbar, .ct-toolbar, .wd-toolbar, .li-toolbar, .va-toolbar, .tk-toolbar) .el-input { width: 100% !important; min-width: 0 !important; }
+#app.is-mobile :is(.tk-input, .li-input, .va-input, .wd-input, .ct-input) { min-width: 0 !important; width: 100% !important; }
+#app.is-mobile :is(.li-select, .wd-select, .ct-select, .sb-select) { flex: 1 1 calc(50% - 4px) !important; min-width: 0 !important; }
+#app.is-mobile :is(.tk-seg, .wd-tabs, .wd-persons) { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---- ④ 多列 grid：数字指标两列，内容卡片单列（窄屏读起来才不挤） ---- */
+#app.is-mobile :is(.sb-kpi, .sd-kpi, .fin-kpis, .wd-grid, .wd-persons-grid) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+#app.is-mobile :is(.wd-options, .fin-pcards, .life-grid, .qt-grid, .dh-grid) {
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+}
+#app.is-mobile :is(.li-stats, .tk-stats) { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---- ⑤ 卡片 / 列表项：统一内边距、去掉桌面大圆角与厚阴影 ---- */
+#app.is-mobile :is(.wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .life-members, .ht-card, .qk-card, .dh-card) {
+  padding: 14px !important;
+  border-radius: var(--m-radius) !important;
+  background: var(--m-surface) !important;
+  border-color: var(--m-line) !important;
+  box-shadow: none !important;
+}
+#app.is-mobile .tk-item { gap: 10px; align-items: flex-start; }
+#app.is-mobile .tk-actions { flex-wrap: wrap; gap: 6px; }
+#app.is-mobile .va-card-actions { margin-left: 0 !important; flex-wrap: wrap; gap: 6px; }
+#app.is-mobile .va-fields { flex-wrap: wrap; gap: 6px; }
+#app.is-mobile .li-card { flex-wrap: wrap; }
+
+/* ---- ⑥ 宽表格：横向滚动 + 手机字号 ---- */
+#app.is-mobile :is(.sb-table-wrap, .life-sum-table-wrap, .fin-mtable-wrap) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+#app.is-mobile :is(.sb-table, .life-sum-table, .fin-mtable) { font-size: 12.5px !important; }
+#app.is-mobile :is(.sb-table, .life-sum-table, .fin-mtable) :is(th, td) { padding: 8px 8px !important; }
+
+/* ---- ⑦ 小说 / 视频 / 工具：正文整块被旧策略藏掉，手机端只剩页头（真空白）----
+ * 旧规则 `#app.is-mobile .island-inner:not(.island-inner-music) .manage-pane{display:none}`
+ * 是「去管理后台感」时代的产物，但那三页的**全部内容**就在 .manage-pane 里，
+ * 隐藏后页面直接空掉。改为：留内容，用手机化的紧凑表格与工具条呈现。 */
+/* 多带一个 :not() 提高一级特异性，压过 mobile-deink.css 里同形的 display:none */
+#app.is-mobile .island-inner:not(.island-inner-music):not(.island-inner-manage-off) .manage-pane {
+  display: block !important;
+  padding: 12px !important;
+  border-radius: var(--m-radius) !important;
+  background: var(--m-surface) !important;
+  border: 1px solid var(--m-line) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#app.is-mobile .manage-pane .manage-toolbar { margin-bottom: 10px; }
+#app.is-mobile .manage-pane .manage-toolbar > .el-input,
+#app.is-mobile .manage-pane .manage-toolbar .el-input { width: 100% !important; min-width: 0 !important; }
+#app.is-mobile .manage-pane .el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: transparent;
+  --el-table-border-color: var(--m-line);
+  --el-table-text-color: var(--m-text);
+  --el-table-header-text-color: var(--m-text-2);
+  background: transparent !important;
+}
+#app.is-mobile .manage-pane .el-table :is(th, td).el-table__cell { padding: 8px 6px !important; font-size: 12.5px; }
+#app.is-mobile .manage-pane :is(.el-table__header-wrapper, .el-table__body-wrapper) {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+#app.is-mobile .manage-pane .el-table .cell { padding: 0 4px !important; }
+
+/* =====================================================================
+ * 第四轮 · 记账模块（夜星高频使用）
+ * ---------------------------------------------------------------------
+ * 截图问题：流水行「¥500.00」压住「个人零花 → 公款」徽标（溢出重叠，已在 FinanceView
+ * 里修根因）；同时手机端整体仍是桌面排版，卡片与表格都偏挤。这里做一轮手机化重排。
+ * ===================================================================== */
+#app.is-mobile .fin-page { padding: calc(env(safe-area-inset-top, 0px) + 12px) 0 calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+#app.is-mobile .fin-inner { padding: 0 16px !important; }
+
+/* 顶部两张 KPI：等宽两列，金额不再挤出卡片 */
+#app.is-mobile .fin-kpis-mobile { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+#app.is-mobile .fin-kpi-mobile:first-child { grid-row: span 1 !important; }
+#app.is-mobile .fin-kpi-mobile { min-width: 0; }
+#app.is-mobile .fin-kpi-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#app.is-mobile .fin-kpi-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 分段 Tab：可横滑，最后一项不再被裁半 */
+#app.is-mobile .fin-tabs { overflow-x: auto; flex-wrap: nowrap; padding: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+#app.is-mobile .fin-tabs::-webkit-scrollbar { display: none; }
+#app.is-mobile .fin-tab-item { flex: 0 0 auto; min-width: 62px; }
+
+/* 个人卡：单人一张、横排（头像｜名字+累计｜金额），比两列窄卡好读也更好点 */
+#app.is-mobile .fin-pcards { grid-template-columns: 1fr !important; gap: 10px !important; }
+#app.is-mobile .fin-pcard {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 10px;
+  padding: 14px 15px !important;
+}
+#app.is-mobile .fin-pcard-avatar { grid-row: span 3; font-size: 22px; }
+#app.is-mobile .fin-pcard-name { grid-column: 2; font-size: 13px; }
+#app.is-mobile .fin-pcard-val { grid-column: 3; grid-row: 1 / span 2; font-size: 21px; align-self: center; text-align: right; }
+#app.is-mobile .fin-pcard-sub { grid-column: 2; font-size: 11.5px; }
+#app.is-mobile .fin-pcard-toggle { grid-column: 3; justify-self: end; font-size: 11.5px; }
+
+/* 流水行：图标 34、主列可截断、金额固定右对齐、操作按钮贴右不参与压缩 */
+#app.is-mobile .fin-row { gap: 9px; padding: 11px 2px; align-items: flex-start; }
+#app.is-mobile .fin-row-icon { width: 34px; height: 34px; font-size: 17px; border-radius: 10px; margin-top: 1px; }
+#app.is-mobile .fin-row-main { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+#app.is-mobile .fin-row-top { gap: 6px; }
+#app.is-mobile .fin-row-cat { font-size: 13.5px; }
+#app.is-mobile .fin-row-note { font-size: 12px; }
+#app.is-mobile .fin-row-date { font-size: 11px; margin-top: 2px; }
+#app.is-mobile .fin-row-amt { font-size: 15px; letter-spacing: -.01em; align-self: center; }
+#app.is-mobile .fin-fund-badge { font-size: 10.5px; padding: 2px 7px; }
+#app.is-mobile .fin-row-ops { align-self: center; }
+#app.is-mobile .fin-ptxns { padding: 14px !important; border-radius: var(--m-radius) !important; }
+#app.is-mobile .fin-ptxns-head { flex-wrap: wrap; gap: 6px; }
+#app.is-mobile .fin-ptxns-x { margin-left: auto; }
+
 

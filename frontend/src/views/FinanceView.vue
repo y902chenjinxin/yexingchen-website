@@ -1794,7 +1794,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 /* 流水行：勾选框 + 资金池徽标 */
 .fin-row-check { display: flex; align-items: center; flex: none; cursor: pointer; }
 .fin-row-check input { width: 15px; height: 15px; accent-color: var(--lj-dai); cursor: pointer; }
-.fin-fund-badge { border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-3);
+.fin-fund-badge { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-3);
   font-family: var(--font-serif); font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
   cursor: pointer; white-space: nowrap; transition: all .2s; }
 .fin-fund-badge:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
@@ -1886,15 +1887,19 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-row.editing { background: rgba(199,169,107,.10); box-shadow: inset 0 0 0 1px var(--lj-line); }
 .fin-row + .fin-row { border-top: 1px solid rgba(127,168,163,.07); }
 .fin-row-icon { width: 40px; height: 40px; flex: none; display: grid; place-items: center; font-size: 20px; border-radius: 12px; background: rgba(127,168,163,.12); }
-.fin-row-main { flex: 1; min-width: 0; }
-.fin-row-top { display: flex; align-items: center; gap: 8px; }
-.fin-row-cat { font-size: 14px; font-weight: 600; }
-.fin-row-note { font-size: 13px; color: var(--lj-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* V2463-005：流水行「数字压字」真根因 —— 文案是 flex item，默认 min-width:auto，
+   不会收缩到内容宽度以下；`.fin-row-main` 虽然 min-width:0 但没 overflow:hidden，
+   于是备注/徽标溢出容器，直接盖在右侧金额上（截图里「个人零花 → 公款」被 ¥500.00 压住）。
+   修法：主列 overflow:hidden 兜住溢出，备注显式允许收缩，金额与按钮列 flex:none 不许被挤。 */
+.fin-row-main { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.fin-row-top { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.fin-row-cat { flex: none; font-size: 14px; font-weight: 600; }
+.fin-row-note { flex: 0 1 auto; min-width: 0; font-size: 13px; color: var(--lj-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fin-row-date { font-size: 11px; color: var(--lj-text-3); margin-top: 3px; }
-.fin-row-amt { font-size: 16px; font-weight: 600; white-space: nowrap; }
+.fin-row-amt { flex: none; font-size: 16px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .fin-row-amt.income { color: var(--lj-ochre); }
 .fin-row-amt.expense { color: var(--lj-vermilion); }
-.fin-row-ops { display: flex; gap: 6px; }
+.fin-row-ops { flex: none; display: flex; gap: 6px; }
 .fin-op { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: all .2s; }
 .fin-op:hover { border-color: var(--lj-seal); color: var(--lj-seal); }
 .fin-op.danger:hover { border-color: var(--lj-vermilion); color: var(--lj-vermilion); }

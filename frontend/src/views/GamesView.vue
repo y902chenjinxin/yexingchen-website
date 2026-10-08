@@ -1003,9 +1003,16 @@ watch(() => route.query.room, (v) => {
 /* min-height 必须放开（旧版写死 640px，手机横屏画布仅 ~390 高 → 外壳溢出被裁，
    表现为「大富翁全屏下方看不到」）；方棋盘改高度驱动 */
 .gtv-viewzoom.is-fs :deep(.mp) {
-  grid-template-columns: minmax(0, 1fr) clamp(178px, 21%, 264px);
+  grid-template-columns: minmax(0, 1fr) clamp(148px, 19%, 230px);
+  /* V2463-003：光放开 min-height 还不够 —— `.mp` 是 grid，行高没定义时行高＝内容高，
+     `.mp-boardwrap` 因此拿不到「确定高度」，`.mp-board` 的 height:100% 解析成 auto，
+     棋盘退回按内容宽度撑（约 300px），外面套一大圈黑边 = 「没法全屏」。
+     这里显式给唯一一行 1fr，让棋盘区吃满画布高度。 */
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
   min-height: 0;
 }
+.gtv-viewzoom.is-fs :deep(.mp-boardwrap) { min-height: 0; }
 .gtv-viewzoom.is-fs :deep(.mp-cname) { font-size: 9px; }
 .gtv-viewzoom.is-fs :deep(.mp-board) { height: 100%; width: auto; max-width: 100%; max-height: 100%; }
 

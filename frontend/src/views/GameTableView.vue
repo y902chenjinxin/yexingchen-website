@@ -654,9 +654,14 @@ onBeforeUnmount(() => {
    注意 `min-height` 必须放开：旧版这里写死 640px，而手机横屏画布只有 ~390 高，
    外壳被强制 640 高 → 溢出部分被舞台 overflow:hidden 裁掉 —— 这就是「大富翁全屏下方看不到」。 */
 .gtv-viewzoom.is-fs :deep(.mp) {
-  grid-template-columns: minmax(0, 1fr) clamp(178px, 21%, 264px);
+  grid-template-columns: minmax(0, 1fr) clamp(148px, 19%, 230px);
+  /* 行高必须显式给：否则行高＝内容高 → 棋盘区拿不到确定高度 →
+     `.mp-board` 的 height:100% 解析成 auto，棋盘退回内容宽（很小）＝「没法全屏」。 */
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
   min-height: 0;
 }
+.gtv-viewzoom.is-fs :deep(.mp-boardwrap) { min-height: 0; }
 .gtv-viewzoom.is-fs :deep(.mp-cname) { font-size: 9px; }
 /* 方棋盘改为「高度驱动」：先吃满可用高度，宽度按 1:1 推出来，不再超框也不留黑边 */
 .gtv-viewzoom.is-fs :deep(.mp-board) { height: 100%; width: auto; max-width: 100%; max-height: 100%; }

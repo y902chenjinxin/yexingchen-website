@@ -31,11 +31,9 @@
                 :key="it.key"
                 class="mr-row"
                 :class="{ done: it.done, pressing: pressing === it.key }"
-                @pointerdown="onDown(it)"
-                @pointerup="onUp"
-                @pointercancel="onUp"
-                @pointerleave="onUp"
+                @pointerdown="onDown(it, $event)"
                 @click="onTap(it)"
+                @contextmenu.prevent
               >
                 <span class="mr-ic">{{ iconOf(it.gameKey) }}</span>
                 <div class="mr-tx">
@@ -49,7 +47,7 @@
                 <!-- 长按后原地出确认，不用居中弹窗（全站约定） -->
                 <div v-if="confirmKey === it.key" class="mr-confirm" @click.stop>
                   <button class="mr-btn del" :disabled="busyKey === it.key" @click="doDelete(it)">删除</button>
-                  <button class="mr-btn" @click="confirmKey = ''">取消</button>
+                  <button class="mr-btn" @click="clearConfirm">取消</button>
                 </div>
                 <span v-else class="mr-dot" aria-hidden="true"></span>
               </div>
@@ -72,7 +70,7 @@
  * 删除 = 真删语义：棋类走新增的 `dissolve`、牌类走 `dissolve`，置为 `dissolved`
  * 终态后 `mine()` 不再返回 —— 服务端也查不到了，不只是前端藏起来。
  */
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { gameRoomsApi } from '@/api/gameRooms'
 import { gameTablesApi } from '@/api/gameTables'
@@ -177,35 +175,70 @@ async function load() {
   }
 }
 
-/* ---------- 长按删除 ---------- */
-const HOLD_MS = 520
+/* ---------- 长按删除 ----------
+ * V2463-001：手机端长按此前**完全无效**。真根因有两条，都是「手势被浏览器抢走」：
+ *   1) 行内是可选中文本（b / i 元素），长按 → 触发系统「选择文本」，
+ *      浏览器据此发出 pointercancel，把 520ms 的计时器在到点前清掉；
+ *   2) 旧实现把取消绑在 `@pointerleave` 上 —— 手指按住时轻微上下飘一点
+ *      （触摸有 8~10px 抖动）就会触发 pointerleave，同样提前取消。
+ * 修法：CSS 关掉选中/呼出菜单；取消改为「位移超过阈值才算滑动」，
+ *       监听挂 window，并在长按已触发后忽略 pointercancel。
+ */
+const HOLD_MS = 460
+const MOVE_TOL = 12      // 位移容差（px）：超过就当成滑动/滚动，不触发长按
 let pressTimer = null
 let longFired = false
+let downPt = null
 
 function buzz() {
   try { if (navigator && navigator.vibrate) navigator.vibrate(10) } catch { /* noop */ }
 }
 
-function onDown(it) {
+function endPress() {
+  clearTimeout(pressTimer)
+  pressTimer = null
+  downPt = null
+  pressing.value = ''
+  window.removeEventListener('pointermove', onPressMove)
+  window.removeEventListener('pointerup', onPressEnd)
+  window.removeEventListener('pointercancel', onPressCancel)
+}
+function onPressMove(e) {
+  if (!downPt) return
+  if (Math.abs(e.clientX - downPt.x) > MOVE_TOL || Math.abs(e.clientY - downPt.y) > MOVE_TOL) endPress()
+}
+function onPressEnd() { endPress() }
+/** pointercancel = 浏览器把这次手势判给了滚动/文本选择。
+ *  长按已经触发（确认已弹出）时必须忽略，否则确认刚出来就被撤掉。 */
+function onPressCancel() { if (!longFired) endPress() }
+
+function onDown(it, e) {
+  if (e && e.pointerType === 'mouse' && e.button !== 0) return
   longFired = false
+  downPt = { x: e?.clientX ?? 0, y: e?.clientY ?? 0 }
   pressing.value = it.key
   clearTimeout(pressTimer)
   pressTimer = setTimeout(() => {
+    pressTimer = null
     longFired = true
     pressing.value = ''
     confirmKey.value = it.key
     buzz()
   }, HOLD_MS)
-}
-function onUp() {
-  clearTimeout(pressTimer)
-  pressing.value = ''
+  window.addEventListener('pointermove', onPressMove, { passive: true })
+  window.addEventListener('pointerup', onPressEnd, { passive: true })
+  window.addEventListener('pointercancel', onPressCancel, { passive: true })
 }
 /** 短按 = 进房间；长按已经弹了确认，就别再触发跳转（click 一定跟在 pointerup 之后） */
 function onTap(it) {
   if (longFired) { longFired = false; return }
   if (confirmKey.value) return
   emit('open-room', it)
+}
+/** 点确认/取消按钮后清掉长按标记，避免下一次短按被吞 */
+function clearConfirm() {
+  longFired = false
+  confirmKey.value = ''
 }
 
 async function removeOne(it) {
@@ -219,7 +252,7 @@ async function doDelete(it) {
   busyKey.value = it.key
   try {
     await removeOne(it)
-    confirmKey.value = ''
+    clearConfirm()
     ElMessage.success('已删除')
   } catch (e) {
     ElMessage.warning(e?.response?.data?.msg || '删除失败，请稍后再试')
@@ -243,13 +276,17 @@ async function clearFinished() {
 }
 
 function close() {
-  confirmKey.value = ''
-  onUp()
+  clearConfirm()
+  endPress()
   emit('update:open', false)
 }
 
-watch(() => props.open, (v) => { if (v) load() })
+watch(() => props.open, (v) => {
+  if (v) load()
+  else { clearConfirm(); endPress() }
+})
 onMounted(() => { if (auth.isLoggedIn) load() })
+onBeforeUnmount(endPress)
 </script>
 
 <style scoped>
@@ -260,6 +297,9 @@ onMounted(() => { if (auth.isLoggedIn) load() })
   background: rgba(6, 14, 12, .58);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 .mr-panel {
   width: min(92vw, 420px);
@@ -321,9 +361,16 @@ onMounted(() => { if (auth.isLoggedIn) load() })
   border: 1px solid rgba(255, 255, 255, .1);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  touch-action: pan-y;
+  /* 关键：行内是可选中文本时，手机长按会触发系统「选择文本 / 呼出菜单」，
+     浏览器随即发出 pointercancel 把长按计时器掐掉 —— 表现就是「长按没反应」 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   transition: background .18s ease, border-color .18s ease, transform .12s ease;
 }
+/* 让长按有可见的进度感：按下即高亮，长按蓄力时缓慢加深 */
+.mr-row.pressing { background: rgba(233, 200, 119, .1); }
 .mr-row:hover { background: rgba(255, 255, 255, .08); }
 .mr-row.pressing { transform: scale(.985); border-color: rgba(233, 200, 119, .45); }
 .mr-row.done { opacity: .72; }
