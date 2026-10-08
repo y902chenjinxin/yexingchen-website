@@ -59,7 +59,7 @@
               v-for="t in discards[2]"
               :key="t.id"
               class="gt-tile mini"
-              :class="suitCls(t)"
+              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
 
@@ -68,7 +68,7 @@
               v-for="t in discards[3]"
               :key="t.id"
               class="gt-tile mini"
-              :class="suitCls(t)"
+              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
 
@@ -77,7 +77,7 @@
               v-for="t in discards[1]"
               :key="t.id"
               class="gt-tile mini"
-              :class="suitCls(t)"
+              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
 
@@ -86,7 +86,7 @@
               v-for="t in discards[0]"
               :key="t.id"
               class="gt-tile mini"
-              :class="suitCls(t)"
+              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
         </div>
@@ -122,20 +122,33 @@
           </span>
         </div>
 
-        <div class="mj-hand" :style="{ '--ntiles': Math.max(1, handTiles.length) }">
+        <div class="mj-hand" ref="handRef" :style="{ '--ntiles': Math.max(1, handTiles.length) }" @pointerdown="onHandDown">
           <span
             v-for="t in viewHand"
             :key="t.id"
             class="gt-tile"
-            :class="[suitCls(t), { pickable: canDiscard, 'is-sel': selId === t.id }]"
+            :data-tid="t.id"
+            :class="[suitCls(t), {
+              pickable: canDiscard,
+              'is-sel': selId === t.id,
+              'is-miss': isMissTile(t),
+              'is-lift': liftId === t.id,
+            }]"
             @click="pick(t)"
           >
             <MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" />
           </span>
           <span
             v-if="viewDrawn"
+            :key="viewDrawn.id"
             class="gt-tile is-drawn"
-            :class="[suitCls(viewDrawn), { pickable: canDiscard, 'is-sel': selId === viewDrawn.id }]"
+            :data-tid="viewDrawn.id"
+            :class="[suitCls(viewDrawn), {
+              pickable: canDiscard,
+              'is-sel': selId === viewDrawn.id,
+              'is-miss': isMissTile(viewDrawn),
+              'is-lift': liftId === viewDrawn.id,
+            }]"
             @click="pick(viewDrawn)"
           >
             <MahjongTileFace :suit="faceSuit(viewDrawn)" :rank="viewDrawn.rank" />
@@ -167,6 +180,13 @@
             @click="doBugang(bugangs[0])"
           >补杠 {{ tileText(bugangs[0]) }}</button>
           <button class="gt-btn ghost" :disabled="!canDiscard" @click="doHint">提示</button>
+          <!-- 手机手势提示：灰掉的缺门牌只能打，上滑即可直接打出（不必先点选再点按钮） -->
+          <em v-if="canDiscard" class="mj-hint">
+            <b v-if="viewMissing && handTiles.some(t => t.suit === viewMissing)">
+              {{ M.SUIT_NAME[viewMissing] }}缺未清 · 不能碰杠
+            </b>
+            上滑手牌直接打出
+          </em>
         </div>
       </footer>
 
@@ -334,6 +354,21 @@ const canDiscard = computed(() => {
 const poolOfView = computed(() =>
   viewDrawn.value ? viewHand.value.concat([viewDrawn.value]) : viewHand.value.slice())
 
+/* ---------- 定缺（缺门）----------
+ * 四川麻将：定缺后，手上的缺门牌**必须先打完**，没打完之前不能碰 / 杠 / 胡。
+ * 引擎的 AI 一直遵守这条（`aiWantPong` / `aiWantKong` 里 `any(t => t.suit === missing)` 直接 false），
+ * 但给真人计算「可碰 / 可杠」时漏了这道关 —— 真人的碰杠请求因此比 AI 宽松。
+ * 这里把真人那条路径补齐，并在手牌里把缺门牌**置灰**，让玩家一眼看出「这几张只能打」。 */
+const viewMissing = computed(() => missing.value[viewSeat.value] || '')
+function isMissTile(t) { return !!viewMissing.value && !!t && t.suit === viewMissing.value }
+/** 该座位手上是否还留着缺门牌（决定能不能碰 / 杠） */
+function holdingMissing(seat) {
+  const ms = missing.value[seat]
+  return !!ms && (hands.value[seat] || []).some(t => t.suit === ms)
+}
+/** 最新落下的那张弃牌 —— 只有它带「落桌」动效，其余是静态小牌 */
+const freshDiscardId = computed(() => lastDiscard.value?.tile?.id ?? -1)
+
 const canZimo = computed(() => {
   if (isOnline.value) {
     if (props.acting) return false
@@ -347,7 +382,8 @@ const ankongs = computed(() => {
     if (props.acting || !(props.onlineView?.me?.options || []).includes('ankong')) return []
     return props.onlineView?.me?.ankongs || []
   }
-  if (!canDiscard.value) return []
+  // 手上还留着缺门牌 → 不能杠（与 AI 的 aiWantKong 同一规则）
+  if (!canDiscard.value || holdingMissing(turn.value)) return []
   return M.findAnkongs(hands.value[turn.value])
 })
 const bugangs = computed(() => {
@@ -355,7 +391,7 @@ const bugangs = computed(() => {
     if (props.acting || !(props.onlineView?.me?.options || []).includes('bugang')) return []
     return props.onlineView?.me?.bugangs || []
   }
-  if (!canDiscard.value) return []
+  if (!canDiscard.value || holdingMissing(turn.value)) return []
   const h = drawn.value ? hands.value[turn.value].concat([drawn.value]) : hands.value[turn.value]
   return M.findBugangs(h, melds.value[turn.value])
 })
@@ -644,11 +680,12 @@ function resolveReactions(from, tile) {
     nextDraw(from)
     return
   }
-  // 2) 杠 / 碰：按座次
+  // 2) 杠 / 碰：按座次。手上还留着缺门牌的一律跳过（定缺后必须先打完才能碰 / 杠）
   const q = []
   for (let off = 1; off <= 3; off++) {
     const s = (from + off) % 4
     if (out.value[s]) continue
+    if (holdingMissing(s)) continue
     const kinds = []
     if (countIn(hands.value[s], tile) >= 3) kinds.push('kong')
     if (countIn(hands.value[s], tile) >= 2) kinds.push('pong')
@@ -799,18 +836,79 @@ function doZimo() {
 }
 
 /* ---------- 人类操作 ---------- */
+let suppressClick = false        // 上滑出牌后抑制一次补发的 click（否则会把刚打出的牌又选中）
 function pick(t) {
-  if (!canDiscard.value) return
+  if (!canDiscard.value || suppressClick) return
   selId.value = selId.value === t.id ? null : t.id
   sfx.pick()
 }
-function discardSel() {
-  if (!canDiscard.value || selId.value === null) return
-  const pool = poolOfView.value
-  const t = pool.find(x => x.id === selId.value)
-  if (!t) return
+/** 直接打出某张牌（点「出牌」按钮与上滑手势共用这一条路径） */
+function playTile(t) {
+  if (!canDiscard.value || !t) return
+  selId.value = t.id
   if (isOnline.value) { sfx.play(); actOnline({ type: 'discard', tile_id: t.id }); return }
   doDiscard(turn.value, t)
+}
+function discardSel() {
+  if (!canDiscard.value || selId.value === null) return
+  playTile(poolOfView.value.find(x => x.id === selId.value))
+}
+
+/* ---------- 手机手势：手牌上滑 = 直接打出 ----------
+ * 旧版手机上必须先点牌选中、再点下方「出牌」按钮（两步，且按钮与手牌离得远）。
+ * 现在按下滑到阈值（手机麻将的通用手势）：抬起即出，回到一点一击的老路径也没变。 */
+const SWIPE_UP = 30      // 判定「上滑出牌」的位移（px）
+const LIFT_AT = 14       // 超过这个位移就先给「抬起」反馈，让玩家知道松手就出
+const liftId = ref(null)
+const handRef = ref(null)
+let gStart = null
+function onHandDown(e) {
+  if (!canDiscard.value) return
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+  const el = e.target?.closest ? e.target.closest('.gt-tile') : null
+  if (!el) return
+  const tid = Number(el.dataset.tid)
+  const tile = poolOfView.value.find(x => x.id === tid)
+  if (!tile) return
+  // 手牌可能被整块 rotate(90deg)（竖屏兜底）：那时手牌的长边是纵向，
+  // 「上滑」会和「沿牌排列方向滑动」撞车，故只在手牌横排时启用这个手势。
+  const hr = handRef.value ? handRef.value.getBoundingClientRect() : null
+  gStart = {
+    pid: e.pointerId, x: e.clientX, y: e.clientY, tile,
+    horizontal: !hr || hr.width >= hr.height,
+  }
+  liftId.value = null
+  window.addEventListener('pointermove', onHandMove)
+  window.addEventListener('pointerup', onHandUp)
+  window.addEventListener('pointercancel', onHandUp)
+}
+function onHandMove(e) {
+  if (!gStart || e.pointerId !== gStart.pid) return
+  if (!gStart.horizontal) return
+  const dy = e.clientY - gStart.y
+  const dx = e.clientX - gStart.x
+  // 只认「明显向上」的位移：横向划动 / 向下拖不误触发抬起
+  liftId.value = (dy <= -LIFT_AT && Math.abs(dy) > Math.abs(dx)) ? gStart.tile.id : null
+}
+function onHandUp(e) {
+  if (!gStart) return
+  if (e && e.pointerId !== undefined && e.pointerId !== gStart.pid) return
+  const dy = (e && e.clientY != null ? e.clientY : gStart.y) - gStart.y
+  const dx = (e && e.clientX != null ? e.clientX : gStart.x) - gStart.x
+  const tile = gStart.tile
+  const horizontal = gStart.horizontal
+  const fired = horizontal && !!(e && e.type !== 'pointercancel')
+    && dy <= -SWIPE_UP && Math.abs(dy) > Math.abs(dx) * 0.9
+  gStart = null
+  liftId.value = null
+  window.removeEventListener('pointermove', onHandMove)
+  window.removeEventListener('pointerup', onHandUp)
+  window.removeEventListener('pointercancel', onHandUp)
+  if (fired && canDiscard.value) {
+    suppressClick = true
+    setTimeout(() => { suppressClick = false }, 320)
+    playTile(tile)
+  }
 }
 function doHint() {
   if (!canDiscard.value) return
@@ -864,10 +962,12 @@ function onReact(kind) {
  * 电脑出牌的「思考时间」。
  * 旧值 640ms：三家机器人连着出，牌刚翻过去下一张就来了，真人根本看不清谁打了什么
  * （夜星：「打麻将时的速度很快，控制在 2-3s」）。
- * 现在统一 2.0~3.0s 随机 —— 固定值会让三家像节拍器，随机更接近真人。
+ * v2.46.8 再放慢一档：2.2~3.2s —— 上一版 2.0~3.0 在手机横屏上仍旧「看不清出牌动作」，
+ * 除本档位下移外，真正让动作可见的是新加的「弃牌落桌」动效（.gt-tile.is-land）。
+ * 固定值会让三家像节拍器，随机更接近真人。
  */
-const AI_THINK_MIN = 2000
-const AI_THINK_MAX = 3000
+const AI_THINK_MIN = 2200
+const AI_THINK_MAX = 3200
 function aiThink() { return AI_THINK_MIN + Math.floor(Math.random() * (AI_THINK_MAX - AI_THINK_MIN)) }
 
 let aiTimer = null
@@ -974,6 +1074,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearTimeout(aiTimer)
   clearTimeout(toastTimer)
+  // 上滑出牌期间被卸载：window 上的监听必须摘掉，否则残留到下一个页面
+  window.removeEventListener('pointermove', onHandMove)
+  window.removeEventListener('pointerup', onHandUp)
+  window.removeEventListener('pointercancel', onHandUp)
 })
 </script>
 
@@ -1111,6 +1215,9 @@ onBeforeUnmount(() => {
 .mj-hand {
   display: flex; gap: 3px; align-items: flex-end; justify-content: center;
   padding: 11px 4px 3px; min-height: 0; flex-wrap: nowrap;
+  /* 手牌整块接管纵向手势（上滑出牌）—— 否则浏览器会把纵向位移当成滚页面，
+     中途发 pointercancel，手势必断。 */
+  touch-action: none;
 }
 .mj-hand .gt-tile {
   width: min(
@@ -1180,6 +1287,70 @@ onBeforeUnmount(() => {
     0 0 0 2px var(--gt-gold), 0 0 18px -2px rgba(233, 200, 119, .7),
     0 2px 0 #cfc6ad, 0 4px 0 #b6ac91,
     0 16px 22px -10px rgba(0, 0, 0, .9);
+}
+
+/* ===== 缺门牌（四川麻将「定缺」）=====
+   缺门的牌只能打出去，碰 / 杠 / 胡都不行（引擎侧见 holdingMissing / resolveReactions）。
+   视觉上**去饱和 + 压暗**而不是直接半透明 —— 半透明会看不清是哪张牌，
+   反而更容易打错。左下角再压一枚「缺」字，抬头一看就知道为什么它灰着。 */
+.mj-hand .gt-tile.is-miss {
+  filter: grayscale(.88) brightness(.84);
+}
+.mj-hand .gt-tile.is-miss::after {
+  content: '缺';
+  position: absolute; left: 1px; bottom: 1px; z-index: 3;
+  font-size: 8px; line-height: 1.15; padding: 0 2.5px; border-radius: 3px;
+  background: rgba(46, 46, 46, .72); color: #f3efe4; letter-spacing: 0;
+}
+.mj-hand .gt-tile.is-miss.is-sel { filter: grayscale(.55) brightness(.94); }
+
+/* 上滑出牌：手指抬起过阈值时把牌「拎起来」，松手即出（给提前反馈，不用猜） */
+.mj-hand .gt-tile.is-lift {
+  transform: translateY(-30px) scale(1.04);
+  z-index: 4;
+  filter: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    0 0 0 2px var(--gt-gold), 0 0 24px -2px rgba(233, 200, 119, .9),
+    0 2px 0 #cfc6ad, 0 4px 0 #b6ac91,
+    0 20px 26px -10px rgba(0, 0, 0, .92);
+}
+
+/* ===== 出牌动效 =====
+   ① 摸到的牌：从右侧滑入手牌（.is-drawn 有 key，每摸一张重新挂载 → 每次都放一次）
+   ② 打出的牌：落到弃牌区时「抛下 + 金圈一闪」，这是「看得到出牌动作」的关键。
+   旧版弃牌是直接出现在位（无过渡），三家人 2~3s 连打，肉眼根本抓不住。 */
+@keyframes mj-draw {
+  0% { transform: translate(18px, -14px) scale(1.14); opacity: .2; }
+  100% { transform: none; opacity: 1; }
+}
+.mj .gt-tile.is-drawn { animation: mj-draw .3s cubic-bezier(.2, .85, .3, 1) both; }
+@keyframes mj-land {
+  0% {
+    transform: translateY(-20px) scale(1.4) rotate(-10deg); opacity: .25;
+    box-shadow: 0 0 0 3px var(--gt-gold), 0 0 16px rgba(233, 200, 119, .8);
+  }
+  55% {
+    transform: translateY(1px) scale(.96) rotate(0deg); opacity: 1;
+    box-shadow: 0 0 0 2px var(--gt-gold), 0 0 10px rgba(233, 200, 119, .55);
+  }
+  100% {
+    transform: none; opacity: 1;
+    box-shadow: 0 1px 0 rgba(150, 140, 115, .6), 0 3px 5px -3px rgba(0, 0, 0, .6);
+  }
+}
+.mj .gt-tile.is-land { animation: mj-land .38s cubic-bezier(.2, .85, .3, 1) both; z-index: 2; }
+
+/* 手势提示：小号弱化，跟在操作按钮后面 */
+.mj-hint {
+  font-style: normal; font-size: 11px; color: var(--gt-ink-dim);
+  display: inline-flex; align-items: center; gap: 7px;
+  padding-left: 2px;
+}
+.mj-hint b { font-weight: 600; color: var(--gt-gold); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mj .gt-tile.is-drawn, .mj .gt-tile.is-land { animation: none !important; }
 }
 .gt-over-card em { font-style: normal; opacity: .7; }
 

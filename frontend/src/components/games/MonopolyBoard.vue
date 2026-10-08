@@ -1,6 +1,6 @@
 <template>
   <div class="gt-landscape">
-    <div class="gt-shell mp" :class="{ 'is-tilt': tilt }">
+    <div ref="shellRef" class="gt-shell mp" :class="{ 'is-tilt': tilt }">
       <!-- ===== 棋盘 ===== -->
       <div ref="boardWrapRef" class="mp-boardwrap" :style="boardWrapStyle">
         <div class="mp-board" :style="{ '--n': BOARD_N }">
@@ -366,27 +366,54 @@ const tilt = ref(false)
 const toast = ref('')
 const wallet = reactive({ beans: 0 })
 
-/* ---------------- 棋盘尺寸（正方形，且由容器算出来） ----------------
+/* ---------------- 棋盘尺寸（由容器算出来） ----------------
  * 为什么必须用 JS 量：`.mp-board` 是 14×14 的 grid。
  *   ① `aspect-ratio: 1` + `width: auto` + `height: 100%` 在 flex 容器里，Chrome 会先按
  *      「内容宽度」定 flex base size，再套 height:100% —— 结果棋盘被拉成 514×336 的
  *      长方形（实测），格子变 20×48，名字与价格互相压字、环也不成方。
  *   ② 高度不是确定值时 `grid-template-rows: repeat(14, 1fr)` 退化成 content 尺寸，
  *      14 行加起来 630px 直接溢出 336px 的棋盘（实测 scrollHeight=630），下边的格子被裁。
- * → 由 JS 量容器可用宽高，取 min（并保留桌面端 760 上限）写进 `--mp-size`，
- *   宽高都是确定 px 值，上面两个问题一次性消失。 */
+ * → 由 JS 量容器可用宽高，写进 `--mp-w` / `--mp-h`（两个方向都是确定 px）。
+ *
+ * 【v2.46.8 两个改动】
+ *   · **不再强制正方形**：手机横屏时横向空间大量闲置（实测棋盘只用到容器宽度的 41%），
+ *     而高度是硬约束 —— 方棋盘只能取「高度」那一档，格子自然小（夜星：「还有很大的空间
+ *     可以用，可以放大格子」）。现在按可用盒子铺满，宽高比封顶 1.45，格子面积约 +45%。
+ *   · **高度改用「可视高度」兜底**：非全屏（手机自带浏览器走桌面版 viewport 1280）时
+ *     `.mp` 没有确定高度，行高是由内容（棋盘自己）撑出来的 —— 只读容器高度会自锁，
+ *     而且整块外壳会高于视口（夜星：「横屏展示时底部会被遮挡」）。
+ *     这里同时量「容器高度」和「视口剩余高度」，取更小的那个，两种情况都不会溢出。
+ */
 const boardWrapRef = ref(null)
-const boardSize = ref(0)
+const shellRef = ref(null)
+const boardSize = ref({ w: 0, h: 0 })
 let boardRO = null
-const boardWrapStyle = computed(() => (boardSize.value ? { '--mp-size': boardSize.value + 'px' } : {}))
+let onWinResize = null
+const BOARD_MAX_H = 760          // 桌面端上限（不让棋盘无限长高）
+const BOARD_ASPECT = 1.45        // 宽高比封顶：再宽格子会扁得不像牌桌
+const boardWrapStyle = computed(() => (boardSize.value.w
+  ? { '--mp-w': boardSize.value.w + 'px', '--mp-h': boardSize.value.h + 'px' }
+  : {}))
 function measureBoard() {
   const el = boardWrapRef.value
   if (!el) return
-  const w = el.clientWidth
-  const h = el.clientHeight
-  if (!w || !h) return
-  const s = Math.floor(Math.min(w, h, 760))
-  if (s > 0 && Math.abs(s - boardSize.value) > 1) boardSize.value = s
+  const w = Math.floor(el.clientWidth || 0)
+  if (!w) return
+  /* 全屏链路里 `--mp-w/h` 写在**逻辑画布坐标**上（画布整体等比缩放），
+     而 getBoundingClientRect() 给的是缩放后的屏幕坐标 —— 必须除以缩放比换回逻辑值，
+     否则会把棋盘算小一倍（缩放 0.5 时尤为明显）。 */
+  const rect = el.getBoundingClientRect()
+  const scale = rect.width ? rect.width / el.clientWidth : 1
+  const visH = Math.max(240, (window.innerHeight - rect.top) / (scale || 1) - 14)
+  let bh = Math.floor(Math.min(el.clientHeight || visH, visH, BOARD_MAX_H))
+  let bw = Math.floor(Math.min(w, bh * BOARD_ASPECT, BOARD_MAX_H * BOARD_ASPECT))
+  if (bw < bh) bh = bw             // 盒子比高更窄（竖屏）→ 退回正方形，别拉成长条
+  if (bw <= 0 || bh <= 0) return
+  /* 把「可视高度」也写回外壳：矮屏时右栏靠它封顶（否则右栏自己就能把外壳顶出屏幕，
+     底部按钮还是会被裁 —— 棋盘量准了也没用）。 */
+  if (shellRef.value) shellRef.value.style.setProperty('--mp-vis-h', Math.round(visH) + 'px')
+  const prev = boardSize.value
+  if (Math.abs(bw - prev.w) > 1 || Math.abs(bh - prev.h) > 1) boardSize.value = { w: bw, h: bh }
 }
 
 let toastTimer = null
@@ -622,7 +649,14 @@ function floatersAt(idx) { return floaters.value.filter((f) => f.idx === idx) }
 
 /** 逐格推进：让「走到哪、路上经过什么」在棋盘上看得见。
  *  旧版 moveBy 是一次性瞬移，玩家只能从中央 log 里的一行字猜发生了什么。 */
-const STEP_MS = 105
+/** 机器人「想一下」的时长（行动前）与每走一格的间隔。
+ *  旧值 480/520/600ms + STEP_MS 105：掷骰到走位全程不到 1 秒，玩家只看到棋盘突然变了
+ *  （夜星：「机器人行动的速度也慢一点，现在都看不到出的动作」）。
+ *  现在给足观察时间：行动前 1.5~2.3s，每格 130ms，落点后再停 240ms 才结算。 */
+const STEP_MS = 130
+const AI_DELAY_MIN = 1500
+const AI_DELAY_MAX = 2300
+function aiDelay() { return AI_DELAY_MIN + Math.floor(Math.random() * (AI_DELAY_MAX - AI_DELAY_MIN)) }
 async function animateMove(p, steps) {
   for (let i = 0; i < steps; i++) {
     const before = p.pos
@@ -672,7 +706,7 @@ async function rollAndMove() {
   const steps = d1 + d2
   log(`🎲 ${p.name} 掷出 ${d1}+${d2}=${steps}`)
   await animateMove(p, steps)
-  await sleep(140)
+  await sleep(240)
   await resolveLanding(p)
   busy.value = false
   endTurn()
@@ -694,7 +728,7 @@ function endTurn() {
     guard += 1
   } while (!game.players[game.curIdx].alive && guard < 40)
   // AI 自动行动
-  if (game.players[game.curIdx]?.isAI) setTimeout(() => aiTurn(), 520)
+  if (game.players[game.curIdx]?.isAI) setTimeout(() => aiTurn(), aiDelay())
 }
 
 function nextTurn() { endTurn() }
@@ -1009,6 +1043,10 @@ onMounted(async () => {
     boardRO = new ResizeObserver(measureBoard)
     boardRO.observe(boardWrapRef.value)
   }
+  // 棋盘高度同时受「视口剩余高度」约束（见 measureBoard），旋转 / 地址栏收放都要重量一次
+  onWinResize = () => measureBoard()
+  window.addEventListener('resize', onWinResize)
+  window.addEventListener('orientationchange', onWinResize)
   if (isOnline.value) { syncFromView(props.onlineView); return }
   newGame()
   emit('room-lock')
@@ -1017,18 +1055,23 @@ onMounted(async () => {
     const d = res?.data || {}
     if (d.beans != null) wallet.beans = d.beans
   } catch { /* 未登录或接口不可用时静默 */ }
-  setTimeout(() => { if (cur.value?.isAI) aiTurn() }, 600)
+  setTimeout(() => { if (cur.value?.isAI) aiTurn() }, aiDelay())
 })
 
 watch(() => game.curIdx, () => {
   if (isOnline.value) return   // 在线由服务端推进
   const p = cur.value
-  if (p?.isAI && !game.over && !busy.value) setTimeout(() => aiTurn(), 480)
+  if (p?.isAI && !game.over && !busy.value) setTimeout(() => aiTurn(), aiDelay())
 })
 
 onBeforeUnmount(() => {
   clearTimeout(toastTimer)
   clearTimeout(onlineRollTimer)
+  if (onWinResize) {
+    window.removeEventListener('resize', onWinResize)
+    window.removeEventListener('orientationchange', onWinResize)
+    onWinResize = null
+  }
   boardRO?.disconnect()
   boardRO = null
 })
@@ -1042,6 +1085,14 @@ onBeforeUnmount(() => {
   padding: 10px; min-height: 640px;
 }
 @media (max-width: 1100px) { .mp { grid-template-columns: minmax(0, 1fr); } }
+/* 矮屏（手机横屏 / 窗口高度不足）：不再写死 640 —— 外壳比视口还高时，
+   棋盘下半截与右栏下面的按钮都会被裁掉（夜星：「横屏展示时底部会被遮挡」）。
+   棋盘高度由 JS 按「视口剩余高度」量（见 measureBoard），右栏也用同一个值封顶
+   （内部本来就 overflow-y: auto，所以只是加个上限，不会丢内容）。 */
+@media (max-height: 820px) {
+  .mp { min-height: 0; }
+  .mp-side { max-height: var(--mp-vis-h, calc(100vh - 20px)); }
+}
 
 /* ---- 棋盘 ---- */
 .mp-boardwrap { perspective: 1500px; display: grid; place-items: center; min-width: 0; min-height: 0; }
@@ -1050,11 +1101,11 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(var(--n), 1fr);
   grid-template-rows: repeat(var(--n), 1fr);
-  /* 宽高都取 JS 量出来的 `--mp-size`（见 script 里的说明）：一定是正方形，
-     而且两个方向都是确定 px，`repeat(14, 1fr)` 才不会退化成内容高度、把棋盘撑爆。
-     未测量到之前退回旧写法，保证首帧不塌。 */
-  width: var(--mp-size, min(100%, 760px));
-  height: var(--mp-size, auto);
+  /* 宽高都取 JS 量出来的 `--mp-w` / `--mp-h`（见 script 里的说明）：两个方向都是确定 px，
+     `repeat(14, 1fr)` 才不会退化成内容高度、把棋盘撑爆。
+     未测量到之前退回旧写法（正方形），保证首帧不塌。 */
+  width: var(--mp-w, min(100%, 760px));
+  height: var(--mp-h, auto);
   aspect-ratio: 1;
   gap: 2px;
   transform-style: preserve-3d;
@@ -1069,10 +1120,14 @@ onBeforeUnmount(() => {
 .mp.is-tilt .mp-board { transform: rotateX(15deg) scale(.985); }
 
 /* 单格尺寸 = (棋盘 − padding 14 − 13 道间隙 26) / 14。
-   棋盘上所有字号 / 令牌 / 色条都按它等比给：桌面大棋盘（760 → 格 51px）字大，
-   手机横屏小棋盘（约 344 → 格 21px）字小，但**始终落在格内**，不会再出现
-   「成都」压「重庆」那种互相盖字。 */
-.mp-board { --mp-cell: calc((var(--mp-size, 760px) - 40px) / 14); }
+ * 横屏时棋盘不再正方形（宽 > 高），所以横竖两档分别算：
+ * 字号 / 令牌 / 色条一律取**较小的那一档**（`--mp-cell`），保证任何比例下都落在格内；
+ * `--mp-cw` 单独留给需要「横向铺满」的东西。 */
+.mp-board {
+  --mp-cw: calc((var(--mp-w, 760px) - 40px) / 14);
+  --mp-ch: calc((var(--mp-h, 760px) - 40px) / 14);
+  --mp-cell: min(var(--mp-cw), var(--mp-ch));
+}
 
 .mp-cell {
   position: relative; border-radius: 4px;
@@ -1101,11 +1156,13 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .mp-cname {
-  font-size: clamp(6.5px, calc(var(--mp-cell) * 0.34), 11px);
+  /* 上限 11 → 12.5、系数 .34 → .38：横屏格子变宽变扁后（实测 32×21），
+     字号只被「短边」这一档约束，还有余量再大一点；名字仍不会压到价格。 */
+  font-size: clamp(7px, calc(var(--mp-cell) * 0.38), 12.5px);
   font-weight: 700; line-height: 1.02; text-align: center;
   max-width: 100%; overflow: hidden; white-space: nowrap;
 }
-.mp-cprice { font-style: normal; font-size: clamp(6px, calc(var(--mp-cell) * 0.26), 8.5px); opacity: .7; line-height: 1; }
+.mp-cprice { font-style: normal; font-size: clamp(6px, calc(var(--mp-cell) * 0.28), 9.5px); opacity: .72; line-height: 1; }
 /* 类型底：低饱和版（旧版 #ffe9a8 / #f0d7d0 / #dceaf7 … 太艳） */
 .mp-cell.t-start { background: linear-gradient(170deg, #fdf6e2, #f5e8c2); }
 .mp-cell.t-jail, .mp-cell.t-gotojail { background: linear-gradient(170deg, #f9efeb, #eedad2); }
@@ -1128,19 +1185,29 @@ onBeforeUnmount(() => {
   gap: 1px; justify-content: center;
 }
 .mp-tok {
-  width: clamp(9px, calc(var(--mp-cell) * 0.48), 18px);
-  height: clamp(9px, calc(var(--mp-cell) * 0.48), 18px);
-  border-radius: 50%; font-size: clamp(6px, calc(var(--mp-cell) * 0.3), 10px);
+  width: clamp(9px, calc(var(--mp-cell) * 0.48), 21px);
+  height: clamp(9px, calc(var(--mp-cell) * 0.48), 21px);
+  border-radius: 50%; font-size: clamp(6px, calc(var(--mp-cell) * 0.3), 11px);
   display: grid; place-items: center; color: #fff;
   border: 1px solid rgba(255, 255, 255, .85);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .55);
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: box-shadow .18s ease;
+  /* 落到新格子时弹一下：棋子每走一格都是新挂载的元素，动画自然重放。
+     这是「看得到机器人走位」的关键 —— 旧版棋子是瞬移，只能看到一个颜色块换了位置。 */
+  animation: mp-hop .26s cubic-bezier(.2, .85, .3, 1) both;
 }
-/* 轮到谁动，谁的令牌亮一圈金边 —— 配合中央的「当前行动者」一起指认 */
+@keyframes mp-hop {
+  0% { transform: translateY(-11px) scale(1.26); }
+  62% { transform: translateY(1px) scale(.97); }
+  100% { transform: none; }
+}
+/* 轮到谁动，谁的令牌亮一圈金边 + 略大一圈（用尺寸放大而不是 transform，
+   否则会和上面的 mp-hop 动画抢同一个属性、落定时跳一下） */
 .mp-tok.is-now {
+  width: clamp(10px, calc(var(--mp-cell) * 0.56), 24px);
+  height: clamp(10px, calc(var(--mp-cell) * 0.56), 24px);
   border-color: var(--gt-gold);
   box-shadow: 0 0 0 2px rgba(233, 200, 119, .8), 0 1px 3px rgba(0, 0, 0, .6);
-  transform: scale(1.14);
 }
 
 /* ---- 落点气泡：谁在这块地上花了 / 赚了多少 ---- */
@@ -1193,7 +1260,8 @@ onBeforeUnmount(() => {
 .mp-dice { display: flex; gap: 12px; --mdy-size: 42px; flex: none; }
 
 .mp-log {
-  width: 100%; display: flex; flex-direction: column; gap: 2px;
+  width: 100%; max-width: min(100%, 620px); margin-inline: auto;
+  display: flex; flex-direction: column; gap: 2px;
   font-size: 11px; color: var(--gt-ink-dim); text-align: center;
 }
 .mp-log-row {
@@ -1202,16 +1270,20 @@ onBeforeUnmount(() => {
 }
 @media (prefers-reduced-motion: reduce) {
   .mp-float { animation-duration: .01ms; }
+  .mp-tok { animation: none !important; }
 }
 
 /* ---- 右侧（只剩「棋局信息 + 操作」，玩家列表已挪进棋盘中央） ---- */
 .mp-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 
 /* 玩家 2×2：一张紧凑卡 = 头像 + 名字(技能) + 现金·地产·道具。
-   中央宽 ~259px → 两列各 ~126px，长名字走省略号；轮到谁那枚就地发光 */
+   中央区在横屏时变宽（棋盘不再正方形，中央跟着变成 12/14 的宽矩形），
+   所以给玩家卡与日志各封一个上限并居中 —— 不封的话一张卡会被拉成 400px 宽，
+   头像和名字之间空一大片，比窄屏还难看。 */
 .mp-players {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 6px;
   width: 100%; min-width: 0;
+  max-width: min(100%, 460px); margin-inline: auto;
 }
 .mp-players > :only-child { grid-column: 1 / -1; }
 .mp-pcard {
@@ -1265,6 +1337,8 @@ onBeforeUnmount(() => {
 
 @media (max-width: 900px) {
   .mp { min-height: 0; }
-  .mp-cname { font-size: 8px; }
+  /* 这里旧版写死 `.mp-cname { font-size: 8px }`：格子大字却很小，名字反而更看不清。
+     现在字号一律由 `--mp-cell` 决定（见 .mp-cname），全尺寸区间都落在格内，
+     不再需要这条窄屏兜底。 */
 }
 </style>

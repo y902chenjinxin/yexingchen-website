@@ -67,10 +67,11 @@
               <div class="gd-center-cards">
                 <template v-if="lastPlay">
                   <span
-                    v-for="c in lastPlay.cards"
+                    v-for="(c, i) in lastPlay.cards"
                     :key="c.id"
-                    class="gt-card gt-anim-play"
+                    class="gt-card gd-throw"
                     :class="cardCls(c)"
+                    :style="{ '--i': i }"
                   >
                     <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
                     <span class="c-mid">{{ cardSuit(c) }}</span>
@@ -223,10 +224,12 @@
         </div>
 
         <!-- 划选手势：pointerdown 落在手牌区，pointermove / up 由脚本挂到 window
-             —— 手指滑出牌区（往上飘 / 划到牌桌）时仍能收到事件，不会半途断掉 -->
+             —— 手指滑出牌区（往上飘 / 划到牌桌）时仍能收到事件，不会半途断掉。
+             手机上还支持「上滑出牌」：按住往上带过阈值，松手即打（见 onHandUp）。 -->
         <div
           class="gd-hand"
           ref="handRef"
+          :class="{ 'is-up': upHint }"
           :style="{ '--gd-overlap': overlap + 'px' }"
           @pointerdown="onHandDown"
         >
@@ -830,6 +833,14 @@ const anchorIdx = ref(null)      // Shift 区间锚点
 let suppressClick = false        // 划选后抑制一次 click
 let swipeMode = null             // true=选, false=取消
 let swipeLast = -1
+/* 上滑出牌（手机手势）：按下后**垂直于手牌排列方向**带过阈值 → 松手即打。
+   阈值 34px：足够区别于划选时手指的纵向抖动，又不至于要甩很大幅度。
+   手牌被整块 rotate(90deg)（竖屏兜底）时排列轴变成纵向，此时关掉这个手势，避免与划选打架。 */
+const UP_SWIPE = 34
+const upHint = ref(false)
+let swipeStart = null
+let swipeStartIdx = -1
+let swipeUpOn = false
 
 function selectRange(from, to, state) {
   const lo = Math.min(from, to)
@@ -944,6 +955,10 @@ function onHandDown(e) {
   swipeCovered = new Set()
   suppressClick = true
   dragId = e.pointerId
+  swipeStart = { x: e.clientX, y: e.clientY }
+  swipeStartIdx = idx
+  swipeUpOn = false
+  upHint.value = false
   window.addEventListener('pointermove', onHandMove, { passive: false })
   window.addEventListener('pointerup', onHandUp)
   window.addEventListener('pointercancel', onHandUp)
@@ -952,18 +967,44 @@ function onHandDown(e) {
 function onHandMove(e) {
   if (swipeMode === null || dragId !== e.pointerId) return
   if (e.cancelable) e.preventDefault()
+  // 上滑出牌：只在手牌横排时启用（排列轴为 x），纵向位移显著大于横向才算
+  if (swipeStart && handAxis() === 'x') {
+    const dy = e.clientY - swipeStart.y
+    const dx = e.clientX - swipeStart.x
+    const up = dy <= -UP_SWIPE && Math.abs(dy) > Math.abs(dx) * 1.1
+    if (up !== swipeUpOn) { swipeUpOn = up; upHint.value = up }
+    if (up) return                       // 进入上滑态后不再动划选
+  }
   applySwipe(cardIndexAt(e.clientX, e.clientY, true))
 }
 function onHandUp(e) {
   if (e && e.pointerId !== undefined && dragId !== null && e.pointerId !== dragId) return
+  const wasUp = swipeUpOn
+  const idx = swipeStartIdx
   dragId = null
   swipeMode = null
   swipeLast = -1
+  swipeStart = null
+  swipeUpOn = false
+  upHint.value = false
   window.removeEventListener('pointermove', onHandMove)
   window.removeEventListener('pointerup', onHandUp)
   window.removeEventListener('pointercancel', onHandUp)
   // 触控结束后浏览器还会补发一次 click，留足窗口抑制它，避免把最后一张又点掉
   setTimeout(() => { suppressClick = false }, 350)
+  if (wasUp && e && e.type !== 'pointercancel') swipeUpPlay(idx)
+}
+/** 上滑松手：有选中就按选中出，没选中就把手指划过的那一张当选中（单张）。
+ *  合法性交给 doPlay 统一校验（牌型 / 是否压得过）—— 不合法会 toast 说明原因，
+ *  并把这一次的选中留在手上，方便玩家直接改选。 */
+function swipeUpPlay(idx) {
+  if (!canAct.value) return
+  if (!sel.value.length && idx >= 0) {
+    const c = viewHand.value[idx]
+    if (c) { sel.value = [c.id]; anchorIdx.value = idx; sfx.pick() }
+  }
+  if (!sel.value.length) return
+  doPlay()
 }
 
 function clearSel() { sel.value = []; anchorIdx.value = null }
@@ -1241,6 +1282,8 @@ watch(() => sel.value.length, (n) => { if (!n) pinned.value = [] })
 }
 @media (prefers-reduced-motion: reduce) {
   .gd-fly { animation-duration: .01ms; }
+  .gd-hand.is-up { transform: none; }
+  .gd-center-cards > .gt-card { animation: none !important; }
 }
 
 /* 底部手牌 */
@@ -1269,6 +1312,32 @@ watch(() => sel.value.length, (n) => { if (!n) pinned.value = [] })
 }
 .gd-hand .gt-card { margin-right: calc(-1 * var(--gd-overlap, 0px)); }
 .gd-hand .gt-card:last-child { margin-right: 0; }
+/* 上滑出牌：手牌整体抬起 + 头顶弹出「松手出牌」胶囊（提前告知松手会发生什么） */
+.gd-hand.is-up { position: relative; transform: translateY(-8px); }
+.gd-hand.is-up::after {
+  content: '松手出牌';
+  position: absolute; left: 50%; top: 2px; transform: translate(-50%, -110%);
+  padding: 3px 13px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: #2a1d05; white-space: nowrap; pointer-events: none; z-index: 6;
+  background: linear-gradient(180deg, #f4dc9c, #d9b65f);
+  border: 1px solid rgba(255, 255, 255, .5);
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, .92), inset 0 1px 0 rgba(255, 255, 255, .6);
+  animation: gt-pop .16s ease-out both;
+}
+
+/* ===== 出牌动效 =====
+   打出的牌不再「凭空出现」：从上方带角度甩进中央、逐张 30ms 错峰落下，
+   落定时轻微回弹。旧版只有一个 0.34s 的原地 pop（`gt-anim-play`），
+   牌是「先在位、再抖一下」，看不出是谁打过来的。 */
+@keyframes gd-throw {
+  0% { transform: translateY(-52px) rotate(-15deg) scale(1.26); opacity: 0; }
+  62% { transform: translateY(3px) rotate(2deg) scale(.985); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.gd-center-cards > .gt-card {
+  animation: gd-throw .36s cubic-bezier(.2, .85, .3, 1) both;
+  animation-delay: calc(var(--i, 0) * 32ms);
+}
 .gd-hand .gt-card:hover, .gd-hand .gt-card.is-sel { z-index: 5; }
 .gd-hand-empty { margin: auto; font-size: 12px; color: var(--gt-ink-dim); }
 

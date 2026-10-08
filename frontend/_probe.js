@@ -37,6 +37,11 @@ const COMPONENTS = { mj: MahjongBoard, mp: MonopolyBoard, gd: GuandanBoard }
 const params = new URLSearchParams(location.search)
 const key = params.get('g') || 'mp'
 const Comp = COMPONENTS[key] || MonopolyBoard
+/* ?nofs=1 → **不进全屏等比缩放链路**，直接按「桌面/窄屏布局」挂载。
+   手机自带浏览器走的是桌面版 viewport 1280，此时 `is-fsfit` 不生效、`.mp` 用的是
+   自己那套 `min-height: 640px` —— 夜星截到的「横屏底部被遮挡」就是这个形态。
+   没有这条分支，本地沙盒永远复现不出那个 bug。 */
+const nofs = params.get('nofs') === '1'
 /* ?g=gd&seat=1 → 用**在线投影**跑掼蛋，验证「视角跟着我的座位转」（本地单机永远坐 0 号位，
    不传 seat 是看不到旋转的）。座位名固定用「甲乙丙丁」，方便肉眼核对谁被摆到了哪一边。 */
 const seatParam = params.get('seat')
@@ -109,7 +114,7 @@ const FS_CSS = `
 }
 .gtv-viewstage.is-fs .mp-boardwrap { min-height: 0; }
 /* 注意：这里**不能**再覆盖 .mp-board 的宽高，与 GamesView 保持一致
-   （棋盘尺寸由组件的 --mp-size 决定） */
+   （棋盘尺寸由组件的 --mp-w / --mp-h 决定） */
 `
 const st = document.createElement('style')
 st.textContent = FS_CSS
@@ -123,6 +128,7 @@ const app = createApp({
     let tries = 0
     async function settle() {
       await nextTick()
+      if (nofs) return          // 不走缩放链路，无需 bind / measure
       bind(stageRef.value)
       // 牌桌是异步组件，外壳挂上要几帧
       const timer = setInterval(() => {
@@ -133,22 +139,26 @@ const app = createApp({
     }
     onMounted(settle)
     return () =>
-      h('div', { id: 'probe-rot', class: 'gm-root is-big is-fill is-fsfit' }, [
-        h('div', { class: 'gm-play is-fsfit' }, [
-          h('div', { ref: stageRef, class: 'gtv-viewstage is-fs' }, [
-            h('div', { class: 'gtv-viewzoom is-fs', style: style.value }, [
-              seatParam === null
-                ? h(Comp, { bare: true, big: true, 'game-key': key, 'initial-mode': 'p4' })
-                : h(Comp, {
-                    bare: true, big: true, 'game-key': key,
-                    online: true,
-                    'online-seat': Number(seatParam),
-                    'online-view': makeOnlineView(Number(seatParam)),
-                    'seat-names': SEAT_CN,
-                  }),
+      h('div', { id: 'probe-rot', class: 'gm-root is-big is-fill' + (nofs ? '' : ' is-fsfit') }, [
+        nofs
+          ? h('div', { class: 'gm-play' }, [
+              h(Comp, { bare: true, big: true, 'game-key': key, 'initial-mode': 'p4' }),
+            ])
+          : h('div', { class: 'gm-play is-fsfit' }, [
+              h('div', { ref: stageRef, class: 'gtv-viewstage is-fs' }, [
+                h('div', { class: 'gtv-viewzoom is-fs', style: style.value }, [
+                  seatParam === null
+                    ? h(Comp, { bare: true, big: true, 'game-key': key, 'initial-mode': 'p4' })
+                    : h(Comp, {
+                        bare: true, big: true, 'game-key': key,
+                        online: true,
+                        'online-seat': Number(seatParam),
+                        'online-view': makeOnlineView(Number(seatParam)),
+                        'seat-names': SEAT_CN,
+                      }),
+                ]),
+              ]),
             ]),
-          ]),
-        ]),
       ])
   },
 })

@@ -11,11 +11,17 @@ const { chromium } = require('playwright')
 
 const CASES = [
   { g: 'mp', name: 'wide-monopoly' },
+  // 不进全屏缩放链路（= 手机自带浏览器桌面版布局）—— 夜星截到的「底部被遮挡」就是这一形态
+  { g: 'mp', nofs: 1, name: 'wide-monopoly-nofs' },
+  // 复刻夜星那张截图：桌面版 viewport 1280 × 592（手机横屏 + 桌面版视口），双栏布局
+  { g: 'mp', nofs: 1, vp: [1280, 592], name: 'wide-monopoly-nofs-1280' },
   { g: 'mj', name: 'wide-mahjong' },
   { g: 'gd', name: 'wide-guandan' },
   // 在线视角：我坐 1 / 3 号位时，牌桌该按我的方位转（本地单机永远坐 0 号位，看不出旋转）
   { g: 'gd', seat: 1, name: 'wide-guandan-seat1' },
   { g: 'gd', seat: 3, name: 'wide-guandan-seat3' },
+  // 牌面检视台：三门 × 1~9（用来肉眼核对条子的排列与配色）
+  { g: 'tiles', name: 'wide-tiles', vp: [640, 420] },
 ]
 const only = process.argv[2]
 const list = only ? CASES.filter((c) => c.g === only) : CASES
@@ -31,8 +37,9 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
     const logs = []
     page.on('console', (m) => { if (m.type() === 'error') logs.push('err: ' + m.text()) })
     page.on('pageerror', (e) => logs.push('pageerror: ' + e.message))
+    if (c.vp) await page.setViewportSize({ width: c.vp[0], height: c.vp[1] })
     try {
-      await page.goto(`http://[::1]:5199/_probe.html?g=${c.g}${c.seat === undefined ? '' : '&seat=' + c.seat}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+      await page.goto(`http://[::1]:5199/_probe.html?g=${c.g}${c.seat === undefined ? '' : '&seat=' + c.seat}${c.nofs ? '&nofs=1' : ''}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
     } catch (e) {
       console.log('===== ' + c.name + ' 打开失败 =====\n' + e.message)
       await page.close()
@@ -81,6 +88,36 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
     }
 
     let gather = null
+    let mjSwipe = null
+    if (c.g === 'mj') {
+      // 上滑出牌手势：等轮到自己 → 在首张手牌上按住向上拖 54px 再松开，
+      // 看「自己的弃牌区（.mj-dis-down）」有没有多出一张。
+      let ready = false
+      for (let w = 0; w < 30; w++) {
+        if (await page.$('.mj-hand .gt-tile.pickable')) { ready = true; break }
+        await page.waitForTimeout(400)
+      }
+      if (!ready) mjSwipe = { err: '30 次轮询内没轮到自己' }
+      else {
+        try {
+          const before = await page.$$eval('.mj-dis-down .gt-tile', (e) => e.length)
+          const pt = await page.$eval('.mj-hand .gt-tile.pickable', (el) => {
+            const r = el.getBoundingClientRect()
+            return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height * 0.72) }
+          })
+          await page.mouse.move(pt.x, pt.y)
+          await page.mouse.down()
+          await page.mouse.move(pt.x, pt.y - 24, { steps: 4 })
+          await page.waitForTimeout(60)
+          const lifted = await page.$$eval('.mj-hand .gt-tile.is-lift', (e) => e.length)
+          await page.mouse.move(pt.x, pt.y - 54, { steps: 4 })
+          await page.mouse.up()
+          await page.waitForTimeout(600)
+          const after = await page.$$eval('.mj-dis-down .gt-tile', (e) => e.length)
+          mjSwipe = { before, after, lifted, played: after > before }
+        } catch (e) { mjSwipe = { err: String(e).slice(0, 90) } }
+      }
+    }
     if (c.g === 'gd') {
       // 点「同花顺」验证：①是否把这一组汇总到手牌**最左**；②顺序是否从小到大
       gather = []
@@ -139,9 +176,28 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
         })
       }
       return {
-        rotTransform: getComputedStyle(q('#probe-rot')).transform,
+        rotTransform: (() => { const el = q('#probe-rot'); return el ? getComputedStyle(el).transform : null })(),
+        winH: window.innerHeight,
+        winW: window.innerWidth,
         mpBoard: box('.mp-board'),
         mpWrap: box('.mp-boardwrap'),
+        mpCellVars: (() => {
+          const el = q('.mp-board')
+          if (!el) return null
+          const c = getComputedStyle(el)
+          return {
+            cw: c.getPropertyValue('--mp-cw').trim(),
+            ch: c.getPropertyValue('--mp-ch').trim(),
+            cell: c.getPropertyValue('--mp-cell').trim(),
+          }
+        })(),
+        mpNameSize: (() => { const el = q('.mp-cname'); return el ? getComputedStyle(el).fontSize : null })(),
+        mpTokSize: (() => { const el = q('.mp-tok'); if (!el) return null; const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) } })(),
+        // 「底部被遮挡」的硬证据：外壳 / 右栏 / 操作区的下沿有没有超出视口
+        mpShellBox: box('.gt-shell.mp'),
+        mpSideBottom: (() => { const el = q('.mp-side'); return el ? Math.round(el.getBoundingClientRect().bottom) : null })(),
+        mpSideScroll: (() => { const el = q('.mp-side'); return el ? { sh: el.scrollHeight, ch: el.clientHeight } : null })(),
+        mpOpsBottom: (() => { const el = q('.mp-ops'); return el ? Math.round(el.getBoundingClientRect().bottom) : null })(),
         mpCenter: box('.mp-center'),
         mpCenterKids: kids('.mp-center'),
         mpDice: box('.mp-dice'),
@@ -149,7 +205,6 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
         dicePips: (() => {
           const svg = q('.mp-dice svg')
           if (!svg) return null
-          const cs = getComputedStyle(svg)
           const r = svg.getBoundingClientRect()
           const parents = []
           let el = svg
@@ -203,6 +258,18 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
         mjSeatBoxes: ['.mj-seat-top', '.mj-seat-left', '.mj-seat-right', '.mj-seat-bottom'].map((sel) => ({
           sel, ...(box(sel) || { missing: true }),
         })),
+        // 缺门置灰（四川麻将定缺）：手牌里属于缺门的牌应带 .is-miss 且被去饱和
+        mjMiss: (() => {
+          const els = Array.from(document.querySelectorAll('.mj-hand .gt-tile.is-miss'))
+          const one = els[0]
+          return {
+            n: els.length,
+            filter: one ? getComputedStyle(one).filter : null,
+            badge: one ? getComputedStyle(one, '::after').content : null,
+            handTotal: document.querySelectorAll('.mj-hand .gt-tile').length,
+          }
+        })(),
+        mjHint: (() => { const el = q('.mj-hint'); return el ? el.textContent.replace(/\s+/g, ' ').trim() : null })(),
 
         /* ---------- 掼蛋 ---------- */
         gdTable: box('.gd-table'),
@@ -261,6 +328,7 @@ const list = only ? CASES.filter((c) => c.g === only) : CASES
     console.log('===== ' + c.name + ' =====')
     console.log(JSON.stringify(info, null, 1))
     if (gather) console.log('GATHER: ' + JSON.stringify(gather))
+    if (mjSwipe) console.log('MJ_SWIPE: ' + JSON.stringify(mjSwipe))
     if (logs.length) console.log('LOGS: ' + logs.slice(0, 6).join(' | '))
     await page.screenshot({ path: `../artifacts/_probe/${c.name}.png` })
     for (const [sel, tag] of [['.mp-center', 'w-mp-center'], ['.mp-side', 'w-mp-side'], ['.mp-dice', 'w-mp-dice'], ['.mj-center', 'w-mj-center']]) {

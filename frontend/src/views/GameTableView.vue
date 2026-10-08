@@ -750,7 +750,7 @@ onBeforeUnmount(() => {
 .gtv-viewzoom.is-fs :deep(.mp-boardwrap) { min-height: 0; }
 /* ⚠️ 不要再覆盖 `.mp-board` 的宽高：旧版 `height:100%; width:auto` 会让棋盘被拉成长方形
    （Chrome 先用内容宽定 flex base size、再套 100% 高），格子变 20×48、名字压价格。
-   棋盘尺寸现在由组件 JS 量出的正方形 `--mp-size` 决定（宽高都是确定 px）。 */
+   棋盘尺寸现在由组件 JS 量出的 `--mp-w` / `--mp-h`（横屏时是矩形）决定（宽高都是确定 px）。 */
 
 /* 右上角 ☰：默认半透明低调，点开才铺开面板；牌桌本体占满整屏（舞台不再为按钮留白） */
 .gtv-fsmenu {
