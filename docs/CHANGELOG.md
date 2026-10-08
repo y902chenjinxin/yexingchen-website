@@ -77,6 +77,9 @@
 `mj-dis-left`、`GuandanBoard` chunk 含 window 指针监听与区间补全、`GamesView`/`GameTableView`
 含 `z-index:1600`，旧的 `.mp-die` / `mp-shake` 残留均为 0。
 
+**部署**：`dist-deploy31`（306 文件）已上线，SW `xuanhuang-v314`，`home=200`。
+按约定**不做线上浏览器取证**，由夜星自己现网体验。
+
 ## [v2.46.0] - 2026-10-08
 
 ### 牌类三件套（掼蛋 / 麻将 / 大富翁）全屏重做 —— 参照腾讯棋牌（SW `xuanhuang-v312`→`v313`）
