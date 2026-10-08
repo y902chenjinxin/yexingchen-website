@@ -1192,20 +1192,21 @@ onBeforeUnmount(() => {
 }
 /* 弃牌：flex + wrap，牌宽恒定（不随牌数抖动），溢出裁切。
    上下两家横排、各自居中 → 牌堆正对自己；
-   左右两家也改**横排**（牌身横躺 ±90°），且朝中缝靠拢（justify 到内侧）——
-   旧版竖排一列往下摞，满了起第二列，越摞越高越宽，把中央高度吃光还显得乱；
-   横排单行只吃 --mini-w 一层高度，牌堆聚在中央，界面不再被撑开。 */
+   左右两家：牌身横躺、**按列码放** —— 列内从上到下，第一列贴各自外侧，
+   满列后向中缝方向起新列：左家普通 wrap（从左往右）、右家 wrap-reverse（从右往左），
+   牌堆永远从两边往中间长。align-content 必须显式给 flex-start：
+   默认 stretch 会把每列等宽拉开铺满整格，牌堆就散了。 */
 .mj-dis { display: flex; gap: 2px; min-width: 0; min-height: 0; overflow: hidden; }
 .mj-dis > .gt-tile { flex: none; }
 .mj-dis-up { grid-area: up; flex-flow: row wrap; justify-content: center; align-content: flex-start; }
 .mj-dis-down { grid-area: down; flex-flow: row wrap; justify-content: center; align-content: flex-end; }
-.mj-dis-left { grid-area: left; flex-flow: row wrap; justify-content: flex-end; align-content: center; }
-.mj-dis-right { grid-area: right; flex-flow: row wrap; justify-content: flex-start; align-content: center; }
+.mj-dis-left { grid-area: left; flex-flow: column wrap; justify-content: flex-start; align-content: flex-start; }
+.mj-dis-right { grid-area: right; flex-flow: column wrap-reverse; justify-content: flex-start; align-content: flex-start; }
 /* 左右两家弃牌：牌身横躺 —— 布局盒宽高先互换（长边横向），牌面 SVG 反向转 ±90° 补回来
-   （transform 不参与布局，必须换盒子尺寸才能让横排间距正确）。
+   （transform 不参与布局，必须换盒子尺寸才能让列内间距正确）。
    旋转方向：牌面朝向桌心 —— 左家牌顶指向右（rotate 90°），右家牌顶指向左（rotate -90°），
    与「打牌时牌顶推向桌心」的真实方位一致。 */
-.mj .mj-dis-left > .gt-tile, .mj .mj-dis-right > .gt-tile { width: var(--mini-h); height: var(--mini-w); }
+.mj .mj-dis-left > .gt-tile.mini, .mj .mj-dis-right > .gt-tile.mini { width: var(--mini-h); height: var(--mini-w); }
 .mj .mj-dis-left > .gt-tile > :deep(svg) {
   right: auto; bottom: auto; left: 50%; top: 50%;
   width: var(--mini-w); height: var(--mini-h);
