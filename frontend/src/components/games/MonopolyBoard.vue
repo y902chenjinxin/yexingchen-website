@@ -39,7 +39,7 @@
             >{{ f.text }}</span>
           </div>
 
-          <!-- 中央信息区：当前行动者 + 骰子 + 行动流水 -->
+          <!-- 中央信息区：当前行动者 + 玩家一排 + 骰子 + 行动流水 -->
           <div class="mp-center">
             <div class="mp-center-head">
               <span class="gt-pill gold">第 {{ game.round }} 轮</span>
@@ -52,6 +52,25 @@
               <b class="mp-turn-name">{{ cur.name }}</b>
             </div>
 
+            <!-- 玩家一排（原在右栏，占掉一半宽度还看不全）：
+                 头像 / 名字 / 现金 / 地产都摊在棋盘中央，轮到谁就地高亮 -->
+            <div class="mp-players">
+              <div
+                v-for="p in game.players"
+                :key="p.id"
+                class="mp-pcard"
+                :class="{ on: p.id === cur.id && !game.over, out: !p.alive }"
+                :title="`${p.name} · 现金 ${fmt(p.cash)} · 地产 ${ownedCount(p)} · 道具 ${p.items.length}`"
+              >
+                <span class="mp-pav" :style="{ background: COLORS[p.id] }">{{ p.avatar }}</span>
+                <span class="mp-ptx">
+                  <b>{{ p.name }}<em v-if="p.skill"> · {{ SKILLS[p.skill].name }}</em></b>
+                  <i>💰 {{ fmt(p.cash) }} · 地 {{ ownedCount(p) }} · 具 {{ p.items.length }}</i>
+                </span>
+                <span v-if="!p.alive" class="gt-seat-badge">破产</span>
+              </div>
+            </div>
+
             <div class="mp-dice">
               <MonopolyDice
                 v-for="(d, i) in game.dice"
@@ -62,7 +81,7 @@
             </div>
 
             <div class="mp-log">
-              <div v-for="(l, i) in game.log.slice(-5)" :key="i" class="mp-log-row">{{ l }}</div>
+              <div v-for="(l, i) in game.log.slice(-4)" :key="i" class="mp-log-row">{{ l }}</div>
             </div>
           </div>
         </div>
@@ -78,24 +97,7 @@
           <button class="gt-btn ghost sm" @click="$emit('exit')">退出</button>
         </div>
 
-        <!-- 玩家列表 -->
-        <div class="mp-players">
-          <div
-            v-for="p in game.players"
-            :key="p.id"
-            class="mp-pcard"
-            :class="{ on: p.id === cur.id && !game.over, out: !p.alive }"
-          >
-            <span class="mp-pav" :style="{ background: COLORS[p.id] }">{{ p.avatar }}</span>
-            <div class="mp-ptx">
-              <b>{{ p.name }}<em v-if="p.skill"> · {{ SKILLS[p.skill].name }}</em></b>
-              <i>💰 {{ fmt(p.cash) }} · 地产 {{ ownedCount(p) }} · 道具 {{ p.items.length }}</i>
-            </div>
-            <span v-if="!p.alive" class="gt-seat-badge">已破产</span>
-          </div>
-        </div>
-
-        <!-- 当前地块 -->
+        <!-- 当前地块：作为下方操作按钮的上下文（购地 / 盖房都是针对它） -->
         <div class="mp-here">
           <div class="mp-here-h">当前所在</div>
           <div class="mp-here-b">
@@ -360,7 +362,10 @@ const game = reactive({
   over: null,
 })
 const busy = ref(false)
-const tilt = ref(true)
+/* 3D 倾斜默认关：`rotateX(15deg)` 叠在 `perspective` 上会把棋盘近端放大、远端缩小，
+   在手机横屏这种「宽 780 高 390」的窄高容器里，放大出来的下缘直接被舞台 overflow 裁掉 ——
+   这就是夜星反复反馈的「地图被盖住」。改为平面渲染，需要视角时再手动切 3D。 */
+const tilt = ref(false)
 const toast = ref('')
 const wallet = reactive({ beans: 0 })
 
@@ -1004,8 +1009,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .mp {
-  display: grid; grid-template-columns: minmax(0, 1fr) 306px; gap: 14px;
-  padding: 14px; min-height: 640px;
+  /* 右栏收窄：玩家列表搬去棋盘中央后，这里只剩「当前地块 / 操作 / 钱包」，
+     306px 的宽度是在浪费棋盘的地盘 */
+  display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: 12px;
+  padding: 12px; min-height: 640px;
 }
 @media (max-width: 1100px) { .mp { grid-template-columns: minmax(0, 1fr); } }
 
@@ -1118,8 +1125,8 @@ onBeforeUnmount(() => {
 /* ---- 中央区 ---- */
 .mp-center {
   grid-column: 2 / 14; grid-row: 2 / 14;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  padding: 16px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px; border-radius: 12px;
   background: radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .1), rgba(0, 0, 0, .22));
   border: 1px solid var(--gt-line);
 }
@@ -1150,23 +1157,29 @@ onBeforeUnmount(() => {
   .mp-float { animation-duration: .01ms; }
 }
 
-/* ---- 右侧 ---- */
+/* ---- 右侧（只剩「当前地块 + 操作 + 钱包」，玩家列表已挪进棋盘中央） ---- */
 .mp-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
-.mp-players { display: flex; flex-direction: column; gap: 6px; max-height: 34%; overflow-y: auto; }
-.mp-pcard {
-  display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-radius: 12px;
-  background: rgba(0, 0, 0, .24); border: 1px solid var(--gt-line);
+
+/* 玩家一排：横向胶囊，铺在棋盘中央；轮到谁那枚就地发光 */
+.mp-players {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  width: 100%; min-width: 0;
 }
-.mp-pcard.on { border-color: var(--gt-gold); box-shadow: 0 0 14px -3px rgba(233, 200, 119, .6); }
+.mp-pcard {
+  display: flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 999px;
+  background: rgba(0, 0, 0, .3); border: 1px solid var(--gt-line);
+  max-width: 100%; min-width: 0;
+}
+.mp-pcard.on { border-color: var(--gt-gold); box-shadow: 0 0 14px -3px rgba(233, 200, 119, .75); }
 .mp-pcard.out { opacity: .45; }
 .mp-pav {
-  width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center;
-  font-size: 14px; border: 1px solid rgba(255, 255, 255, .4);
+  width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-size: 12px; border: 1px solid rgba(255, 255, 255, .45);
 }
-.mp-ptx { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.mp-ptx b { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mp-ptx b em { font-style: normal; font-weight: 400; color: var(--gt-gold); font-size: 10.5px; }
-.mp-ptx i { font-style: normal; font-size: 10.5px; color: var(--gt-ink-dim); }
+.mp-ptx { min-width: 0; display: flex; flex-direction: column; gap: 0; }
+.mp-ptx b { font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-ptx b em { font-style: normal; font-weight: 400; color: var(--gt-gold); font-size: 10px; }
+.mp-ptx i { font-style: normal; font-size: 10px; color: var(--gt-ink-dim); font-variant-numeric: tabular-nums; }
 
 .mp-here { padding: 9px 11px; border-radius: 12px; background: rgba(0, 0, 0, .26); border: 1px solid var(--gt-line); }
 .mp-here-h { font-size: 10.5px; color: var(--gt-ink-dim); margin-bottom: 3px; }

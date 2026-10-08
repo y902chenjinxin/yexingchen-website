@@ -9,10 +9,12 @@
       <!-- ===== 顶栏 ===== -->
       <header class="gd-top">
         <span class="gt-title">掼蛋</span>
-        <span class="gt-pill gold">主级牌 {{ G.levelText(roundLevel) }}</span>
-        <span class="gt-pill">我方 {{ G.levelText(teamLevel[0]) }}</span>
-        <span class="gt-pill">对方 {{ G.levelText(teamLevel[1]) }}</span>
-        <span class="gt-pill">第 {{ roundNo }} 局</span>
+        <span class="gt-pill gold">主级 {{ G.levelText(roundLevel) }}</span>
+        <span class="gd-score" :title="`第 ${roundNo} 局 · 我方 ${G.levelText(teamLevel[0])} / 对方 ${G.levelText(teamLevel[1])}`">
+          <i class="me">我方 {{ G.levelText(teamLevel[0]) }}</i>
+          <em>·</em>
+          <i class="op">对方 {{ G.levelText(teamLevel[1]) }}</i>
+        </span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
           {{ muted ? '🔇' : '🔊' }}
@@ -130,14 +132,15 @@
       <!-- ===== 底部：手牌 + 操作 ===== -->
       <footer class="gd-bottom">
         <div class="gd-bottom-bar">
-          <span class="gt-pill gold">{{ seatName(viewSeat) }}的手牌 · {{ viewHand.length }} 张</span>
-          <!-- 全屏时顶栏被隐藏，级牌信息挪到这里，保证一直可见 -->
-          <span class="gt-pill">主级 {{ G.levelText(roundLevel) }}</span>
-          <span class="gt-pill">我方 {{ G.levelText(teamLevel[0]) }} · 对方 {{ G.levelText(teamLevel[1]) }}</span>
-          <span v-if="viewTing.length" class="gt-pill">可出：{{ viewTing.length }} 种</span>
-          <span v-if="canAct" class="gt-pill">已选 {{ sel.length }} 张</span>
+          <span class="gd-hand-tag">{{ seatName(viewSeat) }} · {{ viewHand.length }} 张</span>
+          <!-- 全屏时顶栏被收起，级牌与比分改由这条承载，保证一直可见；非全屏时隐藏以免与顶栏重复 -->
+          <span class="gd-scorebar">
+            主级 {{ G.levelText(roundLevel) }} · 我方 {{ G.levelText(teamLevel[0]) }} / 对方 {{ G.levelText(teamLevel[1]) }}
+          </span>
           <span class="gt-spacer"></span>
-          <span class="gt-sub">{{ statusLine }}</span>
+          <span v-if="viewTing.length" class="gd-mini">可出 {{ viewTing.length }}</span>
+          <span v-if="canAct" class="gd-mini" :class="{ on: sel.length }">已选 {{ sel.length }}</span>
+          <span class="gt-sub gd-status">{{ statusLine }}</span>
         </div>
 
         <!-- 划选手势：pointerdown 落在手牌区，pointermove / up 由脚本挂到 window
@@ -164,17 +167,19 @@
           <p v-if="!viewHand.length" class="gd-hand-empty">— 无手牌 —</p>
         </div>
 
+        <!-- 操作区：次要工具（提示/重选/同花顺）收成小号弱按钮，主力只留「不要 / 出牌」两个大按钮 -->
         <div class="gt-actions gd-actions" v-if="!tributePending && !returnPending">
-          <button class="gt-btn" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
-          <button class="gt-btn ghost" :disabled="!canAct || !target" @click="doPass">不要</button>
-          <button class="gt-btn ghost" :disabled="!canAct" @click="doHint">提示</button>
-          <button class="gt-btn ghost" :disabled="!sel.length" @click="clearSel">重选</button>
+          <button class="gt-btn ghost sm" :disabled="!canAct" @click="doHint">提示</button>
+          <button class="gt-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
           <button
-            class="gt-btn ghost"
+            class="gt-btn ghost sm"
             :disabled="!flushCombos.length"
             :title="flushCombos.length ? '点击循环切换同花顺组合' : '手上没有同花顺'"
             @click="cycleFlush"
           >同花顺<em v-if="flushCombos.length > 1" class="gd-btn-count">{{ flushCombos.length }}</em></button>
+          <span class="gd-act-gap"></span>
+          <button class="gt-btn gd-pass" :disabled="!canAct || !target" @click="doPass">不要</button>
+          <button class="gt-btn gd-play" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
         </div>
 
         <!-- 进贡（在线 · 手动选牌，逢人配不能贡） -->
@@ -741,22 +746,41 @@ function cacheCardRects() {
   if (!handRef.value) return
   handRef.value.querySelectorAll('.gt-card').forEach((el, i) => {
     const r = el.getBoundingClientRect()
-    cardRects.push({ i, left: r.left, right: r.right })
+    cardRects.push({ i, left: r.left, right: r.right, top: r.top, bottom: r.bottom })
   })
 }
-/** ignoreY=true 用于「已捕获指针的划选中」：手指横向滑动时难免上下飘，
- *  此时只按 x 命中，划回起点也不会因为飘出手牌区而断掉。 */
-function cardIndexAt(x, y, ignoreY = false) {
-  if (!handRef.value) return -1
-  if (!ignoreY) {
+/** 手牌区的「排列主轴」—— 手机全屏是「逻辑画布 + rotate(90deg)」的横屏视野
+ *  （GamesView 的竖屏兜底），此时 `getBoundingClientRect()` 拿到的是**旋转后的轴对齐
+ *  包围盒**：牌沿屏幕 y 轴排列，而**所有牌在屏幕 x 轴的区间几乎完全重合**。
+ *  旧版固定用 clientX 去撞 rect.left/right，于是「划过整排只选中第一张」。
+ *  这里按手牌区 AABB 的长边判断：竖条 → 牌沿 y 排（用 clientY），横条 → 沿 x 排。 */
+function handAxis() {
+  if (!handRef.value) return 'x'
+  const r = handRef.value.getBoundingClientRect()
+  return r.height > r.width ? 'y' : 'x'
+}
+/** ignoreCross=true 用于「划选进行中」：手指难免横向/纵向飘，此时不再校验横轴，
+ *  只要还在手牌带附近就持续命中，划回起点也不会因为飘出去而断掉。 */
+function cardIndexAt(clientX, clientY, ignoreCross = false) {
+  if (!handRef.value || !cardRects.length) return -1
+  const axis = handAxis()
+  const p = axis === 'y' ? clientY : clientX   // 主轴：牌的排列方向
+  if (!ignoreCross) {
+    // 横轴：手指是否还在「手牌带」内。容差按牌宽给（旋转后横轴对应牌宽）
     const hr = handRef.value.getBoundingClientRect()
-    // 容差按牌高给（原先固定 24px，牌变大后反而不够宽容）
-    const pad = Math.max(28, cardH.value * 0.5)
-    if (y < hr.top - pad || y > hr.bottom + pad) return -1
+    const pad = Math.max(28, cardW.value * 0.5)
+    const q = axis === 'y' ? clientX : clientY
+    const lo = axis === 'y' ? hr.left : hr.top
+    const hi = axis === 'y' ? hr.right : hr.bottom
+    if (q < lo - pad || q > hi + pad) return -1
   }
+  // 取「索引最大」的命中 = 视觉最上层那张（DOM 靠后 → 后绘制 → 盖在前一张上；
+  // 旋转 90° 后「屏幕坐标增大」的方向恰好也是索引增大，故这条在两种朝向下都成立）
   let hit = -1
   for (const c of cardRects) {
-    if (x >= c.left && x <= c.right) hit = c.i
+    const a = axis === 'y' ? c.top : c.left
+    const b = axis === 'y' ? c.bottom : c.right
+    if (p >= a && p <= b) hit = c.i
   }
   return hit
 }
@@ -911,6 +935,12 @@ watch(() => viewHand.value.length, () => {
 
 /* 牌尺寸跟随牌桌高度（JS 写入 --card-w / --card-h）；牌面字号按牌宽等比缩放 */
 .gd .gt-card { width: var(--card-w, 62px); height: var(--card-h, 88px); }
+/* 牌面改轻投影：旧版「厚纸板」式双层硬阴影在深色绒布上显得笨重，
+   减轻后更贴近腾讯棋牌的扁平质感（圆角也放大一档） */
+.gd .gt-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .22), 0 7px 15px -10px rgba(0, 0, 0, .78);
+}
 .gd .gt-card .c-tl b { font-size: calc(var(--card-w, 62px) * 0.245); }
 .gd .gt-card .c-tl i { font-size: calc(var(--card-w, 62px) * 0.2); }
 .gd .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.5); }
@@ -921,14 +951,33 @@ watch(() => viewHand.value.length, () => {
 
 /* 顶栏 */
 .gd-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* 全屏时顶栏让位给牌桌：收起顶栏，级牌与比分改由底栏 .gd-scorebar 承载（信息不丢） */
+.gd.is-big .gd-top { display: none; }
+/* 团队比分胶囊：把「我方 / 对方」两枚 pill 合成一枚，顶栏不再被撑成两行 */
+.gd-score {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 11px; border-radius: 999px;
+  font-size: 11.5px; font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, .07); border: 1px solid var(--gt-line);
+}
+.gd-score .me { color: var(--gt-gold); font-style: normal; font-weight: 600; }
+.gd-score .op { color: var(--gt-ink-dim); font-style: normal; }
+.gd-score em { font-style: normal; opacity: .4; }
 
-/* 牌桌：主区 + 右上角出牌记录（浮层，默认收起，不占牌桌宽度） */
+/* 牌桌：主区 + 左下角出牌记录（浮层，默认收起，不占牌桌宽度） */
 .gd-table {
   position: relative;
   flex: 1; min-height: 0; display: flex; gap: 10px;
   padding: 10px; border-radius: 16px;
-  background: radial-gradient(90% 70% at 50% 40%, rgba(255, 255, 255, .07), transparent 70%);
-  border: 1px solid var(--gt-line);
+  /* 墨绿绒布（与麻将、大富翁同一色系）：旧版只是一层极淡的白雾叠在深色壳上，
+     牌桌与外壳分不出边界，52 张牌像浮在空气里 */
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .09), transparent 58%),
+    radial-gradient(100% 92% at 50% 55%, #227154 0%, #17573f 46%, #0d3a2b 100%);
+  border: 1px solid rgba(255, 255, 255, .1);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .06),
+    inset 0 0 62px -12px rgba(0, 0, 0, .6);
 }
 .gd-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .gd-row { display: flex; align-items: center; }
@@ -943,12 +992,13 @@ watch(() => viewHand.value.length, () => {
   flex: 1; min-width: 0; min-height: 96px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;
   padding: 10px; border-radius: 14px;
-  background: rgba(0, 0, 0, .22); border: 1px solid var(--gt-line);
+  background: rgba(0, 0, 0, .13); border: 1px solid rgba(255, 255, 255, .07);
 }
 .gd-center-head { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .gd-center-cards { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; min-height: 60px; align-items: center; }
-/* 中央已出的牌略小于手牌，避免多张时把牌桌撑爆 */
-.gd-center .gt-card { width: calc(var(--card-w, 62px) * 0.82); height: calc(var(--card-h, 88px) * 0.82); }
+/* 中央已出的牌接近手牌尺寸：出牌区才是牌桌主角，旧版缩到 0.82 倍反而比手牌小一圈，
+   「谁出了什么」得凑近才看得清 */
+.gd-center .gt-card { width: calc(var(--card-w, 62px) * 0.94); height: calc(var(--card-h, 88px) * 0.94); }
 .gd-center-empty { margin: 0; font-size: 12.5px; color: var(--gt-ink-dim); }
 
 /* 出牌记录：浮在牌桌左下的浮层，收起时只是一个胶囊，不占牌桌宽度 */
@@ -1033,7 +1083,20 @@ watch(() => viewHand.value.length, () => {
 
 /* 底部手牌 */
 .gd-bottom { display: flex; flex-direction: column; gap: 6px; flex: none; }
-.gd-bottom-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gd-bottom-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gd-hand-tag { font-size: 12.5px; font-weight: 600; color: var(--gt-gold); }
+/* 全屏才出现的级牌 / 比分（此时顶栏已收起，靠它兜住信息） */
+.gd-scorebar {
+  display: none; font-size: 11.5px; color: var(--gt-ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+.gd.is-big .gd-scorebar { display: inline-flex; }
+.gd-mini {
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, .07); border: 1px solid var(--gt-line);
+  color: var(--gt-ink-dim); font-variant-numeric: tabular-nums;
+}
+.gd-mini.on { background: rgba(233, 200, 119, .18); border-color: rgba(233, 200, 119, .5); color: var(--gt-gold); }
 .gd-hand {
   display: flex; gap: 0; justify-content: center; align-items: flex-end;
   /* 上留白正好是选中上浮的高度，牌不会被裁 */
@@ -1046,7 +1109,18 @@ watch(() => viewHand.value.length, () => {
 .gd-hand .gt-card:last-child { margin-right: 0; }
 .gd-hand .gt-card:hover, .gd-hand .gt-card.is-sel { z-index: 5; }
 .gd-hand-empty { margin: auto; font-size: 12px; color: var(--gt-ink-dim); }
-.gd-actions { justify-content: center; }
+
+/* 操作区：次要工具收成小号弱按钮，「不要 / 出牌」是大按钮主力（腾讯棋牌同款主次关系） */
+.gd-actions { justify-content: center; gap: 8px; }
+.gd-act-gap { width: 10px; flex: none; }
+.gd-play {
+  min-width: 96px;
+  background: linear-gradient(180deg, #d9483f, #a82f2a);
+  border-color: rgba(255, 255, 255, .28);
+  box-shadow: 0 6px 16px -8px rgba(217, 72, 63, .95);
+}
+.gd-play:not(:disabled):hover { background: linear-gradient(180deg, #e2554c, #b8332d); }
+.gd-pass { min-width: 80px; }
 
 /* 出牌方光效（PRD §7.3）：当前行动席位加一圈脉动光，避免误解轮到谁 */
 .gd .gt-seat.is-active {

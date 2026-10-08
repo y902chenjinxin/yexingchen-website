@@ -10,6 +10,8 @@ export const gameRoomsApi = {
   accept: (id) => api.post(`/games/rooms/${id}/accept`),
   decline: (id) => api.post(`/games/rooms/${id}/decline`),
   resign: (id) => api.post(`/games/rooms/${id}/resign`),
+  /** 删除房间（真删语义）：任意状态都可，置为 dissolved 后不再出现在 mine() 里 */
+  dissolve: (id) => api.post(`/games/rooms/${id}/dissolve`),
   state: (id, afterSeq = 0) => api.get(`/games/rooms/${id}`, { params: { after_seq: afterSeq } }),
   move: (id, action) => api.post(`/games/rooms/${id}/move`, { action }),
   undo: (id) => api.post(`/games/rooms/${id}/undo`),

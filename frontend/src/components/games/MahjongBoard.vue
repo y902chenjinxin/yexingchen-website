@@ -3,8 +3,8 @@
     <div ref="rootRef" class="gt-shell mj" :class="{ 'is-big': big }" :style="{ '--gt-h': rootH + 'px' }">
       <!-- ===== 顶栏 ===== -->
       <header class="mj-top">
-        <span class="gt-title">四川麻将 · 血战到底</span>
-        <span class="gt-pill gold">第 {{ roundNo }} 局</span>
+        <span class="gt-title">四川麻将</span>
+        <span class="gt-pill gold">血战到底 · 第 {{ roundNo }} 局</span>
         <span class="gt-pill">余牌 {{ wall.length }}</span>
         <span v-if="myMissing" class="gt-pill">你的缺门 {{ M.SUIT_NAME[myMissing] }}</span>
         <span class="gt-spacer"></span>
@@ -1004,6 +1004,9 @@ onBeforeUnmount(() => {
   background: rgba(0, 0, 0, .24);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
 }
+/* 全屏时顶栏让位给牌桌：余牌 / 缺门 / 副露 这些关键信息底栏（.mj-handbar）已经有一份，
+   重复摆两处只会白占高度（与掼蛋 `.gd.is-big .gd-top` 同一策略） */
+.mj.is-big .mj-top { display: none; }
 
 /* ===== 牌桌：绿色绒布 + 四方围成矩形 ===== */
 .mj-table {

@@ -654,7 +654,7 @@ onBeforeUnmount(() => {
    注意 `min-height` 必须放开：旧版这里写死 640px，而手机横屏画布只有 ~390 高，
    外壳被强制 640 高 → 溢出部分被舞台 overflow:hidden 裁掉 —— 这就是「大富翁全屏下方看不到」。 */
 .gtv-viewzoom.is-fs :deep(.mp) {
-  grid-template-columns: minmax(0, 1fr) clamp(206px, 25%, 306px);
+  grid-template-columns: minmax(0, 1fr) clamp(178px, 21%, 264px);
   min-height: 0;
 }
 .gtv-viewzoom.is-fs :deep(.mp-cname) { font-size: 9px; }

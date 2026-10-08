@@ -485,6 +485,33 @@ def resign_room(
     return ResponseBase(msg="已认输", data=_room_to_out(r, _names(db)))
 
 
+@router.post("/rooms/{room_id}/dissolve", response_model=ResponseBase)
+def dissolve_room(
+    room_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """删除房间（v2.46.2）：任一对局参与者可发起，**任何状态**都能删。
+
+    与 `leave` 的分工 —— `leave` 会把进行中的对局判负结算，`dissolve` 只把房间
+    置为 `dissolved` 终态，不产生胜负。因为 `mine()` 只取 waiting / playing /
+    finished，置为 dissolved 后就从「我的对局」里彻底消失，这正是用户要的
+    「退出对局后在外部清掉残留房间」。
+
+    幂等：已 dissolved 直接返回成功，重复长按不会报错。
+    """
+    r = _get_room(db, room_id)
+    uid = current_user["user_id"]
+    _ensure_player(r, uid)
+    if r.status == "dissolved":
+        return ResponseBase(msg="房间已删除", data=_room_to_out(r, _names(db)))
+    r.status = "dissolved"
+    r.end_reason = "dissolve"
+    r.updated_at = datetime.now()
+    db.commit()
+    return ResponseBase(msg="已删除", data=_room_to_out(r, _names(db)))
+
+
 @router.post("/rooms/{room_id}/leave", response_model=ResponseBase)
 def leave_room(
     room_id: int,

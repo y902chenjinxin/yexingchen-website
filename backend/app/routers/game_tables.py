@@ -779,15 +779,17 @@ def rematch_table(room_id: int, db: Session = Depends(get_db),
 @router.post("/rooms/{room_id}/dissolve", response_model=ResponseBase)
 def dissolve_table(room_id: int, db: Session = Depends(get_db),
                    current_user: dict = Depends(get_current_user)):
-    """解散牌桌：**任何在座家人**都可发起；等待中 / 对局中都可。
+    """解散牌桌：**任何在座家人**都可发起；等待中 / 对局中 / 已结束都能解散。
 
     不判输赢；若本局已开局则退还预扣底注。用于「不保留桌子」——取消整桌、换个新局。
+    v2.46.2 起放宽到 `finished`：牌局结束后「我的对局」里还会挂着这张桌子，
+    用户要的是能把它清掉（置为 dissolved 后即不再被 `mine()` 返回）。
     """
     uid = current_user["user_id"]
     room = _get_room(db, room_id)
     _ensure_seated(room, uid)
-    if room.status not in ("waiting", "playing"):
-        raise_error(ErrCode.INVALID_PARAM, "牌局已结束，无需解散")
+    if room.status == "dissolved":
+        return ResponseBase(msg="牌桌已删除", data=_project(room, name_map(db), uid))
     _dissolve(db, room, "dissolve")
     db.commit()
     db.refresh(room)

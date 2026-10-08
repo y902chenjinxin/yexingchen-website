@@ -23,6 +23,24 @@
             <span v-if="saves[g.key]" class="gm-item-dot" title="有未完成的存档"></span>
           </button>
         </div>
+
+        <!-- 我的对局：退出对局后残留的房间都在这儿，长按可删除（真删） -->
+        <div class="gm-grp gm-grp--mine">
+          <div class="gm-grp-name">我的</div>
+          <button class="gm-item gm-item--rooms" @click="roomsOpen = true">
+            <span class="gm-item-ic gm-item-ic--rooms">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="6" width="16" height="13" rx="2.6" />
+                <path d="M4 10.4h16M9.6 10.4V19" />
+              </svg>
+            </span>
+            <span class="gm-item-tx">
+              <b>我的对局</b>
+              <i>长按可删除房间</i>
+            </span>
+            <span v-if="roomCount" class="gm-room-badge">{{ roomCount > 99 ? '99+' : roomCount }}</span>
+          </button>
+        </div>
       </aside>
 
       <!-- ===== 右：游戏空间 ===== -->
@@ -175,6 +193,13 @@
         </template>
       </section>
     </div>
+
+    <!-- 我的对局抽屉（teleport 到 body，不受本页层叠上下文影响） -->
+    <MyRoomsDrawer
+      v-model:open="roomsOpen"
+      @update:count="roomCount = $event"
+      @open-room="openRoom"
+    />
   </IslandInnerBase>
 </template>
 
@@ -196,6 +221,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount, d
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
+import MyRoomsDrawer from '@/components/games/MyRoomsDrawer.vue'
 import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
 import { usePinchZoom } from '@/composables/usePinchZoom'
 import { useIsMobile } from '@/composables/useIsMobile'
@@ -503,6 +529,15 @@ const chosenBoard = ref(15)   // 开局棋盘边长（五子棋可选 15/19/23�
 const resumeFlag = ref(false)
 const runId = ref(0)           // 变更即强制重新挂载组件（开新局）
 const isBig = ref(false)       // 舞台全屏
+
+/* 「我的对局」抽屉（v2.46.2）：列出棋类房间 + 牌桌，长按可删除（真删）。
+   入口放左栏，角标 = 当前还挂着的房间数。 */
+const roomsOpen = ref(false)
+const roomCount = ref(0)
+function openRoom(it) {
+  roomsOpen.value = false
+  router.push(it.route)
+}
 const roomLocked = ref(false)  // 在线对局进行中 → 锁左栏
 const pendingRoom = ref({ id: 0, game: '' })
 const showRules = ref(false)   // 「游戏说明」内联展开（无弹窗）
@@ -783,6 +818,17 @@ watch(() => route.query.room, (v) => {
   border-radius: 50%; background: var(--yq-gold, #c7a96b);
 }
 
+/* 「我的对局」入口：与其它游戏项同构，只是多一枚房间数角标 */
+.gm-item--rooms .gm-item-tx { flex: 1; }
+.gm-room-badge {
+  margin-left: auto; flex: none;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px;
+  background: #D8504F; color: #fff;
+  font-size: 10.5px; font-weight: 600; line-height: 18px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===== 舞台 ===== */
 .gm-stage { min-height: 340px; display: flex; flex-direction: column; gap: 14px; }
 /* 空态：毛玻璃面板 + 金色柔光锚点 + 淡棋盘格纹理。
@@ -950,10 +996,14 @@ watch(() => route.query.room, (v) => {
 .gtv-viewzoom.is-fs :deep(.gt-landscape) { height: 100%; }
 /* min-width:0 —— 抵消牌桌自身 @media(max-width:900px) 的 860px 硬宽，改由等比缩放铺满 */
 .gtv-viewzoom.is-fs :deep(.gt-shell) { width: 100%; height: 100%; min-height: 0; min-width: 0; }
+/* 全屏时统一收起牌桌顶栏（掼蛋 / 麻将）：关键信息各自的底栏都有一份，
+   顶栏再摆一遍只会白占画布高度（与 GameTableView 的同名规则保持一致） */
+.gtv-viewzoom.is-fs :deep(.gd-top),
+.gtv-viewzoom.is-fs :deep(.mj-top) { display: none; }
 /* min-height 必须放开（旧版写死 640px，手机横屏画布仅 ~390 高 → 外壳溢出被裁，
    表现为「大富翁全屏下方看不到」）；方棋盘改高度驱动 */
 .gtv-viewzoom.is-fs :deep(.mp) {
-  grid-template-columns: minmax(0, 1fr) clamp(206px, 25%, 306px);
+  grid-template-columns: minmax(0, 1fr) clamp(178px, 21%, 264px);
   min-height: 0;
 }
 .gtv-viewzoom.is-fs :deep(.mp-cname) { font-size: 9px; }
