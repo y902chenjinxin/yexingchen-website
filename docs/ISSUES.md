@@ -7,6 +7,17 @@
 
 ---
 
+## v2.46.21 掼蛋顺子改手动理牌（2026-10-09）
+
+- **钉住集合的响应式（V24621）**：`pinnedSeq` 是 `ref(new Set())`——Vue3 的 ref 包 Set
+  时原位 add/delete 不触发更新，必须整体换引用：
+  `pinnedSeq.value = new Set([...pinnedSeq.value, ...ids])`。
+- **弹出组回取（V24621）**：`gather()` 推进 idxRef 后才返回，cycleSeq 要展示「刚轮出的
+  那组」需回退一格：`(seqIdx + len - 1) % len`；len=0 时回退公式产生 NaN，靠
+  `seqGroups.value[NaN] === undefined` 天然短路，无需特判。
+
+---
+
 ## v2.46.20 对局手感第二轮 11 条（2026-10-09）
 
 - **棋类音效接线点（V24620-003）**：统一挂状态变更函数（doMove/applyMove/place/

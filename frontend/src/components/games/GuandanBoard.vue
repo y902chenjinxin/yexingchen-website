@@ -239,9 +239,15 @@
           <button
             class="gt-btn ghost sm"
             :disabled="!seqGroups.length"
-            :title="seqGroups.length ? `点击轮换顺子（共 ${seqGroups.length} 组，同花顺优先）` : '手上没有顺子'"
+            :title="seqGroups.length ? `点击轮换顺子（共 ${seqGroups.length} 组，同花顺优先），弹出对应牌` : '手上没有顺子'"
             @click="cycleSeq"
           >顺子<em v-if="seqGroups.length > 1" class="gd-btn-count">{{ seqGroups.length }}</em></button>
+          <button
+            class="gt-btn ghost sm"
+            :disabled="!seqGroups.length && !sel.length"
+            :title="seqGroups.length || sel.length ? '把选中的牌（未选则第一组顺子）钉到最左' : '先点顺子按钮弹出一组，再挪到左侧'"
+            @click="pinSeqToLeft"
+          >挪左侧</button>
           <span class="gd-act-gap"></span>
           <button class="gt-btn gd-pass" :disabled="!canAct || !target" @click="doPass">不要</button>
           <button class="gt-btn gd-play" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
@@ -490,20 +496,24 @@ const topSeat = computed(() => (povSeat.value + 2) % 4)
 const rightSeat = computed(() => (povSeat.value + 1) % 4)
 const leftSeat = computed(() => (povSeat.value + 3) % 4)
 
-/** 手牌展示顺序：**同花顺 / 顺子自动理到最左、永不复位**（夜星 2026-10-09：
- *  「同花顺和顺子就理好放在左侧，不收回去，可以快速理清牌」——旧版要点按钮才钉、
- *  出完牌 / 清空选中就复位，理好的牌又散回去）。
- *  v2.46.18 起（夜星：「如果有多个就都汇总到左边，由操作人自己选择打出」）改为**并集**：
- *  所有顺子 / 同花顺（含互相重叠的）涉及到的牌全部理到最左，**按牌值从小到大**连成一条
- *  （如 3-7♥ 与 5-9♥ 重叠 → 3 4 5 6 7 8 9♥ 一整排），其余牌保持原理牌顺序跟在后面。
- *  手牌一变（摸牌 / 出牌 / 贡牌）自动重算 —— 还成顺的继续钉着，散了的自然归位。 */
+/** 手牌展示顺序：
+ *  同花顺：**自动理到最左、永不复位**（夜星 2026-10-09 原需求，v2.46.18 起并集制保留）。
+ *  顺子：v2.46.21 起改**手动**（夜星：「顺子不自动挪到左侧，点击顺子按钮弹出对应牌，
+ *  增加个挪到左侧的按钮，点击按钮再挪到左侧」）——自动理左在多组顺子时会拉走大片牌，
+ *  挤掉散牌的浏览空间。交互：点「顺子」按钮弹出预览（选中 + 整组弹跳高亮 1.2s），
+ *  确认要留再点「挪左侧」钉进 pinnedSeq；钉住的牌按牌值从小到大排最左，
+ *  打掉对应牌后 id 自动失效，新局（新牌 id）也自然失效。 */
+const pinnedSeq = ref(new Set())
 const viewHand = computed(() => {
   const base = isOnline.value ? (props.onlineView?.me?.hand || []) : (hands.value[viewSeat.value] || [])
   if (phase.value === 'settled' || !base.length) return base
-  const groups = G.findSeqGroups(base, roundLevel.value)
-  if (!groups.length) return base
+  const flushes = G.findFlushBombs(base, roundLevel.value)
+  const pinned = pinnedSeq.value
+  const hasPinned = base.some(c => pinned.has(c.id))
+  if (!flushes.length && !hasPinned) return base
   const used = new Set()
-  for (const cs of groups) for (const c of cs) used.add(c.id)
+  for (const cs of flushes) for (const c of cs) used.add(c.id)
+  for (const c of base) if (pinned.has(c.id)) used.add(c.id)
   if (!used.size) return base
   const head = base
     .filter(c => used.has(c.id))
@@ -601,8 +611,32 @@ function gather(combos, idxRef, label) {
   idxRef.value = (idxRef.value + 1) % combos.length
   sfx.pick()
 }
+/** 顺子弹出预览（v2.46.21）：点「顺子」按钮把刚轮换出的那组整排弹跳高亮 1.2s，
+ *  不再自动理到最左 —— 先看清是哪五张，再决定要不要点「挪左侧」钉住。 */
+const seqPopIds = ref(new Set())
+let seqPopTimer = null
 function cycleFlush() { gather(flushCombos.value, flushIdx, '同花顺') }
-function cycleSeq() { gather(seqGroups.value, seqIdx, '顺子') }
+function cycleSeq() {
+  gather(seqGroups.value, seqIdx, '顺子')
+  const shown = seqGroups.value[(seqIdx.value + seqGroups.value.length - 1) % seqGroups.value.length]
+  if (shown) {
+    seqPopIds.value = new Set(shown.map(c => c.id))
+    clearTimeout(seqPopTimer)
+    seqPopTimer = setTimeout(() => { seqPopIds.value = new Set() }, 1200)
+  }
+}
+/** 「挪左侧」（v2.46.21）：把当前选中的牌钉到最左（配合顺子按钮弹出后使用）；
+ *  没有选中时退而钉第一组顺子。钉住持久：出掉对应牌 id 自动失效，新局换新牌自然清空。 */
+function pinSeqToLeft() {
+  let ids = sel.value.slice()
+  if (!ids.length) {
+    if (!seqGroups.value.length) { toastMsg('手上没有顺子'); return }
+    ids = seqGroups.value[0].map(c => c.id)
+  }
+  pinnedSeq.value = new Set([...pinnedSeq.value, ...ids])
+  toastMsg('已挪到左侧')
+  sfx.pick()
+}
 
 /* ---------- 贡牌倒计时（服务端 5 分钟未选则自动代选） ---------- */
 const leftSec = ref(0)
@@ -719,6 +753,7 @@ function cardCls(c, i) {
     'is-level': !c.joker && c.rank === roundLevel.value,
     'is-wild': isWildCard(c),
     'is-sel': sel.value.includes(c.id),
+    'is-seqpop': seqPopIds.value.has(c.id),
   }
   if (i !== undefined) {
     cls.pickable = canAct.value
@@ -1331,6 +1366,7 @@ onBeforeUnmount(() => {
   clearTimeout(bombTimer1)
   clearTimeout(bombTimer2)
   clearTimeout(freezeTimer)
+  clearTimeout(seqPopTimer)
   clearInterval(tickTimer)
   if (ro) ro.disconnect()
   // 划选期间被卸载：window 上的手势监听必须摘掉，否则残留到下一个页面
@@ -1339,11 +1375,15 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointercancel', onHandUp)
 })
 watch(() => props.deadlineAt, tickLeft)
-// 手牌张数一变（发牌 / 出牌 / 换局）→ 轮换指针复位；顺子的「理到最左」是自动的，无需复位
+// 手牌张数一变（发牌 / 出牌 / 换局）→ 轮换指针复位；顺子「挪左侧」是手动钉住，不清
 watch(() => viewHand.value.length, () => {
   flushIdx.value = 0
   seqIdx.value = 0
   requestAnimationFrame(measureHand)
+})
+// 新一局（settled → playing）清掉上一局钉住的顺子；同局内钉住的牌打出后 id 自动失效
+watch(phase, (p, old) => {
+  if (p === 'playing' && old === 'settled') pinnedSeq.value = new Set()
 })
 </script>
 
@@ -1588,6 +1628,35 @@ watch(() => viewHand.value.length, () => {
   animation-delay: calc(var(--i, 0) * 32ms);
 }
 .gd-hand .gt-card:hover, .gd-hand .gt-card.is-sel { z-index: 5; }
+/* 顺子弹出预览（v2.46.21）：点「顺子」按钮后整组弹起 + 金描边呼吸 1.2s，
+   与选中态（is-sel 常驻上浮）区分：弹出是短暂的「看这一组」，钉住靠「挪左侧」按钮 */
+.gd-hand .gt-card.is-seqpop {
+  z-index: 6;
+  animation: gd-seqpop 1.2s ease-out both;
+}
+@keyframes gd-seqpop {
+  0% { transform: translateY(0); box-shadow: 0 2px 0 rgba(0, 0, 0, .22); }
+  12% { transform: translateY(-18px) scale(1.06); }
+  22% { transform: translateY(-14px) scale(1.03); }
+  30%, 82% { transform: translateY(-14px); }
+  100% { transform: translateY(0); }
+}
+.gd-hand .gt-card.is-seqpop::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 10px;
+  border: 2px solid rgba(233, 200, 119, .95);
+  box-shadow: 0 0 12px rgba(233, 200, 119, .5);
+  animation: gd-seqpop-ring 1.2s ease-out both;
+  pointer-events: none;
+}
+@keyframes gd-seqpop-ring {
+  0% { opacity: 0; }
+  15%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gd-hand .gt-card.is-seqpop { animation: none; transform: translateY(-14px); }
+  .gd-hand .gt-card.is-seqpop::after { animation: none; }
+}
 .gd-hand-empty { margin: auto; font-size: 12px; color: var(--gt-ink-dim); }
 
 /* 操作区：次要工具收成小号弱按钮，「不要 / 出牌」是大按钮主力（腾讯棋牌同款主次关系） */
