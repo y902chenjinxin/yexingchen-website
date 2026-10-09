@@ -85,17 +85,24 @@
       </g>
     </template>
 
-    <!-- ===== 字（箭牌）：红中 / 发财 / 白板（v2.46.15 新增，样式对照传统牌面） =====
+    <!-- ===== 字牌：箭牌（中/發/白，v2.46.15）+ 风牌（東南西北，v2.46.17）=====
+         样式对照传统牌面：
          · 红中 —— 大红「中」字居中；
          · 发财 —— 墨绿「發」（繁体，真牌即繁体）；
-         · 白板 —— 传统是「空板」：蓝色矩形框（多层框最常见），中间什么都不印。 -->
+         · 白板 —— 传统是「空板」：蓝色矩形框（多层框最常见），中间什么都不印；
+         · 风牌 —— 单色大字（真牌即单色）：東墨蓝 / 南墨绿 / 西赭红 / 北靛蓝，
+           繁体字形，与中發同族衬线。 -->
     <template v-else-if="suit === 'zi'">
       <text v-if="rank === 1" class="f-zhong" x="50" y="72">中</text>
       <text v-else-if="rank === 2" class="f-fa" x="50" y="72">發</text>
-      <g v-else>
+      <g v-else-if="rank === 3">
         <rect x="24" y="31" width="52" height="78" rx="4" fill="none" stroke="#1657c9" stroke-width="5" />
         <rect x="35" y="42" width="30" height="56" rx="2" fill="none" stroke="#1657c9" stroke-width="2.5" />
       </g>
+      <text v-else-if="rank === 4" class="f-feng f-feng-e" x="50" y="72">東</text>
+      <text v-else-if="rank === 5" class="f-feng f-feng-s" x="50" y="72">南</text>
+      <text v-else-if="rank === 6" class="f-feng f-feng-w" x="50" y="72">西</text>
+      <text v-else class="f-feng f-feng-n" x="50" y="72">北</text>
     </template>
   </svg>
 </template>
@@ -106,7 +113,7 @@ import { computed } from 'vue'
 
 const props = defineProps({
   suit: { type: String, required: true },   // wan | tiao | tong | zi
-  rank: { type: Number, required: true },   // 1..9；zi 只用 1..3（中/發/白）
+  rank: { type: Number, required: true },   // 1..9；zi 用 1..7（中/發/白/東/南/西/北）
 })
 
 /* 万：传统牌「伍萬」用大写数字「伍」，其余用一二三四六七八九 */
@@ -308,4 +315,14 @@ const tiaoSticks = computed(() => {
   text-anchor: middle; dominant-baseline: central;
   font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", "HarmonyOS Sans SC", serif;
 }
+/* 风牌（東南西北）：单色大字，四色区分方位（真牌即单色繁体） */
+.f-feng {
+  font-size: 60px; font-weight: 700;
+  text-anchor: middle; dominant-baseline: central;
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", "HarmonyOS Sans SC", serif;
+}
+.f-feng-e { fill: #1a3a6b; }   /* 東：墨蓝 */
+.f-feng-s { fill: #0f6b3f; }   /* 南：墨绿 */
+.f-feng-w { fill: #8a2a22; }   /* 西：赭红 */
+.f-feng-n { fill: #28418f; }   /* 北：靛蓝 */
 </style>

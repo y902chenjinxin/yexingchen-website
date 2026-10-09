@@ -6,7 +6,6 @@
         <span class="gt-title">四川麻将</span>
         <span class="gt-pill gold">胡牌即结束 · 第 {{ roundNo }} 局</span>
         <span class="gt-pill">余牌 {{ wall.length }}</span>
-        <span v-if="myMissing" class="gt-pill">你的缺门 {{ M.SUIT_NAME[myMissing] }}</span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
           {{ muted ? '🔇' : '🔊' }}
@@ -27,6 +26,10 @@
             <span class="gt-seat-av">{{ seatAvatar(p.seat) }}</span>
             <span class="gt-seat-tx">
               <b class="gt-seat-name">{{ seatName(p.seat) }}</b>
+            </span>
+            <!-- 本局积分（V24617-013）：紧跟名字，实时显示 ±分 -->
+            <span class="gt-seat-score" :class="seatScore(p.seat) > 0 ? 'is-plus' : seatScore(p.seat) < 0 ? 'is-minus' : ''">
+              {{ seatScore(p.seat) > 0 ? '+' : '' }}{{ seatScore(p.seat) }}
             </span>
             <span v-if="isTurn(p.seat) && !out[p.seat]" class="gt-seat-badge">出牌中</span>
             <span v-else-if="out[p.seat]" class="gt-seat-badge">已胡</span>
@@ -93,7 +96,7 @@
       </div>
 
       <!-- ===== 底部：信息条 + 手牌 + 操作 =====
-           信息条一行装完「最近舍牌 / 轮到谁 / 手牌 / 余牌 / 缺门 / 听牌」——
+           信息条一行装完「最近舍牌 / 轮到谁 / 手牌 / 余牌 / 副露 / 听牌」——
            旧版听牌另起一整行（.mj-tingbar），在一屏只有 360px 高的横屏里白吃 38px，
            弃牌区因此被压到 28px 高。现在一行到底，高度全让给牌桌。 -->
       <footer class="mj-bottom">
@@ -108,7 +111,6 @@
           <span v-if="phase === 'playing' && !pending" class="gt-pill gold">轮到 {{ seatName(turn) }}</span>
           <span class="gt-pill">{{ seatName(viewSeat) }}手牌 {{ viewHand.length }}</span>
           <span class="gt-pill">余牌 {{ wall.length }}</span>
-          <span v-if="myMissing" class="gt-pill">缺 {{ M.SUIT_NAME[myMissing] }}</span>
           <span v-if="melds[viewSeat]?.length" class="gt-pill">副露 {{ melds[viewSeat].length }}</span>
           <span class="gt-spacer"></span>
           <span v-if="phase === 'playing' && viewSeat !== null" class="mj-ting-inline">
@@ -122,12 +124,20 @@
           </span>
         </div>
 
-        <!-- 反应窗口：碰 / 杠 / 胡 / 过（v2.46.14：从手牌右侧移到手牌上方独立一行） -->
+        <!-- 反应窗口：碰 / 杠 / 胡 / 过（v2.46.14：从手牌右侧移到手牌上方独立一行）
+             v2.46.17（V24617-010）：把被碰/杠的那张牌直接亮在按钮前，手上能组成
+             该刻子的牌同时描金脉冲（.is-claimhit），一眼看清「碰的是哪张、用哪几张」 -->
         <div v-if="pending" class="gt-actions mj-actions">
           <span class="gt-pill gold">可操作：{{ pending.kinds.map(k => REACT_NAME[k]).join(' / ') }}</span>
-          <button v-if="pending.kinds.includes('hu')" class="gt-btn" @click="onReact('hu')">胡</button>
-          <button v-if="pending.kinds.includes('kong')" class="gt-btn" @click="onReact('kong')">杠</button>
-          <button v-if="pending.kinds.includes('pong')" class="gt-btn" @click="onReact('pong')">碰</button>
+          <span v-if="pending.tile" class="mj-claimtile">
+            <span class="gt-tile mini" :class="suitCls(pending.tile)">
+              <MahjongTileFace :suit="faceSuit(pending.tile)" :rank="pending.tile.rank" />
+            </span>
+            <em>{{ seatName(pending.from) }} 打出 {{ tileText(pending.tile) }}</em>
+          </span>
+          <button v-if="pending.kinds.includes('hu')" class="gt-btn is-pulse" @click="onReact('hu')">胡</button>
+          <button v-if="pending.kinds.includes('kong')" class="gt-btn is-pulse" @click="onReact('kong')">杠</button>
+          <button v-if="pending.kinds.includes('pong')" class="gt-btn is-pulse" @click="onReact('pong')">碰</button>
           <button class="gt-btn ghost" @click="onReact('pass')">过</button>
         </div>
 
@@ -146,13 +156,7 @@
             @click="doBugang(bugangs[0])"
           >补杠 {{ tileText(bugangs[0]) }}</button>
           <button class="gt-btn ghost" :disabled="!canDiscard" @click="doHint">提示</button>
-          <!-- 手机手势提示：灰掉的缺门牌只能打，上滑即可直接打出（不必先点选再点按钮） -->
-          <em v-if="canDiscard" class="mj-hint">
-            <b v-if="viewMissing && handTiles.some(t => t.suit === viewMissing)">
-              {{ M.SUIT_NAME[viewMissing] }}缺未清 · 不能碰杠
-            </b>
-            上滑手牌直接打出
-          </em>
+          <em v-if="canDiscard" class="mj-hint">上滑手牌直接打出</em>
         </div>
 
         <div class="mj-handrow">
@@ -177,7 +181,7 @@
             :class="[suitCls(t), {
               pickable: canDiscard,
               'is-sel': selId === t.id,
-              'is-miss': isMissTile(t),
+              'is-claimhit': claimHit(t),
               'is-lift': liftId === t.id,
             }]"
             @click="pick(t)"
@@ -192,7 +196,7 @@
             :class="[suitCls(viewDrawn), {
               pickable: canDiscard,
               'is-sel': selId === viewDrawn.id,
-              'is-miss': isMissTile(viewDrawn),
+              'is-claimhit': claimHit(viewDrawn),
               'is-lift': liftId === viewDrawn.id,
             }]"
             @click="pick(viewDrawn)"
@@ -204,22 +208,23 @@
         </div>
       </footer>
 
-      <!-- ===== 定缺（页内，不弹窗） ===== -->
-      <div v-if="showDingque" class="gt-over">
-        <div class="gt-over-card">
-          <h3>定缺</h3>
-          <p>
-            请为 <b>{{ seatName(dingqueSeat) }}</b> 选一门花色作为「缺门」。<br>
-            手上该门牌必须先打完，之后才能碰、杠、胡。
-          </p>
-          <div class="gt-actions">
-            <button
-              v-for="s in M.SUITS"
-              :key="s"
-              class="gt-btn"
-              @click="chooseMissing(s)"
-            >{{ M.SUIT_NAME[s] }}（{{ suitCount(dingqueSeat, s) }} 张）</button>
+      <!-- ===== 胡牌动画浮层（V24617-011，在线 & 本地共用）=====
+           胡牌后先全屏展示赢家 14 张牌 + 番种，牌逐张翻入；点击任意处关闭，
+           露出下面的结算卡（再来一局 / 返回）。不再「胡完直接跳积分」。 -->
+      <div v-if="showHuShow" class="gt-over mj-hushow" @click="huShow = false">
+        <div class="mj-hushow-card">
+          <p class="mj-hushow-title">{{ huWinner ? seatName(huWinner.seat) : '' }}{{ huWinner?.zimo ? ' 自摸' : ' 胡牌' }}！</p>
+          <p v-if="huWinner" class="mj-hushow-fan">{{ huWinner.names.join(' · ') }} · {{ huWinner.fan }} 番</p>
+          <div v-if="huWinner?.hand?.length" class="mj-hushow-hand">
+            <span
+              v-for="(t, i) in huWinner.hand"
+              :key="t.id + '-' + i"
+              class="gt-tile"
+              :class="suitCls(t)"
+              :style="{ animationDelay: (i * 60) + 'ms' }"
+            ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
+          <p class="mj-hushow-tip">点击任意处继续</p>
         </div>
       </div>
 
@@ -246,13 +251,13 @@
       </div>
 
       <div v-if="toast" class="gt-toast">{{ toast }}</div>
-      <div class="gt-watermark">四 川 麻 将 · 胡 牌 即 结 束 · 定 缺 开 局</div>
+      <div class="gt-watermark">四 川 麻 将 · 胡 牌 即 结 束</div>
     </div>
   </div>
 </template>
 
 <script setup>
-/** 四川麻将 · 胡牌即结束 牌桌（v2.46.10）。
+/** 四川麻将 · 胡牌即结束 牌桌（v2.46.17）。
  *
  * 纯前端同屏对局：solo = 1 真人 + 3 AI；duo = 2 真人同屏 + 2 AI；quad = 4 真人轮流。
  * 规则核心在 `utils/games/mahjong.js`（和牌判定 / 番种 / 听牌 / 向听 / AI）。
@@ -261,7 +266,8 @@
  * 简化声明（与引擎注释一致）：
  * 1. **胡牌即结束**（v2.46.10 起，不再是血战到底）：任一家胡牌本局立即收摊，其余人不补打；
  *    点炮只取「一家胡」，按「放炮者下家起逆时针」就近优先，不存在一炮多响。
- * 2. 流局不做「查大叫 / 查花猪」赔付，直接按已胡番数结算。
+ * 2. **无定缺**（v2.46.17 起，夜星要求「单纯的胡牌规则」）：开局庄家直接起手，
+ *    没有缺门限制；庄家轮换 —— 上一局胡牌者下局坐庄先出。
  * 3. 在线开房（v2.44）：服务端权威发牌，前端只渲染投影、动作 emit('act') 上抛；
  *    本地同屏（solo/duo/quad）逻辑完全不变，在线分支统一走 `isOnline`。
  */
@@ -296,17 +302,18 @@ const AI_AVATARS = { 1: '🐯', 2: '🦊', 3: '🐼' }
 const REACT_NAME = { hu: '胡', kong: '杠', pong: '碰' }
 const STAKE = 100
 const BASE = 10
+/** 本局胡牌的座位（本地庄家轮换用）：null = 流局 */
+const lastWinnerSeat = ref(null)
 
 /* ---------- 状态 ---------- */
 const mode = ref(props.initialMode || 'solo')
-const phase = ref('dingque')        // dingque | playing | settled
+const phase = ref('playing')       // playing | settled（v2.46.17 起无定缺阶段）
 const roundNo = ref(1)
 const dealer = ref(0)
 const wall = ref([])
 const hands = ref([[], [], [], []])
 const melds = ref([[], [], [], []])
 const discards = ref([[], [], [], []])
-const missing = ref(['', '', '', ''])
 const out = ref([false, false, false, false])   // 本局已胡（胡牌即结束 → 一局最多一家为 true）
 const turn = ref(0)
 const drawn = ref(null)
@@ -321,7 +328,8 @@ const reactQueue = ref([])
 const reactFrom = ref(null)
 /** 本张弃牌上已经选过「不胡」的座位：顺延给下一家（胡牌即结束，一炮只取一家） */
 const huDeclined = ref([])
-const dingqueSeat = ref(0)
+/** 胡牌动画浮层（V24617-011）：settled 且有胡牌时先展示 14 张牌，点击才进结算卡 */
+const huShow = ref(false)
 const toast = ref('')
 const muted = ref(isMuted())
 
@@ -355,16 +363,9 @@ const ownMelds = computed(() => melds.value[viewSeat.value] || [])
 
 const viewSeat = computed(() => {
   if (isOnline.value) return oSeat.value
-  if (phase.value === 'dingque') return dingqueSeat.value
   if (isHuman(turn.value) && !out.value[turn.value]) return turn.value
   return HUMAN_SEATS.value[0]
 })
-/** 定缺浮层：在线只在轮到自己定缺时展示，避免暴露/误操作他人缺门 */
-const showDingque = computed(() =>
-  phase.value === 'dingque'
-  && (!isOnline.value || (props.onlineView?.me?.options || []).includes('missing')))
-/** 顶栏「你的缺门」：本地固定座位 0，在线取自己座位 */
-const myMissing = computed(() => (isOnline.value ? missing.value[oSeat.value] : missing.value[0]))
 const viewHand = computed(() => hands.value[viewSeat.value] || [])
 const viewDrawn = computed(() =>
   (turn.value === viewSeat.value && drawn.value) ? drawn.value : null)
@@ -383,18 +384,30 @@ const canDiscard = computed(() => {
 const poolOfView = computed(() =>
   viewDrawn.value ? viewHand.value.concat([viewDrawn.value]) : viewHand.value.slice())
 
-/* ---------- 定缺（缺门）----------
- * 四川麻将：定缺后，手上的缺门牌**必须先打完**，没打完之前不能碰 / 杠 / 胡。
- * 引擎的 AI 一直遵守这条（`aiWantPong` / `aiWantKong` 里 `any(t => t.suit === missing)` 直接 false），
- * 但给真人计算「可碰 / 可杠」时漏了这道关 —— 真人的碰杠请求因此比 AI 宽松。
- * 这里把真人那条路径补齐，并在手牌里把缺门牌**置灰**，让玩家一眼看出「这几张只能打」。 */
-const viewMissing = computed(() => missing.value[viewSeat.value] || '')
-function isMissTile(t) { return !!viewMissing.value && !!t && t.suit === viewMissing.value }
-/** 该座位手上是否还留着缺门牌（决定能不能碰 / 杠） */
-function holdingMissing(seat) {
-  const ms = missing.value[seat]
-  return !!ms && (hands.value[seat] || []).some(t => t.suit === ms)
+/* ---------- 碰杠提示（V24617-010）----------
+ * 反应窗口弹出时：被碰/杠的那张牌亮在按钮前，手上能组成该刻子的牌描金脉冲。
+ * 本地/在线同一逻辑：pending.tile 就是那张弃牌。 */
+function claimHit(t) {
+  const p = pending.value
+  return !!(p && p.tile && p.kinds.some(k => k === 'pong' || k === 'kong')
+    && t && t.suit === p.tile.suit && t.rank === p.tile.rank)
 }
+
+/* ---------- 本局积分（V24617-013）----------
+ * 在线直接读服务端投影的 players[].score（总账，含刮风下雨）；
+ * 本地按 huResults 现算（自摸三家各付、点炮放炮者付两倍）。 */
+function seatScore(s) {
+  if (isOnline.value) return Number(props.onlineView?.players?.[s]?.score || 0)
+  let v = 0
+  for (const r of huResults.value) {
+    const gain = BASE * r.fan
+    if (r.zimo) v += (s === r.seat ? 3 : -1) * gain
+    else if (s === r.seat) v += 2 * gain
+    else if (s === r.from) v -= 2 * gain
+  }
+  return v
+}
+
 /** 最新落下的那张弃牌 —— 只有它带「落桌」动效，其余是静态小牌 */
 const freshDiscardId = computed(() => lastDiscard.value?.tile?.id ?? -1)
 
@@ -404,15 +417,14 @@ const canZimo = computed(() => {
     return (props.onlineView?.me?.options || []).includes('hu')
   }
   if (!canDiscard.value) return false
-  return M.canHu(poolOfView.value, melds.value[turn.value].length, missing.value[turn.value])
+  return M.canHu(poolOfView.value, melds.value[turn.value].length)
 })
 const ankongs = computed(() => {
   if (isOnline.value) {
     if (props.acting || !(props.onlineView?.me?.options || []).includes('ankong')) return []
     return props.onlineView?.me?.ankongs || []
   }
-  // 手上还留着缺门牌 → 不能杠（与 AI 的 aiWantKong 同一规则）
-  if (!canDiscard.value || holdingMissing(turn.value)) return []
+  if (!canDiscard.value) return []
   return M.findAnkongs(hands.value[turn.value])
 })
 const bugangs = computed(() => {
@@ -420,7 +432,7 @@ const bugangs = computed(() => {
     if (props.acting || !(props.onlineView?.me?.options || []).includes('bugang')) return []
     return props.onlineView?.me?.bugangs || []
   }
-  if (!canDiscard.value || holdingMissing(turn.value)) return []
+  if (!canDiscard.value) return []
   const h = drawn.value ? hands.value[turn.value].concat([drawn.value]) : hands.value[turn.value]
   return M.findBugangs(h, melds.value[turn.value])
 })
@@ -433,7 +445,6 @@ const tingInfo = computed(() => {
   const h = hands.value[seat]
   if (h.length % 3 !== 1) return []
   const mc = melds.value[seat].length
-  const miss = missing.value[seat]
   const res = []
   const seen = new Set()
   for (const t of h) {
@@ -441,11 +452,18 @@ const tingInfo = computed(() => {
     if (seen.has(k)) continue
     seen.add(k)
     const rest = h.filter(x => x.id !== t.id)
-    const waits = M.tingTiles(rest, mc, miss)
+    const waits = M.tingTiles(rest, mc)
     if (waits.length) res.push({ tile: t, waits })
   }
   return res
 })
+
+/* ---------- 胡牌动画浮层（V24617-011）---------- */
+const huWinner = computed(() => {
+  if (!result.value || !result.value.hus?.length) return null
+  return result.value.hus[0]
+})
+const showHuShow = computed(() => phase.value === 'settled' && huShow.value && !!huWinner.value)
 
 /* ---------- 小工具 ---------- */
 /** 花色键（m/s/p/z）→ 牌面组件的花纹名 */
@@ -494,9 +512,6 @@ function isTurn(s) { return phase.value === 'playing' && turn.value === s }
 function seatCls(s) {
   return { 'is-active': isTurn(s) && !out.value[s], 'is-out': out.value[s] }
 }
-function suitCount(seat, suit) {
-  return hands.value[seat].filter(t => t.suit === suit).length
-}
 function toggleMute() { muted.value = !muted.value; setMuted(muted.value) }
 let toastTimer = null
 function toastMsg(t) {
@@ -507,7 +522,7 @@ function toastMsg(t) {
 function log(t) { logs.value.unshift(t); logs.value = logs.value.slice(0, 8) }
 
 /* ---------- 在线：服务端投影 → 展示态 ---------- */
-const PHASE_MAP = { missing: 'dingque', playing: 'playing', finished: 'settled' }
+const PHASE_MAP = { playing: 'playing', finished: 'settled' }
 function syncFromView(v) {
   if (!v) return
   const me = v.me || {}
@@ -523,7 +538,6 @@ function syncFromView(v) {
   hands.value = nextHands
   melds.value = [0, 1, 2, 3].map(s => v.players?.[s]?.melds || [])
   discards.value = [0, 1, 2, 3].map(s => v.players?.[s]?.discards || [])
-  missing.value = [0, 1, 2, 3].map(s => v.players?.[s]?.missing || '')
   out.value = [0, 1, 2, 3].map(s => !!v.players?.[s]?.hu)
   turn.value = (v.turn === null || v.turn === undefined) ? -1 : v.turn
   drawn.value = drawnTile
@@ -532,7 +546,6 @@ function syncFromView(v) {
   phase.value = PHASE_MAP[v.phase] || 'playing'
   roundNo.value = v.round_no || 1
   dealer.value = v.dealer ?? 0
-  dingqueSeat.value = oSeat.value
   logs.value = v.logs || []
   const cl = v.claim
   pending.value = (cl && cl.seat === oSeat.value)
@@ -541,7 +554,7 @@ function syncFromView(v) {
   const huInfo = v.result?.hu_info || {}
   const hus = (v.result?.hu || []).map(s => {
     const hi = huInfo[String(s)] || {}
-    return { seat: s, fan: hi.fan || 0, names: hi.names || [], zimo: !!hi.zimo, from: hi.from }
+    return { seat: s, fan: hi.fan || 0, names: hi.names || [], zimo: !!hi.zimo, from: hi.from, hand: hi.hand || [] }
   })
   huResults.value = hus
   if (v.result) {
@@ -552,8 +565,11 @@ function syncFromView(v) {
       delta,
       title: !hus.length ? '流局' : delta > 0 ? '本局小赚' : delta < 0 ? '本局小亏' : '本局平局',
     }
+    // 胡牌动画：结算先看 14 张牌，点击任意处才露出结算卡（V24617-011）
+    huShow.value = hus.length > 0
   } else {
     result.value = null
+    huShow.value = false
   }
   const ids = new Set(hand.map(t => t.id).concat(drawnTile ? [drawnTile.id] : []))
   if (selId.value !== null && !ids.has(selId.value)) selId.value = null
@@ -571,7 +587,6 @@ function newRound() {
   hands.value = [0, 1, 2, 3].map(i => M.sortHand(deck.slice(i * 13, i * 13 + 13)))
   melds.value = [[], [], [], []]
   discards.value = [[], [], [], []]
-  missing.value = ['', '', '', '']
   out.value = [false, false, false, false]
   huResults.value = []
   result.value = null
@@ -583,53 +598,18 @@ function newRound() {
   lastDiscard.value = null
   selId.value = null
   logs.value = []
-  phase.value = 'dingque'
-  dealer.value = (roundNo.value - 1) % 4
-  pendingDingqueHumans.value = []
+  huShow.value = false
+  phase.value = 'playing'
+  // 庄家轮换（V24617-014，本地同规则）：上一局胡牌者坐庄先出；首局 0 号位
+  dealer.value = roundNo.value === 1 ? 0 : (lastWinnerSeat.value ?? 0)
   sfx.deal()
-  startDingque()
+  beginPlay()
 }
 
 function nextRound() {
   if (isOnline.value) { emit('rematch'); return }
   roundNo.value++
   newRound()
-}
-
-const pendingDingqueHumans = ref([])
-
-function startDingque() {
-  const humans = HUMAN_SEATS.value.slice()
-  // AI 先自动定缺
-  for (const s of [0, 1, 2, 3]) if (!isHuman(s)) missing.value[s] = autoMissing(s)
-  if (humans.length) {
-    dingqueSeat.value = humans[0]
-    pendingDingqueHumans.value = humans.slice(1)
-  } else {
-    beginPlay()
-  }
-}
-
-function autoMissing(seat) {
-  let best = M.SUITS[0], bestN = Infinity
-  for (const s of M.SUITS) {
-    const n = suitCount(seat, s)
-    if (n < bestN) { bestN = n; best = s }
-  }
-  return best
-}
-
-function chooseMissing(suit) {
-  if (isOnline.value) { sfx.pick(); actOnline({ type: 'missing', suit }); return }
-  missing.value[dingqueSeat.value] = suit
-  sfx.pick()
-  const rest = pendingDingqueHumans.value
-  if (rest.length) {
-    dingqueSeat.value = rest[0]
-    pendingDingqueHumans.value = rest.slice(1)
-  } else {
-    beginPlay()
-  }
 }
 
 function beginPlay() {
@@ -697,18 +677,17 @@ function resolveReactions(from, tile) {
   for (let off = 1; off <= 3; off++) {
     const s = (from + off) % 4
     if (out.value[s] || huDeclined.value.includes(s)) continue
-    if (!M.canHu(hands.value[s].concat([tile]), melds.value[s].length, missing.value[s])) continue
+    if (!M.canHu(hands.value[s].concat([tile]), melds.value[s].length)) continue
     if (isHuman(s)) { pending.value = { seat: s, from, tile, kinds: ['hu'] }; return }
     doHu(s, tile, from, false)
     checkRoundEnd()
     return
   }
-  // 2) 杠 / 碰：按座次。手上还留着缺门牌的一律跳过（定缺后必须先打完才能碰 / 杠）
+  // 2) 杠 / 碰：按座次
   const q = []
   for (let off = 1; off <= 3; off++) {
     const s = (from + off) % 4
     if (out.value[s]) continue
-    if (holdingMissing(s)) continue
     const kinds = []
     if (countIn(hands.value[s], tile) >= 3) kinds.push('kong')
     if (countIn(hands.value[s], tile) >= 2) kinds.push('pong')
@@ -732,11 +711,11 @@ function stepReactions() {
       return
     }
     if (cur.kinds.includes('kong')
-      && M.aiWantKong(hands.value[s], rf.tile, melds.value[s].length, missing.value[s], { level: 'normal' })) {
+      && M.aiWantKong(hands.value[s], rf.tile, melds.value[s].length, null, { level: 'normal' })) {
       q.shift(); doKongFromDiscard(s, rf.tile, rf.from); return
     }
     if (cur.kinds.includes('pong')
-      && M.aiWantPong(hands.value[s], rf.tile, melds.value[s].length, missing.value[s], { level: 'normal' })) {
+      && M.aiWantPong(hands.value[s], rf.tile, melds.value[s].length, null, { level: 'normal' })) {
       q.shift(); doPong(s, rf.tile, rf.from); return
     }
     q.shift()
@@ -843,7 +822,8 @@ function doHu(seat, tile, from, zimo) {
     ? (drawn.value ? hands.value[seat].concat([drawn.value]) : hands.value[seat].slice())
     : hands.value[seat].concat([tile])
   const sc = M.scoreHu(winning, melds.value[seat], {})
-  huResults.value.push({ seat, fan: sc.fan, names: sc.names, zimo, from })
+  // hand：胡牌动画浮层要展示赢家全部牌（V24617-011）
+  huResults.value.push({ seat, fan: sc.fan, names: sc.names, zimo, from, hand: winning.slice() })
   log(`${seatName(seat)} ${zimo ? '自摸' : '胡'} ${sc.names.join('·')} ${sc.fan}番`)
   sfx.win()
   toastMsg(`${seatName(seat)} ${zimo ? '自摸' : '胡牌'}！${sc.names.join(' · ')} ${sc.fan} 番`)
@@ -940,7 +920,7 @@ function doHint() {
     selId.value = first.tile.id
     toastMsg(`打 ${tileText(first.tile)} 可听 ${first.waits.map(tileText).join(' / ')}`)
   } else {
-    const d = M.aiDiscard(poolOfView.value, melds.value[turn.value].length, missing.value[turn.value], { level: 'normal' })
+    const d = M.aiDiscard(poolOfView.value, melds.value[turn.value].length, { level: 'normal' })
     if (d) { selId.value = d.id; toastMsg(`建议打 ${tileText(d)}`) }
   }
 }
@@ -1014,9 +994,8 @@ function aiTurn() {
   if (isHuman(s) || out.value[s]) return
   const full = drawn.value ? hands.value[s].concat([drawn.value]) : hands.value[s].slice()
   const mc = melds.value[s].length
-  const miss = missing.value[s]
   // 自摸
-  if (M.canHu(full, mc, miss)) {
+  if (M.canHu(full, mc)) {
     doHu(s, null, null, true)
     if (checkRoundEnd()) return
     nextDraw(s)
@@ -1028,7 +1007,7 @@ function aiTurn() {
   const bgs = M.findBugangs(full, melds.value[s])
   if (bgs.length) { doBugang(bgs[0]); return }
   // 出牌
-  const d = M.aiDiscard(full, mc, miss, { level: 'normal' })
+  const d = M.aiDiscard(full, mc, { level: 'normal' })
   if (d) doDiscard(s, d)
 }
 
@@ -1052,6 +1031,10 @@ function endRound(reason) {
   clearTimeout(aiTimer)
   phase.value = 'settled'
   pending.value = null
+  // 本地庄家轮换：本局胡牌者下局坐庄（V24617-014，与在线引擎一致）
+  lastWinnerSeat.value = huResults.value.length ? huResults.value[0].seat : null
+  // 胡牌动画：先展示赢家 14 张牌，点击任意处才露出结算卡（V24617-011）
+  huShow.value = huResults.value.length > 0
   const delta = computeDelta()
   const win = delta > 0
   result.value = {
@@ -1157,7 +1140,10 @@ onBeforeUnmount(() => {
     inset 0 0 0 1px rgba(255, 255, 255, .08),
     inset 0 0 60px -10px rgba(0, 0, 0, .55);
 }
-.mj-seat { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0; }
+.mj-seat { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0;
+  /* V24617-012：左右家 3 组副露后内容溢出本格、盖住上下两家的副露/弃牌 ——
+     溢出一律裁在本席位内，绝不允许越界遮别人。 */
+  overflow: hidden; }
 /* 对家：座位牌 + 副露 + 手牌背面**并排一行**。
    旧版是竖排三行，一个「对家」就吃掉桌高的一半（实测 77px／桌高 131px），
    中央弃牌只剩 28px 高 —— 这就是「出牌区间缩小了好多」。
@@ -1188,7 +1174,7 @@ onBeforeUnmount(() => {
   flex-direction: column; justify-content: center; align-items: center;
   min-height: 0; overflow: hidden;
 }
-.mj-melds.is-v { flex: 0 1 auto; }
+.mj-melds.is-v { flex: 0 1 52%; max-height: 58%; }
 .mj-backs.is-v { flex: 1 1 auto; }
 /* 竖排的牌：宽度固定、高度按列等分 —— 牌背是纯色块，压扁不影响辨识；
    有牌面的副露靠 SVG 的 preserveAspectRatio 保比例，同样只会变小不会变形。 */
@@ -1361,20 +1347,62 @@ onBeforeUnmount(() => {
     0 16px 22px -10px rgba(0, 0, 0, .9);
 }
 
-/* ===== 缺门牌（四川麻将「定缺」）=====
-   缺门的牌只能打出去，碰 / 杠 / 胡都不行（引擎侧见 holdingMissing / resolveReactions）。
-   视觉上**去饱和 + 压暗**而不是直接半透明 —— 半透明会看不清是哪张牌，
-   反而更容易打错。左下角再压一枚「缺」字，抬头一看就知道为什么它灰着。 */
-.mj-hand .gt-tile.is-miss {
-  filter: grayscale(.88) brightness(.84);
+/* ===== 碰杠提示（V24617-010）=====
+   反应窗口里亮出被碰/杠的那张牌；能组成刻子的手牌描金脉冲，一眼看清用哪几张碰。 */
+.mj-claimtile { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.mj-claimtile em { font-style: normal; font-size: 11.5px; color: var(--gt-ink-dim); white-space: nowrap; }
+@keyframes mj-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--gt-gold), 0 0 6px -1px rgba(233, 200, 119, .55); }
+  50% { box-shadow: 0 0 0 2px var(--gt-gold), 0 0 18px -1px rgba(233, 200, 119, .95); }
 }
-.mj-hand .gt-tile.is-miss::after {
-  content: '缺';
-  position: absolute; left: 1px; bottom: 1px; z-index: 3;
-  font-size: 8px; line-height: 1.15; padding: 0 2.5px; border-radius: 3px;
-  background: rgba(46, 46, 46, .72); color: #f3efe4; letter-spacing: 0;
+.mj-hand .gt-tile.is-claimhit { animation: mj-pulse 1.1s ease-in-out infinite; }
+.mj-actions .gt-btn.is-pulse { animation: mj-pulse 1.1s ease-in-out infinite; }
+
+/* ===== 本局积分（V24617-013）：座位卡名字旁的小徽标，赢绿亏红 ===== */
+.gt-seat-score {
+  flex: none; font-size: 10.5px; font-weight: 700; line-height: 1;
+  padding: 2px 5px; border-radius: 8px;
+  background: rgba(255, 255, 255, .12); color: var(--gt-ink-dim);
+  font-variant-numeric: tabular-nums;
 }
-.mj-hand .gt-tile.is-miss.is-sel { filter: grayscale(.55) brightness(.94); }
+.gt-seat-score.is-plus { background: rgba(64, 160, 96, .28); color: #9fe0b8; }
+.gt-seat-score.is-minus { background: rgba(190, 70, 60, .26); color: #f0b3aa; }
+
+/* ===== 胡牌动画浮层（V24617-011）=====
+   胡牌后先全屏展示赢家 14 张牌：牌逐张从下翻入（每张延迟 60ms），点击任意处关闭。 */
+.mj-hushow { cursor: pointer; }
+.mj-hushow-card {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 22px 30px; border-radius: 18px;
+  background: linear-gradient(168deg, rgba(20, 34, 28, .96), rgba(10, 22, 17, .96));
+  box-shadow: inset 0 0 0 1px rgba(233, 200, 119, .4), 0 24px 60px -18px rgba(0, 0, 0, .9);
+}
+@keyframes mj-hushow-pop {
+  0% { transform: translateY(26px) scale(.6) rotate(-8deg); opacity: 0; }
+  70% { transform: translateY(-3px) scale(1.05) rotate(1deg); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.mj-hushow-title {
+  margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 2px;
+  color: var(--gt-gold); text-shadow: 0 0 22px rgba(233, 200, 119, .55);
+  animation: mj-hushow-pop .45s cubic-bezier(.2, .85, .3, 1) both;
+}
+.mj-hushow-fan { margin: 0; font-size: 14px; color: #e8e2d2; animation: mj-hushow-pop .45s .08s cubic-bezier(.2, .85, .3, 1) both; }
+.mj-hushow-hand {
+  display: flex; gap: 4px; flex-wrap: nowrap; max-width: 92vw;
+  padding: 10px 8px 6px; border-radius: 10px;
+  background: rgba(0, 0, 0, .28);
+}
+.mj-hushow-hand .gt-tile {
+  width: 34px; aspect-ratio: 5 / 7; flex: none;
+  animation: mj-hushow-pop .4s cubic-bezier(.2, .85, .3, 1) both;
+}
+.mj-hushow-tip { margin: 2px 0 0; font-size: 11.5px; color: rgba(232, 226, 210, .55); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mj-hushow-title, .mj-hushow-fan, .mj-hushow-hand .gt-tile,
+  .mj-hand .gt-tile.is-claimhit, .mj-actions .gt-btn.is-pulse { animation: none !important; }
+}
 
 /* 上滑出牌：手指抬起过阈值时把牌「拎起来」，松手即出（给提前反馈，不用猜） */
 .mj-hand .gt-tile.is-lift {

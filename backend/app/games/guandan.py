@@ -51,6 +51,14 @@ def _card_value(card: dict, level: int) -> int:
     return 15 if card.get("rank") == level else int(card["rank"])
 
 
+def _suit_key(card: dict) -> int:
+    """花色优先级（v2.46.17 起）：黑桃 > 红桃 > 梅花 > 方块；王牌没有花色排 0。
+
+    用于进贡牌点数相同时决出「谁先出牌」——贡大牌的一方先出。
+    """
+    return {"♠": 4, "♥": 3, "♣": 2, "♦": 1}.get(card.get("suit"), 0)
+
+
 def _rank_key(card: dict) -> int:
     if card.get("joker"):
         return JOKER_BIG if card["joker"] == "big" else JOKER_SMALL
@@ -493,7 +501,9 @@ def _do_tribute(st: dict, seat: int, card: dict, events: list[dict]) -> None:
     if nxt is not None:
         st["turn"] = nxt
         return
-    tr["leader"] = max(tr["pairs"], key=lambda p: _card_value(p["card"], st["level"]))["from"]
+    # 进贡牌大的先出；点数相同按 ♠>♥>♣>♦（v2.46.17，夜星定的口径）
+    tr["leader"] = max(tr["pairs"],
+                       key=lambda p: (_card_value(p["card"], st["level"]), _suit_key(p["card"])))["from"]
     tr["returns"] = [{"from": p["to"], "to": p["from"]} for p in tr["pairs"]]
     st["phase"] = "return"
     st["turn"] = tr["returns"][0]["from"]

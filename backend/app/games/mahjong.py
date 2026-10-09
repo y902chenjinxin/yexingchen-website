@@ -1,13 +1,17 @@
-"""四川麻将 · 胡牌即结束 服务端引擎（v2.46.15）。
+"""四川麻将 · 胡牌即结束 服务端引擎（v2.46.17）。
 
-万(m)/条(s)/筒(p) 各 1–9 共 108 张，**另加箭牌（字）红中/发财/白板各 4 张（v2.46.15 起，
-共 120 张）**。字牌只能刻/对、不成顺子。规则与前端 `utils/games/mahjong.js` 一致，
-本文件补齐 PRD §6.2 的**刮风下雨**（明杠即时收 1 倍底注 / 暗杠即时收 2 倍底注）。
+万(m)/条(s)/筒(p) 各 1–9 共 108 张，**另加字牌：箭牌（中/發/白）+ 风牌（东南西北）
+各 4 张（v2.46.15 起加箭牌、v2.46.17 起加风牌，共 136 张）**。字牌只能刻/对、不成顺子。
+规则与前端 `utils/games/mahjong.js` 一致，本文件补齐 PRD §6.2 的**刮风下雨**
+（明杠即时收 1 倍底注 / 暗杠即时收 2 倍底注）。
 
-阶段机：``missing``（定缺）→ ``playing``（摸打 / 碰杠胡）→ ``finished``。
+阶段机：``playing``（摸打 / 碰杠胡）→ ``finished``。
+**v2.46.17 起取消定缺**（夜星要求「单纯的胡牌规则」）：开局庄家直接起手摸牌，
+手上不再有缺门限制，碰/杠/胡只看牌型。``missing`` 字段保留为全 None 以兼容旧房态。
 **胡牌即结束**（v2.46.10 起，不再是血战到底）：任意一家胡牌（自摸或点炮）本局立即收摊，
 其余人不补摸补打；一炮只取**一家**胡（放炮者下家起逆时针就近优先），不存在一炮多响。
 牌墙摸完仍无人胡 = 流局。
+**庄家轮换（v2.46.17）**：下一局由本局胡牌者坐庄先出牌（流局则庄家下移一位）。
 
 ``state["score"]`` 以**底注倍数**为单位累计（含刮风下雨的即时收豆），
 路由层据此换算成豆子结算；刮风下雨另外落 ``gang_pay`` 事件供即时提示。
@@ -18,8 +22,8 @@ from app.games.base import TableEngine, TableError, copy_state, register, rng
 
 SUITS = ["m", "s", "p", "z"]
 SUIT_NAME = {"m": "万", "s": "条", "p": "筒", "z": "字"}
-HONOR_NAME = {1: "红中", 2: "发财", 3: "白板"}
-RANKS = {"m": 9, "s": 9, "p": 9, "z": 3}
+HONOR_NAME = {1: "红中", 2: "发财", 3: "白板", 4: "东风", 5: "南风", 6: "西风", 7: "北风"}
+RANKS = {"m": 9, "s": 9, "p": 9, "z": 7}
 RANK_TEXT = {1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六", 7: "七", 8: "八", 9: "九"}
 
 # 刮风下雨：明杠（直杠）放杠者付 1 倍底注；暗杠每家付 2 倍；补杠每家付 1 倍
@@ -146,17 +150,9 @@ def _is_all_triplets_hand(ch: list[int], meld_count: int) -> bool:
     return False
 
 
-def has_missing(c: list[int], missing: str | None) -> bool:
-    if not missing:
-        return False
-    si = SUITS.index(missing)
-    return any(c[si * 9 + r] > 0 for r in range(9))
-
-
-def can_hu(hand: list[dict], meld_count: int, missing: str | None, seven_ok: bool = True) -> bool:
+def can_hu(hand: list[dict], meld_count: int, missing: str | None = None, seven_ok: bool = True) -> bool:
+    """和牌判定。``missing`` 参数保留仅为兼容旧调用点（v2.46.17 起无缺门概念，恒忽略）。"""
     c = _counts(hand)
-    if has_missing(c, missing):
-        return False
     if is_standard_hu(c, meld_count):
         return True
     if seven_ok and meld_count == 0 and len(hand) == 14 and is_seven_pairs(c)["ok"]:
@@ -214,16 +210,14 @@ def score_hu(hand: list[dict], melds: list[dict], flags: dict | None = None) -> 
     return {"fan": fan, "names": names}
 
 
-def ting_tiles(hand: list[dict], meld_count: int, missing: str | None) -> list[dict]:
+def ting_tiles(hand: list[dict], meld_count: int, missing: str | None = None) -> list[dict]:
     out: list[dict] = []
     if len(hand) % 3 != 1:
         return out
     for suit in SUITS:
-        if suit == missing:
-            continue
         for rank in range(1, RANKS[suit] + 1):
             probe = {"id": -1, "suit": suit, "rank": rank}
-            if can_hu(hand + [probe], meld_count, missing):
+            if can_hu(hand + [probe], meld_count):
                 out.append({"suit": suit, "rank": rank})
     return out
 
@@ -310,20 +304,9 @@ def _tile_score(c: list[int], i: int) -> int:
     return s
 
 
-def ai_missing(hand: list[dict]) -> str:
-    cnt = {k: 0 for k in SUITS}
-    for t in hand:
-        cnt[t["suit"]] += 1
-    return min(SUITS, key=lambda k: (cnt[k], k))
-
-
-def ai_discard(hand: list[dict], meld_count: int, missing: str | None) -> dict:
+def ai_discard(hand: list[dict], meld_count: int, missing: str | None = None) -> dict:
+    """AI 选打。``missing`` 仅为兼容旧签名（v2.46.17 起无缺门）。"""
     c = _counts(hand)
-    if missing:
-        si = SUITS.index(missing)
-        for r in range(9):
-            if c[si * 9 + r] > 0:
-                return next(t for t in hand if t["suit"] == missing and t["rank"] == r + 1)
     best_tile = hand[0]
     best_key = -10 ** 9
     seen: set[str] = set()
@@ -334,7 +317,7 @@ def ai_discard(hand: list[dict], meld_count: int, missing: str | None) -> dict:
         seen.add(k)
         rest = [x for x in hand if x["id"] != t["id"]]
         sh = shanten(rest, meld_count)
-        u = len(ting_tiles(rest, meld_count, missing))
+        u = len(ting_tiles(rest, meld_count))
         s = _tile_score(c, idx_of(t["suit"], t["rank"]))
         key = -sh * 100 + u * 3 + s
         if key > best_key:
@@ -343,9 +326,7 @@ def ai_discard(hand: list[dict], meld_count: int, missing: str | None) -> dict:
     return best_tile
 
 
-def ai_want_pong(hand: list[dict], tile: dict, meld_count: int, missing: str | None) -> bool:
-    if any(t["suit"] == missing for t in hand):
-        return False
+def ai_want_pong(hand: list[dict], tile: dict, meld_count: int, missing: str | None = None) -> bool:
     c = _counts(hand)
     same = c[idx_of(tile["suit"], tile["rank"])]
     if same < 2:
@@ -356,9 +337,7 @@ def ai_want_pong(hand: list[dict], tile: dict, meld_count: int, missing: str | N
     return after < before or same >= 3
 
 
-def ai_want_kong(hand: list[dict], tile: dict, missing: str | None) -> bool:
-    if any(t["suit"] == missing for t in hand):
-        return False
+def ai_want_kong(hand: list[dict], tile: dict, missing: str | None = None) -> bool:
     return _counts(hand)[idx_of(tile["suit"], tile["rank"])] >= 3
 
 
@@ -437,19 +416,21 @@ class MahjongEngine(TableEngine):
     def new_game(self, seats: list[dict], config: dict, seed: int) -> dict:
         r = rng(seed)
         prev = config.get("prev") or {}
-        dealer = int(prev.get("dealer_next") or 0) % 4
+        # 庄家轮换（v2.46.17）：由上一局胡牌者坐庄；流局则庄家下移一位（旧字段兜底）
+        dealer = int((prev.get("result") or {}).get("dealer_next")
+                     or prev.get("dealer_next") or 0) % 4
         deck = _build_deck()
         r.shuffle(deck)
         hands = [_sort_hand(deck[i * 13:(i + 1) * 13]) for i in range(4)]
         wall = deck[52:]
         st = {
-            "phase": "missing",
+            "phase": "playing",           # v2.46.17 起无定缺阶段，庄家直接起手
             "dealer": dealer,
             "wall": wall,
             "hands": hands,
             "melds": [[], [], [], []],
             "discards": [[], [], [], []],
-            "missing": [None, None, None, None],
+            "missing": [None, None, None, None],   # 保留字段（恒 None），旧房态兼容
             "turn": dealer,
             "last_draw": None,
             "last_discard": None,
@@ -464,7 +445,8 @@ class MahjongEngine(TableEngine):
             "result": None,
             "round_no": int(config.get("round_no") or 1),
         }
-        _log(st, "定缺阶段：每人选一门最少的缺")
+        _log(st, f"对局开始，{dealer} 号位坐庄（上一局胡牌者先出）")
+        self._draw(st, dealer, [])   # 庄家起手第一摸（new_game 无事件通道，直接丢弃）
         return st
 
     # ---------- 投影 ----------
@@ -478,7 +460,6 @@ class MahjongEngine(TableEngine):
                 "hand_count": len(st["hands"][s]),
                 "melds": st["melds"][s],
                 "discards": st["discards"][s],
-                "missing": st["missing"][s],
                 "is_turn": st.get("turn") == s,
                 "hu": s in st["hu"],
                 "hu_info": st["hu_info"].get(str(s)),
@@ -488,17 +469,14 @@ class MahjongEngine(TableEngine):
             "seat": seat,
             "hand": st["hands"][seat] if 0 <= seat < 4 else [],
             "melds": st["melds"][seat] if 0 <= seat < 4 else [],
-            "missing": st["missing"][seat] if 0 <= seat < 4 else None,
             "last_draw": st.get("last_draw") if st.get("turn") == seat else None,
         }
         cl = st.get("claim")
-        if st["phase"] == "missing" and st.get("turn") == seat:
-            me["options"] = ["missing"]
-        elif cl and cl.get("seat") == seat:
+        if cl and cl.get("seat") == seat:
             me["options"] = list(cl.get("options") or []) + ["pass"]
         elif st["phase"] == "playing" and st.get("turn") == seat and not cl:
             opts = ["discard"]
-            if can_hu(st["hands"][seat], len(st["melds"][seat]), st["missing"][seat]):
+            if can_hu(st["hands"][seat], len(st["melds"][seat])):
                 opts.append("hu")
             me["ankongs"] = find_ankongs(st["hands"][seat])
             me["bugangs"] = find_bugangs(st["hands"][seat], st["melds"][seat])
@@ -532,24 +510,6 @@ class MahjongEngine(TableEngine):
         events: list[dict] = []
         act = str(action.get("type") or "")
 
-        if st["phase"] == "missing":
-            if seat != st.get("turn"):
-                raise TableError("还没轮到你定缺")
-            suit = action.get("suit")
-            if suit not in SUITS:
-                raise TableError("请选择缺门（万/条/筒/字）")
-            st["missing"][seat] = suit
-            _log(st, f"{seat} 号位定缺 {SUIT_NAME[suit]}")
-            _history(st, {"kind": "missing", "seat": seat, "suit": suit})
-            nxt = next((s for s in range(4) if not st["missing"][s]), None)
-            if nxt is None:
-                st["phase"] = "playing"
-                st["turn"] = st["dealer"]
-                self._draw(st, st["dealer"], events)
-            else:
-                st["turn"] = nxt
-            return st, events
-
         if st["phase"] != "playing":
             raise TableError("牌局已结束")
 
@@ -580,7 +540,7 @@ class MahjongEngine(TableEngine):
         if act == "discard":
             self._do_discard(st, seat, action, events)
         elif act == "hu":
-            if not can_hu(st["hands"][seat], len(st["melds"][seat]), st["missing"][seat]):
+            if not can_hu(st["hands"][seat], len(st["melds"][seat])):
                 raise TableError("现在不能和牌")
             self._do_hu(st, seat, st["hands"][seat], None, True, events)
             self._advance_draw_from(st, seat, events)
@@ -681,10 +641,8 @@ class MahjongEngine(TableEngine):
             if s in st["hu"] or s in passed:
                 continue
             hand = st["hands"][s]
-            if has_missing(_counts(hand), st["missing"][s]):
-                continue
             opts: list[str] = []
-            if can_hu(hand + [tile], len(st["melds"][s]), st["missing"][s]):
+            if can_hu(hand + [tile], len(st["melds"][s])):
                 opts.append("hu")
             cnt = _counts(hand)[idx_of(tile["suit"], tile["rank"])]
             if cnt >= 3:
@@ -770,7 +728,8 @@ class MahjongEngine(TableEngine):
             "score": {str(s): int(st["score"][s]) for s in range(4)},
             "hu": list(st["hu"]),
             "hu_info": st["hu_info"],
-            "dealer_next": (int(st.get("dealer", 0)) + 1) % 4,
+            # 庄家轮换（v2.46.17）：下一局由本局胡牌者坐庄；流局则庄家下移一位
+            "dealer_next": (int(st["hu"][0]) if st["hu"] else (int(st.get("dealer", 0)) + 1) % 4),
             "match_over": False,
         }
         events.append({"kind": "finish", "hu": list(st["hu"])})
@@ -786,21 +745,6 @@ class MahjongEngine(TableEngine):
         ai = ai_seats(seats)
         events: list[dict] = []
 
-        if st["phase"] == "missing":
-            if st.get("turn") not in ai:
-                return None
-            seat = st["turn"]
-            st["missing"][seat] = ai_missing(st["hands"][seat])
-            _log(st, f"{seat} 号位定缺 {SUIT_NAME[st['missing'][seat]]}")
-            nxt = next((s for s in range(4) if not st["missing"][s]), None)
-            if nxt is None:
-                st["phase"] = "playing"
-                st["turn"] = st["dealer"]
-                self._draw(st, st["dealer"], events)
-            else:
-                st["turn"] = nxt
-            return st, events
-
         if st["phase"] != "playing":
             return None
 
@@ -814,9 +758,9 @@ class MahjongEngine(TableEngine):
             melds = len(st["melds"][seat])
             if "hu" in opts:
                 self._resolve_claim(st, seat, "hu", events)
-            elif "kong" in opts and ai_want_kong(st["hands"][seat], tile, st["missing"][seat]):
+            elif "kong" in opts and ai_want_kong(st["hands"][seat], tile):
                 self._resolve_claim(st, seat, "kong", events)
-            elif "pong" in opts and ai_want_pong(st["hands"][seat], tile, melds, st["missing"][seat]):
+            elif "pong" in opts and ai_want_pong(st["hands"][seat], tile, melds):
                 self._resolve_claim(st, seat, "pong", events)
             else:
                 cl["passed"] = list(cl.get("passed") or []) + [seat]
@@ -834,8 +778,7 @@ class MahjongEngine(TableEngine):
             return None
         hand = st["hands"][cur]
         melds = st["melds"][cur]
-        missing = st["missing"][cur]
-        if can_hu(hand, len(melds), missing):
+        if can_hu(hand, len(melds)):
             self._do_hu(st, cur, hand, None, True, events)
             self._advance_draw_from(st, cur, events)
             return st, events
@@ -865,7 +808,7 @@ class MahjongEngine(TableEngine):
             self._draw(st, cur, events, after_kong=True)
             return st, events
 
-        tile = ai_discard(hand, len(melds), missing)
+        tile = ai_discard(hand, len(melds))
         st["hands"][cur] = [t for t in hand if t["id"] != tile["id"]]
         st["discards"][cur].append(tile)
         st["last_discard"] = {"seat": cur, "tile": tile}

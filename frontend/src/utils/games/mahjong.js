@@ -1,12 +1,13 @@
-/** 四川麻将 · 胡牌即结束 规则引擎（v2.46.15）。
+/** 四川麻将 · 胡牌即结束 规则引擎（v2.46.17）。
  *
  * 纯 JS，无 Vue 依赖：牌堆 / 和牌判定 / 听牌计算 / 向听数 / 番种 / AI 决策。
  *
  * 规则口径（与 PRD 一致）：
- * - 万(m) / 条(s) / 筒(p) 各 1–9 每种 4 张，共 108 张；**另加箭牌（字）**：
- *   红中 / 发财 / 白板 各 4 张（v2.46.15 起，共 120 张）。字牌只能刻/对，**不成顺子**。
- * - 定缺：开局每人选一门「缺」（万/条/筒/字 四选一），手上不能留缺门牌，
- *   缺门未打完不能碰/杠/胡。
+ * - 万(m) / 条(s) / 筒(p) 各 1–9 每种 4 张，共 108 张；**另加字牌**：
+ *   箭牌（红中/发财/白板，v2.46.15 起）+ 风牌（东南西北，v2.46.17 起）各 4 张，
+ *   共 136 张。字牌只能刻/对，**不成顺子**。
+ * - **无定缺**（v2.46.17 起，夜星要求「单纯的胡牌规则」）：开局庄家直接起手摸牌，
+ *   没有缺门限制；庄家轮换 —— 上一局胡牌者下局坐庄先出（本地由牌桌层处理）。
  * - 和牌型：4 组面子（顺子/刻子）+ 1 对将；或 7 对（含龙七对）。
  * - **胡牌即结束**（v2.46.10 起，不再是血战到底）：任一家胡牌（自摸或点炮）本局立即收摊，
  *   其余人不补摸补打；一炮只取**一家**胡（放炮者下家起逆时针就近优先），不存在一炮多响。
@@ -16,10 +17,10 @@
 
 export const SUITS = ['m', 's', 'p', 'z']
 export const SUIT_NAME = { m: '万', s: '条', p: '筒', z: '字' }
-/** 字牌的显示名（tileText / 胡牌提示用） */
-export const HONOR_NAME = { 1: '红中', 2: '发财', 3: '白板' }
-/** 每门花色的牌种数：数字牌 1–9，字牌只有 中/發/白 三种 */
-export const RANKS = { m: 9, s: 9, p: 9, z: 3 }
+/** 字牌的显示名（tileText / 胡牌提示用）：箭牌 1-3 + 风牌 4-7 */
+export const HONOR_NAME = { 1: '红中', 2: '发财', 3: '白板', 4: '东风', 5: '南风', 6: '西风', 7: '北风' }
+/** 每门花色的牌种数：数字牌 1–9，字牌 中/發/白 + 东南西北 共 7 种 */
+export const RANKS = { m: 9, s: 9, p: 9, z: 7 }
 export const RANK_TEXT = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' }
 /** 显示用：一筒 / 三条 / 五万；牌面数字优先，副标写花色 */
 export const SUIT_GLYPH = { m: '萬', s: '條', p: '筒' }
@@ -150,24 +151,15 @@ export function isAllEyes(c) {
   return true
 }
 
-/** 是否带缺门牌（定缺未打完） */
-export function hasMissing(c, missing) {
-  if (!missing) return false
-  const si = SUITS.indexOf(missing)
-  for (let r = 0; r < 9; r++) if (c[si * 9 + r] > 0) return true
-  return false
-}
-
 /**
- * 和牌判定。
+ * 和牌判定。``missing`` 参数保留仅为兼容旧调用点（v2.46.17 起无缺门概念，恒忽略）。
  * @param {Array} hand 暗手牌（含刚摸/刚吃到的那张）
  * @param {number} meldCount 已亮出的面子数（碰/杠）
- * @param {string} missing 缺门花色
+ * @param {string} [missing] 已废弃，忽略
  * @param {boolean} sevenPairsOK 是否允许七对（暗杠会破坏七对，故 meldCount>0 时不可）
  */
 export function canHu(hand, meldCount, missing, sevenPairsOK = true) {
   const c = counts(hand)
-  if (hasMissing(c, missing)) return false
   if (isStandardHu(c, meldCount)) return true
   if (sevenPairsOK && meldCount === 0 && hand.length === 14 && isSevenPairs(c).ok) return true
   return false
@@ -218,16 +210,15 @@ export function scoreHu(hand, melds = [], flags = {}) {
 
 /* ---------------- 听牌 / 向听 ---------------- */
 
-/** 13 张（或 3n+1）手牌听哪些牌 → [{suit,rank}]（字牌只探 中/發/白 三种） */
-export function tingTiles(hand, meldCount, missing) {
+/** 13 张（或 3n+1）手牌听哪些牌 → [{suit,rank}]（missing 参数废弃，恒忽略） */
+export function tingTiles(hand, meldCount) {
   const out = []
   if (hand.length % 3 !== 1) return out
   for (const suit of SUITS) {
-    if (suit === missing) continue
     for (let rank = 1; rank <= RANKS[suit]; rank++) {
       const probe = { id: -1, suit, rank }
       const test = hand.concat([probe])
-      if (canHu(test, meldCount, missing)) out.push({ suit, rank })
+      if (canHu(test, meldCount)) out.push({ suit, rank })
     }
   }
   return out
@@ -288,8 +279,8 @@ export function shanten(hand, meldCount = 0) {
 }
 
 /** 已和牌时向听为负，统一成「听牌数 / 进张数」评估 */
-export function usefulCount(hand, meldCount, missing) {
-  const t = tingTiles(hand, meldCount, missing)
+export function usefulCount(hand, meldCount) {
+  const t = tingTiles(hand, meldCount)
   return t.length
 }
 
@@ -313,24 +304,17 @@ function tileScore(c, i) {
 }
 
 /**
- * AI 打哪张。
+ * AI 打哪张。``missing`` 参数废弃（v2.46.17 无缺门），保留仅为兼容旧签名。
  * @param {Array} hand 当前暗手牌（3n+2，刚摸完）
  * @param {number} meldCount
- * @param {string} missing 缺门
+ * @param {string} [missing] 已废弃，忽略
  * @param {Object} ctx { level: 'weak'|'normal'|'strong' }
  * @returns {Object} 要打出的牌
  */
-export function aiDiscard(hand, meldCount, missing, ctx = {}) {
+export function aiDiscard(hand, meldCount, ctx = {}) {
   const c = counts(hand)
   const weak = ctx.level === 'weak'
-  // 1) 缺门必须先打完
-  const si = SUITS.indexOf(missing)
-  if (si >= 0) {
-    for (let r = 0; r < 9; r++) {
-      if (c[si * 9 + r] > 0) return hand.find(t => t.suit === missing && t.rank === r + 1)
-    }
-  }
-  // 2) 弱 AI：直接打孤张
+  // 弱 AI：直接打孤张
   if (weak) {
     let worst = null, worstScore = Infinity
     for (const t of hand) {
@@ -339,7 +323,7 @@ export function aiDiscard(hand, meldCount, missing, ctx = {}) {
     }
     return worst || hand[0]
   }
-  // 3) 正常 AI：逐张试打，看向听是否最优（进张数多者优先）
+  // 正常 AI：逐张试打，看向听是否最优（进张数多者优先）
   let bestTile = hand[0], bestKey = -Infinity
   const seen = new Set()
   for (const t of hand) {
@@ -348,7 +332,7 @@ export function aiDiscard(hand, meldCount, missing, ctx = {}) {
     seen.add(k)
     const rest = hand.filter(x => x.id !== t.id)
     const sh = shanten(rest, meldCount)
-    const u = usefulCount(rest, meldCount, missing)
+    const u = usefulCount(rest, meldCount)
     const s = tileScore(c, idxOf(t.suit, t.rank))
     const key = -sh * 100 + u * 3 + s
     if (key > bestKey) { bestKey = key; bestTile = t }
@@ -356,9 +340,8 @@ export function aiDiscard(hand, meldCount, missing, ctx = {}) {
   return bestTile
 }
 
-/** AI 是否碰：缺门没打完不碰；对子多/向听改善才碰 */
+/** AI 是否碰：对子多/向听改善才碰 */
 export function aiWantPong(hand, tile, meldCount, missing, ctx = {}) {
-  if (hand.some(t => t.suit === missing)) return false
   const c = counts(hand)
   const same = c[idxOf(tile.suit, tile.rank)]
   if (same < 2) return false
@@ -370,7 +353,6 @@ export function aiWantPong(hand, tile, meldCount, missing, ctx = {}) {
 
 /** AI 是否杠 */
 export function aiWantKong(hand, tile, meldCount, missing, ctx = {}) {
-  if (hand.some(t => t.suit === missing)) return false
   const c = counts(hand)
   if (c[idxOf(tile.suit, tile.rank)] < 3) return false
   if (ctx.level === 'weak') return Math.random() < 0.5
@@ -378,8 +360,8 @@ export function aiWantKong(hand, tile, meldCount, missing, ctx = {}) {
 }
 
 /** AI 是否胡：见胡就胡（胡牌即结束，一胡就是本局赢家） */
-export function aiWantHu(hand, meldCount, missing) {
-  return canHu(hand, meldCount, missing)
+export function aiWantHu(hand, meldCount) {
+  return canHu(hand, meldCount)
 }
 
 /** 找出手牌里所有可暗杠的点位 */

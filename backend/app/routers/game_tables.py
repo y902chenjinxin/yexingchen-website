@@ -10,7 +10,9 @@
 from __future__ import annotations
 
 import json
+import random
 import secrets
+import time
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
@@ -220,6 +222,11 @@ def _append_events(db: Session, room: GameRoom, events: list[dict]) -> int:
     return seq
 
 
+# AI 行动节奏：两次 AI 动作之间的间隔秒数（夜星要求 2-3s）
+AI_ACT_MIN = 2.0
+AI_ACT_MAX = 2.8
+
+
 def _deadline_for(game: str, state: dict) -> datetime | None:
     """超时兜底的截止时间。
 
@@ -240,17 +247,27 @@ def _deadline_for(game: str, state: dict) -> datetime | None:
 
 
 def _advance(db: Session, room: GameRoom, state: dict, events: list[dict]) -> tuple[dict, list[dict]]:
-    """让引擎自行推进：AI 行动 / 发牌 / 进贡 / 超时兜底，直到轮到真人或结束。"""
+    """让引擎自行推进：AI 行动 / 发牌 / 进贡 / 超时兜底，直到轮到真人或结束。
+
+    **AI 节奏（v2.46.17）**：AI 每次行动之间强制间隔 ``AI_ACT_MIN``~``AI_ACT_MAX``
+    秒（夜星要求 2-3s，原来 `drive` 一口气把 AI 全推完，机器人瞬间打完整轮）。
+    实现靠 state 里的 ``_ai_wait_until`` 时间戳：未到期就停手，等前端下一次轮询
+    （~1.6s）再来推进一步。时间戳随 state 走 JSON 深拷贝存活，引擎本身不感知。
+    """
     eng = get_engine(room.game)
     seats = _eff_seats(normalize_seats(room.seats))
 
     def drive(st: dict) -> dict:
         for _ in range(400):
+            wait_until = float(st.get("_ai_wait_until") or 0)
+            if time.time() < wait_until:
+                break
             out = eng.step_ai(st, seats)
             if out is None:
                 break
             st, evs = out
             events.extend(evs)
+            st["_ai_wait_until"] = time.time() + random.uniform(AI_ACT_MIN, AI_ACT_MAX)
         return st
 
     state = drive(state)
