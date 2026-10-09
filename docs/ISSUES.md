@@ -7,6 +7,22 @@
 
 ---
 
+## v2.46.26 TTS 二修：不要没语音 + 合成音怪异（2026-10-10）
+
+**根因**
+1. v2.46.24 只给「出牌」接了 `speak()`，「不要」只弹气泡没走语音（本地 `applyPass` 与在线 history 增量两处都漏）。
+2. 合成音怪异三来源：① `pickVoice` 只挑第一个 zh-CN，Windows 上大概率选中 Kangkang/Huihui 机械老默认音；② 文案「一对五」「三个二带一对五」书面且无停顿，合成引擎连读生硬；③ rate 1.2 压音节发赶。
+
+**修法**
+- `tts.js`：选声打分制（Xiaoxiao/Yunxi/Yunyang/Natural 加分、机械音降权）；rate 1.2→1.1；新增 `speakPass()` 随机台词池「要不起/不要/过」（腾讯棋牌式一人多台词）；顺手清掉已废弃的风牌 HONOR_CN。
+- `GuandanBoard.vue`：本地 `applyPass` + 在线 syncFromView pass 增量接 `speakPass()`；describePlay 口语化「对五」「三个二，带对五」（逗号断句）。
+
+**验证**
+- eslint 0 error；vite build dist-deploy56；grep 确认 v2.46.26 / SW v339 / 「要不起」「带对」/ 选声正则进包；部署 home=200。
+- 边界：在线模式自己的 pass 经 history 增量播一次（与气泡同源）；本地模式 applyPass 直播，无双播路径。
+
+---
+
 ## v2.46.25 掼蛋配色/AI算法 大富翁三修（2026-10-09）
 
 **掼蛋**

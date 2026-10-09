@@ -402,7 +402,7 @@ import { sfx, setMuted, isMuted, panOf } from '@/utils/games/sfx'
 import { vibrate, hapticsEnabled, setHaptics } from '@/utils/games/haptics'
 import confettiPieces from '@/utils/games/confetti'
 import countUp from '@/utils/games/countUp'
-import { speak } from '@/utils/games/tts'
+import { speak, speakPass } from '@/utils/games/tts'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { useRootHeight } from '@/composables/useRootHeight'
 
@@ -938,11 +938,11 @@ function describePlay(cards, pat) {
   const mainN = main.length + (gs.length ? 0 : wildN)   // 全百搭时并给主组
   const mainTxt = `${TTS_COUNT[Math.min(mainN, 6)] || ''}${ttsRank(main[0] || cards[0])}`
   if (t === 'single') return mainTxt || '单张'
-  if (t === 'pair') return `一对${ttsRank(main[0] || cards[0])}`
+  if (t === 'pair') return `对${ttsRank(main[0] || cards[0])}`
   if (t === 'triple') return `三个${ttsRank(main[0] || cards[0])}`
   if (t === 'triple2') {
     const kick = gs[1]
-    return `三个${ttsRank(main[0] || cards[0])}带一对${kick ? ttsRank(kick[0]) : ''}`
+    return `三个${ttsRank(main[0] || cards[0])}，带对${kick ? ttsRank(kick[0]) : ''}`
   }
   if (t === 'bomb') return `${TTS_COUNT[Math.min(cards.length, 6)] || ''}${ttsRank(main[0] || cards[0])}`
   return G.PATTERN_NAME[t] || ''   // 顺子 / 三连对 / 钢板 / 同花顺 / 火箭：报牌型名
@@ -1018,7 +1018,10 @@ function syncFromView(v) {
     if (hist.length < onlineHistLen.value) startDealWave()   // 历史变短 = 新一局发牌
     if (hist.length > onlineHistLen.value) {
       const lastEv = hist[hist.length - 1]
-      if (lastEv && lastEv.kind === 'pass') showPassBubble(lastEv.seat)
+      if (lastEv && lastEv.kind === 'pass') {
+        showPassBubble(lastEv.seat)
+        speakPass()   // v2.46.26：在线「不要」补语音（夜星：没有合成音）
+      }
     }
     onlineHistLen.value = hist.length
   }
@@ -1139,6 +1142,7 @@ function applyPass(seat) {
   pushHistory({ kind: 'pass', seat })
   showPassBubble(seat)
   sfx.pass()
+  speakPass()   // v2.46.26：本地「不要」补语音（随机台词池）
   advance()
 }
 
