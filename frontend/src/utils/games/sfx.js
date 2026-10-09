@@ -66,6 +66,41 @@ function chord(freqs, dur = 0.16, gain = 0.045, pan = 0) {
   freqs.forEach((f, i) => blip(f, dur, 'triangle', gain, i * 0.07, pan))
 }
 
+/** 带通噪声短击（v2.46.26）：真实「啪」声是宽带噪声冲击，振荡器做不出来。
+ *  白噪声 buffer 指数衰减包络 + bandpass 滤波，freq≈3000 是骨牌拍面的高频击点。 */
+function noiseBurst(pan = 0, delay = 0, dur = 0.05, freq = 3000, q = 1.2, gain = 0.09) {
+  if (muted) return
+  const a = ac()
+  if (!a) return
+  try {
+    if (a.state === 'suspended') a.resume()
+    const t0 = a.currentTime + delay
+    const len = Math.max(64, Math.floor(a.sampleRate * dur))
+    const buf = a.createBuffer(1, len, a.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len)
+    const src = a.createBufferSource()
+    src.buffer = buf
+    const bp = a.createBiquadFilter()
+    bp.type = 'bandpass'
+    // ±5% 随机中心频率：每张牌落桌听感略不同（与 blip 的 ±3% 同思路）
+    bp.frequency.value = freq * (1 + (Math.random() * 0.1 - 0.05))
+    bp.Q.value = q
+    const g = a.createGain()
+    g.gain.value = gain
+    src.connect(bp); bp.connect(g)
+    let tail = g
+    if (a.createStereoPanner) {
+      const p = a.createStereoPanner()
+      p.pan.value = Math.max(-1, Math.min(1, pan))
+      g.connect(p)
+      tail = p
+    }
+    tail.connect(a.destination)
+    src.start(t0)
+  } catch { /* 静默 */ }
+}
+
 export function setMuted(v) {
   muted = !!v
   try { localStorage.setItem(KEY, muted ? '1' : '0') } catch { /* 忽略 */ }
@@ -77,6 +112,16 @@ export const sfx = {
   deal(pan = 0) { for (let i = 0; i < 5; i++) blip(880 - i * 60, 0.05, 'square', 0.03, i * 0.05, pan) },
   /** 出牌：干脆的一击（+ 轻触感 10ms） */
   play(pan = 0) { blip(520, 0.07, 'triangle', 0.055, 0, pan); blip(760, 0.06, 'sine', 0.03, 0.04, pan); vibrate(10) },
+  /** 麻将牌拍在桌上（v2.46.26，夜星：「改为麻将砸在桌子上的声音，真实一点」）：
+   *  三层合成 —— 高频「啪」（3400Hz 噪声击面）+ 低频「咚」（160Hz 木桌共鸣 thump）
+   *  + 中频骨牌体（760Hz 短 triangle），再加 50ms 后一声轻回弹余响。 */
+  tileDown(pan = 0) {
+    noiseBurst(pan, 0, 0.045, 3400, 1.1, 0.11)
+    blip(160 + Math.random() * 40, 0.09, 'sine', 0.12, 0, pan)
+    blip(760, 0.045, 'triangle', 0.05, 0.005, pan)
+    noiseBurst(pan, 0.05, 0.03, 2200, 1.4, 0.05)
+    vibrate(12)
+  },
   /** 不要 / 过 */
   pass(pan = 0) { blip(300, 0.09, 'sine', 0.035, 0, pan) },
   /** 选牌轻响（不带触感：划选时会连响，震动了会烦） */

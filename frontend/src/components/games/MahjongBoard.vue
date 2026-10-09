@@ -690,6 +690,7 @@ function log(t) { logs.value.unshift(t); logs.value = logs.value.slice(0, 8) }
 const PHASE_MAP = { playing: 'playing', finished: 'settled' }
 function syncFromView(v) {
   if (!v) return
+  const prevPhase = phase.value   // v2.46.26：胡牌语音用（转 finished 瞬间才喊）
   const me = v.me || {}
   // 服务端 me.hand 已含刚摸的 last_draw；本地模板把「刚摸」单列渲染，这里拆开避免重复
   const hand = (me.hand || []).slice()
@@ -703,6 +704,26 @@ function syncFromView(v) {
   hands.value = nextHands
   melds.value = [0, 1, 2, 3].map(s => v.players?.[s]?.melds || [])
   discards.value = [0, 1, 2, 3].map(s => v.players?.[s]?.discards || [])
+  // v2.46.26：在线吃碰杠语音/音效 —— 服务端 claim 结算后只更新 melds 投影没有事件，
+  // 盯 melds 数量 diff 播报（进房首帧只记基线不补播；自己 4s 内点过的 kind 跳过）
+  const KIND_SPK = { pong: '碰', kong: '杠', ankong: '杠', bugang: '杠', chi: '吃' }
+  for (let s = 0; s < 4; s++) {
+    const cur = v.players?.[s]?.melds || []
+    const prevLen = meldsPrevLen[s]
+    meldsPrevLen[s] = cur.length
+    if (prevLen === null || cur.length <= prevLen) continue
+    const md = cur[cur.length - 1]
+    const kind = md?.type
+    const say = KIND_SPK[kind]
+    if (!say) continue
+    const act = MELD_ACT[kind]
+    if (selfClaimSig.startsWith(`${act}:`) && Date.now() - Number(selfClaimSig.split(':')[1] || 0) < 4000) {
+      continue   // 自己刚喊过，别复读
+    }
+    sfx[act === 'kong' ? 'kong' : 'pong'](panOf(s, povSeat.value))
+    showClaimFx(say)
+    speak(say)
+  }
   out.value = [0, 1, 2, 3].map(s => !!v.players?.[s]?.hu)
   turn.value = (v.turn === null || v.turn === undefined) ? -1 : v.turn
   drawn.value = drawnTile
@@ -722,6 +743,13 @@ function syncFromView(v) {
     return { seat: s, fan: hi.fan || 0, names: hi.names || [], zimo: !!hi.zimo, from: hi.from, hand: hi.hand || [] }
   })
   huResults.value = hus
+  // v2.46.26：在线胡牌语音 —— 服务端 result 投影没有事件，phase 转 finished 且有人胡时
+  // 喊一声（自摸报「自摸」）；自己刚点的胡（onReact 已即时喊）4 秒内不重复。
+  if (hus.length && prevPhase !== 'finished' && phase.value === 'finished') {
+    if (!(selfClaimSig.startsWith('hu:') && Date.now() - Number(selfClaimSig.split(':')[1] || 0) < 4000)) {
+      speak(hus[0].zimo ? '自摸' : '胡')
+    }
+  }
   if (v.result) {
     const delta = Number((v.result.deltas || {})[String(oSeat.value)] || 0)
     result.value = {
@@ -746,15 +774,25 @@ function syncFromView(v) {
 }
 watch(() => props.onlineView, (v) => { if (isOnline.value) syncFromView(v) }, { immediate: true, deep: true })
 
-/* ---------- 在线语音报牌（v2.46.24）：盯 last_discard 变化口播牌面 ---------- */
+/* ---------- 在线语音报牌（v2.46.24）：盯 last_discard 变化口播牌面 ----------
+ * v2.46.26 补砸桌音效：在线时别人的出牌原本只有语音没声音（本地走 doDiscard 的
+ * tileDown），这里补 sfx.tileDown；自己的牌 playTile 已即时响过，不重复。 */
 let lastSpokenKey = ''
+/** 自己刚点过的吃碰杠胡（onReact 记录），服务端 diff 4 秒内同 kind 不重复播 */
+let selfClaimSig = ''
+/** 在线 melds diff 用的上一帧长度基线（null = 进房首帧，只记不播） */
+const meldsPrevLen = [null, null, null, null]
+/** meld.type → onReact 的 act kind（selfClaimSig 去重用） */
+const MELD_ACT = { pong: 'pong', chi: 'chi', kong: 'kong', ankong: 'kong', bugang: 'kong' }
 watch(lastDiscard, (nd, od) => {
   if (!isOnline.value || !nd?.tile) return
   const key = `${nd.seat}:${nd.tile.id}:${discards.value[nd.seat]?.length || 0}`
   if (od === undefined) { lastSpokenKey = key; return }   // 进房首次同步不补播旧牌
   if (key === lastSpokenKey) return
   lastSpokenKey = key
-  if (phase.value === 'playing') speak(tileSpeech(nd.tile))
+  if (phase.value !== 'playing') return
+  if (nd.seat !== viewSeat.value) sfx.tileDown(panOf(nd.seat, povSeat.value))
+  speak(tileSpeech(nd.tile))
 })
 
 /* ---------- 开局发牌动效（v2.46.24，夜星：一进来就展示全部怪怪的）：
@@ -862,7 +900,7 @@ function doDiscard(seat, tile) {
   selId.value = null
   tile._tilt = +(Math.random() * 4 - 2).toFixed(2)   // 落桌余倾 ±2°
   log(`${seatName(seat)} 打出 ${tileText(tile)}`)
-  sfx.play(panOf(seat, povSeat.value))
+  sfx.tileDown(panOf(seat, povSeat.value))   // v2.46.26：麻将砸桌声（原「干脆一击」偏电子味）
   speak(tileSpeech(tile))   // 语音报牌（v2.46.24）：口播实际打出的牌面
   huDeclined.value = []          // 每张新弃牌的「不胡」名单重新开始
   resolveReactions(seat, tile)
@@ -956,6 +994,7 @@ function doPong(seat, tile, from) {
   log(`${seatName(seat)} 碰 ${tileText(tile)}`)
   sfx.pong(panOf(seat, povSeat.value))
   showClaimFx('碰')
+  speak('碰')   // v2.46.26：吃碰杠胡语音（夜星），本地与 AI 同走这里
   if (isHuman(seat)) return
   scheduleAI()
 }
@@ -972,6 +1011,7 @@ function doKongFromDiscard(seat, tile, from) {
   log(`${seatName(seat)} 杠 ${tileText(tile)}`)
   sfx.kong(panOf(seat, povSeat.value))
   showClaimFx('杠')
+  speak('杠')
   turn.value = seat
   drawReplacement(seat)
 }
@@ -996,6 +1036,7 @@ function doChi(seat, tile, from) {
   log(`${seatName(seat)} 吃 ${tileText(tile)}`)
   sfx.pong(panOf(seat, povSeat.value))
   showClaimFx('吃')
+  speak('吃')
   if (isHuman(seat)) return
   scheduleAI()
 }
@@ -1004,6 +1045,8 @@ function doAnkong(tileInfo) {
   if (isOnline.value) {
     sfx.kong()
     showClaimFx('暗杠')
+    selfClaimSig = `kong:${Date.now()}`
+    speak('杠')
     actOnline({ type: 'ankong', tile: { suit: tileInfo.suit, rank: tileInfo.rank } })
     return
   }
@@ -1018,6 +1061,7 @@ function doAnkong(tileInfo) {
   log(`${seatName(seat)} 暗杠 ${tileText(tileInfo)}`)
   sfx.kong()
   showClaimFx('暗杠')
+  speak('杠')
   drawReplacement(seat)
 }
 
@@ -1025,6 +1069,8 @@ function doBugang(tileInfo) {
   if (isOnline.value) {
     sfx.kong()
     showClaimFx('补杠')
+    selfClaimSig = `kong:${Date.now()}`
+    speak('杠')
     actOnline({ type: 'bugang', tile: { suit: tileInfo.suit, rank: tileInfo.rank } })
     return
   }
@@ -1045,6 +1091,7 @@ function doBugang(tileInfo) {
   log(`${seatName(seat)} 补杠 ${tileText(tileInfo)}`)
   sfx.kong()
   showClaimFx('补杠')
+  speak('杠')
   drawReplacement(seat)
 }
 
@@ -1069,12 +1116,19 @@ function doHu(seat, tile, from, zimo) {
   huResults.value.push({ seat, fan: sc.fan, names: sc.names, zimo, from, hand: winning.slice() })
   log(`${seatName(seat)} ${zimo ? '自摸' : '胡'} ${sc.names.join('·')} ${sc.fan}番`)
   sfx.win(panOf(seat, povSeat.value))
+  speak(zimo ? '自摸' : '胡')   // v2.46.26：胡牌喊一声（自摸报「自摸」更带感）
   toastMsg(`${seatName(seat)} ${zimo ? '自摸' : '胡牌'}！${sc.names.join(' · ')} ${sc.fan} 番`)
 }
 
 function doZimo() {
   if (!canZimo.value) return
-  if (isOnline.value) { sfx.win(); actOnline({ type: 'hu' }); return }
+  if (isOnline.value) {
+    sfx.win()
+    selfClaimSig = `hu:${Date.now()}`
+    speak('自摸')
+    actOnline({ type: 'hu' })
+    return
+  }
   const seat = turn.value
   doHu(seat, null, null, true)
   if (checkRoundEnd()) return
@@ -1092,7 +1146,7 @@ function pick(t) {
 function playTile(t) {
   if (!canDiscard.value || !t) return
   selId.value = t.id
-  if (isOnline.value) { sfx.play(); actOnline({ type: 'discard', tile_id: t.id }); return }
+  if (isOnline.value) { sfx.tileDown(); actOnline({ type: 'discard', tile_id: t.id }); return }
   doDiscard(turn.value, t)
 }
 function discardSel() {
@@ -1175,6 +1229,12 @@ function onReact(kind) {
     else if (kind === 'kong') sfx.kong()
     else if (kind === 'pong') sfx.pong()
     else if (kind === 'chi') sfx.pong()
+    // v2.46.26：自己点碰/杠/吃/胡立即喊一声（腾讯棋牌式即时反馈）；
+    // melds diff 4 秒内同 kind 不重复播（selfClaimSig 去重）
+    if (kind !== 'pass') {
+      selfClaimSig = `${kind}:${Date.now()}`
+      speak(REACT_NAME[kind] === '胡' ? '胡' : REACT_NAME[kind])
+    }
     actOnline({ type: kind })
     return
   }
@@ -1453,6 +1513,23 @@ onBeforeUnmount(() => {
   padding: 5px; border-radius: 14px;
   background: rgba(0, 0, 0, .2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
+  /* v2.46.26（夜星：长方形看着怪）：宽屏下中央弃牌区被 1fr 拉成 3:1 长条，
+   * 与真实牌桌「中央近方」的观感差很远。限宽居中后，两侧留出的绿绒布就是
+   * 桌面空地，四方弃牌围合成近方阵 —— 这才是麻将桌该有的样子。 */
+  width: 100%; max-width: min(100%, 640px);
+  justify-self: center;
+}
+/* 桌心装饰（v2.46.26）：一枚淡金圆环 + 微光，腾讯棋牌中央 logo 的克制版；
+ * 纯装饰不挡交互（pointer-events none），prefers-reduced-motion 无动画本来也不动 */
+.mj-center::before {
+  content: ''; position: absolute; left: 50%; top: 50%; z-index: 0;
+  width: clamp(72px, 24%, 128px); aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(222, 186, 106, .30);
+  background: radial-gradient(circle, rgba(222, 186, 106, .07), transparent 68%);
+  box-shadow: 0 0 22px rgba(222, 186, 106, .07), inset 0 0 16px rgba(222, 186, 106, .06);
+  pointer-events: none;
 }
 /* 碰/杠大字（v2.46.20）：绝对定位盖在弃牌区中央，金底墨字 pop 一闪；
    进出场都在一条 keyframes 里（0.95s），1s 后 v-if 摘除，无需 transition */

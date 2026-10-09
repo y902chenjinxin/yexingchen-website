@@ -1,3 +1,10 @@
+## [v2.46.27] - 2026-10-10
+
+### 麻将三修（夜星）
+- **吃碰杠胡语音**（#1）：本地/AI 走 doPong/doKongFromDiscard/doChi/doHu 直接口播「碰/杠/吃/胡·自摸」（暗杠补杠也喊）；在线模式服务端只投影 melds/result 没有事件 → syncFromView 按 melds 数量 diff + phase 转 finished 播报，自己 4s 内点过的（selfClaimSig）不复读。
+- **出牌音效改砸桌声**（#2）：sfx.js 新增 `noiseBurst()`（带通白噪声短击，振荡器做不出真实「啪」）+ `sfx.tileDown()` 三层合成 = 3400Hz 噪声击面「啪」+ 160Hz 木桌共鸣「咚」+ 760Hz 骨牌体 + 50ms 回弹余响，±5% 随机变调。本地 doDiscard / 在线自己 playTile / 在线别人 last_discard diff 全接。
+- **牌桌形状**（#3）：中央弃牌区宽屏下被 1fr 拉成 3:1 长条 → `max-width: min(100%, 640px)` 收窄居中，两侧留绿绒布空地，四方弃牌围合近方阵；中央加淡金圆环桌心装饰（腾讯棋牌 logo 的克制版，pointer-events none）。
+
 ## [v2.46.26] - 2026-10-10
 
 ### 优化

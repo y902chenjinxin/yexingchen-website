@@ -7,6 +7,24 @@
 
 ---
 
+## v2.46.27 麻将三修：吃碰杠胡语音 / 砸桌音效 / 牌桌形状（2026-10-10）
+
+**根因**
+1. v2.46.24 麻将只做了报牌语音，吃碰杠胡没有任何语音；在线模式更彻底没声音——服务端 `_resolve_claim` 结算后只更新 melds/result 投影，没有像掼蛋那样的 history 事件可增量监听。
+2. 出牌音效是 520Hz triangle 振荡器「电子嘀」，真实麻将砸桌是宽带噪声冲击 + 木桌低频共鸣，振荡器合不出来。
+3. 中央弃牌区 `.mj-center` 在 grid 里 `minmax(0,1fr)` 拉满桌宽，宽屏全屏下成 3:1 长条，与真实牌桌「中央近方」观感冲突。
+
+**修法**
+- sfx.js：新增 `noiseBurst()`（白噪声 buffer + bandpass 3400Hz + 指数衰减）与 `sfx.tileDown()` 三层合成（击面噪声 + 160Hz thump + 760Hz 骨牌体 + 回弹），±5% 随机变调防复读。
+- MahjongBoard：本地 doPong/doKongFromDiscard/doChi/doHu/暗杠/补杠直接 speak（碰/杠/吃/胡/自摸）；在线 syncFromView 按 `meldsPrevLen` diff + phase→finished 播报，`selfClaimSig`（onReact/doZimo/doAnkong/doBugang 记录）4s 去重防自己复读；出牌音本地 doDiscard、在线 playTile、在线别人 last_discard diff 全接 tileDown（自己经 view 回来不重播）。
+- CSS：.mj-center `max-width: min(100%, 640px)` + `justify-self: center` 收窄居中；`::before` 淡金圆环桌心装饰（clamp 72–128px，pointer-events none）。
+
+**验证**
+- eslint 0 error；vite build dist-deploy57；grep 确认 tileDown / 自摸 / min(100%,640px) / .mj-center:before / SW v340 进包；部署 home=200。
+- 边界：在线自己出牌 playTile 即时响、view 回来 nd.seat===viewSeat 不重播；进房首帧 melds/lastDiscard 只记基线不补播。
+
+---
+
 ## v2.46.26 TTS 二修：不要没语音 + 合成音怪异（2026-10-10）
 
 **根因**
