@@ -190,13 +190,17 @@ class MonopolyEngine(TableEngine):
         start_cash = _as_int(config.get("start_cash", 50000), 50000)
 
         characters = self._assign_characters(config, n)
+        # v2.46.25 终局口径（夜星）：2 人局最长 200 轮封顶按资产排名；4 人及以上局
+        # 破产淘汰到只剩 3 人时即结算排名（不再硬耗到最后一人生）。轮数按「整圈」算：
+        # turn_limit 以单人行动次数计 = 轮数 × 人数。
+        turn_limit = _as_int(config.get("turn_limit"), 0) or (200 * n)
         state = {
             "phase": "action",
             "turn": 0,
             "n": n,
             "seed": int(seed) & 0xFFFFFFFF,
             "rng_count": 0,
-            "turn_limit": _as_int(config.get("turn_limit", 250), 250),
+            "turn_limit": turn_limit,
             "turns": 0,
             "base_stake": _as_int(config.get("base_stake", 100), 100),
             "start_cash": start_cash,
@@ -301,6 +305,9 @@ class MonopolyEngine(TableEngine):
                 "auction": st.get("auction"),
                 "trades": st.get("trades", []),
                 "last_dice": st.get("last_dice"),
+                # v2.46.25：真实轮数（整圈）+ 上限，前端「第 X 轮」不再恒显示 1
+                "rounds": st["turns"] // max(1, st["n"]) + 1,
+                "round_limit": st["turn_limit"] // max(1, st["n"]),
             },
         }
 
@@ -1031,6 +1038,10 @@ class MonopolyEngine(TableEngine):
             return
         alive = [i for i in range(st["n"]) if st["alive"][i]]
         if len(alive) <= 1:
+            self._finish(st, events)
+            return
+        # v2.46.25：4 人及以上局，只剩最后 3 人时按资产排名结算（夜星定的口径）
+        if st["n"] >= 4 and len(alive) <= 3:
             self._finish(st, events)
             return
         if st["turns"] >= st["turn_limit"]:

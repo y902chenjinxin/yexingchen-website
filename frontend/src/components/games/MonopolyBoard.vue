@@ -42,10 +42,9 @@
           <!-- 中央信息区：当前行动者 + 玩家一排 + 骰子 + 行动流水 -->
           <div class="mp-center">
             <div class="mp-center-head">
-              <span class="gt-pill gold">第 {{ game.round }} 轮</span>
+              <span class="gt-pill gold">第 {{ game.round }} 轮<template v-if="roundLimit"> / {{ roundLimit }}</template></span>
               <span class="gt-pill">{{ phaseText }}</span>
             </div>
-
             <!-- 当前行动者：谁在动、什么颜色，一眼可见 -->
             <div v-if="!game.over" class="mp-turn">
               <span class="mp-turn-av" :style="{ background: COLORS[cur.id] }">{{ cur.avatar }}</span>
@@ -135,13 +134,13 @@
               @click="useSkill"
             >✨ {{ SKILLS[cur.skill].name }}</button>
             <button
-              v-for="it in (isOnline && !oIsMyTurn ? [] : cur.items)"
-              :key="it"
-              class="gt-btn ghost"
-              :disabled="isOnline ? acting : (busy || cur.isAI)"
-              :title="ITEMS[it].desc"
-              @click="useItem(it)"
-            >{{ ITEMS[it].icon }} {{ ITEMS[it].name }}</button>
+              v-for="g in itemGroups"
+              :key="g.key"
+              class="gt-btn ghost sm mp-item"
+              :disabled="itemDisabled"
+              :title="ITEMS[g.key].desc"
+              @click="useItem(g.key)"
+            >{{ ITEMS[g.key].icon }} {{ ITEMS[g.key].name }}<em v-if="g.n > 1" class="mp-item-n">×{{ g.n }}</em></button>
             <!-- 在线专属：服务端驱动回合的补充操作 -->
             <template v-if="isOnline">
               <button v-if="oOpts.buy" class="gt-btn ghost" :disabled="acting" @click="skipBuy">放弃 · 拍卖</button>
@@ -439,6 +438,8 @@ const oOpts = computed(() => {
   }
 })
 const oAuction = computed(() => oTable.value.auction || null)
+/** 轮数上限（在线引擎下发；本地固定 200） */
+const roundLimit = computed(() => (isOnline.value ? (oTable.value.round_limit || 0) : 200))
 /** 待我处理的交易（服务端只保留 pending） */
 const oTrades = computed(() =>
   (oTable.value.trades || []).filter((t) => t.status === 'pending' && t.to === oSeat.value))
@@ -503,6 +504,17 @@ const canBuild = computed(() => {
   const c = hereCell.value
   return !cur.value.isAI && c.price && c.owner === cur.value.id && c.level < 4 && cur.value.cash >= buildCost(c) && !game.over
 })
+
+/* ---- 道具卡分组（v2.46.25，夜星：「卡太多了点不了还找地方」）----
+ * 旧版一张卡渲染一个全宽按钮：摸了一手 8 张卡右栏就堆 8 个大按钮，塞满还看不全。
+ * 现在按种类合并成紧凑小徽章（×N 角标），一行多个自动换行；非我回合禁用但**仍可见**
+ * （旧版在线时干脆整排隐藏，玩家根本不知道自己手里有牌）。 */
+const itemGroups = computed(() => {
+  const cnt = {}
+  for (const it of (cur.value.items || [])) cnt[it] = (cnt[it] || 0) + 1
+  return Object.keys(cnt).map((k) => ({ key: k, n: cnt[k] }))
+})
+const itemDisabled = computed(() => (isOnline.value ? (props.acting || !oIsMyTurn.value) : (busy.value || cur.value.isAI)))
 
 function fmt(n) {
   const v = Math.round(Number(n) || 0)
@@ -760,6 +772,10 @@ function endTurn() {
   p.immune = false
   const alive = game.players.filter((x) => x.alive)
   if (alive.length <= 1) return finish(alive[0])
+  // v2.46.25 终局口径（与在线引擎一致）：4 人及以上局剩最后 3 人即按资产排名结算；
+  // 200 整轮封顶（2 人局的主要出口，防拖局）
+  if (game.players.length >= 4 && alive.length <= 3) return finishRanked()
+  if (game.round > 200) return finishRanked()
   let guard = 0
   do {
     game.curIdx = (game.curIdx + 1) % game.players.length
@@ -991,6 +1007,36 @@ async function aiTurn() {
 }
 
 /* ---------------- 结算 ---------------- */
+/** 净资产：现金 + 地价 + 加盖投入（排名 / 提前结算口径，与在线引擎 _net_worth 对齐） */
+function netWorth(p) {
+  let w = p.cash
+  for (const k of Object.keys(p.props || {})) {
+    const c = game.cells[Number(k)]
+    if (!c) continue
+    w += (c.price || 0) + (c.level || 0) * buildCost(c)
+  }
+  return w
+}
+
+/** 按资产排名提前结算（剩 3 人 / 200 轮封顶）：第一名胜，其余按名次展示 */
+function finishRanked() {
+  if (game.over) return
+  const rank = [...game.players].sort((a, b) => netWorth(b) - netWorth(a))
+  const me = game.players.find((p) => p.id === 0) || rank[0]
+  const myRank = rank.indexOf(me) + 1
+  const win = rank[0]?.id === 0
+  const delta = win ? stake.value * (game.players.length - 1) : -stake.value
+  game.over = {
+    win,
+    title: `按资产排名：${rank.map((p, i) => `${i + 1}.${p.name}`).join(' ')}（共 ${game.round} 轮）· 你第 ${myRank} 名`,
+    delta,
+  }
+  log(`🏁 ${game.round} 轮排名结算：${rank[0]?.name || '无人'} 资产第一`)
+  reportSettle('monopoly', win ? 'win' : (myRank === game.players.length ? 'lose' : 'draw'), delta, stake.value)
+    .then((res) => { if (res?.beans != null) wallet.beans = res.beans })
+    .catch(() => {})
+}
+
 async function finish(winner) {
   if (game.over) return
   const win = !!winner && winner.id === 0
@@ -1053,6 +1099,8 @@ function syncFromView(v) {
     immune: false,
   }))
   game.curIdx = (v.turn == null) ? 0 : v.turn
+  // v2.46.25：真实轮数（服务端按整圈折算），「第 X 轮」不再恒显示 1
+  game.round = t.rounds || game.round || 1
   // 在线：服务端掷出新点数时本地补播一次翻滚，否则玩家只看到数字「跳变」，
   // 完全没有「在掷骰」的感觉（单机走 rollAndMove，那边自己驱动动画）
   const nd = t.last_dice || [1, 1]
@@ -1375,6 +1423,13 @@ onBeforeUnmount(() => {
   justify-content: flex-start; position: sticky; bottom: -2px; z-index: 2;
   padding: 8px 0 2px;
   background: linear-gradient(180deg, rgba(6, 22, 18, 0), rgba(6, 22, 18, .94) 38%);
+}
+/* 道具卡徽章（v2.46.25）：紧凑小号、自动换行，×N 角标标数量 —— 一手 8 张卡也只占两三行 */
+.mp-ops .mp-item { padding: 4px 10px; font-size: 12px; }
+.mp-item-n {
+  font-style: normal; font-weight: 700; margin-left: 3px; padding: 0 5px;
+  border-radius: 999px; font-size: 10px; line-height: 1.5;
+  background: rgba(233, 200, 119, .2); color: var(--gt-gold, #e9c877);
 }
 /* 在线：经营 / 拍卖 / 交易（页内块，非弹窗） */
 .mp-manage, .mp-auction, .mp-trades {

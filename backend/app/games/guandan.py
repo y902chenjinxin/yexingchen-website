@@ -382,9 +382,76 @@ def gen_candidates(hand: list[dict], level: int) -> list[list[dict]]:
     return out
 
 
+def _protected_ids(hand: list[dict], level: int) -> set[int]:
+    """手牌「战略储备」分析（v2.46.25，夜星：「机器人总把红心乱配，配不成同花顺和炸」）。
+
+    调研结论（掼蛋高阶打法 + 专利 CN113018837B 的能量最小化思路的启发式近似）：
+    - 逢人配优先级：残局配同花顺 > 补炸弹 > 其它；不为凑对子/三带二轻易消耗；
+    - 炸弹是战略武器，留着封堵对手冲刺，不开局就拆去压小牌。
+
+    返回应保护的牌 id 集合：
+    - 四大天王、天然炸弹（同点 ≥4 张）、天然同花顺 → 全部保护；
+    - 同花色恰缺 1 张的同花顺雏形 → 保护 4 张天然牌 + **预留一张逢人配**；
+    - 天然 3 张同点（+逢人配可成炸）→ 保护 3 张天然牌 + 预留逢人配（仅当没有更高用途时，
+      这里放宽：只要同花顺雏形不存在才预留，避免一张百搭被两处抢）。
+    """
+    prot: set[int] = set()
+    wilds = [c for c in hand if _is_wild(c, level)]
+
+    bigs = [c for c in hand if c.get("joker") == "big"]
+    smalls = [c for c in hand if c.get("joker") == "small"]
+    if len(bigs) >= 2 and len(smalls) >= 2:
+        prot |= {c["id"] for c in bigs[:2] + smalls[:2]}
+
+    by_rank: dict[int, list[dict]] = {}
+    for c in hand:
+        if not _is_wild(c, level) and not c.get("joker"):
+            by_rank.setdefault(int(c["rank"]), []).append(c)
+
+    flush_pending: list[list[dict]] = []      # 缺 1 张的同花顺雏形（天然 4 张）
+    for s in SUITS:
+        for a in range(1, 11):
+            seq = _seq_ranks(a, 5)
+            cards: list[dict] = []
+            missing = 0
+            for r in seq:
+                cand = [c for c in hand
+                        if not _is_wild(c, level) and not c.get("joker")
+                        and c.get("suit") == s and int(c["rank"]) == r
+                        and c["id"] not in prot]
+                if cand:
+                    cards.append(cand[0])
+                else:
+                    missing += 1
+            if missing == 0 and len(cards) == 5:
+                prot |= {c["id"] for c in cards}          # 天然同花顺
+            elif missing == 1 and len(cards) == 4:
+                flush_pending.append(cards)               # 待逢人配补
+    for cards in flush_pending[:max(0, len(wilds))]:      # 有几张百搭补几条
+        prot |= {c["id"] for c in cards}
+        prot.add(wilds.pop(0)["id"])
+
+    for rk, arr in by_rank.items():
+        if len(arr) >= 4:
+            prot |= {c["id"] for c in arr[:min(len(arr), 8)]}   # 天然炸弹（4~8 张）
+        elif len(arr) == 3 and wilds and all(c["id"] not in prot for c in arr):
+            # 三张 + 逢人配可成炸：只在百搭还没被同花顺占用时预留
+            free = [w for w in wilds if w["id"] not in prot]
+            if free:
+                prot |= {c["id"] for c in arr}
+                prot.add(free[0]["id"])
+    return prot
+
+
 def ai_choose(hand: list[dict], target: dict | None, level: int,
-              last_is_teammate: bool = False) -> list[dict]:
-    """AI 出牌：返回要出的牌，``[]`` 表示不要。target 为牌型 dict（None=起牌）。"""
+              last_is_teammate: bool = False, pressure: int = 0) -> list[dict]:
+    """AI 出牌：返回要出的牌，``[]`` 表示不要。target 为牌型 dict（None=起牌）。
+
+    v2.46.25 策略升级（夜星：「机器人总把红心乱配，配不成同花顺和炸」）：
+    - ``pressure`` = 对手最少的剩余手牌数（由 step_ai 传入，越小越危险）；
+    - 起牌只出「安全牌」（不拆炸弹/同花顺雏形、不动被预留的逢人配）；
+    - 跟牌优先安全 beats；对手剩 ≤2 张（封堵绝杀）或自己 ≤6 张（残局冲刺）才舍得拆。
+    """
     seen: set[str] = set()
     plays: list[tuple[list[dict], dict]] = []
     for cs in gen_candidates(hand, level):
@@ -402,9 +469,17 @@ def ai_choose(hand: list[dict], target: dict | None, level: int,
     if fin and (not target or can_beat(fin[1], target)):
         return fin[0]
 
+    prot = _protected_ids(hand, level)
+    # 残局放宽：自己 ≤6 张时不搞储备，能走就走（此时「走完」比「留炸」值钱）
+    strict = len(hand) > 6
+
+    def safe(play: tuple[list[dict], dict]) -> bool:
+        return not strict or all(c["id"] not in prot for c in play[0])
+
     if not target:
         non_bomb = [x for x in plays if not x[1]["bomb_level"]]
         pool = non_bomb or plays
+        pool = [x for x in pool if safe(x)] or pool
         pool.sort(key=lambda x: (-len(x[0]), x[1]["key"]))
         return pool[0][0]
 
@@ -413,8 +488,15 @@ def ai_choose(hand: list[dict], target: dict | None, level: int,
         return []
     if last_is_teammate:
         return []
-    beats.sort(key=lambda x: (x[1]["bomb_level"] or 0, x[1]["key"], len(x[0])))
-    return beats[0][0]
+    safe_beats = [x for x in beats if safe(x)]
+    if safe_beats:
+        safe_beats.sort(key=lambda x: (x[1]["bomb_level"] or 0, x[1]["key"], len(x[0])))
+        return safe_beats[0][0]
+    # 没有安全牌可压：对手冲刺（≤2 张）必须封堵；自己残局也能拆
+    if (pressure <= 2 or not strict) and pressure > 0:
+        beats.sort(key=lambda x: (x[1]["bomb_level"] or 0, x[1]["key"], len(x[0])))
+        return beats[0][0]
+    return []
 
 
 # ---------------- 升级 ----------------
@@ -717,9 +799,8 @@ class GuandanEngine(TableEngine):
                 evs: list[dict] = []
                 for g in plan["givers"]:
                     card = _pick_tribute(st["hands"][g["from"]], st["level"])
+                    # _do_tribute 内部已写 history（v2.46.25 修复：外层不再重复 extend）
                     _do_tribute(st, g["from"], card, evs)
-                st["history"].extend({"kind": e["kind"], "seat": e["seat"], "to": e["to"],
-                                      "card": e["card"]} for e in evs)
             # givers 为空且未抗贡：无需进贡（首轮），直接 playing
         return st
 
@@ -856,8 +937,12 @@ class GuandanEngine(TableEngine):
 
         tgt = st.get("target")
         last_is_teammate = bool(tgt) and TEAM_OF.get(tgt["seat"]) == TEAM_OF.get(cur)
+        # v2.46.25：对手（未出完）最少的剩牌数 —— 越小越要封堵（舍得拆炸弹/动逢人配）
+        opp_min = min((len(st["hands"][s]) for s in range(4)
+                       if TEAM_OF[s] != TEAM_OF[cur] and s not in st["finished"]),
+                      default=99)
         pick = ai_choose(st["hands"][cur], tgt["pattern"] if tgt else None,
-                         st["level"], last_is_teammate)
+                         st["level"], last_is_teammate, pressure=opp_min)
         if pick:
             _do_play(st, cur, pick, events)
         else:

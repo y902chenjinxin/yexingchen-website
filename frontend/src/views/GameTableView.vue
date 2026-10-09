@@ -216,6 +216,9 @@
                 <button class="gtv-fsmenu-item" @click="menuOpen = false; exitFullscreen()">
                   <i aria-hidden="true">⤡</i><span>退出全屏</span>
                 </button>
+                <button class="gtv-fsmenu-item" title="退出＝认输，本局立即按当前名次结算" @click="menuOpen = false; leaveRoom()">
+                  <i aria-hidden="true">🚪</i><span>退出对局（认输）</span>
+                </button>
                 <button class="gtv-fsmenu-item danger" @click="menuOpen = false; dissolveRoom()">
                   <i aria-hidden="true">⛔</i><span>解散牌桌</span>
                 </button>
@@ -749,6 +752,9 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 .gtv-viewzoom.is-fs :deep(.mp-boardwrap) { min-height: 0; }
+/* 右上角 ☰ 悬在牌桌右上 —— 旧版正好压住大富翁右栏的「退出」按钮（夜星：「不给退出」）。
+   给右栏顶部预留一行菜单空间，让 ☰ 浮在空白处、右栏自身的退出按钮仍可点。 */
+.gtv-viewzoom.is-fs :deep(.mp-side) { padding-top: 52px; }
 /* ⚠️ 不要再覆盖 `.mp-board` 的宽高：旧版 `height:100%; width:auto` 会让棋盘被拉成长方形
    （Chrome 先用内容宽定 flex base size、再套 100% 高），格子变 20×48、名字压价格。
    棋盘尺寸现在由组件 JS 量出的 `--mp-w` / `--mp-h`（横屏时是矩形）决定（宽高都是确定 px）。 */

@@ -17,9 +17,7 @@ from app.games.guandan import (
 )
 from app.games.mahjong import (
     can_hu,
-    has_missing,
     score_hu,
-    _counts,
     _gang_pay,
 )
 
@@ -90,8 +88,10 @@ def test_guandan_tribute_flow():
                 st, evs = out
                 events.extend(evs)
             assert st["phase"] == "finished"
-            tribute += sum(1 for e in events if e.get("kind") == "tribute")
-            ret += sum(1 for e in events if e.get("kind") == "return")
+            # v2.46.23 进贡在 new_game 里自动完成，不再走 step_ai 事件流 → 从 history 统计
+            hist = st.get("history") or []
+            tribute += sum(1 for h in hist if h.get("kind") == "tribute")
+            ret += sum(1 for h in hist if h.get("kind") == "return")
             res = eng.result(st)
             if res.get("match_over"):
                 break
@@ -226,13 +226,21 @@ def test_guandan_wild_card_makes_bomb():
     assert pat["type"] == "bomb"
 
 
-def test_mahjong_missing_blocks_hu():
-    missing = "m"
-    hand = [{"id": i, "suit": "s", "rank": 1} for i in range(13)] + \
-           [{"id": 99, "suit": "m", "rank": 5}]
-    assert has_missing(_counts(hand), missing) is True
-    assert can_hu(hand, 0, missing) is False
-    assert can_hu(hand, 0, None) is True or can_hu(hand, 0, None) is False  # 不抛异常
+def test_mahjong_can_hu_basic():
+    """v2.46.24 起无缺门概念（can_hu 的 missing 参数仅为兼容旧签名，恒忽略）。"""
+    hand = []
+    cid = 0
+    for _ in range(4):                       # 345 三色齐刻 + 55 将 → 平胡
+        for rank in (3, 4, 5):
+            hand.append({"id": cid, "suit": "s", "rank": rank})
+            cid += 1
+    hand.append({"id": cid, "suit": "s", "rank": 9})
+    cid += 1
+    hand.append({"id": cid, "suit": "s", "rank": 9})
+    assert can_hu(hand, 0) is True
+    bad = [{"id": 100 + i, "suit": "s", "rank": r}
+           for i, r in enumerate((1, 1, 2, 4, 6, 8, 9))]     # 杂乱不成型
+    assert can_hu(bad, 0) is False
 
 
 def test_mahjong_gang_payment_is_zero_sum():
@@ -260,14 +268,32 @@ def test_mahjong_score_seven_pairs():
 def test_mahjong_discard_out_of_turn_rejected():
     eng = get_engine("mahjong")
     st = eng.new_game(_seats(), {"base_stake": 100, "seat_count": 4, "round_no": 1}, 42)
-    # 定缺阶段：非当前席位应被拒
+    # 出牌阶段：非当前席位打牌应被拒
     turn = st["turn"]
     other = next(s for s in range(4) if s != turn)
+    tile = st["hands"][other][0]
     try:
-        eng.apply(st, other, {"type": "missing", "suit": "m"})
-        raise AssertionError("应当拒绝非当前席位的定缺")
+        eng.apply(st, other, {"type": "discard", "tile_id": tile["id"]})
+        raise AssertionError("应当拒绝非当前席位的出牌")
     except TableError:
         pass
+
+
+def test_monopoly_last_three_settle_and_round_cap():
+    """v2.46.25 终局口径：4 人局破产到只剩 3 人即按资产排名结算；2 人局 200 轮封顶。"""
+    eng = get_engine("monopoly")
+    st = eng.new_game(_seats(4), {"base_stake": 100, "seat_count": 4, "round_no": 1}, 7)
+    st["alive"] = [True, False, True, True]
+    events = []
+    eng._check_end(st, events)
+    assert st["phase"] == "finished"
+    res = eng.result(st)
+    assert res["winner"] in (0, 2, 3) and sorted(res["ranking"]) == [0, 1, 2, 3]
+
+    duo = eng.new_game(_seats(2), {"base_stake": 100, "seat_count": 2, "round_no": 1}, 9)
+    assert duo["turn_limit"] == 400            # 200 轮 × 2 人
+    quart = eng.new_game(_seats(4), {"base_stake": 100, "seat_count": 4, "round_no": 1}, 9)
+    assert quart["turn_limit"] == 800
 
 
 def test_guandan_level_text():

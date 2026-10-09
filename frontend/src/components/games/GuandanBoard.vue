@@ -2,7 +2,7 @@
   <div class="gt-landscape gd-wrap">
     <div
       ref="rootRef"
-      class="gt-shell gt-skin-blue gd"
+      class="gt-shell gd"
       :class="{ 'is-big': big }"
       :style="{ '--gt-h': rootH + 'px', '--card-w': cardW + 'px', '--card-h': cardH + 'px' }"
     >

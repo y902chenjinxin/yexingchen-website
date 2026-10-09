@@ -236,9 +236,9 @@ def test_start_requires_two_humans(ctx):
     assert "至少需要 2 位家人" in msg, msg
 
 
-# ---------------- 麻将：定缺阶段投影 ----------------
+# ---------------- 麻将：开局投影（v2.46.24 起无定缺阶段，直接进出牌） ----------------
 
-def test_mahjong_start_missing_phase(ctx):
+def test_mahjong_start_playing_phase(ctx):
     room = _create(ctx, "mahjong", stake=100)
     rid = room["id"]
     assert len(room["seats"]) == 4
@@ -246,13 +246,11 @@ def test_mahjong_start_missing_phase(ctx):
     started = _start(ctx, rid)
     assert started["status"] == "playing"
     view = started["view"]
-    assert view["phase"] == "missing"
-    assert view["turn"] in (0, 1)
-    # 轮到定缺的真人，me.options 含 missing
+    assert view["phase"] == "playing"
+    assert view["turn"] in (0, 1)             # 庄家开打，AI 会先自动出牌
     chooser = view["turn"]
     v = _state(ctx, USER_A if chooser == 0 else USER_B, rid)["view"]
-    assert "missing" in (v["me"]["options"] or []), v["me"]
-    assert len(v["me"]["hand"]) == 13
+    assert len(v["me"]["hand"]) in (13, 14)   # 庄家 14 张，闲家 13 张
     assert v["wall_left"] > 0
 
 
