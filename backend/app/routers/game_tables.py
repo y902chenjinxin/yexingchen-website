@@ -222,9 +222,10 @@ def _append_events(db: Session, room: GameRoom, events: list[dict]) -> int:
     return seq
 
 
-# AI 行动节奏：两次 AI 动作之间的间隔秒数（夜星要求 2-3s）
-AI_ACT_MIN = 2.0
-AI_ACT_MAX = 2.8
+# AI 行动节奏：两次 AI 动作之间的间隔秒数（v2.46.23：夜星要求统一 3s——
+# 「不管有没有牌，都 3s 再出」，不要连击也不要 2s 的急促感）
+AI_ACT_MIN = 3.0
+AI_ACT_MAX = 3.0
 
 
 def _deadline_for(game: str, state: dict) -> datetime | None:
@@ -827,6 +828,12 @@ def table_act(room_id: int, req: ActIn, db: Session = Depends(get_db),
         state, events = eng.apply(room.game_state, seat, action)
     except TableError as exc:
         raise_error(ErrCode.INVALID_PARAM, str(exc))
+    # 真人刚动完手：先给 AI 盖一个「3s 后才许动」的时间戳再推进。
+    # 旧版 _ai_wait_until 是上一手 AI 留下的旧时间戳，轮到 AI 时早就过期 →
+    # 轮询一到立刻出牌，观感就是「机器人秒出」（v2.46.23：AI 统一 3s）。
+    if (room.game_state or {}).get("phase") not in ("finished",):
+        state["_ai_wait_until"] = max(float(state.get("_ai_wait_until") or 0),
+                                      time.time() + AI_ACT_MIN)
     state, events = _advance(db, room, state, events)
     finished_now = state.get("phase") == "finished"
     if finished_now and room.status != "finished":

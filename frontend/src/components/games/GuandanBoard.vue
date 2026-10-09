@@ -42,7 +42,7 @@
             <span class="gd-turnbox" :class="{ 'is-me': turn === oSeat, 'is-done': turn < 0 }">
               <em>轮到</em>
               <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
-              <i>出牌</i>
+              <i>{{ isOnline && props.onlineView?.phase === 'return' ? '还贡' : '出牌' }}</i>
             </span>
             <div class="gt-seat" :class="seatCls(topSeat)">
               <span class="gt-seat-av">{{ seatAvatar(topSeat) }}</span>
@@ -210,7 +210,7 @@
         <div v-if="tributePhaseVisible" class="gd-tribute-banner" aria-live="polite">
           <span class="gd-tb-title">{{ tributePhaseLabel }}</span>
           <span v-if="tributeResisted" class="gd-tb-item">
-            双方合计两张大王 · 抗贡成立，由头游 {{ seatName(tributeLeader) }} 直接出牌
+            进贡方合计两张大王（大小王不算）· 抗贡成立，由头游 {{ seatName(tributeLeader) }} 直接出牌
           </span>
           <template v-else>
             <span
@@ -221,6 +221,7 @@
             >
               {{ seatName(g.from) }} → {{ seatName(g.to) }}
               <i v-if="g.card" class="gd-tb-card" :class="{ red: isRed(g.card) }">{{ cardText(g.card) }}{{ cardSuit(g.card) }}</i>
+              <em v-else-if="g.done" class="gd-tb-pending">已还</em>
               <em v-else class="gd-tb-pending">待{{ tributePhaseLabel }}</em>
             </span>
           </template>
@@ -275,10 +276,11 @@
           </div>
         </div>
 
-        <!-- 还贡（在线 · 仅轮到本人时；服务端要求 ≤10，5 分钟未选则自动代选） -->
+        <!-- 还贡（在线 · 双方并行，各自选牌确认；服务端要求 ≤10，5 分钟未选则自动代选）
+             v2.46.23：选中后不再立刻提交——先高亮预览，点「还贡」按钮才真正给出（夜星） -->
         <div v-else-if="returnPending" class="gd-return">
           <div class="gd-return-tip">
-            还贡：点一张 ≤10 的牌还给对方（不能还级牌 / 王）
+            还贡给 {{ seatName(returnTo) }}：点一张 ≤10 的牌选中（不能还级牌 / 王），再点「还贡」确认
             <b v-if="leftSec" class="gd-timer" :class="{ urgent: leftSec <= 60 }">{{ mmss(leftSec) }} 后自动代选</b>
           </div>
           <div class="gd-return-cards">
@@ -286,8 +288,8 @@
               v-for="c in returnOptions"
               :key="c.id"
               class="gt-card pickable"
-              :class="cardCls(c)"
-              @click="doReturn(c)"
+              :class="[cardCls(c), { 'is-pick': returnSel === c.id }]"
+              @click="returnSel = returnSel === c.id ? null : c.id"
             >
               <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
               <span class="c-mid">{{ cardSuit(c) }}</span>
@@ -295,6 +297,9 @@
             </span>
             <p v-if="!returnOptions.length" class="gd-hand-empty">手上没有 ≤10 的牌可还</p>
           </div>
+          <button class="gt-btn gd-play gd-return-ok" :disabled="returnSel == null" @click="confirmReturn">
+            还贡{{ returnSelCard ? ` ${cardText(returnSelCard)}${cardSuit(returnSelCard)}` : '' }}
+          </button>
         </div>
 
         <!-- 划选手势：pointerdown 落在手牌区，pointermove / up 由脚本挂到 window
@@ -551,15 +556,16 @@ const statusLine = computed(() => {
     return waiting ? `进贡中：${waiting}` : '等对方进贡…'
   }
   if (isOnline.value && props.onlineView?.phase === 'return') {
-    return turn.value === oSeat.value ? '请选择一张 ≤10 的牌还贡' : '等对方还贡…'
+    // v2.46.23 还贡并行：我还没还 → 选牌确认；我还完了 → 等对方（各自独立、互不排队）
+    return returnPending.value ? '选一张 ≤10 的牌，点「还贡」确认' : '等对方还贡…'
   }
   if (!HUMAN_SEATS.value.includes(turn.value)) return `${seatName(turn.value)} 思考中…`
   if (turn.value !== viewSeat.value) return `轮到 ${seatName(turn.value)}`
   return target.value ? '请压过上一手，或选择「不要」' : '本轮由你先出牌'
 })
-/** 还贡候选项（仅在线 return 阶段、轮到自己时） */
+/** 还贡候选项（在线 return 阶段、自己还有未还的贡时；v2.46.23 起双方并行，不再看 turn） */
 const returnPending = computed(() =>
-  isOnline.value && props.onlineView?.phase === 'return' && turn.value === oSeat.value)
+  isOnline.value && props.onlineView?.phase === 'return' && !!props.onlineView?.me?.return_pending)
 const returnOptions = computed(() => props.onlineView?.me?.return_options || [])
 /** 进贡候选项（仅在线 tribute 阶段、轮到自己时；服务端手动选牌，无倒计时） */
 const tributePending = computed(() =>
@@ -580,7 +586,9 @@ const tributePlan = computed(() => {
   const tr = tributeInfo.value
   if (!tr || tr.resisted) return []
   if (props.onlineView?.phase === 'return') {
-    return (tr.returns || []).map(r => ({ from: r.from, to: r.to, card: r.card || null }))
+    return (tr.returns || []).map(r => ({
+      from: r.from, to: r.to, card: r.card || null, done: !!r.done,
+    }))
   }
   const done = new Map((tr.pairs || []).map(p => [p.from, p.card]))
   return (tr.givers || []).map(g => ({
@@ -959,10 +967,18 @@ function doTribute(card) {
   sel.value = []
   actOnline({ type: 'tribute', card_id: card.id })
 }
-function doReturn(card) {
-  if (!returnPending.value) return
-  sel.value = []
-  actOnline({ type: 'return', card_id: card.id })
+/* ---------- 还贡：先选中预览、点按钮才确认（v2.46.23 夜星：「选中后不是立马给」） ---------- */
+const returnSel = ref(null)
+const returnSelCard = computed(() =>
+  returnOptions.value.find(c => c.id === returnSel.value) || null)
+const returnTo = computed(() => {
+  const r = (tributeInfo.value?.returns || []).find(x => x.from === oSeat.value)
+  return r ? r.to : null
+})
+watch(returnPending, (on) => { if (!on) returnSel.value = null })
+function confirmReturn() {
+  if (!returnPending.value || returnSel.value == null) return
+  actOnline({ type: 'return', card_id: returnSel.value })
 }
 function doRematch() { emit('rematch') }
 
@@ -1428,20 +1444,32 @@ watch(phase, (p, old) => {
 .gd-score .op { color: var(--gt-ink-dim); font-style: normal; }
 .gd-score em { font-style: normal; opacity: .4; }
 
-/* 牌桌：主区 + 左下角出牌记录（浮层，默认收起，不占牌桌宽度） */
+/* 牌桌：主区 + 左下角出牌记录（浮层，默认收起，不占牌桌宽度）
+   v2.46.23 背景重做（夜星：「背景不兼容」）——参考真实赌桌 / WPT 类客户端的设计语言：
+   ① 绒布降饱和压暗（旧版 #227154 太艳，与墨蓝外壳打架），中央亮四周暗的聚光感；
+   ② 叠 45°/135° 两层极淡织纹（crosshatch，模拟绒布的布纹走向，透明度 <3% 不抢牌）；
+   ③ 内圈一条鎏金细线（::before，inset 7px）当「桌沿镶边」，呼应全站鎏金 accent；
+   ④ 暗角加深（inset 大半径黑晕），四角沉下去、视线聚焦中央出牌区。 */
 .gd-table {
   position: relative;
   flex: 1; min-height: 0; display: flex; gap: 10px;
   padding: 8px; border-radius: 16px;
-  /* 墨绿绒布（与麻将、大富翁同一色系）：旧版只是一层极淡的白雾叠在深色壳上，
-     牌桌与外壳分不出边界，52 张牌像浮在空气里 */
   background:
-    radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .09), transparent 58%),
-    radial-gradient(100% 92% at 50% 55%, #227154 0%, #17573f 46%, #0d3a2b 100%);
-  border: 1px solid rgba(255, 255, 255, .1);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px),
+    radial-gradient(120% 105% at 50% 38%, #1f5c45 0%, #164534 46%, #0c3125 78%, #082419 100%);
+  border: 1px solid rgba(0, 0, 0, .45);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, .06),
-    inset 0 0 62px -12px rgba(0, 0, 0, .6);
+    inset 0 0 0 1px rgba(255, 255, 255, .05),
+    inset 0 0 90px -18px rgba(0, 0, 0, .72),
+    0 10px 30px -18px rgba(0, 0, 0, .8);
+}
+/* 鎏金桌沿镶线：一条细线就够，宁可克制不要花哨（Apple HIG 式留白） */
+.gd-table::before {
+  content: ''; position: absolute; inset: 7px; border-radius: 11px;
+  border: 1px solid rgba(233, 200, 119, .2);
+  box-shadow: 0 0 14px -6px rgba(233, 200, 119, .35);
+  pointer-events: none;
 }
 .gd-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .gd-row { display: flex; align-items: center; }
@@ -1689,6 +1717,16 @@ watch(phase, (p, old) => {
 }
 
 /* 还贡面板 */
+/* v2.46.23 还贡选中态：金描边 + 轻微上浮，与「已选要出的牌」区分开（这里是待确认） */
+.gd-return .gt-card.is-pick {
+  transform: translateY(-10px);
+  box-shadow: 0 0 0 2px var(--gt-gold, #e9c877), 0 10px 18px -8px rgba(0, 0, 0, .6);
+  z-index: 5;
+}
+.gd-return-ok {
+  margin-top: 8px; align-self: center; min-width: 148px;
+}
+.gd-return-ok:disabled { opacity: .45; }
 .gd-return { display: flex; flex-direction: column; gap: 6px; padding: 6px 2px; }
 .gd-return-tip { font-size: 12.5px; color: var(--gt-ink-dim, #b9b3a6); text-align: center; }
 .gd-return-cards { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }

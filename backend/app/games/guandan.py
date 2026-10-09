@@ -4,8 +4,10 @@
 保持一致（同屏练习用 JS，在线用本文件），差异仅在本文件补齐 PRD §6.1 的**进贡 / 还贡 / 抗贡**。
 
 阶段机：
-``tribute``（进贡，**手动选牌、无倒计时**）→ ``return``（还贡，手动选 ≤10，**无倒计时**）
+v2.46.23 起**进贡在发牌后自动完成**（贡「手上最大的非逢人配」，规则定死、没有选择空间），
+→ ``return``（还贡，手动选 ≤10，**双方并行提交**、互不等待，5 分钟超时代选）
 → ``playing``（正常出牌）→ ``finished``（结算，含 ``deltas`` 底注倍数）。
+旧房态里可能还存留 ``tribute`` 阶段（v2.46.22 及以前开局），相关代码路径保留兼容。
 
 双下（头游与二游同队）时本局**立即结束**（其余两家互为队友，不再争三游/末游），
 三游、末游各进一张，头游、二游各还一张；
@@ -504,23 +506,26 @@ def _do_tribute(st: dict, seat: int, card: dict, events: list[dict]) -> None:
     # 进贡牌大的先出；点数相同按 ♠>♥>♣>♦（v2.46.17，夜星定的口径）
     tr["leader"] = max(tr["pairs"],
                        key=lambda p: (_card_value(p["card"], st["level"]), _suit_key(p["card"])))["from"]
-    tr["returns"] = [{"from": p["to"], "to": p["from"]} for p in tr["pairs"]]
+    # v2.46.23 还贡并行：不再排队（旧版一人还完才轮到下一个，夜星：「支持两个人一起还，这样快」）。
+    # done 标记代替 remove，双方各还各的、互不等待；turn 仅作展示用（第一个未还的人）。
+    tr["returns"] = [{"from": p["to"], "to": p["from"], "done": False} for p in tr["pairs"]]
     st["phase"] = "return"
     st["turn"] = tr["returns"][0]["from"]
 
 
 def _do_return(st: dict, seat: int, card: dict, events: list[dict]) -> None:
     tr = st["tribute"]
-    item = next((r for r in tr["returns"] if r["from"] == seat), None)
+    item = next((r for r in tr["returns"] if r["from"] == seat and not r.get("done")), None)
     if item is None:
         raise TableError("你不需要还贡")
     _move_card(st["hands"][seat], st["hands"][item["to"]], card["id"])
+    item["done"] = True
     events.append({"kind": "return", "seat": seat, "to": item["to"], "card": card})
     _history(st, {"kind": "return", "seat": seat, "to": item["to"], "card": card})
     _log(st, f"{seat} 号位还贡 {_card_text(card)} 给 {item['to']} 号位")
-    tr["returns"].remove(item)
-    if tr["returns"]:
-        st["turn"] = tr["returns"][0]["from"]
+    pending = [r for r in tr["returns"] if not r.get("done")]
+    if pending:
+        st["turn"] = pending[0]["from"]
     else:
         st["phase"] = "playing"
         st["turn"] = tr["leader"]
@@ -699,11 +704,23 @@ class GuandanEngine(TableEngine):
         }
         if len(ranking_prev) == 4:
             plan = _tribute_plan(st, ranking_prev)
-            if plan["givers"] or plan["resisted"]:
+            if plan["resisted"]:
                 st["tribute"] = plan
-                st["phase"] = "tribute" if plan["givers"] else "playing"
+                st["phase"] = "playing"
                 st["turn"] = plan["turn"]
-                _log(st, "抗贡成功，不进贡" if plan["resisted"] else "进贡阶段")
+                _log(st, "抗贡成功，不进贡（进贡方合计两张大王）")
+            elif plan["givers"]:
+                # v2.46.23：进贡**不再手动选牌**——按规则进贡牌就是「手上最大的非逢人配」，
+                # 没有策略空间（夜星 2026-10-09：真人贡了张 8，被当成 bug 报上来）。
+                # 发牌后直接自动贡完，跳过 tribute 阶段，还贡双方并行（见 _do_return）。
+                st["tribute"] = plan
+                evs: list[dict] = []
+                for g in plan["givers"]:
+                    card = _pick_tribute(st["hands"][g["from"]], st["level"])
+                    _do_tribute(st, g["from"], card, evs)
+                st["history"].extend({"kind": e["kind"], "seat": e["seat"], "to": e["to"],
+                                      "card": e["card"]} for e in evs)
+            # givers 为空且未抗贡：无需进贡（首轮），直接 playing
         return st
 
     def view(self, state: dict, seat: int) -> dict:
@@ -730,8 +747,11 @@ class GuandanEngine(TableEngine):
                 me["tribute_to"] = g["to"]
                 me["tribute_options"] = [c for c in st["hands"][seat]
                                          if not _is_wild(c, st["level"])]
-        elif st["phase"] == "return" and st.get("turn") == seat:
-            me["return_pending"] = True
+        elif st["phase"] == "return":
+            # v2.46.23 还贡并行：只要还有未还的贡就显示面板，双方同时操作、互不等待
+            tr = st.get("tribute") or {}
+            if any(r["from"] == seat and not r.get("done") for r in tr.get("returns", [])):
+                me["return_pending"] = True
             me["return_options"] = [c for c in st["hands"][seat] if _return_ok(c, st["level"])]
         return {
             "phase": st["phase"],
@@ -770,8 +790,7 @@ class GuandanEngine(TableEngine):
             return st, events
 
         if st["phase"] == "return":
-            if seat != st.get("turn"):
-                raise TableError("还没轮到你")
+            # v2.46.23 还贡并行：不看 turn，任何人只要还有未还的贡就能还（双方可同时提交）
             cid = action.get("card_id")
             if cid is None:
                 raise TableError("请选择要还的牌")
@@ -821,12 +840,14 @@ class GuandanEngine(TableEngine):
             _do_tribute(st, seat, card, events)
             return st, events
         if st["phase"] == "return":
-            if st.get("turn") in ai:
-                seat = st["turn"]
-                card = _pick_return(st["hands"][seat], st["level"])
-                _do_return(st, seat, card, events)
-                return st, events
-            return None
+            # v2.46.23 还贡并行：任取一个未还贡的 AI（不再排队等 turn）
+            seat = next((r["from"] for r in (st.get("tribute") or {}).get("returns", [])
+                         if not r.get("done") and r["from"] in ai), None)
+            if seat is None:
+                return None
+            card = _pick_return(st["hands"][seat], st["level"])
+            _do_return(st, seat, card, events)
+            return st, events
         if st["phase"] != "playing":
             return None
         cur = st.get("turn")
@@ -866,12 +887,15 @@ class GuandanEngine(TableEngine):
             _do_tribute(st, seat, card, events)
             return st, events
         if phase == "return":
-            if not any(r.get("from") == seat for r in tr.get("returns", [])):
+            # v2.46.23 还贡并行：超时一次性给**所有**未还的人代选（不再只代 turn 一人）
+            pend = [r["from"] for r in tr.get("returns", []) if not r.get("done")]
+            if not pend:
                 return None
-            card = _pick_return(st["hands"][seat], st["level"])
-            if card is None:
-                return None
-            _do_return(st, seat, card, events)
+            for s in pend:
+                card = _pick_return(st["hands"][s], st["level"])
+                if card is None:
+                    continue
+                _do_return(st, s, card, events)
             return st, events
         return None
 

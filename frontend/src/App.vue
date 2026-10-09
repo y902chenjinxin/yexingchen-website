@@ -15,8 +15,10 @@
 
     <!-- 登录后全站常驻：桌面顶栏（悬浮）；移动端用独立沉浸式外壳，不显示 ✓
          v2.41.2 顶栏只留「提醒 + 账号」，⌘K / AI 高级工具的入口已迁到侧栏与手机端「智能」分组，
-         由下方 provide('navAction') 统一调起，顶栏不再有对应 emit -->
-    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
+         由下方 provide('navAction') 统一调起，顶栏不再有对应 emit
+         v2.46.23 沉浸态（牌桌全屏/放大）也收起：顶栏 fixed z-1000 会压在牌桌右上角的
+         出牌记录面板上（🔔 + 昵称 + ☰ 叠在「出牌记录」头上，夜星截图实锤） -->
+    <GlobalTopBar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile && !immersive" />
 
     <!-- 登录后桌面端：左侧导航（默认展开，可收起，按玉简分组；顶栏不动） -->
     <DesktopSidebar v-if="!showInitialLoading && auth.isLoggedIn && !isMobile" />
