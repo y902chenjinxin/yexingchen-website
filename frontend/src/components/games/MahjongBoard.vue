@@ -256,20 +256,41 @@
           <div v-if="result?.delta > 0" class="gt-confetti" aria-hidden="true">
             <i v-for="(st, i) in confetti" :key="i" :style="st"></i>
           </div>
-          <h3>{{ result?.title }}</h3>
+          <h3>{{ result?.matchOver ? `整场结束 · ${matchChampion !== null ? seatName(matchChampion) + ' 胜' : '平分'}` : result?.title }}</h3>
           <p>
             <template v-if="result?.hus?.length">
               <span v-for="(h, i) in result.hus" :key="i">
                 {{ seatName(h.seat) }}：{{ h.names.join(' · ') }} {{ h.fan }} 番
                 <em>（{{ h.zimo ? '自摸' : '点炮' }}）</em><br>
+                <!-- 胡牌牌面（v2.46.22）：结算卡内嵌 14 张，不用回翻胡牌浮层也能看 -->
+                <span v-if="h.hand?.length" class="mj-over-hand">
+                  <span
+                    v-for="(t, j) in h.hand"
+                    :key="j"
+                    class="gt-tile mini"
+                    :class="suitCls(t)"
+                  ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
+                </span>
               </span>
             </template>
             <template v-else>流局：牌墙摸完，无人胡牌。</template>
             <br>
             你的得分：<b>{{ result?.delta > 0 ? '+' : '' }}{{ deltaShown }}</b> 点
+            <!-- 整场制（v2.46.22）：本局分只是过程，整场先到 100 分才结束结算 -->
+            <em v-if="result?.matchDeltas" class="mj-over-matchline">
+              · 整场累计 {{ myMatchDelta > 0 ? '+' : '' }}{{ myMatchDelta }} 分（目标 {{ result?.matchTarget }}）
+            </em>
           </p>
+          <!-- 四人整场汇总（v2.46.22）：谁赢多少一目了然 -->
+          <div v-if="matchSummary" class="mj-over-match">
+            <span
+              v-for="m in matchSummary"
+              :key="m.seat"
+              :class="m.delta > 0 ? 'is-plus' : m.delta < 0 ? 'is-minus' : ''"
+            >{{ seatName(m.seat) }} {{ m.delta > 0 ? '+' : '' }}{{ m.delta }}<em>（{{ m.total }}/{{ m.target }}）</em></span>
+          </div>
           <div class="gt-actions">
-            <button class="gt-btn" @click="nextRound">再来一局</button>
+            <button v-if="!result?.matchOver" class="gt-btn" @click="nextRound">再来一局</button>
             <button class="gt-btn ghost" @click="doExit">返回列表</button>
           </div>
         </div>
@@ -429,10 +450,10 @@ function claimHit(t) {
 }
 
 /* ---------- 本局积分（V24617-013）----------
- * 在线直接读服务端投影的 players[].score（总账，含刮风下雨）；
+ * 在线读服务端投影的 players[].match_score（v2.46.22 整场累计：历局 + 本局实时）；
  * 本地按 huResults 现算（自摸三家各付、点炮放炮者付两倍）。 */
 function seatScore(s) {
-  if (isOnline.value) return Number(props.onlineView?.players?.[s]?.score || 0)
+  if (isOnline.value) return Number(props.onlineView?.players?.[s]?.match_score || 0)
   let v = 0
   for (const r of huResults.value) {
     const gain = BASE * r.fan
@@ -528,6 +549,28 @@ const huWinner = computed(() => {
   return result.value.hus[0]
 })
 const showHuShow = computed(() => phase.value === 'settled' && huShow.value && !!huWinner.value)
+
+/* ---------- 整场制（v2.46.22）：结算卡的四人汇总 / 我方累计 / 整场冠军 ---------- */
+const matchSummary = computed(() => {
+  const md = result.value?.matchDeltas
+  if (!md) return null
+  const ms = result.value?.matchScores || {}
+  const target = result.value?.matchTarget || 100
+  return [0, 1, 2, 3].map((s) => ({
+    seat: s,
+    delta: Number(md[String(s)] || 0),
+    total: Number(ms[String(s)] || 0),
+    target,
+  }))
+})
+const myMatchDelta = computed(() =>
+  Number(result.value?.matchDeltas?.[String(oSeat.value)] || 0))
+const matchChampion = computed(() => {
+  const list = matchSummary.value
+  if (!list?.length) return null
+  const top = list.slice().sort((a, b) => b.delta - a.delta)[0]
+  return top.delta > 0 ? top.seat : null
+})
 
 /* ---------- 小工具 ---------- */
 /** 花色键（m/s/p/z）→ 牌面组件的花纹名 */
@@ -634,6 +677,11 @@ function syncFromView(v) {
       hus,
       delta,
       title: !hus.length ? '流局' : delta > 0 ? '本局小赚' : delta < 0 ? '本局小亏' : '本局平局',
+      // 整场制字段（v2.46.22）：先到 100 分整场结束才结算豆子
+      matchScores: v.result.match_scores || null,
+      matchDeltas: v.result.match_deltas || null,
+      matchTarget: Number(v.result.match_target || 100),
+      matchOver: !!v.result.match_over,
     }
     // 胡牌动画：结算先看 14 张牌，点击任意处才露出结算卡（V24617-011）
     huShow.value = hus.length > 0
@@ -1532,6 +1580,34 @@ button.mj-ting-item:hover { border-color: rgba(233, 200, 119, .5); color: var(--
   animation: mj-hushow-pop .4s cubic-bezier(.2, .85, .3, 1) both;
 }
 .mj-hushow-tip { margin: 2px 0 0; font-size: 11.5px; color: rgba(232, 226, 210, .55); }
+
+/* ===== 结算卡整场制增强（v2.46.22）：胡牌牌面 / 四人汇总 / 我方累计 ===== */
+/* 胡牌牌面：结算卡内嵌 14 张 mini 牌，不回翻胡牌浮层也能看 */
+.mj-over-hand {
+  display: inline-flex; gap: 3px; flex-wrap: wrap; justify-content: center;
+  margin-top: 5px; padding: 6px 7px 4px; border-radius: 8px;
+  background: rgba(0, 0, 0, .28); vertical-align: top;
+}
+.mj-over-hand .gt-tile { width: 26px; aspect-ratio: 5 / 7; }
+/* 整场累计行内备注 */
+.mj-over-matchline { font-style: normal; font-size: 12px; color: var(--gt-ink-dim); }
+/* 四人整场汇总：一行四枚胶囊，赢金亏红 */
+.mj-over-match {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  margin-top: 2px;
+}
+.mj-over-match span {
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, .06); border: 1px solid var(--gt-line);
+  color: var(--gt-ink-dim);
+}
+.mj-over-match span em { font-style: normal; opacity: .55; font-size: 10.5px; }
+.mj-over-match span.is-plus { color: var(--gt-gold); border-color: rgba(233, 200, 119, .4); }
+.mj-over-match span.is-minus { color: #e07070; }
+@media (prefers-reduced-motion: reduce) {
+  .mj-over-hand { transition: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .mj-hushow-title, .mj-hushow-fan, .mj-hushow-hand .gt-tile,

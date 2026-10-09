@@ -7,6 +7,21 @@
 
 ---
 
+## v2.46.22 在线麻将整场制（2026-10-09）
+
+- **终局双算坑（V24622-005）**：`_end_game` 把本局 score 并入 `match_scores` 后，
+  view 的「`match_scores + score`」实时公式在 finished 态会把本局分加两次——
+  view 必须按 phase 分支：对局中才叠加，终局直接用并入后的累计。
+- **结算幂等**：`_settle` 无幂等标记时，轮询（table_state）/ act / 退出 / 解散四条
+  路径都可能对同一 result 重复发豆。标记写 `result["settled"]`（state["result"] 是同一
+  引用，_persist 随房态持久化），比加 DB 列轻。
+- **底注时序**：整场只扣一次 → 结算公式 `raw×stake+stake` 里的「+stake」是退那一次
+  预扣；中途退出（abort→_end_game）走 force 结算，同一公式自动退，无需单独退款。
+- **存量测试**：`test_mahjong_start_missing_phase` 断言 missing 定缺阶段，但引擎
+  v2.46.17 起已无定缺（stash 验证与本次改动无关），后续应更新该用例。
+
+---
+
 ## v2.46.21 掼蛋顺子改手动理牌（2026-10-09）
 
 - **钉住集合的响应式（V24621）**：`pinnedSeq` 是 `ref(new Set())`——Vue3 的 ref 包 Set

@@ -324,11 +324,24 @@ def _record_stats(db: Session, uid: int, game_key: str, result: str) -> int:
     return gained
 
 
-def _settle(db: Session, room: GameRoom, state: dict) -> None:
-    """按引擎结果给**真人**结算豆子与战绩（AI 不参与结算）。"""
+def _settle(db: Session, room: GameRoom, state: dict, force: bool = False) -> None:
+    """按引擎结果给**真人**结算豆子与战绩（AI 不参与结算）。
+
+    v2.46.22 麻将整场制：按**整场累计净分**（match_deltas，含历局、剔除已即时
+    结算的杠分）结算；小局结束但整场未完（match_over=False）时**不结算**，
+    底注继续挂着等 rematch，force=True（中途退出 / 解散收摊）才强制结算。
+    幂等：结算后在 result["settled"] 留标记（随 game_state 持久化），重复调用直接跳过。
+    """
     eng = get_engine(room.game)
     res = eng.result(state) or {}
-    deltas = res.get("deltas") or {}
+    if not res or res.get("settled"):
+        return
+    if room.game == "mahjong" and not res.get("match_over") and not force:
+        return
+    if room.game == "mahjong":
+        deltas = res.get("match_deltas") or res.get("deltas") or {}
+    else:
+        deltas = res.get("deltas") or {}
     unit = SETTLE_UNIT.get(room.game, "stake")
     stake = int(room.base_stake or 100)
     for s in normalize_seats(room.seats):
@@ -347,6 +360,7 @@ def _settle(db: Session, room: GameRoom, state: dict) -> None:
         if w is not None:
             grant_points(db, w, _record_stats(db, s["user_id"], room.game, result), "game",
                          f"{_label(room.game)} 对局")
+    res["settled"] = True   # 幂等标记（state["result"] 同一引用，_persist 会写回）
 
 
 GANG_LABEL = {"ming": "刮风", "an": "下雨", "bu": "补杠"}
@@ -414,6 +428,9 @@ def _dissolve(db: Session, room: GameRoom, reason: str) -> None:
             settled = False
         if not settled:
             _refund_stake(db, room)
+    elif room.status == "finished" and room.game == "mahjong" and room.game_state:
+        # 整场制（v2.46.22）：小局已完但整场未完时解散 → 底注还挂着，强制收摊结算
+        _settle(db, room, room.game_state, force=True)
     room.status = "dissolved"
     room.end_reason = reason
     room.deadline_at = None
@@ -434,7 +451,7 @@ def _end_round_on_leave(db: Session, room: GameRoom, quit_seat: int | None = Non
         state, events = out
     else:
         state = room.game_state or {}
-    _settle(db, room, state)
+    _settle(db, room, state, force=True)   # 中途退出：整场未完也按累计分强制收摊
     _persist(db, room, state, events)
     room.status = "finished"
     room.end_reason = "leave"
@@ -837,13 +854,16 @@ def rematch_table(room_id: int, db: Session = Depends(get_db),
 
     seats = normalize_seats(room.seats)
     room.seats = seats
-    _pre_deduct(db, room)
+    if room.game != "mahjong":
+        # 麻将整场制（v2.46.22）：底注整场只扣一次（start_table 已扣），rematch 不再扣
+        _pre_deduct(db, room)
 
     config = dict(room.config or {})
     config.update({"base_stake": int(room.base_stake or 100), "seat_count": len(seats),
                    "round_no": int(room.round_no or 1) + 1})
     prev = {k: old[k] for k in ("ranking", "level", "team_levels", "banker_team",
-                                "dealer", "result", "hu", "hu_info") if k in old}
+                                "dealer", "result", "hu", "hu_info",
+                                "match_scores", "match_gang_total") if k in old}
     if prev:
         config["prev"] = prev
     state = eng.new_game(_eff_seats(seats), config, secrets.randbelow(2 ** 31))

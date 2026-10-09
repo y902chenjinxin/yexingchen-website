@@ -419,6 +419,12 @@ class MahjongEngine(TableEngine):
         # 庄家轮换（v2.46.17）：由上一局胡牌者坐庄；流局则庄家下移一位（旧字段兜底）
         dealer = int((prev.get("result") or {}).get("dealer_next")
                      or prev.get("dealer_next") or 0) % 4
+        # 整场制（v2.46.22，夜星：「应该一整局各100积分」）：跨小局累计积分，
+        # 先到 match_target 分整场结束才结算豆子；小局结束只展示、不结算。
+        match_scores = [int(x) for x in (prev.get("match_scores") or [0, 0, 0, 0])]
+        match_gang = [int(x) for x in (prev.get("match_gang_total") or [0, 0, 0, 0])]
+        match_scores = (match_scores + [0, 0, 0, 0])[:4]
+        match_gang = (match_gang + [0, 0, 0, 0])[:4]
         deck = _build_deck()
         r.shuffle(deck)
         hands = [_sort_hand(deck[i * 13:(i + 1) * 13]) for i in range(4)]
@@ -438,8 +444,12 @@ class MahjongEngine(TableEngine):
             "after_kong": False,
             "hu": [],
             "hu_info": {},
-            "score": [0, 0, 0, 0],        # 总账（含刮风下雨），仅用于展示
-            "gang_total": [0, 0, 0, 0],   # 刮风下雨已即时结算的部分（结算时从 deltas 里剔除）
+            "score": [0, 0, 0, 0],        # 本局账（含刮风下雨），仅用于展示
+            "gang_total": [0, 0, 0, 0],   # 本局刮风下雨已即时结算的部分（结算时从 deltas 里剔除）
+            "match_scores": match_scores,     # 整场累计（进本局前）
+            "match_gang_total": match_gang,   # 整场已即时结算的杠分（进本局前）
+            "match_target": int(config.get("match_target") or 100),
+            "match_over": False,
             "history": [],
             "logs": [],
             "result": None,
@@ -454,6 +464,13 @@ class MahjongEngine(TableEngine):
     def view(self, state: dict, seat: int) -> dict:
         st = state
         players = []
+        ms = st.get("match_scores") or [0, 0, 0, 0]
+        # 实时整场分：对局中 = 历局累计 + 本局进行中得分；
+        # 已终局时 match_scores 已并入本局分，直接用（否则双算，v2.46.22 sanity 抓出）
+        if st.get("phase") == "finished":
+            live = [int(x) for x in ms]
+        else:
+            live = [int(ms[s]) + int(st["score"][s]) for s in range(4)]
         for s in range(4):
             players.append({
                 "seat": s,
@@ -464,6 +481,9 @@ class MahjongEngine(TableEngine):
                 "hu": s in st["hu"],
                 "hu_info": st["hu_info"].get(str(s)),
                 "score": st["score"][s],
+                # 整场实时累计（v2.46.22）
+                "match_score": live[s],
+                "match_target": int(st.get("match_target") or 100),
             })
         me = {
             "seat": seat,
@@ -721,6 +741,15 @@ class MahjongEngine(TableEngine):
         st["phase"] = "finished"
         st["turn"] = None
         st["claim"] = None
+        # 整场制（v2.46.22）：本局账并入整场累计；先到 match_target 分整场结束。
+        # match_deltas = 整场胡牌净分（剔除已即时结算的杠分），是最终结算豆子的依据。
+        ms = [int(st.get("match_scores", [0, 0, 0, 0])[s]) + int(st["score"][s]) for s in range(4)]
+        mg = [int(st.get("match_gang_total", [0, 0, 0, 0])[s]) + int(st["gang_total"][s]) for s in range(4)]
+        target = int(st.get("match_target") or 100)
+        over = max(ms) >= target
+        st["match_scores"] = ms
+        st["match_gang_total"] = mg
+        st["match_over"] = over
         st["result"] = {
             "finished": True,
             # 刮风下雨已即时收豆，最终结算只补「胡牌番数」部分，避免重复结算
@@ -730,10 +759,14 @@ class MahjongEngine(TableEngine):
             "hu_info": st["hu_info"],
             # 庄家轮换（v2.46.17）：下一局由本局胡牌者坐庄；流局则庄家下移一位
             "dealer_next": (int(st["hu"][0]) if st["hu"] else (int(st.get("dealer", 0)) + 1) % 4),
-            "match_over": False,
+            "match_over": over,
+            # 整场字段（v2.46.22）：match_scores 含杠分的展示总账；match_deltas 才是结算口径
+            "match_scores": {str(s): ms[s] for s in range(4)},
+            "match_deltas": {str(s): ms[s] - mg[s] for s in range(4)},
+            "match_target": target,
         }
-        events.append({"kind": "finish", "hu": list(st["hu"])})
-        _log(st, "本局结束")
+        events.append({"kind": "finish", "hu": list(st["hu"]), "match_over": over})
+        _log(st, "本局结束" + ("，整场比赛结束" if over else ""))
         _history(st, {"kind": "finish", "hu": list(st["hu"])})
 
     # ---------- AI 驱动 ----------
