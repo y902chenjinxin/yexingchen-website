@@ -1,11 +1,12 @@
-"""四川麻将 · 胡牌即结束 服务端引擎（v2.46.17）。
+"""四川麻将 · 胡牌即结束 服务端引擎（v2.46.24）。
 
-万(m)/条(s)/筒(p) 各 1–9 共 108 张，**另加字牌：箭牌（中/發/白）+ 风牌（东南西北）
-各 4 张（v2.46.15 起加箭牌、v2.46.17 起加风牌，共 136 张）**。字牌只能刻/对、不成顺子。
+万(m)/条(s)/筒(p) 各 1–9 共 108 张，**另加箭牌（中/發/白）各 4 张共 120 张**
+（v2.46.15 起加箭牌、v2.46.17 起加风牌、**v2.46.24 起移除东南西北风牌**——夜星要求）。
+字牌只能刻/对、不成顺子。老对局 state 里若残留风牌（rank 4-7）仍可正常渲染/结算。
 规则与前端 `utils/games/mahjong.js` 一致，本文件补齐 PRD §6.2 的**刮风下雨**
-（明杠即时收 1 倍底注 / 暗杠即时收 2 倍底注）。
+（明杠=放杠者付 1 / 暗杠=每家付 1 / 补杠=每家付 1，v2.46.24 口径）。
 
-阶段机：``playing``（摸打 / 碰杠胡）→ ``finished``。
+阶段机：``playing``（摸打 / 吃碰杠胡，v2.46.24 起支持吃）→ ``finished``。
 **v2.46.17 起取消定缺**（夜星要求「单纯的胡牌规则」）：开局庄家直接起手摸牌，
 手上不再有缺门限制，碰/杠/胡只看牌型。``missing`` 字段保留为全 None 以兼容旧房态。
 **胡牌即结束**（v2.46.10 起，不再是血战到底）：任意一家胡牌（自摸或点炮）本局立即收摊，
@@ -22,13 +23,16 @@ from app.games.base import TableEngine, TableError, copy_state, register, rng
 
 SUITS = ["m", "s", "p", "z"]
 SUIT_NAME = {"m": "万", "s": "条", "p": "筒", "z": "字"}
+# v2.46.24（夜星）：东南西北风牌整副移除，只留箭牌（中/發/白）。HONOR_NAME 保留
+# 4-7（风牌）映射：老对局 state 里可能还有风牌，view/口播仍要能渲染。
 HONOR_NAME = {1: "红中", 2: "发财", 3: "白板", 4: "东风", 5: "南风", 6: "西风", 7: "北风"}
-RANKS = {"m": 9, "s": 9, "p": 9, "z": 7}
+RANKS = {"m": 9, "s": 9, "p": 9, "z": 3}
 RANK_TEXT = {1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六", 7: "七", 8: "八", 9: "九"}
 
-# 刮风下雨：明杠（直杠）放杠者付 1 倍底注；暗杠每家付 2 倍；补杠每家付 1 倍
+# 刮风下雨（v2.46.24 口径，夜星）：明杠（直杠）由**放杠者**付 1 倍；暗杠**每家各付 1**
+# （旧版每家付 2 倍过重）；补杠维持每家付 1。
 GANG_MING = 1
-GANG_AN = 2
+GANG_AN = 1
 GANG_BU = 1
 
 
@@ -222,6 +226,32 @@ def ting_tiles(hand: list[dict], meld_count: int, missing: str | None = None) ->
     return out
 
 
+def _seat_ting(st: dict, seat: int) -> bool:
+    """某家是否听牌（v2.46.24，view 投影用）。
+
+    等牌状态（10/13 张）：直接验当前手牌是否有点炮即胡的听牌张；
+    轮到出牌（11/14 张）：算「打一张后能听」（与前端听牌提示同口径）。
+    胡牌 / 已结束 / 非 playing 不算。开销：每座位最多 14 次 ting_tiles（每次 36 次
+    can_hu），只在 view 投影时算，无状态副作用。
+    """
+    if st.get("phase") != "playing" or seat in st["hu"]:
+        return False
+    hand = st["hands"][seat]
+    mc = len(st["melds"][seat])
+    if len(hand) % 3 == 1:
+        return bool(ting_tiles(hand, mc))
+    seen: set[str] = set()
+    for t in hand:
+        k = f"{t['suit']}{t['rank']}"
+        if k in seen:
+            continue
+        seen.add(k)
+        rest = [x for x in hand if x["id"] != t["id"]]
+        if ting_tiles(rest, mc):
+            return True
+    return False
+
+
 def shanten(hand: list[dict], meld_count: int = 0) -> int:
     c = _counts(hand)
     need = 4 - meld_count
@@ -339,6 +369,38 @@ def ai_want_pong(hand: list[dict], tile: dict, meld_count: int, missing: str | N
 
 def ai_want_kong(hand: list[dict], tile: dict, missing: str | None = None) -> bool:
     return _counts(hand)[idx_of(tile["suit"], tile["rank"])] >= 3
+
+
+def chi_combos(hand: list[dict], tile: dict) -> list[list[dict]]:
+    """吃牌组合：上家弃牌 t，手里有同花色连张即可吃（万/条/筒，字牌不吃）。
+
+    返回所有组合（每项是与弃牌相连的两张手牌），如手 3万4万 吃 2万 → [3万,4万]。
+    """
+    if tile["suit"] not in ("m", "s", "p"):
+        return []
+    r = tile["rank"]
+    c = _counts(hand)
+    out: list[list[dict]] = []
+    # 弃牌 r 补进顺子三种位置：r-2..r（手拿 r-2,r-1）/ r-1..r+1（手拿 r-1,r+1）/ r..r+2（手拿 r+1,r+2）
+    for a, b in ((r - 2, r - 1), (r - 1, r + 1), (r + 1, r + 2)):
+        if a < 1 or b > 9:
+            continue
+        if c[idx_of(tile["suit"], a)] > 0 and c[idx_of(tile["suit"], b)] > 0:
+            pa = next(x for x in hand if x["suit"] == tile["suit"] and x["rank"] == a)
+            pb = next(x for x in hand if x["suit"] == tile["suit"] and x["rank"] == b and x["id"] != pa["id"])
+            out.append([pa, pb])
+    return out
+
+
+def ai_want_chi(hand: list[dict], tile: dict, meld_count: int, missing: str | None = None) -> bool:
+    """AI 吃牌判定：吃完整体向听数前进才吃（保守策略，不拆好搭子）。"""
+    combos = chi_combos(hand, tile)
+    if not combos:
+        return False
+    before = shanten(hand, meld_count)
+    combo = combos[0]
+    rest = [t for t in hand if t["id"] not in {combo[0]["id"], combo[1]["id"]}]
+    return shanten(rest, meld_count + 1) < before
 
 
 def find_ankongs(hand: list[dict]) -> list[dict]:
@@ -484,6 +546,8 @@ class MahjongEngine(TableEngine):
                 # 整场实时累计（v2.46.22）
                 "match_score": live[s],
                 "match_target": int(st.get("match_target") or 100),
+                # 听牌标记（v2.46.24，夜星：哪家听牌了要有标识）
+                "ting": _seat_ting(st, s),
             })
         me = {
             "seat": seat,
@@ -548,7 +612,7 @@ class MahjongEngine(TableEngine):
                     st["claim"] = None
                     _log(st, f"{cl['tile'] and tile_text(cl['tile'])} 无人要")
                     self._advance_draw_from(st, cl["from"], events)
-            elif act in ("pong", "kong", "hu"):
+            elif act in ("pong", "kong", "hu", "chi"):
                 self._resolve_claim(st, seat, act, events)
             else:
                 raise TableError("未知的响应")
@@ -650,10 +714,11 @@ class MahjongEngine(TableEngine):
             self._advance_draw_from(st, seat, events)
 
     def _find_claim(self, st: dict, tile: dict, from_seat: int, passed: list[int]):
-        """找这张弃牌的响应者：从放炮者**下家起逆时针**扫，胡 > 杠 > 碰。
+        """找这张弃牌的响应者：从放炮者**下家起逆时针**扫，胡 > 杠 > 碰 > 吃。
 
         胡牌即结束 → 点炮只取**一家**，所以扫到第一个能胡的座位就定下来（就近优先，
-        不存在一炮多响）；没人能胡时再按同样顺序找杠 / 碰。
+        不存在一炮多响）；没人能胡时再按同样顺序找杠 / 碰 / 吃。
+        注意：吃只有**下家**（from_seat 的下一家）能吃，其余座位跳过。
         """
         best = None
         for off in range(1, 4):
@@ -669,9 +734,11 @@ class MahjongEngine(TableEngine):
                 opts.append("kong")
             if cnt >= 2:
                 opts.append("pong")
+            if off == 1 and chi_combos(hand, tile):
+                opts.append("chi")
             if not opts:
                 continue
-            pr = 3 if "hu" in opts else (2 if "kong" in opts else 1)
+            pr = 3 if "hu" in opts else (2 if "kong" in opts else (1 if "pong" in opts else 0))
             if best is None or pr > best[0]:
                 best = (pr, s, opts)
                 if pr == 3:
@@ -707,6 +774,22 @@ class MahjongEngine(TableEngine):
             _log(st, f"{seat} 号位明杠 {tile_text(tile)}（刮风）")
             _gang_pay(st, seat, [frm], GANG_MING, "ming", events)
             self._draw(st, seat, events, after_kong=True)
+        elif act == "chi":
+            combos = chi_combos(st["hands"][seat], tile)
+            if not combos:
+                raise TableError("吃不了一张这张牌")
+            combo = combos[0]
+            for t in combo:
+                st["hands"][seat].remove(t)
+            st["melds"][seat].append({"type": "chi", "tile": tile, "from": frm,
+                                      "combo": [{"suit": t["suit"], "rank": t["rank"]} for t in combo]})
+            _remove_discard(st["discards"][frm], tile)
+            st["claim"] = None
+            st["turn"] = seat
+            st["last_draw"] = None
+            events.append({"kind": "chi", "seat": seat, "tile": tile, "from": frm})
+            _history(st, {"kind": "chi", "seat": seat, "tile": tile})
+            _log(st, f"{seat} 号位吃 {tile_text(tile)}")
 
     def _do_hu(self, st: dict, seat: int, hand_all: list[dict], fan_seat: int | None,
                zimo: bool, events: list[dict]) -> None:
@@ -795,6 +878,8 @@ class MahjongEngine(TableEngine):
                 self._resolve_claim(st, seat, "kong", events)
             elif "pong" in opts and ai_want_pong(st["hands"][seat], tile, melds):
                 self._resolve_claim(st, seat, "pong", events)
+            elif "chi" in opts and ai_want_chi(st["hands"][seat], tile, melds):
+                self._resolve_claim(st, seat, "chi", events)
             else:
                 cl["passed"] = list(cl.get("passed") or []) + [seat]
                 cand = self._find_claim(st, tile, cl["from"], cl["passed"])

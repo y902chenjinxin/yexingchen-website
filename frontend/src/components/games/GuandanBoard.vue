@@ -249,6 +249,12 @@
             :title="seqGroups.length || sel.length ? '把选中的牌（未选则第一组顺子）钉到最左' : '先点顺子按钮弹出一组，再挪到左侧'"
             @click="pinSeqToLeft"
           >挪左侧</button>
+          <button
+            class="gt-btn ghost sm"
+            :disabled="!sel.length"
+            :title="sel.length ? '把选中的牌钉到最右（按牌值升序，攒顺子用）' : '先选牌，再挪到右侧'"
+            @click="pinToRight"
+          >挪右侧</button>
           <span class="gd-act-gap"></span>
           <button class="gt-btn gd-pass" :disabled="!canAct || !target" @click="doPass">不要</button>
           <button class="gt-btn gd-play" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
@@ -312,20 +318,27 @@
           :style="{ '--gd-overlap': overlap + 'px' }"
           @pointerdown="onHandDown"
         >
-          <span
-            v-for="(c, i) in viewHand"
-            :key="c.id"
-            class="gt-card"
-            :class="cardCls(c, i)"
-            :style="dealWave ? { '--i': i } : null"
-            :data-idx="i"
-            @click="onPick(c, i, $event)"
-          >
-            <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-            <span class="c-mid">{{ cardSuit(c) }}</span>
-            <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-            <span v-if="isWildCard(c)" class="tag">配</span>
-          </span>
+          <template v-for="(c, i) in viewHand" :key="c.id">
+            <!-- 分区线（v2.46.24）：左钉区|散牌区、散牌区|右钉区 之间画一道竖线，
+                 理好的牌和散牌一眼分开（夜星：「现在都展示在一块，很乱」） -->
+            <i
+              v-if="(headCount > 0 && i === headCount) || (tailStart > headCount && i === tailStart)"
+              class="gd-hand-divider"
+              aria-hidden="true"
+            ></i>
+            <span
+              class="gt-card"
+              :class="cardCls(c, i)"
+              :style="dealWave ? { '--i': i } : null"
+              :data-idx="i"
+              @click="onPick(c, i, $event)"
+            >
+              <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+              <span class="c-mid">{{ cardSuit(c) }}</span>
+              <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+              <span v-if="isWildCard(c)" class="tag">配</span>
+            </span>
+          </template>
           <p v-if="!viewHand.length" class="gd-hand-empty">— 无手牌 —</p>
         </div>
       </footer>
@@ -389,6 +402,7 @@ import { sfx, setMuted, isMuted, panOf } from '@/utils/games/sfx'
 import { vibrate, hapticsEnabled, setHaptics } from '@/utils/games/haptics'
 import confettiPieces from '@/utils/games/confetti'
 import countUp from '@/utils/games/countUp'
+import { speak } from '@/utils/games/tts'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { useRootHeight } from '@/composables/useRootHeight'
 
@@ -501,30 +515,43 @@ const topSeat = computed(() => (povSeat.value + 2) % 4)
 const rightSeat = computed(() => (povSeat.value + 1) % 4)
 const leftSeat = computed(() => (povSeat.value + 3) % 4)
 
-/** 手牌展示顺序：
- *  同花顺：**自动理到最左、永不复位**（夜星 2026-10-09 原需求，v2.46.18 起并集制保留）。
- *  顺子：v2.46.21 起改**手动**（夜星：「顺子不自动挪到左侧，点击顺子按钮弹出对应牌，
- *  增加个挪到左侧的按钮，点击按钮再挪到左侧」）——自动理左在多组顺子时会拉走大片牌，
- *  挤掉散牌的浏览空间。交互：点「顺子」按钮弹出预览（选中 + 整组弹跳高亮 1.2s），
- *  确认要留再点「挪左侧」钉进 pinnedSeq；钉住的牌按牌值从小到大排最左，
- *  打掉对应牌后 id 自动失效，新局（新牌 id）也自然失效。 */
+/** 手牌展示顺序（v2.46.24 三分区）：[左钉区 | 散牌区 | 右钉区]，区间画分隔线。
+ *  同花顺：**只有纯天然的（不含逢人配凑的）**自动理到最左——夜星：「4 张同花需要
+ *  配牌成同花顺的不在左侧展示」，红桃级牌搭进来的半成品顺不许被拉走。
+ *  顺子：v2.46.21 起手动（点「顺子」弹出预览 → 「挪左侧」钉住）；
+ *  v2.46.24 加「挪右侧」：选中的牌钉到最右、按牌值升序（新牌总落在比自己小一级的
+ *  牌前面，正好把想拼的顺子从右往左攒）。钉住持久：出掉 id 自动失效，新局自然清空。 */
 const pinnedSeq = ref(new Set())
-const viewHand = computed(() => {
+const rightPinned = ref(new Set())
+const handParts = computed(() => {
   const base = isOnline.value ? (props.onlineView?.me?.hand || []) : (hands.value[viewSeat.value] || [])
-  if (phase.value === 'settled' || !base.length) return base
-  const flushes = G.findFlushBombs(base, roundLevel.value)
-  const pinned = pinnedSeq.value
-  const hasPinned = base.some(c => pinned.has(c.id))
-  if (!flushes.length && !hasPinned) return base
-  const used = new Set()
-  for (const cs of flushes) for (const c of cs) used.add(c.id)
-  for (const c of base) if (pinned.has(c.id)) used.add(c.id)
-  if (!used.size) return base
-  const head = base
-    .filter(c => used.has(c.id))
-    .sort((a, b) => G.cardValue(a, roundLevel.value) - G.cardValue(b, roundLevel.value))
-  return head.concat(base.filter(c => !used.has(c.id)))
+  if (phase.value === 'settled' || !base.length) return { head: base, mid: [], tail: [] }
+  const naturals = base.filter(c => !G.isWild(c, roundLevel.value))
+  const flushes = G.findFlushBombs(naturals, roundLevel.value)
+  const left = pinnedSeq.value
+  const right = rightPinned.value
+  const hasLeft = base.some(c => left.has(c.id))
+  const hasRight = base.some(c => right.has(c.id))
+  if (!flushes.length && !hasLeft && !hasRight) return { head: [], mid: base, tail: [] }
+  const usedL = new Set()
+  for (const cs of flushes) for (const c of cs) usedL.add(c.id)
+  for (const c of base) if (left.has(c.id)) usedL.add(c.id)
+  const usedR = new Set()
+  for (const c of base) if (right.has(c.id) && !usedL.has(c.id)) usedR.add(c.id)
+  const asc = (a, b) => G.cardValue(a, roundLevel.value) - G.cardValue(b, roundLevel.value)
+  return {
+    head: base.filter(c => usedL.has(c.id)).sort(asc),
+    mid: base.filter(c => !usedL.has(c.id) && !usedR.has(c.id)),
+    tail: base.filter(c => usedR.has(c.id)).sort(asc),
+  }
 })
+const viewHand = computed(() => {
+  const p = handParts.value
+  return p.head.concat(p.mid, p.tail)
+})
+/** 手牌分隔线位置：headCount>0 时在 head|mid 之间画线；tailStart 在 mid|tail 之间画线 */
+const headCount = computed(() => handParts.value.head.length)
+const tailStart = computed(() => handParts.value.head.length + handParts.value.mid.length)
 /** 别家手牌张数：在线从投影取，本地从 hands 取 */
 function handCount(s) {
   if (isOnline.value) return props.onlineView?.players?.[s]?.hand_count ?? 0
@@ -634,7 +661,8 @@ function cycleSeq() {
   }
 }
 /** 「挪左侧」（v2.46.21）：把当前选中的牌钉到最左（配合顺子按钮弹出后使用）；
- *  没有选中时退而钉第一组顺子。钉住持久：出掉对应牌 id 自动失效，新局换新牌自然清空。 */
+ *  没有选中时退而钉第一组顺子。钉住持久：出掉对应牌 id 自动失效，新局换新牌自然清空。
+ *  v2.46.24：与「挪右侧」互斥——挪左先解除右钉。 */
 function pinSeqToLeft() {
   let ids = sel.value.slice()
   if (!ids.length) {
@@ -642,7 +670,23 @@ function pinSeqToLeft() {
     ids = seqGroups.value[0].map(c => c.id)
   }
   pinnedSeq.value = new Set([...pinnedSeq.value, ...ids])
+  if (rightPinned.value.size) {
+    rightPinned.value = new Set([...rightPinned.value].filter(id => !ids.includes(id)))
+  }
   toastMsg('已挪到左侧')
+  sfx.pick()
+}
+/** 「挪右侧」（v2.46.24，夜星）：选中的牌钉到最右、按牌值升序——新加的牌总落在
+ *  比自己小一级的牌前面，想把一条顺子从右往左攒时逐张挪即可。与「挪左侧」互斥。 */
+function pinToRight() {
+  const ids = sel.value.slice()
+  if (!ids.length) { toastMsg('先选牌，再点「挪右侧」'); return }
+  rightPinned.value = new Set([...rightPinned.value, ...ids])
+  if (pinnedSeq.value.size) {
+    pinnedSeq.value = new Set([...pinnedSeq.value].filter(id => !ids.includes(id)))
+  }
+  sel.value = []
+  toastMsg(`已挪到右侧 ${ids.length} 张`)
   sfx.pick()
 }
 
@@ -872,12 +916,46 @@ let patFxTimer = null
 const freeze = ref(false)
 let freezeTimer = null
 let lastPlayKey = ''
+/** 出牌口播文本（v2.46.24，夜星：「报实际出的牌的内容，如三个二带一对五、四个六」）：
+ *  按点数分组生成口语描述；逢人配（百搭）按它补进的数量并入「几个 X」。 */
+const TTS_CN = { 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十', 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
+const TTS_COUNT = { 1: '', 2: '一对', 3: '三个', 4: '四个', 5: '五个', 6: '六个' }
+function ttsRank(c) { return c.joker ? (c.joker === 'big' ? '大王' : '小王') : (TTS_CN[c.rank] || c.rank) }
+function describePlay(cards, pat) {
+  const t = pat?.type
+  if (!t) return ''
+  // 按点数分组（大小王各自一组；逢人配不单列，数量并入主组）
+  const groups = new Map()
+  let wildN = 0
+  for (const c of cards) {
+    if (G.isWild(c, roundLevel.value)) { wildN += 1; continue }
+    const k = c.joker ? `j${c.joker}` : c.rank
+    if (!groups.has(k)) groups.set(k, [])
+    groups.get(k).push(c)
+  }
+  const gs = [...groups.values()].sort((a, b) => b.length - a.length)
+  const main = gs[0] || []
+  const mainN = main.length + (gs.length ? 0 : wildN)   // 全百搭时并给主组
+  const mainTxt = `${TTS_COUNT[Math.min(mainN, 6)] || ''}${ttsRank(main[0] || cards[0])}`
+  if (t === 'single') return mainTxt || '单张'
+  if (t === 'pair') return `一对${ttsRank(main[0] || cards[0])}`
+  if (t === 'triple') return `三个${ttsRank(main[0] || cards[0])}`
+  if (t === 'triple2') {
+    const kick = gs[1]
+    return `三个${ttsRank(main[0] || cards[0])}带一对${kick ? ttsRank(kick[0]) : ''}`
+  }
+  if (t === 'bomb') return `${TTS_COUNT[Math.min(cards.length, 6)] || ''}${ttsRank(main[0] || cards[0])}`
+  return G.PATTERN_NAME[t] || ''   // 顺子 / 三连对 / 钢板 / 同花顺 / 火箭：报牌型名
+}
 function playFxFor(p) {
   if (!p || !p.cards || !p.cards.length) return
   const key = `${p.seat}:${p.cards.length}:${p.cards[0]?.id}:${p.cards[p.cards.length - 1]?.id}`
   if (key === lastPlayKey) return
   lastPlayKey = key
   const pat = p.pattern || {}
+  // 语音报牌（v2.46.24）：口播实际出的牌面内容（本地与在线同走这里，lastPlay 全量投影）
+  const say = describePlay(p.cards, pat)
+  if (say) speak(say)
   // 牌型名浮现：普通牌型墨底，炸弹 / 同花顺 / 火箭金底
   const name = G.PATTERN_NAME[pat.type] || ''
   if (name) {
@@ -1397,9 +1475,12 @@ watch(() => viewHand.value.length, () => {
   seqIdx.value = 0
   requestAnimationFrame(measureHand)
 })
-// 新一局（settled → playing）清掉上一局钉住的顺子；同局内钉住的牌打出后 id 自动失效
+// 新一局（settled → playing）清掉上一局钉住的顺子与右钉牌；同局内钉住的牌打出后 id 自动失效
 watch(phase, (p, old) => {
-  if (p === 'playing' && old === 'settled') pinnedSeq.value = new Set()
+  if (p === 'playing' && old === 'settled') {
+    pinnedSeq.value = new Set()
+    rightPinned.value = new Set()
+  }
 })
 </script>
 
@@ -1629,6 +1710,12 @@ watch(phase, (p, old) => {
 }
 .gd-hand .gt-card { margin-right: calc(-1 * var(--gd-overlap, 0px)); }
 .gd-hand .gt-card:last-child { margin-right: 0; }
+/* 分区线（v2.46.24）：左钉区|散牌区、散牌区|右钉区 之间的鎏金竖线 */
+.gd-hand-divider {
+  flex: none; width: 2px; align-self: stretch; margin: 4px 5px;
+  border-radius: 2px; background: rgba(233, 200, 119, .5);
+  box-shadow: 0 0 8px rgba(233, 200, 119, .3);
+}
 /* 上滑出牌：手牌整体抬起 + 头顶弹出「松手出牌」胶囊（提前告知松手会发生什么） */
 .gd-hand.is-up { position: relative; transform: translateY(-8px); }
 .gd-hand.is-up::after {

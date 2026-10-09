@@ -36,6 +36,8 @@
             </span>
             <span v-if="isTurn(p.seat) && !out[p.seat]" class="gt-seat-badge">出牌中</span>
             <span v-else-if="out[p.seat]" class="gt-seat-badge">已胡</span>
+            <!-- 听牌标识（v2.46.24，夜星：展示哪家听牌了） -->
+            <span v-else-if="tingFlags[p.seat]" class="gt-seat-badge is-ting">听牌</span>
           </div>
 
           <div v-if="melds[p.seat].length" class="mj-melds" :class="p.dir">
@@ -120,14 +122,24 @@
           <span v-else class="gt-sub">开局</span>
           <span v-if="phase === 'playing' && !pending" class="gt-pill gold">轮到 {{ seatName(turn) }}</span>
           <span v-if="isTing" class="gt-pill gold">听牌</span>
+          <!-- 我的积分（v2.46.24，夜星：电脑端全屏时不展示自己的得分）：
+               旧版积分只摆在别家席位卡上，自己的分数没有任何位置 —— 信息条补一枚 -->
+          <span class="gt-pill" :class="{ gold: dispScores[viewSeat] > 0 }">
+            积分 {{ dispScores[viewSeat] > 0 ? '+' : '' }}{{ dispScores[viewSeat] }}
+          </span>
           <span class="gt-pill">{{ seatName(viewSeat) }}手牌 {{ viewHand.length }}</span>
           <span class="gt-pill">余牌 {{ wall.length }}</span>
           <span v-if="melds[viewSeat]?.length" class="gt-pill">副露 {{ melds[viewSeat].length }}</span>
           <span class="gt-spacer"></span>
           <span v-if="phase === 'playing' && viewSeat !== null" class="mj-ting-inline">
-            <em class="mj-ting-label">听牌</em>
-            <template v-if="tingInfo.length">
-              <!-- 点击听牌项直接选中那张打出的牌（v2.46.19），顺手验证听的牌 -->
+            <template v-if="waitingTing.length">
+              <!-- v2.46.24：真正的等牌听牌 —— 直接亮听哪些牌（旧版把「打一张可听」
+                   当成听牌标，等牌状态反而显示「尚未听牌」，夜星反馈） -->
+              <em class="mj-ting-gold">已听 <b>{{ waitingTing.map(tileText).join(' / ') }}</b></em>
+            </template>
+            <template v-else-if="tingInfo.length">
+              <!-- 一向听提示：打哪张就能听（点击听牌项直接选中那张牌，v2.46.19） -->
+              <em class="mj-ting-label">一向听</em>
               <button
                 v-for="(info, i) in tingInfo.slice(0, 3)"
                 :key="i"
@@ -156,6 +168,7 @@
           <button v-if="pending.kinds.includes('hu')" class="gt-btn is-pulse" @click="onReact('hu')">胡</button>
           <button v-if="pending.kinds.includes('kong')" class="gt-btn is-pulse" @click="onReact('kong')">杠</button>
           <button v-if="pending.kinds.includes('pong')" class="gt-btn is-pulse" @click="onReact('pong')">碰</button>
+          <button v-if="pending.kinds.includes('chi')" class="gt-btn is-pulse" @click="onReact('chi')">吃</button>
           <button class="gt-btn ghost" @click="onReact('pass')">过</button>
         </div>
 
@@ -190,12 +203,13 @@
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </span>
         </div>
-        <div class="mj-hand" ref="handRef" :style="{ '--ntiles': Math.max(1, handTiles.length) }" @pointerdown="onHandDown">
+        <div class="mj-hand" ref="handRef" :class="{ 'is-deal': dealing }" :style="{ '--ntiles': Math.max(1, handTiles.length) }" @pointerdown="onHandDown">
           <span
-            v-for="t in viewHand"
+            v-for="(t, i) in viewHand"
             :key="t.id"
             class="gt-tile"
             :data-tid="t.id"
+            :style="{ '--i': i }"
             :class="[suitCls(t), {
               pickable: canDiscard,
               'is-sel': selId === t.id,
@@ -323,6 +337,7 @@ import { sfx, setMuted, isMuted, panOf } from '@/utils/games/sfx'
 import { hapticsEnabled, setHaptics } from '@/utils/games/haptics'
 import confettiPieces from '@/utils/games/confetti'
 import countUp from '@/utils/games/countUp'
+import { speak, tileSpeech } from '@/utils/games/tts'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { reportSettle } from '@/api/gameEconomy'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
@@ -348,7 +363,7 @@ const emit = defineEmits(['exit', 'room-lock', 'room-unlock', 'act', 'rematch'])
 const SAVE_KEY = 'mahjong'
 const SEAT_LABEL = { 0: '你', 1: '右家', 2: '对家', 3: '左家' }
 const AI_AVATARS = { 1: '🐯', 2: '🦊', 3: '🐼' }
-const REACT_NAME = { hu: '胡', kong: '杠', pong: '碰' }
+const REACT_NAME = { hu: '胡', kong: '杠', pong: '碰', chi: '吃' }
 const STAKE = 100
 const BASE = 10
 /** 本局胡牌的座位（本地庄家轮换用）：null = 流局 */
@@ -514,14 +529,13 @@ const bugangs = computed(() => {
   return M.findBugangs(h, melds.value[turn.value])
 })
 
-/** 听牌提示：打哪张、听哪些。在线仅在自己可出牌时计算（只读自己的手牌，不涉暗信息） */
+/** 听牌提示：打哪张、听哪些（一向听）。仅在自己可出牌（11/14 张）时计算 */
 const tingInfo = computed(() => {
   if (phase.value !== 'playing') return []
-  if (isOnline.value && !canDiscard.value) return []
+  if (!canDiscard.value) return []
   const seat = viewSeat.value
-  const h = hands.value[seat]
-  if (h.length % 3 !== 1) return []
-  const mc = melds.value[seat].length
+  const h = drawn.value ? hands.value[seat].concat([drawn.value]) : hands.value[seat]
+  if (h.length % 3 !== 2) return []
   const res = []
   const seen = new Set()
   for (const t of h) {
@@ -529,13 +543,50 @@ const tingInfo = computed(() => {
     if (seen.has(k)) continue
     seen.add(k)
     const rest = h.filter(x => x.id !== t.id)
-    const waits = M.tingTiles(rest, mc)
+    const waits = M.tingTiles(rest, melds.value[seat].length)
     if (waits.length) res.push({ tile: t, waits })
   }
   return res
 })
-/** 听牌状态（v2.46.19）：存在某张打出去就能听的牌 → 信息条亮「听牌」金标 */
-const isTing = computed(() => tingInfo.value.length > 0)
+/** 真听牌（v2.46.24 修复，夜星：「已经听牌，还是展示未听牌」）：
+ *  旧版把「打一张可听」（一向听）当听牌标，而等牌状态（10/13 张）下真正已经
+ *  听牌的手反而显示「尚未听牌」。现在：等牌状态下直接验当前手牌有无听张。 */
+const waitingTing = computed(() => {
+  if (phase.value !== 'playing') return []
+  if (canDiscard.value) return []   // 轮到自己出牌时不存在「等牌」
+  const seat = viewSeat.value
+  const h = hands.value[seat] || []
+  if (h.length % 3 !== 1) return []
+  return M.tingTiles(h, melds.value[seat].length)
+})
+const isTing = computed(() => waitingTing.value.length > 0)
+/** 各家听牌标识（v2.46.24，夜星：展示哪家听牌了）：在线读服务端 players[].ting，
+ *  本地全知视角现算（等牌直接验；轮到出牌的算「打一张能听」） */
+const tingFlags = computed(() => {
+  const flags = [false, false, false, false]
+  if (phase.value !== 'playing') return flags
+  if (isOnline.value) {
+    for (const p of props.onlineView?.players || []) flags[p.seat] = !!p.ting
+    return flags
+  }
+  for (let s = 0; s < 4; s++) {
+    if (out.value[s]) continue
+    const h = (turn.value === s && drawn.value) ? hands.value[s].concat([drawn.value]) : hands.value[s]
+    const mc = melds.value[s].length
+    if (h.length % 3 === 1) {
+      flags[s] = M.tingTiles(h, mc).length > 0
+    } else {
+      const seen = new Set()
+      for (const t of h) {
+        const k = `${t.suit}${t.rank}`
+        if (seen.has(k)) continue
+        seen.add(k)
+        if (M.tingTiles(h.filter(x => x.id !== t.id), mc).length) { flags[s] = true; break }
+      }
+    }
+  }
+  return flags
+})
 /** 点听牌项 → 直接选中那张待打的牌（配合金色描边一眼确认） */
 function selectTing(info) {
   if (!info?.tile) return
@@ -588,6 +639,7 @@ function tileText(t) {
   return t.suit === 'z' ? (M.HONOR_NAME[t.rank] || `${t.rank}字`) : `${t.rank}${M.SUIT_NAME[t.suit]}`
 }
 function meldTiles(md) {
+  if (md.type === 'chi') return [...(md.combo || []), md.tile]   // 吃：连张两张 + 弃牌
   const n = md.type === 'pong' ? 3 : 4
   return Array.from({ length: n }, () => md.tile)
 }
@@ -694,6 +746,33 @@ function syncFromView(v) {
 }
 watch(() => props.onlineView, (v) => { if (isOnline.value) syncFromView(v) }, { immediate: true, deep: true })
 
+/* ---------- 在线语音报牌（v2.46.24）：盯 last_discard 变化口播牌面 ---------- */
+let lastSpokenKey = ''
+watch(lastDiscard, (nd, od) => {
+  if (!isOnline.value || !nd?.tile) return
+  const key = `${nd.seat}:${nd.tile.id}:${discards.value[nd.seat]?.length || 0}`
+  if (od === undefined) { lastSpokenKey = key; return }   // 进房首次同步不补播旧牌
+  if (key === lastSpokenKey) return
+  lastSpokenKey = key
+  if (phase.value === 'playing') speak(tileSpeech(nd.tile))
+})
+
+/* ---------- 开局发牌动效（v2.46.24，夜星：一进来就展示全部怪怪的）：
+ *  手牌从无到有（或跨局重发）时给每张牌一个自上而下落位的错峰动画 ---------- */
+const dealing = ref(false)
+let dealTimer = null
+function playDealFx() {
+  dealing.value = false
+  requestAnimationFrame(() => {
+    dealing.value = true
+    clearTimeout(dealTimer)
+    dealTimer = setTimeout(() => { dealing.value = false }, 1500)
+  })
+}
+watch(() => viewHand.value.length, (n, o) => {
+  if (n >= 12 && (o ?? 0) < 12) playDealFx()
+})
+
 /* ---------- 在线：动作上抛 ---------- */
 function actOnline(action) { emit('act', action) }
 
@@ -784,6 +863,7 @@ function doDiscard(seat, tile) {
   tile._tilt = +(Math.random() * 4 - 2).toFixed(2)   // 落桌余倾 ±2°
   log(`${seatName(seat)} 打出 ${tileText(tile)}`)
   sfx.play(panOf(seat, povSeat.value))
+  speak(tileSpeech(tile))   // 语音报牌（v2.46.24）：口播实际打出的牌面
   huDeclined.value = []          // 每张新弃牌的「不胡」名单重新开始
   resolveReactions(seat, tile)
 }
@@ -802,7 +882,7 @@ function resolveReactions(from, tile) {
     checkRoundEnd()
     return
   }
-  // 2) 杠 / 碰：按座次
+  // 2) 杠 / 碰 / 吃：按座次（吃只有下家能吃，v2.46.24）
   const q = []
   for (let off = 1; off <= 3; off++) {
     const s = (from + off) % 4
@@ -810,6 +890,7 @@ function resolveReactions(from, tile) {
     const kinds = []
     if (countIn(hands.value[s], tile) >= 3) kinds.push('kong')
     if (countIn(hands.value[s], tile) >= 2) kinds.push('pong')
+    if (off === 1 && M.chiCombos(hands.value[s], tile).length) kinds.push('chi')
     if (kinds.length) q.push({ seat: s, kinds })
   }
   reactQueue.value = q
@@ -836,6 +917,10 @@ function stepReactions() {
     if (cur.kinds.includes('pong')
       && M.aiWantPong(hands.value[s], rf.tile, melds.value[s].length, null, { level: 'normal' })) {
       q.shift(); doPong(s, rf.tile, rf.from); return
+    }
+    if (cur.kinds.includes('chi')
+      && M.aiWantChi(hands.value[s], rf.tile, melds.value[s].length, null, { level: 'normal' })) {
+      q.shift(); doChi(s, rf.tile, rf.from); return
     }
     q.shift()
   }
@@ -889,6 +974,30 @@ function doKongFromDiscard(seat, tile, from) {
   showClaimFx('杠')
   turn.value = seat
   drawReplacement(seat)
+}
+
+/** 吃（v2.46.24）：上家弃牌 + 手里两张连张成顺子。组合由 chiCombos 给出，
+ *  本地模式取第一组；在线模式服务端同样取第一组。 */
+function doChi(seat, tile, from) {
+  const combos = M.chiCombos(hands.value[seat], tile)
+  if (!combos.length) return
+  const combo = combos[0]
+  const h = hands.value[seat]
+  for (const t of combo) {
+    const i = h.findIndex(x => x.id === t.id)
+    if (i >= 0) h.splice(i, 1)
+  }
+  hands.value[seat] = M.sortHand(h)
+  melds.value[seat].push({ type: 'chi', tile, from, combo: combo.map(t => ({ suit: t.suit, rank: t.rank })) })
+  takeFromDiscard(from)
+  drawn.value = null
+  turn.value = seat
+  selId.value = null
+  log(`${seatName(seat)} 吃 ${tileText(tile)}`)
+  sfx.pong(panOf(seat, povSeat.value))
+  showClaimFx('吃')
+  if (isHuman(seat)) return
+  scheduleAI()
 }
 
 function doAnkong(tileInfo) {
@@ -1065,6 +1174,7 @@ function onReact(kind) {
     if (kind === 'hu') sfx.win()
     else if (kind === 'kong') sfx.kong()
     else if (kind === 'pong') sfx.pong()
+    else if (kind === 'chi') sfx.pong()
     actOnline({ type: kind })
     return
   }
@@ -1097,6 +1207,12 @@ function onReact(kind) {
     pending.value = null
     reactQueue.value.shift()
     doKongFromDiscard(p.seat, p.tile, p.from)
+    return
+  }
+  if (kind === 'chi') {
+    pending.value = null
+    reactQueue.value.shift()
+    doChi(p.seat, p.tile, p.from)
   }
 }
 
@@ -1243,9 +1359,9 @@ onBeforeUnmount(() => {
      弃牌小到看不清牌面）。 */
   --mini-w: clamp(17px, calc(var(--gt-h, 420px) * 0.056), 28px);
   --mini-h: calc(var(--mini-w) * 1.38);
-  /* 弃牌专用尺寸（V24613-003）：比副露/牌背的 --mini-w 小一档（0.056 → 0.047），
-     同样多的牌占的面积少 ~30%，中央能容纳更多弃牌也不显挤 */
-  --dis-w: clamp(14px, calc(var(--gt-h, 420px) * 0.047), 23px);
+  /* 弃牌专用尺寸（V24613-003 → v2.46.24 放大一档，夜星：中央牌桌牌少看着空）：
+     0.047 → 0.056、上限 23 → 27px，与副露 mini 同档 */
+  --dis-w: clamp(15px, calc(var(--gt-h, 420px) * 0.056), 27px);
   --dis-h: calc(var(--dis-w) * 1.38);
 }
 .mj.is-big { min-height: calc(100vh - 150px); }
@@ -1408,6 +1524,27 @@ onBeforeUnmount(() => {
 .mj-ting-item { font-size: 11.5px; color: var(--gt-ink-dim); white-space: nowrap; }
 .mj-ting-item b { color: var(--gt-ink); font-weight: 700; }
 .mj-ting-none { font-style: normal; font-size: 11.5px; color: var(--gt-ink-dim); white-space: nowrap; }
+/* 已听牌（v2.46.24）：鎏金亮字，与「一向听」提示区分 */
+.mj-ting-gold { font-style: normal; font-size: 11.5px; color: var(--gt-gold); white-space: nowrap; }
+.mj-ting-gold b { color: var(--gt-ink); font-weight: 700; }
+/* 席位卡听牌角标：金底更实一点 + 呼吸（v2.46.24） */
+.mj .gt-seat-badge.is-ting {
+  background: rgba(233, 200, 119, .38);
+  animation: mj-ting-breath 2.4s ease-in-out infinite;
+}
+@keyframes mj-ting-breath { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .mj .gt-seat-badge.is-ting { animation: none; } }
+
+/* 开局发牌动效（v2.46.24）：手牌自上而下错峰落位，1.5s 后自动解除 */
+.mj-hand.is-deal .gt-tile {
+  animation: mj-deal-in .46s cubic-bezier(.22, 1.2, .36, 1) both;
+  animation-delay: calc(var(--i, 0) * 38ms);
+}
+@keyframes mj-deal-in {
+  from { transform: translateY(-42px) rotate(-5deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .mj-hand.is-deal .gt-tile { animation: none; } }
 
 /* ===== 底部 ===== */
 .mj-bottom { display: flex; flex-direction: column; gap: 5px; min-height: 0; }

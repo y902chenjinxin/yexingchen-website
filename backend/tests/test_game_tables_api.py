@@ -24,7 +24,12 @@ USER_B = 202
 
 
 @pytest.fixture
-def ctx(tmp_path):
+def ctx(tmp_path, monkeypatch):
+    # AI 节奏（v2.46.23 起 3s、v2.46.24 起 5s）在测试里打平为 0：
+    # 否则「开局 AI 已自动出牌」这类断言要真等 5 秒，批跑还偶发超时抖动
+    from app.routers import game_tables as gt
+    monkeypatch.setattr(gt, "AI_ACT_MIN", 0.0)
+    monkeypatch.setattr(gt, "AI_ACT_MAX", 0.0)
     db_path = tmp_path / "game_tables.db"
     engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)

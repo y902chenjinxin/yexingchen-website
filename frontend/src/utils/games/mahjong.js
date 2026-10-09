@@ -17,10 +17,11 @@
 
 export const SUITS = ['m', 's', 'p', 'z']
 export const SUIT_NAME = { m: '万', s: '条', p: '筒', z: '字' }
-/** 字牌的显示名（tileText / 胡牌提示用）：箭牌 1-3 + 风牌 4-7 */
+/** 字牌的显示名（tileText / 胡牌提示用）：箭牌 1-3 + 风牌 4-7（风牌已退役，仅老局渲染兜底） */
 export const HONOR_NAME = { 1: '红中', 2: '发财', 3: '白板', 4: '东风', 5: '南风', 6: '西风', 7: '北风' }
-/** 每门花色的牌种数：数字牌 1–9，字牌 中/發/白 + 东南西北 共 7 种 */
-export const RANKS = { m: 9, s: 9, p: 9, z: 7 }
+/** 每门花色的牌种数：数字牌 1–9，字牌只有 中/發/白 3 种
+ *  （v2.46.24：东南西北风牌整副移除，夜星要求；与后端引擎同步） */
+export const RANKS = { m: 9, s: 9, p: 9, z: 3 }
 export const RANK_TEXT = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' }
 /** 显示用：一筒 / 三条 / 五万；牌面数字优先，副标写花色 */
 export const SUIT_GLYPH = { m: '萬', s: '條', p: '筒' }
@@ -357,6 +358,36 @@ export function aiWantKong(hand, tile, meldCount, missing, ctx = {}) {
   if (c[idxOf(tile.suit, tile.rank)] < 3) return false
   if (ctx.level === 'weak') return Math.random() < 0.5
   return true
+}
+
+/**
+ * 吃牌组合（v2.46.24，与后端 chi_combos 同口径）：上家弃牌 t，手里有同花色连张即可吃
+ * （万/条/筒，字牌不吃）。返回所有组合（每项是与弃牌相连的两张手牌）。
+ */
+export function chiCombos(hand, tile) {
+  if (tile.suit === 'z') return []
+  const r = tile.rank
+  const c = counts(hand)
+  const out = []
+  for (const [a, b] of [[r - 2, r - 1], [r - 1, r + 1], [r + 1, r + 2]]) {
+    if (a < 1 || b > 9) continue
+    if (c[idxOf(tile.suit, a)] > 0 && c[idxOf(tile.suit, b)] > 0) {
+      const pa = hand.find(x => x.suit === tile.suit && x.rank === a)
+      const pb = hand.find(x => x.suit === tile.suit && x.rank === b && x.id !== pa.id)
+      out.push([pa, pb])
+    }
+  }
+  return out
+}
+
+/** AI 是否吃：吃完整体向听数前进才吃（保守策略，与后端一致） */
+export function aiWantChi(hand, tile, meldCount, missing, ctx = {}) {
+  const combos = chiCombos(hand, tile)
+  if (!combos.length) return false
+  if (ctx.level === 'weak') return Math.random() < 0.5
+  const before = shanten(hand, meldCount)
+  const rest = hand.filter(t => t.id !== combos[0][0].id && t.id !== combos[0][1].id)
+  return shanten(rest, meldCount + 1) < before
 }
 
 /** AI 是否胡：见胡就胡（胡牌即结束，一胡就是本局赢家） */
