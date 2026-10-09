@@ -23,7 +23,7 @@
       </header>
 
       <!-- ===== 牌桌：主区 + 右侧出牌历史竖栏 ===== -->
-      <div class="gd-table">
+      <div class="gd-table" :class="{ 'is-shake': tableShake }">
         <div class="gd-main">
           <!-- 对家 -->
           <div class="gd-row gd-row-top">
@@ -43,6 +43,9 @@
                 <i class="gt-seat-sub">{{ seatSub(topSeat) }}</i>
               </span>
               <span v-if="isTurn(topSeat)" class="gt-seat-badge">出牌中</span>
+              <transition name="gd-pop">
+                <span v-if="passBubbles[topSeat]" class="gd-pass-bubble">不要</span>
+              </transition>
             </div>
           </div>
 
@@ -55,6 +58,9 @@
                 <i class="gt-seat-sub">{{ seatSub(leftSeat) }}</i>
               </span>
               <span v-if="isTurn(leftSeat)" class="gt-seat-badge">出牌中</span>
+              <transition name="gd-pop">
+                <span v-if="passBubbles[leftSeat]" class="gd-pass-bubble">不要</span>
+              </transition>
             </div>
 
             <!-- 中央：本轮出牌 -->
@@ -83,6 +89,12 @@
                      「轮到谁出牌」又常驻右上角；这里再写一遍就是同一句话出现两次。 -->
                 <p v-else-if="phase !== 'playing'" class="gd-center-empty">本局结束</p>
               </div>
+
+              <!-- 炸弹 / 同花顺 / 火箭：中央金圈炸开 + 大字，见 playFxFor -->
+              <div v-if="bombFx" class="gd-bomb-fx" aria-hidden="true">
+                <span class="gd-bomb-ring"></span>
+                <b>炸弹！</b>
+              </div>
             </div>
 
             <!-- 右家 -->
@@ -93,6 +105,9 @@
                 <i class="gt-seat-sub">{{ seatSub(rightSeat) }}</i>
               </span>
               <span v-if="isTurn(rightSeat)" class="gt-seat-badge">出牌中</span>
+              <transition name="gd-pop">
+                <span v-if="passBubbles[rightSeat]" class="gd-pass-bubble">不要</span>
+              </transition>
             </div>
           </div>
         </div>
@@ -145,6 +160,9 @@
       <footer class="gd-bottom">
         <div class="gd-bottom-bar">
           <span class="gd-hand-tag">{{ seatName(viewSeat) }} · {{ viewHand.length }} 张</span>
+            <transition name="gd-pop">
+              <span v-if="passBubbles[viewSeat]" class="gd-pass-bubble gd-pass-bubble-me">不要</span>
+            </transition>
           <!-- 全屏时顶栏被收起，级牌与比分改由这条承载，保证一直可见；非全屏时隐藏以免与顶栏重复 -->
           <span class="gd-scorebar">
             主级 {{ G.levelText(roundLevel) }} · 我方 {{ G.levelText(myLevel) }} / 对方 {{ G.levelText(oppLevel) }}
@@ -432,9 +450,9 @@ const leftSeat = computed(() => (povSeat.value + 3) % 4)
 /** 手牌展示顺序：**同花顺 / 顺子自动理到最左、永不复位**（夜星 2026-10-09：
  *  「同花顺和顺子就理好放在左侧，不收回去，可以快速理清牌」——旧版要点按钮才钉、
  *  出完牌 / 清空选中就复位，理好的牌又散回去）。
- *  规则：组按 findSeqGroups 的顺序（同花顺优先、组间从大到小）逐组取用；
- *  与已取组重叠的组整组跳过（同一张不重复钉）；组内按牌值从小到大排，
- *  读起来就是「6 7 8 9 10」；剩余牌保持原理牌顺序跟在后面。
+ *  v2.46.18 起（夜星：「如果有多个就都汇总到左边，由操作人自己选择打出」）改为**并集**：
+ *  所有顺子 / 同花顺（含互相重叠的）涉及到的牌全部理到最左，**按牌值从小到大**连成一条
+ *  （如 3-7♥ 与 5-9♥ 重叠 → 3 4 5 6 7 8 9♥ 一整排），其余牌保持原理牌顺序跟在后面。
  *  手牌一变（摸牌 / 出牌 / 贡牌）自动重算 —— 还成顺的继续钉着，散了的自然归位。 */
 const viewHand = computed(() => {
   const base = isOnline.value ? (props.onlineView?.me?.hand || []) : (hands.value[viewSeat.value] || [])
@@ -442,14 +460,12 @@ const viewHand = computed(() => {
   const groups = G.findSeqGroups(base, roundLevel.value)
   if (!groups.length) return base
   const used = new Set()
-  const head = []
-  for (const cs of groups) {
-    if (cs.some(c => used.has(c.id))) continue
-    cs.slice()
-      .sort((a, b) => G.cardValue(a, roundLevel.value) - G.cardValue(b, roundLevel.value))
-      .forEach(c => { used.add(c.id); head.push(c) })
-  }
-  return head.length ? head.concat(base.filter(c => !used.has(c.id))) : base
+  for (const cs of groups) for (const c of cs) used.add(c.id)
+  if (!used.size) return base
+  const head = base
+    .filter(c => used.has(c.id))
+    .sort((a, b) => G.cardValue(a, roundLevel.value) - G.cardValue(b, roundLevel.value))
+  return head.concat(base.filter(c => !used.has(c.id)))
 })
 /** 别家手牌张数：在线从投影取，本地从 hands 取 */
 function handCount(s) {
@@ -694,6 +710,48 @@ function toastMsg(t, ms = 1800) {
   toastTimer = setTimeout(() => { toast.value = '' }, ms)
 }
 
+/* ---------- 「不要」气泡（夜星：点不要后头像处弹小气泡，参考主流棋牌） ----------
+ * 本地：applyPass 直接触发；在线：syncFromView 按 history 增量触发（服务端 history 只追加，
+ * 长度变大且最后一条是 pass → 该座位弹「不要」，长度变小 = 新一局，重置计数）。 */
+const passBubbles = ref({})
+const passBubbleTimers = {}
+function showPassBubble(seat) {
+  if (seat === null || seat === undefined || seat < 0) return
+  passBubbles.value = { ...passBubbles.value, [seat]: true }
+  clearTimeout(passBubbleTimers[seat])
+  passBubbleTimers[seat] = setTimeout(() => {
+    const next = { ...passBubbles.value }
+    delete next[seat]
+    passBubbles.value = next
+  }, 2000)
+}
+
+/* ---------- 炸弹特效（夜星：出牌动效和炸弹特效，参考网上的设计） ----------
+ * 普通出牌的入场动画早就有（.gd-throw，从下方浮入）；这里补**炸弹 / 同花顺 / 火箭**：
+ * 中央金圈炸开 + 「炸弹！」大字 + 全桌 0.55s 震动。在线轮询每 1.6s 全量重建 lastPlay，
+ * 必须按内容 key 判重，否则特效每 1.6s 重放一遍。 */
+const bombFx = ref(false)
+const tableShake = ref(false)
+let bombTimer1 = null
+let bombTimer2 = null
+let lastPlayKey = ''
+function playFxFor(p) {
+  if (!p || !p.cards || !p.cards.length) return
+  const key = `${p.seat}:${p.cards.length}:${p.cards[0]?.id}:${p.cards[p.cards.length - 1]?.id}`
+  if (key === lastPlayKey) return
+  lastPlayKey = key
+  const pat = p.pattern || {}
+  if ((pat.bombLevel || 0) > 0 || pat.type === 'rocket') {
+    bombFx.value = true
+    tableShake.value = true
+    clearTimeout(bombTimer1)
+    clearTimeout(bombTimer2)
+    bombTimer1 = setTimeout(() => { bombFx.value = false }, 1100)
+    bombTimer2 = setTimeout(() => { tableShake.value = false }, 600)
+  }
+}
+watch(lastPlay, (p) => playFxFor(p))
+
 /* ---------- 出牌历史 ---------- */
 function pushHistory(item) {
   history.value.unshift(item)
@@ -702,6 +760,7 @@ function pushHistory(item) {
 
 /* ---------- 在线：服务端投影 → 展示态 ---------- */
 const PHASE_MAP = { playing: 'playing', tribute: 'playing', return: 'playing', finished: 'settled' }
+const onlineHistLen = ref(0)
 /** 服务端 pattern 是 snake_case（bomb_level），前端 canBeat 用 camelCase（bombLevel），此处归一 */
 function normPlay(p) {
   if (!p) return null
@@ -720,8 +779,16 @@ function syncFromView(v) {
   turn.value = (v.turn === null || v.turn === undefined) ? -1 : v.turn
   target.value = normPlay(v.target)
   lastPlay.value = normPlay(v.last_play)
-  // 服务端 history 按时间正序，取最新在前
-  history.value = (v.history || []).slice().reverse()
+  // 服务端 history 按时间正序，取最新在前；增量部分里最后一条是 pass → 弹「不要」气泡
+  const hist = v.history || []
+  if (hist.length !== onlineHistLen.value) {
+    if (hist.length > onlineHistLen.value) {
+      const lastEv = hist[hist.length - 1]
+      if (lastEv && lastEv.kind === 'pass') showPassBubble(lastEv.seat)
+    }
+    onlineHistLen.value = hist.length
+  }
+  history.value = hist.slice().reverse()
   roundLevel.value = v.level ?? 2
   teamLevel.value = v.team_levels || [2, 2]
   roundNo.value = v.round_no || 1
@@ -827,6 +894,7 @@ function applyPlay(seat, cards) {
 function applyPass(seat) {
   passCount.value++
   pushHistory({ kind: 'pass', seat })
+  showPassBubble(seat)
   sfx.pass()
   advance()
 }
@@ -1252,6 +1320,8 @@ watch(() => viewHand.value.length, () => {
 
 /* 中央出牌区 */
 .gd-center {
+  position: relative;
+
   flex: 1; min-width: 0; min-height: 84px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;
   padding: 8px; border-radius: 14px;
@@ -1464,5 +1534,68 @@ watch(() => viewHand.value.length, () => {
 
 @media (max-width: 900px) {
   .gd { min-width: 860px; }
+}
+
+/* ===== 「不要」气泡（夜星：点不要后头像处弹小气泡，参考主流棋牌） ===== */
+.gd-pass-bubble {
+  position: absolute; left: 50%; top: -24px; transform: translateX(-50%);
+  padding: 3px 10px; border-radius: 999px;
+  background: rgba(28, 30, 34, .92); color: #f3efe4;
+  font-size: 11.5px; font-weight: 700; letter-spacing: .08em;
+  border: 1px solid rgba(233, 200, 119, .45);
+  box-shadow: 0 4px 10px -4px rgba(0, 0, 0, .8);
+  white-space: nowrap; pointer-events: none; z-index: 20;
+}
+.gd-pass-bubble::after {
+  content: ''; position: absolute; left: 50%; bottom: -4px;
+  width: 8px; height: 8px; transform: translateX(-50%) rotate(45deg);
+  background: rgba(28, 30, 34, .92);
+  border-right: 1px solid rgba(233, 200, 119, .45);
+  border-bottom: 1px solid rgba(233, 200, 119, .45);
+}
+/* 我方的气泡挂在底部信息条上方（那一条没有 .gt-seat 的圆角胶囊壳，位置微调） */
+.gd-bottom-bar { position: relative; }
+.gd-pass-bubble-me { top: -30px; }
+.gd-pop-enter-active, .gd-pop-leave-active { transition: opacity .18s ease, transform .18s ease; }
+.gd-pop-enter-from, .gd-pop-leave-to {
+  opacity: 0; transform: translateX(-50%) translateY(6px) scale(.82);
+}
+
+/* ===== 炸弹 / 同花顺 / 火箭特效（中央金圈炸开 + 全桌震动） ===== */
+.gd-table.is-shake { animation: gd-shake .55s cubic-bezier(.36, .07, .19, .97) both; }
+@keyframes gd-shake {
+  10%, 90% { transform: translate(-2px, 1px); }
+  20%, 80% { transform: translate(3px, -2px); }
+  30%, 50%, 70% { transform: translate(-5px, 2px); }
+  40%, 60% { transform: translate(5px, -1px); }
+}
+.gd-bomb-fx {
+  position: absolute; inset: 0; z-index: 40;
+  display: grid; place-items: center; pointer-events: none;
+}
+.gd-bomb-fx b {
+  font-size: clamp(28px, 6vw, 56px); font-weight: 900; letter-spacing: .12em;
+  color: #ffd875;
+  text-shadow: 0 0 24px rgba(255, 120, 40, .9), 0 2px 0 #7a2b00;
+  animation: gd-bomb-pop .5s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.gd-bomb-ring {
+  position: absolute; width: 170px; height: 170px; border-radius: 50%;
+  border: 6px solid rgba(255, 190, 90, .9);
+  box-shadow: 0 0 40px rgba(255, 140, 40, .55), inset 0 0 30px rgba(255, 140, 40, .35);
+  animation: gd-bomb-ring .7s ease-out both;
+}
+@keyframes gd-bomb-ring {
+  from { transform: scale(.2); opacity: 1; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+@keyframes gd-bomb-pop {
+  0% { transform: scale(.3); opacity: 0; }
+  55% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gd-table.is-shake { animation: none; }
+  .gd-bomb-fx b, .gd-bomb-ring { animation-duration: .01s; }
 }
 </style>

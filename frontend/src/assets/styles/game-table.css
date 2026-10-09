@@ -187,11 +187,12 @@
 }
 .gt-card.is-wild .c-tl b { color: #b3261e; }
 
-/* 选中 / 悬停放大预览（手牌密集时靠它看清单张） */
+/* 选中抬起 / 悬停轻提示（v2.46.18 起 hover **不再抬起**：
+   夜星「点击一张牌又取消选中，这种牌依然处于预览状态……取消选中就不处于预览状态，
+   沉下去」——抬起态只属于「选中」，鼠标停在上面造成的 sticky hover 不再有位移） */
 .gt-card.pickable { cursor: pointer; }
 .gt-card.pickable:hover {
-  transform: translateY(-14px) scale(1.06);
-  box-shadow: 0 3px 0 rgba(0, 0, 0, .28), 0 16px 26px -12px rgba(0, 0, 0, .95);
+  filter: brightness(1.08);
 }
 .gt-card.is-sel,
 .gt-card.pickable.is-sel:hover {
