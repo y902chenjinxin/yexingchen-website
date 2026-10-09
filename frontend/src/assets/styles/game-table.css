@@ -110,8 +110,9 @@
   box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 255, 255, .6);
   transition: transform .16s, filter .16s, box-shadow .16s;
 }
-.gt-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
-.gt-btn:active:not(:disabled) { transform: translateY(0); }
+/* v2.46.20 micro-scale：hover 轻浮 + active 下压，配合既有 translateY 形成「抬→按」手感 */
+.gt-btn:hover:not(:disabled) { transform: translateY(-1px) scale(1.05); filter: brightness(1.06); }
+.gt-btn:active:not(:disabled) { transform: translateY(0) scale(.95); }
 .gt-btn:disabled { opacity: .42; cursor: not-allowed; filter: grayscale(.5); }
 .gt-btn.ghost {
   color: var(--gt-ink);

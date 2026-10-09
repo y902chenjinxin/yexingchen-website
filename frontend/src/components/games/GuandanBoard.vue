@@ -31,7 +31,7 @@
       </header>
 
       <!-- ===== 牌桌：主区 + 右侧出牌历史竖栏 ===== -->
-      <div class="gd-table" :class="{ 'is-shake': tableShake }">
+      <div class="gd-table" :class="{ 'is-shake': tableShake, 'is-freeze': freeze }">
         <div class="gd-main">
           <!-- 对家 -->
           <div class="gd-row gd-row-top">
@@ -342,7 +342,7 @@
           <h3>{{ matchOver ? (iWon ? '我方打过 A，全场获胜！' : '对方打过 A，本场落败') : (iWon ? '我方升级！' : '对方升级') }}</h3>
           <p>
             名次：<b>{{ roundResult.order.map(s => seatName(s)).join(' → ') }}</b><br>
-            升级：{{ iWon ? '我方' : '对方' }} +{{ roundResult.up }} 级<br>
+            升级：{{ iWon ? '我方' : '对方' }} +{{ upShown }} 级<br>
             当前级数：我方 {{ G.levelText(myLevel) }} · 对方 {{ G.levelText(oppLevel) }}
           </p>
           <div class="gt-actions">
@@ -377,6 +377,7 @@ import * as G from '@/utils/games/guandan.js'
 import { sfx, setMuted, isMuted, panOf } from '@/utils/games/sfx'
 import { vibrate, hapticsEnabled, setHaptics } from '@/utils/games/haptics'
 import confettiPieces from '@/utils/games/confetti'
+import countUp from '@/utils/games/countUp'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { useRootHeight } from '@/composables/useRootHeight'
 
@@ -435,6 +436,8 @@ function toggleHaptics() { hapticsOn.value = !hapticsOn.value; setHaptics(haptic
 const confetti = confettiPieces(26)
 const history = ref([])         // 结构化出牌记录（最新在前）
 const roundResult = ref({ up: 0, winTeam: 0, order: [] })
+/** 结算「+N 级」逐格上滚（v2.46.20，Balatro 式 tick）：数字从 0 滚到位，不再直接甩出 */
+const upShown = countUp(() => roundResult.value.up || 0)
 const matchOver = ref(false)
 const firstSeat = ref(0)
 
@@ -822,6 +825,9 @@ const patFx = ref(null)
 let bombTimer1 = null
 let bombTimer2 = null
 let patFxTimer = null
+/** hit-stop 定帧（v2.46.20）：炸弹落地前全桌冻结一小段时间 */
+const freeze = ref(false)
+let freezeTimer = null
 let lastPlayKey = ''
 function playFxFor(p) {
   if (!p || !p.cards || !p.cards.length) return
@@ -840,13 +846,20 @@ function playFxFor(p) {
     patFxTimer = setTimeout(() => { patFx.value = null }, 1000)
   }
   if ((pat.bombLevel || 0) > 0 || pat.type === 'rocket') {
-    bombFx.value = true
-    tableShake.value = true
-    vibrate([30, 40, 30])
+    // hit-stop（v2.46.20）：先全桌定帧 90ms 再爆——格斗游戏「卡帧→爆发」的重击节奏。
+    // 定帧期间金圈、大字、震动都不出现，解冻瞬间一起上，冲击感更强。
+    freeze.value = true
     clearTimeout(bombTimer1)
     clearTimeout(bombTimer2)
-    bombTimer1 = setTimeout(() => { bombFx.value = false }, 1100)
-    bombTimer2 = setTimeout(() => { tableShake.value = false }, 600)
+    clearTimeout(freezeTimer)
+    freezeTimer = setTimeout(() => {
+      freeze.value = false
+      bombFx.value = true
+      tableShake.value = true
+      vibrate([30, 40, 30])
+      bombTimer1 = setTimeout(() => { bombFx.value = false }, 1100)
+      bombTimer2 = setTimeout(() => { tableShake.value = false }, 600)
+    }, 90)
   }
 }
 watch(lastPlay, (p) => playFxFor(p))
@@ -1315,6 +1328,9 @@ onBeforeUnmount(() => {
   clearTimeout(flyTimer)
   clearTimeout(dealTimer)
   clearTimeout(patFxTimer)
+  clearTimeout(bombTimer1)
+  clearTimeout(bombTimer2)
+  clearTimeout(freezeTimer)
   clearInterval(tickTimer)
   if (ro) ro.disconnect()
   // 划选期间被卸载：window 上的手势监听必须摘掉，否则残留到下一个页面
@@ -1665,6 +1681,10 @@ watch(() => viewHand.value.length, () => {
 }
 
 /* ===== 炸弹 / 同花顺 / 火箭特效（中央金圈炸开 + 全桌震动） ===== */
+/* hit-stop（v2.46.20）：炸弹落地前 90ms 全桌定帧——微缩 + 压暗营造「吸气」，解冻瞬间爆开。
+   动画冻结用 animation-play-state，金圈/大字本来就没启动，靠 JS 延迟 90ms 再挂。 */
+.gd-table.is-freeze { transform: scale(.994); filter: brightness(.85); }
+.gd-table.is-freeze * { animation-play-state: paused !important; }
 .gd-table.is-shake { animation: gd-shake .55s cubic-bezier(.36, .07, .19, .97) both; }
 @keyframes gd-shake {
   10%, 90% { transform: translate(-2px, 1px); }
@@ -1699,6 +1719,7 @@ watch(() => viewHand.value.length, () => {
 }
 @media (prefers-reduced-motion: reduce) {
   .gd-table.is-shake { animation: none; }
+  .gd-table.is-freeze { transform: none; filter: none; }
   .gd-bomb-fx b, .gd-bomb-ring { animation-duration: .01s; }
 }
 

@@ -201,6 +201,7 @@ import { useGameRoom } from '@/composables/useGameRoom'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+import { sfx } from '@/utils/games/sfx'
 
 const props = defineProps({
   initialMode: { type: String, default: '' },   // 模式由页面第一步选定
@@ -462,6 +463,7 @@ function applyEvent(ev) {
   if (ev.t === 'skip') {
     const c = ev.c || turnColor.value
     dice.value = ev.v || 0
+    sfx.pass()                            // 无子可走（v2.46.20）
     addLog(`${label(c)} 掷出 ${ev.v || 0} 点，无子可走`)
     if (ev.extra) phase.value = 'roll'
     else endTurn(c)
@@ -472,6 +474,8 @@ function applyEvent(ev) {
   if (!arr || typeof ev.p !== 'number' || !arr[ev.p]) return
   const from = arr[ev.p].prog
   arr[ev.p].prog = ev.np
+  /* 逐格跳连音（v2.46.20）：n 连音高递增的轻响比「啪一下到位」更有行进感 */
+  sfx.steps(ev.v || 1)
   if (ev.wp) {                                        // 虫洞：把被换位的对手挪到我这手原来的落点
     const [oc, oi, back] = ev.wp
     const op = pieces.value[oc]?.[oi]
@@ -481,6 +485,8 @@ function applyEvent(ev) {
     const op = pieces.value[oc]?.[oi]
     if (op) op.prog = -1
   }
+  if ((ev.cap || []).length) sfx.capture()     // 击落重音（v2.46.20）
+  if (ev.np === FINISH) sfx.coin()             // 归航进账（v2.46.20）
   dice.value = ev.v || dice.value
   let msg = from === -1 ? `${label(ev.c)} 起飞` : `${label(ev.c)} 掷出 ${ev.v} 点`
   if (ev.fly === 'shortcut') msg += ' · 触发飞行通道 ✈️'
@@ -497,6 +503,7 @@ function applyEvent(ev) {
     over.value = true
     phase.value = 'over'
     winnerColor.value = ev.c
+    sfx.win()                                  // 胜利和弦（v2.46.20）
     addLog(`🎊 ${label(ev.c)} 四架全部归航，获胜！`)
     if (mode.value === 'online' && ev.c === myColor.value) {
       gRoom.finish(Number(gRoom.myUserId.value)).catch(() => {})
@@ -538,6 +545,7 @@ function doRoll() {
   if (!canRoll.value) return
   const c = turnColor.value
   const v = 1 + Math.floor(Math.random() * 6)
+  sfx.dice()                            // 掷骰音（v2.46.20）
   rolling.value = true
   clearTimeout(rollTimer)
   rollTimer = setTimeout(() => { rolling.value = false }, 320)
@@ -890,8 +898,11 @@ onBeforeUnmount(() => {
 .lb-quota { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .lb-btn { padding: 5px 14px; border-radius: 9px; font-size: 12px; cursor: pointer; font-family: inherit;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b); }
+.lb-btn:not(:disabled):hover { transform: scale(1.05); }
+.lb-btn:not(:disabled):active { transform: scale(.94); }
 .lb-btn.primary { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
 .lb-btn:disabled { opacity: .5; cursor: default; }
+.lb-roll:not(:disabled):active { transform: scale(.95); }
 
 .lb-online {
   width: 100%; max-width: 620px; border-radius: 18px; padding: 16px 18px;

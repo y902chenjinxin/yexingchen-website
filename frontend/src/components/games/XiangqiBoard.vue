@@ -99,7 +99,11 @@
     <!-- ===== 主区：棋盘 ===== -->
     <div ref="mainEl" class="xq-main">
       <div class="xq-boardwrap">
-        <div class="xq-board" :style="{ width: boardW + 'px', height: boardH + 'px' }">
+        <!-- 将死彩带（v2.46.20）：我赢时撒一场，盖在棋盘上 -->
+        <div v-if="confettiOn" class="gt-confetti xq-confetti" aria-hidden="true">
+          <i v-for="(st, i) in confetti" :key="i" :style="st"></i>
+        </div>
+        <div class="xq-board" :class="{ 'is-mate': mateFx }" :style="{ width: boardW + 'px', height: boardH + 'px' }">
           <!-- eslint-disable-next-line vue/no-v-html -- 本地常量 SVG，无外部输入 -->
           <svg class="xq-svg" :viewBox="`0 0 ${boardW} ${boardH}`" aria-hidden="true" v-html="svgMarkup"></svg>
           <button
@@ -159,6 +163,8 @@ import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+import { sfx } from '@/utils/games/sfx'
+import confettiPieces from '@/utils/games/confetti'
 import {
   COLS, ROWS, RED, BLACK, GLYPH,
   xOf, yOf, other,
@@ -363,6 +369,7 @@ function tap(i) {
 function doMove(from, to) {
   const cap = board.value[to]
   playAnim(from, to, cap)
+  cap ? sfx.capture() : sfx.wood()      // v2.46.20：落子/吃子音效补齐（此前全程无声）
   history.value.push({ from, to, cap, by: turn.value })
   undoGuard.noteMove(turn.value)      // 对手走子 → 解除「刚悔棋那一方」的连悔封锁
   board.value = applyMove(board.value, from, to)
@@ -370,6 +377,7 @@ function doMove(from, to) {
   lastIdx.value = to
   turn.value = other(turn.value)
   checkSide.value = inCheck(board.value, turn.value) ? turn.value : ''
+  if (checkSide.value) sfx.check()      // 将军警示（v2.46.20）
   if (mode.value === 'online') {
     gRoom.send({ from, to }).catch(() => { /* 下轮轮询以服务端事件流为准 */ })
     settleOnline()
@@ -386,9 +394,27 @@ function settle() {
     over.value = true
     winner.value = other(s)
     checkSide.value = ''
+    triggerMateFx()
     return
   }
   if (mode.value !== 'pvp' && mode.value !== 'online' && s === aiSide.value) maybeScheduleAI()
+}
+
+/* ---------- 将死 / 终局演出（v2.46.20）：帅将被将死时棋盘震一下 + 低音，我赢撒彩带 ---------- */
+const mateFx = ref(false)
+const confetti = confettiPieces(26)
+const confettiOn = ref(false)
+function triggerMateFx() {
+  mateFx.value = true
+  sfx.mate()
+  setTimeout(() => { mateFx.value = false }, 700)
+  const iWin = mode.value === 'pvp'
+    ? !!winner.value
+    : (mode.value === 'online' ? onlineWinner.value === 'me' : winner.value === localSide.value)
+  if (iWin) {
+    confettiOn.value = true
+    setTimeout(() => { confettiOn.value = false }, 3200)
+  }
 }
 
 function scheduleAI() {
@@ -479,6 +505,7 @@ function applyRemote(from, to) {
   const b = board.value.slice()
   const cap = b[to]
   playAnim(from, to, cap)
+  cap ? sfx.capture() : sfx.wood()      // 对方走子同样有声音（v2.46.20）
   history.value.push({ from, to, cap, by: turn.value })
   b[to] = b[from]
   b[from] = ''
@@ -508,6 +535,7 @@ function settleOnline() {
     winner.value = other(turn.value)
     onlineWinner.value = winner.value === mySide.value ? 'me' : 'opp'
     checkSide.value = ''
+    triggerMateFx()
     const uid = Number(gRoom.myUserId.value)
     const oppId = gRoom.room.value?.owner_id === uid ? gRoom.room.value?.invitee_id : gRoom.room.value?.owner_id
     gRoom.finish(winner.value === mySide.value ? uid : Number(oppId)).catch(() => { /* 对方可能已上报终局 */ })
@@ -1010,5 +1038,22 @@ html[data-theme="night"] .xq-piece.black { color: #f2f6fc; text-shadow: 0 1px 3p
 /* 系统开了「减少动态效果」时让动画瞬间结束（animationend 立刻触发 → 落点子即时显形，不留空档） */
 @media (prefers-reduced-motion: reduce) {
   .xq-fly, .xq-dead, .xq-boom { animation-duration: .01ms; }
+}
+
+/* ===== 将死演出（v2.46.20）：棋盘震一下（保留 tilt 变换）+ 彩带盖层 + 按钮 micro-scale ===== */
+.xq-board.is-mate { animation: xqMateShake .55s cubic-bezier(.36, .07, .19, .97) both; }
+@keyframes xqMateShake {
+  0%, 100% { transform: rotateX(var(--tilt, 0deg)) translateX(0); }
+  15% { transform: rotateX(var(--tilt, 0deg)) translateX(-7px); }
+  35% { transform: rotateX(var(--tilt, 0deg)) translateX(6px); }
+  55% { transform: rotateX(var(--tilt, 0deg)) translateX(-4px); }
+  78% { transform: rotateX(var(--tilt, 0deg)) translateX(2px); }
+}
+.xq-boardwrap { position: relative; }
+.xq-confetti { position: absolute; inset: 0; z-index: 12; pointer-events: none; border-radius: 16px; overflow: hidden; }
+.xq-btn:not(:disabled):hover { transform: scale(1.05); }
+.xq-btn:not(:disabled):active { transform: scale(.94); }
+@media (prefers-reduced-motion: reduce) {
+  .xq-board.is-mate { animation: none; }
 }
 </style>

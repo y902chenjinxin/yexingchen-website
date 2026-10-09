@@ -149,6 +149,7 @@ import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+import { sfx } from '@/utils/games/sfx'
 
 const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
 const props = defineProps({
@@ -290,8 +291,9 @@ function onRemoteMove(action, userId) {
   board.value[idx] = color
   lastIdx.value = idx
   history.value.push(idx)
+  sfx.stone()                          // 对方（或重放）落子同样有声（v2.46.20）
   const line = checkWinFrom(board.value, idx, color)
-  if (line) { winLine.value = line; winner.value = color; over.value = true }
+  if (line) { winLine.value = line; winner.value = color; over.value = true; sfx.win() }
   turn.value = color === HUMAN ? AI : HUMAN
 }
 function onRoomStatus(s) {
@@ -612,8 +614,9 @@ function place(idx) {
   board.value[idx] = turn.value
   lastIdx.value = idx
   undoGuard.noteMove(turn.value)      // 对手落子 → 解除「刚悔棋那一方」的连悔封锁
+  sfx.stone()                          // 落子石子声（v2.46.20）
   const line = checkWinFrom(board.value, idx, turn.value)
-  if (line) { winLine.value = line; winner.value = turn.value; over.value = true }
+  if (line) { winLine.value = line; winner.value = turn.value; over.value = true; sfx.win() }
   else if (openAreaFull()) { over.value = true }
 }
 /** 开放区是否已下满（判定平局，只看当前开放区） */
@@ -954,6 +957,13 @@ onBeforeUnmount(() => {
 .gk-cell.last .gk-stone::after {
   content: ''; position: absolute; left: 50%; top: 50%; width: 22%; height: 22%;
   margin: -11% 0 0 -11%; border-radius: 50%; background: #e5484d;
+  animation: gkLastBreath 1.4s ease-in-out infinite;   /* 呼吸明灭（v2.46.20） */
+}
+@keyframes gkLastBreath { 50% { transform: scale(1.55); opacity: .55; } }
+.gk-btn:not(:disabled):hover { transform: scale(1.05); }
+.gk-btn:not(:disabled):active { transform: scale(.94); }
+@media (prefers-reduced-motion: reduce) {
+  .gk-cell.last .gk-stone::after { animation: none; }
 }
 /* 五连高亮：用 outline 画红环（不覆盖棋子自身的水晶投影） */
 .gk-cell.win .gk-stone {

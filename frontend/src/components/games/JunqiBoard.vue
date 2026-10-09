@@ -148,6 +148,7 @@ import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+import { sfx } from '@/utils/games/sfx'
 
 const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
 const props = defineProps({
@@ -445,6 +446,7 @@ function doFlip(i) {
   if (!firstColor.value) firstColor.value = p.c
   freshIdx.value = i
   lastIdx.value = -1
+  sfx.flip()                            // 翻牌音（v2.46.20）
   return true
 }
 function doMove(from, to) {
@@ -452,13 +454,15 @@ function doMove(from, to) {
   const p = bd[from], q = bd[to]
   if (!p) return false
   if (q) {
-    if (q.t === 'F') { bd[to] = p; bd[from] = null; return 'flag' }
+    if (q.t === 'F') { bd[to] = p; bd[from] = null; sfx.mate(); return 'flag' }
     const res = clash(p, q)
+    sfx.capture()                       // 碰子必有声（v2.46.20）
     if (res === 'att') { bd[to] = p; bd[from] = null }
     else if (res === 'both') { bd[to] = null; bd[from] = null }
     else { bd[from] = null }
   } else {
     bd[to] = p; bd[from] = null
+    sfx.wood()                          // 平移走子（v2.46.20）
   }
   freshIdx.value = -1
   lastIdx.value = to
@@ -950,6 +954,8 @@ onBeforeUnmount(() => {
   color: var(--dp-text2, #45505b); transition: all .18s;
 }
 .jq-btn:hover:not(:disabled) { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.jq-btn:not(:disabled):hover { transform: scale(1.05); }
+.jq-btn:not(:disabled):active { transform: scale(.94); }
 .jq-btn:disabled { opacity: .4; cursor: not-allowed; }
 .jq-btn.primary { background: var(--yq-gold, #c7a96b); color: #fff; border-color: transparent; }
 .jq-quota { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }

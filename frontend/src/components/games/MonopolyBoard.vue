@@ -65,7 +65,7 @@
                 <span class="mp-pav" :style="{ background: COLORS[p.id] }">{{ p.avatar }}</span>
                 <span class="mp-ptx">
                   <b>{{ p.name }}<em v-if="p.skill"> · {{ SKILLS[p.skill].name }}</em></b>
-                  <i>{{ fmt(p.cash) }} · 地{{ ownedCount(p) }} · 具{{ p.items.length }}</i>
+                  <i :class="cashDir[p.id]">{{ fmt(cashShown[p.id] ?? p.cash) }} · 地{{ ownedCount(p) }} · 具{{ p.items.length }}</i>
                 </span>
                 <span v-if="!p.alive" class="gt-seat-badge">破产</span>
               </div>
@@ -647,6 +647,41 @@ function floatAt(idx, text, kind = 'info') {
 }
 function floatersAt(idx) { return floaters.value.filter((f) => f.idx === idx) }
 
+/* ---------------- 现金 count-up（v2.46.20，Balatro 式滚动）----------------
+ *  旧版现金直接跳变：-8000 一闪而过，玩家感知不到盈亏幅度。
+ *  改成 rAF 逐帧逼近目标值：收钱向上滚、付钱向下滚，行内闪色提示方向。
+ *  遵循 prefers-reduced-motion：系统要求减弱动效时直接同步。 */
+const cashShown = reactive({})
+const cashDir = reactive({})
+const cashDirT = {}
+let cashRaf = 0
+const cashReduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+function cashTick() {
+  for (const p of game.players) {
+    const target = p.cash
+    let shown = cashShown[p.id]
+    if (shown == null) { cashShown[p.id] = target; continue }
+    if (shown === target) continue
+    const dir = target > shown ? 'up' : 'down'
+    cashDir[p.id] = dir
+    clearTimeout(cashDirT[p.id])
+    cashDirT[p.id] = setTimeout(() => { cashDir[p.id] = '' }, 900)
+    const diff = target - shown
+    shown = Math.abs(diff) <= 1 ? target : Math.round(shown + diff * 0.16)
+    cashShown[p.id] = shown
+  }
+  const moving = game.players.some((p) => cashShown[p.id] !== p.cash)
+  cashRaf = moving ? requestAnimationFrame(cashTick) : 0
+}
+function kickCash() {
+  if (cashReduce) {
+    for (const p of game.players) cashShown[p.id] = p.cash
+    return
+  }
+  if (!cashRaf) cashRaf = requestAnimationFrame(cashTick)
+}
+watch(() => game.players.map((p) => p.cash).join(','), kickCash)
+
 /** 逐格推进：让「走到哪、路上经过什么」在棋盘上看得见。
  *  旧版 moveBy 是一次性瞬移，玩家只能从中央 log 里的一行字猜发生了什么。 */
 /** 机器人「想一下」的时长（行动前）与每走一格的间隔。
@@ -657,7 +692,7 @@ const STEP_MS = 130
 const AI_DELAY_MIN = 1500
 const AI_DELAY_MAX = 2300
 function aiDelay() { return AI_DELAY_MIN + Math.floor(Math.random() * (AI_DELAY_MAX - AI_DELAY_MIN)) }
-async function animateMove(p, steps) {
+async function animateMove(p, steps, stepMs = STEP_MS) {
   for (let i = 0; i < steps; i++) {
     const before = p.pos
     p.pos = (p.pos + 1) % 52
@@ -665,9 +700,10 @@ async function animateMove(p, steps) {
       p.cash += 2000
       log(`${p.name} 经过起点，领取 2000 豆`)
       floatAt(p.pos, '+2000', 'gain')
+      sfx.coin()
     }
     tokensRefresh()
-    await sleep(STEP_MS)
+    await sleep(stepMs)
   }
   return p.pos
 }
@@ -698,14 +734,17 @@ async function rollAndMove() {
 
   const d1 = 1 + Math.floor(Math.random() * 6)
   const d2 = 1 + Math.floor(Math.random() * 6)
+  const steps = d1 + d2
   game.dice = [d1, d2]
   sfx.dice()
-  // 620ms：让骰子的 3D 翻滚 + 落定弹跳完整播完（旧版 360ms 太短，看着像闪了一下）
-  await sleep(620)
+  // Monopoly Go 式节奏（v2.46.20）：点数与时长反直觉挂钩——
+  // 小点数（≤4）骰子多晃、棋子慢走，弥补「白等一回合」的失落感；
+  // 大点数（≥9）提前出发，棋子在数字落定前就在动，制造「期待先行」。
+  // 旧版恒定 620ms：掷 2 和掷 12 观感一样，小点数刚看清骰子棋子已经停了。
+  await sleep(steps <= 4 ? 920 : steps >= 9 ? 430 : 620)
   game.rolling = false
-  const steps = d1 + d2
   log(`🎲 ${p.name} 掷出 ${d1}+${d2}=${steps}`)
-  await animateMove(p, steps)
+  await animateMove(p, steps, steps <= 4 ? 210 : STEP_MS)
   await sleep(240)
   await resolveLanding(p)
   busy.value = false
@@ -743,6 +782,7 @@ async function resolveLanding(p) {
           p.cash -= c.price; grantCell(p, c.idx)
           log(`🏙 ${p.name} 买下 ${c.name}（${fmt(c.price)}）`)
           floatAt(c.idx, `-${fmt(c.price)} 购地`, 'buy')
+          sfx.coinPay()
         } else log(`${p.name} 放弃购买 ${c.name}`)
       }
     } else if (c.owner !== p.id) {
@@ -764,26 +804,35 @@ async function resolveLanding(p) {
       p.cash -= rent
       owner.cash += rent
       floatAt(c.idx, `-${fmt(rent)} 租`, 'pay')
+      sfx.coinPay()
       if (p.cash < 0) pay(p, 0)
     } else if (p.isAI && c.level < 4 && p.cash > buildCost(c) * 2.2) {
       p.cash -= buildCost(c); c.level += 1
       log(`🏠 ${p.name} 把 ${c.name} 升到 Lv${c.level}`)
       floatAt(c.idx, `Lv${c.level} 加盖`, 'buy')
+      sfx.coinPay()
     }
   } else if (c.type === 'chance') {
     const card = CHANCE[Math.floor(Math.random() * CHANCE.length)]
     log(`🃏 机会：${card.text}`)
     floatAt(c.idx, card.text, 'info')
+    const cashBefore = p.cash
     card.fn(p, game)
+    if (p.cash > cashBefore) sfx.coin()
+    else if (p.cash < cashBefore) sfx.coinPay()
   } else if (c.type === 'fate') {
     const card = FATE[Math.floor(Math.random() * FATE.length)]
     log(`🎴 命运：${card.text}`)
     floatAt(c.idx, card.text, 'info')
+    const cashBefore = p.cash
     card.fn(p, game)
+    if (p.cash > cashBefore) sfx.coin()
+    else if (p.cash < cashBefore) sfx.coinPay()
   } else if (c.type === 'tax') {
     const t = Math.round(p.cash * 0.08)
     log(`🧾 ${p.name} 缴税 ${fmt(t)} 豆`)
     floatAt(c.idx, `-${fmt(t)} 税`, 'pay')
+    sfx.coinPay()
     pay(p, t)
   } else if (c.type === 'item') {
     const keys = Object.keys(ITEMS)
@@ -809,6 +858,7 @@ function buyHere() {
   grantCell(p, c.idx)
   log(`🏙 ${p.name} 买下 ${c.name}（${fmt(c.price)}）`)
   floatAt(c.idx, `-${fmt(c.price)} 购地`, 'buy')
+  sfx.coinPay()
   tokensRefresh()
 }
 
@@ -822,6 +872,7 @@ function buildHere() {
   c.level += 1
   log(`🏠 ${p.name} 把 ${c.name} 升到 Lv${c.level}（租金 ${fmt(rentOf(c))}）`)
   floatAt(c.idx, `-${fmt(cost)} 加盖 Lv${c.level}`, 'buy')
+  sfx.coinPay()
 }
 
 function useSkill() {
@@ -1067,6 +1118,7 @@ watch(() => game.curIdx, () => {
 onBeforeUnmount(() => {
   clearTimeout(toastTimer)
   clearTimeout(onlineRollTimer)
+  if (cashRaf) cancelAnimationFrame(cashRaf)
   if (onWinResize) {
     window.removeEventListener('resize', onWinResize)
     window.removeEventListener('orientationchange', onWinResize)
@@ -1301,6 +1353,12 @@ onBeforeUnmount(() => {
 .mp-ptx b { font-size: 10.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mp-ptx b em { font-style: normal; font-weight: 400; color: var(--gt-gold); font-size: 9px; }
 .mp-ptx i { font-style: normal; font-size: 9.5px; color: var(--gt-ink-dim); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 现金 count-up 闪色（v2.46.20）：收钱鎏金、付钱砖红，900ms 后回落 */
+.mp-ptx i.up { color: var(--gt-gold, #d4a24a); transition: color .5s; }
+.mp-ptx i.down { color: #e05a5a; transition: color .5s; }
+@media (prefers-reduced-motion: reduce) {
+  .mp-ptx i.up, .mp-ptx i.down { transition: none; }
+}
 
 .mp-here { padding: 8px 10px; border-radius: 12px; background: rgba(0, 0, 0, .26); border: 1px solid var(--gt-line); display: flex; flex-direction: column; gap: 2px; }
 .mp-here-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }

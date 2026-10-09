@@ -95,6 +95,29 @@ export const sfx = {
   dice(pan = 0) { for (let i = 0; i < 6; i++) blip(300 + Math.random() * 500, 0.035, 'square', 0.028, i * 0.045, pan) },
   /** 结算弹层出现 */
   settle(pan = 0) { chord([392, 523, 659], 0.2, 0.05, pan) },
+
+  /* ===== v2.46.20 棋类音色（此前象棋/围棋/五子棋/军棋/飞行棋全程无声） ===== */
+  /** 木质落子（象棋 / 军棋走子）：低频短促的「嗒」 */
+  wood(pan = 0) { blip(190, 0.06, 'triangle', 0.09, 0, pan); blip(120, 0.09, 'sine', 0.055, 0.012, pan); vibrate(10) },
+  /** 石子落盘（围棋 / 五子棋）：清脆一点 */
+  stone(pan = 0) { blip(1150, 0.045, 'sine', 0.07, 0, pan); blip(560, 0.05, 'triangle', 0.035, 0.018, pan); vibrate(8) },
+  /** 翻牌（暗棋 / 军棋翻棋 / 道具卡） */
+  flip(pan = 0) { blip(620, 0.04, 'square', 0.03, 0, pan); blip(880, 0.05, 'triangle', 0.032, 0.045, pan); vibrate(8) },
+  /** 吃子碰撞（重一点） */
+  capture(pan = 0) { blip(300, 0.07, 'square', 0.06, 0, pan); blip(210, 0.1, 'triangle', 0.05, 0.05, pan); vibrate([8, 20, 8]) },
+  /** 将军警示：同音急促两连 */
+  check(pan = 0) { blip(740, 0.09, 'square', 0.05, 0, pan); blip(740, 0.12, 'square', 0.05, 0.14, pan); vibrate(12) },
+  /** 终局重音（将死 / 拔旗 / 吃将）：下行三音 */
+  mate(pan = 0) { chord([330, 262, 196], 0.24, 0.055, pan); vibrate([20, 40, 20]) },
+  /** 收钱（上扬双音） */
+  coin(pan = 0) { blip(920, 0.06, 'triangle', 0.045, 0, pan); blip(1240, 0.09, 'triangle', 0.045, 0.06, pan) },
+  /** 付钱（下行双音） */
+  coinPay(pan = 0) { blip(660, 0.06, 'triangle', 0.04, 0, pan); blip(470, 0.09, 'triangle', 0.04, 0.06, pan) },
+  /** 飞行棋逐格跳：n 连轻音、音高递增（连跳比一次性滑过去爽） */
+  steps(n = 1, pan = 0) {
+    for (let i = 0; i < Math.min(n, 12); i++) blip(480 + i * 42, 0.045, 'square', 0.028, i * 0.07, pan)
+    vibrate(8)
+  },
 }
 
 export default sfx

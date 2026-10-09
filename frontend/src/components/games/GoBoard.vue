@@ -133,6 +133,7 @@ import MemberPicker from '@/components/games/MemberPicker.vue'
 import { gameRoomsApi } from '@/api/gameRooms'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+import { sfx } from '@/utils/games/sfx'
 
 const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
 const props = defineProps({
@@ -425,6 +426,8 @@ function tryPlay(bd, idx, color, ko) {
 function applyMove(idx, color) {
   const res = tryPlay(board.value, idx, color, koPoint.value)
   if (!res) return false
+  if (res.captured.length) sfx.capture()      // 提子重音（v2.46.20）
+  else sfx.stone()                             // 落子石子声（v2.46.20）
   history.value.push({
     snapshot: board.value.slice(), koPoint: koPoint.value, turn: turn.value,
     lastIdx: lastIdx.value, capBlack: captured.black, capWhite: captured.white,
@@ -788,6 +791,17 @@ onBeforeUnmount(() => {
 .go-cell.last::after { z-index: 3; }
 /* 用 outline 画「最后一手」金环：不覆盖棋子自身的水晶投影 */
 .go-cell.last > .go-stone { outline: 2px solid rgba(199,169,107,.95); outline-offset: -2px; }
+/* 最后一手呼吸（v2.46.20）：金环缓缓明灭，一眼锁定对手刚下的那手 */
+.go-cell.last > .go-stone { animation: goLastBreath 1.6s ease-in-out infinite; }
+@keyframes goLastBreath {
+  0%, 100% { outline-color: rgba(199,169,107,.95); }
+  50% { outline-color: rgba(199,169,107,.3); }
+}
+.go-btn:not(:disabled):hover { transform: scale(1.05); }
+.go-btn:not(:disabled):active { transform: scale(.94); }
+@media (prefers-reduced-motion: reduce) {
+  .go-cell.last > .go-stone { animation: none; }
+}
 .go-ko-mark {
   position: absolute; inset: 34%; border-radius: 50%; background: rgba(217,83,79,.85); z-index: 1;
 }

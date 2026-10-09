@@ -7,6 +7,23 @@
 
 ---
 
+## v2.46.20 对局手感第二轮 11 条（2026-10-09）
+
+- **棋类音效接线点（V24620-003）**：统一挂状态变更函数（doMove/applyMove/place/
+  applyRemote/applyEvent）而非 UI 事件——本地双人/单机 AI/在线重放三条路径一处覆盖。
+  例外：麻将 ankong/bugang 在线早退分支（emit 后直接 return）需单独补 `showClaimFx`。
+- **炸弹 hit-stop 与 shake 的时序（V24620-009）**：金圈/大字/震动全部延迟到
+  freeze（90ms）结束的同一个回调里启动，各自的 clearTimeout 链不能拆——否则
+  连续炸弹时 freeze 未解除就触发下一次 shake。`.gd-table.is-freeze *` 用
+  `animation-play-state: paused` 冻结桌面动画，transform/filter 由 `.is-freeze` 自己带。
+- **minify 后产物核验（V24620）**：script 局部 const（cashDir/upShown/deltaShown）
+  压缩后改名，grep 不到是正常的；改验 CSS 类名（`mp-ptx i.up`）、模板字符串
+  （「领取 2000」）与算法特征（`Math.pow(1-`）等不受压缩影响的行为性标记。
+- **节奏分档数值（V24620-007）**：rollMs ≤4 点 920 / ≥9 点 430 / 其余 620；
+  stepMs ≤4 点 210 / 其余 STEP_MS 130。AI 回合走同一 rollAndMove，自动同节奏。
+
+---
+
 ## v2.46.19 棋牌体验增强 13 条（2026-10-09）
 
 - **音效基建（V24619-001/002）**：`sfx.js` 每声 ±3% 随机 pitch + `panOf()` 座位声像

@@ -1,3 +1,60 @@
+## [v2.46.20] - 2026-10-09
+
+### 对局手感第二轮 11 条：棋类音效全套 + 大富翁节奏/金币滚动 + 碰杠大字 + 炸弹 hit-stop + 结算 tick（SW `v332`→`v333`，仅前端）
+
+> 夜星：第二轮 game-feel 调研（雀魂/天凤演出、juice checklist、Monopoly Go 节奏设计、
+> Balatro 结算 tick）的全部落地。核心发现：棋类全家桶此前 0 音效。
+
+#### 基建（utils/games）
+
+- **V24620-001 棋类音色 9 种**：`sfx.js` 新增 `wood`（象棋/军棋木子落盘）、
+  `stone`（围棋/五子棋石子）、`flip`（翻牌）、`capture`（吃子）、`check`（将军两连音）、
+  `mate`（将死/拔旗和弦）、`coin`/`coinPay`（收/付钱上下行双音）、`steps(n)`（逐格跳连音），
+  全部带 pan 声像 + 触感。
+- **V24620-002 countUp 组合式**：新建 `utils/games/countUp.js` —— watch 目标值 +
+  rAF ease-out cubic 逐帧逼近，结算数字 Balatro 式逐格上滚。
+
+#### 棋类全家桶（此前 0 音效）
+
+- **V24620-003 六棋盘音效接线**：统一挂在状态变更函数（doMove/applyMove/place/
+  applyRemote/applyEvent），本地双人/单机 AI/在线重放三条路径全覆盖——
+  象棋（落子 wood/吃子 capture/将军 check）、暗棋（flip/wood/capture/吃将 mate）、
+  围棋（stone/capture）、五子棋（stone/成五 win）、军棋（flip/wood/capture/拔旗 mate）、
+  飞行棋（dice/steps/capture/到终点 coin/四架归航 win）。
+- **V24620-004 最后一手标记呼吸**：围棋 `.go-cell.last` 金环明灭、五子棋 `.last` 红点
+  呼吸放大，一眼看清最新落子。
+- **V24620-005 象棋将死演出**：`mateFx` 全盘 shake（keyframes 每帧带
+  `rotateX(var(--tilt, 0deg))` 防放大模式塌平面）+ 我方胜彩带 `gt-confetti` + `sfx.mate`。
+- **V24620-006 按钮 micro-scale**：`.gt-btn` 全局 hover `scale(1.05)` / active `scale(.95)`
+  配合既有 translateY；九个棋盘各自的 `*-btn` 同步补齐。
+
+#### 大富翁（MonopolyBoard）
+
+- **V24620-007 骰子点数节奏匹配**（Monopoly Go 式）：小点数（≤4）骰子多晃
+  （620→920ms）+ 棋子慢走（130→210ms/格）弥补失落感；大点数（≥9）提前出发
+  （620→430ms）「期待先行」。
+- **V24620-008 金币音效 + 现金滚动**：购地/加盖/租金/税 `coinPay`、机会命运卡按
+  现金增减自动 `coin`/`coinPay`、过起点 `coin`；玩家现金卡 rAF 逐帧逼近 count-up
+  （收钱鎏金/付钱砖红闪色 900ms，reduced-motion 直接同步）。
+
+#### 掼蛋（GuandanBoard）
+
+- **V24620-009 炸弹 hit-stop**：炸弹/同花顺/火箭落地前全桌定帧 90ms（微缩 .994 +
+  压暗 .85 + `animation-play-state: paused`），解冻瞬间金圈/大字/震动一起爆——
+  格斗游戏「卡帧→爆发」的重击节奏。
+- **V24620-010 结算「+N 级」tick**：升级级数用 `countUp` 从 0 逐格滚到位。
+
+#### 麻将（MahjongBoard）
+
+- **V24620-011 碰/杠大字**：碰/杠/暗杠/补杠时中央金底墨字 pop 一闪（.95s 单条
+  keyframes 管进出场，含在线早退分支，本地/在线全覆盖）；结算「你的得分 +N 点」
+  同接 `countUp`。
+
+#### 其他
+
+- **V24620-012 easing 审查**：grep 全部 games 组件与 game-table.css，动效缓动无
+  `linear`（命中的全是 linear-gradient 背景），无需修改。
+
 ## [v2.46.19] - 2026-10-09
 
 ### 棋牌体验增强 13 条：音效变调/声像 + 触感 + 报牌 + 牌型浮现 + 听牌点击 + 彩带（SW `v331`→`v332`，仅前端）

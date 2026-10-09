@@ -99,6 +99,9 @@
               :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
+
+          <!-- 碰/杠大字（v2.46.20）：金底墨字 pop 一闪，动画自身管进出场 -->
+          <b v-if="claimFx" class="mj-claim-fx" aria-hidden="true">{{ claimFx }}</b>
         </div>
       </div>
 
@@ -263,7 +266,7 @@
             </template>
             <template v-else>流局：牌墙摸完，无人胡牌。</template>
             <br>
-            你的得分：<b>{{ result?.delta > 0 ? '+' : '' }}{{ result?.delta }}</b> 点
+            你的得分：<b>{{ result?.delta > 0 ? '+' : '' }}{{ deltaShown }}</b> 点
           </p>
           <div class="gt-actions">
             <button class="gt-btn" @click="nextRound">再来一局</button>
@@ -298,6 +301,7 @@ import * as M from '@/utils/games/mahjong.js'
 import { sfx, setMuted, isMuted, panOf } from '@/utils/games/sfx'
 import { hapticsEnabled, setHaptics } from '@/utils/games/haptics'
 import confettiPieces from '@/utils/games/confetti'
+import countUp from '@/utils/games/countUp'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { reportSettle } from '@/api/gameEconomy'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
@@ -347,6 +351,8 @@ const selId = ref(null)
 const logs = ref([])
 const huResults = ref([])
 const result = ref(null)
+/** 结算「你的得分 +N 点」逐格上滚（v2.46.20，Balatro 式 tick） */
+const deltaShown = countUp(() => result.value?.delta ?? 0)
 const pending = ref(null)          // { seat, from, tile, kinds }
 const reactQueue = ref([])
 const reactFrom = ref(null)
@@ -793,6 +799,15 @@ function takeFromDiscard(from) {
   if (pile.length) pile.pop()
 }
 
+/* ---------- 碰/杠大字（v2.46.20）：碰/杠/暗杠/补杠时中央金底大字 pop 一闪（雀魂式演出） ---------- */
+const claimFx = ref(null)
+let claimFxTimer = null
+function showClaimFx(t) {
+  claimFx.value = t
+  clearTimeout(claimFxTimer)
+  claimFxTimer = setTimeout(() => { claimFx.value = null }, 1000)
+}
+
 function doPong(seat, tile, from) {
   const h = hands.value[seat]
   let removed = 0
@@ -807,6 +822,7 @@ function doPong(seat, tile, from) {
   selId.value = null
   log(`${seatName(seat)} 碰 ${tileText(tile)}`)
   sfx.pong(panOf(seat, povSeat.value))
+  showClaimFx('碰')
   if (isHuman(seat)) return
   scheduleAI()
 }
@@ -822,6 +838,7 @@ function doKongFromDiscard(seat, tile, from) {
   takeFromDiscard(from)
   log(`${seatName(seat)} 杠 ${tileText(tile)}`)
   sfx.kong(panOf(seat, povSeat.value))
+  showClaimFx('杠')
   turn.value = seat
   drawReplacement(seat)
 }
@@ -829,6 +846,7 @@ function doKongFromDiscard(seat, tile, from) {
 function doAnkong(tileInfo) {
   if (isOnline.value) {
     sfx.kong()
+    showClaimFx('暗杠')
     actOnline({ type: 'ankong', tile: { suit: tileInfo.suit, rank: tileInfo.rank } })
     return
   }
@@ -842,12 +860,14 @@ function doAnkong(tileInfo) {
   melds.value[seat].push({ type: 'ankong', tile: tileInfo })
   log(`${seatName(seat)} 暗杠 ${tileText(tileInfo)}`)
   sfx.kong()
+  showClaimFx('暗杠')
   drawReplacement(seat)
 }
 
 function doBugang(tileInfo) {
   if (isOnline.value) {
     sfx.kong()
+    showClaimFx('补杠')
     actOnline({ type: 'bugang', tile: { suit: tileInfo.suit, rank: tileInfo.rank } })
     return
   }
@@ -867,6 +887,7 @@ function doBugang(tileInfo) {
   if (md) md.type = 'bugang'
   log(`${seatName(seat)} 补杠 ${tileText(tileInfo)}`)
   sfx.kong()
+  showClaimFx('补杠')
   drawReplacement(seat)
 }
 
@@ -1153,6 +1174,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearTimeout(aiTimer)
   clearTimeout(toastTimer)
+  clearTimeout(claimFxTimer)
   cancelAnimationFrame(scoreRaf)
   // 上滑出牌期间被卸载：window 上的监听必须摘掉，否则残留到下一个页面
   window.removeEventListener('pointermove', onHandMove)
@@ -1256,7 +1278,7 @@ onBeforeUnmount(() => {
    看着就是「一堆牌乱堆在中间，不是摆在自己那边」。现在改 flex：内容宽度由牌数决定，
    居中 / 贴边才真正生效。 */
 .mj-center {
-  grid-area: center; min-width: 0; min-height: 0;
+  grid-area: center; position: relative; min-width: 0; min-height: 0;
   display: grid; gap: 2px 6px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -1267,6 +1289,30 @@ onBeforeUnmount(() => {
   padding: 5px; border-radius: 14px;
   background: rgba(0, 0, 0, .2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
+}
+/* 碰/杠大字（v2.46.20）：绝对定位盖在弃牌区中央，金底墨字 pop 一闪；
+   进出场都在一条 keyframes 里（0.95s），1s 后 v-if 摘除，无需 transition */
+.mj-claim-fx {
+  position: absolute; left: 50%; top: 50%; z-index: 20;
+  margin: 0; transform: translate(-50%, -50%);
+  padding: 10px 26px; border-radius: 14px;
+  font-size: clamp(26px, 5vw, 46px); font-weight: 900; letter-spacing: .18em; text-indent: .18em;
+  color: #2a1d05;
+  background: linear-gradient(180deg, #f4dc9c, #d9b65f);
+  border: 1px solid rgba(255, 255, 255, .4);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 255, 255, .6);
+  pointer-events: none;
+  animation: mj-claim-pop .95s cubic-bezier(.22, 1.4, .36, 1) both;
+}
+@keyframes mj-claim-pop {
+  0% { transform: translate(-50%, -50%) scale(.4); opacity: 0; }
+  18% { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+  30% { transform: translate(-50%, -50%) scale(1); }
+  78% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.04); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mj-claim-fx { animation-duration: .01s; opacity: 0; }
 }
 /* 弃牌：flex + wrap，牌宽恒定（不随牌数抖动），溢出裁切。
    上下两家横排、各自居中 → 牌堆正对自己；

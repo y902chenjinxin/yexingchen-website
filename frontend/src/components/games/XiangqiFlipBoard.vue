@@ -175,6 +175,7 @@ import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+import { sfx } from '@/utils/games/sfx'
 import { COLS, ROWS, GLYPH, VAL, BLACK, other, xOf, yOf, pieceTargets, flipDeal } from '@/utils/xiangqiRules'
 
 const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
@@ -348,6 +349,7 @@ function doFlip(i) {
   if (!firstColor.value) firstColor.value = p.c
   flipIdx.value = i
   lastIdx.value = -1
+  sfx.flip()                            // 翻牌音（v2.46.20）
   // by 在定色之后取：先手翻出的颜色即先手阵营；c 供悔棋时重算 firstColor
   history.value.push({ flip: i, c: p.c, by: colorOf(turnIdx.value) })
   undoGuard.noteMove(colorOf(turnIdx.value))   // 对手翻子 → 解除「刚悔棋那一方」的连悔封锁
@@ -358,7 +360,11 @@ function doMove(from, to) {
   const q = cells.value[to]
   if (!p || !p.up) return false
   playAnim(from, to, q)
-  if (q && q.up && q.t === 'K') kingDead.value = q.c     // 吃将/帅 → 立即终局
+  q ? sfx.capture() : sfx.wood()        // 吃子/走子音（v2.46.20）
+  if (q && q.up && q.t === 'K') {
+    kingDead.value = q.c                 // 吃将/帅 → 立即终局
+    sfx.mate()                           // 终局重音（v2.46.20）
+  }
   cells.value[to] = p
   cells.value[from] = null
   history.value.push({
@@ -918,6 +924,8 @@ onBeforeUnmount(() => {
   color: var(--dp-text2, #45505b); transition: all .18s;
 }
 .xf-btn:hover:not(:disabled) { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.xf-btn:not(:disabled):hover { transform: scale(1.05); }
+.xf-btn:not(:disabled):active { transform: scale(.94); }
 .xf-btn:disabled { opacity: .4; cursor: not-allowed; }
 .xf-btn.primary { background: var(--yq-gold, #c7a96b); color: #fff; border-color: transparent; }
 .xf-quota { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
