@@ -10,6 +10,9 @@
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
           {{ muted ? '🔇' : '🔊' }}
         </button>
+        <button class="gt-btn sm ghost" :class="{ 'is-off': !hapticsOn }" :title="hapticsOn ? '关闭震动反馈' : '开启震动反馈'" @click="toggleHaptics">
+          📳
+        </button>
         <button class="gt-btn sm ghost" @click="doExit">退出对局</button>
       </header>
 
@@ -27,9 +30,9 @@
             <span class="gt-seat-tx">
               <b class="gt-seat-name">{{ seatName(p.seat) }}</b>
             </span>
-            <!-- 本局积分（V24617-013）：紧跟名字，实时显示 ±分 -->
-            <span class="gt-seat-score" :class="seatScore(p.seat) > 0 ? 'is-plus' : seatScore(p.seat) < 0 ? 'is-minus' : ''">
-              {{ seatScore(p.seat) > 0 ? '+' : '' }}{{ seatScore(p.seat) }}
+            <!-- 本局积分（V24617-013）：紧跟名字，实时显示 ±分；v2.46.19 起变化时滚动过渡 -->
+            <span class="gt-seat-score" :class="dispScores[p.seat] > 0 ? 'is-plus' : dispScores[p.seat] < 0 ? 'is-minus' : ''">
+              {{ dispScores[p.seat] > 0 ? '+' : '' }}{{ dispScores[p.seat] }}
             </span>
             <span v-if="isTurn(p.seat) && !out[p.seat]" class="gt-seat-badge">出牌中</span>
             <span v-else-if="out[p.seat]" class="gt-seat-badge">已胡</span>
@@ -63,6 +66,7 @@
               :key="t.id"
               class="gt-tile mini"
               :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
+              :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
 
@@ -72,6 +76,7 @@
               :key="t.id"
               class="gt-tile mini"
               :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
+              :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
 
@@ -81,6 +86,7 @@
               :key="t.id"
               class="gt-tile mini"
               :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
+              :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
 
@@ -90,6 +96,7 @@
               :key="t.id"
               class="gt-tile mini"
               :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
+              :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
         </div>
@@ -109,6 +116,7 @@
           </span>
           <span v-else class="gt-sub">开局</span>
           <span v-if="phase === 'playing' && !pending" class="gt-pill gold">轮到 {{ seatName(turn) }}</span>
+          <span v-if="isTing" class="gt-pill gold">听牌</span>
           <span class="gt-pill">{{ seatName(viewSeat) }}手牌 {{ viewHand.length }}</span>
           <span class="gt-pill">余牌 {{ wall.length }}</span>
           <span v-if="melds[viewSeat]?.length" class="gt-pill">副露 {{ melds[viewSeat].length }}</span>
@@ -116,9 +124,16 @@
           <span v-if="phase === 'playing' && viewSeat !== null" class="mj-ting-inline">
             <em class="mj-ting-label">听牌</em>
             <template v-if="tingInfo.length">
-              <span v-for="(info, i) in tingInfo.slice(0, 3)" :key="i" class="mj-ting-item">
+              <!-- 点击听牌项直接选中那张打出的牌（v2.46.19），顺手验证听的牌 -->
+              <button
+                v-for="(info, i) in tingInfo.slice(0, 3)"
+                :key="i"
+                class="mj-ting-item"
+                :title="`点击选中 ${tileText(info.tile)}`"
+                @click="selectTing(info)"
+              >
                 打<b>{{ tileText(info.tile) }}</b>听<b>{{ info.waits.map(tileText).join('/') }}</b>
-              </span>
+              </button>
             </template>
             <em v-else class="mj-ting-none">尚未听牌</em>
           </span>
@@ -212,6 +227,10 @@
            胡牌后先全屏展示赢家 14 张牌 + 番种，牌逐张翻入；点击任意处关闭，
            露出下面的结算卡（再来一局 / 返回）。不再「胡完直接跳积分」。 -->
       <div v-if="showHuShow" class="gt-over mj-hushow" @click="huShow = false">
+        <!-- 胡牌时刻的彩带雨（reduced-motion 下 CSS 直接隐藏） -->
+        <div class="gt-confetti" aria-hidden="true">
+          <i v-for="(st, i) in confetti" :key="i" :style="st"></i>
+        </div>
         <div class="mj-hushow-card">
           <p class="mj-hushow-title">{{ huWinner ? seatName(huWinner.seat) : '' }}{{ huWinner?.zimo ? ' 自摸' : ' 胡牌' }}！</p>
           <p v-if="huWinner" class="mj-hushow-fan">{{ huWinner.names.join(' · ') }} · {{ huWinner.fan }} 番</p>
@@ -231,6 +250,9 @@
       <!-- ===== 结算（页内，不弹窗） ===== -->
       <div v-if="phase === 'settled'" class="gt-over">
         <div class="gt-over-card">
+          <div v-if="result?.delta > 0" class="gt-confetti" aria-hidden="true">
+            <i v-for="(st, i) in confetti" :key="i" :style="st"></i>
+          </div>
           <h3>{{ result?.title }}</h3>
           <p>
             <template v-if="result?.hus?.length">
@@ -273,7 +295,9 @@
  */
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as M from '@/utils/games/mahjong.js'
-import { sfx, setMuted, isMuted } from '@/utils/games/sfx'
+import { sfx, setMuted, isMuted, panOf } from '@/utils/games/sfx'
+import { hapticsEnabled, setHaptics } from '@/utils/games/haptics'
+import confettiPieces from '@/utils/games/confetti'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { reportSettle } from '@/api/gameEconomy'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
@@ -332,6 +356,11 @@ const huDeclined = ref([])
 const huShow = ref(false)
 const toast = ref('')
 const muted = ref(isMuted())
+/** 触感反馈开关（v2.46.19）：与静音并列的小按钮 */
+const hapticsOn = ref(hapticsEnabled())
+function toggleHaptics() { hapticsOn.value = !hapticsOn.value; setHaptics(hapticsOn.value) }
+/** 胡牌 / 胜局彩带参数（确定性伪随机，一次生成复用） */
+const confetti = confettiPieces(26)
 
 /* ---------- 派生 ---------- */
 const isOnline = computed(() => props.online)
@@ -408,8 +437,29 @@ function seatScore(s) {
   return v
 }
 
+/* ---------- 积分滚动（v2.46.19）：分数变化用 0.65s ease-out 滚过去，不再跳变 ---------- */
+const dispScores = ref([0, 0, 0, 0])
+let scoreRaf = 0
+watch(() => [0, 1, 2, 3].map(seatScore), (targets) => {
+  const from = dispScores.value.slice()
+  const t0 = performance.now()
+  cancelAnimationFrame(scoreRaf)
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / 650)
+    const e = 1 - Math.pow(1 - k, 3)
+    dispScores.value = targets.map((t, i) => Math.round(from[i] + (t - from[i]) * e))
+    if (k < 1) scoreRaf = requestAnimationFrame(step)
+  }
+  scoreRaf = requestAnimationFrame(step)
+}, { immediate: true })
+
 /** 最新落下的那张弃牌 —— 只有它带「落桌」动效，其余是静态小牌 */
 const freshDiscardId = computed(() => lastDiscard.value?.tile?.id ?? -1)
+
+/* ---------- 弃牌物理感（v2.46.19）----------
+ * 每张弃牌落桌时带 ±2° 的随机余倾（落在牌对象上，之后一直保持）——
+ * 真实麻将牌不会每张都摆得笔直，微小的随机旋转消除「复制粘贴」感。 */
+function discardTilt(t) { return `${t._tilt || 0}deg` }
 
 const canZimo = computed(() => {
   if (isOnline.value) {
@@ -457,6 +507,14 @@ const tingInfo = computed(() => {
   }
   return res
 })
+/** 听牌状态（v2.46.19）：存在某张打出去就能听的牌 → 信息条亮「听牌」金标 */
+const isTing = computed(() => tingInfo.value.length > 0)
+/** 点听牌项 → 直接选中那张待打的牌（配合金色描边一眼确认） */
+function selectTing(info) {
+  if (!info?.tile) return
+  selId.value = info.tile.id
+  sfx.pick()
+}
 
 /* ---------- 胡牌动画浮层（V24617-011）---------- */
 const huWinner = computed(() => {
@@ -510,7 +568,13 @@ function seatAvatar(s) {
 }
 function isTurn(s) { return phase.value === 'playing' && turn.value === s }
 function seatCls(s) {
-  return { 'is-active': isTurn(s) && !out.value[s], 'is-out': out.value[s] }
+  const acting = isTurn(s) && !out.value[s]
+  return {
+    'is-active': acting,
+    'is-out': out.value[s],
+    // 行动方聚焦（v2.46.19）：别人行动时其余席位压暗降饱和
+    'is-idle': phase.value === 'playing' && turn.value >= 0 && !acting && !out.value[s],
+  }
 }
 function toggleMute() { muted.value = !muted.value; setMuted(muted.value) }
 let toastTimer = null
@@ -663,8 +727,9 @@ function doDiscard(seat, tile) {
   discards.value[seat].push(tile)
   lastDiscard.value = { seat, tile }
   selId.value = null
+  tile._tilt = +(Math.random() * 4 - 2).toFixed(2)   // 落桌余倾 ±2°
   log(`${seatName(seat)} 打出 ${tileText(tile)}`)
-  sfx.play()
+  sfx.play(panOf(seat, povSeat.value))
   huDeclined.value = []          // 每张新弃牌的「不胡」名单重新开始
   resolveReactions(seat, tile)
 }
@@ -741,7 +806,7 @@ function doPong(seat, tile, from) {
   turn.value = seat
   selId.value = null
   log(`${seatName(seat)} 碰 ${tileText(tile)}`)
-  sfx.pong()
+  sfx.pong(panOf(seat, povSeat.value))
   if (isHuman(seat)) return
   scheduleAI()
 }
@@ -756,7 +821,7 @@ function doKongFromDiscard(seat, tile, from) {
   melds.value[seat].push({ type: 'kong', tile, from })
   takeFromDiscard(from)
   log(`${seatName(seat)} 杠 ${tileText(tile)}`)
-  sfx.kong()
+  sfx.kong(panOf(seat, povSeat.value))
   turn.value = seat
   drawReplacement(seat)
 }
@@ -825,7 +890,7 @@ function doHu(seat, tile, from, zimo) {
   // hand：胡牌动画浮层要展示赢家全部牌（V24617-011）
   huResults.value.push({ seat, fan: sc.fan, names: sc.names, zimo, from, hand: winning.slice() })
   log(`${seatName(seat)} ${zimo ? '自摸' : '胡'} ${sc.names.join('·')} ${sc.fan}番`)
-  sfx.win()
+  sfx.win(panOf(seat, povSeat.value))
   toastMsg(`${seatName(seat)} ${zimo ? '自摸' : '胡牌'}！${sc.names.join(' · ')} ${sc.fan} 番`)
 }
 
@@ -1088,6 +1153,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearTimeout(aiTimer)
   clearTimeout(toastTimer)
+  cancelAnimationFrame(scoreRaf)
   // 上滑出牌期间被卸载：window 上的监听必须摘掉，否则残留到下一个页面
   window.removeEventListener('pointermove', onHandMove)
   window.removeEventListener('pointerup', onHandUp)
@@ -1209,7 +1275,7 @@ onBeforeUnmount(() => {
    牌堆永远从两边往中间长。align-content 必须显式给 flex-start：
    默认 stretch 会把每列等宽拉开铺满整格，牌堆就散了。 */
 .mj-dis { display: flex; gap: 2px; min-width: 0; min-height: 0; overflow: hidden; }
-.mj-dis > .gt-tile { flex: none; }
+.mj-dis > .gt-tile { flex: none; transform: rotate(var(--tilt, 0deg)); }
 .mj-dis-up { grid-area: up; flex-flow: row wrap; justify-content: center; align-content: flex-start; }
 .mj-dis-down { grid-area: down; flex-flow: row wrap; justify-content: center; align-content: flex-end; }
 .mj-dis-left { grid-area: left; flex-flow: column wrap; justify-content: flex-start; align-content: flex-start; }
@@ -1368,6 +1434,28 @@ onBeforeUnmount(() => {
 .gt-seat-score.is-plus { background: rgba(64, 160, 96, .28); color: #9fe0b8; }
 .gt-seat-score.is-minus { background: rgba(190, 70, 60, .26); color: #f0b3aa; }
 
+/* ===== 行动方聚焦（v2.46.19）：行动方呼吸光圈（对齐掼蛋），其余席位压暗降饱和 ===== */
+.mj .gt-seat { transition: opacity .3s ease, filter .3s ease; }
+.mj .gt-seat.is-idle { opacity: .58; filter: saturate(.55); }
+.mj .gt-seat.is-active {
+  box-shadow: 0 0 0 2px rgba(199, 169, 107, .55), 0 0 22px rgba(199, 169, 107, .35);
+  animation: mj-seat-pulse 1.6s ease-in-out infinite;
+}
+@keyframes mj-seat-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(199, 169, 107, .5), 0 0 16px rgba(199, 169, 107, .28); }
+  50% { box-shadow: 0 0 0 3px rgba(199, 169, 107, .8), 0 0 30px rgba(199, 169, 107, .5); }
+}
+
+/* 听牌项改成可点按钮：外观仍是文字胶囊，hover 描金提示可点 */
+button.mj-ting-item {
+  appearance: none; font-family: inherit; cursor: pointer;
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--gt-line);
+  border-radius: 999px; padding: 1px 8px;
+  font-size: 11.5px; color: var(--gt-ink-dim); white-space: nowrap;
+}
+button.mj-ting-item:hover { border-color: rgba(233, 200, 119, .5); color: var(--gt-gold); }
+.gt-btn.is-off { opacity: .45; }
+
 /* ===== 胡牌动画浮层（V24617-011）=====
    胡牌后先全屏展示赢家 14 张牌：牌逐张从下翻入（每张延迟 60ms），点击任意处关闭。 */
 .mj-hushow { cursor: pointer; }
@@ -1401,7 +1489,9 @@ onBeforeUnmount(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .mj-hushow-title, .mj-hushow-fan, .mj-hushow-hand .gt-tile,
-  .mj-hand .gt-tile.is-claimhit, .mj-actions .gt-btn.is-pulse { animation: none !important; }
+  .mj-hand .gt-tile.is-claimhit, .mj-actions .gt-btn.is-pulse,
+  .mj .gt-tile.is-drawn-glow, .mj .gt-seat.is-active { animation: none !important; }
+  .mj .gt-seat.is-idle { opacity: 1; filter: none; }
 }
 
 /* 上滑出牌：手指抬起过阈值时把牌「拎起来」，松手即出（给提前反馈，不用猜） */
@@ -1424,7 +1514,15 @@ onBeforeUnmount(() => {
   0% { transform: translate(18px, -14px) scale(1.14); opacity: .2; }
   100% { transform: none; opacity: 1; }
 }
-.mj .gt-tile.is-drawn { animation: mj-draw .3s cubic-bezier(.2, .85, .3, 1) both; }
+/* 摸牌区分（v2.46.19）：入列后金色辉光 1.2s 渐隐 —— 不上浮（会与选中/上滑手势打架），
+   用一圈柔光标记「这张是刚摸的」，之后自然融入手牌 */
+@keyframes mj-drawn-glow {
+  0% { filter: drop-shadow(0 0 9px rgba(233, 200, 119, .95)); }
+  100% { filter: drop-shadow(0 0 0 rgba(233, 200, 119, 0)); }
+}
+.mj .gt-tile.is-drawn {
+  animation: mj-draw .3s cubic-bezier(.2, .85, .3, 1) both, mj-drawn-glow 1.2s .25s ease-out both;
+}
 @keyframes mj-land {
   0% {
     transform: translateY(-20px) scale(1.4) rotate(-10deg); opacity: .25;
@@ -1435,7 +1533,7 @@ onBeforeUnmount(() => {
     box-shadow: 0 0 0 2px var(--gt-gold), 0 0 10px rgba(233, 200, 119, .55);
   }
   100% {
-    transform: none; opacity: 1;
+    transform: rotate(var(--tilt, 0deg)); opacity: 1;
     box-shadow: 0 1px 0 rgba(150, 140, 115, .6), 0 3px 5px -3px rgba(0, 0, 0, .6);
   }
 }

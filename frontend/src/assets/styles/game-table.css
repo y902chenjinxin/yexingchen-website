@@ -314,6 +314,31 @@
   .gt-card, .gt-tile, .gt-btn, .gt-seat { transition: none !important; }
 }
 
+/* ===== 胜利彩带雨（v2.46.19，胡牌浮层 / 结算卡共用）=====
+   每条彩带是一条纯 transform 的小矩形：参数（位置/延迟/时长/旋转/颜色）
+   由 utils/games/confetti.js 确定性生成写进 CSS 变量。
+   只在胜利时刻出现，无限循环直到浮层关闭；reduced-motion 直接不渲染。 */
+.gt-confetti {
+  position: absolute; inset: 0; overflow: hidden;
+  pointer-events: none; border-radius: inherit;
+}
+.gt-confetti i {
+  position: absolute; top: -14px; left: var(--cx, 50%);
+  width: 8px; height: 13px; border-radius: 2px;
+  background: var(--cc, #e9c877);
+  opacity: 0;
+  animation: gt-confetti-fall var(--cdur, 2s) var(--cd, 0s) cubic-bezier(.25, .4, .55, 1) infinite;
+}
+@keyframes gt-confetti-fall {
+  0% { transform: translateY(-12px) rotate(0deg); opacity: 0; }
+  8% { opacity: .95; }
+  88% { opacity: .85; }
+  100% { transform: translateY(72vh) rotate(var(--crot, 360deg)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gt-confetti { display: none !important; }
+}
+
 /* 横屏容器：手机/窄屏时把牌桌旋转为横向视野（PRD 硬要求：三款全部横屏） */
 .gt-landscape {
   width: 100%; overflow-x: auto; overflow-y: hidden;

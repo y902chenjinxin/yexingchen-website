@@ -15,9 +15,17 @@
           <em>·</em>
           <i class="op">对方 {{ G.levelText(oppLevel) }}</i>
         </span>
+        <!-- 升级进度条（2 → A）：两支细条一眼看出两队离打过 A 还有多远 -->
+        <span class="gd-lvbars" title="升级进度：2 → A">
+          <span class="gd-lvbar me"><i :style="{ width: lvPct(myLevel) }"></i></span>
+          <span class="gd-lvbar op"><i :style="{ width: lvPct(oppLevel) }"></i></span>
+        </span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
           {{ muted ? '🔇' : '🔊' }}
+        </button>
+        <button class="gt-btn sm ghost" :class="{ 'is-off': !hapticsOn }" :title="hapticsOn ? '关闭震动反馈' : '开启震动反馈'" @click="toggleHaptics">
+          📳
         </button>
         <button class="gt-btn sm ghost" @click="doExit">退出对局</button>
       </header>
@@ -44,6 +52,9 @@
               </span>
               <span v-if="isTurn(topSeat)" class="gt-seat-badge">出牌中</span>
               <transition name="gd-pop">
+                <span v-if="baoCount(topSeat)" class="gd-bao-badge">报牌 {{ baoCount(topSeat) }}</span>
+              </transition>
+              <transition name="gd-pop">
                 <span v-if="passBubbles[topSeat]" class="gd-pass-bubble">不要</span>
               </transition>
             </div>
@@ -58,6 +69,9 @@
                 <i class="gt-seat-sub">{{ seatSub(leftSeat) }}</i>
               </span>
               <span v-if="isTurn(leftSeat)" class="gt-seat-badge">出牌中</span>
+              <transition name="gd-pop">
+                <span v-if="baoCount(leftSeat)" class="gd-bao-badge">报牌 {{ baoCount(leftSeat) }}</span>
+              </transition>
               <transition name="gd-pop">
                 <span v-if="passBubbles[leftSeat]" class="gd-pass-bubble">不要</span>
               </transition>
@@ -95,6 +109,14 @@
                 <span class="gd-bomb-ring"></span>
                 <b>炸弹！</b>
               </div>
+
+              <!-- 牌型名称浮现（v2.46.19）：每手牌打出后中央短暂放大牌型名再淡出，
+                   普通牌型墨底金字、炸弹/同花顺/火箭金底 —— 比角落小胶囊更醒目 -->
+              <transition name="gd-patfade">
+                <div v-if="patFx" class="gd-pat-fx" :class="{ gold: patFx.gold }" aria-hidden="true">
+                  <b>{{ patFx.name }}</b>
+                </div>
+              </transition>
             </div>
 
             <!-- 右家 -->
@@ -105,6 +127,9 @@
                 <i class="gt-seat-sub">{{ seatSub(rightSeat) }}</i>
               </span>
               <span v-if="isTurn(rightSeat)" class="gt-seat-badge">出牌中</span>
+              <transition name="gd-pop">
+                <span v-if="baoCount(rightSeat)" class="gd-bao-badge">报牌 {{ baoCount(rightSeat) }}</span>
+              </transition>
               <transition name="gd-pop">
                 <span v-if="passBubbles[rightSeat]" class="gd-pass-bubble">不要</span>
               </transition>
@@ -160,6 +185,9 @@
       <footer class="gd-bottom">
         <div class="gd-bottom-bar">
           <span class="gd-hand-tag">{{ seatName(viewSeat) }} · {{ viewHand.length }} 张</span>
+            <transition name="gd-pop">
+              <span v-if="baoCount(viewSeat)" class="gd-mini gd-bao-me">报牌 {{ baoCount(viewSeat) }}</span>
+            </transition>
             <transition name="gd-pop">
               <span v-if="passBubbles[viewSeat]" class="gd-pass-bubble gd-pass-bubble-me">不要</span>
             </transition>
@@ -278,6 +306,7 @@
             :key="c.id"
             class="gt-card"
             :class="cardCls(c, i)"
+            :style="dealWave ? { '--i': i } : null"
             :data-idx="i"
             @click="onPick(c, i, $event)"
           >
@@ -306,6 +335,10 @@
       <!-- ===== 结算（页内，不弹窗） ===== -->
       <div v-if="phase === 'settled'" class="gt-over">
         <div class="gt-over-card">
+          <!-- 我方升级 / 打过 A：彩带雨庆祝（reduced-motion 下 CSS 直接隐藏） -->
+          <div v-if="iWon" class="gt-confetti" aria-hidden="true">
+            <i v-for="(st, i) in confetti" :key="i" :style="st"></i>
+          </div>
           <h3>{{ matchOver ? (iWon ? '我方打过 A，全场获胜！' : '对方打过 A，本场落败') : (iWon ? '我方升级！' : '对方升级') }}</h3>
           <p>
             名次：<b>{{ roundResult.order.map(s => seatName(s)).join(' → ') }}</b><br>
@@ -341,7 +374,9 @@
  */
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as G from '@/utils/games/guandan.js'
-import { sfx, setMuted, isMuted } from '@/utils/games/sfx'
+import { sfx, setMuted, isMuted, panOf } from '@/utils/games/sfx'
+import { vibrate, hapticsEnabled, setHaptics } from '@/utils/games/haptics'
+import confettiPieces from '@/utils/games/confetti'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { useRootHeight } from '@/composables/useRootHeight'
 
@@ -393,6 +428,11 @@ const phase = ref('playing')    // playing | settled
 const sel = ref([])
 const toast = ref('')
 const muted = ref(isMuted())
+/** 触感反馈开关（v2.46.19）：与静音并列的小按钮 */
+const hapticsOn = ref(hapticsEnabled())
+function toggleHaptics() { hapticsOn.value = !hapticsOn.value; setHaptics(hapticsOn.value) }
+/** 胜利彩带参数：一次生成、整个会话复用（确定性伪随机，不会闪变） */
+const confetti = confettiPieces(26)
 const history = ref([])         // 结构化出牌记录（最新在前）
 const roundResult = ref({ up: 0, winTeam: 0, order: [] })
 const matchOver = ref(false)
@@ -659,6 +699,16 @@ function cardText(c) { return c.joker ? (c.joker === 'big' ? '大' : '小') : G.
 function cardSuit(c) { return c.joker ? '🃏' : c.suit }
 function isRed(c) { return !c.joker && (c.suit === '♥' || c.suit === '♦') }
 function isWildCard(c) { return G.isWild(c, roundLevel.value) }
+/* ---------- 发牌错峰动画（v2.46.19）----------
+ * 新一局发牌时手牌逐张（每张 35ms）从上方带角度落进手牌，而不是整排一起出现。
+ * dealWave 只在开局后 ~1.2s 内为真，之后的选牌/出牌不再触发。 */
+const dealWave = ref(false)
+let dealTimer = null
+function startDealWave() {
+  dealWave.value = true
+  clearTimeout(dealTimer)
+  dealTimer = setTimeout(() => { dealWave.value = false }, 1300)
+}
 function cardCls(c, i) {
   const cls = {
     'is-red': isRed(c),
@@ -667,7 +717,10 @@ function cardCls(c, i) {
     'is-wild': isWildCard(c),
     'is-sel': sel.value.includes(c.id),
   }
-  if (i !== undefined) cls.pickable = canAct.value
+  if (i !== undefined) {
+    cls.pickable = canAct.value
+    if (dealWave.value) cls['gd-deal-in'] = true
+  }
   return cls
 }
 function seatName(s) {
@@ -696,11 +749,43 @@ function seatSub(s) {
   return `${handCount(s)} 张`
 }
 function seatCls(s) {
+  const acting = isTurn(s)
   return {
-    'is-active': isTurn(s),
+    'is-active': acting,
     'is-out': finished.value.includes(s),
     'is-me': isOnline.value && s === oSeat.value,
+    // 队友标识（v2.46.19）：青蓝描环 + 名字旁「友」角标，一眼分清敌我
+    'is-mate': s !== povSeat.value && G.TEAM_OF[s] === myTeam.value,
+    // 行动方聚焦（v2.46.19）：轮到别人时其余席位降饱和压暗，视线聚焦到行动方
+    'is-idle': phase.value === 'playing' && turn.value >= 0 && !acting && !finished.value.includes(s),
   }
+}
+/** 报牌阈值（夜星 2026-10-09 定的）：剩 ≤7 张就报牌 */
+const BAO_LIMIT = 7
+/** 报牌张数：对局中、未出完、剩 1~BAO_LIMIT 张时返回张数，否则 0（v-if 用） */
+function baoCount(s) {
+  if (phase.value !== 'playing' || finished.value.includes(s)) return 0
+  const n = handCount(s)
+  return n >= 1 && n <= BAO_LIMIT ? n : 0
+}
+/** 报牌名单变化 → 新进入报牌的座位响一声提醒（每座位每局只响一次；
+ *  张数回升 = 新一局重新发牌，自动从名单里移除、下局可再次提醒） */
+const baoSeats = computed(() => [0, 1, 2, 3].filter(s => baoCount(s) > 0))
+const seenBao = new Set()
+watch(baoSeats, (list) => {
+  const now = new Set(list)
+  for (const s of now) {
+    if (!seenBao.has(s)) {
+      seenBao.add(s)
+      sfx.alert(panOf(s, povSeat.value))
+    }
+  }
+  for (const s of [...seenBao]) if (!now.has(s)) seenBao.delete(s)
+})
+/** 升级进度：级数 2~A(14) 映射成 0~100%，打过 A 显示满格 */
+function lvPct(l) {
+  const p = Math.max(0, Math.min(1, (l - G.MIN_LEVEL) / (G.MAX_LEVEL - G.MIN_LEVEL)))
+  return `${Math.round(p * 100)}%`
 }
 function toggleMute() { muted.value = !muted.value; setMuted(muted.value) }
 let toastTimer = null
@@ -732,8 +817,11 @@ function showPassBubble(seat) {
  * 必须按内容 key 判重，否则特效每 1.6s 重放一遍。 */
 const bombFx = ref(false)
 const tableShake = ref(false)
+/** 牌型名称浮现（v2.46.19）：每一手牌都短暂放大显示牌型名 */
+const patFx = ref(null)
 let bombTimer1 = null
 let bombTimer2 = null
+let patFxTimer = null
 let lastPlayKey = ''
 function playFxFor(p) {
   if (!p || !p.cards || !p.cards.length) return
@@ -741,9 +829,20 @@ function playFxFor(p) {
   if (key === lastPlayKey) return
   lastPlayKey = key
   const pat = p.pattern || {}
+  // 牌型名浮现：普通牌型墨底，炸弹 / 同花顺 / 火箭金底
+  const name = G.PATTERN_NAME[pat.type] || ''
+  if (name) {
+    patFx.value = {
+      name,
+      gold: (pat.bombLevel || 0) > 0 || pat.type === 'flushbomb' || pat.type === 'rocket',
+    }
+    clearTimeout(patFxTimer)
+    patFxTimer = setTimeout(() => { patFx.value = null }, 1000)
+  }
   if ((pat.bombLevel || 0) > 0 || pat.type === 'rocket') {
     bombFx.value = true
     tableShake.value = true
+    vibrate([30, 40, 30])
     clearTimeout(bombTimer1)
     clearTimeout(bombTimer2)
     bombTimer1 = setTimeout(() => { bombFx.value = false }, 1100)
@@ -782,6 +881,7 @@ function syncFromView(v) {
   // 服务端 history 按时间正序，取最新在前；增量部分里最后一条是 pass → 弹「不要」气泡
   const hist = v.history || []
   if (hist.length !== onlineHistLen.value) {
+    if (hist.length < onlineHistLen.value) startDealWave()   // 历史变短 = 新一局发牌
     if (hist.length > onlineHistLen.value) {
       const lastEv = hist[hist.length - 1]
       if (lastEv && lastEv.kind === 'pass') showPassBubble(lastEv.seat)
@@ -832,6 +932,7 @@ function newRound() {
   sel.value = []
   history.value = []
   sfx.deal()
+  startDealWave()
   scheduleAI()
 }
 
@@ -1212,6 +1313,8 @@ onBeforeUnmount(() => {
   clearTimeout(aiTimer)
   clearTimeout(toastTimer)
   clearTimeout(flyTimer)
+  clearTimeout(dealTimer)
+  clearTimeout(patFxTimer)
   clearInterval(tickTimer)
   if (ro) ro.disconnect()
   // 划选期间被卸载：window 上的手势监听必须摘掉，否则残留到下一个页面
@@ -1597,5 +1700,104 @@ watch(() => viewHand.value.length, () => {
 @media (prefers-reduced-motion: reduce) {
   .gd-table.is-shake { animation: none; }
   .gd-bomb-fx b, .gd-bomb-ring { animation-duration: .01s; }
+}
+
+/* ===== v2.46.19 体验增强 ===== */
+/* 触感开关：关闭时按钮压暗 */
+.gt-btn.is-off { opacity: .45; }
+
+/* 升级进度条：两支细条（上=我方金、下=对方灰蓝），顶栏比分旁一眼看进度 */
+.gd-lvbars {
+  display: inline-flex; flex-direction: column; gap: 3px;
+  padding: 4px 8px; border-radius: 8px;
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--gt-line);
+}
+.gd-lvbar {
+  display: block; width: 52px; height: 4px; border-radius: 2px;
+  background: rgba(255, 255, 255, .1); overflow: hidden;
+}
+.gd-lvbar i {
+  display: block; height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(233, 200, 119, .55), #e9c877);
+  transition: width .6s cubic-bezier(.25, .6, .3, 1);
+}
+.gd-lvbar.op i { background: linear-gradient(90deg, rgba(140, 170, 200, .4), rgba(140, 170, 200, .85)); }
+
+/* 报牌徽标（≤7 张）：席位上红底白字小胶囊，轮到自己时底部信息条也有 */
+.gd-bao-badge {
+  padding: 1px 7px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; line-height: 1.6;
+  background: rgba(190, 60, 50, .88); color: #ffe9e2;
+  border: 1px solid rgba(255, 190, 170, .5);
+  white-space: nowrap;
+}
+.gd-bao-me {
+  background: rgba(190, 60, 50, .88);
+  border-color: rgba(255, 190, 170, .5);
+  color: #ffe9e2; font-weight: 700;
+}
+
+/* 牌型名称浮现：中央放大字号再淡出；金底 = 炸弹 / 同花顺 / 火箭 */
+.gd-pat-fx {
+  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
+  z-index: 30; pointer-events: none;
+  padding: 4px 20px; border-radius: 12px;
+  background: rgba(0, 0, 0, .55); border: 1px solid rgba(233, 200, 119, .5);
+  animation: gd-pat-pop .95s cubic-bezier(.2, .85, .3, 1) both;
+}
+.gd-pat-fx b {
+  font-size: clamp(20px, 3.4vw, 34px); font-weight: 900; letter-spacing: .14em;
+  color: var(--gt-gold); text-shadow: 0 2px 10px rgba(0, 0, 0, .8);
+}
+.gd-pat-fx.gold {
+  background: linear-gradient(180deg, rgba(244, 220, 156, .96), rgba(217, 182, 95, .96));
+  border-color: rgba(255, 255, 255, .5);
+  box-shadow: 0 0 26px -4px rgba(233, 200, 119, .95);
+}
+.gd-pat-fx.gold b { color: #2a1d05; text-shadow: none; }
+@keyframes gd-pat-pop {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(.7); }
+  22% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  32% { transform: translate(-50%, -50%) scale(1); }
+  78% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -62%) scale(1); }
+}
+.gd-patfade-enter-active, .gd-patfade-leave-active { transition: opacity .15s ease; }
+.gd-patfade-enter-from, .gd-patfade-leave-to { opacity: 0; }
+
+/* 行动方聚焦：轮到别人时其余席位压暗降饱和；切换有 0.3s 过渡不生硬 */
+.gd .gt-seat.is-idle {
+  opacity: .58; filter: saturate(.55);
+  transition: opacity .3s ease, filter .3s ease;
+}
+.gd .gt-seat { transition: opacity .3s ease, filter .3s ease; }
+
+/* 队友标识：青蓝描环 + 右上角「友」小角标（对家/左右家都适用） */
+.gd .gt-seat.is-mate { box-shadow: inset 0 0 0 1.5px rgba(96, 190, 255, .45); }
+.gd .gt-seat.is-mate::after {
+  content: '友';
+  position: absolute; right: -6px; top: -7px;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 9.5px; font-weight: 700; font-style: normal;
+  background: rgba(70, 160, 235, .92); color: #eaf5ff;
+  border: 1px solid rgba(255, 255, 255, .4);
+}
+/* gt-seat 需要 relative 才能挂角标（全局可能有定位，这里兜底声明） */
+.gd .gt-seat { position: relative; }
+
+/* 发牌错峰：新局手牌逐张从上方带角度落进（每张延迟 35ms） */
+@keyframes gd-deal-in {
+  0% { opacity: 0; transform: translateY(-34px) rotate(-7deg) scale(.92); }
+  70% { opacity: 1; transform: translateY(2px) rotate(1deg) scale(1.01); }
+  100% { opacity: 1; transform: none; }
+}
+.gd-hand .gt-card.gd-deal-in {
+  animation: gd-deal-in .34s cubic-bezier(.2, .85, .3, 1) both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gd-pat-fx, .gd-hand .gt-card.gd-deal-in { animation: none !important; }
+  .gd .gt-seat.is-idle { opacity: 1; filter: none; }
 }
 </style>
