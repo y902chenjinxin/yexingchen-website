@@ -1631,12 +1631,19 @@ onBeforeUnmount(() => {
   grid-area: center; position: relative; min-width: 0; min-height: 0;
   display: grid; gap: 2px 6px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* v2.46.44（夜星：弃牌会拉伸牌桌）：上下两条横排**定高一行**（牌多溢出裁切），
+     中行保底「两张侧牌的高度」（左右弃牌纵向码列至少两行）。⚠️ 不能用
+     minmax(min, max) 给弃牌行 —— grid 的 maximize-tracks 会把轨道撑到 max、
+     把中间 1fr 挤成 0（实测 Chrome 如此），定高才是硬约束。 */
+  grid-template-rows:
+    calc(var(--dis-h) + 2px)
+    minmax(calc(var(--dis-w) * 2 + 4px), 1fr)
+    calc(var(--dis-h) + 2px);
   grid-template-areas:
     "up    up"
     "left  right"
     "down  down";
-  padding: 24px 28px; border-radius: 14px;   /* v2.46.42：给四方牌墙留边（原 5px） */
+  padding: 18px 28px; border-radius: 14px;   /* v2.46.44：给四方牌墙留边（原 24px，匀 12px 给中行） */
   background: rgba(0, 0, 0, .2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
   /* v2.46.26（夜星：长方形看着怪）：宽屏下中央弃牌区被 1fr 拉成 3:1 长条，
@@ -1666,8 +1673,13 @@ onBeforeUnmount(() => {
 .mj-wall-right { right: 5px; top: 50%; transform: translateY(-50%); flex-direction: column; }
 .mj-wstack {
   width: 10px; height: 14px; border-radius: 2px;
-  background: linear-gradient(180deg, #ead9b8, #c3ae85);
-  box-shadow: inset 0 0 0 1px rgba(58, 44, 20, .38);
+  /* v2.46.44：牌墙小牌与牌背同构 —— 绿背面 + 底缘一线象牙白侧沿，随牌背体系走 */
+  background: linear-gradient(180deg, #4aa87f, #2c7f60 68%, #236a50);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    inset 0 0 0 1px rgba(20, 70, 52, .45),
+    0 1.5px 0 rgba(233, 224, 198, .85),
+    0 2.5px 3px -1px rgba(0, 0, 0, .55);
   transition: opacity .3s ease, transform .3s ease, box-shadow .3s ease;
 }
 .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 14px; height: 10px; }
@@ -1678,6 +1690,8 @@ onBeforeUnmount(() => {
   transform: scale(1.2);
 }
 @media (max-height: 430px) {
+  /* 矮屏（手机横屏）：弃牌再收一档 —— 中行能多让出 ~12px 给左右弃牌的纵向码列 */
+  .mj { --dis-w: clamp(14px, calc(var(--gt-h, 420px) * 0.05), 22px); }
   .mj-wstack { width: 9px; height: 11px; }
   .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 11px; height: 9px; }
 }
@@ -1707,16 +1721,24 @@ onBeforeUnmount(() => {
 }
 /* 弃牌：flex + wrap，牌宽恒定（不随牌数抖动），溢出裁切。
    上下两家横排、各自居中 → 牌堆正对自己；
-   左右两家：牌身横躺、**按列码放** —— 列内从上到下，第一列贴各自外侧，
-   满列后向中缝方向起新列：左家普通 wrap（从左往右）、右家 wrap-reverse（从右往左），
-   牌堆永远从两边往中间长。align-content 必须显式给 flex-start：
-   默认 stretch 会把每列等宽拉开铺满整格，牌堆就散了。 */
+   左右两家：**grid 纵向码列**（v2.46.44，夜星：手机端弃牌为啥是横着的）——
+   旧版 `flex-flow: column wrap` 在中行高度不够时会「每列只剩一张」自动拆成横排，
+   整条弃牌带横贯全桌（就是手机上那条横躺的牌带）。现在改 grid
+   `grid-auto-flow: column` + 固定行高：行数由容器高度算死，列内从上到下、
+   满列才向中缝起新列，**任何高度下都不可能摊成横排**。
+   左家 justify-content: start（贴外侧左缘，向右长）、右家 end（贴右缘，向左长）。 */
 .mj-dis { display: flex; gap: 2px; min-width: 0; min-height: 0; overflow: hidden; }
 .mj-dis > .gt-tile { flex: none; transform: rotate(var(--tilt, 0deg)); }
 .mj-dis-up { grid-area: up; flex-flow: row wrap; justify-content: center; align-content: flex-start; }
 .mj-dis-down { grid-area: down; flex-flow: row wrap; justify-content: center; align-content: flex-end; }
-.mj-dis-left { grid-area: left; flex-flow: column wrap; justify-content: flex-start; align-content: flex-start; }
-.mj-dis-right { grid-area: right; flex-flow: column wrap-reverse; justify-content: flex-start; align-content: flex-start; }
+.mj-dis-left, .mj-dis-right {
+  display: grid; gap: 2px; align-content: start;
+  grid-template-rows: repeat(auto-fill, var(--dis-w));
+  grid-auto-columns: var(--dis-h);
+  grid-auto-flow: column;
+}
+.mj-dis-left { grid-area: left; justify-content: start; }
+.mj-dis-right { grid-area: right; justify-content: end; }
 /* 左右两家弃牌：牌身横躺 —— 布局盒宽高先互换（长边横向），牌面 SVG 反向转 ±90° 补回来
    （transform 不参与布局，必须换盒子尺寸才能让列内间距正确）。
    旋转方向：牌面朝向桌心 —— 左家牌顶指向右（rotate 90°），右家牌顶指向左（rotate -90°），
@@ -1815,37 +1837,55 @@ onBeforeUnmount(() => {
 .mj-actions { justify-content: flex-end; margin-bottom: 1px; }
 .mj-actions .gt-btn { padding: 6px 16px; font-size: 12.5px; }
 
-/* ===== 牌：象牙白 + 玉质感 =====
-   覆盖全局 .gt-tile 那套「浅色平面 + 单层投影」的塑料感：改成三层阴影 ——
-   一层内高光（顶部受光）、两层错开的实心投影（牌身厚度）、一层柔和落影（离地感）。 */
+/* ===== 牌：象牙白立体牌身（v2.46.44，夜星：对照腾讯棋牌做质感）=====
+   旧版「平面色块 + 单层投影」塑料感的再升级 —— 真实麻将牌的五个视觉特征：
+   ① 面是暖象牙白，左上受光、右下微沉（radial 高光 + 纵向渐变叠加）；
+   ② 牌身有**厚度**：底缘露出受光的象牙侧面 + 一道侧沿暗缝 + 外圈软落影；
+   ③ 面缘一圈极细的暖灰包边（不是黑描边）；
+   ④ 牌背是「绿面白边」：翠绿背面 + 象牙白侧面包边，与牌身同构；
+   ⑤ 体积感全部来自受光方向一致的阴影层，而不是靠对比度硬堆。 */
 .mj .gt-tile {
-  background: linear-gradient(172deg, #fffefb 0%, #f8f4ea 55%, #eae3d1 100%);
-  border: 1px solid #d6ceb8;
-  border-radius: 5px 5px 4px 4px;
+  background:
+    radial-gradient(130% 90% at 28% 0%, rgba(255, 255, 255, .92), rgba(255, 255, 255, 0) 52%),
+    linear-gradient(175deg, #fffef9 0%, #f8f3e5 46%, #eae1c9 100%);
+  border: 1px solid rgba(184, 170, 136, .78);
+  border-radius: 7px 7px 6px 6px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .95),
-    0 2px 0 #cfc6ad,
-    0 4px 0 #b6ac91,
-    0 10px 16px -9px rgba(0, 0, 0, .75);
+    inset 0 -2px 3px rgba(152, 136, 98, .30),
+    0 2px 0 #e9e0c6,
+    0 4px 0 #c8bc9c,
+    0 5px 1px rgba(88, 78, 52, .32),
+    0 13px 20px -10px rgba(0, 0, 0, .8);
 }
-/* 牌背：翡翠绿（与绒布桌同色系，不再是突兀的蓝） */
+/* 牌背：翠绿面 + 象牙白侧沿（腾讯式「白边绿背」，与绒布桌同色系） */
 .mj .gt-tile.is-back {
-  background: linear-gradient(172deg, #3f9e7a 0%, #2a7d5e 55%, #1b5c45 100%);
-  border-color: #15503b;
+  background: linear-gradient(172deg, #4aa87f 0%, #2c7f60 55%, #1c5d46 100%);
+  border-color: #efe8d2;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .22),
-    0 2px 0 #144634,
-    0 4px 0 #0d3225,
-    0 10px 16px -9px rgba(0, 0, 0, .8);
+    inset 0 1px 0 rgba(255, 255, 255, .32),
+    inset 0 -2px 3px rgba(10, 60, 44, .45),
+    0 2px 0 #e9e0c6,
+    0 4px 0 #c8bc9c,
+    0 5px 1px rgba(88, 78, 52, .35),
+    0 12px 18px -10px rgba(0, 0, 0, .82);
 }
 /* 迷你牌（背面 / 弃牌 / 副露）尺寸跟随屏高 */
-.mj .gt-tile.mini { width: var(--mini-w); height: var(--mini-h); border-radius: 3px; }
-/* 迷你牌不需要「厚度」层，否则小尺寸下投影糊成一团 */
+.mj .gt-tile.mini { width: var(--mini-w); height: var(--mini-h); border-radius: 4px; }
+/* 迷你牌的厚度收成两小层 —— 大牌那套三层在小尺寸下会糊 */
 .mj .gt-tile.mini {
-  box-shadow: 0 1px 0 rgba(150, 140, 115, .6), 0 3px 5px -3px rgba(0, 0, 0, .6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .85),
+    inset 0 -1px 2px rgba(152, 136, 98, .35),
+    0 1px 0 #ddd3b6, 0 2px 0 rgba(150, 138, 108, .55),
+    0 4px 6px -3px rgba(0, 0, 0, .62);
 }
 .mj .gt-tile.mini.is-back {
-  box-shadow: 0 1px 0 rgba(9, 48, 35, .85), 0 3px 5px -3px rgba(0, 0, 0, .7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .28),
+    inset 0 -1px 2px rgba(10, 60, 44, .45),
+    0 1px 0 #ddd3b6, 0 2px 0 rgba(150, 138, 108, .55),
+    0 4px 6px -3px rgba(0, 0, 0, .68);
 }
 
 /* 花色着色（牌面由 SVG 绘制，此处仅作兜底与选中描边色） */
@@ -1858,7 +1898,7 @@ onBeforeUnmount(() => {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .95),
     0 0 0 2px var(--gt-gold),
-    0 2px 0 #cfc6ad, 0 4px 0 #b6ac91,
+    0 2px 0 #e9e0c6, 0 4px 0 #c8bc9c,
     0 14px 20px -10px rgba(0, 0, 0, .85);
 }
 /* 手牌选中：抬起来 + 金色描边 */
@@ -1867,7 +1907,7 @@ onBeforeUnmount(() => {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .95),
     0 0 0 2px var(--gt-gold), 0 0 18px -2px rgba(233, 200, 119, .7),
-    0 2px 0 #cfc6ad, 0 4px 0 #b6ac91,
+    0 2px 0 #e9e0c6, 0 4px 0 #c8bc9c,
     0 16px 22px -10px rgba(0, 0, 0, .9);
 }
 
@@ -1988,7 +2028,7 @@ button.mj-ting-item:hover { border-color: rgba(233, 200, 119, .5); color: var(--
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .95),
     0 0 0 2px var(--gt-gold), 0 0 24px -2px rgba(233, 200, 119, .9),
-    0 2px 0 #cfc6ad, 0 4px 0 #b6ac91,
+    0 2px 0 #e9e0c6, 0 4px 0 #c8bc9c,
     0 20px 26px -10px rgba(0, 0, 0, .92);
 }
 
@@ -2020,7 +2060,11 @@ button.mj-ting-item:hover { border-color: rgba(233, 200, 119, .5); color: var(--
   }
   100% {
     transform: rotate(var(--tilt, 0deg)); opacity: 1;
-    box-shadow: 0 1px 0 rgba(150, 140, 115, .6), 0 3px 5px -3px rgba(0, 0, 0, .6);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .85),
+      inset 0 -1px 2px rgba(152, 136, 98, .35),
+      0 1px 0 #ddd3b6, 0 2px 0 rgba(150, 138, 108, .55),
+      0 4px 6px -3px rgba(0, 0, 0, .62);
   }
 }
 .mj .gt-tile.is-land { animation: mj-land .38s cubic-bezier(.2, .85, .3, 1) both; z-index: 2; }

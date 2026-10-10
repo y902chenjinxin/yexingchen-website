@@ -189,8 +189,13 @@ function cellStyle(side, slot) {
 .mjo-wall-right  { right: 4px; top: 50%; transform: translateY(-50%); flex-direction: column; }
 .mjo-cell {
   width: 11px; height: 15px; border-radius: 2.5px;
-  background: linear-gradient(180deg, #ead9b8, #c8b48c);
-  box-shadow: inset 0 0 0 1px rgba(58, 44, 20, .35);
+  /* v2.46.44：与牌桌牌墙/牌背同构 —— 绿背面 + 底缘一线象牙白侧沿 */
+  background: linear-gradient(180deg, #4aa87f, #2c7f60 68%, #236a50);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    inset 0 0 0 1px rgba(20, 70, 52, .45),
+    0 1.5px 0 rgba(233, 224, 198, .85),
+    0 2.5px 3px -1px rgba(0, 0, 0, .5);
   opacity: 1; transition: opacity .3s ease, box-shadow .3s ease, transform .3s ease;
   animation: mjo-cell-in .3s ease both;
   animation-delay: var(--d, 0ms);
