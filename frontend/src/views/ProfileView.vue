@@ -616,7 +616,7 @@ async function savePassword() {
   color: var(--color-text-secondary);
   background: transparent;
   cursor: pointer;
-  transition: all 0.22s ease;
+  transition: border-color 0.22s ease, background-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
   -webkit-tap-highlight-color: transparent;
 }
 .theme-seg-btn.active {
@@ -711,6 +711,34 @@ async function savePassword() {
   font-weight: 600; transition: background .18s;
 }
 .acc-btn:hover { background: rgba(199, 169, 107, .12); }
-.acc-btn.danger { border-color: #d9534f; color: #d9534f; }
+.acc-btn.danger { border-color: var(--dp-danger); color: var(--dp-danger); }
 .acc-btn.danger:hover { background: rgba(217, 83, 79, .1); }
+/* =====================================================================
+ * 桌面端对齐 --dp-* 三件套（v2.46.38 审查 B4）
+ * 本页是唯一整页不走 --dp-* 的桌面页：渐变金字标题白底对比不足、
+ * --xiu-card 深青玻璃 + blur(14px) + 0 16px 40px 重黑阴影违反
+ * 「实色面 + 克制阴影」基线。手机端由 mobile-paper.css 接管，不动。
+ * ===================================================================== */
+#app:not(.is-mobile) .page-title {
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  filter: none;
+  color: var(--dp-text);
+}
+#app:not(.is-mobile) .info-card {
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-line);
+  box-shadow: var(--dp-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#app:not(.is-mobile) .info-card::before { display: none; }
+#app:not(.is-mobile) .card-header { border-bottom-color: var(--dp-line); }
+#app:not(.is-mobile) .brand-stage {
+  background: var(--dp-surface2);
+  border: 1px solid var(--dp-line);
+  box-shadow: var(--dp-shadow);
+}
 </style>

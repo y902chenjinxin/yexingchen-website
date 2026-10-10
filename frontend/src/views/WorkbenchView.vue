@@ -207,10 +207,10 @@ onMounted(async () => {
 }
 .bento-hero:hover {
   border-color: var(--yq-gold, var(--dp-accent));
-  box-shadow: 0 22px 56px rgba(0,0,0,.32), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.35)) inset;
+  box-shadow: var(--dp-glow), 0 0 0 1px var(--dp-line-strong, rgba(127,127,127,.3)) inset;
 }
-.bento-hero.up .bento-hero-sign { color: #34d399; }
-.bento-hero.dn .bento-hero-sign { color: #f87171; }
+.bento-hero.up .bento-hero-sign { color: var(--dp-up); }
+.bento-hero.dn .bento-hero-sign { color: var(--dp-down); }
 .bento-hero-eyebrow {
   font-size: 11px; letter-spacing: .28em; text-transform: uppercase;
   color: var(--dp-text3); margin-bottom: 10px;
@@ -227,8 +227,8 @@ onMounted(async () => {
 }
 .bento-hero-foot span { display: inline-flex; align-items: center; gap: 6px; }
 .bento-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-.bento-dot.dot-in { background: #34d399; }
-.bento-dot.dot-out { background: #f87171; }
+.bento-dot.dot-in { background: var(--dp-up); }
+.bento-dot.dot-out { background: var(--dp-down); }
 
 /* 小 KPI 块：足迹 */
 .bento-mini {
@@ -243,7 +243,7 @@ onMounted(async () => {
 }
 .bento-mini:hover {
   border-color: var(--yq-gold, var(--dp-accent));
-  box-shadow: 0 14px 36px rgba(0,0,0,.28), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.3)) inset;
+  box-shadow: var(--dp-glow), 0 0 0 1px var(--dp-line-strong, rgba(127,127,127,.3)) inset;
 }
 .bento-mini-eyebrow { font-size: 11px; letter-spacing: .12em; color: var(--dp-text3); margin-bottom: 8px; }
 .bento-mini-num {
@@ -273,7 +273,7 @@ onMounted(async () => {
 }
 .bento-trend:hover {
   border-color: var(--yq-gold, var(--dp-accent));
-  box-shadow: 0 22px 56px rgba(0,0,0,.32), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.35)) inset;
+  box-shadow: var(--dp-glow), 0 0 0 1px var(--dp-line-strong, rgba(127,127,127,.3)) inset;
 }
 .bento-trend-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .bento-trend-title { font-size: 14px; font-weight: 600; color: var(--dp-text); letter-spacing: .02em; }
@@ -291,7 +291,7 @@ onMounted(async () => {
 }
 .bento-wx:hover {
   border-color: var(--yq-gold, var(--dp-accent));
-  box-shadow: 0 14px 36px rgba(0,0,0,.28), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.3)) inset;
+  box-shadow: var(--dp-glow), 0 0 0 1px var(--dp-line-strong, rgba(127,127,127,.3)) inset;
 }
 .bento-wx :deep(.wx-card) { padding: 0; }
 .bento-wx :deep(.wx-head) { margin-bottom: 4px; }
@@ -323,7 +323,7 @@ onMounted(async () => {
 }
 .bento-card:hover {
   border-color: var(--yq-gold, var(--dp-accent));
-  box-shadow: 0 14px 36px rgba(0,0,0,.28), 0 0 0 1px var(--yq-gold-glow, rgba(199,169,107,.3)) inset;
+  box-shadow: var(--dp-glow), 0 0 0 1px var(--dp-line-strong, rgba(127,127,127,.3)) inset;
 }
 .bento-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .bento-card-title { font-size: 13px; font-weight: 600; color: var(--dp-text); letter-spacing: .02em; }

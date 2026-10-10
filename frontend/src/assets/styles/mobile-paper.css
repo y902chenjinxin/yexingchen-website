@@ -96,7 +96,12 @@ html[data-theme="day"] #app.is-mobile {
   --m-shadow: none;
 }
 
-/* ================= 页面底：宣纸色 + 纸纹 ================= */
+/* ================= 页面底：宣纸色 + 纸纹 =================
+ * 注意（v2.46.38 审查 C5）：`.ct-*` 前缀由 CountdownsView 与 ContactsView
+ * 共用（ContactsView 未迁移前缀）——本组 ct-* 规则会同时命中两页。
+ * 现状是有益共享（联系人页按钮/卡片免费统一进宣纸体系），如未来
+ * 两页需要分道，先给 ContactsView 迁移 `contact-` 前缀再拆规则。
+ * ===================================================================== */
 #app.is-mobile :is(.fin-page, .st-page, .tv-page, .ct-page, .notes-page, .profile-page, .assistant-page, .abb, .cd-page,
   .tk-page, .sb-page, .li-page, .va-page, .wd-page, .sd-page, .dh-page, .trash-page, .fd-page, .qk-page) {
   background-color: var(--m-bg) !important;
@@ -446,18 +451,10 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
 }
 
 /* ======================================================================
- * 修补（v2.46.34）：product 层「accent 底 + 硬编码深字 #061513」的老规则，
- * 在日间 --m-accent 被重映射为墨色后变成「墨底深字 ≈ 黑底黑字」。
- * 四处均绕过了上方主按钮组的覆盖（选择器不含 / 特异性更高），统一接
- * --xz-btn-fg：日=宣纸字（墨底上），夜=深字（金底上），两边同时成立。
+ * 深字根治（v2.46.38）：product 层 5 处「accent 底 + 硬编码深字 #061513」
+ * 已直接改为 var(--xz-btn-fg)，v2.46.34 的打地鼠补丁随之删除。
+ * （--xz-btn-fg：日=宣纸字 on 墨底；夜=深字 on 鎏金底，两边同时成立）
  * ===================================================================== */
-#app.is-mobile :is(.notes-header button, .island-inner-music .play-btn, .island-inner-music .play-btn.playing) {
-  color: var(--xz-btn-fg) !important;
-}
-/* 特异性对齐 product 层 .st-page .st-btn.primary（id+3class） */
-#app.is-mobile .st-page .st-btn.primary { color: var(--xz-btn-fg) !important; }
-#app.is-mobile .profile-page .theme-seg-btn.active { color: var(--xz-btn-fg) !important; }
-/* bgm-btn.on：日间 accent=墨字浅底本可读，但 accent-strong 描边在宣纸上发闷 → 统一墨描边即可，不动 */
 
 /* ======================================================================
  * 个人中心统一（v2.46.35 · 夜星反馈「我的页面不是很统一」）
@@ -628,3 +625,120 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
 #app.is-mobile .mdl-card.active :is(.mdl-card__ico, .mdl-card__lab) {
   color: var(--xz-btn-fg) !important;
 }
+
+/* ======================================================================
+ * EP 弹层修复（v2.46.38 · 审查 A1/A2）
+ * el-select/el-date-picker 的 popper、ElMessageBox 默认 teleport 到 body，
+ * 带前缀 #app.is-mobile 的旧规则从未命中过——弹层一直是 EP 默认白底蓝紫。
+ * 用 body:has(#app.is-mobile) 门控（项目已依赖 :has），自动跟随移动端切换。
+ * ===================================================================== */
+/* ---- A2 · EP 主色宣纸化：挂 html 级，#app 内控件与 body 下弹层都继承 ---- */
+html:has(#app.is-mobile) {
+  --el-color-primary: var(--xz-gold);
+  --el-color-primary-light-3: #d5b57c;
+  --el-color-primary-light-5: #ddc39b;
+  --el-color-primary-light-7: #e6d2ba;
+  --el-color-primary-light-8: #ecdcc8;
+  --el-color-primary-light-9: #f3e7d9;
+  --el-color-primary-dark-2: #a9853f;
+}
+html[data-theme="day"]:has(#app.is-mobile) {
+  --el-color-primary: var(--xz-ochre);
+  --el-color-primary-light-3: #c08a70;
+  --el-color-primary-light-5: #cda391;
+  --el-color-primary-light-7: #dbbcad;
+  --el-color-primary-light-8: #e4cdc2;
+  --el-color-primary-light-9: #f0e3db;
+  --el-color-primary-dark-2: #8d533a;
+}
+/* ---- A1 · 弹层表面：宣纸卡 + 硬阴影 ---- */
+body:has(#app.is-mobile) :is(.el-select__popper, .el-dropdown-menu, .el-picker__popper, .el-date-picker__popper, .el-message-box) {
+  background: var(--xz-card) !important;
+  border: 2px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+}
+/* popper 箭头跟着卡色走（默认 --el-bg-color-overlay 夜间是白箭头） */
+body:has(#app.is-mobile) .el-popper__arrow::before {
+  background: var(--xz-card) !important;
+  border: 1px solid var(--xz-card-border) !important;
+}
+/* 弹层文字：EP 默认深字，墨夜下不可读 */
+body:has(#app.is-mobile) :is(.el-select-dropdown__item, .el-select-dropdown__empty, .el-picker-panel__icon-btn, .el-date-picker__header-label, .el-date-table th, .el-month-table td .cell, .el-year-table td .cell, .el-message-box__title, .el-message-box__message) {
+  color: var(--m-text);
+}
+body:has(#app.is-mobile) .el-date-table td .el-date-table-cell { color: var(--m-text-2); }
+body:has(#app.is-mobile) .el-date-table td.today .el-date-table-cell__text { color: var(--xz-ochre); }
+body:has(#app.is-mobile) .el-select-dropdown__item.is-hovering { background: var(--xz-card-2); }
+body:has(#app.is-mobile) .el-select-dropdown__item.is-selected { color: var(--m-accent); font-weight: 700; }
+body:has(#app.is-mobile) .el-date-table td.current .el-date-table-cell__text,
+body:has(#app.is-mobile) .el-date-table td.start .el-date-table-cell__text,
+body:has(#app.is-mobile) .el-date-table td.end .el-date-table-cell__text {
+  background: var(--xz-btn-bg);
+  color: var(--xz-btn-fg);
+}
+/* MessageBox 主按钮（body 下，#app 前缀的主按钮组命中不了） */
+body:has(#app.is-mobile) .el-message-box .el-button--primary {
+  background: var(--xz-btn-bg) !important;
+  color: var(--xz-btn-fg) !important;
+  border-color: transparent !important;
+  border-radius: var(--m-radius-sm) !important;
+}
+body:has(#app.is-mobile) .el-message-box .el-button:not(.el-button--primary) {
+  background: transparent !important;
+  border: 1.5px solid var(--m-line-strong) !important;
+  border-radius: var(--m-radius-sm) !important;
+  color: var(--m-text) !important;
+}
+
+/* ======================================================================
+ * 三整页接入（v2.46.38 · 审查 A3）
+ * 倒计时详情（cdd-*）经核实为恒暗遮罩沉浸页（overlay 黑 30%~60% 渐变，
+ * 白字昼夜可读，背景为用户自选色）——不铺宣纸，保持沉浸设计。
+ * 小说页 manage-pane 手机端已被 deink 层 display:none——无需处理。
+ * 实际只差日志页：时间线卡 + chip 浅字（日间宣纸上对比 <2:1）。
+ * ===================================================================== */
+#app.is-mobile .timeline-content {
+  background: var(--xz-card) !important;
+  border: 1.5px solid var(--m-line-strong) !important;
+  box-shadow: none !important;
+}
+#app.is-mobile .timeline-dot { border-color: var(--xz-paper) !important; }
+#app.is-mobile :is(.log-user, .log-detail) { color: var(--m-text) !important; }
+#app.is-mobile :is(.log-target, .log-footer, .log-empty-text) { color: var(--m-text-3) !important; }
+/* 动作 chip：底色为低饱和透明底可保留，文字换语义令牌（日间深、夜自动翻浅） */
+#app.is-mobile :is(.action-login, .action-create, .action-upload, .action-approve) { color: var(--m-positive) !important; }
+#app.is-mobile :is(.action-delete, .action-reject) { color: var(--m-negative) !important; }
+#app.is-mobile .action-update { color: var(--m-warning) !important; }
+#app.is-mobile :is(.action-logout, .action-download) { color: var(--m-text-2) !important; }
+#app.is-mobile .action-unknown { color: var(--m-text-3) !important; }
+
+/* ======================================================================
+ * 工具岛内页主按钮/纸面收编（v2.46.38 · 审查 A5）
+ * 语音（.at-record 金渐变白字）、胶囊（.cp-submit 金底白字）、诗词
+ * （.pt-btn.primary 金底白字）均绕过主按钮体系 → 统一 --xz-btn。
+ * 诗词手写纸面：夜间在墨夜上是亮块 → 暗化；日间保留原米纸（设计意图）。
+ * ===================================================================== */
+#app.is-mobile :is(.at-record:not(.recording), .cp-submit, .pt-btn.primary) {
+  background: var(--xz-btn-bg) !important;
+  color: var(--xz-btn-fg) !important;
+  border-color: transparent !important;
+  border-radius: var(--m-radius-sm) !important;
+}
+#app.is-mobile .at-record.recording {
+  background: var(--m-negative) !important;
+  color: #fff !important;
+}
+#app.is-mobile .cp-err { color: var(--m-negative) !important; }
+#app.is-mobile .pt-paper {
+  background: var(--xz-card-2) !important;
+  border-color: var(--m-line-strong) !important;
+  box-shadow: none !important;
+}
+#app.is-mobile :is(.pt-text, .pt-date, .pt-loading) { color: var(--m-text) !important; }
+html[data-theme="day"] #app.is-mobile .pt-paper {
+  background: linear-gradient(160deg, #faf6ec, #f3ecd9) !important;
+  border-color: rgba(142, 106, 44, .25) !important;
+}
+html[data-theme="day"] #app.is-mobile .pt-text { color: #4a3b22 !important; }
+html[data-theme="day"] #app.is-mobile :is(.pt-date, .pt-loading) { color: #a08a5a !important; }

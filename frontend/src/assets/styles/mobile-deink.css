@@ -14,13 +14,9 @@
 /* 山顶/仙居等纯装饰背景不做标记时，压低调门避免古风噪感（保留颜色氛围） */
 #app.is-mobile .lj-wash { opacity: .26; }
 
-/* 兜底：任何仍指向衬线书法的移动端子页标题/按钮，一律转现代无衬线 */
-#app.is-mobile :is(.font-serif, [class~='font-serif'], [class*='-serif'], [class*='_serif']),
-#app.is-mobile .fin-title,
-#app.is-mobile .fin-sub {
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Source Han Sans CN", "Microsoft YaHei", sans-serif;
-  letter-spacing: .02em;
-}
+/* v2.46.38（C4）：原「衬线转无衬线」兜底段已删除——宣纸改版（v2.46.32 起）
+   反向确立衬线刊头为移动端签名（mobile-paper.css 以 !important 接管），
+   本段与之语义相反且从未生效（特异性落败），留着易误导演进。 */
 
 /* ---------- P2 · 账本 /finance ---------- */
 /* 页头批量操作（导出/导入）→ 桌面端保留，移动端收掉 */

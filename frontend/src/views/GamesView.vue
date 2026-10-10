@@ -787,7 +787,7 @@ watch(() => route.query.room, (v) => {
 .gm-item {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   padding: 9px 11px; border-radius: 13px; cursor: pointer; font-family: inherit;
-  border: 1px solid transparent; background: transparent; transition: all .18s;
+  border: 1px solid transparent; background: transparent; transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
   position: relative;
 }
 /* 悬停/选中都走玻璃 + 鎏金，不用 `--dp-surface`：夜间它是 #0d0d18，压在更亮的岛屿底上
@@ -887,7 +887,7 @@ watch(() => route.query.room, (v) => {
 .gm-op {
   padding: 6px 14px; border-radius: 999px; font-size: 12.5px; cursor: pointer; font-family: inherit;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff);
-  color: var(--dp-text2, #45505b); transition: all .18s;
+  color: var(--dp-text2, #45505b); transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 .gm-op:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
 .gm-op.ghost { background: transparent; }
@@ -909,7 +909,7 @@ watch(() => route.query.room, (v) => {
   border: 1px solid var(--yq-gold, #c7a96b);
   background: var(--yq-gold-faint, rgba(199,169,107,.14));
   color: var(--yq-gold-deep, var(--yq-gold-bright, var(--yq-gold, #c7a96b)));
-  transition: all .18s;
+  transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 .gm-rulesbtn:hover { background: rgba(199,169,107,.24); transform: translateY(-1px); }
 .gm-rulesbtn-ic {
@@ -947,7 +947,7 @@ watch(() => route.query.room, (v) => {
   backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
   -webkit-backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
   box-shadow: var(--glass-highlight, none);
-  transition: all .18s;
+  transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 .gm-modecard:hover {
   border-color: var(--yq-gold, #c7a96b);
@@ -962,7 +962,7 @@ watch(() => route.query.room, (v) => {
 .gm-sizebtn {
   padding: 6px 14px; border-radius: 999px; cursor: pointer; font-family: inherit; font-size: 12.5px;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: transparent; color: var(--dp-text2, #45505b);
-  transition: all .18s;
+  transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 .gm-sizebtn.on { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
 .gm-size-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }

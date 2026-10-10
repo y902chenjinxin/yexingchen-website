@@ -29,6 +29,8 @@
   --dp-accent-strong: #8B5CF6;
   --dp-accent-faint: rgba(167, 139, 250, .18);
   --dp-danger: #fb7185;
+  --dp-up: #e5484d;      /* 涨红（夜底浅色系） */
+  --dp-down: #3f968e;    /* 跌青 */
   --dp-warning: #fcd34d;
   /* 圆角略大（玻璃质感） */
   --dp-radius: 12px;

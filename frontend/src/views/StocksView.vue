@@ -418,7 +418,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-btn.ghost { background: transparent; color: var(--lj-text); border-color: var(--lj-line); }
 .st-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
 .st-btn.tiny { padding: 3px 8px; font-size: 12px; }
-.st-btn.danger { color: #D8504F; }
+.st-btn.danger { color: var(--dp-up); }
 .st-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .st-kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
@@ -428,8 +428,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-kpi-k { font-size: 12px; color: var(--lj-text-2); letter-spacing: .08em; }
 .st-kpi-v { font-size: 26px; font-weight: 700; letter-spacing: .01em; }
 .st-kpi-s { font-size: 11px; color: var(--lj-text-3); }
-.up { color: #D8504F; }
-.down { color: #3F968E; }
+.up { color: var(--dp-up); }
+.down { color: var(--dp-down); }
 .flat { color: var(--lj-text); }
 .ready { color: #D8A24A; }
 
@@ -442,12 +442,12 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-f-field { min-width: 150px; flex: 0 0 auto; }
 .st-f-field.grow { flex: 1 1 180px; }
 .st-f-label { display: block; font-size: 11px; color: var(--lj-text-2); margin-bottom: 5px; }
-.st-input { width: 100%; background: rgba(11,15,20,.35); border: 1px solid var(--lj-line); color: var(--lj-text); border-radius: 8px; padding: 7px 10px; box-sizing: border-box; }
-.st-input:focus { outline: none; border-color: var(--lj-seal); }
+.st-input { width: 100%; background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); border-radius: 8px; padding: 7px 10px; box-sizing: border-box; }
+.st-input:focus { outline: none; border-color: var(--yq-gold, #c7a96b); }
 .st-select { appearance: none; }
 .st-sug { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.st-sug-item { display: flex; align-items: baseline; gap: 8px; background: rgba(11,15,20,.35); border: 1px solid var(--lj-line); border-radius: 9px; padding: 6px 12px; cursor: pointer; color: var(--lj-text); }
-.st-sug-item:hover { border-color: var(--lj-seal); }
+.st-sug-item { display: flex; align-items: baseline; gap: 8px; background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); border-radius: 9px; padding: 6px 12px; cursor: pointer; color: var(--lj-text); }
+.st-sug-item:hover { border-color: var(--yq-gold, #c7a96b); }
 .st-sug-name { font-size: 13px; }
 .st-sug-code { font-size: 11px; color: var(--lj-text-3); }
 .st-form-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
@@ -456,8 +456,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 /* 目标价预警徽标 */
 .st-alert { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
   font-size: 11px; color: #fff; vertical-align: 2px; }
-.st-alert.a-up { background: #D8504F; }
-.st-alert.a-down { background: #3F968E; }
+.st-alert.a-up { background: var(--dp-up); }
+.st-alert.a-down { background: var(--dp-down); }
 .st-alert.a-set { background: rgba(216, 162, 74, 0.18); color: #e2bb6f; border: 1px solid rgba(216, 162, 74, 0.35); }
 
 .st-list { border-radius: 16px; padding: 18px 20px; }
@@ -477,7 +477,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-td-edit { margin-left: 8px; font-size: 12px; color: var(--lj-dai); cursor: pointer; }
 .st-num { font-variant-numeric: tabular-nums; }
 .st-sub-pct { font-style: normal; font-size: 11px; opacity: .8; }
-.st-cell-input { width: 76px; background: rgba(11,15,20,.35); border: 1px solid var(--lj-line); color: var(--lj-text); border-radius: 6px; padding: 4px 6px; margin-right: 4px; }
+.st-cell-input { width: 76px; background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); border-radius: 6px; padding: 4px 6px; margin-right: 4px; }
 
 .st-cards { display: flex; flex-direction: column; gap: 10px; }
 .st-card { border-radius: 12px; padding: 14px; border: 1px solid var(--lj-line); }

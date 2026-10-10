@@ -1776,7 +1776,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-head-right { flex: none; }
 
 .fin-btn { border: none; cursor: pointer; border-radius: 10px; font-family: var(--font-serif);
-  color: var(--lj-text); background: var(--lj-glass); border: 1px solid var(--lj-line); padding: 9px 16px; transition: all .22s; }
+  color: var(--lj-text); background: var(--lj-glass); border: 1px solid var(--lj-line); padding: 9px 16px; transition: border-color .22s ease, background-color .22s ease, color .22s ease, box-shadow .22s ease, transform .22s ease; }
 .fin-btn:hover { border-color: var(--lj-line-strong); }
 .fin-btn.primary { background: linear-gradient(135deg, rgba(127,168,163,.55), rgba(199,169,107,.4)); color: #fff; }
 .fin-btn.primary:hover { filter: brightness(1.05); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
@@ -1789,11 +1789,11 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-dim { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(127,168,163,.08);
   border: 1px solid var(--lj-line); }
 .fin-dim-btn { border: 0; background: transparent; color: var(--lj-text-3); font-size: 12px; padding: 5px 14px; border-radius: 999px;
-  cursor: pointer; font-family: var(--font-serif); letter-spacing: .08em; transition: all .2s; }
+  cursor: pointer; font-family: var(--font-serif); letter-spacing: .08em; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-dim-btn:hover { color: var(--lj-text); }
 .fin-dim-btn.on { color: #fff; background: var(--lj-dai); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .fin-nav { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--lj-line); background: var(--lj-glass);
-  color: var(--lj-text); font-size: 18px; cursor: pointer; transition: all .2s; }
+  color: var(--lj-text); font-size: 18px; cursor: pointer; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-nav:hover { border-color: var(--lj-line-strong); }
 .fin-month-label { border: 1px solid var(--lj-line); background: var(--lj-glass); color: var(--lj-text);
   padding: 7px 16px; border-radius: 999px; font-family: var(--font-serif); letter-spacing: .1em; font-size: 16px;
@@ -1811,7 +1811,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-dd-list::-webkit-scrollbar { width: 6px; }
 .fin-dd-list::-webkit-scrollbar-thumb { background: var(--lj-line-strong); border-radius: 3px; }
 .fin-dd-item { border: 0; background: transparent; color: var(--lj-text-2); font-size: 13px; padding: 6px 10px;
-  border-radius: 8px; cursor: pointer; font-family: var(--font-serif); transition: all .15s; text-align: center; }
+  border-radius: 8px; cursor: pointer; font-family: var(--font-serif); transition: border-color .15s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .15s ease; text-align: center; }
 .fin-dd-item:hover { background: rgba(127,168,163,.12); color: var(--lj-text); }
 .fin-dd-item.on { color: #fff; background: var(--lj-dai); font-weight: 600; }
 
@@ -1862,7 +1862,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-form-close { margin-left: auto; border: none; background: transparent; color: var(--lj-text-2); font-size: 16px; cursor: pointer; }
 .fin-form-body { display: flex; flex-direction: column; gap: 14px; }
 .fin-f-type { display: flex; gap: 8px; }
-.fin-tab { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: all .22s; font-family: var(--font-serif); }
+.fin-tab { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: border-color .22s ease, background-color .22s ease, color .22s ease, box-shadow .22s ease, transform .22s ease; font-family: var(--font-serif); }
 .fin-tab.active { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.12); }
 .fin-f-row { display: flex; gap: 16px; flex-wrap: wrap; }
 .fin-f-field { flex: 1; min-width: 220px; }
@@ -1871,7 +1871,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-amount { width: 100%; }
 .fin-date { width: 100%; }
 .fin-cats { display: flex; flex-wrap: wrap; gap: 8px; }
-.fin-cat { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: all .2s; font-family: var(--font-serif); font-size: 13px; }
+.fin-cat { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; font-family: var(--font-serif); font-size: 13px; }
 .fin-cat.active { border-color: var(--lj-ochre); color: var(--lj-ochre); background: rgba(199,169,107,.14); }
 .fin-f-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .fin-cat-manage { background: none; border: none; padding: 0; cursor: pointer; font-size: 12px; color: var(--lj-ochre); font-family: var(--font-serif); letter-spacing: .04em; }
@@ -1903,10 +1903,10 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-cd-restore { font-style: normal; font-size: 13px; line-height: 1; cursor: pointer; color: var(--lj-seal, #c8a24b); opacity: .6; transition: opacity .15s ease; }
 .fin-cd-restore:hover { opacity: 1; }
 .fin-note-row { display: flex; align-items: center; gap: 8px; }
-.fin-note-input { flex: 1; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); outline: none; }
-.fin-note-input:focus { border-color: var(--lj-seal); }
+.fin-note-input { flex: 1; padding: 9px 12px; border-radius: 10px; outline: none; font-family: var(--font-serif); background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); }
+.fin-note-input:focus { border-color: var(--yq-gold, #c7a96b); }
 .fin-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
-.fd-enter-active,.fd-leave-active { transition: all .28s ease; }
+.fd-enter-active,.fd-leave-active { transition: opacity .28s ease, transform .28s ease; }
 .fd-enter-from,.fd-leave-to { opacity: 0; transform: translateY(-10px); }
 
 /* KPI */
@@ -1961,7 +1961,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-tabs::-webkit-scrollbar { display: none; }
 .fin-tab-item { flex: 1; min-width: 66px; border: 0; background: transparent; color: var(--lj-text-3);
   font-family: var(--font-serif); font-size: 13px; letter-spacing: .08em; padding: 8px 16px;
-  border-radius: 999px; cursor: pointer; white-space: nowrap; transition: all .2s; }
+  border-radius: 999px; cursor: pointer; white-space: nowrap; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-tab-item:hover { color: var(--lj-text); }
 .fin-tab-item.on { color: #fff; background: var(--lj-dai); box-shadow: 0 2px 8px rgba(0,0,0,.22); }
 
@@ -2005,7 +2005,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-ptxns-sub { font-size: 12px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
 .fin-ptxns-x { margin-left: auto; border: 1px solid var(--lj-line); background: transparent;
   color: var(--lj-text-2); font-family: var(--font-serif); font-size: 12px;
-  padding: 4px 13px; border-radius: 999px; cursor: pointer; transition: all .2s; }
+  padding: 4px 13px; border-radius: 999px; cursor: pointer; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-ptxns-x:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
 
 /* 批量改归属条 */
@@ -2023,7 +2023,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-fund-badge { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
   border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-3);
   font-family: var(--font-serif); font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
-  cursor: pointer; white-space: nowrap; transition: all .2s; }
+  cursor: pointer; white-space: nowrap; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-fund-badge:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
 .fin-fund-badge.savings { color: var(--yq-gold); border-color: rgba(199,169,107,.45); }
 .fin-fund-badge.public { color: var(--yq-rain); border-color: rgba(127,168,163,.45); }
@@ -2039,12 +2039,12 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-quick-label { font-size: 11.5px; color: var(--lj-text-3); letter-spacing: .06em; }
 .fin-quick-tag { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--lj-line);
   background: transparent; color: var(--lj-text-2); font-family: var(--font-serif); font-size: 12.5px;
-  cursor: pointer; transition: all .2s; }
+  cursor: pointer; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-quick-tag:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
 .fin-quick-tag.on { border-color: var(--lj-ochre); color: var(--lj-ochre); background: rgba(199,169,107,.14); }
 .fin-funds { display: flex; flex-wrap: wrap; gap: 8px; }
 .fin-fund { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--lj-line);
-  background: transparent; color: var(--lj-text-2); cursor: pointer; transition: all .2s;
+  background: transparent; color: var(--lj-text-2); cursor: pointer; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease;
   font-family: var(--font-serif); font-size: 13px; }
 .fin-fund:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
 .fin-fund.active { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.12); }
@@ -2060,7 +2060,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-mtags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .fin-mtag { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px;
   border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer;
-  font-family: var(--font-serif); font-size: 13px; transition: all .2s; }
+  font-family: var(--font-serif); font-size: 13px; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-mtag:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
 .fin-mtag.on { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.14); }
 .fin-mtag-avatar { font-size: 15px; line-height: 1; }
@@ -2105,8 +2105,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-ledger-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
 .fin-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .fin-filter { width: 130px; }
-.fin-filter-input { padding: 7px 11px; border-radius: 9px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); outline: none; width: 180px; }
-.fin-filter-input:focus { border-color: var(--lj-seal); }
+.fin-filter-input { padding: 7px 11px; border-radius: 9px; outline: none; width: 180px; font-family: var(--font-serif); background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); }
+.fin-filter-input:focus { border-color: var(--yq-gold, #c7a96b); }
 .fin-list-empty { padding: 40px 6px; text-align: center; color: var(--lj-text-3); font-size: 13px; }
 .fin-row { display: flex; align-items: center; gap: 12px; padding: 11px 8px; border-radius: 12px; transition: background .2s; }
 /* v2.46.33：行内包了一层 fin-row-body（滑动删除载体），布局职责移交 */
@@ -2135,7 +2135,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-row-amt.income { color: var(--lj-ochre); }
 .fin-row-amt.expense { color: var(--lj-vermilion); }
 .fin-row-ops { flex: none; display: flex; gap: 6px; }
-.fin-op { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: all .2s; }
+.fin-op { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-op:hover { border-color: var(--lj-seal); color: var(--lj-seal); }
 .fin-op.danger:hover { border-color: var(--lj-vermilion); color: var(--lj-vermilion); }
 .fin-pager { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 14px; }

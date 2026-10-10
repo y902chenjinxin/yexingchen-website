@@ -150,7 +150,7 @@ html[data-theme="day"] #app.is-mobile {
   min-height: 42px;
   border: 1px solid transparent !important;
   border-radius: var(--m-radius-sm) !important;
-  color: #061513 !important;
+  color: var(--xz-btn-fg) !important;
   background: var(--m-accent) !important;
   box-shadow: none !important;
   font-weight: 700;
@@ -184,7 +184,7 @@ html[data-theme="day"] #app.is-mobile {
 #app.is-mobile .ct-sub { max-width: 100%; }
 #app.is-mobile .st-btn.primary {
   background: var(--m-accent) !important;
-  color: #061513 !important;
+  color: var(--xz-btn-fg) !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
@@ -367,7 +367,7 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 
 #app.is-mobile .st-page .st-btn.primary {
   background: var(--m-accent) !important;
-  color: #061513 !important;
+  color: var(--xz-btn-fg) !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
@@ -429,7 +429,7 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 #app.is-mobile .island-inner-music .play-btn,
 #app.is-mobile .island-inner-music .play-btn.playing {
   background: var(--m-accent) !important;
-  color: #061513 !important;
+  color: var(--xz-btn-fg) !important;
   border: 0 !important;
 }
 #app.is-mobile .island-inner-music .bgm-btn { color: var(--m-text-2) !important; border: 1px solid var(--m-line-strong) !important; }
@@ -462,7 +462,7 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 #app.is-mobile .profile-page .info-item:has(.theme-seg) { display: block; }
 #app.is-mobile .profile-page .info-item:has(.theme-seg) .theme-seg { display: flex; width: 100%; margin-top: 10px; }
 #app.is-mobile .profile-page .theme-seg-btn { flex: 1; padding: 8px 4px; color: var(--m-text-2); }
-#app.is-mobile .profile-page .theme-seg-btn.active { color: #061513; background: var(--m-accent); box-shadow: none; }
+#app.is-mobile .profile-page .theme-seg-btn.active { color: var(--xz-btn-fg); background: var(--m-accent); box-shadow: none; }
 #app.is-mobile .profile-page .card-footer { gap: 8px; }
 #app.is-mobile .profile-page .card-footer .el-button { min-height: 40px; }
 

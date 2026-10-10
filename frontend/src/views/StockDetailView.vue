@@ -397,8 +397,8 @@ onBeforeUnmount(stopPolling)
 .sd-q-k.s-down { color: rgba(63, 150, 142, 0.85); }
 .sd-q-item b { font-size: 15px; font-weight: 600; color: var(--lj-text); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
 @media (max-width: 640px) { .sd-quote { grid-template-columns: repeat(3, 1fr); } }
-.up { color: #D8504F; }
-.down { color: #3F968E; }
+.up { color: var(--dp-up); }
+.down { color: var(--dp-down); }
 .flat { color: var(--lj-text-2); }
 
 .sd-kline, .sd-hold, .sd-news, .sd-analysis { margin-top: 16px; padding: 18px 20px; border-radius: 16px; }
@@ -442,7 +442,7 @@ html[data-theme="night"] .sd-an-head { background: rgba(18, 24, 32, 0.7); }
 .sd-an-date { color: var(--lj-text-2); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; }
 .sd-an-now {
   font-style: normal; font-size: 10px; line-height: 15px; padding: 0 4px; border-radius: 5px;
-  background: rgba(216, 80, 79, 0.14); color: #d8504f; font-weight: 700; letter-spacing: .02em;
+  background: var(--dp-up-faint, rgba(216, 80, 79, .14)); color: var(--dp-up); font-weight: 700; letter-spacing: .02em;
 }
 .sd-an-close { font-weight: 600; color: var(--lj-text); font-variant-numeric: tabular-nums; }
 .ta-r { text-align: right; }

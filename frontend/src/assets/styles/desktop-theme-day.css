@@ -29,6 +29,8 @@
   --dp-accent-strong: #4f5ed1;
   --dp-accent-faint: rgba(91, 106, 224, .10);
   --dp-danger: #dc2626;
+  --dp-up: #c93a3f;      /* 涨红（中国惯例，白底可读） */
+  --dp-down: #2f7d5f;    /* 跌青绿 */
   --dp-warning: #c2410c;  /* 白天警示：深琥珀（橙红） */
   /* 圆角 */
   --dp-radius: 10px;

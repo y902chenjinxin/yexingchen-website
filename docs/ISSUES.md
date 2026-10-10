@@ -7,7 +7,11 @@
 
 ---
 
-## v2.46.37 棋牌首页重排 + island 内页皮肤（2026-10-10）
+## v2.46.38 双端 UI 一致性整改 13 项（2026-10-10）
+
+夜星：「再找找手机端和电脑端的 UI 优化点，仔细看」→ 两路并行审查（报告 docs/PROPOSAL-ui-audit-v24638.md）→ 拍板 A+B+C 全做。**最大收获是 A1 teleport 断点**：EP 的 select/date-picker popper、MessageBox 默认挂 body，而全部历史覆盖层都带 `#app.is-mobile` 前缀——**选择器从未命中过**，手机端弹层一直裸奔 EP 默认样式；修法是 `body:has(#app.is-mobile)` 门控（项目已依赖 :has，自动跟随移动端切换），EP 主色同理挂 html 级。**审查的误报要人工核实**：倒计时详情页被报「日间白字不可读」，核实 overlay 是恒暗渐变（黑 30%~60%）+ 用户自选背景色，是沉浸式设计不能动——报告先查设计意图再动手。B2 的教训：工作台涨跌色是**涨绿跌红（方向反了）**，替换时按中国惯例纠正为涨红跌青，令牌 `--dp-up/--dp-down` 两主题各定义一次。C 批做了减法：transition: all 全站 83 处只清四主干页 20 处、FinanceView 30 处裸字面量留 TODO（无逐处视觉验证不动手）、ct-* 撞名只加注释不迁移前缀。CHANGELOG 编辑踩坑：Edit 工具 old_string 用标题行做锚点时 new_string 必须带回原标题行，否则吃掉标题（本次连续修三次才对齐结构）。
+
+
 
 夜星：「手机端还有些页面 UI 做的不好看，比如棋牌游戏的首页」。三个短板：①棋牌首页手机端是横滑 chips 条，`gm-grp-name`/`gm-item-tx i` 全 `display:none`，11 个游戏挤一行靠滑；②棋牌页和所有工具岛内页容器 `island-inner` 用 `--ls-bg1` 老底+28px 黑体标题，没进 v2.46.32 宣纸体系；③工具岛列表页 mdl-* 只有颜色令牌没版式。**要点**：①2 列网格用 `display:contents` 让分组名与游戏项混流进同一网格，组名 `grid-column: 1/-1` 占整行——不用 subgrid（鸿蒙 WebView Chromium<117 不支持）；②选中游戏后手机端收起列表（`v-show="!isBig && !(isMobile && tab)"`），否则 400px 高网格把对局区挤出首屏；③`island-inner` 覆盖要 `:not(.island-inner-music)` 排除音乐岛（它有专属背景，product 层已单独处理）；④皮肤进 paper.css、布局进组件内 @media，继续沿用「分层不混写」模式。
 

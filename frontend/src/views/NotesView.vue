@@ -245,9 +245,8 @@ onMounted(() => { reload(); loadTags() })
   display: flex;
   gap: 12px;
   overflow: hidden;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  transition: all .18s ease;
+  /* v2.46.38 B6：去 blur（--color-bg-glass 已 85% 不透明，玻璃无意义；实色面基线） */
+  transition: border-color var(--motion-fast, .15s) var(--ease-standard, ease), box-shadow var(--motion-fast, .15s) var(--ease-standard, ease), transform var(--motion-fast, .15s) var(--ease-standard, ease);
 }
 .notes-item::before {
   content: "";
