@@ -606,7 +606,11 @@ class MahjongEngine(TableEngine):
         }
         _log(st, f"对局开始，{dealer} 号位坐庄；掷骰 {d1}+{d2}={plan['total']}，"
                  f"自{OPEN_SIDE_NAME[plan['open_rel']]}第{plan['open_idx'] + 1}墩开牌")
-        # 庄家跳牌已有 14 张（13 在手 + 跳牌第 5 墩上张亮为「刚摸」），不再调 _draw
+        # 庄家第 14 张（跳牌第 5 墩上张）亮为「刚摸」。v2.46.43 修复：旧代码只存
+        # last_draw 引用、没进 hands —— 这张牌既不在手也不在墙，整局凭空消失
+        # （庄家 13 打 12：AI 看不见、不能用它出牌/胡牌，手牌数永久少 1）。
+        # 进手后 view 仍以 last_draw 单列展示（前端 syncFromView 会从 hand 拆出）。
+        st["hands"][dealer].append(deal["last_draw"])
         st["last_draw"] = deal["last_draw"]
         st["turn"] = dealer
         return st

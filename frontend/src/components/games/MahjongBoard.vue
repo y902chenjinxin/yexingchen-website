@@ -720,7 +720,12 @@ function tileText(t) {
   return t.suit === 'z' ? (M.HONOR_NAME[t.rank] || `${t.rank}字`) : `${t.rank}${M.SUIT_NAME[t.suit]}`
 }
 function meldTiles(md) {
-  if (md.type === 'chi') return [...(md.combo || []), md.tile]   // 吃：连张两张 + 弃牌
+  if (md.type === 'chi') {
+    // v2.46.43：吃副露按点数升序展示 —— 旧版 [手里两张, 吃进那张] 原样拼，
+    // 会出现「四萬六萬伍萬」这种乱序（吃进的那张永远排最后）
+    return [...(md.combo || []), md.tile]
+      .sort((a, b) => M.idxOf(a.suit, a.rank) - M.idxOf(b.suit, b.rank))
+  }
   const n = md.type === 'pong' ? 3 : 4
   return Array.from({ length: n }, () => md.tile)
 }
