@@ -61,6 +61,51 @@ def _build_deck() -> list[dict]:
     return tiles
 
 
+# ---------------- 开牌仪式（v2.46.42，夜星）：掷骰定方位、按墩发牌 ----------------
+# 120 张 = 4 边 × 15 墩 × 2 摞。玩家轮转逆时针（庄→下家），摸墙沿桌**顺时针**。
+# 环序（庄家视角）：本门 → 上家(左) → 对家 → 下家(右)；每边 15 墩，
+# 摸墙从该边**右端**（墩主自己的右手侧）进、向左端走。
+MJ_STACKS = 15
+MJ_RING = [0, 3, 2, 1]      # 相对庄的边序：0=本门 3=上家 2=对家 1=下家
+OPEN_SIDE_NAME = ("本门", "下家", "对家", "上家")
+
+
+def _opening_plan(d1: int, d2: int) -> dict:
+    """两骰定开门：总和 %4 定边（5/9 本门、6/10 下家、7/11 对家、8/12 上家），
+    小点数定墩位——从开门边右端数起，跳过 min 墩，从第 min+1 墩起摸。"""
+    total = d1 + d2
+    open_rel = (total - 1) % 4
+    open_idx = min(d1, d2)
+    break_stack = MJ_RING.index(open_rel) * MJ_STACKS + open_idx
+    stacks = list(range(4 * MJ_STACKS))
+    stacks = stacks[break_stack:] + stacks[:break_stack]   # 摸墙墩序（环状）
+    return {"total": total, "open_rel": open_rel, "open_idx": open_idx, "stacks": stacks}
+
+
+def _deal_ritual(deck: list[dict], dealer: int, plan: dict) -> dict:
+    """按仪式顺序发牌：三轮每家一次两墩 4 张（庄起、逆时针轮转）→ 庄家跳牌
+    （拿第 1、5 墩上张）→ 其余三家补第 2/3/4 墩上张 → 墙里剩这些墩的下张，
+    正常摸牌从零头继续（与真实牌桌的墙头行为一致）。"""
+    seq: list[dict] = []
+    for s in plan["stacks"]:
+        seq.append(deck[2 * s])       # 每墩上张先摸
+        seq.append(deck[2 * s + 1])
+    hands: list[list] = [[] for _ in range(4)]
+    p = 0
+    for _ in range(3):
+        for off in range(4):
+            hands[(dealer + off) % 4] += seq[p:p + 4]
+            p += 4
+    hands[dealer].append(seq[48])                       # 跳牌：第 1 墩上张
+    for off in (1, 2, 3):
+        hands[(dealer + off) % 4].append(seq[48 + 2 * off])   # 25/26/27 墩上张
+    return {
+        "hands": hands,
+        "last_draw": seq[56],                           # 第 5 墩上张 = 庄家第 14 张
+        "wall": [seq[49], seq[51], seq[53], seq[55], seq[57]] + seq[58:],
+    }
+
+
 def _sort_hand(hand: list[dict]) -> list[dict]:
     return sorted(hand, key=lambda t: idx_of(t["suit"], t["rank"]))
 
@@ -522,11 +567,20 @@ class MahjongEngine(TableEngine):
         match_gang = (match_gang + [0, 0, 0, 0])[:4]
         deck = _build_deck()
         r.shuffle(deck)
-        hands = [_sort_hand(deck[i * 13:(i + 1) * 13]) for i in range(4)]
-        wall = deck[52:]
+        # 开牌仪式（v2.46.42）：庄家掷两骰 → 总和定开门边、小点数定墩位 →
+        # 三轮流牌（每家两墩 4 张）→ 庄家跳牌 → 其余各补 1 张。发牌顺序不再
+        # 是 deck 一刀切，而按摸墙消耗序走（概率等价，仪式感拉满）。
+        d1, d2 = r.randint(1, 6), r.randint(1, 6)
+        plan = _opening_plan(d1, d2)
+        deal = _deal_ritual(deck, dealer, plan)
+        hands = [_sort_hand(h) for h in deal["hands"]]
+        wall = list(reversed(deal["wall"]))   # 存反序：_draw 的 pop() 取摸墙序队头
         st = {
             "phase": "playing",           # v2.46.17 起无定缺阶段，庄家直接起手
             "dealer": dealer,
+            "dice": [d1, d2],             # 开牌仪式：两骰点数
+            "open_rel": plan["open_rel"], # 开门边（相对庄：0 本门/1 下家/2 对家/3 上家）
+            "open_idx": plan["open_idx"], # 开门墩（边内 0 基，自右端数）
             "wall": wall,
             "hands": hands,
             "melds": [[], [], [], []],
@@ -550,8 +604,11 @@ class MahjongEngine(TableEngine):
             "result": None,
             "round_no": int(config.get("round_no") or 1),
         }
-        _log(st, f"对局开始，{dealer} 号位坐庄（上一局胡牌者先出）")
-        self._draw(st, dealer, [])   # 庄家起手第一摸（new_game 无事件通道，直接丢弃）
+        _log(st, f"对局开始，{dealer} 号位坐庄；掷骰 {d1}+{d2}={plan['total']}，"
+                 f"自{OPEN_SIDE_NAME[plan['open_rel']]}第{plan['open_idx'] + 1}墩开牌")
+        # 庄家跳牌已有 14 张（13 在手 + 跳牌第 5 墩上张亮为「刚摸」），不再调 _draw
+        st["last_draw"] = deal["last_draw"]
+        st["turn"] = dealer
         return st
 
     # ---------- 投影 ----------
@@ -610,6 +667,9 @@ class MahjongEngine(TableEngine):
             "dealer": st.get("dealer", 0),
             "round_no": st.get("round_no", 1),
             "wall_left": len(st["wall"]),
+            "dice": st.get("dice"),          # v2.46.42 开牌仪式（旧局态无此字段 → 前端跳过仪式）
+            "open_rel": st.get("open_rel"),
+            "open_idx": st.get("open_idx"),
             "players": players,
             "me": me,
             "claim": ({"seat": cl["seat"], "tile": cl["tile"], "from": cl["from"],

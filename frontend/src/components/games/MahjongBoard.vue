@@ -5,6 +5,9 @@
       <header class="mj-top">
         <span class="gt-title">四川麻将</span>
         <span class="gt-pill gold">胡牌即结束 · 第 {{ roundNo }} 局</span>
+        <span v-if="dice" class="gt-pill" title="庄家掷骰开门：总和定方位，小点数定墩位">
+          骰 {{ dice[0] }}+{{ dice[1] }} · 开{{ openSideName }}第{{ openIdx + 1 }}墩
+        </span>
         <span class="gt-pill">余牌 {{ wall.length }}</span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
@@ -62,6 +65,19 @@
              把左右两家的弃牌挤到桌外、上下两家只剩一行 —— 实测弃牌区只有 403×28px。
              现在信息全部搬到下方信息条（.mj-handbar，本来就有位置），中央整块还给弃牌。 -->
         <div class="mj-center">
+          <!-- 四方牌墙（v2.46.42）：4 边 × 15 墩牌背，随摸牌缩短（零头墩半透）；
+               开门墩鎏金标记。纯展示不挡交互；屏幕边 → 绝对座位过 povSeat
+               投影（V2467-001），墩序按各边物理朝向翻转。 -->
+          <div v-if="dice" class="mj-walls" aria-hidden="true">
+            <div v-for="side in ['up', 'left', 'right', 'down']" :key="side" class="mj-wall" :class="'mj-wall-' + side">
+              <span
+                v-for="(wst, s) in wallShape[side]"
+                :key="s"
+                class="mj-wstack"
+                :class="{ 'is-half': wst.n === 1, 'is-gone': wst.n === 0, 'is-open': isOpenStack(side, wst.i) }"
+              ></span>
+            </div>
+          </div>
           <div class="mj-dis mj-dis-up">
             <span
               v-for="t in discards[disSeats.up]"
@@ -312,6 +328,14 @@
 
       <div v-if="toast" class="gt-toast">{{ toast }}</div>
       <div class="gt-watermark">四 川 麻 将 · 胡 牌 即 结 束</div>
+
+      <!-- 开局仪式（v2.46.42）：码牌→掷骰→开门→流牌→跳牌；任意点击跳过 -->
+      <MahjongOpening
+        v-if="opening && dice && openingInfo"
+        :dice="dice"
+        :info="openingInfo"
+        @done="onOpeningDone"
+      />
     </div>
   </div>
 </template>
@@ -341,6 +365,7 @@ import { speak, tileSpeech } from '@/utils/games/tts'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { reportSettle } from '@/api/gameEconomy'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
+import MahjongOpening from '@/components/games/MahjongOpening.vue'
 import { useRootHeight } from '@/composables/useRootHeight'
 
 const props = defineProps({
@@ -381,6 +406,12 @@ const discards = ref([[], [], [], []])
 const out = ref([false, false, false, false])   // 本局已胡（胡牌即结束 → 一局最多一家为 true）
 const turn = ref(0)
 const drawn = ref(null)
+// 开牌仪式（v2.46.42）：骰子 + 开门信息。null/负 = 旧局态无仪式（前端跳过、不渲染牌墙）
+const dice = ref(null)
+const openRel = ref(-1)            // 开门边（相对庄：0 本门/1 下家/2 对家/3 上家）
+const openIdx = ref(0)             // 开门墩（边内 0 基、自墩主右端数）
+const opening = ref(false)         // 开局仪式 overlay 播放中（纯表现层，可点击跳过）
+const openingRound = ref(-1)       // 已播过仪式的局号（防重播/重连重放）
 const lastDiscard = ref(null)
 // 注意：牌堆 id 从 0 起，不能用 0 当「未选中」哨兵，否则 id=0 那张牌永远打不出去
 const selId = ref(null)
@@ -431,6 +462,56 @@ const disSeats = computed(() => ({
 }))
 /** 自己（底部视角）的碰 / 杠副露：手牌左侧摆牌面，替代旧版「副露 N」纯计数 */
 const ownMelds = computed(() => melds.value[viewSeat.value] || [])
+
+/* ---------- 四方牌墙（v2.46.42）：屏幕边 → 绝对座位 → 摸墙环内墩序 ----------
+ * 每边 15 墩、墩内 i=0 在墩主自己的右手侧。屏显顺序按物理朝向翻转：
+ * 自己(down)与左家 i=0 落在屏幕右/下端 → 反序；对家(up)与右家 i=0 落在
+ * 屏幕左/上端 → 正序。老局态无骰子信息 → 不渲染（保持旧观感）。 */
+const WALL_SCREEN = ['down', 'right', 'up', 'left']
+function screenSeat(side) {
+  return side === 'down' ? povSeat.value : relSeat(side === 'right' ? 1 : side === 'up' ? 2 : 3)
+}
+const wallShape = computed(() => {
+  const res = { down: [], right: [], up: [], left: [] }
+  const left = wall.value.length
+  if (!dice.value || left > M.MJ_WALL_AFTER_DEAL) return res
+  for (const screen of WALL_SCREEN) {
+    const rel = (screenSeat(screen) - dealer.value + 4) % 4
+    const rp = M.MJ_RING.indexOf(rel)
+    const arr = []
+    for (let i = 0; i < M.MJ_STACKS; i++) arr.push({ i, n: M.stackRemain(rp * M.MJ_STACKS + i, left) })
+    if (screen === 'down' || screen === 'left') arr.reverse()
+    res[screen] = arr
+  }
+  return res
+})
+const openAbs = computed(() => (dice.value ? (dealer.value + openRel.value) % 4 : -1))
+const openSideName = computed(() => (openRel.value >= 0 ? M.MJ_OPEN_SIDE_NAME[openRel.value] : ''))
+function isOpenStack(screen, i) {
+  return openAbs.value >= 0 && screenSeat(screen) === openAbs.value && i === openIdx.value
+}
+/* 仪式 overlay 需要的投影：庄/开门的屏幕方位、发牌顺序、摸墙环序 → 屏幕格子
+ * 映射（side + 屏显 slot），以及开门墩在屏显里的下标（含翻序）。 */
+const openingInfo = computed(() => {
+  if (!dice.value) return null
+  const posName = ['down', 'right', 'up', 'left']
+  const posOf = (abs) => ((abs - povSeat.value) % 4 + 4) % 4
+  const absOf = (rel) => (dealer.value + rel) % 4
+  const flip = (side, i) => ((side === 'down' || side === 'left') ? M.MJ_STACKS - 1 - i : i)
+  const ringSlots = []
+  for (const rel of M.MJ_RING) {
+    const side = posName[posOf(absOf(rel))]
+    for (let i = 0; i < M.MJ_STACKS; i++) ringSlots.push({ side, slot: flip(side, i) })
+  }
+  const openSide = posName[posOf(openAbs.value)]
+  return {
+    dealerPos: posName[posOf(dealer.value)],
+    dealOrder: [0, 1, 2, 3].map(off => posName[posOf(absOf(off))]),
+    openSide,
+    openSlot: flip(openSide, openIdx.value),
+    ringSlots,
+  }
+})
 
 const viewSeat = computed(() => {
   if (isOnline.value) return oSeat.value
@@ -732,6 +813,14 @@ function syncFromView(v) {
   phase.value = PHASE_MAP[v.phase] || 'playing'
   roundNo.value = v.round_no || 1
   dealer.value = v.dealer ?? 0
+  // 开牌仪式（v2.46.42）：服务端广播骰子与开门信息；新局首帧（墙满 67 张）才播
+  // 仪式动画，重连/中途进房（墙已少）不重播。旧服务端无 dice 字段 → 全部跳过。
+  dice.value = v.dice || null
+  openRel.value = (v.open_rel === undefined || v.open_rel === null) ? -1 : v.open_rel
+  openIdx.value = v.open_idx || 0
+  if (dice.value && v.wall_left === M.MJ_WALL_AFTER_DEAL && roundNo.value !== openingRound.value) {
+    playOpeningFx()
+  }
   logs.value = v.logs || []
   const cl = v.claim
   pending.value = (cl && cl.seat === oSeat.value)
@@ -818,8 +907,18 @@ function actOnline(action) { emit('act', action) }
 function newRound() {
   if (isOnline.value) return   // 在线由服务端发牌，前端不本地开新局
   const deck = M.shuffle(M.buildDeck())
-  wall.value = deck.slice(52)
-  hands.value = [0, 1, 2, 3].map(i => M.sortHand(deck.slice(i * 13, i * 13 + 13)))
+  // 开牌仪式（v2.46.42）：庄家掷两骰 → 总和定开门边、小点数定墩位 →
+  // 三轮流牌（每家一次两墩 4 张）→ 庄家跳牌 14 张起手。发牌顺序 = 摸墙
+  // 消耗序（与后端 _deal_ritual 镜像）；骰子/开门信息供牌墙渲染与仪式动画。
+  const dealerSeat = roundNo.value === 1 ? 0 : (lastWinnerSeat.value ?? 0)
+  const d1 = 1 + Math.floor(Math.random() * 6)
+  const d2 = 1 + Math.floor(Math.random() * 6)
+  const deal = M.dealOpening(deck, dealerSeat, d1, d2)
+  wall.value = [...deal.wall].reverse()   // 存反序：drawFor 的 pop() 取摸墙序队头
+  hands.value = deal.hands.map(M.sortHand)
+  dice.value = [d1, d2]
+  openRel.value = deal.openRel
+  openIdx.value = deal.openIdx
   melds.value = [[], [], [], []]
   discards.value = [[], [], [], []]
   out.value = [false, false, false, false]
@@ -836,9 +935,13 @@ function newRound() {
   huShow.value = false
   phase.value = 'playing'
   // 庄家轮换（V24617-014，本地同规则）：上一局胡牌者坐庄先出；首局 0 号位
-  dealer.value = roundNo.value === 1 ? 0 : (lastWinnerSeat.value ?? 0)
+  dealer.value = dealerSeat
+  turn.value = dealerSeat
+  drawn.value = deal.lastDraw          // 庄家跳牌第 14 张，亮为「刚摸」，直接打牌开局
+  selId.value = null
   sfx.deal()
-  beginPlay()
+  playOpeningFx()                      // 开局仪式（码牌→掷骰→流牌→跳牌，可点击跳过）
+  if (!isHuman(dealerSeat)) scheduleAI()
 }
 
 function nextRound() {
@@ -847,11 +950,12 @@ function nextRound() {
   newRound()
 }
 
-function beginPlay() {
-  phase.value = 'playing'
-  turn.value = dealer.value
-  drawFor(dealer.value)
+function playOpeningFx() {
+  if (!dice.value) return
+  openingRound.value = roundNo.value
+  opening.value = true
 }
+function onOpeningDone() { opening.value = false }
 
 /* ---------- 摸牌 ---------- */
 function drawFor(seat) {
@@ -1527,7 +1631,7 @@ onBeforeUnmount(() => {
     "up    up"
     "left  right"
     "down  down";
-  padding: 5px; border-radius: 14px;
+  padding: 24px 28px; border-radius: 14px;   /* v2.46.42：给四方牌墙留边（原 5px） */
   background: rgba(0, 0, 0, .2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
   /* v2.46.26（夜星：长方形看着怪）：宽屏下中央弃牌区被 1fr 拉成 3:1 长条，
@@ -1547,6 +1651,30 @@ onBeforeUnmount(() => {
   background: radial-gradient(circle, rgba(222, 186, 106, .07), transparent 68%);
   box-shadow: 0 0 22px rgba(222, 186, 106, .07), inset 0 0 16px rgba(222, 186, 106, .06);
   pointer-events: none;
+}
+/* ---- 四方牌墙（v2.46.42）：贴中央区四边，随摸牌缩短；开门墩鎏金 ---- */
+.mj-walls { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.mj-wall { position: absolute; display: flex; gap: 1px; }
+.mj-wall-up   { top: 5px; left: 50%; transform: translateX(-50%); }
+.mj-wall-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
+.mj-wall-left  { left: 5px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wall-right { right: 5px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wstack {
+  width: 10px; height: 14px; border-radius: 2px;
+  background: linear-gradient(180deg, #ead9b8, #c3ae85);
+  box-shadow: inset 0 0 0 1px rgba(58, 44, 20, .38);
+  transition: opacity .3s ease, transform .3s ease, box-shadow .3s ease;
+}
+.mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 14px; height: 10px; }
+.mj-wstack.is-half { opacity: .5; }
+.mj-wstack.is-gone { opacity: 0; transform: scale(.5); }
+.mj-wstack.is-open {
+  box-shadow: 0 0 0 1.5px rgba(233, 200, 119, .95), 0 0 10px rgba(233, 200, 119, .6);
+  transform: scale(1.2);
+}
+@media (max-height: 430px) {
+  .mj-wstack { width: 9px; height: 11px; }
+  .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 11px; height: 9px; }
 }
 /* 碰/杠大字（v2.46.20）：绝对定位盖在弃牌区中央，金底墨字 pop 一闪；
    进出场都在一条 keyframes 里（0.95s），1s 后 v-if 摘除，无需 transition */

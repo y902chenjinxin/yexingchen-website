@@ -58,6 +58,60 @@ export function sortHand(hand) {
   return hand.slice().sort((a, b) => idxOf(a.suit, a.rank) - idxOf(b.suit, b.rank))
 }
 
+/* ---------------- 开牌仪式（v2.46.42，与后端 app/games/mahjong.py 镜像） ----------------
+ * 120 张 = 4 边 × 15 墩 × 2 摞。玩家轮转逆时针（庄→下家），摸墙沿桌顺时针；
+ * 环序（庄家视角）：本门 → 上家(左) → 对家 → 下家(右)；每边 15 墩，
+ * 摸墙从该边右端（墩主自己的右手侧）进、向左端走。 */
+export const MJ_STACKS = 15
+export const MJ_RING = [0, 3, 2, 1]        // 相对庄的边序：0=本门 3=上家 2=对家 1=下家
+export const MJ_OPEN_SIDE_NAME = ['本门', '下家', '对家', '上家']
+export const MJ_WALL_AFTER_DEAL = 67       // 仪式发完（52 手牌 + 庄第 14 张）后墙里剩的牌数
+
+export function openingPlan(d1, d2) {
+  const total = d1 + d2
+  const openRel = (total - 1) % 4          // 5/9 本门 6/10 下家 7/11 对家 8/12 上家
+  const openIdx = Math.min(d1, d2)         // 小点数：跳过 min 墩，从第 min+1 墩起摸
+  const breakStack = MJ_RING.indexOf(openRel) * MJ_STACKS + openIdx
+  let stacks = []
+  for (let i = 0; i < 4 * MJ_STACKS; i++) stacks.push(i)
+  stacks = stacks.slice(breakStack).concat(stacks.slice(0, breakStack))
+  return { total, openRel, openIdx, stacks }
+}
+
+export function dealOpening(deck, dealer, d1, d2) {
+  const plan = openingPlan(d1, d2)
+  const seq = []
+  for (const s of plan.stacks) seq.push(deck[2 * s], deck[2 * s + 1])   // 每墩上张先摸
+  const hands = [[], [], [], []]
+  let p = 0
+  for (let r = 0; r < 3; r++) {
+    for (let off = 0; off < 4; off++) {
+      hands[(dealer + off) % 4] = hands[(dealer + off) % 4].concat(seq.slice(p, p + 4))
+      p += 4
+    }
+  }
+  hands[dealer].push(seq[48])                                  // 跳牌：第 1 墩上张
+  for (let off = 1; off <= 3; off++) hands[(dealer + off) % 4].push(seq[48 + 2 * off])
+  const lastDraw = seq[56]                                     // 第 5 墩上张 = 庄家第 14 张
+  const wall = [seq[49], seq[51], seq[53], seq[55], seq[57]].concat(seq.slice(58))
+  return { ...plan, hands, lastDraw, wall }
+}
+
+/** 牌墙可视化：摸墙墩序第 k 墩剩余张数（2/1/0），left = 当前墙余牌数。
+ *  仪式发掉 53 张后：前 24 墩空、第 25~29 墩各剩 1 张（零头）、其后满 2 张；
+ *  之后每摸 1 张按零头→满墩顺序消耗。 */
+export function stackRemain(k, left) {
+  const d = Math.max(0, MJ_WALL_AFTER_DEAL - left)
+  if (k < 24) return 0
+  if (k < 29) return (k - 24) < d ? 0 : 1
+  const g = d - 5
+  if (g <= 0) return 2
+  const full = Math.floor(g / 2)
+  const idx = k - 29
+  if (idx < full) return 0
+  if (idx === full && g % 2) return 1
+  return 2
+}
 /** 手牌 → 36 长度计数数组 */
 export function counts(tiles) {
   const c = new Array(36).fill(0)
