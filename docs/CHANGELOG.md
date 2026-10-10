@@ -1,3 +1,19 @@
+## [v2.46.40] - 2026-10-10
+
+### 新增 · 棋牌音效接入真实采样（夜星：「掼蛋和麻将出牌的声音还是很机械，找现成的复用」）
+
+**来源（全部 CC0，可商用免署名）：**
+- 出牌/发牌：**Kenney Casino Audio**（kenney.nl / OpenGameArt，CC0）——card-place-1~4（出牌落桌）、card-slide-1~4（发牌滑牌），OGG 共 ~80KB
+- 麻将拍桌：**Mooncey/autotable**（MIT 开源立直麻将桌）sound/discard.wav——其音效取自 OpenGameArt Thwack Sounds（CC0），改存 `tile-discard.wav` 18KB
+
+**实现**（`src/utils/games/sfx.js`，合成音保留为兜底）：
+- 新增 `SAMPLES` 清单 + `loadSample()` 懒加载缓存（fetch → decodeAudioData，失败记 null 不重试）+ `playSample()` 播放层：随机轮换变体（4 个 place/slide 轮着来，比单纯变调更防「复读机感」）、±6% playbackRate 变调、StereoPanner 声像沿用
+- `sfx.play`（掼蛋/牌类出牌）、`sfx.deal`（发牌，4 张错开 60ms）、`sfx.tileDown`（麻将拍桌）改采样优先；采样未就绪/解码失败时回落原合成音，iOS Safari（不支持 OGG）自动走合成
+- 静音开关、PRD「无背景音乐」约束不变；sw.js 静态缓存白名单补 `/sounds/`（离线可玩 + 二次秒出声）
+- 新增 `public/sounds/cards/` 共 9 文件 112KB，首用懒加载不占启动
+
+**验证**：eslint 通过；dist-deploy70 构建成功，grep 核验 v2.46.40/xuanhuang-v353/card-place 进包；部署 home=200。
+
 ## [v2.46.39] - 2026-10-10
 
 ### 修复 · 掼蛋「挪右侧」重定义：钉最右 → 插回排序边界（夜星反馈）

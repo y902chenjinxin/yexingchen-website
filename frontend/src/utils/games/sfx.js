@@ -1,17 +1,24 @@
-/** 棋牌三件套 · 操作音效（v2.46.19 升级）。
+/** 棋牌三件套 · 操作音效（v2.46.40 真实采样升级）。
  *
- * 纯 WebAudio 合成，不加载任何音频文件：
- * - 无背景音乐（PRD 硬要求），只有发牌 / 出牌 / 不要 / 碰杠胡 / 掷骰 / 胜负这些操作音。
- * - v2.46.19：每次发声加 ±3% 随机变调 —— 固定频率连听几局会产生「复读机疲劳」，
- *   微小的随机让同一音效每次都略有不同（参考成熟棋牌的 layering 做法）。
- * - v2.46.19：支持立体声声像（StereoPannerNode）—— 出牌方在屏幕左边时声音偏左、
- *   右边偏右，用听觉辅助确认「是谁出的牌」。panOf() 把座位号换算成 -0.5~0.5 的声像值。
- * - 一键静音，静音状态存 localStorage，跨局记忆。
- * - 浏览器未授权 / 不支持 WebAudio 时全部静默降级，不影响玩法。
+ * v2.46.40（夜星「出牌声音还是很机械」）：接入真实录音采样，合成音降级为兜底——
+ * - 出牌 = Kenney Casino Audio 的 card-place-1~4（CC0），随机轮换 4 个变体；
+ * - 发牌 = card-slide-1~4（CC0）逐张错开播放；
+ * - 麻将拍桌 = autotable（MIT 开源麻将桌）的 discard.wav（CC0，OpenGameArt Thwack）。
+ * - 采样沿用 v2.46.19 的 ±随机变调（playbackRate）与立体声声像；OGG 桌面/鸿蒙
+ *   Chromium 全支持，iOS Safari 解不了 OGG 自动回落合成音，不影响功能。
+ * - 无背景音乐（PRD 硬要求），只有操作音。一键静音存 localStorage 跨局记忆。
+ * - 浏览器未授权 / 不支持 WebAudio 时全部静默降级。
  */
 import { vibrate } from './haptics'
 
 const KEY = 'xuanhuang_game_muted'
+
+/** 真实采样清单：数组 = 可随机轮换的变体（防复读机）；首用懒加载并缓存 AudioBuffer */
+const SAMPLES = {
+  cardPlace: [1, 2, 3, 4].map(i => `/sounds/cards/card-place-${i}.ogg`),
+  cardSlide: [1, 2, 3, 4].map(i => `/sounds/cards/card-slide-${i}.ogg`),
+  tileDown: ['/sounds/cards/tile-discard.wav'],
+}
 
 let ctx = null
 let muted = false
@@ -24,6 +31,23 @@ function ac() {
     ctx = AC ? new AC() : null
   } catch { ctx = null }
   return ctx
+}
+
+/** 采样缓存：url → AudioBuffer | null（null=加载失败，不再重试） */
+const bufCache = new Map()
+
+function loadSample(url) {
+  if (bufCache.has(url)) return bufCache.get(url)
+  const p = ac()?.decodeAudioData
+    ? fetch(url).then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+      .then(ab => new Promise((res, rej) => {
+        // decodeAudioData 回调式与 Promise 式兼容差异 → 包一层
+        ctx.decodeAudioData(ab, res, rej)
+      }))
+      .catch(() => null)
+    : Promise.resolve(null)
+  bufCache.set(url, p)
+  return p
 }
 
 /** 座位号 → 声像值：相对视角座位 1（右家）偏右 0.5、3（左家）偏左 -0.5、其余居中 */
@@ -101,25 +125,75 @@ function noiseBurst(pan = 0, delay = 0, dur = 0.05, freq = 3000, q = 1.2, gain =
   } catch { /* 静默 */ }
 }
 
-export function setMuted(v) {
-  muted = !!v
+/** 真实采样播放（v2.46.40）：urls 里随机挑一个变体，±rateJitter 变调 + 声像。
+ *  采样未就绪时先播 fallback()（合成音）顶上，同时后台加载，下一发就是真声。 */
+function playSample(urls, pan, { gain = 0.6, rateJitter = 0.06, delay = 0, fallback } = {}) {
+  if (muted) return
+  const a = ac()
+  if (!a) return
+  const url = urls[Math.floor(Math.random() * urls.length)]
+  const bufP = loadSample(url)
+  const startBuf = buf => {
+    if (!buf) return
+    try {
+      if (a.state === 'suspended') a.resume()
+      const t0 = a.currentTime + delay
+      const src = a.createBufferSource()
+      src.buffer = buf
+      src.playbackRate.value = 1 + (Math.random() * 2 - 1) * rateJitter
+      const g = a.createGain()
+      g.gain.value = gain
+      src.connect(g)
+      let tail = g
+      if (a.createStereoPanner) {
+        const p = a.createStereoPanner()
+        p.pan.value = Math.max(-1, Math.min(1, pan))
+        g.connect(p)
+        tail = p
+      }
+      tail.connect(a.destination)
+      src.start(t0)
+    } catch { /* 静默 */ }
+  }
+  Promise.resolve(bufP).then(buf => {
+    if (buf) startBuf(buf)
+    else if (fallback) fallback() // 未就绪 / 加载失败：合成音顶一次，加载成功后下次是真声
+  })
+}
+
+export function setMuted(v) {  muted = !!v
   try { localStorage.setItem(KEY, muted ? '1' : '0') } catch { /* 忽略 */ }
 }
 export function isMuted() { return muted }
 
 export const sfx = {
-  /** 发牌：一串短促下滑音 */
-  deal(pan = 0) { for (let i = 0; i < 5; i++) blip(880 - i * 60, 0.05, 'square', 0.03, i * 0.05, pan) },
-  /** 出牌：干脆的一击（+ 轻触感 10ms） */
-  play(pan = 0) { blip(520, 0.07, 'triangle', 0.055, 0, pan); blip(760, 0.06, 'sine', 0.03, 0.04, pan); vibrate(10) },
-  /** 麻将牌拍在桌上（v2.46.26，夜星：「改为麻将砸在桌子上的声音，真实一点」）：
-   *  三层合成 —— 高频「啪」（3400Hz 噪声击面）+ 低频「咚」（160Hz 木桌共鸣 thump）
-   *  + 中频骨牌体（760Hz 短 triangle），再加 50ms 后一声轻回弹余响。 */
+  /** 发牌（v2.46.40 真实采样）：card-slide 每张随机变体、错开 60ms 连播 4 张 */
+  deal(pan = 0) {
+    const synthDeal = () => { for (let i = 0; i < 5; i++) blip(880 - i * 60, 0.05, 'square', 0.03, i * 0.05, pan) }
+    for (let i = 0; i < 4; i++) {
+      playSample(SAMPLES.cardSlide, pan, { gain: 0.38, delay: i * 0.06, fallback: i === 0 ? synthDeal : undefined })
+    }
+  },
+  /** 出牌（v2.46.40 真实采样）：card-place 随机 4 变体之一（+ 轻触感 10ms） */
+  play(pan = 0) {
+    playSample(SAMPLES.cardPlace, pan, {
+      gain: 0.55,
+      fallback: () => { blip(520, 0.07, 'triangle', 0.055, 0, pan); blip(760, 0.06, 'sine', 0.03, 0.04, pan) },
+    })
+    vibrate(10)
+  },
+  /** 麻将牌拍在桌上（v2.46.40 真实采样：autotable 的骨牌落桌录音，CC0）：
+   *  ±6% 变调，拍面瞬态是真实录音；采样未就绪时回落 v2.46.26 三层合成。 */
   tileDown(pan = 0) {
-    noiseBurst(pan, 0, 0.045, 3400, 1.1, 0.11)
-    blip(160 + Math.random() * 40, 0.09, 'sine', 0.12, 0, pan)
-    blip(760, 0.045, 'triangle', 0.05, 0.005, pan)
-    noiseBurst(pan, 0.05, 0.03, 2200, 1.4, 0.05)
+    playSample(SAMPLES.tileDown, pan, {
+      gain: 0.8,
+      fallback: () => {
+        noiseBurst(pan, 0, 0.045, 3400, 1.1, 0.11)
+        blip(160 + Math.random() * 40, 0.09, 'sine', 0.12, 0, pan)
+        blip(760, 0.045, 'triangle', 0.05, 0.005, pan)
+        noiseBurst(pan, 0.05, 0.03, 2200, 1.4, 0.05)
+      },
+    })
     vibrate(12)
   },
   /** 不要 / 过 */
