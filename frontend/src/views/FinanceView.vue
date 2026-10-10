@@ -2155,15 +2155,16 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   .fin-mtag { padding: 5px 11px; font-size: 12px; }
   .fin-mtable { font-size: 12px; }
   .fin-mtable th, .fin-mtable td { padding: 7px 8px; }
-  /* 三张池子卡挤在一行会看不清金额：改成可横滑的一行，卡宽固定 */
-  .fin-pools { grid-template-columns: repeat(3, minmax(158px, 1fr)); gap: 10px;
-    overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
-  .fin-pools::-webkit-scrollbar { display: none; }
+  /* 池子卡改竖排单列（v2.46.35）：横滑会藏住第三张卡，右滑才能看 —— 全部铺开 */
+  .fin-pools { grid-template-columns: 1fr; gap: 10px; overflow-x: visible; }
   .fin-pool { padding: 13px; }
   .fin-pool-sub { font-size: 11px; }
   .fin-pool-hero { padding: 16px; }
   .fin-pool-hero-val { font-size: 26px; }
   .fin-pcard { padding: 15px; }
+  /* 五个 Tab 收紧塞进一屏（v2.46.35）：取消 min-width 横滑 */
+  .fin-tabs { gap: 3px; padding: 3px; }
+  .fin-tab-item { min-width: 0; flex: 1 1 0; padding: 8px 4px; font-size: 12.5px; letter-spacing: 0; }
   /* 展开的成员流水：窄屏收紧内边距，金额列不被挤掉 */
   .fin-ptxns { padding: 12px 12px 14px; margin-top: 10px; }
   .fin-ptxns-head { flex-wrap: wrap; gap: 6px; }

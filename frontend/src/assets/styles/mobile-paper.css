@@ -458,3 +458,39 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
 #app.is-mobile .st-page .st-btn.primary { color: var(--xz-btn-fg) !important; }
 #app.is-mobile .profile-page .theme-seg-btn.active { color: var(--xz-btn-fg) !important; }
 /* bgm-btn.on：日间 accent=墨字浅底本可读，但 accent-strong 描边在宣纸上发闷 → 统一墨描边即可，不动 */
+
+/* ======================================================================
+ * 个人中心统一（v2.46.35 · 夜星反馈「我的页面不是很统一」）
+ * product 层此前只统一了颜色，页头还是 28px 黑体居中 + 金色装饰线，
+ * 与全站「衬线刊头 + 左对齐 + 粗墨底线 + 贴纸卡」不一致 → 这里对齐。
+ * ===================================================================== */
+/* 刊头：衬线 20px×zoom、左对齐、粗墨底线（与 fin/st/tv/ct 同款） */
+#app.is-mobile .profile-page .page-title {
+  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
+  font-size: calc(20px * var(--m-font-scale, 1)) !important;
+  font-weight: 600 !important;
+  letter-spacing: .01em !important;
+  text-align: left !important;
+  color: var(--m-text) !important;
+}
+#app.is-mobile .profile-page .page-header {
+  margin: 0 0 18px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1.5px solid var(--xz-head-line) !important;
+}
+/* 旧金色装饰线与卡片头金分隔：贴纸卡体系里不需要 */
+#app.is-mobile .profile-page .info-card::before { display: none !important; }
+#app.is-mobile .profile-page .card-header { border-bottom-color: var(--xz-head-line) !important; }
+/* 卡片内边距向全站贴纸卡看齐（原 24px 偏松） */
+#app.is-mobile .profile-page .info-card { padding: 16px !important; }
+#app.is-mobile .profile-page .card-header { margin-bottom: 14px !important; padding-bottom: 10px !important; }
+/* 品牌皮肤展示块（brand-stage）：走卡片次级底色，去旧阴影 */
+#app.is-mobile .profile-page .brand-stage {
+  background: var(--xz-card-2) !important;
+  border: 1.5px solid var(--m-line-strong) !important;
+  box-shadow: none !important;
+}
+#app.is-mobile .profile-page .brand-cell.current .brand-stage {
+  border-color: var(--xz-ochre) !important;
+  box-shadow: 2px 2px 0 var(--xz-card-shadow-press, rgba(0,0,0,.2)) !important;
+}
