@@ -200,7 +200,7 @@
             ⏳ 贡牌剩余 {{ mmss(leftSec) }}
           </span>
           <span v-if="viewTing.length" class="gd-mini">可出 {{ viewTing.length }}</span>
-          <span v-if="canAct" class="gd-mini" :class="{ on: sel.length }">已选 {{ sel.length }}</span>
+          <span v-if="sel.length" class="gd-mini" :class="{ on: sel.length }">已选 {{ sel.length }}</span>
           <span class="gt-sub gd-status">{{ statusLine }}</span>
         </div>
 
@@ -1238,7 +1238,9 @@ function selectRange(from, to, state) {
 }
 
 function onPick(c, idx, ev) {
-  if (!canAct.value) return
+  /* v2.46.36：理牌选牌不再限自己回合——攒顺子/挪牌随时可做（夜星）。
+     出牌入口仍有 canAct 把守（按钮 disabled + swipeUpPlay/doPlay 校验），不会误出。 */
+  if (tributePending.value || returnPending.value) return
   if (suppressClick) return
   if (ev && ev.shiftKey && anchorIdx.value !== null) {
     selectRange(anchorIdx.value, idx, !sel.value.includes(c.id))
@@ -1327,7 +1329,8 @@ function applySwipe(idx) {
 let dragId = null
 let swipeCovered = new Set()
 function onHandDown(e) {
-  if (!canAct.value) return
+  /* v2.46.36：划选理牌同样不限回合（与 onPick 同 gate）；上滑出牌由 swipeUpPlay 的 canAct 校验兜底 */
+  if (tributePending.value || returnPending.value) return
   if (e.pointerType === 'mouse' && e.button !== 0) return
   cacheCardRects()
   const idx = cardIndexAt(e.clientX, e.clientY)
@@ -1476,6 +1479,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointercancel', onHandUp)
 })
 watch(() => props.deadlineAt, tickLeft)
+// v2.46.36 本地双人：视角座位随回合在两位玩家间切换，切走时清掉上一个视角的选牌，
+// 防止 A 攒的选中串到 B 的手牌上（在线模式 viewSeat 恒为自己，不受影响）
+watch(viewSeat, () => { sel.value = []; anchorIdx.value = null })
 // 手牌张数一变（发牌 / 出牌 / 换局）→ 轮换指针复位；顺子「挪左侧」是手动钉住，不清
 watch(() => viewHand.value.length, () => {
   flushIdx.value = 0
