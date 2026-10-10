@@ -722,7 +722,7 @@
                 @confirm="removeCat(c)"
               >
                 <template #reference>
-                  <el-button link type="danger">删除</el-button>
+                  <span class="fin-cd-del">删除</span>
                 </template>
               </el-popconfirm>
             </div>
@@ -1711,22 +1711,24 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-cd-note { font-size: 12px; color: var(--lj-text-3); }
 .fin-cd-list { display: flex; flex-direction: column; gap: 8px; }
 .fin-cd-row, .fin-cd-add { display: flex; align-items: center; gap: 8px; }
+/* v2.46.30：删除常显朱红（原 el-button link 被主题衬成淡金且 hover 才清楚） */
+.fin-cd-del { font-size: 13px; color: var(--el-color-danger, #e25c5c); cursor: pointer; opacity: .75; transition: opacity .15s ease; white-space: nowrap; }
+.fin-cd-del:hover { opacity: 1; }
 .fin-cd-icon { width: 76px; flex: none; }
 .fin-cd-name { flex: 1; }
 .fin-cd-empty { font-size: 13px; color: var(--lj-text-3); margin: 0 0 10px; }
 .fin-cd-add { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--lj-line); }
 .fin-cd-builtin { display: flex; flex-wrap: wrap; gap: 8px; }
 .fin-cd-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--lj-line); font-size: 12px; color: var(--lj-text-3); }
-/* 内置分类删除/恢复（v2.46.29）：chip 内小 × 与恢复 ↩，hover 才显形，克制 */
+/* 内置分类删除/恢复（v2.46.29）：v2.46.30 改常显——hover 才显形被夜星说「不明显」 */
 .fin-cd-chip { display: inline-flex; align-items: center; gap: 5px; }
-.fin-cd-x { font-style: normal; font-size: 13px; line-height: 1; color: var(--lj-text-3); cursor: pointer; opacity: 0; transition: opacity .15s ease; }
-.fin-cd-chip:hover .fin-cd-x { opacity: 1; }
-.fin-cd-x:hover { color: var(--el-color-danger, #e25c5c); }
+.fin-cd-x { font-style: normal; font-size: 13px; line-height: 1; color: var(--el-color-danger, #e25c5c); cursor: pointer; opacity: .5; transition: opacity .15s ease; }
+.fin-cd-x:hover { opacity: 1; }
 .fin-cd-hidden { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--lj-line); }
 .fin-cd-hidden-label { font-size: 12px; color: var(--lj-text-3); }
 .fin-cd-chip.is-hidden { opacity: .55; border-style: dashed; }
-.fin-cd-restore { font-style: normal; font-size: 13px; line-height: 1; cursor: pointer; color: var(--lj-text-3); }
-.fin-cd-restore:hover { color: var(--lj-seal, #c8a24b); }
+.fin-cd-restore { font-style: normal; font-size: 13px; line-height: 1; cursor: pointer; color: var(--lj-seal, #c8a24b); opacity: .6; transition: opacity .15s ease; }
+.fin-cd-restore:hover { opacity: 1; }
 .fin-note-row { display: flex; align-items: center; gap: 8px; }
 .fin-note-input { flex: 1; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); outline: none; }
 .fin-note-input:focus { border-color: var(--lj-seal); }
