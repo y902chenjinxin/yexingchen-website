@@ -7,6 +7,10 @@
 
 ---
 
+## v2.46.34 日间按钮黑底黑字冲突（2026-10-10）
+
+夜星：白天看手机端「有些页面按钮颜色冲突，显得很黑」。根因是**重映射令牌的连带破坏**：v2.46.32 把日间 `--m-accent` 改成墨色 `#2b2b26`，但 mobile-product.css 里 4 条老规则是「accent 底 + 硬编码深字 #061513」（为旧青绿 accent 设计），日间立即变墨底深字 ≈ 黑底黑字——`.notes-header button`（选择器不在 paper 主按钮组）、`.st-page .st-btn.primary`（id+3class 特异性压过 paper 的 id+2class）、`.theme-seg-btn.active`、`.play-btn`。修法：paper 尾部修补块，字色统一接 `--xz-btn-fg`（日宣纸字/夜深字两边同时成立）。教训：**改共享令牌（--m-accent）前必须 grep 所有消费点，凡「accent 做背景」的地方要同时核对文字色是否也是令牌——硬编码字色是定时炸弹**；排查时特异性能让你以为覆盖了其实没有，最后要按「选择器组覆盖不到 + 特异性更高」两类漏网去搜。
+
 ## v2.46.33 APP_design.md 33 条规范批量落地（2026-10-10）
 
 夜星：交来 `APP_design.md`（33 条 app 组件交互规范），审计后拍板「除已达标 9 条外全做」（含高成本 11 条）。**踩坑/要点**：①高成本条目（FAB/步进器/进度 ETA）原审计称「无场景」，处理方式是**给规范找真实载体**而不是硬造功能——FAB/步进器落记账（快速记一笔/连记 N 笔），ETA 落 StateButton 加载秒数+AI 导入等待；②对比度不能拍脑袋：`#857D6A` 算出来只有 3.98:1 不达标，最终日 `#756d5b`/夜 `#9c9482` 才过 4.5:1，**改色前必须算亮度对比**；③theme-color 必须内联进 index.html `<head>` 同步脚本——main.js 模块加载已晚一帧，状态栏会闪旧色；prefs.js `applyTheme` 收口同步 meta，改主题底色必须同步 `THEME_STATUSBAR_COLOR`；④动态字体用 `zoom` 而非覆盖 font-size——各 View 字号体系不同（22/24/26px），硬覆盖会互相打架；⑤View Transitions 圆形揭示不支持的 WebView 直接 `applyFn()` 直切，无感降级；⑥滑动删除要主轴锁定（先判 dx/dy 谁大再接管+preventDefault），否则纵向滚动被劫持；⑦eslint 不豁免下划线参数（`_open` 也报 unused），删参比改名干净；⑧命名撞车：项目已有 `components/EmptyState.vue`（StocksView 旧用），新组件必须放 `common/` 下，import 路径写清。教训：**批量落地规范先逐条 grep 取证，有载体的真做、没载体的找最贴合的真实场景做，不硬造**。

@@ -444,3 +444,17 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
   #app.is-mobile :is(.fin-kpi, .st-kpi-card, .abb-hero) { padding-top: 10px !important; padding-bottom: 10px !important; }
   #app.is-mobile .xz-fab { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* ======================================================================
+ * 修补（v2.46.34）：product 层「accent 底 + 硬编码深字 #061513」的老规则，
+ * 在日间 --m-accent 被重映射为墨色后变成「墨底深字 ≈ 黑底黑字」。
+ * 四处均绕过了上方主按钮组的覆盖（选择器不含 / 特异性更高），统一接
+ * --xz-btn-fg：日=宣纸字（墨底上），夜=深字（金底上），两边同时成立。
+ * ===================================================================== */
+#app.is-mobile :is(.notes-header button, .island-inner-music .play-btn, .island-inner-music .play-btn.playing) {
+  color: var(--xz-btn-fg) !important;
+}
+/* 特异性对齐 product 层 .st-page .st-btn.primary（id+3class） */
+#app.is-mobile .st-page .st-btn.primary { color: var(--xz-btn-fg) !important; }
+#app.is-mobile .profile-page .theme-seg-btn.active { color: var(--xz-btn-fg) !important; }
+/* bgm-btn.on：日间 accent=墨字浅底本可读，但 accent-strong 描边在宣纸上发闷 → 统一墨描边即可，不动 */
