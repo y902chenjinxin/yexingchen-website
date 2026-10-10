@@ -1,3 +1,20 @@
+## [v2.46.41] - 2026-10-10
+
+### 新增 · 音效采样扩容 + 进桌预热（夜星：「还有没有办法再优化点」）
+
+**新接真实采样（全 CC0）：**
+- **不要** = card-shove-1~4（推牌声，Kenney Casino Audio）
+- **碰** = impact_wood_light ×3 两连敲、**杠** = impact_wood_medium ×2 三连敲（Kenney Impact Sounds，镜像仓库 Boyquotes/kenney-impact-sounds-for-godot）——木牌拍桌的「啪、啪」
+- **掷骰** = dice-throw/die-throw 7 变体轮换（Kenney Casino Audio）
+- **结算弹层** = card-shuffle（收牌洗牌声）打底
+
+**工程**：
+- `sfx.preload()`：掼蛋/麻将 onMounted 预热全部采样（fetch→decodeAudioData 缓存），**消掉第一次出牌的取包延迟**
+- 采样清单扩到 26 文件 308KB（SW 缓存白名单已含 /sounds/，二次进局零请求）
+- 碰/杠改为多击采样错峰叠加（0/90ms/180ms），随机构不超过单纯的变调
+
+**验证**：eslint 通过；dist-deploy71 构建成功，grep 核验版本/新采样路径/wood-light 进包；部署 home=200。
+
 ## [v2.46.40] - 2026-10-10
 
 ### 新增 · 棋牌音效接入真实采样（夜星：「掼蛋和麻将出牌的声音还是很机械，找现成的复用」）

@@ -1469,6 +1469,7 @@ function doExit() {
 
 /* ---------- 生命周期 ---------- */
 onMounted(() => {
+  sfx.preload() // v2.46.41 预热采样，消掉第一次出牌的取包延迟
   if (typeof ResizeObserver !== 'undefined' && handRef.value) {
     ro = new ResizeObserver(() => measureHand())
     ro.observe(handRef.value)

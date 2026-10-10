@@ -1407,6 +1407,7 @@ function doExit() {
 const { rootRef, rootH } = useRootHeight()
 
 onMounted(() => {
+  sfx.preload() // v2.46.41 预热采样，消掉第一次打牌的取包延迟
   if (isOnline.value) { syncFromView(props.onlineView); return }
   if (props.resume && restoreLocal()) toastMsg('已接着上一局继续')
   newRound()

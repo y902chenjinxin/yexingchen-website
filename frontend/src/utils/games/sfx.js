@@ -1,10 +1,11 @@
-/** 棋牌三件套 · 操作音效（v2.46.40 真实采样升级）。
+/** 棋牌三件套 · 操作音效（v2.46.41 真实采样扩容）。
  *
  * v2.46.40（夜星「出牌声音还是很机械」）：接入真实录音采样，合成音降级为兜底——
- * - 出牌 = Kenney Casino Audio 的 card-place-1~4（CC0），随机轮换 4 个变体；
- * - 发牌 = card-slide-1~4（CC0）逐张错开播放；
- * - 麻将拍桌 = autotable（MIT 开源麻将桌）的 discard.wav（CC0，OpenGameArt Thwack）。
- * - 采样沿用 v2.46.19 的 ±随机变调（playbackRate）与立体声声像；OGG 桌面/鸿蒙
+ * 出牌/发牌 = Kenney Casino Audio（CC0）；麻将拍桌 = autotable 的 CC0 录音。
+ * v2.46.41 继续扩容：不要=推牌、碰=木牌轻敲两连、杠=木牌中敲三连（Kenney Impact
+ * CC0）、掷骰=骰子掷出 7 变体、结算=收牌洗牌声；新增 sfx.preload() 进桌预热，
+ * 消掉第一次出牌的取包延迟。
+ * - 全部采样沿用 ±随机变调（playbackRate）与立体声声像；OGG 桌面/鸿蒙
  *   Chromium 全支持，iOS Safari 解不了 OGG 自动回落合成音，不影响功能。
  * - 无背景音乐（PRD 硬要求），只有操作音。一键静音存 localStorage 跨局记忆。
  * - 浏览器未授权 / 不支持 WebAudio 时全部静默降级。
@@ -13,11 +14,19 @@ import { vibrate } from './haptics'
 
 const KEY = 'xuanhuang_game_muted'
 
-/** 真实采样清单：数组 = 可随机轮换的变体（防复读机）；首用懒加载并缓存 AudioBuffer */
+/** 真实采样清单（v2.46.41 扩容）：数组 = 可随机轮换的变体（防复读机）。
+ *  首用懒加载并缓存 AudioBuffer；进牌桌时 sfx.preload() 预热全部。 */
+const S = '/sounds/cards/'
 const SAMPLES = {
-  cardPlace: [1, 2, 3, 4].map(i => `/sounds/cards/card-place-${i}.ogg`),
-  cardSlide: [1, 2, 3, 4].map(i => `/sounds/cards/card-slide-${i}.ogg`),
-  tileDown: ['/sounds/cards/tile-discard.wav'],
+  cardPlace: [1, 2, 3, 4].map(i => `${S}card-place-${i}.ogg`),
+  cardSlide: [1, 2, 3, 4].map(i => `${S}card-slide-${i}.ogg`),
+  cardShove: [1, 2, 3, 4].map(i => `${S}card-shove-${i}.ogg`),
+  diceThrow: [`${S}dice-throw-1.ogg`, `${S}dice-throw-2.ogg`, `${S}dice-throw-3.ogg`,
+    `${S}die-throw-1.ogg`, `${S}die-throw-2.ogg`, `${S}die-throw-3.ogg`, `${S}die-throw-4.ogg`],
+  woodLight: [`${S}wood-light-0.ogg`, `${S}wood-light-1.ogg`, `${S}wood-light-2.ogg`],
+  woodMedium: [`${S}wood-med-0.ogg`, `${S}wood-med-1.ogg`],
+  shuffle: [`${S}card-shuffle.ogg`],
+  tileDown: [`${S}tile-discard.wav`],
 }
 
 let ctx = null
@@ -167,6 +176,11 @@ export function setMuted(v) {  muted = !!v
 export function isMuted() { return muted }
 
 export const sfx = {
+  /** 预热全部采样（v2.46.41）：牌桌 onMounted 时调用，消掉第一次出牌的取包延迟 */
+  preload() {
+    if (muted || !ac()) return
+    Object.values(SAMPLES).flat().forEach(u => loadSample(u))
+  },
   /** 发牌（v2.46.40 真实采样）：card-slide 每张随机变体、错开 60ms 连播 4 张 */
   deal(pan = 0) {
     const synthDeal = () => { for (let i = 0; i < 5; i++) blip(880 - i * 60, 0.05, 'square', 0.03, i * 0.05, pan) }
@@ -196,24 +210,44 @@ export const sfx = {
     })
     vibrate(12)
   },
-  /** 不要 / 过 */
-  pass(pan = 0) { blip(300, 0.09, 'sine', 0.035, 0, pan) },
+  /** 不要 / 过（v2.46.41 真实采样）：推牌声 card-shove */
+  pass(pan = 0) {
+    playSample(SAMPLES.cardShove, pan, { gain: 0.45, fallback: () => blip(300, 0.09, 'sine', 0.035, 0, pan) })
+  },
   /** 选牌轻响（不带触感：划选时会连响，震动了会烦） */
   pick(pan = 0) { blip(680, 0.035, 'sine', 0.03, 0, pan) },
   /** 报牌提醒（剩牌 ≤ 阈值时一声双音上扬） */
   alert(pan = 0) { blip(660, 0.09, 'triangle', 0.05, 0, pan); blip(990, 0.12, 'triangle', 0.05, 0.1, pan); vibrate(12) },
-  /** 碰 */
-  pong(pan = 0) { blip(420, 0.07, 'square', 0.05, 0, pan); blip(560, 0.07, 'square', 0.045, 0.06, pan); vibrate(15) },
-  /** 杠 */
-  kong(pan = 0) { chord([380, 500, 660], 0.14, 0.05, pan); vibrate([10, 30, 10]) },
+  /** 碰（v2.46.41 真实采样）：木牌轻敲两连（Kenney Impact，CC0） */
+  pong(pan = 0) {
+    const synthPong = () => { blip(420, 0.07, 'square', 0.05, 0, pan); blip(560, 0.07, 'square', 0.045, 0.06, pan) }
+    playSample(SAMPLES.woodLight, pan, { gain: 0.6, fallback: synthPong })
+    playSample(SAMPLES.woodLight, pan, { gain: 0.45, delay: 0.09 })
+    vibrate(15)
+  },
+  /** 杠（v2.46.41 真实采样）：木牌中敲三连 */
+  kong(pan = 0) {
+    const synthKong = () => chord([380, 500, 660], 0.14, 0.05, pan)
+    for (let i = 0; i < 3; i++) {
+      playSample(SAMPLES.woodMedium, pan, { gain: i === 2 ? 0.6 : 0.5, delay: i * 0.09, fallback: i === 0 ? synthKong : undefined })
+    }
+    vibrate([10, 30, 10])
+  },
   /** 胡牌 / 胜利 */
   win(pan = 0) { chord([523, 659, 784, 1046], 0.18, 0.055, pan); vibrate([20, 40, 20]) },
   /** 失败 / 被胡 */
   lose(pan = 0) { chord([440, 370, 294], 0.2, 0.045, pan) },
-  /** 掷骰 */
-  dice(pan = 0) { for (let i = 0; i < 6; i++) blip(300 + Math.random() * 500, 0.035, 'square', 0.028, i * 0.045, pan) },
-  /** 结算弹层出现 */
-  settle(pan = 0) { chord([392, 523, 659], 0.2, 0.05, pan) },
+  /** 掷骰（v2.46.41 真实采样）：骰子掷出声，7 变体轮换 */
+  dice(pan = 0) {
+    playSample(SAMPLES.diceThrow, pan, {
+      gain: 0.55,
+      fallback: () => { for (let i = 0; i < 6; i++) blip(300 + Math.random() * 500, 0.035, 'square', 0.028, i * 0.045, pan) },
+    })
+  },
+  /** 结算弹层出现（v2.46.41）：收牌洗牌声打底 */
+  settle(pan = 0) {
+    playSample(SAMPLES.shuffle, pan, { gain: 0.3, fallback: () => chord([392, 523, 659], 0.2, 0.05, pan) })
+  },
 
   /* ===== v2.46.20 棋类音色（此前象棋/围棋/五子棋/军棋/飞行棋全程无声） ===== */
   /** 木质落子（象棋 / 军棋走子）：低频短促的「嗒」 */
