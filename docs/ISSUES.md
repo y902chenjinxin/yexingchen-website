@@ -7,6 +7,27 @@
 
 ---
 
+## v2.46.29 记账管理分类支持删除内置（2026-10-10）
+
+**根因**
+内置分类（餐饮/交通/…）是后端代码常量（EXPENSE_CATEGORIES/INCOME_CATEGORIES），不在数据库里，管理弹窗里只读。自定义分类早就支持软删，内置的没有任何删除入口。
+
+**修法（软隐藏，不加列不改表）**
+- `DELETE /finance/categories/builtin/{type}/{name}`：写一行 `name=内置名、deleted_at` 非空的 shadow 墓碑（自定义分类创建/改名都被禁止与内置同名，软删行撞内置名的只可能是墓碑）；`_category_pool` 按 `_hidden_builtins` 剔除 → 下拉/管理弹窗/导入校验（`_allowed_categories`）同步收窄；`_valid_categories` 保留全量内置 → 历史分类名记账/编辑仍合法；`_category_icon_map` 不过滤 → 老流水原名原图标。
+- `POST .../restore`：硬删墓碑行（若置回 deleted_at=None 会混进自定义列表）。
+- 「其他」是失效归集兜底，禁止删除；隐藏幂等；`GET /categories` 响应加 `hidden_builtin` 供恢复区。
+- 前端：内置 chip hover 显 ×（popconfirm），「已删除」区虚线 chip + ↩ 恢复；记账表单正选着被删分类时归回「其他」。
+
+**顺修 11 个存量失败测试**（test_finance_categories.py）
+1. fixture 缺 `household_member` 表 —— v2.16 家庭共享后 `create_transaction` 走 member_map；
+2. 直调 `list_transactions`/`summary` 没显式传 `member_user_id` —— v2.42 加 Query 参数后直调把 Query 对象绑进 SQL（生产走 FastAPI 注入无恙，纯测试姿势问题）；
+3. `TestIsolation` 五个断言的是 v2.16 前的个人隔离语义（与现行家庭共享产品行为相反）→ 重写为 `TestMemberSharing`。35 passed 全绿。
+
+**验证**
+- pytest test_finance_categories.py 35 passed；eslint 0 error；vite build dist-deploy59；grep 确认 fin-cd-hidden/hidden_builtin/v2.46.29/SW v342 进包；后端 health=200 + 前端 home=200。
+
+---
+
 ## v2.46.28 TTS 播报真实感四件套（2026-10-10）
 
 **根因**（夜星：「播报语速偏慢，机械音比较明显」）

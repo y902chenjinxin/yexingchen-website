@@ -85,6 +85,9 @@ export const financeApi = {
   createCategory: (data) => api.post('/finance/categories', data),
   updateCategory: (id, data) => api.put(`/finance/categories/${id}`, data),
   deleteCategory: (id) => api.delete(`/finance/categories/${id}`),
+  // —— 内置分类软隐藏/恢复（v2.46.29，夜星：管理分类支持删除）
+  hideBuiltinCategory: (type, name) => api.delete(`/finance/categories/builtin/${type}/${encodeURIComponent(name)}`),
+  restoreBuiltinCategory: (type, name) => api.post(`/finance/categories/builtin/${type}/${encodeURIComponent(name)}/restore`),
 }
 
 // CSV 导出走 blob（不经 axios 拦截器，避免响应处理差异）

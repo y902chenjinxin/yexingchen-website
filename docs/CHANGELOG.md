@@ -1,3 +1,12 @@
+## [v2.46.29] - 2026-10-10
+
+### 新增
+- **记账「管理分类」支持删除内置分类**（夜星）：内置分类原先只读，现在每个 chip 带 hover 删除（「其他」为兜底不可删）。实现为**软隐藏**：写 deleted_at 非空的 shadow 墓碑行（内置分类是代码常量不在库里，不加列不改表），分类池剔除后下拉/管理弹窗/导入校验都不再出现；历史流水照样原名原图标（`_category_icon_map` 不过滤）；`_valid_categories` 保留全量内置 → 历史分类名记账/编辑仍合法；同名自定义分类依旧禁止（内置名保留给恢复路径）。弹窗新增「已删除」区可一键恢复（硬删墓碑行，防混入自定义列表）。
+- 新接口：`DELETE /finance/categories/builtin/{type}/{name}`（隐藏）、`POST /finance/categories/builtin/{type}/{name}/restore`（恢复）。
+
+### 修复
+- **顺手清掉 test_finance_categories.py 的 11 个存量失败**：①fixture 缺 `household_member` 表（v2.16 家庭共享后 `create_transaction` 走 member_map）；②直调路由没显式传 `member_user_id`（v2.42 加 Query 参数后，直调会把 Query 对象绑进 SQL）；③`TestIsolation` 断言的是 v2.16 前的「个人隔离」语义，与现行家庭共享相反 → 重写为 `TestMemberSharing`（共享可见/可记账/同名拒绝）。现在 35 passed 全绿。
+
 ## [v2.46.28] - 2026-10-10
 
 ### 优化

@@ -126,9 +126,34 @@ def _custom_rows(db: Session, ttype: str) -> list:
     )
 
 
+def _hidden_builtins(db: Session, ttype: str) -> set:
+    """被用户隐藏的内置分类名（v2.46.29，夜星：管理分类支持删除内置）。
+
+    内置分类是代码常量不在库里，「删除」实现为**软隐藏**：写一行
+    name=内置名、deleted_at 非空的 shadow 记录当墓碑。自定义分类在
+    创建/改名时都被禁止与内置同名，所以软删行里撞内置名的只可能是墓碑。
+    """
+    rows = (
+        db.query(FinanceCategory.name)
+        .filter(
+            FinanceCategory.household_id == HOUSEHOLD_ID,
+            FinanceCategory.type == ttype,
+            FinanceCategory.deleted_at.is_not(None),
+        )
+        .all()
+    )
+    builtin_names = {c["key"] for c in _builtin_pool(ttype)}
+    return {r.name for r in rows if r.name in builtin_names}
+
+
 def _category_pool(db: Session, ttype: str) -> list:
-    """内置 + 自定义合并后的分类列表（内置在前，自定义按排序在后）。"""
-    pool = [dict(c, is_custom=False) for c in _builtin_pool(ttype)]
+    """内置 + 自定义合并后的分类列表（内置在前，自定义按排序在后）。
+
+    被隐藏的内置分类不进池子（下拉/统计入口都看不到），但历史流水
+    照样显示原名原图标（_category_icon_map 不过滤）。
+    """
+    hidden = _hidden_builtins(db, ttype)
+    pool = [dict(c, is_custom=False) for c in _builtin_pool(ttype) if c["key"] not in hidden]
     pool += [
         {"key": r.name, "icon": r.icon or DEFAULT_CUSTOM_ICON, "is_custom": True, "id": r.id}
         for r in _custom_rows(db, ttype)
@@ -154,7 +179,13 @@ def _category_icon_map(db: Session) -> dict:
 
 
 def _all_categories(db: Session) -> dict:
-    return {"expense": _category_pool(db, "expense"), "income": _category_pool(db, "income")}
+    """分类列表 + 已隐藏内置清单（管理弹窗的「恢复」区用）。"""
+    out = {"expense": _category_pool(db, "expense"), "income": _category_pool(db, "income")}
+    out["hidden_builtin"] = {
+        ttype: [c for c in _builtin_pool(ttype) if c["key"] in _hidden_builtins(db, ttype)]
+        for ttype in ("expense", "income")
+    }
+    return out
 
 
 def _allowed_categories(db: Session) -> dict:
@@ -404,6 +435,70 @@ async def delete_category(
         data={"used_count": used},
         msg=f"分类已删除（{used} 条历史流水仍保留该分类名）" if used else "分类已删除",
     )
+
+
+# ---------- 内置分类的隐藏/恢复（v2.46.29，夜星：管理分类支持删除） ----------
+def _builtin_visible_check(ttype: str, name: str) -> None:
+    if ttype not in ("expense", "income"):
+        raise_error(ErrCode.INVALID_PARAM, "收支方向不合法")
+    if name not in _valid_categories(ttype):
+        raise_error(ErrCode.NOT_FOUND, "不是内置分类")
+    if name == FALLBACK_CATEGORY:
+        raise_error(ErrCode.INVALID_PARAM, "「其他」是兜底分类，不能删除")
+
+
+@router.delete("/categories/builtin/{ttype}/{name}", response_model=ResponseBase)
+async def hide_builtin_category(
+    ttype: str,
+    name: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """隐藏内置分类（软墓碑，可恢复）。
+
+    不真删常量、不动历史流水：写一行 deleted_at 非空的 shadow 记录，
+    分类池把它剔除后，下拉/管理弹窗/导入校验都不再出现；老流水照样
+    显示原名原图标。「其他」是失效归集的兜底，禁止隐藏。
+    """
+    _builtin_visible_check(ttype, name)
+    if name in _hidden_builtins(db, ttype):
+        return ResponseBase(data={"hidden": True}, msg="该分类已在隐藏列表中")
+    db.add(FinanceCategory(
+        user_id=current_user["user_id"],
+        household_id=HOUSEHOLD_ID,
+        type=ttype,
+        name=name,
+        icon=CATEGORY_ICONS.get(name, DEFAULT_CUSTOM_ICON),
+        sort_order=-1,
+        deleted_at=datetime.now(),
+    ))
+    db.commit()
+    return ResponseBase(data={"hidden": True}, msg=f"已删除内置分类「{name}」，可在下方恢复")
+
+
+@router.post("/categories/builtin/{ttype}/{name}/restore", response_model=ResponseBase)
+async def restore_builtin_category(
+    ttype: str,
+    name: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """恢复被隐藏的内置分类：硬删墓碑行（软删行一旦 deleted_at 置空会混进自定义列表）。"""
+    _builtin_visible_check(ttype, name)
+    tomb = (
+        db.query(FinanceCategory)
+        .filter(
+            FinanceCategory.household_id == HOUSEHOLD_ID,
+            FinanceCategory.type == ttype,
+            FinanceCategory.name == name,
+            FinanceCategory.deleted_at.is_not(None),
+        )
+        .all()
+    )
+    for row in tomb:
+        db.delete(row)
+    db.commit()
+    return ResponseBase(data={"hidden": False}, msg=f"已恢复「{name}」")
 
 
 

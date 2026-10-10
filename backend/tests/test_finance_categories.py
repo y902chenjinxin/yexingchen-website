@@ -20,6 +20,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base
 from app.models.finance import FinanceCategory, FinanceTransaction
+from app.models.life import HouseholdMember
 from app.models.log import OperationLog
 from app.models.user import User
 from app.routers.finance import (
@@ -50,6 +51,8 @@ def db():
         tables=[
             User.__table__, FinanceTransaction.__table__,
             FinanceCategory.__table__, OperationLog.__table__,
+            # create_transaction 走 member_map 建「人员标签」，需要 member 表（v2.16 家庭共享）
+            HouseholdMember.__table__,
         ],
     )
     session = sessionmaker(bind=engine)()
@@ -99,11 +102,13 @@ def _tx(session, category, amount=10.0, ttype="expense", uid=1, note="t"):
 
 
 def _tx_rows(session, uid=1):
-    return data_of(list_transactions, db=session, current_user={"user_id": uid})["list"]
+    # member_user_id 必须显式传：直调路由不走 FastAPI 注入，Query 默认值会被绑进 SQL
+    return data_of(list_transactions, member_user_id=None, db=session,
+                   current_user={"user_id": uid})["list"]
 
 
 def _summary(session, uid=1):
-    return data_of(summary, dim="month", month="2026-09", db=session,
+    return data_of(summary, dim="month", month="2026-09", member_user_id=None, db=session,
                    current_user={"user_id": uid})
 
 
@@ -278,30 +283,73 @@ class TestDelete:
         assert row is not None and row.deleted_at is not None
 
 
-# ---------------------------------------------------------------- 用户隔离
-class TestIsolation:
-    def test_other_user_cannot_see_custom(self, db):
+# ---------------------------------------------------------------- 成员共享
+# v2.16 起财经模块家庭共享：分类全家共用（旧版「个人隔离」断言全部过时）
+class TestMemberSharing:
+    def test_custom_visible_across_members(self, db):
         _add(db, "宠物", uid=1)
-        assert "宠物" not in _names(db, uid=2)
-
-    def test_other_user_cannot_update(self, db):
-        cid = _add(db, "宠物", uid=1)[1].data["id"]
-        status, _ = call(update_category, cid, CategoryIn(type="expense", name="偷改"),
-                         db=db, current_user=KID)
-        assert status == 404
-
-    def test_other_user_cannot_delete(self, db):
-        cid = _add(db, "宠物", uid=1)[1].data["id"]
-        status, _ = call(delete_category, cid, db=db, current_user=KID)
-        assert status == 404
-
-    def test_same_name_allowed_across_users(self, db):
-        _add(db, "宠物", uid=1)
-        assert _add(db, "宠物", uid=2)[0] == 200
         assert "宠物" in _names(db, uid=2)
 
-    def test_other_users_custom_category_is_not_usable(self, db):
-        """A 的自定义分类，B 拿来记账应归「其他」，不能借道写入。"""
+    def test_other_member_can_record_with_custom(self, db):
+        """A 建的自定义分类，B 记账直接可用（共享语义，不再归「其他」）。"""
         _add(db, "宠物", uid=1)
         _, res = _tx(db, "宠物", uid=2)
-        assert res.data["category"] == "其他"
+        assert res.data["category"] == "宠物"
+
+    def test_same_name_rejected_across_members(self, db):
+        """分类池是家庭级的：A 建了「宠物」，B 再建同名也是重复。"""
+        _add(db, "宠物", uid=1)
+        status, res = _add(db, "宠物", uid=2)
+        assert status == 400 and "已存在" in res["msg"]
+
+
+# ---------------- 内置分类软删除/恢复（v2.46.29，夜星：管理分类支持删除） ----------------
+
+class TestBuiltinHideRestore:
+    """内置分类「删除」=软隐藏：shadow 墓碑行 + 池子剔除 + 可恢复。"""
+
+    def test_hide_and_restore_roundtrip(self, db):
+        from app.routers.finance import hide_builtin_category, restore_builtin_category
+        assert "餐饮" in _names(db)
+        # 隐藏：池子里消失，hidden_builtin 出现
+        _, res = call(hide_builtin_category, "expense", "餐饮", db=db, current_user=BOSS)
+        assert res.data["hidden"] is True
+        assert "餐饮" not in _names(db)
+        cats = _cats(db)
+        assert "餐饮" in [c["key"] for c in cats["hidden_builtin"]["expense"]]
+        # 恢复：回到池子，墓碑硬删（不会混进自定义列表）
+        _, res = call(restore_builtin_category, "expense", "餐饮", db=db, current_user=BOSS)
+        assert res.data["hidden"] is False
+        assert "餐饮" in _names(db)
+        assert "餐饮" not in [c["key"] for c in _cats(db)["hidden_builtin"]["expense"]]
+        assert "餐饮" not in [c["key"] for c in _cats(db)["expense"] if c["is_custom"]]
+
+    def test_hide_keeps_history_icons_and_validation(self, db):
+        """隐藏后：老流水照样显示原分类；历史名字记账/编辑仍合法（_valid_categories 不缩）。"""
+        from app.routers.finance import hide_builtin_category
+        _tx(db, "餐饮")
+        call(hide_builtin_category, "expense", "餐饮", db=db, current_user=BOSS)
+        # 新记账用被隐藏的内置名：_valid_categories 保留全量内置，不归「其他」
+        _, res = _tx(db, "餐饮")
+        assert res.data["category"] == "餐饮"
+
+    def test_cannot_hide_fallback(self, db):
+        """「其他」是失效归集的兜底，禁止删除。"""
+        from app.routers.finance import hide_builtin_category
+        status, _ = call(hide_builtin_category, "expense", "其他", db=db, current_user=BOSS)
+        assert status == 400
+
+    def test_hide_idempotent_and_unknown(self, db):
+        from app.routers.finance import hide_builtin_category
+        call(hide_builtin_category, "expense", "餐饮", db=db, current_user=BOSS)
+        # 幂等：再删一次也是 200
+        assert call(hide_builtin_category, "expense", "餐饮", db=db, current_user=BOSS)[0] == 200
+        # 不是内置分类 → 404
+        assert call(hide_builtin_category, "expense", "宠物", db=db, current_user=BOSS)[0] == 404
+
+    def test_cannot_create_custom_with_hidden_builtin_name(self, db):
+        """隐藏「娱乐」后仍不能创建同名自定义分类（内置名永远保留给恢复路径）。"""
+        from app.routers.finance import hide_builtin_category
+        call(hide_builtin_category, "expense", "娱乐", db=db, current_user=BOSS)
+        status, _ = _add(db, "娱乐")
+        assert status == 400

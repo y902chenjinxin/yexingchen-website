@@ -744,14 +744,35 @@
           </div>
         </div>
 
-        <!-- 内置分类（只读） -->
+        <!-- 内置分类（v2.46.29：支持删除=软隐藏，可恢复；「其他」是兜底不可删） -->
         <div class="fin-cd-section">
           <div class="fin-cd-head">
             <span class="fin-cd-title">内置分类</span>
-            <span class="fin-cd-note">系统自带，不可修改删除</span>
+            <span class="fin-cd-note">删除只是收起来，历史流水不受影响，可随时恢复</span>
           </div>
           <div class="fin-cd-builtin">
-            <span v-for="c in builtinCats" :key="c.key" class="fin-cd-chip">{{ c.icon }} {{ c.key }}</span>
+            <span v-for="c in builtinCats" :key="c.key" class="fin-cd-chip">
+              {{ c.icon }} {{ c.key }}
+              <el-popconfirm
+                v-if="c.key !== '其他'"
+                title="删除后不再出现在选择列表；历史流水仍显示原名原图标"
+                confirm-button-text="删除"
+                cancel-button-text="取消"
+                width="250"
+                @confirm="hideBuiltin(c)"
+              >
+                <template #reference>
+                  <i class="fin-cd-x" title="删除">×</i>
+                </template>
+              </el-popconfirm>
+            </span>
+          </div>
+          <div v-if="hiddenBuiltins.length" class="fin-cd-hidden">
+            <span class="fin-cd-hidden-label">已删除：</span>
+            <span v-for="c in hiddenBuiltins" :key="c.key" class="fin-cd-chip is-hidden">
+              {{ c.icon }} {{ c.key }}
+              <i class="fin-cd-restore" title="恢复" @click="restoreBuiltin(c)">↩</i>
+            </span>
           </div>
         </div>
 
@@ -1141,6 +1162,8 @@ const currentPool = computed(() => (
 ))
 const customCats = computed(() => currentPool.value.filter(c => c.is_custom))
 const builtinCats = computed(() => currentPool.value.filter(c => !c.is_custom))
+// 已删除（软隐藏）的内置分类：后端 hidden_builtin 按收支方向给出
+const hiddenBuiltins = computed(() => (categoriesMeta.value.hidden_builtin || {})[form.type] || [])
 const catDialogTitle = computed(() => (form.type === 'income' ? '管理收入分类' : '管理支出分类'))
 
 function openCatDialog() {
@@ -1191,6 +1214,24 @@ async function removeCat(cat) {
     if (form.category === cat.key) form.category = '其他'
     await loadCategories()
     await loadSummary()
+  } catch { /* 错误已由 api 拦截器提示 */ }
+}
+
+/* 内置分类软删除/恢复（v2.46.29，夜星：管理分类支持删除） */
+async function hideBuiltin(cat) {
+  try {
+    const res = await financeApi.hideBuiltinCategory(form.type, cat.key)
+    ElMessage.success(res.msg || '已删除')
+    // 正在记的这笔正选着它 → 归回「其他」，否则保存时会被后端归掉
+    if (form.category === cat.key) form.category = '其他'
+    await loadCategories()
+  } catch { /* 错误已由 api 拦截器提示 */ }
+}
+async function restoreBuiltin(cat) {
+  try {
+    const res = await financeApi.restoreBuiltinCategory(form.type, cat.key)
+    ElMessage.success(res.msg || '已恢复')
+    await loadCategories()
   } catch { /* 错误已由 api 拦截器提示 */ }
 }
 async function loadSummary() {
@@ -1676,6 +1717,16 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-cd-add { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--lj-line); }
 .fin-cd-builtin { display: flex; flex-wrap: wrap; gap: 8px; }
 .fin-cd-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--lj-line); font-size: 12px; color: var(--lj-text-3); }
+/* 内置分类删除/恢复（v2.46.29）：chip 内小 × 与恢复 ↩，hover 才显形，克制 */
+.fin-cd-chip { display: inline-flex; align-items: center; gap: 5px; }
+.fin-cd-x { font-style: normal; font-size: 13px; line-height: 1; color: var(--lj-text-3); cursor: pointer; opacity: 0; transition: opacity .15s ease; }
+.fin-cd-chip:hover .fin-cd-x { opacity: 1; }
+.fin-cd-x:hover { color: var(--el-color-danger, #e25c5c); }
+.fin-cd-hidden { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--lj-line); }
+.fin-cd-hidden-label { font-size: 12px; color: var(--lj-text-3); }
+.fin-cd-chip.is-hidden { opacity: .55; border-style: dashed; }
+.fin-cd-restore { font-style: normal; font-size: 13px; line-height: 1; cursor: pointer; color: var(--lj-text-3); }
+.fin-cd-restore:hover { color: var(--lj-seal, #c8a24b); }
 .fin-note-row { display: flex; align-items: center; gap: 8px; }
 .fin-note-input { flex: 1; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); outline: none; }
 .fin-note-input:focus { border-color: var(--lj-seal); }
