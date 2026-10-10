@@ -2,7 +2,8 @@
   <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇">
     <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill, 'is-fsfit': fitActive }">
       <!-- ===== 左：游戏类型 ===== -->
-      <aside v-show="!isBig" class="gm-rail">
+      <!-- 手机端：未选游戏时铺开手账网格；选中后收起（对局区占满，切游戏走「返回列表」） -->
+      <aside v-show="!isBig && !(isMobile && tab)" class="gm-rail">
         <div v-for="grp in groups" :key="grp.name" class="gm-grp">
           <div class="gm-grp-name">{{ grp.name }}</div>
           <button
@@ -48,7 +49,7 @@
         <!-- 空态：默认什么都不摆，避免一屏平铺 -->
         <div v-if="!tab" class="gm-empty">
           <div class="gm-empty-ic">♟</div>
-          <b>从左边挑一个游戏</b>
+          <b>{{ isMobile ? '从上面挑一个游戏' : '从左边挑一个游戏' }}</b>
           <p>选中后先选模式，再进对局。想看得舒服一点，进去后可点「放大」全屏玩，随时能退出或续上进度。</p>
         </div>
 
@@ -1094,14 +1095,31 @@ watch(() => route.query.room, (v) => {
 }
 
 @media (max-width: 860px) {
-  .gm-root { grid-template-columns: 1fr; gap: 12px; }
+  .gm-root { grid-template-columns: 1fr; gap: 14px; }
+  /* v2.46.37：横滑 chips 条 → 分组网格（手账清单式）。
+     原方案所有游戏挤一行横滑，分组名/tag 全被藏掉，观感差且难挑；
+     现在组名整行、游戏项 2 列小卡铺开，一屏看清全部 11 个游戏。 */
   .gm-rail {
-    flex-direction: row; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    overflow: visible; padding-bottom: 0;
   }
-  .gm-grp { flex-direction: row; align-items: center; gap: 6px; }
-  .gm-grp-name { display: none; }
-  .gm-item { width: auto; padding: 7px 12px; }
-  .gm-item-tx i { display: none; }
+  .gm-grp, .gm-grp--mine { display: contents; }
+  .gm-grp-name {
+    display: block;
+    grid-column: 1 / -1;
+    padding: 12px 2px 0;
+  }
+  .gm-grp:first-child .gm-grp-name { padding-top: 0; }
+  .gm-item {
+    width: auto; padding: 9px 10px; border-radius: 12px;
+    align-self: stretch;
+  }
+  .gm-item-tx b { font-size: 13px; }
+  .gm-item-tx i {
+    display: block;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .gm-empty { min-height: 220px; }
+  .gm-empty p { font-size: 12px; }
 }
 </style>

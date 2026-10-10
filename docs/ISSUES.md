@@ -7,7 +7,11 @@
 
 ---
 
-## v2.46.36 掼蛋理牌不限回合（2026-10-10）
+## v2.46.37 棋牌首页重排 + island 内页皮肤（2026-10-10）
+
+夜星：「手机端还有些页面 UI 做的不好看，比如棋牌游戏的首页」。三个短板：①棋牌首页手机端是横滑 chips 条，`gm-grp-name`/`gm-item-tx i` 全 `display:none`，11 个游戏挤一行靠滑；②棋牌页和所有工具岛内页容器 `island-inner` 用 `--ls-bg1` 老底+28px 黑体标题，没进 v2.46.32 宣纸体系；③工具岛列表页 mdl-* 只有颜色令牌没版式。**要点**：①2 列网格用 `display:contents` 让分组名与游戏项混流进同一网格，组名 `grid-column: 1/-1` 占整行——不用 subgrid（鸿蒙 WebView Chromium<117 不支持）；②选中游戏后手机端收起列表（`v-show="!isBig && !(isMobile && tab)"`），否则 400px 高网格把对局区挤出首屏；③`island-inner` 覆盖要 `:not(.island-inner-music)` 排除音乐岛（它有专属背景，product 层已单独处理）；④皮肤进 paper.css、布局进组件内 @media，继续沿用「分层不混写」模式。
+
+
 
 夜星：「挪左侧、挪右侧不限于自己回合，都可以操作」。根因不在按钮（按钮本来就常驻），而在**选牌入口被 canAct 锁死**——onPick/onHandDown 第一行 `if (!canAct) return`，非回合选不中牌，挪右侧（依赖选中）整个废掉。修法：gate 放宽为「非贡牌阶段」，出牌链路（提示/不要/出牌/上滑出牌）保留 canAct 校验。**踩坑要点**：①改交互 gate 前先画清「哪些操作是理牌行为（随时可做）、哪些是行棋行为（限回合）」，只放前者；②本地双人模式 viewSeat 随回合切换，解锁选牌后必须补 watch(viewSeat) 清选中，否则 A 的选中串到 B 手牌（在线模式 viewSeat 恒为自己，无此问题）；③上滑出牌（swipeUpPlay）独立校验 canAct，别只看入口。
 
