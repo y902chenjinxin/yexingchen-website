@@ -334,9 +334,20 @@ def _tile_score(c: list[int], i: int) -> int:
     return s
 
 
-def ai_discard(hand: list[dict], meld_count: int, missing: str | None = None) -> dict:
-    """AI 选打。``missing`` 仅为兼容旧签名（v2.46.17 起无缺门）。"""
+def ai_discard(hand: list[dict], meld_count: int, missing: str | None = None,
+               ctx: dict | None = None) -> dict:
+    """AI 选打。``missing`` 仅为兼容旧签名（v2.46.17 起无缺门）。
+
+    v2.46.31 防守升级：ctx = {"threat": 是否有对手听牌, "safe": set[int]（听牌家现物）,
+    "visible": list[int]（全场可见牌计数）}。有威胁时按危险度扣分：自己已听牌
+    保持进攻（危险度×0.3），一向听权衡（×3），两向听开外优先安全牌（×8）。
+    """
     c = _counts(hand)
+    sh_now = shanten(hand, meld_count)
+    threat = bool(ctx and ctx.get("threat"))
+    safe: set = (ctx or {}).get("safe") or set()
+    visible = (ctx or {}).get("visible") or [0] * 36
+    danger_w = 0 if not threat else (0 if sh_now == 0 else (3 if sh_now == 1 else 8))
     best_tile = hand[0]
     best_key = -10 ** 9
     seen: set[str] = set()
@@ -349,11 +360,33 @@ def ai_discard(hand: list[dict], meld_count: int, missing: str | None = None) ->
         sh = shanten(rest, meld_count)
         u = len(ting_tiles(rest, meld_count))
         s = _tile_score(c, idx_of(t["suit"], t["rank"]))
-        key = -sh * 100 + u * 3 + s
+        danger = _danger_of(t, safe, visible, c) if threat else 0
+        key = -sh * 100 + u * 3 + s - int(danger * danger_w * 0.3)
         if key > best_key:
             best_key = key
             best_tile = t
     return best_tile
+
+
+def _danger_of(t: dict, safe: set, visible: list[int], own: list[int]) -> int:
+    """单张危险度（0~12）：现物 0；字牌看可见数；数牌越中张越危险。"""
+    i = idx_of(t["suit"], t["rank"])
+    if i in safe:
+        return 0
+    vis = visible[i] + own[i]
+    if i >= 27:
+        if vis >= 3:
+            return 1
+        if vis == 2:
+            return 4
+        return 9        # 孤字牌可能被单钓/碰
+    rank = (i % 9) + 1
+    base = 5 if rank in (1, 9) else (8 if rank in (2, 8) else 12)
+    if vis >= 2:
+        base -= 4
+    elif vis == 1:
+        base -= 2
+    return max(2, base)
 
 
 def ai_want_pong(hand: list[dict], tile: dict, meld_count: int, missing: str | None = None) -> bool:
@@ -926,7 +959,23 @@ class MahjongEngine(TableEngine):
             self._draw(st, cur, events, after_kong=True)
             return st, events
 
-        tile = ai_discard(hand, len(melds))
+        # v2.46.31 防守上下文：有对手听牌时，AI 打牌考虑危险牌（现物/可见数/中张）
+        opp_ting = any(_seat_ting(st, s) for s in range(4)
+                       if s != cur and s not in st["hu"])
+        ai_ctx = None
+        if opp_ting:
+            safe: set = set()
+            visible = [0] * 36
+            for s in range(4):
+                if s != cur and _seat_ting(st, s):
+                    safe |= {idx_of(t["suit"], t["rank"]) for t in st["discards"][s]}
+                for t in st["discards"][s]:
+                    visible[idx_of(t["suit"], t["rank"])] += 1
+                for m in st["melds"][s]:
+                    visible[idx_of(m["tile"]["suit"], m["tile"]["rank"])] += (
+                        3 if m["type"] in ("pong", "mingkong", "ankong") else 2)
+            ai_ctx = {"threat": True, "safe": safe, "visible": visible}
+        tile = ai_discard(hand, len(melds), ctx=ai_ctx)
         st["hands"][cur] = [t for t in hand if t["id"] != tile["id"]]
         st["discards"][cur].append(tile)
         st["last_discard"] = {"seat": cur, "tile": tile}

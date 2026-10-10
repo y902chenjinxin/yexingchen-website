@@ -601,10 +601,11 @@ function search(bd, depth, alpha, beta, maximizing) {
   return best
 }
 function evaluateBoard(bd) {
+  // v2.46.31：全盘求和评估（原来只取单点最大值，看不到「双活三」这类叠加威胁）
   let ai = 0, hu = 0
   for (const idx of candidates(bd)) {
-    ai = Math.max(ai, pointScore(bd, idx, AI))
-    hu = Math.max(hu, pointScore(bd, idx, HUMAN))
+    ai += pointScore(bd, idx, AI)
+    hu += pointScore(bd, idx, HUMAN)
   }
   return ai - hu * 1.1
 }
@@ -664,7 +665,7 @@ function aiMove() {
   thinking.value = true
   timer = setTimeout(() => {
     const bd = [...board.value]
-    const depth = mode.value === 'hard' ? 3 : 1
+    const depth = mode.value === 'hard' ? 4 : 1
     const cands = candidates(bd)
       .map(idx => ({ idx, s: pointScore(bd, idx, AI) * 2 + pointScore(bd, idx, HUMAN) }))
       .sort((a, b) => b.s - a.s)

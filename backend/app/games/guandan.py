@@ -443,14 +443,42 @@ def _protected_ids(hand: list[dict], level: int) -> set[int]:
     return prot
 
 
+def _highest_remaining_single(hand: list[dict], level: int, history: list[dict]) -> int | None:
+    """记牌（v2.46.31）：返回自己持有的、其余副本全部已可见的单张点数 key（最大者）。
+
+    可见 = 自己手里 + history 里 play/tribute/return 事件出现过的。没有则 None。
+    """
+    seen: dict[int, int] = {}
+    for h in history:
+        for c in h.get("cards", []) or []:
+            if c.get("joker"):
+                continue
+            k = _key_of_rank(_rank_key(c), level)
+            seen[k] = seen.get(k, 0) + 1
+    own: dict[int, int] = {}
+    for c in hand:
+        if c.get("joker"):
+            continue
+        k = _key_of_rank(_rank_key(c), level)
+        own[k] = own.get(k, 0) + 1
+    best: int | None = None
+    for k, n in own.items():
+        if seen.get(k, 0) + n >= 4 and (best is None or k > best):
+            best = k
+    return best
+
+
 def ai_choose(hand: list[dict], target: dict | None, level: int,
-              last_is_teammate: bool = False, pressure: int = 0) -> list[dict]:
+              last_is_teammate: bool = False, pressure: int = 0,
+              highest_single: int | None = None) -> list[dict]:
     """AI 出牌：返回要出的牌，``[]`` 表示不要。target 为牌型 dict（None=起牌）。
 
     v2.46.25 策略升级（夜星：「机器人总把红心乱配，配不成同花顺和炸」）：
     - ``pressure`` = 对手最少的剩余手牌数（由 step_ai 传入，越小越危险）；
     - 起牌只出「安全牌」（不拆炸弹/同花顺雏形、不动被预留的逢人配）；
-    - 跟牌优先安全 beats；对手剩 ≤2 张（封堵绝杀）或自己 ≤6 张（残局冲刺）才舍得拆。
+    - 对手剩 ≤2 张（封堵绝杀）或自己 ≤6 张（残局冲刺）才舍得拆。
+    v2.46.31 记牌升级：``highest_single`` = 自己持有的、且其余副本全可见的单张
+    点数值（记牌算出）——起牌优先甩它，稳收一手。
     """
     seen: set[str] = set()
     plays: list[tuple[list[dict], dict]] = []
@@ -480,6 +508,17 @@ def ai_choose(hand: list[dict], target: dict | None, level: int,
         non_bomb = [x for x in plays if not x[1]["bomb_level"]]
         pool = non_bomb or plays
         pool = [x for x in pool if safe(x)] or pool
+        # v2.46.31 记牌：手里有「全场最大剩余」的单张（其余张全在历史/自己手里）优先甩出
+        if highest_single is not None:
+            hi = [x for x in pool if x[1]["type"] == "single" and x[1]["key"] == highest_single
+                  and not x[1]["bomb_level"]]
+            if hi:
+                return hi[0][0]
+        # 残局两张单张：先大后小（先小的会被压住，白丢一手节奏）
+        if len(hand) == 2:
+            singles = [x for x in pool if x[1]["type"] == "single"]
+            if len(singles) == 2:
+                return max(singles, key=lambda x: x[1]["key"])[0]
         pool.sort(key=lambda x: (-len(x[0]), x[1]["key"]))
         return pool[0][0]
 
@@ -941,8 +980,11 @@ class GuandanEngine(TableEngine):
         opp_min = min((len(st["hands"][s]) for s in range(4)
                        if TEAM_OF[s] != TEAM_OF[cur] and s not in st["finished"]),
                       default=99)
+        # v2.46.31 记牌：算自己持有的「全场最大剩余」单张点数（其余副本全在历史里）
+        hi_single = _highest_remaining_single(st["hands"][cur], st["level"], st.get("history", []))
         pick = ai_choose(st["hands"][cur], tgt["pattern"] if tgt else None,
-                         st["level"], last_is_teammate, pressure=opp_min)
+                         st["level"], last_is_teammate, pressure=opp_min,
+                         highest_single=hi_single)
         if pick:
             _do_play(st, cur, pick, events)
         else:

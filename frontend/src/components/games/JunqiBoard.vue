@@ -588,7 +588,19 @@ function aiChoose() {
   const bd = board.value
   const cands = []
   if (isFlip.value) {
-    for (let i = 0; i < N; i++) if (bd[i] && !bd[i].up) cands.push({ flip: i, sc: 2 })
+    // v2.46.31 翻牌期望分：优先铁路/中线（机动价值），避开敌方已翻开的大子身边（翻出来就送）
+    for (let i = 0; i < N; i++) if (bd[i] && !bd[i].up) {
+      let sc = 2
+      const r = rowOf(i), c0 = colOf(i)
+      if (isRailPoint(r, c0)) sc += 1.5
+      sc += (3.5 - Math.abs(r - (me === RED ? 5.5 : 4.5))) * 0.6
+      for (let j = 0; j < N; j++) {
+        const q = bd[j]
+        if (q && q.up && q.c !== me && VAL[q.t] >= 45
+            && Math.abs(rowOf(j) - r) + Math.abs(colOf(j) - c0) <= 2) { sc -= 4; break }
+      }
+      cands.push({ flip: i, sc })
+    }
   }
   for (let i = 0; i < N; i++) {
     const p = bd[i]

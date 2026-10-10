@@ -1202,7 +1202,10 @@ function aiTurn() {
   if (HUMAN_SEATS.value.includes(s)) return
   const tgt = target.value
   const lastIsTeammate = !!tgt && G.TEAM_OF[tgt.seat] === G.TEAM_OF[s]
-  const pick = G.aiChoose(hands.value[s], tgt?.pattern ?? null, roundLevel.value, { lastIsTeammate })
+  // v2.46.31：pressure=对手最少剩牌（封堵用）+ 记牌（全场最大剩余单张优先甩）
+  const oppMin = Math.min(...[0, 1, 2, 3].filter(o => G.TEAM_OF[o] !== G.TEAM_OF[s] && hands.value[o].length).map(o => hands.value[o].length), 99)
+  const hiSingle = G.highestRemainingSingle(hands.value[s], roundLevel.value, history.value)
+  const pick = G.aiChoose(hands.value[s], tgt?.pattern ?? null, roundLevel.value, { lastIsTeammate, pressure: oppMin, highestSingle: hiSingle })
   if (pick && pick.length) applyPlay(s, pick)
   else applyPass(s)
 }

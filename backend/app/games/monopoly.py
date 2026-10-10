@@ -1114,7 +1114,11 @@ class MonopolyEngine(TableEngine):
         if st["pending"] is not None:
             return
         # 现金宽裕时升级最便宜的、已集齐组的地块
-        if st["cash"][seat] > st["ai_buffer"] * 3:
+        # v2.46.31 动态缓冲：落后于最强对手时多留现金（研究口径：基础缓冲 + 5% 对手净资产）
+        opp_net = max((self._net_worth(st, i) for i in range(st["n"])
+                       if i != seat and st["alive"][i]), default=0)
+        live_buffer = st["ai_buffer"] + max(0, int(opp_net * 0.05) - st["ai_buffer"] // 2)
+        if st["cash"][seat] > live_buffer * 3:
             best = -1
             for i in range(BOARD_LEN):
                 if st["owner"][i] != seat or st["mortgaged"][i]:
@@ -1124,7 +1128,7 @@ class MonopolyEngine(TableEngine):
                     continue
                 if not self._group_complete(st, seat, tile["group"]):
                     continue
-                if st["cash"][seat] - tile["build"] < st["ai_buffer"]:
+                if st["cash"][seat] - tile["build"] < live_buffer:
                     continue
                 if best < 0 or tile["build"] < BOARD[best]["build"]:
                     best = i
@@ -1137,7 +1141,11 @@ class MonopolyEngine(TableEngine):
         p = st["pending"]
         seat = p["seat"]
         tile = BOARD[p["tile"]]
-        if st["cash"][seat] - tile["price"] >= st["ai_buffer"]:
+        # v2.46.31 期望值买地：凑组关键张（同组已持有 ≥1 且是低价组）可压缩现金缓冲抢下
+        owned = sum(1 for i in GROUP_TILES[tile["group"]] if st["owner"][i] == seat)
+        cheap_group = tile["group"] <= 3          # 低价组回本快（模拟统计：访问概率高、建房便宜）
+        need = st["ai_buffer"] if (owned == 0 or not cheap_group) else st["ai_buffer"] // 2
+        if st["cash"][seat] - tile["price"] >= need:
             self._buy(st, seat, p["tile"], events)
         else:
             tile_idx = p["tile"]
@@ -1153,7 +1161,10 @@ class MonopolyEngine(TableEngine):
         price = BOARD[a["tile"]]["price"]
         step = st["bid_step"]
         floor = a["high"] + step if a["high_seat"] >= 0 else step
-        cap = min(price, st["cash"][seat] - st["ai_buffer"])
+        # 凑组关键张允许把缓冲压到一半抢（竞拍价超面值就不追）
+        owned = sum(1 for i in GROUP_TILES[BOARD[a["tile"]]["group"]] if st["owner"][i] == seat)
+        buffer_need = st["ai_buffer"] // 2 if owned >= 1 else st["ai_buffer"]
+        cap = min(price, st["cash"][seat] - buffer_need)
         if floor <= cap:
             self._auction_bid(st, seat, floor, events)
         else:
@@ -1162,7 +1173,28 @@ class MonopolyEngine(TableEngine):
     def _ai_trade(self, st: dict, trade: dict, events: list[dict]) -> None:
         received = self._value(st, trade["give"])
         given = self._value(st, trade["want"])
-        self._trade_respond(st, trade["to"], trade["id"], received >= given, events)
+        ok = received >= given
+        if ok and trade["want"]["tiles"]:
+            # v2.46.31：对面是首富、且我交出的地恰好帮 TA 凑齐色组 → 拒绝（租倍涨会反杀自己）
+            to = trade["to"]
+            if self._is_richest(st, to) and self._would_complete(st, to, trade["want"]["tiles"]):
+                ok = False
+        self._trade_respond(st, trade["to"], trade["id"], ok, events)
+
+    def _is_richest(self, st: dict, seat: int) -> bool:
+        alive = [i for i in range(st["n"]) if st["alive"][i]]
+        return bool(alive) and seat == max(alive, key=lambda i: (self._net_worth(st, i), -i))
+
+    def _would_complete(self, st: dict, seat: int, tiles: list[int]) -> bool:
+        for g in range(len(GROUP_TILES)):
+            gi = GROUP_TILES[g]
+            if not gi:
+                continue
+            mine = sum(1 for i in gi if st["owner"][i] == seat)
+            gain = sum(1 for i in tiles if i in gi)
+            if mine > 0 and mine < len(gi) and mine + gain >= len(gi):
+                return True
+        return False
 
     @staticmethod
     def _value(st: dict, bundle: dict) -> int:

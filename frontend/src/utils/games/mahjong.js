@@ -304,12 +304,31 @@ function tileScore(c, i) {
   return s
 }
 
+/** 单张危险度（v2.46.31，0~12）：现物 0；字牌看可见数；数牌越中张越危险。 */
+function tileDanger(t, safe, visible, own) {
+  const i = idxOf(t.suit, t.rank)
+  if (safe && safe.has(i)) return 0
+  const vis = (visible && visible[i] ? visible[i] : 0) + own[i]
+  if (i >= 27) {
+    if (vis >= 3) return 1
+    if (vis === 2) return 4
+    return 9        // 孤字牌可能被单钓/碰
+  }
+  const rank = (i % 9) + 1
+  let base = rank === 1 || rank === 9 ? 5 : (rank === 2 || rank === 8 ? 8 : 12)
+  if (vis >= 2) base -= 4
+  else if (vis === 1) base -= 2
+  return Math.max(2, base)
+}
+
 /**
  * AI 打哪张。``missing`` 参数废弃（v2.46.17 无缺门），保留仅为兼容旧签名。
  * @param {Array} hand 当前暗手牌（3n+2，刚摸完）
  * @param {number} meldCount
  * @param {string} [missing] 已废弃，忽略
- * @param {Object} ctx { level: 'weak'|'normal'|'strong' }
+ * @param {Object} ctx { level, threat, safe:Set<idx>, visible:Array<number> }
+ *   v2.46.31 防守：threat=有对手听牌时，按危险度扣分——自己已听牌保持进攻（×0.3）、
+ *   一向听权衡（×3）、两向听开外优先安全牌（×8）
  * @returns {Object} 要打出的牌
  */
 export function aiDiscard(hand, meldCount, ctx = {}) {
@@ -324,9 +343,11 @@ export function aiDiscard(hand, meldCount, ctx = {}) {
     }
     return worst || hand[0]
   }
-  // 正常 AI：逐张试打，看向听是否最优（进张数多者优先）
+  // 正常 AI：逐张试打，看向听是否最优（进张数多者优先）+ 威胁时叠加危险度
   let bestTile = hand[0], bestKey = -Infinity
   const seen = new Set()
+  const shNow = ctx.threat ? shanten(hand, meldCount) : 0
+  const dangerW = ctx.threat ? (shNow === 0 ? 0 : (shNow === 1 ? 3 : 8)) : 0
   for (const t of hand) {
     const k = `${t.suit}${t.rank}`
     if (seen.has(k)) continue
@@ -335,7 +356,8 @@ export function aiDiscard(hand, meldCount, ctx = {}) {
     const sh = shanten(rest, meldCount)
     const u = usefulCount(rest, meldCount)
     const s = tileScore(c, idxOf(t.suit, t.rank))
-    const key = -sh * 100 + u * 3 + s
+    const danger = ctx.threat ? tileDanger(t, ctx.safe, ctx.visible, c) : 0
+    const key = -sh * 100 + u * 3 + s - Math.round(danger * dangerW * 0.3)
     if (key > bestKey) { bestKey = key; bestTile = t }
   }
   return bestTile

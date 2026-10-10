@@ -249,13 +249,48 @@ export function evaluate(b, s) {
     if (!p) continue
     const t = p[1]
     let v = VAL[t]
+    // 位置分（v2.46.31）：兵过河/深入、炮马占中路与卒林、车灵活
+    v += PSQ[t][p[0] === RED ? i : 89 - i]   // 黑方镜像翻转
     if (t === 'P') {
       const y = yOf(i)
-      if (!onOwnSide(y, p[0])) v += 100          // 过河兵增值
+      if (!onOwnSide(y, p[0])) v += 100      // 过河兵增值（保留旧口径）
     }
     sc += (p[0] === s ? v : -v)
   }
   return sc
+}
+
+/* 位置分表：以红方视角按 90 格索引（黑方走镜像 89-i）。中炮/过河马/卒林车等常识位置。 */
+const PSQ = {
+  K: new Array(90).fill(0), A: new Array(90).fill(0), B: new Array(90).fill(0),
+  P: new Array(90).fill(0), N: new Array(90).fill(0), C: new Array(90).fill(0), R: new Array(90).fill(0),
+}
+// 兵：过河越深、越靠中路越值钱
+for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  let v = 0
+  if (y <= 4) v = 60 + (4 - y) * 25                       // 深入敌阵
+  else if (y <= 5) v = 40                                 // 刚过河
+  else v = x >= 3 && x <= 5 ? 10 : 0                      // 己方中路小加分
+  if (x === 4) v += 15                                    // 中线
+  PSQ.P[idx(x, y)] = v
+}
+// 马：占中路与敌腹地
+for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  let v = 0
+  if (y >= 2 && y <= 7) v = 12
+  if (y >= 3 && y <= 6 && x >= 2 && x <= 6) v += 14       // 敌腹地
+  if ((y === 2 || y === 7) && x === 4) v += 10            // 中心马
+  PSQ.N[idx(x, y)] = v
+}
+// 炮：当头炮/中路线
+for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  let v = x === 4 ? 14 : 0
+  if (y === 7 && x === 4) v = 26                          // 中炮位
+  PSQ.C[idx(x, y)] = v
+}
+// 车：过河与底线包抄
+for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  PSQ.R[idx(x, y)] = y <= 4 ? 12 : (y === 8 ? 8 : 0)
 }
 
 export function search(b, s, depth, alpha, beta) {
@@ -276,16 +311,107 @@ export function search(b, s, depth, alpha, beta) {
   return best
 }
 
-export function aiPick(b, s, depth) {
-  const moves = legalMoves(b, s)
-  if (!moves.length) return null
-  moves.sort((a, c) => (c.cap ? VAL[c.cap[1]] || 0 : 0) - (a.cap ? VAL[a.cap[1]] || 0 : 0))
-  let best = -Infinity, pool = []
+/* ---------- v2.46.31 引擎升级：置换表 + 迭代加深 + 历史启发 ---------- */
+
+/** Zobrist：90 格 × 14 种棋子（红黑 × 7 种）的随机键。 */
+const ZOB = (() => {
+  let seed = 0x2f6e2b1
+  const rnd = () => { seed = (Math.imul(seed, 1103515245) + 12345) | 0; return (seed >>> 0) / 4294967296 }
+  const t = new Float64Array(90 * 14)
+  for (let i = 0; i < t.length; i++) t[i] = Math.floor(rnd() * 0xffffffff)
+  return t
+})()
+const PIECE_KEY = { rK: 0, rA: 1, rB: 2, rN: 3, rR: 4, rC: 5, rP: 6, bK: 7, bA: 8, bB: 9, bN: 10, bR: 11, bC: 12, bP: 13 }
+const SIDE_KEY = { r: 0x13a7, b: 0x2c19 }   // 行棋方混入 hash：同局面谁走分数完全不同
+
+function hashOf(b, s) {
+  let h = SIDE_KEY[s] || 0
+  for (let i = 0; i < 90; i++) {
+    const p = b[i]
+    if (p) h = (h + ZOB[i * 14 + PIECE_KEY[p]]) % 0xffffffff
+  }
+  return h
+}
+
+const TT = new Map()          // hash → { depth, score, flag }
+const HIST = new Array(90 * 90).fill(0)   // 历史启发：from*90+to → 分数
+const TT_EXACT = 0, TT_LOWER = 1, TT_UPPER = 2
+
+/** 走法排序：吃子 MVV 优先，历史启发分作次级 */
+function orderMoves(moves) {
+  const key = (m) => (m.cap ? 100000 + (VAL[m.cap[1]] || 0) * 10 : 0) + HIST[m.from * 90 + m.to]
+  return moves.sort((a, c) => key(c) - key(a))
+}
+
+export function searchEx(b, s, depth, alpha, beta, ply) {
+  if (findGeneral(b, s) < 0) return -99999 + ply
+  if (findGeneral(b, other(s)) < 0) return 99999 - ply
+  if (depth <= 0) return evaluate(b, s)
+  const key = hashOf(b, s)
+  const hit = TT.get(key)
+  if (hit && hit.depth >= depth) {
+    if (hit.flag === TT_EXACT) return hit.score
+    if (hit.flag === TT_LOWER && hit.score > alpha) alpha = hit.score
+    else if (hit.flag === TT_UPPER && hit.score < beta) beta = hit.score
+    if (alpha >= beta) return hit.score
+  }
+  const alpha0 = alpha, beta0 = beta
+  const moves = orderMoves(pseudoMoves(b, s))
+  if (!moves.length) return -90000 + ply
+  let best = -Infinity
   for (const m of moves) {
     const nb = applyMove(b, m.from, m.to)
-    const sc = -search(nb, other(s), depth - 1, -Infinity, Infinity)
-    if (sc > best + 1) { best = sc; pool = [m] }
-    else if (Math.abs(sc - best) <= 1) pool.push(m)
+    const sc = -searchEx(nb, other(s), depth - 1, -beta, -alpha, ply + 1)
+    if (sc > best) best = sc
+    if (best > alpha) {
+      alpha = best
+      if (!m.cap) HIST[m.from * 90 + m.to] += depth * depth   // 静默好手记历史
+    }
+    if (alpha >= beta) break
   }
-  return pool[(Math.random() * pool.length) | 0] || moves[0]
+  const flag = best <= alpha0 ? TT_UPPER : best >= beta0 ? TT_LOWER : TT_EXACT
+  TT.set(key, { depth, score: best, flag })
+  return best
+}
+
+/** AI 落子：negamax + α-β + 置换表 + 迭代加深（v2.46.31）。
+ *  depth 为最大搜索深度（难度档），内部 1..depth 逐层加深、超时 ~1.2s 提前收手。
+ *  同分小随机（浅层复评，分差 ≤5 进池）防呆板。 */
+export function aiPick(b, s, depth = 3) {
+  const maxDepth = Math.max(1, depth | 0)
+  const t0 = Date.now()
+  const moves = legalMoves(b, s)
+  if (!moves.length) return null
+  TT.clear()
+  for (let i = 0; i < HIST.length; i++) HIST[i] >>= 1   // 历史分减半衰减，防跨局累积失真
+  let bestMove = orderMoves(moves.slice())[0]
+  let lastScores = []          // 最后一次完整迭代的各根走法分数（做同分池）
+  for (let d = 1; d <= maxDepth; d++) {
+    let alpha = -Infinity, localBest = null, localScore = -Infinity
+    const ordered = orderMoves(moves.slice())
+    if (bestMove) {   // 上一层最佳走法优先展开
+      const bi = ordered.findIndex(m => m.from === bestMove.from && m.to === bestMove.to)
+      if (bi > 0) ordered.unshift(ordered.splice(bi, 1)[0])
+    }
+    const iterScores = []
+    let aborted = false
+    for (const m of ordered) {
+      const nb = applyMove(b, m.from, m.to)
+      const sc = -searchEx(nb, other(s), d - 1, -Infinity, -alpha, 1)
+      iterScores.push({ m, sc })
+      if (sc > localScore) { localScore = sc; localBest = m }
+      if (sc > alpha) alpha = sc
+      if (Date.now() - t0 > 1200) { aborted = true; break }
+    }
+    if (!aborted || localBest) bestMove = localBest || bestMove
+    if (!aborted) lastScores = iterScores
+    if (aborted || Date.now() - t0 > 1200 || Math.abs(localScore) > 90000) break   // 超时或已见杀
+  }
+  // 防呆板：最后一层完整迭代的同分走法（分差 ≤5）进随机池；无完整迭代则用 bestMove
+  if (lastScores.length) {
+    lastScores.sort((a, c) => c.sc - a.sc)
+    const top = lastScores.filter(x => x.sc >= lastScores[0].sc - 5).map(x => x.m)
+    return top[(Math.random() * top.length) | 0] || bestMove
+  }
+  return bestMove
 }

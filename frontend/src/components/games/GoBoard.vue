@@ -119,7 +119,8 @@
  *  - 打劫：提掉对方**恰好一子**时记下该点，下一手不能立即回提（最经典的简单劫规则）
  *  - 终局：双方连续「停一手」→ 数子（中国规则：子 + 围空；黑贴 7.5 目）
  *
- * AI：**入门级**（提子 > 救自己 > 打吃 > 靠子延伸 + 随机扰动）。
+ * AI：**入门级 + 影响力场**（提子 > 救自己 > 打吃 > 圈地势增益 + 随机扰动；
+ *     v2.46.31 落子引入 1/2^d 距离衰减的势力投影，会「圈地」了）。
  *     真正的棋力需要 MCTS + 算力，本站服务器纯 CPU、无 GPU，做不到「能下过你」，页面已如实标注。
  * 在线对战：服务端对非五子棋房间是「客户端权威 + 记录事件流」，因此围棋可复用同一套房间协议。
  *     边长编码进 game 字段（go9 / go13 / go19）—— 房间表没有边长列，改 schema 要迁移，
@@ -561,6 +562,22 @@ function evalMove(bd, idx, color, ko) {
   const n = size.value, [x, y] = coord(idx)
   const edgeDist = Math.min(x, y, n - 1 - x, n - 1 - y)
   s -= Math.max(0, 3 - edgeDist) * 6                       // 别老贴着边
+  // v2.46.31 影响力场（局部）：新子的势贡献 − 被提掉对方子的势贡献，投影到己方方向。
+  // 势按曼哈顿距离 1/2^d 衰减；落子不只看吃子，还看圈地。
+  const want = color === BLACK ? 1 : -1
+  let infGain = 0
+  const infl = (cx, cy) => {
+    let g = 0
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+      const nx = cx + dx, ny = cy + dy
+      if (nx < 0 || nx >= n || ny < 0 || ny >= n) continue
+      g += 1 / (1 << (Math.abs(dx) + Math.abs(dy)))
+    }
+    return g
+  }
+  infGain += want * infl(x, y)
+  for (const cap of res.captured) infGain += want * infl(cap % n, (cap / n) | 0)
+  s += infGain * 3
   s += Math.random() * 12
   return s
 }

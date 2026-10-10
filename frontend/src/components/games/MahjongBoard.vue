@@ -1316,8 +1316,24 @@ function aiTurn() {
   if (aks.length) { doAnkong(aks[0]); return }
   const bgs = M.findBugangs(full, melds.value[s])
   if (bgs.length) { doBugang(bgs[0]); return }
-  // 出牌
-  const d = M.aiDiscard(full, mc, { level: 'normal' })
+  // 出牌（v2.46.31 防守：有对手听牌时算危险牌——现物/可见数/中张）
+  const oppTing = [0, 1, 2, 3].some(o => o !== s && !out.value[o]
+    && M.shanten(hands.value[o], melds.value[o].length) === 0)
+  let ctx = { level: 'normal' }
+  if (oppTing) {
+    const safe = new Set()
+    const visible = new Array(36).fill(0)
+    for (let o = 0; o < 4; o++) {
+      if (o === s) continue
+      if (M.shanten(hands.value[o], melds.value[o].length) === 0) {
+        for (const t of discards.value[o]) safe.add(M.idxOf(t.suit, t.rank))
+      }
+      for (const t of discards.value[o]) visible[M.idxOf(t.suit, t.rank)]++
+      for (const m of melds.value[o]) visible[M.idxOf(m.tile.suit, m.tile.rank)] += m.type === 'chi' ? 2 : 3
+    }
+    ctx = { level: 'normal', threat: true, safe, visible }
+  }
+  const d = M.aiDiscard(full, mc, ctx)
   if (d) doDiscard(s, d)
 }
 

@@ -420,11 +420,89 @@ export function findSeqGroups(hand, level) {
 
 /* ---------------- AI 出牌 ---------------- */
 
+/** 记牌（v2.46.31 自后端同步）：返回自己持有的、其余副本全部已可见的单张点数 key。
+ *  hist 为结构化出牌记录（**最新在前**，item.kind==='play' 时 item.cards 有效）。 */
+export function highestRemainingSingle(hand, level, hist = []) {
+  const seen = new Map()
+  for (const h of hist) {
+    if (h.kind !== 'play' || !Array.isArray(h.cards)) continue
+    for (const c of h.cards) {
+      if (c.joker) continue
+      const k = keyOfRank(rankKey(c), level)
+      seen.set(k, (seen.get(k) || 0) + 1)
+    }
+  }
+  const own = new Map()
+  for (const c of hand) {
+    if (c.joker) continue
+    const k = keyOfRank(rankKey(c), level)
+    own.set(k, (own.get(k) || 0) + 1)
+  }
+  let best = null
+  for (const [k, n] of own) {
+    if ((seen.get(k) || 0) + n >= 4 && (best === null || k > best)) best = k
+  }
+  return best
+}
+
+/** 手牌「战略储备」分析（v2.46.31 自后端同步，夜星：本地练习 AI 也要会留炸/配同花顺）。
+ *  返回应保护的牌 id 集合：四大天王/天然炸弹/天然同花顺全保护；缺 1 张的同花顺雏形
+ *  与「3 张+百搭可成炸」预留逢人配。 */
+function protectedIds(hand, level) {
+  const prot = new Set()
+  const wilds = hand.filter(c => isWild(c, level))
+  const bigs = hand.filter(c => c.joker === 'big')
+  const smalls = hand.filter(c => c.joker === 'small')
+  if (bigs.length >= 2 && smalls.length >= 2) {
+    for (const c of [...bigs.slice(0, 2), ...smalls.slice(0, 2)]) prot.add(c.id)
+  }
+  const byRank = new Map()
+  for (const c of hand) {
+    if (isWild(c, level) || c.joker) continue
+    const arr = byRank.get(c.rank) || []
+    arr.push(c)
+    byRank.set(c.rank, arr)
+  }
+  const flushPending = []
+  for (const s of SUITS) {
+    for (let a = 1; a <= 10; a++) {
+      const seq = seqRanks(a, 5)
+      const cards = []
+      let missing = 0
+      for (const r of seq) {
+        const cand = hand.find(c => !isWild(c, level) && !c.joker
+          && c.suit === s && c.rank === r && !prot.has(c.id))
+        if (cand) cards.push(cand)
+        else missing++
+      }
+      if (missing === 0 && cards.length === 5) for (const c of cards) prot.add(c.id)
+      else if (missing === 1 && cards.length === 4) flushPending.push(cards)
+    }
+  }
+  for (const cards of flushPending.slice(0, Math.max(0, wilds.length))) {
+    for (const c of cards) prot.add(c.id)
+    const w = wilds.shift()
+    if (w) prot.add(w.id)
+  }
+  for (const [, arr] of byRank) {
+    if (arr.length >= 4) {
+      for (const c of arr.slice(0, 8)) prot.add(c.id)
+    } else if (arr.length === 3 && wilds.length && arr.every(c => !prot.has(c.id))) {
+      const free = wilds.find(w => !prot.has(w.id))
+      if (free) {
+        for (const c of arr) prot.add(c.id)
+        prot.add(free.id)
+      }
+    }
+  }
+  return prot
+}
+
 /**
  * @param {Array} hand 手牌
  * @param {Object|null} target 需要压过的牌型（null=起牌）
  * @param {number} level 主级牌
- * @param {Object} ctx { lastIsTeammate:boolean }
+ * @param {Object} ctx { lastIsTeammate:boolean, pressure:number(对手最少剩牌), highestSingle:number }
  * @returns {Array} 要出的牌；[] 表示「不要」
  */
 export function aiChoose(hand, target, level, ctx = {}) {
@@ -444,9 +522,25 @@ export function aiChoose(hand, target, level, ctx = {}) {
   const fin = plays.find(x => x.cs.length === hand.length)
   if (fin && (!target || canBeat(fin.p, target))) return fin.cs
 
+  const prot = protectedIds(hand, level)
+  const strict = hand.length > 6          // 残局 ≤6 张不搞储备，能走就走
+  const isSafe = (x) => !strict || x.cs.every(c => !prot.has(c.id))
+
   if (!target) {
-    const nonBomb = plays.filter(x => !x.p.bombLevel)
-    const pool = nonBomb.length ? nonBomb : plays
+    let pool = plays.filter(x => !x.p.bombLevel)
+    if (!pool.length) pool = plays
+    const safePool = pool.filter(isSafe)
+    if (safePool.length) pool = safePool
+    // 记牌：持有全场最大剩余单张 → 优先甩出稳收一手
+    if (ctx.highestSingle != null) {
+      const hi = pool.find(x => x.p.type === 'single' && x.p.key === ctx.highestSingle && !x.p.bombLevel)
+      if (hi) return hi.cs
+    }
+    // 两张单张残局：先大后小
+    if (hand.length === 2) {
+      const singles = pool.filter(x => x.p.type === 'single')
+      if (singles.length === 2) return singles.reduce((a, b) => (b.p.key > a.p.key ? b : a)).cs
+    }
     pool.sort((a, b) => (b.cs.length - a.cs.length) || (a.p.key - b.p.key))
     return pool[0].cs
   }
@@ -456,11 +550,24 @@ export function aiChoose(hand, target, level, ctx = {}) {
   // 队友领出、自己还有牌 → 让队友走
   if (ctx.lastIsTeammate) return []
 
-  beats.sort((a, b) =>
-    ((a.p.bombLevel || 0) - (b.p.bombLevel || 0)) ||
-    (a.p.key - b.p.key) ||
-    (a.cs.length - b.cs.length))
-  return beats[0].cs
+  const safeBeats = beats.filter(isSafe)
+  if (safeBeats.length) {
+    safeBeats.sort((a, b) =>
+      ((a.p.bombLevel || 0) - (b.p.bombLevel || 0)) ||
+      (a.p.key - b.p.key) ||
+      (a.cs.length - b.cs.length))
+    return safeBeats[0].cs
+  }
+  // 没有安全牌可压：对手冲刺（≤2 张）必须封堵；自己残局也能拆
+  const pressure = ctx.pressure ?? 99
+  if (pressure <= 2 || !strict) {
+    beats.sort((a, b) =>
+      ((a.p.bombLevel || 0) - (b.p.bombLevel || 0)) ||
+      (a.p.key - b.p.key) ||
+      (a.cs.length - b.cs.length))
+    return beats[0].cs
+  }
+  return []
 }
 
 /* ---------------- 升级 ---------------- */

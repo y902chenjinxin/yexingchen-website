@@ -637,6 +637,12 @@ function grantCell(p, idx) {
   p.props[idx] = true
 }
 
+/** 同色组是否集齐（v2.46.31：AI 只在集齐组上加盖，与后端同口径） */
+function groupComplete(g, ownerId) {
+  const cells = game.cells.filter((x) => x.type === 'city' && x.group === g)
+  return cells.length > 0 && cells.every((x) => x.owner === ownerId)
+}
+
 /* ---------------- 移动 ---------------- */
 function moveBy(p, steps) {
   const before = p.pos
@@ -792,9 +798,11 @@ async function resolveLanding(p) {
   const c = game.cells[p.pos]
   if (c.type === 'city') {
     if (c.owner == null) {
-      // 无主：AI 自动判断是否购买
+      // 无主：AI 自动判断是否购买（v2.46.31 期望值：凑组关键张/低价组放宽到 1.25 倍现金）
       if (p.isAI) {
-        if (p.cash > c.price * 1.6) {
+        const ownedInGroup = game.cells.filter((x) => x.type === 'city' && x.group === c.group && x.owner === p.id).length
+        const hot = ownedInGroup >= 1 || c.group <= 1     // 已持同组或最低价组
+        if (p.cash > c.price * (hot ? 1.25 : 1.6)) {
           p.cash -= c.price; grantCell(p, c.idx)
           log(`🏙 ${p.name} 买下 ${c.name}（${fmt(c.price)}）`)
           floatAt(c.idx, `-${fmt(c.price)} 购地`, 'buy')
@@ -822,7 +830,7 @@ async function resolveLanding(p) {
       floatAt(c.idx, `-${fmt(rent)} 租`, 'pay')
       sfx.coinPay()
       if (p.cash < 0) pay(p, 0)
-    } else if (p.isAI && c.level < 4 && p.cash > buildCost(c) * 2.2) {
+    } else if (p.isAI && c.level < 4 && p.cash > buildCost(c) * 2.2 && groupComplete(c.group, p.id)) {
       p.cash -= buildCost(c); c.level += 1
       log(`🏠 ${p.name} 把 ${c.name} 升到 Lv${c.level}`)
       floatAt(c.idx, `Lv${c.level} 加盖`, 'buy')

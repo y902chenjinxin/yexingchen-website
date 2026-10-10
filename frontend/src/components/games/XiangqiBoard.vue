@@ -421,7 +421,7 @@ function scheduleAI() {
   thinking.value = true
   clearTimeout(timer)
   timer = setTimeout(() => {
-    const depth = mode.value === 'hard' ? 3 : 1
+    const depth = mode.value === 'hard' ? 5 : 2   // v2.46.31：迭代加深+置换表后 hard 拉到 5 层（1.2s 预算内）
     const m = aiPick(board.value, aiSide.value, depth)
     thinking.value = false
     if (!m) return

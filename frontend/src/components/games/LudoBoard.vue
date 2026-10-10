@@ -271,6 +271,7 @@ const META = {
 }
 const MODES = [
   { key: 'pvp2', label: '双人同屏', colors: ['red', 'yellow'] },
+  { key: 'ai2', label: '人机 · 对机器人', colors: ['red', 'yellow'] },
   { key: 'pvp3', label: '三人同屏', colors: ['red', 'green', 'yellow'] },
   { key: 'pvp4', label: '四人同屏', colors: ['red', 'green', 'yellow', 'blue'] },
   { key: 'online', label: '在线 · 邀请对战', colors: ['red', 'yellow'] },
@@ -532,6 +533,7 @@ function endTurn(from) {
 const canRoll = computed(() => {
   if (over.value || phase.value !== 'roll') return false
   if (mode.value === 'online') return roomActive.value && turnColor.value === myColor.value
+  if (isAiGame.value && turnColor.value === AI_COLOR) return false   // AI 自动掷
   return true
 })
 const rollLabel = computed(() => {
@@ -652,9 +654,62 @@ function baseSlotRC(c, i) {
 function isMovable(c, i) {
   if (over.value || phase.value !== 'move') return false
   if (c !== turnColor.value) return false
+  if (isAiGame.value && c === AI_COLOR) return false               // AI 自动走
   if (mode.value === 'online' && c !== myColor.value) return false
   return legalIdx.value.includes(i)
 }
+
+/* ================= AI（v2.46.31 人机模式） ================= */
+const AI_COLOR = 'yellow'
+const isAiGame = computed(() => mode.value === 'ai2')
+let aiTimer = null
+
+/** AI 选子：resolve 干跑算分（不改局面）。优先级：归航 > 击落 > 起飞 > 事件格/飞跃 >
+ *  落点安全（身后 6 步内无敌机）> 前进进度。 */
+function pickAiMove() {
+  const c = turnColor.value
+  const v = dice.value
+  const moves = legalMoves(c, v)
+  if (!moves.length) return null
+  let best = moves[0], bestSc = -Infinity
+  for (const i of moves) {
+    const ev = resolve(c, i, v)
+    let sc = ev.np === FINISH ? 1000 : 0
+    sc += (ev.cap || []).length * 500
+    if (pieces.value[c][i].prog === -1) sc += 120                 // 起飞
+    if (ev.fly === 'shortcut' || ev.fly === 'color') sc += 80
+    sc += ev.np                                                   // 前进进度
+    // 落点风险：任一对手在落点环位身后 1~6 步 → 可能被吃回来
+    if (ev.np >= 1 && ev.np <= TRACK_MAX) {
+      const ring = ringOf(c, ev.np)
+      for (const oc of activeColors.value) {
+        if (oc === c) continue
+        for (const op of pieces.value[oc]) {
+          if (op.prog < 1 || op.prog > TRACK_MAX) continue
+          const oring = ringOf(oc, op.prog)
+          const d = ((ring - oring) % 52 + 52) % 52
+          if (d >= 1 && d <= 6) sc -= (7 - d) * 10
+        }
+      }
+    }
+    sc += Math.random() * 8
+    if (sc > bestSc) { bestSc = sc; best = i }
+  }
+  return best
+}
+
+watch([turnColor, phase, over, isAiGame], () => {
+  clearTimeout(aiTimer)
+  if (!isAiGame.value || over.value || turnColor.value !== AI_COLOR) return
+  aiTimer = setTimeout(() => {
+    if (over.value || turnColor.value !== AI_COLOR) return
+    if (phase.value === 'roll') { doRoll(); return }
+    if (phase.value === 'move') {
+      const pick = pickAiMove()
+      if (pick != null) doMove(pick)
+    }
+  }, 620)
+}, { flush: 'post' })
 const pieceViews = computed(() => {
   const groups = new Map()
   for (const c of activeColors.value) {
@@ -827,7 +882,7 @@ onMounted(async () => {
   nextTick()
 })
 onBeforeUnmount(() => {
-  clearTimeout(rollTimer); clearTimeout(saveTimer)
+  clearTimeout(rollTimer); clearTimeout(saveTimer); clearTimeout(aiTimer)
   gRoom.leaveOnUnload()
   gRoom.stopPoll()
 })
