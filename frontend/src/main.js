@@ -36,6 +36,8 @@ import './assets/styles/mobile-deink.css'
 import './assets/styles/mobile-native-glass.css'
 // 手机端产品化收敛层：统一页面基线，覆盖历史模块主题，不影响桌面端
 import './assets/styles/mobile-product.css'
+// 手机端「宣纸手账」质感层（v2.46.32）：粗墨描边+硬偏移阴影+衬线大数字，新粗野主义骨架×新中式皮肤
+import './assets/styles/mobile-paper.css'
 // 桌面端主题 token：先于骨架层引入，保证变量定义在骨架层引用之前生效
 import './assets/styles/desktop-theme-night.css'
 import './assets/styles/desktop-theme-day.css'

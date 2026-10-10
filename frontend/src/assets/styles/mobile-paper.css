@@ -1,0 +1,227 @@
+/*
+ * 玄黄移动端「宣纸手账」质感层（v2.46.32 · PROPOSAL-mobile-ui.md P0~P3）
+ * ---------------------------------------------------------------------
+ * 夜星拍板一步到位：骨架 = Neo-Brutalism（粗墨描边 + 硬偏移阴影 + 编号胶囊），
+ * 皮肤 = 新中式低饱和（宣纸底 / 黛青 / 赭石 / 鎏金），「新粗野主义的骨 × 新中式的皮」。
+ * 仅作用 #app.is-mobile，桌面端零影响。放在 mobile-product.css 之后加载（同特异性靠顺序取胜）。
+ *
+ * 克制条款（docs/PROPOSAL-mobile-ui.md §四）：
+ *   1) 硬阴影只给主卡片与主按钮，流水行/内层条目走缝线虚线；
+ *   2) 大色块每屏 ≤2 块（记账首 KPI = 黛青块，其余白卡）；
+ *   3) 衬线只用于数字与页头标题，正文一律黑体；
+ *   4) reduced-motion 由 mobile-product.css 统一降级。
+ */
+
+/* ================= 令牌 · 夜（墨夜手账，缺省） ================= */
+#app.is-mobile {
+  --xz-ink: #ede7d8;              /* 「墨」在夜色下翻转为浅霜 */
+  --xz-paper: #211f1b;            /* 墨夜底 */
+  --xz-card: #2a2823;             /* 卡片 */
+  --xz-card-2: #322f29;           /* 卡片次级 */
+  --xz-card-border: rgba(237, 231, 216, .30);
+  --xz-card-shadow: 3px 3px 0 rgba(0, 0, 0, .45);
+  --xz-card-shadow-press: 1px 1px 0 rgba(0, 0, 0, .45);
+  --xz-head-line: rgba(237, 231, 216, .38);
+  --xz-teal: #3a4e4a;             /* 黛青（夜·降亮度） */
+  --xz-teal-ink: #e8e2d0;
+  --xz-ochre: #c98a63;
+  --xz-gold: #c9a45c;
+  --xz-btn-bg: var(--xz-gold);
+  --xz-btn-fg: #262521;
+  --xz-grain: none;
+}
+
+/* ================= 令牌 · 日（宣纸手账，招牌形态） ================= */
+html[data-theme="day"] #app.is-mobile {
+  --xz-ink: #2b2b26;
+  --xz-paper: #f7f3ea;
+  --xz-card: #fffdf8;
+  --xz-card-2: #f3ede0;
+  --xz-card-border: #2b2b26;
+  --xz-card-shadow: 4px 4px 0 rgba(43, 43, 38, .90);
+  --xz-card-shadow-press: 2px 2px 0 rgba(43, 43, 38, .90);
+  --xz-head-line: rgba(43, 43, 38, .72);
+  --xz-teal: #3d5a5c;
+  --xz-teal-ink: #f1e7d2;
+  --xz-ochre: #b0684a;
+  --xz-gold: #c9a45c;
+  --xz-btn-bg: #2b2b26;           /* 日间主按钮 = 墨底宣纸字（参考图黑胶囊） */
+  --xz-btn-fg: #f7f3ea;
+  --xz-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.16 0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23p)'/%3E%3C/svg%3E");
+}
+
+/* ================= --m-* 重映射（全站表面自动跟随） ================= */
+#app.is-mobile {
+  --m-bg: #211f1b;
+  --m-bg-elevated: #2a2823;
+  --m-surface: #2a2823;
+  --m-surface-2: #322f29;
+  --m-line: rgba(237, 231, 216, .12);
+  --m-line-strong: rgba(237, 231, 216, .26);
+  --m-text: #ede7d8;
+  --m-text-2: #a89f8c;
+  --m-text-3: #7a7263;
+  --m-accent: #c9a45c;
+  --m-accent-strong: #b8934c;
+  --m-positive: #7fb89a;
+  --m-negative: #d98a76;
+  --m-warning: #c9a45c;
+  --m-radius: 16px;
+  --m-radius-sm: 12px;
+  --m-shadow: none;
+}
+html[data-theme="day"] #app.is-mobile {
+  --m-bg: #f7f3ea;
+  --m-bg-elevated: #f1ece0;
+  --m-surface: #fffdf8;
+  --m-surface-2: #f3ede0;
+  --m-line: rgba(43, 43, 38, .14);
+  --m-line-strong: rgba(43, 43, 38, .30);
+  --m-text: #2b2b26;
+  --m-text-2: #6b6a5e;
+  --m-text-3: #98917f;
+  --m-accent: #2b2b26;
+  --m-accent-strong: #1c1c18;
+  --m-positive: #2f7d5f;
+  --m-negative: #c14b3a;
+  --m-warning: #a9804f;
+  --m-shadow: none;
+}
+
+/* ================= 页面底：宣纸色 + 纸纹 ================= */
+#app.is-mobile :is(.fin-page, .st-page, .tv-page, .ct-page, .notes-page, .profile-page, .assistant-page, .abb, .cd-page,
+  .tk-page, .sb-page, .li-page, .va-page, .wd-page, .sd-page, .dh-page, .trash-page, .fd-page, .qk-page) {
+  background-color: var(--m-bg) !important;
+  background-image: var(--xz-grain) !important;
+}
+
+/* ================= 主卡片：粗描边 + 硬偏移阴影（贴纸） ================= */
+#app.is-mobile :is(.glass, .glass-card, .fin-kpi, .fin-chart, .fin-ledger, .st-kpi-card, .st-form, .st-list, .tv-kpi-card, .tv-map, .tv-slide, .ct-card, .ct-cal-card, .notes-item, .info-card, .cd-card,
+  .wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .life-members, .ht-card, .qk-card, .dh-card,
+  .fin-pool, .fin-pcard, .fin-panel, .fin-ptxns, .fin-todo, .fin-batch, .abb-hero, .abb-cell, .abb-stat, .assistant-main) {
+  background: var(--xz-card) !important;
+  border: 2px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+
+/* 按压位移：贴纸按下（仅可点的主卡片） */
+#app.is-mobile :is(.abb-cell, .glass-card, .cd-card, .li-card, .life-col, .qk-card, .dh-card, .fin-pool, .ht-card):active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--xz-card-shadow-press) !important;
+}
+
+/* 静态内层卡：只留描边不背阴影（流水看板/个人卡展开区等次级容器） */
+#app.is-mobile :is(.fin-pool-hero, .fin-pcard, .fin-chart, .fin-ledger, .fin-ptxns, .st-form, .st-list, .tv-slide, .abb-stat, .fin-batch, .fin-todo) {
+  box-shadow: none !important;
+  border-width: 1.5px !important;
+}
+
+/* ================= 衬线大数字（编辑杂志风签名） ================= */
+#app.is-mobile :is(.fin-kpi-val, .fin-pool-val, .fin-pcard-val, .abb-hero__num, .abb-stat strong, .st-kpi-v, .tv-kpi-v) {
+  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
+  font-weight: 600 !important;
+  letter-spacing: -.01em !important;
+}
+/* 页头标题：衬线（杂志刊头） */
+#app.is-mobile :is(.fin-title, .st-title, .tv-title, .ct-title, .tk-title, .sb-title, .li-title, .va-title, .wd-title, .sd-title, .dh-title, .fd-title, .qk-title, .trash-title, .abb-title) {
+  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
+  font-weight: 600 !important;
+  letter-spacing: .01em !important;
+}
+
+/* ================= 页头：刊头式分隔（粗墨线） ================= */
+#app.is-mobile :is(.fin-head, .st-head, .tv-head, .ct-head) {
+  border-bottom: 1.5px solid var(--xz-head-line) !important;
+}
+
+/* ================= 主按钮：墨底宣纸字（日）/ 鎏金（夜） ================= */
+#app.is-mobile :is(.fin-btn.primary, .st-btn.primary, .tv-btn.primary, .ct-btn.primary, .abb-ai, .el-button--primary) {
+  background: var(--xz-btn-bg) !important;
+  color: var(--xz-btn-fg) !important;
+  border: 2px solid transparent !important;
+  border-radius: var(--m-radius-sm) !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+#app.is-mobile :is(.fin-btn.primary, .st-btn.primary, .tv-btn.primary, .ct-btn.primary, .abb-ai, .el-button--primary):active {
+  transform: translate(1px, 1px);
+}
+#app.is-mobile :is(.fin-btn, .st-btn, .tv-btn, .ct-btn):active { transform: translateY(1px); }
+
+/* ================= chip / 快捷标签：手账胶囊 ================= */
+#app.is-mobile :is(.fin-quick-tag, .fin-fund, .fin-fund-badge) {
+  border: 1.5px solid var(--m-line-strong) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--m-text-2) !important;
+}
+#app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
+  background: var(--xz-btn-bg) !important;
+  color: var(--xz-btn-fg) !important;
+  border-color: var(--xz-btn-bg) !important;
+}
+
+/* ================= 缝线虚线（手账装订感） ================= */
+#app.is-mobile :is(.fin-row, .music-item) {
+  border-bottom: 1px dashed var(--m-line-strong) !important;
+}
+
+/* ================= 首屏 KPI = 黛青大色块（每屏唯一） ================= */
+#app.is-mobile :is(.fin-kpi-mobile:first-child, .fin-kpi:first-child) {
+  background: var(--xz-teal) !important;
+  border-color: var(--xz-card-border) !important;
+  color: var(--xz-teal-ink) !important;
+}
+#app.is-mobile :is(.fin-kpi-mobile:first-child, .fin-kpi:first-child) :is(.fin-kpi-label, .fin-kpi-val) {
+  color: var(--xz-teal-ink) !important;
+}
+#app.is-mobile :is(.fin-kpi-mobile:first-child, .fin-kpi:first-child) .fin-kpi-sub {
+  color: rgba(241, 231, 210, .72) !important;
+}
+
+/* ================= 底部 TabBar：宣纸栏 + 墨顶线 ================= */
+#app.is-mobile .mt-tabbar {
+  background: rgba(33, 31, 27, .97) !important;
+  border-top: 2px solid rgba(237, 231, 216, .28) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-theme="day"] #app.is-mobile .mt-tabbar {
+  background: rgba(255, 253, 248, .97) !important;
+  border-top: 2px solid #2b2b26 !important;
+}
+#app.is-mobile .mt-tab.active { color: var(--xz-ochre) !important; }
+html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important; }
+
+/* ================= EP 弹窗 / 控件跟随 ================= */
+#app.is-mobile :is(.el-dialog, .el-popover, .el-select__popper) {
+  background: var(--xz-card) !important;
+  border: 2px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+}
+#app.is-mobile :is(.el-input__wrapper, .el-textarea__inner) {
+  background: var(--xz-card-2) !important;
+  box-shadow: 0 0 0 1.5px var(--m-line-strong) inset !important;
+}
+#app.is-mobile :is(.el-button:not(.el-button--primary)) {
+  border: 1.5px solid var(--m-line-strong) !important;
+  border-radius: var(--m-radius-sm) !important;
+  background: transparent !important;
+  color: var(--m-text) !important;
+}
+
+/* 工作台首页 hero：手账主角卡 */
+#app.is-mobile .abb-hero { border-width: 2px !important; }
+#app.is-mobile .abb-logo { background: var(--xz-ochre) !important; }
+
+/* 生活/时光痕迹页网格单列卡片继承贴纸（上面主卡片组已覆盖），此处补空态缝线 */
+#app.is-mobile :is(.ct-empty, .notes-empty, .cd-empty, .tv-empty, .fin-chart-empty, .fin-list-empty) {
+  border: 1.5px dashed var(--m-line-strong) !important;
+  background: transparent !important;
+}
