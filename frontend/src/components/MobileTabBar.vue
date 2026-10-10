@@ -17,6 +17,7 @@
 
 <script setup>
 import { useRoute, useRouter } from 'vue-router'
+import { haptic } from '@/utils/haptic'
 
 const route = useRoute()
 const router = useRouter()
@@ -48,7 +49,7 @@ const tabs = [
 const isActive = (t) => t.active(route.path)
 
 function buzz() {
-  try { if (navigator && navigator.vibrate) navigator.vibrate(8) } catch { /* noop */ }
+  haptic.light()          // 分级触觉收编（#13）：Tab 切换 = light 8ms
 }
 
 function go(t) {

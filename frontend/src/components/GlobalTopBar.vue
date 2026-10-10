@@ -7,7 +7,7 @@
 
        这样顶栏视觉更干净，常驻操作只剩「看一眼提醒」+「点自己的名字」。
        —— 玄黄品牌 + 全局搜索仍位于左侧侧栏顶部，与「智能」分组共存；无重复入口 -->
-  <div class="lj-topbar" ref="topbarRef">
+  <div class="lj-topbar" ref="topbarRef" :class="{ 'xz-hidden': topbarHidden }">
     <div class="tb-right">
       <!-- 倒计时徽章：最近一条未过期倒计时，hover/点击展开面板
            语义属「提醒」类（与下方提醒中心同源），保留不占视觉权重 -->
@@ -99,7 +99,7 @@
                 <router-link to="/tasks" class="tb-alert-link" @click.stop>查看全部 →</router-link>
               </div>
               <div v-if="!taskItems.length" class="tb-alert-empty">
-                暂无待办。
+                <EmptyState title="暂无待办" sub="工作台的待办会出现在这里" />
               </div>
               <div
                 v-for="t in taskItems.slice(0, 5)"
@@ -133,7 +133,7 @@
                 <router-link to="/tool/countdown" class="tb-alert-link" @click.stop>查看全部 →</router-link>
               </div>
               <div v-if="!upcoming.length" class="tb-alert-empty">
-                暂无即将到来的事件。
+                <EmptyState title="暂无即将到来的事件" sub="时光痕迹里的倒计时会出现在这里" />
               </div>
               <div
                 v-for="cd in upcoming"
@@ -163,7 +163,7 @@
                 <button v-if="alertUnread > 0" class="tb-alert-clear" @click="markAllRead">全部已读</button>
               </div>
               <div v-if="!alertItems.length" class="tb-alert-empty">
-                暂无预警。在「行情」→ 点自选股的「✎」即可设置目标价。
+                <EmptyState title="暂无预警" sub="在「行情」→ 点自选股的「✎」即可设置目标价" />
               </div>
               <div
                 v-for="a in alertItems"
@@ -243,6 +243,20 @@ import { listHomeCountdowns } from '@/api/countdown'
 import { stocksApi } from '@/api/stocks'
 import { workbenchApi } from '@/api/workbench'
 import { useGameInvites, agoLabel } from '@/composables/useGameInvites'
+import EmptyState from '@/components/common/EmptyState.vue'
+
+/* ---- 顶栏滚动收起（#9 · 移动端）：下滑隐藏、上滑浮现 ----
+   桌面右上角悬浮按钮组无碍；移动端长列表阅读时挡内容，收起让位。
+   阈值：滚动超 80px 才参与，位移差 >6px 判定方向。 */
+const topbarHidden = ref(false)
+let lastScrollY = 0
+function onTopbarScroll() {
+  const y = window.scrollY || 0
+  if (y < 80) { topbarHidden.value = false; lastScrollY = y; return }
+  if (y - lastScrollY > 6) topbarHidden.value = true
+  else if (lastScrollY - y > 6) topbarHidden.value = false
+  lastScrollY = y
+}
 
 /* ---- 倒计时徽章（#3）：最近一条未过期的 count_down 倒计时 + 展开面板 ---- */
 const cdList = ref([])
@@ -385,7 +399,7 @@ function stopAlertPolling() {
   if (alertTimer) { clearInterval(alertTimer); alertTimer = null }
 }
 
-async function loadTasks(showNotifications = false) {
+async function loadTasks() {
   try {
     const res = await workbenchApi.tasks.list({ size: 200 })
     const all = res?.data?.list || []
@@ -442,7 +456,7 @@ function onAlertPanelToggle(open) {
   }
 }
 /* 账号下拉开关不做事（命令由 li 自带 click 处理），保留占位避免后续忘记 */
-function onUserPanelToggle(_open) { /* 暂无需刷新的数据 */ }
+function onUserPanelToggle() { /* 暂无需刷新的数据 */ }
 async function markAllRead() {
   try {
     await stocksApi.markAllAlertsRead()
@@ -487,6 +501,7 @@ function onCommand(cmd) {
 
 onMounted(async () => {
   await bgm.initBgm()
+  window.addEventListener('scroll', onTopbarScroll, { passive: true })
   loadCountdowns()
   await loadAlerts(false)
   for (const it of alertItems.value) {
@@ -501,6 +516,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopAlertPolling()
+  window.removeEventListener('scroll', onTopbarScroll)
 })
 </script>
 
@@ -601,7 +617,7 @@ onUnmounted(() => {
 }
 .tb-alert-clear:hover { color: var(--lj-seal); border-color: var(--lj-seal); }
 .tb-alert-empty {
-  padding: 18px 4px;
+  padding: 0 4px;
   text-align: center; font-size: 12px;
   color: var(--lj-text-3); line-height: 1.7;
 }

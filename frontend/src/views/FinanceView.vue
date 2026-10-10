@@ -86,7 +86,7 @@
         <section v-if="importing.analyzing || importing.rows.length || importing.skipped || importing.errors.length" class="fin-import-panel glass">
           <div class="fin-import-panel-head">
             <span class="fin-import-panel-title">🤖 智能导入预览</span>
-            <span v-if="importing.analyzing" class="fin-import-loading">AI 正在识别并精简数据…</span>
+            <span v-if="importing.analyzing" class="fin-import-loading">AI 正在识别并精简数据…<em class="fin-import-eta">已用 {{ importElapsed }}s · 预计 ~6s</em></span>
             <span v-else class="fin-import-done">识别完成</span>
             <button class="fin-form-close" @click="cancelImport">✕</button>
           </div>
@@ -133,7 +133,7 @@
 
       <!-- 记一笔（内联面板，非弹窗） -->
       <transition name="fd">
-        <section v-if="form.show" class="fin-form glass">
+        <section v-if="form.show" class="fin-form glass" :class="{ 'xz-shake': formShake }">
           <div class="fin-form-head">
             <span class="fin-form-title">{{ form.editing ? '编辑流水' : '记一笔' }}</span>
             <span v-if="form.editing" class="fin-form-edit-tag">正在编辑 #{{ form.editingId }}</span>
@@ -173,6 +173,11 @@
                   :clearable="false"
                   class="fin-date"
                 />
+              </div>
+              <!-- 笔数步进器（#6）：同一笔账连续发生 N 次（打车/咖啡），一次记入 -->
+              <div v-if="!form.editing" class="fin-f-field">
+                <label class="fin-f-label">笔数</label>
+                <Stepper v-model="form.count" :max="9" label="相同流水笔数" />
               </div>
             </div>
 
@@ -264,14 +269,22 @@
 
             <div class="fin-form-actions">
               <button v-if="form.editing" class="fin-btn ghost" @click="form.show = false">取消</button>
-              <button class="fin-btn primary" :disabled="saving" @click="save">{{ form.editing ? '保存修改' : '记入账本' }}</button>
+              <!-- 提交按钮状态机（#3）：同位 空闲→加载→✔/失败，不换组件 -->
+              <StateButton
+                class="fin-btn primary"
+                :action="save"
+                :label="form.editing ? '保存修改' : '记入账本'"
+                loading-label="保存中…"
+                done-label="已入账"
+                error-label="未成功，重试"
+              />
             </div>
           </div>
         </section>
       </transition>
 
       <!-- 资金池卡片（公私账核心视觉锚点）：点击切到对应 Tab -->
-      <section class="fin-pools" aria-label="资金池">
+      <section class="fin-pools m-stagger" aria-label="资金池">
         <button
           v-for="p in poolCards"
           :key="p.fund"
@@ -298,8 +311,9 @@
         <button class="fin-btn ghost small" @click="showUnclassified">去归类</button>
       </div>
 
-      <!-- 分栏 Tab -->
-      <div class="fin-tabs" role="tablist">
+      <!-- 分栏 Tab：滑动指示条带弹簧超调（#5），切换轻触觉（#13） -->
+      <div class="fin-tabs" role="tablist" :style="{ '--xz-tabs-n': tabs.length, '--xz-tabs-i': activeTabIndex }">
+        <span class="fin-tab-ind" aria-hidden="true"></span>
         <button
           v-for="t in tabs"
           :key="t.key"
@@ -307,7 +321,7 @@
           :class="{ on: activeTab === t.key }"
           role="tab"
           :aria-selected="activeTab === t.key"
-          @click="activeTab = t.key"
+          @click="switchTab(t.key)"
         >{{ t.label }}</button>
       </div>
 
@@ -318,23 +332,23 @@
            净流入本质是「收入 − 支出」，与已有的收入、支出两张卡重复，故一并去掉。 -->
       <!-- ===== 总览 Tab ===== -->
       <template v-if="activeTab === 'overview'">
-      <section class="fin-kpis" aria-label="账本数据概览">
+      <section class="fin-kpis m-stagger" aria-label="账本数据概览">
         <div class="fin-kpi glass">
           <span class="fin-kpi-label">{{ unitLabel }}收入</span>
-          <span class="fin-kpi-val income">+ ¥ {{ money(summary.income) }}</span>
+          <span class="fin-kpi-val income">+ ¥ {{ animIncome.toFixed(2) }}</span>
         </div>
         <div class="fin-kpi glass">
           <span class="fin-kpi-label">{{ unitLabel }}支出</span>
-          <span class="fin-kpi-val expense">− ¥ {{ money(summary.expense) }}</span>
+          <span class="fin-kpi-val expense">− ¥ {{ animExpense.toFixed(2) }}</span>
         </div>
         <div class="fin-kpi glass">
           <span class="fin-kpi-label">{{ unitLabel }}笔数</span>
-          <span class="fin-kpi-val">{{ summary.count }}</span>
+          <span class="fin-kpi-val">{{ animCount }}</span>
           <span class="fin-kpi-sub">笔流水</span>
         </div>
         <div class="fin-kpi glass">
           <span class="fin-kpi-label">累计结余</span>
-          <span class="fin-kpi-val" :class="summary.balance >= 0 ? 'income' : 'expense'">{{ summary.balance >= 0 ? '+' : '−' }} ¥ {{ money(Math.abs(summary.balance)) }}</span>
+          <span class="fin-kpi-val" :class="summary.balance >= 0 ? 'income' : 'expense'">{{ summary.balance >= 0 ? '+' : '−' }} ¥ {{ animBalance.toFixed(2) }}</span>
         </div>
       </section>
 
@@ -403,7 +417,7 @@
             </tbody>
           </table>
         </div>
-        <div v-else class="fin-members-empty">{{ unitLabel }}暂无流水</div>
+        <EmptyState v-else title="本期暂无流水" sub="记一笔，从今天开始攒账" />
       </section>
 
       <!-- 图表区 -->
@@ -421,7 +435,7 @@
               </li>
             </ul>
           </div>
-          <div v-else class="fin-chart-empty">{{ unitLabel }}暂无支出，去「记一笔」吧</div>
+          <EmptyState v-else title="本期暂无支出" sub="去「记一笔」记下第一笔花销吧" />
         </div>
 
         <div class="fin-chart glass">
@@ -429,7 +443,7 @@
           <div v-if="dim !== 'day' && summary.trends.length" class="fin-chart-body">
             <TrendChart :days="summary.trends" :has-any="hasAnyTrend" />
           </div>
-          <div v-else class="fin-chart-empty">{{ dim === 'day' ? '单日无跨期趋势，切换「月/年」查看' : '暂无数据' }}</div>
+          <EmptyState v-else :title="dim === 'day' ? '单日无跨期趋势' : '暂无数据'" :sub="dim === 'day' ? '切换「月 / 年」查看收支走势' : ''" />
         </div>
       </section>
       </template>
@@ -455,7 +469,7 @@
           <div class="fin-chart glass">
             <h2 class="fin-chart-title">各人各月转入</h2>
             <FundMatrix v-if="matrixRows.length" :rows="matrixRows" :members="matrixMembers" />
-            <div v-else class="fin-chart-empty">还没有转入记录</div>
+            <EmptyState v-else title="还没有转入记录" sub="在记一笔里选「调拨」即可跨池转账" />
           </div>
 
           <div class="fin-chart glass">
@@ -481,7 +495,7 @@
                 </div>
               </div>
             </div>
-            <div v-else class="fin-chart-empty">该池还没有流水</div>
+            <EmptyState v-else title="该池还没有流水" sub="记一笔时选择这个资金池即可" />
           </div>
         </section>
       </template>
@@ -510,7 +524,7 @@
               <span class="fin-pcard-sub">累计转入 ¥ {{ money(p.inflow) }} · 已花 ¥ {{ money(p.outflow) }}</span>
               <span class="fin-pcard-toggle">{{ isPcardOpen(p) ? '收起流水' : '看流水 ›' }}</span>
             </div>
-            <div v-if="!(funds.personal_by_member || []).length" class="fin-chart-empty">还没有个人零花记录</div>
+            <EmptyState v-if="!(funds.personal_by_member || []).length" title="还没有个人零花记录" sub="个人零花的进出都会汇总在这里" />
           </div>
 
           <!-- 展开的成员流水（就在卡片区下方，口径 = 这个人的个人零花进出） -->
@@ -522,7 +536,7 @@
             </header>
 
             <div v-if="pcardLoading" class="fin-chart-empty">加载中…</div>
-            <div v-else-if="!pcardTxns.length" class="fin-chart-empty">这个人还没有个人零花流水</div>
+            <EmptyState v-else-if="!pcardTxns.length" title="这个人还没有个人零花流水" sub="换位家人看看，或先记一笔" />
             <template v-else>
               <div class="fin-list">
                 <div v-for="row in pcardTxns" :key="row.id" class="fin-row">
@@ -580,7 +594,7 @@
           <div class="fin-chart glass">
             <h2 class="fin-chart-title">各人各月转入</h2>
             <FundMatrix v-if="matrixRows.length" :rows="matrixRows" :members="matrixMembers" />
-            <div v-else class="fin-chart-empty">还没有转入记录</div>
+            <EmptyState v-else title="还没有转入记录" sub="在记一笔里选「调拨」即可跨池转账" />
           </div>
         </section>
       </template>
@@ -624,38 +638,16 @@
         </div>
 
         <div class="fin-list">
-          <div v-if="!list.length" class="fin-list-empty">还没有符合条件的流水</div>
-          <div v-else>
+          <div v-if="!list.length" class="fin-list-empty">
+            <EmptyState title="还没有符合条件的流水" sub="换个筛选条件，或现在记第一笔">
+              <button class="fin-btn primary small" @click="openNew">＋ 记一笔</button>
+            </EmptyState>
+          </div>
+          <!-- FLIP（#8）：删除/筛选/翻页时剩余行平滑补位 -->
+          <TransitionGroup v-else name="fin-list" tag="div">
             <div v-for="row in list" :key="row.id" class="fin-row" :class="{ editing: form.editing && form.editingId === row.id }">
-              <label class="fin-row-check">
-                <input type="checkbox" :checked="checkedIds.includes(row.id)" @change="toggleCheck(row.id)" />
-              </label>
-              <div class="fin-row-icon">{{ row.category_icon }}</div>
-              <div class="fin-row-main">
-                <div class="fin-row-top">
-                  <span class="fin-row-cat">{{ row.category }}</span>
-                  <!-- 资金池徽标：点击直接进编辑表单改归属（不新增弹窗） -->
-                  <button
-                    class="fin-fund-badge"
-                    :class="[row.fund, { todo: row.fund === 'none' && row.type !== 'transfer' }]"
-                    :title="row.type === 'transfer' ? '点击编辑' : '点击修改归属'"
-                    @click="openEdit(row)"
-                  >
-                    <template v-if="row.type === 'transfer'">{{ row.fund_label }} → {{ row.fund_to_label }}</template>
-                    <template v-else>{{ row.fund === 'none' ? '未归类' : row.fund_label }}</template>
-                  </button>
-                  <span class="fin-row-note">{{ row.note }}</span>
-                </div>
-                <div class="fin-row-date">
-                  <span v-if="row.member" class="fin-row-member">{{ row.member.avatar }} {{ row.member.name }}</span>
-                  {{ fmtDay(row.occurred_at) }}
-                </div>
-              </div>
-              <div class="fin-row-amt" :class="row.type">
-                {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
-              </div>
-              <div class="fin-row-ops">
-                <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+              <!-- 滑动删除（#14/17）：跟手位移 + 松手弹簧回弹，露出删除 -->
+              <div class="fin-row-swipe" :class="{ on: (swipe[row.id] || 0) < 0 }">
                 <el-popconfirm
                   title="确认删除这条流水？"
                   confirm-button-text="删除"
@@ -664,11 +656,75 @@
                   @confirm="del(row)"
                 >
                   <template #reference>
-                    <button class="fin-op danger" title="删除">🗑</button>
+                    <button>删除</button>
                   </template>
                 </el-popconfirm>
               </div>
+              <div
+                class="fin-row-body"
+                :class="{ dragging: swipeDragging === row.id }"
+                :style="{ transform: `translateX(${swipe[row.id] || 0}px)` }"
+                @touchstart.passive="swipeStart($event, row.id)"
+                @touchmove="swipeMove($event, row.id)"
+                @touchend="swipeEnd(row.id)"
+                @touchcancel="swipeEnd(row.id)"
+              >
+                <label class="fin-row-check">
+                  <input type="checkbox" :checked="checkedIds.includes(row.id)" @change="toggleCheck(row.id)" />
+                </label>
+                <div class="fin-row-icon">{{ row.category_icon }}</div>
+                <div class="fin-row-main" @click="toggleExpand(row.id)">
+                  <div class="fin-row-top">
+                    <span class="fin-row-cat">{{ row.category }}</span>
+                    <!-- 资金池徽标：点击直接进编辑表单改归属（不新增弹窗） -->
+                    <button
+                      class="fin-fund-badge"
+                      :class="[row.fund, { todo: row.fund === 'none' && row.type !== 'transfer' }]"
+                      :title="row.type === 'transfer' ? '点击编辑' : '点击修改归属'"
+                      @click.stop="openEdit(row)"
+                    >
+                      <template v-if="row.type === 'transfer'">{{ row.fund_label }} → {{ row.fund_to_label }}</template>
+                      <template v-else>{{ row.fund === 'none' ? '未归类' : row.fund_label }}</template>
+                    </button>
+                    <span class="fin-row-note">{{ row.note }}</span>
+                  </div>
+                  <div class="fin-row-date">
+                    <span v-if="row.member" class="fin-row-member">{{ row.member.avatar }} {{ row.member.name }}</span>
+                    {{ fmtDay(row.occurred_at) }}
+                  </div>
+                </div>
+                <div class="fin-row-amt" :class="row.type">
+                  {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
+                </div>
+                <div class="fin-row-ops">
+                  <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                  <el-popconfirm
+                    title="确认删除这条流水？"
+                    confirm-button-text="删除"
+                    cancel-button-text="取消"
+                    width="220"
+                    @confirm="del(row)"
+                  >
+                    <template #reference>
+                      <button class="fin-op danger" title="删除">🗑</button>
+                    </template>
+                  </el-popconfirm>
+                </div>
+                <!-- 就地展开（#7）：点行主体平滑展开完整明细 -->
+                <div class="fin-row-x" :class="{ open: expandedId === row.id }">
+                  <div>
+                    <div class="fin-row-x-inner">
+                      <span>分类 <b>{{ row.category_icon }} {{ row.category }}</b> · 类型 <b>{{ typeLabel(row.type) }}</b></span>
+                      <span>归属 <b>{{ row.type === 'transfer' ? `${row.fund_label} → ${row.fund_to_label}` : (row.fund === 'none' ? '未归类' : row.fund_label) }}</b></span>
+                      <span v-if="row.member">经办 <b>{{ row.member.avatar }} {{ row.member.name }}</b></span>
+                      <span v-if="row.note" class="fin-row-x-note">备注 <b>{{ row.note }}</b></span>
+                      <span>发生时间 <b>{{ fmtDay(row.occurred_at) }}</b> · 流水号 <b>#{{ row.id }}</b></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+          </TransitionGroup>
 
             <div class="fin-pager">
               <span class="fin-pager-info">共 {{ total }} 笔</span>
@@ -682,9 +738,15 @@
                 @current-change="onPage"
               />
             </div>
-          </div>
         </div>
       </section>
+    </div>
+
+    <!-- FAB 原位展开（#2）：移动端常驻记一笔，展开快选收支类型 -->
+    <div v-if="isMobileLayout" class="xz-fab" :class="{ open: fabOpen }">
+      <button class="xz-fab-main" :class="{ open: fabOpen }" aria-label="记一笔" @click.stop="toggleFab">＋</button>
+      <button class="xz-fab-act" aria-label="记一笔支出" @click.stop="quickNew('expense')">支</button>
+      <button class="xz-fab-act" aria-label="记一笔收入" @click.stop="quickNew('income')">收</button>
     </div>
 
     <!-- ============ 分类管理弹窗 ============ -->
@@ -792,6 +854,12 @@ import VoiceInputButton from '@/components/VoiceInputButton.vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
 import TrendChart from '@/components/finance/TrendChart.vue'
 import FundMatrix from '@/components/finance/FundMatrix.vue'
+import StateButton from '@/components/common/StateButton.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import Stepper from '@/components/common/Stepper.vue'
+import { countUp } from '@/utils/games/countUp'
+import { haptic } from '@/utils/haptic'
+import { useIsMobile } from '@/composables/useIsMobile'
 import { financeApi, exportFinanceCsv } from '@/api/finance'
 import { listMembers } from '@/api/life'
 import { useAuthStore } from '@/stores/auth'
@@ -928,6 +996,84 @@ const page = ref(1)
 const pageSize = 20
 const saving = ref(false)
 
+/* ---- 交互升级（v2.46.33 · APP_design.md 对齐） ---- */
+const { isMobile } = useIsMobile()
+const isMobileLayout = isMobile
+// 数字滚动（#26）：四张 KPI 卡
+const animIncome = countUp(() => summary.value.income || 0, 620, 2)
+const animExpense = countUp(() => summary.value.expense || 0, 620, 2)
+const animCount = countUp(() => summary.value.count || 0, 520)
+const animBalance = countUp(() => Math.abs(summary.value.balance) || 0, 620, 2)
+// Tab 指示条（#5）+ 切换触觉（#13）
+const activeTabIndex = computed(() => Math.max(0, tabs.findIndex((t) => t.key === activeTab.value)))
+function switchTab(key) {
+  if (activeTab.value === key) return
+  activeTab.value = key
+  haptic.light()
+}
+// 就地展开（#7）
+const expandedId = ref(null)
+function toggleExpand(id) {
+  expandedId.value = expandedId.value === id ? null : id
+}
+// 行内校验 shake（#25）+ FAB（#2）
+const formShake = ref(false)
+const fabOpen = ref(false)
+function toggleFab() {
+  fabOpen.value = !fabOpen.value
+  haptic.light()
+}
+function quickNew(type) {
+  fabOpen.value = false
+  openNew()
+  pickType(type)
+}
+function typeLabel(t) {
+  return t === 'income' ? '收入' : t === 'transfer' ? '调拨' : '支出'
+}
+// 跟手滑动删除（#14/17）：touch 跟手位移，松手按阈值开/合，位移量有界
+const swipe = ref({})
+const swipeDragging = ref(null)
+let swipeStartX = 0
+let swipeStartY = 0
+let swipeLastX = 0
+let swipeLocked = null   // 'h' | 'v' | null：首次判定主轴后锁定，避免纵向滚动被劫持
+const SWIPE_MAX = -76
+function swipeStart(e, id) {
+  if (e.touches?.length !== 1) return
+  swipeStartX = swipeLastX = e.touches[0].clientX
+  swipeStartY = e.touches[0].clientY
+  swipeLocked = null
+  swipeDragging.value = id
+}
+function swipeMove(e, id) {
+  if (swipeDragging.value !== id) return
+  const curX = e.touches[0].clientX
+  const curY = e.touches[0].clientY
+  const dx = curX - swipeLastX
+  swipeLastX = curX
+  const ax = Math.abs(curX - swipeStartX)
+  const ay = Math.abs(curY - swipeStartY)
+  if (swipeLocked === null) {
+    if (ax < 8 && ay < 8) return
+    swipeLocked = ax > ay ? 'h' : 'v'
+  }
+  if (swipeLocked !== 'h') return
+  e.preventDefault()      // 横向滑动接管，阻止页面横向回弹
+  const prev = swipe.value[id] || 0
+  const next = Math.max(SWIPE_MAX, Math.min(0, prev + dx))
+  swipe.value = { ...swipe.value, [id]: next }
+}
+function swipeEnd(id) {
+  if (swipeDragging.value !== id) return
+  swipeDragging.value = null
+  swipeLocked = null
+  const cur = swipe.value[id] || 0
+  const open = cur < SWIPE_MAX / 2 ? SWIPE_MAX : 0
+  swipe.value = { ...swipe.value, [id]: open }
+  if (open !== 0) haptic.light()
+}
+
 const filters = reactive({ type: '', q: '', fund: '' })
 // 「去归类」进来的只看未归类流水；后端按起算日过滤，历史数据不算「待归类」
 const unclassifiedOnly = ref(false)
@@ -1005,6 +1151,8 @@ const form = reactive({
   date: fmtDate(now),
   category: '餐饮',
   note: '',
+  // 笔数步进器（#6）：同一笔账连记 N 次（新记时可用）
+  count: 1,
   // v2.42 公私账：资金池归属
   //   income → 钱进入的池 / expense → 钱花出的池 / transfer → fundFrom 转出、fundTo 转入
   fund: 'none',
@@ -1365,6 +1513,20 @@ const importing = reactive({
   is_fake: false,
 })
 
+/* 进度时长（#27）：AI 识别期间显示已用秒数，长等待不焦虑 */
+const importElapsed = ref(0)
+let importTick = null
+watch(() => importing.analyzing, (on) => {
+  if (on) {
+    importElapsed.value = 0
+    importTick = setInterval(() => { importElapsed.value += 1 }, 1000)
+  } else if (importTick) {
+    clearInterval(importTick)
+    importTick = null
+  }
+})
+onBeforeUnmount(() => { if (importTick) clearInterval(importTick) })
+
 async function onImportFile(e) {
   const file = e.target.files && e.target.files[0]
   e.target.value = '' // 允许重复选择同一文件
@@ -1477,9 +1639,11 @@ function resetForm() {
 }
 function openNew() {
   resetForm()
+  form.count = 1
   form.editing = false
   form.editingId = null
   form.show = true
+  haptic.light()
   backToTopScroll()
 }
 function pickType(t) {
@@ -1507,16 +1671,18 @@ function onVoiceNote(text) {
   form.note = form.note.trim() ? `${form.note.trim()} ${text}` : text
 }
 async function save() {
-  if (!form.amount || form.amount <= 0) {
-    ElMessage.warning('请先填写金额')
-    return
+  /* 行内校验（#25）：失败 → 表单 shake + heavy 触觉，并 throw 让 StateButton 呈现失败态 */
+  function rejectValidate(msg) {
+    ElMessage.warning(msg)
+    haptic.error()
+    formShake.value = false
+    requestAnimationFrame(() => { formShake.value = true })
+    setTimeout(() => { formShake.value = false }, 600)
+    throw new Error(msg)
   }
+  if (!form.amount || form.amount <= 0) rejectValidate('请先填写金额')
   const isTransfer = form.type === 'transfer'
-  if (isTransfer && form.fundFrom === form.fundTo) {
-    ElMessage.warning('转出和转入不能是同一个池')
-    return
-  }
-  saving.value = true
+  if (isTransfer && form.fundFrom === form.fundTo) rejectValidate('转出和转入不能是同一个池')
   const payload = {
     type: form.type,
     amount: form.amount,
@@ -1531,8 +1697,12 @@ async function save() {
     if (form.editing) {
       await financeApi.update(form.editingId, payload)
     } else {
-      await financeApi.create(payload)
+      // 笔数步进（#6）：同一笔账连记 N 笔（打车两趟/咖啡续杯）
+      const n = Math.max(1, Math.min(9, form.count || 1))
+      for (let i = 0; i < n; i++) await financeApi.create(payload)
+      if (n > 1) ElMessage.success(`已记入 ${n} 笔`)
     }
+    form.count = 1
     form.show = false
     form.editing = false
     form.editingId = null
@@ -1544,6 +1714,8 @@ async function save() {
   }
 }
 async function del(row) {
+  haptic.heavy()          // 删除 = heavy 触觉（#13）
+  expandedId.value = expandedId.value === row.id ? null : expandedId.value
   await financeApi.remove(row.id)
   await Promise.all([loadPeriodStats(), loadList(), loadFunds(), loadPoolTxns()])
   // 若正展开着某个人的流水，删完要同步刷新，否则残留已删除的那条
@@ -1659,6 +1831,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-import-panel-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .fin-import-panel-title { font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--lj-seal); }
 .fin-import-loading { font-size: 12.5px; color: var(--lj-text-2); animation: fin-pulse 1.2s ease-in-out infinite; }
+.fin-import-eta { font-style: normal; margin-left: 8px; font-size: 11.5px; opacity: .75; font-variant-numeric: tabular-nums; animation: none; }
 .fin-import-done { font-size: 12px; padding: 2px 10px; border-radius: 999px; background: rgba(127,168,163,.16); color: var(--lj-seal); }
 @keyframes fin-pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
 .fin-import-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 13px; margin-bottom: 10px; color: var(--lj-text); }
@@ -1936,9 +2109,18 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-filter-input:focus { border-color: var(--lj-seal); }
 .fin-list-empty { padding: 40px 6px; text-align: center; color: var(--lj-text-3); font-size: 13px; }
 .fin-row { display: flex; align-items: center; gap: 12px; padding: 11px 8px; border-radius: 12px; transition: background .2s; }
+/* v2.46.33：行内包了一层 fin-row-body（滑动删除载体），布局职责移交 */
+.fin-row { display: block; padding: 0 8px; }
+.fin-row-body {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 0;
+  border-radius: 12px;
+  transition: background .2s;
+}
+.fin-row + .fin-row .fin-row-body { border-top: 1px solid rgba(127,168,163,.07); }
 .fin-row:hover { background: rgba(127,168,163,.06); }
 .fin-row.editing { background: rgba(199,169,107,.10); box-shadow: inset 0 0 0 1px var(--lj-line); }
-.fin-row + .fin-row { border-top: 1px solid rgba(127,168,163,.07); }
+/* v2.46.33：分隔线移交 .fin-row-body（原 .fin-row 直属边框随结构下沉一并移除） */
 .fin-row-icon { width: 40px; height: 40px; flex: none; display: grid; place-items: center; font-size: 20px; border-radius: 12px; background: rgba(127,168,163,.12); }
 /* V2463-005：流水行「数字压字」真根因 —— 文案是 flex item，默认 min-width:auto，
    不会收缩到内容宽度以下；`.fin-row-main` 虽然 min-width:0 但没 overflow:hidden，

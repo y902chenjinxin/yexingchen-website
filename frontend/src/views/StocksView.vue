@@ -24,32 +24,32 @@
       <section class="st-kpi">
         <div class="st-kpi-card glass">
           <span class="st-kpi-k">持仓市值</span>
-          <span class="st-kpi-v">¥ {{ fmt(summary.market_value) }}</span>
+          <span class="st-kpi-v">¥ {{ animMarket.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
           <span class="st-kpi-s">{{ summary.symbol_count }} 只自选</span>
         </div>
         <div class="st-kpi-card glass">
           <span class="st-kpi-k">每日盈亏</span>
-          <span class="st-kpi-v" :class="pnlCls(summary.today_pnl)">{{ sign(summary.today_pnl) }}¥ {{ fmt(Math.abs(summary.today_pnl ?? 0)) }}</span>
+          <span class="st-kpi-v" :class="pnlCls(summary.today_pnl)">{{ sign(summary.today_pnl) }}¥ {{ animTodayPnl.toFixed(2) }}</span>
           <span class="st-kpi-s">按持仓量估算</span>
         </div>
         <div class="st-kpi-card glass">
           <span class="st-kpi-k">总收益</span>
-          <span class="st-kpi-v" :class="pnlCls(summary.hold_pnl)">{{ sign(summary.hold_pnl) }}¥ {{ fmt(Math.abs(summary.hold_pnl ?? 0)) }}</span>
+          <span class="st-kpi-v" :class="pnlCls(summary.hold_pnl)">{{ sign(summary.hold_pnl) }}¥ {{ animHoldPnl.toFixed(2) }}</span>
           <span class="st-kpi-s">现价对比成本</span>
         </div>
         <div class="st-kpi-card glass">
           <span class="st-kpi-k">总收益率</span>
-          <span class="st-kpi-v" :class="pnlCls(summary.hold_pct)">{{ sign(summary.hold_pct) }}{{ fmt(summary.hold_pct, 2) }}%</span>
+          <span class="st-kpi-v" :class="pnlCls(summary.hold_pct)">{{ sign(summary.hold_pct) }}{{ animHoldPct.toFixed(2) }}%</span>
           <span class="st-kpi-s">成本均价对比现价</span>
         </div>
         <div class="st-kpi-card glass">
           <span class="st-kpi-k">今日仓位收益</span>
-          <span class="st-kpi-v" :class="pnlCls(todayPct)">{{ todayPct == null ? '--' : sign(todayPct) + fmt(todayPct, 2) + '%' }}</span>
+          <span class="st-kpi-v" :class="pnlCls(todayPct)">{{ todayPct == null ? '--' : sign(todayPct) + animTodayPct.toFixed(2) + '%' }}</span>
           <span class="st-kpi-s">按昨日市值折算</span>
         </div>
         <div class="st-kpi-card glass" :class="{ 'has-alert': summary.alerts > 0 }" @click="summary.alerts > 0 && goStocksAlerts()" role="button" :tabindex="summary.alerts > 0 ? 0 : -1" :title="summary.alerts > 0 ? '点击查看预警详情' : '在自选股上设置目标价后将自动提醒'">
           <span class="st-kpi-k">目标价预警</span>
-          <span class="st-kpi-v" :class="summary.alerts > 0 ? 'down' : (readyTargets ? 'ready' : '')">{{ summary.alerts > 0 ? summary.alerts : (readyTargets || 0) }}</span>
+          <span class="st-kpi-v" :class="summary.alerts > 0 ? 'down' : (readyTargets ? 'ready' : '')">{{ animAlerts }}</span>
           <span class="st-kpi-s">
             <template v-if="summary.alerts">
               有 {{ summary.alerts }} 只触达目标价 · 点击查看
@@ -222,6 +222,7 @@ import BackButton from '@/components/BackButton.vue'
 import PortfolioPanel from '@/components/stocks/PortfolioPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import countUp from '@/utils/games/countUp'
 import { stocksApi } from '@/api/stocks'
 
 const router = useRouter()
@@ -261,6 +262,14 @@ const readyTargets = computed(() => (summary.holdings || []).filter(h => h.targe
 const isMobile = ref(window.innerWidth < 760)
 function onResize() { isMobile.value = window.innerWidth < 760 }
 function sign(v) { return v > 0 ? '+' : '' }
+
+/* 数字滚动（#26）：KPI 汇总六项，刷新后从上一值滚到新值 */
+const animMarket = countUp(() => summary.market_value || 0, 620, 2)
+const animTodayPnl = countUp(() => Math.abs(summary.today_pnl ?? 0), 620, 2)
+const animHoldPnl = countUp(() => Math.abs(summary.hold_pnl ?? 0), 620, 2)
+const animHoldPct = countUp(() => Math.abs(summary.hold_pct ?? 0), 620, 2)
+const animTodayPct = countUp(() => todayPct.value ?? 0, 620, 2)   // 保号：负收益自带 -
+const animAlerts = countUp(() => (summary.alerts > 0 ? summary.alerts : (readyTargets.value || 0)), 480)
 function fmt(v, n = 2) { return v == null ? '--' : Number(v).toFixed(n) }
 function pnlCls(v) { return v > 0 ? 'up' : v < 0 ? 'down' : 'flat' }
 

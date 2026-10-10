@@ -1,3 +1,15 @@
+## [v2.46.33] - 2026-10-10
+
+### 新增 · APP_design.md 33 条规范对齐批量落地（夜星：除已达标的 9 条外全做）
+- **真问题修复**：#29 对比度——日间 `--m-text-3` `#98917f`→`#756d5b`（宣纸卡上 ≈3.2:1→≈5.0:1，达 WCAG AA）、夜间 `#7a7263`→`#9c9482`（墨夜底 ≈3.3:1→≈5.4:1）；#32 状态栏沉浸——theme-color 动态化（prefs.js `applyTheme` 收口同步 meta，index.html 内联脚本首帧设 data-theme+theme-color，每分钟定时器顺带刷），消灭宣纸日间配深蓝状态栏的割裂。
+- **动效系统**：#12 动效令牌 `--m-dur-in 260ms / --m-dur-out 180ms / --m-ease-spring cubic-bezier(.34,1.56,.64,1)`；#15 交错入场 `.m-stagger` 工具类（记账 KPI/资金池卡片接上）；#5 fin-tabs 自绘滑动指示条（弹簧超调 ≤10%）；#8/18 流水列表 TransitionGroup FLIP（删除/筛选平滑补位）。
+- **触觉**：#13 新 `utils/haptic.js`（light 8/medium 18/heavy 32 + success/error 双节奏），TabBar/卡片跳转=light、保存成功=medium（StateButton 内建）、删除/校验失败=heavy/error，工作台裸 vibrate(6~8) 收编。
+- **组件化**：#3 `StateButton.vue` 同位四态状态机（空闲→加载带秒数→✔已入账/失败重试），记账提交接入；#24 `EmptyState.vue` 手账风简笔插图+文案+CTA，替换记账 8 处+顶栏 3 处裸「暂无」；#6 `Stepper.vue` 步进器（长按连发+light 触觉），记一笔新增「笔数」1~9 连记。
+- **交互升级**：#25 行内校验失败表单 shake+error 触觉；#7 流水行点主体就地展开完整明细（grid-rows 0fr→1fr）；#14/17 移动端流水行跟手滑动删除（主轴锁定防误滚、松手弹簧回弹）；#2 记账 FAB 原位展开（支/收快选，仅移动端）；#1 筛选搜索框聚焦 spring 展宽 108→190px；#9 顶栏滚动收起（下滑隐/上滑现，仅 ≤767px）。
+- **换肤与字体**：#10 主题切换 View Transitions 圆形揭示（从点击坐标 clip-path 扩散，不支持的环境直切降级）；#4 主题按钮太阳/月亮图标 morph；#28 动态字体 `--m-font-scale`（个人中心 小/标准/大 三挡，衬线数字与页头标题 zoom 跟随，不改各 View 字号体系）。
+- **其他**：#26 数字滚动推广——记账 4 张 KPI 卡、工作台 hero 收支、行情 6 项 KPI（countUp 补具名导出+小数位支持）；#21 hero 克制视差（0.12x 封顶 12px，reduced-motion 关）；#27 进度 ETA——StateButton 加载显示已用秒数、智能导入显示「已用 Xs · 预计 ~6s」；#33 分屏适配 dvh 令牌+矮屏（≤620px）紧凑规则。
+- 说明：#2 FAB/#6 步进器以记账为载体落地（原审计称「无场景」）；#27 无既有进度条组件，取 StateButton 与 AI 导入两个真实异步点；StocksView 已有同名 `components/EmptyState.vue`（旧版），新组件为 `components/common/EmptyState.vue`，两套并存。
+
 ## [v2.46.32] - 2026-10-10
 
 ### 新增 · 移动端「宣纸手账」质感改版（P0~P3 一步到位）

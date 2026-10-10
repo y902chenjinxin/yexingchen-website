@@ -25,7 +25,20 @@
 
   <!-- PWA：Chrome/Edge 安装提示 + 独立窗口 -->
   <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#0a1220">
+  <meta name="theme-color" content="#211f1b">
+  <!-- 首帧主题预热（APP_design.md #32 状态栏沉浸）：
+       本地时间 6:00-18:00 → day(宣纸 #F7F3EA)，否则 night(墨夜 #211F1B)。
+       必须内联在 <head> 同步执行——等 main.js 模块加载再设就晚了，
+       状态栏/系统栏会先闪一段深蓝硬编码色。applyTheme(×每分钟) 会随后接管。 -->
+  <script>
+    (function () {
+      var h = new Date().getHours()
+      var day = h >= 6 && h < 18
+      document.documentElement.dataset.theme = day ? 'day' : 'night'
+      var m = document.querySelector('meta[name="theme-color"]')
+      if (m) m.setAttribute('content', day ? '#f7f3ea' : '#211f1b')
+    })()
+  </script>
 
   <!-- iOS 添加到主屏幕（不读 manifest 图标，只认下面这几个） -->
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">

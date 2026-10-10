@@ -48,6 +48,9 @@ import './assets/styles/tool-mobile.css'
 // 棋牌三件套（掼蛋/麻将/大富翁）独立牌桌皮肤：仅 .gt- 前缀，退出游戏即恢复全站主题
 import './assets/styles/game-table.css'
 
+// 主题应用统一收口在 stores/prefs.js（data-theme + meta theme-color，#32）
+import { applyTheme } from '@/stores/prefs'
+
 const app = createApp(App)
 
 // 全局指令：v-click-outside="handler"
@@ -88,14 +91,9 @@ registerServiceWorker()
 usePwaInstall()
 
 // 昼夜自适应主题（TIME_THEME_20260908）：本地时间 6:00–18:00 → day，其余 night。
-// 仅作首帧预热；用户若在个人中心设置了固定主题，App.vue 挂载后会覆盖为本偏好。
-function applyDayTheme() {
-  const h = new Date().getHours()
-  const next = h >= 6 && h < 18 ? 'day' : 'night'
-  const root = document.documentElement
-  if (root.dataset.theme !== next) root.dataset.theme = next
-}
-applyDayTheme()
+// 首帧预热走 index.html 内联脚本（更早，避免状态栏闪错色，#32）；
+// 这里再兜底一次并同步 meta theme-color；用户固定主题由 App.vue 挂载后覆盖。
+applyTheme('auto')
 
 // 挂载点必须是 #app-root（index.html），不能是 #app：
 // App.vue 根节点自己就是 <div id="app">，挂载点同名会造成两个 #app 嵌套，

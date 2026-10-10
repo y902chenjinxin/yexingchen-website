@@ -29,6 +29,14 @@
   --xz-btn-bg: var(--xz-gold);
   --xz-btn-fg: #262521;
   --xz-grain: none;
+
+  /* 动效令牌（APP_design.md #12 · v2.46.33）：进场略从容、退场干脆、弹簧超调 */
+  --m-dur-in: 260ms;
+  --m-dur-out: 180ms;
+  --m-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --m-ease-standard: cubic-bezier(.2, .8, .2, 1);
+  /* 交错入场（#15）：配合 .m-stagger 使用 */
+  --m-stagger: 40ms;
 }
 
 /* ================= 令牌 · 日（宣纸手账，招牌形态） ================= */
@@ -60,7 +68,7 @@ html[data-theme="day"] #app.is-mobile {
   --m-line-strong: rgba(237, 231, 216, .26);
   --m-text: #ede7d8;
   --m-text-2: #a89f8c;
-  --m-text-3: #7a7263;
+  --m-text-3: #9c9482;            /* 对比度修复（#29）：#7a7263 对墨夜底仅 ~3.3:1，提到 ≥4.5:1 */
   --m-accent: #c9a45c;
   --m-accent-strong: #b8934c;
   --m-positive: #7fb89a;
@@ -79,7 +87,7 @@ html[data-theme="day"] #app.is-mobile {
   --m-line-strong: rgba(43, 43, 38, .30);
   --m-text: #2b2b26;
   --m-text-2: #6b6a5e;
-  --m-text-3: #98917f;
+  --m-text-3: #756d5b;            /* 对比度修复（#29）：#98917F 对宣纸卡仅 ~3.2:1，#756d5b ≈5.0:1 */
   --m-accent: #2b2b26;
   --m-accent-strong: #1c1c18;
   --m-positive: #2f7d5f;
@@ -120,16 +128,20 @@ html[data-theme="day"] #app.is-mobile {
   border-width: 1.5px !important;
 }
 
-/* ================= 衬线大数字（编辑杂志风签名） ================= */
+/* ================= 衬线大数字（编辑杂志风签名） =================
+   zoom 跟随 --m-font-scale（动态字体 #28）：不覆盖各 View 原字号体系，
+   等比缩放渲染，WebView(Chromium/WebKit) 支持良好 */
 #app.is-mobile :is(.fin-kpi-val, .fin-pool-val, .fin-pcard-val, .abb-hero__num, .abb-stat strong, .st-kpi-v, .tv-kpi-v) {
   font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
   font-weight: 600 !important;
+  zoom: var(--m-font-scale, 1);
   letter-spacing: -.01em !important;
 }
 /* 页头标题：衬线（杂志刊头） */
 #app.is-mobile :is(.fin-title, .st-title, .tv-title, .ct-title, .tk-title, .sb-title, .li-title, .va-title, .wd-title, .sd-title, .dh-title, .fd-title, .qk-title, .trash-title, .abb-title) {
   font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
   font-weight: 600 !important;
+  zoom: var(--m-font-scale, 1);
   letter-spacing: .01em !important;
 }
 
@@ -224,4 +236,211 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
 #app.is-mobile :is(.ct-empty, .notes-empty, .cd-empty, .tv-empty, .fin-chart-empty, .fin-list-empty) {
   border: 1.5px dashed var(--m-line-strong) !important;
   background: transparent !important;
+}
+
+/* ======================================================================
+ * 交互与动效组件层（v2.46.33 · APP_design.md 对齐批量落地）
+ * ===================================================================== */
+
+/* ---- #8/18 列表 FLIP：TransitionGroup move/enter/leave ---- */
+#app.is-mobile .fin-list-move {
+  transition: transform var(--m-dur-in) var(--m-ease-standard);
+}
+#app.is-mobile .fin-list-enter-active {
+  transition: opacity var(--m-dur-in) var(--m-ease-spring), transform var(--m-dur-in) var(--m-ease-spring);
+}
+#app.is-mobile .fin-list-enter-from {
+  opacity: 0;
+  transform: translateY(-8px) scale(.985);
+}
+#app.is-mobile .fin-list-leave-active {
+  transition: opacity var(--m-dur-out) ease, transform var(--m-dur-out) ease;
+  position: absolute;      /* 脱流，让 move 补位动画生效 */
+  width: 100%;
+}
+#app.is-mobile .fin-list-leave-to {
+  opacity: 0;
+  transform: translateX(-24px);
+}
+
+/* ---- #15 交错入场：.m-stagger 容器内子元素按序浮现 ---- */
+#app.is-mobile .m-stagger > * {
+  animation: m-stagger-rise var(--m-dur-in) var(--m-ease-standard) both;
+  animation-delay: calc(var(--i, 0) * var(--m-stagger));
+}
+#app.is-mobile .m-stagger > :nth-child(1) { --i: 1; }
+#app.is-mobile .m-stagger > :nth-child(2) { --i: 2; }
+#app.is-mobile .m-stagger > :nth-child(3) { --i: 3; }
+#app.is-mobile .m-stagger > :nth-child(4) { --i: 4; }
+#app.is-mobile .m-stagger > :nth-child(5) { --i: 5; }
+#app.is-mobile .m-stagger > :nth-child(6) { --i: 6; }
+#app.is-mobile .m-stagger > :nth-child(7) { --i: 7; }
+#app.is-mobile .m-stagger > :nth-child(8) { --i: 8; }
+@keyframes m-stagger-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- #5 Tab 指示条：弹簧超调滑动 ---- */
+#app.is-mobile .fin-tabs { position: relative; }
+#app.is-mobile .fin-tab-ind {
+  position: absolute;
+  top: 4px; bottom: 4px; left: 4px;
+  width: calc((100% - 8px) / var(--xz-tabs-n, 5));
+  border-radius: 999px;
+  background: var(--xz-btn-bg);
+  transform: translateX(calc(var(--xz-tabs-i, 0) * 100%));
+  transition: transform var(--m-dur-in) var(--m-ease-spring), width var(--m-dur-in) var(--m-ease-spring);
+  pointer-events: none;
+}
+#app.is-mobile .fin-tab-item.on {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--xz-btn-fg) !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- #1 搜索形变：输入框聚焦从紧凑到展开（spring） ---- */
+#app.is-mobile .fin-filter-input {
+  width: 108px;
+  transition: width var(--m-dur-in) var(--m-ease-spring), box-shadow var(--m-dur-out) ease;
+}
+#app.is-mobile .fin-filter-input:focus {
+  width: 190px;
+  box-shadow: 0 0 0 2px var(--m-accent) inset;
+  outline: none;
+}
+
+/* ---- #3 表单校验失败 shake（行内校验 #25 配套） ---- */
+@keyframes xz-shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+#app.is-mobile .xz-shake { animation: xz-shake .45s cubic-bezier(.36,.07,.19,.97) both; }
+
+/* ---- #7 就地展开：流水行点开明细（grid-rows 0fr→1fr 平滑） ---- */
+#app.is-mobile .fin-row-x {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--m-dur-in) var(--m-ease-standard);
+}
+#app.is-mobile .fin-row-x.open { grid-template-rows: 1fr; }
+#app.is-mobile .fin-row-x > div { overflow: hidden; }
+#app.is-mobile .fin-row-x-inner {
+  padding: 10px 12px;
+  margin: 8px 0 4px;
+  border: 1.5px dashed var(--m-line-strong);
+  border-radius: 10px;
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 12.5px; color: var(--m-text-2);
+}
+#app.is-mobile .fin-row-x-inner b { color: var(--m-text); font-weight: 600; }
+
+/* ---- #14/17 跟手滑动删除：行主体跟手位移 + 松手弹簧回弹 ---- */
+#app.is-mobile .fin-row { position: relative; overflow: hidden; }
+#app.is-mobile .fin-row-body {
+  position: relative;
+  background: var(--xz-card);
+  transition: transform var(--m-dur-out) var(--m-ease-spring);
+  touch-action: pan-y;
+}
+#app.is-mobile .fin-row-body.dragging { transition: none; }
+#app.is-mobile .fin-row-swipe {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: 76px;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 14px;
+  background: linear-gradient(90deg, transparent, rgba(193, 75, 58, .16) 40%);
+  color: #c14b3a;
+  font-size: 12px; font-weight: 700;
+  opacity: 0;
+  transition: opacity var(--m-dur-out) ease;
+  pointer-events: none;
+}
+#app.is-mobile .fin-row-swipe.on { opacity: 1; pointer-events: auto; }
+#app.is-mobile .fin-row-swipe button {
+  border: 1.5px solid #c14b3a; border-radius: 10px;
+  background: transparent; color: #c14b3a;
+  padding: 8px 12px; font-weight: 700; font-size: 12px;
+}
+
+/* ---- #2 FAB 原位展开：记一笔悬浮钮（仅移动端） ---- */
+#app.is-mobile .xz-fab {
+  position: fixed;
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  z-index: 1550;              /* >TabBar 1500，<ElMessage 2000 */
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 10px;
+}
+#app.is-mobile .xz-fab-main {
+  width: 52px; height: 52px;
+  border-radius: 18px;
+  border: 2px solid var(--xz-card-border);
+  background: var(--xz-btn-bg); color: var(--xz-btn-fg);
+  font-size: 26px; line-height: 1;
+  box-shadow: var(--xz-card-shadow);
+  cursor: pointer;
+  transition: transform var(--m-dur-out) var(--m-ease-spring), box-shadow .08s ease;
+}
+#app.is-mobile .xz-fab-main:active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--xz-card-shadow-press);
+}
+#app.is-mobile .xz-fab-main.open { transform: rotate(45deg); }
+#app.is-mobile .xz-fab-act {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  border: 2px solid var(--xz-card-border);
+  background: var(--xz-card); color: var(--m-text);
+  font-size: 17px;
+  box-shadow: var(--xz-card-shadow);
+  cursor: pointer;
+  opacity: 0; transform: translateY(12px) scale(.6);
+  pointer-events: none;
+}
+#app.is-mobile .xz-fab.open .xz-fab-act {
+  opacity: 1; transform: none; pointer-events: auto;
+  transition: opacity var(--m-dur-out) ease, transform var(--m-dur-in) var(--m-ease-spring);
+}
+#app.is-mobile .xz-fab.open .xz-fab-act:nth-child(1) { transition-delay: 40ms; }
+#app.is-mobile .xz-fab.open .xz-fab-act:nth-child(2) { transition-delay: 90ms; }
+/* 桌面端不渲染 FAB：组件自身 v-if=isMobile */
+
+/* ---- #9 顶栏滚动收起：下滑隐藏、上滑浮现（仅移动端布局） ---- */
+@media (max-width: 767px) {
+  .lj-topbar {
+    transition: transform var(--m-dur-in) var(--m-ease-standard);
+  }
+  .lj-topbar.xz-hidden {
+    transform: translateY(calc(-100% - 14px));
+  }
+}
+
+/* ---- #10 圆形揭示换肤：View Transitions API（不支持的浏览器直接切换，无感降级） ---- */
+::view-transition-old(root) { animation: none; }
+::view-transition-new(root) {
+  animation: xz-reveal var(--m-dur-in) var(--m-ease-standard);
+}
+@keyframes xz-reveal {
+  from { clip-path: circle(0 at var(--reveal-x, 50%) var(--reveal-y, 50%)); }
+  to { clip-path: circle(160% at var(--reveal-x, 50%) var(--reveal-y, 50%)); }
+}
+/* reduced-motion 下 mobile-product.css 已统一降级；此处显式关闭揭示动画 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-new(root) { animation: none; }
+  #app.is-mobile .m-stagger > * { animation: none; }
+  #app.is-mobile .xz-shake { animation: none; }
+}
+
+/* ---- #33 分屏/极值屏适配：dvh 兜底 + 矮屏紧凑 ---- */
+#app.is-mobile {
+  /* useRootHeight 用 JS 量高度；dvh 供纯 CSS 高度场景兜底 */
+  --m-vh: 100dvh;
+}
+@media (max-height: 620px) {
+  #app.is-mobile :is(.fin-kpi, .st-kpi-card, .abb-hero) { padding-top: 10px !important; padding-bottom: 10px !important; }
+  #app.is-mobile .xz-fab { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
 }

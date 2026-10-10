@@ -40,6 +40,8 @@ export const usePrefsStore = defineStore('prefs', () => {
   const petVisible = ref(false)
   // 主题覆盖：'auto'（跟随时间） | 'day'（恒亮） | 'night'（恒暗）
   const themeOverride = ref('auto')
+  // 动态字体缩放（#28）：0.95 / 1 / 1.1
+  const fontScale = ref(1)
   // 工作台模块显隐（v2.38 起工作台只剩「天气」一个可开关模块）
   const moduleVisible = ref({ weather: true })
   // 当前偏好归属的用户 id（null = 尚未绑定 / 未登录）
@@ -50,6 +52,8 @@ export const usePrefsStore = defineStore('prefs', () => {
     // 只有显式存过 true 才显示；新用户/未登录默认 false
     petVisible.value = saved?.petVisible === true
     themeOverride.value = saved?.theme || 'auto'
+    fontScale.value = Number(saved?.fontScale) || 1
+    applyFontScale(fontScale.value)
     // 只保留仍在用的 key，旧版本存下的 habits/feeds/brief 一并丢弃
     moduleVisible.value = { weather: saved?.moduleVisible?.weather !== false }
   }
@@ -59,7 +63,7 @@ export const usePrefsStore = defineStore('prefs', () => {
   applyPrefs(lastUid ? Number(lastUid) : null)
 
   function persist() {
-    write(boundUid.value, { petVisible: petVisible.value, theme: themeOverride.value, moduleVisible: moduleVisible.value })
+    write(boundUid.value, { petVisible: petVisible.value, theme: themeOverride.value, fontScale: fontScale.value, moduleVisible: moduleVisible.value })
     try {
       localStorage.setItem(LAST_UID_KEY, boundUid.value == null ? '' : String(boundUid.value))
     } catch {
@@ -96,6 +100,22 @@ export const usePrefsStore = defineStore('prefs', () => {
     applyTheme(mode)
   }
 
+  /* 动态字体（APP_design.md #28 · v2.46.33）：0.95 收紧 / 1 标准 / 1.1 大。
+     写到 <html> 的 --m-font-scale，移动端关键文字（衬线大数字/页头标题/正文类）
+     用 calc(px * scale) 跟随；写 html 而非 #app，令牌在任何挂载时机都可读。 */
+  function applyFontScale(v) {
+    const n = Number(v) || 1
+    try {
+      document.documentElement.style.setProperty('--m-font-scale', String(n))
+    } catch { /* 非浏览器环境忽略 */ }
+  }
+
+  function setFontScale(v) {
+    fontScale.value = Number(v) || 1
+    applyFontScale(fontScale.value)
+    persist()
+  }
+
   /** 工作台模块显示/隐藏（当前仅 weather） */
   function setModuleVisible(key, visible) {
     if (!(key in moduleVisible.value)) return
@@ -103,10 +123,21 @@ export const usePrefsStore = defineStore('prefs', () => {
     persist()
   }
 
-  return { petVisible, themeOverride, moduleVisible, boundUid, bindUser, setPetVisible, togglePet, setTheme, setModuleVisible }
+  return { petVisible, themeOverride, fontScale, moduleVisible, boundUid, bindUser, setPetVisible, togglePet, setTheme, setFontScale, setModuleVisible }
 })
 
-/** 按主题覆盖/时间应用 day|night 到 <html data-theme> */
+/* 主题 → 系统状态栏/浏览器 chrome 颜色（APP_design.md #32 · v2.46.33）。
+   与 mobile-paper.css 的 --xz-paper 两套底色严格同源，改底色必须同步这里。 */
+const THEME_STATUSBAR_COLOR = { day: '#f7f3ea', night: '#211f1b' }
+
+function syncThemeColor(theme) {
+  try {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', THEME_STATUSBAR_COLOR[theme] || THEME_STATUSBAR_COLOR.night)
+  } catch { /* 非浏览器环境忽略 */ }
+}
+
+/** 按主题覆盖/时间应用 day|night 到 <html data-theme>，并同步状态栏色 */
 export function applyTheme(mode = 'auto') {
   const root = document.documentElement
   let theme
@@ -117,4 +148,5 @@ export function applyTheme(mode = 'auto') {
     theme = h >= 6 && h < 18 ? 'day' : 'night'
   }
   if (root.dataset.theme !== theme) root.dataset.theme = theme
+  syncThemeColor(theme)
 }

@@ -15,15 +15,15 @@
          原先主视觉是「本月净流入」大数字、下面再列收入与支出 —— 但净流入本身就是
          「收入 − 支出」，三项互相重复，与桌面账本同一个问题，故一并去掉，
          改为收入 / 支出两栏并列。 -->
-    <div class="abb-hero glass-card" aria-label="数据总览">
+    <div class="abb-hero glass-card" aria-label="数据总览" :style="{ transform: heroShift ? `translateY(${heroShift}px)` : '' }">
       <div class="abb-hero__pair">
         <div class="abb-hero__col">
           <div class="abb-hero__lab">本月收入</div>
-          <div class="abb-hero__num up">{{ fmtMoney(income) }}</div>
+          <div class="abb-hero__num up">{{ heroIncomeText }}</div>
         </div>
         <div class="abb-hero__col">
           <div class="abb-hero__lab">本月支出</div>
-          <div class="abb-hero__num dn">{{ fmtMoney(expense) }}</div>
+          <div class="abb-hero__num dn">{{ heroExpenseText }}</div>
         </div>
       </div>
     </div>
@@ -77,11 +77,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { financeApi } from '@/api/finance'
 import { stocksApi } from '@/api/stocks'
 import { workbenchApi } from '@/api/workbench'
+import countUp from '@/utils/games/countUp'
+import { haptic } from '@/utils/haptic'
 
 const router = useRouter()
 
@@ -129,15 +131,29 @@ const stockPnl = ref(null)
 const habitDone = ref(null)
 const habitTotal = ref(null)
 
-const fmtMoney = (v) => v === null || v === undefined ? '—' : '¥ ' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
 const fmtPnl = (v) => v === null || v === undefined ? '—' : (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2) + '%'
 
+/* 数字滚动（#26）：hero 收支从 0 滚到位；null 期间维持「—」占位 */
+const animIncome = countUp(() => income.value ?? 0, 700, 2)
+const animExpense = countUp(() => expense.value ?? 0, 700, 2)
+const heroIncomeText = computed(() => income.value == null ? '—' : '¥ ' + animIncome.value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+const heroExpenseText = computed(() => expense.value == null ? '—' : '¥ ' + animExpense.value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+
+/* 视差（#21 · 克制版）：hero 卡随滚动 0.12x 上浮，位移封顶 12px；reduced-motion 直关 */
+const heroShift = ref(0)
+const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+function onScroll() {
+  if (prefersReduced) return
+  heroShift.value = Math.min(12, window.scrollY * 0.12)
+}
+
 function go(path) {
-  try { if (navigator && navigator.vibrate) navigator.vibrate(6) } catch {}
+  haptic.light()          // Tab/轻点 = light（#13），原裸 vibrate 收编
   router.push(path)
 }
 
 onMounted(async () => {
+  window.addEventListener('scroll', onScroll, { passive: true })
   try {
     const res = await financeApi.summary()
     const d = res?.data
@@ -158,6 +174,10 @@ onMounted(async () => {
     habitTotal.value = h.length
     habitDone.value = h.filter(x => x.checked_today).length
   } catch { /* 未登录/失败则整块隐藏 */ }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', onScroll)
 })
 </script>
 

@@ -6,9 +6,10 @@
  */
 import { ref, watch, onBeforeUnmount } from 'vue'
 
-export default function countUp(targetSource, ms = 700) {
+export default function countUp(targetSource, ms = 700, decimals = 0) {
   const shown = ref(0)
   let raf = null
+  const fmt = (v) => decimals > 0 ? Number(v.toFixed(decimals)) : Math.round(v)
   watch(targetSource, (t) => {
     const from = shown.value
     const t0 = performance.now()
@@ -16,7 +17,7 @@ export default function countUp(targetSource, ms = 700) {
     const step = (now) => {
       const k = Math.min(1, (now - t0) / Math.max(1, ms))
       const eased = 1 - Math.pow(1 - k, 3)          // ease-out cubic：先快后慢
-      shown.value = Math.round(from + (t - from) * eased)
+      shown.value = fmt(from + (t - from) * eased)
       if (k < 1) raf = requestAnimationFrame(step)
       else raf = null
     }
@@ -25,3 +26,6 @@ export default function countUp(targetSource, ms = 700) {
   onBeforeUnmount(() => { if (raf) cancelAnimationFrame(raf) })
   return shown
 }
+
+/* 具名导出（v2.46.33 推广到记账/工作台/行情 KPI），默认导出保持游戏结算用法不变 */
+export { countUp }

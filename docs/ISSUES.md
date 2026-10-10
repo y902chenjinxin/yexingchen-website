@@ -7,6 +7,10 @@
 
 ---
 
+## v2.46.33 APP_design.md 33 条规范批量落地（2026-10-10）
+
+夜星：交来 `APP_design.md`（33 条 app 组件交互规范），审计后拍板「除已达标 9 条外全做」（含高成本 11 条）。**踩坑/要点**：①高成本条目（FAB/步进器/进度 ETA）原审计称「无场景」，处理方式是**给规范找真实载体**而不是硬造功能——FAB/步进器落记账（快速记一笔/连记 N 笔），ETA 落 StateButton 加载秒数+AI 导入等待；②对比度不能拍脑袋：`#857D6A` 算出来只有 3.98:1 不达标，最终日 `#756d5b`/夜 `#9c9482` 才过 4.5:1，**改色前必须算亮度对比**；③theme-color 必须内联进 index.html `<head>` 同步脚本——main.js 模块加载已晚一帧，状态栏会闪旧色；prefs.js `applyTheme` 收口同步 meta，改主题底色必须同步 `THEME_STATUSBAR_COLOR`；④动态字体用 `zoom` 而非覆盖 font-size——各 View 字号体系不同（22/24/26px），硬覆盖会互相打架；⑤View Transitions 圆形揭示不支持的 WebView 直接 `applyFn()` 直切，无感降级；⑥滑动删除要主轴锁定（先判 dx/dy 谁大再接管+preventDefault），否则纵向滚动被劫持；⑦eslint 不豁免下划线参数（`_open` 也报 unused），删参比改名干净；⑧命名撞车：项目已有 `components/EmptyState.vue`（StocksView 旧用），新组件必须放 `common/` 下，import 路径写清。教训：**批量落地规范先逐条 grep 取证，有载体的真做、没载体的找最贴合的真实场景做，不硬造**。
+
 ## v2.46.32 移动端宣纸手账质感改版（2026-10-10）
 
 夜星：参考别人 app 截图「很有质感、像原生 app」，要求内部页面精致有质感。定位为 Neo-Brutalism 骨架 × 新中式皮肤，P0~P3 一步到位。实现走移动端既有覆盖层架构：新 `mobile-paper.css` 收口，不碰任何 View 组件。**踩坑/要点**：①玄黄移动端只有 APK 外壳走 is-mobile（手机浏览器强制桌面版），改覆盖层天然不影响网页用户；②variables.css 是多层 :root 覆盖（夜=雨青缺省/day=日间翻盖），直接改 --lj-* 会同时打碎两套主题——所以新开 --xz-* 令牌组隔离；③硬阴影必须配按压缩位（translate(2px,2px)+阴影收缩）才有「实体感」，只有阴影没有位移是死的；④纸纹用 data-uri feTurbulence（baseFrequency .85 / alpha 5%），日间才有、夜间省掉。教训：**给既有多层覆盖体系加新质感，新开令牌组+新覆盖层，永远别在原令牌上原地改**。

@@ -46,7 +46,7 @@
           <div class="info-item">
             <div class="pref-text">
               <span class="info-label">主题外观</span>
-              <span class="pref-hint">白天 / 夜间固定外观，或自动跟随时间切换</span>
+              <span class="pref-hint">切换时从按钮位置圆形揭示铺满全屏；白天 / 夜间 / 自动跟随时间</span>
             </div>
             <div class="theme-seg" role="tablist" aria-label="主题外观">
               <button
@@ -56,7 +56,35 @@
                 :class="{ active: themeOverride === opt.value }"
                 role="tab"
                 :aria-selected="themeOverride === opt.value"
-                @click="prefs.setTheme(opt.value)"
+                @click="onThemePick(opt.value, $event)"
+              >
+                <!-- 图标 morph（#4）：日/夜状态旋转+透明度过渡，太阳/月亮交叉换形 -->
+                <span class="theme-seg-ico" :class="{ on: opt.value === 'night' }" aria-hidden="true">
+                  <svg v-if="opt.value !== 'auto'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                    <g class="ico-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></g>
+                    <g class="ico-moon"><path d="M20 13.2A8.2 8.2 0 1 1 10.8 4a6.6 6.6 0 0 0 9.2 9.2z"/></g>
+                  </svg>
+                  <span v-else class="ico-auto">A</span>
+                </span>{{ opt.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- 动态字体（#28）：衬线大数字 / 页头标题等关键文字等比缩放 -->
+          <div class="info-item">
+            <div class="pref-text">
+              <span class="info-label">字体大小</span>
+              <span class="pref-hint">只影响手机端数字卡片与标题，正文不受影响</span>
+            </div>
+            <div class="theme-seg" role="tablist" aria-label="字体大小">
+              <button
+                v-for="opt in fontOptions"
+                :key="opt.value"
+                class="theme-seg-btn"
+                :class="{ active: fontScale === opt.value }"
+                role="tab"
+                :aria-selected="fontScale === opt.value"
+                @click="prefs.setFontScale(opt.value)"
               >{{ opt.label }}</button>
             </div>
           </div>
@@ -220,6 +248,7 @@ import BackButton from '@/components/BackButton.vue'
 import GameWalletPanel from '@/components/games/GameWalletPanel.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePrefsStore } from '@/stores/prefs'
+import { revealTheme } from '@/utils/reveal'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 import { getMe, updateMe } from '@/api/auth'
 import iconLiuli from '@/assets/brand/icon-liuli.png'
@@ -282,6 +311,18 @@ const themeOptions = [
   { value: 'auto', label: '自动' },
   { value: 'day', label: '白天' },
   { value: 'night', label: '夜间' },
+]
+// 圆形揭示换肤（#10）：从点击坐标铺开新主题；不支持 View Transitions 的环境直切
+function onThemePick(mode, e) {
+  if (mode === themeOverride.value) return
+  revealTheme(() => prefs.setTheme(mode), e)
+}
+// 动态字体（#28）
+const fontScale = computed(() => prefs.fontScale)
+const fontOptions = [
+  { value: 0.95, label: '小' },
+  { value: 1, label: '标准' },
+  { value: 1.1, label: '大' },
 ]
 
 // 工作台模块显隐
@@ -584,6 +625,26 @@ async function savePassword() {
   box-shadow: 0 4px 12px rgba(201, 169, 107, 0.35);
 }
 .theme-seg-btn:focus-visible { outline: var(--focus-outline); outline-offset: 2px; }
+
+/* 图标 morph（#4）：太阳/月亮同位交叉换形——日态露太阳，.on（夜态）露月亮 */
+.theme-seg-btn { display: inline-flex; align-items: center; gap: 5px; }
+.theme-seg-ico {
+  display: inline-flex; width: 15px; height: 15px;
+  position: relative;
+}
+.theme-seg-ico svg { width: 100%; height: 100%; }
+.theme-seg-ico .ico-sun,
+.theme-seg-ico .ico-moon {
+  transition: opacity .3s ease, transform .35s var(--ease-spring, cubic-bezier(.34,1.56,.64,1));
+  transform-origin: center;
+}
+.theme-seg-ico .ico-moon { position: absolute; inset: 0; opacity: 0; transform: rotate(-90deg) scale(.4); }
+.theme-seg-ico.on .ico-sun { opacity: 0; transform: rotate(90deg) scale(.4); }
+.theme-seg-ico.on .ico-moon { opacity: 1; transform: none; }
+.ico-auto { font-size: 11px; font-weight: 700; line-height: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .theme-seg-ico .ico-sun, .theme-seg-ico .ico-moon { transition: none; }
+}
 
 .header-with-back {
   display: flex;
