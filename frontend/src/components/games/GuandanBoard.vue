@@ -944,7 +944,7 @@ function describePlay(cards, pat) {
     const kick = gs[1]
     return `三个${ttsRank(main[0] || cards[0])}，带对${kick ? ttsRank(kick[0]) : ''}`
   }
-  if (t === 'bomb') return `${TTS_COUNT[Math.min(cards.length, 6)] || ''}${ttsRank(main[0] || cards[0])}`
+  if (t === 'bomb') return `炸！${TTS_COUNT[Math.min(cards.length, 6)] || ''}${ttsRank(main[0] || cards[0])}`
   return G.PATTERN_NAME[t] || ''   // 顺子 / 三连对 / 钢板 / 同花顺 / 火箭：报牌型名
 }
 function playFxFor(p) {
@@ -955,7 +955,7 @@ function playFxFor(p) {
   const pat = p.pattern || {}
   // 语音报牌（v2.46.24）：口播实际出的牌面内容（本地与在线同走这里，lastPlay 全量投影）
   const say = describePlay(p.cards, pat)
-  if (say) speak(say)
+  if (say) speak(say, p.seat)   // v2.46.28：按座位分声，一人一声
   // 牌型名浮现：普通牌型墨底，炸弹 / 同花顺 / 火箭金底
   const name = G.PATTERN_NAME[pat.type] || ''
   if (name) {
@@ -1020,7 +1020,7 @@ function syncFromView(v) {
       const lastEv = hist[hist.length - 1]
       if (lastEv && lastEv.kind === 'pass') {
         showPassBubble(lastEv.seat)
-        speakPass()   // v2.46.26：在线「不要」补语音（夜星：没有合成音）
+        speakPass(lastEv.seat)   // v2.46.26：在线「不要」补语音（夜星：没有合成音）
       }
     }
     onlineHistLen.value = hist.length
@@ -1142,7 +1142,7 @@ function applyPass(seat) {
   pushHistory({ kind: 'pass', seat })
   showPassBubble(seat)
   sfx.pass()
-  speakPass()   // v2.46.26：本地「不要」补语音（随机台词池）
+  speakPass(seat)   // v2.46.26：本地「不要」补语音（随机台词池）
   advance()
 }
 

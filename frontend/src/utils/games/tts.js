@@ -1,15 +1,20 @@
-/** 语音报牌（v2.46.26，夜星：①「不要」没合成音 ②合成音怪异，参考腾讯棋牌优化）：
+/** 语音报牌（v2.46.28，夜星：「语速偏慢机械音明显，设计下显得真实一点」）：
  *  Web Speech API（speechSynthesis）播中文牌面，如「八万」「三个二带一对五」。
- *  腾讯棋牌是真人多台词录音，合成音做不到，优化三板斧：
- *  - 选声打分：优先 Windows/macOS 的在线自然音（Xiaoxiao/Yunxi/Natural），
- *    而不是默认机械音（Huihui/Kangkang），这是「怪异」的最大来源；
- *  - 文案口语化：组件侧用「对五」而非「一对五」，逗号断句让引擎自然停顿；
- *  - 「不要」随机台词池（要不起/不要/过），像真人报牌不是复读机。
- *  跟随 sfx.js 的静音开关（同一个 localStorage 键）；不可用全 try/catch 静默降级。
+ *
+ *  v2.46.28 真实感四件套（原→新）：
+ *  - 语速 1.1 → 1.35 ±3% 抖动 —— 慢速最暴露合成痕迹（音素拉长电子感重），
+ *    真人报牌是「快而脆」，快语速下衔接瑕疵反而不易察觉；
+ *  - 音调 1 恒定 → 0.94~1.10 每句随机 —— 消「每句同一个调」的复读机感；
+ *  - 全场一个声 → 按座位固定分配不同高分语音 —— 四个座位四个声，
+ *    像四个人在打牌而不是一台机器在念稿（这是「显得真实」最有效的一招）；
+ *  - 掼蛋炸弹文案加「炸！」喊声（腾讯棋牌炸弹有专门语音）。
+ *
+ *  沿用 v2.46.26 的选声打分（优先 Xiaoxiao/Yunxi/Natural 自然音）与
+ *  「不要」随机台词池；跟随静音开关；不可用全 try/catch 静默降级。
  */
 const MUTE_KEY = 'xuanhuang_game_muted'
 
-let cachedVoice = null
+let cachedVoices = null
 let voicePicked = false
 
 /** 给候选语音打分：zh 语音起步，自然音/线上音加分，非 zh 直接淘汰 */
@@ -29,20 +34,19 @@ function scoreVoice(v) {
   return s
 }
 
-function pickVoice() {
-  if (voicePicked) return cachedVoice
+/** 打分排序取前 4 个：座位号取模分配，分数相同按系统返回顺序稳定排列 */
+function pickVoices() {
+  if (voicePicked) return cachedVoices
   voicePicked = true
   try {
-    const vs = window.speechSynthesis?.getVoices?.() || []
-    let best = null
-    let bestScore = -1
-    for (const v of vs) {
-      const s = scoreVoice(v)
-      if (s > bestScore) { bestScore = s; best = v }
-    }
-    cachedVoice = bestScore >= 0 ? best : null
-  } catch { cachedVoice = null }
-  return cachedVoice
+    const vs = (window.speechSynthesis?.getVoices?.() || [])
+      .map(v => ({ v, s: scoreVoice(v) }))
+      .filter(x => x.s >= 0)
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 4)
+    cachedVoices = vs.map(x => x.v)
+  } catch { cachedVoices = [] }
+  return cachedVoices
 }
 
 // 语音列表异步加载：首条播报可能拿不到语音，监听一次刷新缓存
@@ -50,12 +54,18 @@ if (typeof window !== 'undefined' && window.speechSynthesis?.addEventListener) {
   try {
     window.speechSynthesis.addEventListener('voiceschanged', () => {
       voicePicked = false
-      pickVoice()
+      pickVoices()
     })
   } catch { /* 老引擎忽略 */ }
 }
 
-export function speak(text) {
+/**
+ * 口播一段文本。
+ * @param {string} text 口播内容
+ * @param {number|null} seat 座位号 —— 有就按座位分配固定语音（一人一声）；
+ *   系统只装了一个中文语音时自然退化为全场同声，不影响功能。
+ */
+export function speak(text, seat = null) {
   if (!text) return
   try {
     if (localStorage.getItem(MUTE_KEY) === '1') return
@@ -64,19 +74,21 @@ export function speak(text) {
     synth.cancel()
     const u = new SpeechSynthesisUtterance(String(text))
     u.lang = 'zh-CN'
-    u.rate = 1.1          // 1.2 压音节发赶，1.1 接近真人报牌语速
-    u.pitch = 1
-    u.volume = 0.9
-    const v = pickVoice()
-    if (v) u.voice = v
+    u.rate = 1.35 * (1 + (Math.random() * 0.06 - 0.03))   // 快而脆 + ±3% 语速抖动
+    u.pitch = 0.94 + Math.random() * 0.16                  // 每句微变调，去复读机感
+    u.volume = 0.95
+    const vs = pickVoices()
+    if (vs.length) u.voice = (seat !== null && seat !== undefined && vs.length > 1)
+      ? vs[Math.abs(Number(seat)) % vs.length]
+      : vs[0]
     synth.speak(u)
   } catch { /* 无 TTS 环境（部分 WebView）静默 */ }
 }
 
 /** 「不要」随机台词池（腾讯棋牌式：真人报牌是一人多台词，不是复读机） */
 const PASS_LINES = ['要不起', '不要', '过']
-export function speakPass() {
-  speak(PASS_LINES[Math.floor(Math.random() * PASS_LINES.length)])
+export function speakPass(seat = null) {
+  speak(PASS_LINES[Math.floor(Math.random() * PASS_LINES.length)], seat)
 }
 
 /** 麻将牌面 → 口播文本：「八万」「红中」。直接复用各组件的 tileText 亦可，

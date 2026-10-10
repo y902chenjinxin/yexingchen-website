@@ -722,7 +722,7 @@ function syncFromView(v) {
     }
     sfx[act === 'kong' ? 'kong' : 'pong'](panOf(s, povSeat.value))
     showClaimFx(say)
-    speak(say)
+    speak(say, s)
   }
   out.value = [0, 1, 2, 3].map(s => !!v.players?.[s]?.hu)
   turn.value = (v.turn === null || v.turn === undefined) ? -1 : v.turn
@@ -747,7 +747,7 @@ function syncFromView(v) {
   // 喊一声（自摸报「自摸」）；自己刚点的胡（onReact 已即时喊）4 秒内不重复。
   if (hus.length && prevPhase !== 'finished' && phase.value === 'finished') {
     if (!(selfClaimSig.startsWith('hu:') && Date.now() - Number(selfClaimSig.split(':')[1] || 0) < 4000)) {
-      speak(hus[0].zimo ? '自摸' : '胡')
+      speak(hus[0].zimo ? '自摸' : '胡', hus[0].seat)
     }
   }
   if (v.result) {
@@ -792,7 +792,7 @@ watch(lastDiscard, (nd, od) => {
   lastSpokenKey = key
   if (phase.value !== 'playing') return
   if (nd.seat !== viewSeat.value) sfx.tileDown(panOf(nd.seat, povSeat.value))
-  speak(tileSpeech(nd.tile))
+  speak(tileSpeech(nd.tile), nd.seat)
 })
 
 /* ---------- 开局发牌动效（v2.46.24，夜星：一进来就展示全部怪怪的）：
@@ -901,7 +901,7 @@ function doDiscard(seat, tile) {
   tile._tilt = +(Math.random() * 4 - 2).toFixed(2)   // 落桌余倾 ±2°
   log(`${seatName(seat)} 打出 ${tileText(tile)}`)
   sfx.tileDown(panOf(seat, povSeat.value))   // v2.46.26：麻将砸桌声（原「干脆一击」偏电子味）
-  speak(tileSpeech(tile))   // 语音报牌（v2.46.24）：口播实际打出的牌面
+  speak(tileSpeech(tile), seat)   // 语音报牌（v2.46.24）：口播实际打出的牌面；v2.46.28 一人一声
   huDeclined.value = []          // 每张新弃牌的「不胡」名单重新开始
   resolveReactions(seat, tile)
 }
@@ -994,7 +994,7 @@ function doPong(seat, tile, from) {
   log(`${seatName(seat)} 碰 ${tileText(tile)}`)
   sfx.pong(panOf(seat, povSeat.value))
   showClaimFx('碰')
-  speak('碰')   // v2.46.26：吃碰杠胡语音（夜星），本地与 AI 同走这里
+  speak('碰', seat)   // v2.46.26：吃碰杠胡语音（夜星），本地与 AI 同走这里
   if (isHuman(seat)) return
   scheduleAI()
 }
@@ -1011,7 +1011,7 @@ function doKongFromDiscard(seat, tile, from) {
   log(`${seatName(seat)} 杠 ${tileText(tile)}`)
   sfx.kong(panOf(seat, povSeat.value))
   showClaimFx('杠')
-  speak('杠')
+  speak('杠', seat)
   turn.value = seat
   drawReplacement(seat)
 }
@@ -1036,7 +1036,7 @@ function doChi(seat, tile, from) {
   log(`${seatName(seat)} 吃 ${tileText(tile)}`)
   sfx.pong(panOf(seat, povSeat.value))
   showClaimFx('吃')
-  speak('吃')
+  speak('吃', seat)
   if (isHuman(seat)) return
   scheduleAI()
 }
@@ -1046,7 +1046,7 @@ function doAnkong(tileInfo) {
     sfx.kong()
     showClaimFx('暗杠')
     selfClaimSig = `kong:${Date.now()}`
-    speak('杠')
+    speak('杠', viewSeat.value)
     actOnline({ type: 'ankong', tile: { suit: tileInfo.suit, rank: tileInfo.rank } })
     return
   }
@@ -1070,7 +1070,7 @@ function doBugang(tileInfo) {
     sfx.kong()
     showClaimFx('补杠')
     selfClaimSig = `kong:${Date.now()}`
-    speak('杠')
+    speak('杠', viewSeat.value)
     actOnline({ type: 'bugang', tile: { suit: tileInfo.suit, rank: tileInfo.rank } })
     return
   }
@@ -1116,7 +1116,7 @@ function doHu(seat, tile, from, zimo) {
   huResults.value.push({ seat, fan: sc.fan, names: sc.names, zimo, from, hand: winning.slice() })
   log(`${seatName(seat)} ${zimo ? '自摸' : '胡'} ${sc.names.join('·')} ${sc.fan}番`)
   sfx.win(panOf(seat, povSeat.value))
-  speak(zimo ? '自摸' : '胡')   // v2.46.26：胡牌喊一声（自摸报「自摸」更带感）
+  speak(zimo ? '自摸' : '胡', seat)   // v2.46.26：胡牌喊一声（自摸报「自摸」更带感）
   toastMsg(`${seatName(seat)} ${zimo ? '自摸' : '胡牌'}！${sc.names.join(' · ')} ${sc.fan} 番`)
 }
 
@@ -1125,7 +1125,7 @@ function doZimo() {
   if (isOnline.value) {
     sfx.win()
     selfClaimSig = `hu:${Date.now()}`
-    speak('自摸')
+    speak('自摸', viewSeat.value)
     actOnline({ type: 'hu' })
     return
   }
@@ -1233,7 +1233,7 @@ function onReact(kind) {
     // melds diff 4 秒内同 kind 不重复播（selfClaimSig 去重）
     if (kind !== 'pass') {
       selfClaimSig = `${kind}:${Date.now()}`
-      speak(REACT_NAME[kind] === '胡' ? '胡' : REACT_NAME[kind])
+      speak(REACT_NAME[kind] === '胡' ? '胡' : REACT_NAME[kind], p.seat)
     }
     actOnline({ type: kind })
     return
