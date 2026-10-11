@@ -189,13 +189,11 @@ function cellStyle(side, slot) {
 .mjo-wall-right  { right: 4px; top: 50%; transform: translateY(-50%); flex-direction: column; }
 .mjo-cell {
   width: 11px; height: 15px; border-radius: 2.5px;
-  /* v2.46.44：与牌桌牌墙/牌背同构 —— 绿背面 + 底缘一线象牙白侧沿 */
-  background: linear-gradient(180deg, #4aa87f, #2c7f60 68%, #236a50);
+  /* v2.46.45：与牌墙同构 —— 白顶面 + 绿背面 + 暗缝 */
+  background: linear-gradient(180deg, #fbf7ea 0%, #ece4cd 40%, #ddd2b4 43%, #3f9e78 43%, #236a50 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .3),
-    inset 0 0 0 1px rgba(20, 70, 52, .45),
-    0 1.5px 0 rgba(233, 224, 198, .85),
-    0 2.5px 3px -1px rgba(0, 0, 0, .5);
+    inset 0 0 0 1px rgba(105, 95, 70, .36),
+    0 2px 3px -1px rgba(0, 0, 0, .5);
   opacity: 1; transition: opacity .3s ease, box-shadow .3s ease, transform .3s ease;
   animation: mjo-cell-in .3s ease both;
   animation-delay: var(--d, 0ms);
@@ -205,7 +203,10 @@ function cellStyle(side, slot) {
 .mjo-cell.is-half { opacity: .5; }
 .mjo-cell.is-gone { opacity: 0; transform: scale(.6); }
 .mjo-cell.is-open {
-  box-shadow: 0 0 0 2px rgba(222, 186, 106, .95), 0 0 12px rgba(222, 186, 106, .55);
+  box-shadow:
+    inset 0 0 0 1px rgba(105, 95, 70, .36),
+    0 0 0 2px rgba(222, 186, 106, .95), 0 0 12px rgba(222, 186, 106, .55),
+    0 2px 3px -1px rgba(0, 0, 0, .5);
   transform: scale(1.15);
 }
 /* ---- 骰子 ---- */

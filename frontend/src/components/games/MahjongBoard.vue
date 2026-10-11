@@ -1561,7 +1561,11 @@ onBeforeUnmount(() => {
    重复摆两处只会白占高度（与掼蛋 `.gd.is-big .gd-top` 同一策略） */
 .mj.is-big .mj-top { display: none; }
 
-/* ===== 牌桌：绿色绒布 + 四方围成矩形 ===== */
+/* ===== 牌桌：深色框架 + 绒布桌面 + 四方围成矩形 =====
+   v2.46.45（夜星：对照腾讯棋牌「有层次框架」）：旧版整块就是一滩绿，
+   与桌外背景齐平 —— 真实牌桌（腾讯同款）是「深色桌沿框架包住绒布」两层结构。
+   用硬边 spread box-shadow 画外框（不占布局、圆角自动跟随）：
+   内圈 9px 深墨绿框架 → 1px 鎏金包线 → 2px 近黑外缘 → 大落影离地。 */
 .mj-table {
   flex: 1; min-height: 0;
   display: grid; gap: 6px;
@@ -1569,14 +1573,21 @@ onBeforeUnmount(() => {
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "top top top" "left center right";
-  padding: 8px 10px; border-radius: 18px;
-  /* 绒布：中心一圈微亮的墨绿，外缘压暗，做出「桌面」而非「色块」的观感 */
+  padding: 10px 12px; border-radius: 20px;
+  /* 绒布：三层 —— 顶部受光 / 中心一圈微亮 / 极淡 45° 交叉布纹（腾讯桌布的哑光纹理），
+     外缘压暗与框架衔接 */
   background:
-    radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .1), transparent 55%),
-    radial-gradient(100% 80% at 50% 50%, #227154 0%, #17573f 48%, #0d3a2b 100%);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .016) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .02) 0 2px, transparent 2px 5px),
+    radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .09), transparent 55%),
+    radial-gradient(100% 80% at 50% 50%, #24785a 0%, #186045 48%, #0c3a2b 100%);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, .08),
-    inset 0 0 60px -10px rgba(0, 0, 0, .55);
+    0 0 0 9px #14352b,
+    0 0 0 10px rgba(222, 186, 106, .28),
+    0 0 0 12px #0a1d17,
+    0 30px 54px -20px rgba(0, 0, 0, .85),
+    inset 0 0 0 1px rgba(255, 255, 255, .07),
+    inset 0 0 60px -10px rgba(0, 0, 0, .6);
 }
 .mj-seat { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0;
   /* V24617-012：左右家 3 组副露后内容溢出本格、盖住上下两家的副露/弃牌 ——
@@ -1644,24 +1655,45 @@ onBeforeUnmount(() => {
     "left  right"
     "down  down";
   padding: 18px 28px; border-radius: 14px;   /* v2.46.44：给四方牌墙留边（原 24px，匀 12px 给中行） */
-  background: rgba(0, 0, 0, .2);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
+  /* v2.46.45：弃牌区像桌面中央「凹下去」的一圈 —— 内阴影做深度，顶部留一线受光 */
+  background: radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .035), transparent 55%),
+              rgba(0, 0, 0, .22);
+  box-shadow:
+    inset 0 2px 10px rgba(0, 0, 0, .5),
+    inset 0 -1px 0 rgba(255, 255, 255, .04),
+    inset 0 0 0 1px rgba(255, 255, 255, .05);
   /* v2.46.26（夜星：长方形看着怪）：宽屏下中央弃牌区被 1fr 拉成 3:1 长条，
    * 与真实牌桌「中央近方」的观感差很远。限宽居中后，两侧留出的绿绒布就是
    * 桌面空地，四方弃牌围合成近方阵 —— 这才是麻将桌该有的样子。 */
   width: 100%; max-width: min(100%, 640px);
   justify-self: center;
 }
-/* 桌心装饰（v2.46.26）：一枚淡金圆环 + 微光，腾讯棋牌中央 logo 的克制版；
- * 纯装饰不挡交互（pointer-events none），prefers-reduced-motion 无动画本来也不动 */
+/* 桌心装饰（v2.46.26 / v2.46.45 罗盘化）：腾讯中央 logo 的克制版 ——
+   内圈「凹下去的暗面」（inset 阴影做深度）+ 金环 + 外圈第二道细环（outline），
+   像桌面中央嵌的一枚罗盘底座。纯装饰不挡交互 */
 .mj-center::before {
   content: ''; position: absolute; left: 50%; top: 50%; z-index: 0;
-  width: clamp(72px, 24%, 128px); aspect-ratio: 1;
+  width: clamp(84px, 26%, 150px); aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 1px solid rgba(222, 186, 106, .30);
-  background: radial-gradient(circle, rgba(222, 186, 106, .07), transparent 68%);
-  box-shadow: 0 0 22px rgba(222, 186, 106, .07), inset 0 0 16px rgba(222, 186, 106, .06);
+  border: 1px solid rgba(222, 186, 106, .42);
+  outline: 1px solid rgba(222, 186, 106, .14); outline-offset: 5px;
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, .34) 0%, rgba(0, 0, 0, .16) 55%, transparent 74%);
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, .55),
+    inset 0 -1px 0 rgba(255, 255, 255, .05),
+    0 0 26px rgba(222, 186, 106, .06);
+  pointer-events: none;
+}
+/* 罗盘中心：一枚小金点 + 微光，避免正中空到突兀 */
+.mj-center::after {
+  content: ''; position: absolute; left: 50%; top: 50%; z-index: 0;
+  width: 7px; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f4dc9c, #c79b45 70%);
+  box-shadow: 0 0 10px rgba(222, 186, 106, .45);
   pointer-events: none;
 }
 /* ---- 四方牌墙（v2.46.42）：贴中央区四边，随摸牌缩短；开门墩鎏金 ---- */
@@ -1673,20 +1705,22 @@ onBeforeUnmount(() => {
 .mj-wall-right { right: 5px; top: 50%; transform: translateY(-50%); flex-direction: column; }
 .mj-wstack {
   width: 10px; height: 14px; border-radius: 2px;
-  /* v2.46.44：牌墙小牌与牌背同构 —— 绿背面 + 底缘一线象牙白侧沿，随牌背体系走 */
-  background: linear-gradient(180deg, #4aa87f, #2c7f60 68%, #236a50);
+  /* v2.46.45（夜星：牌墙要有立体感）：立着的牌从玩家视角 = 上半「象牙白顶面」+
+   * 下半「翡翠绿背面」，分界线一条暗缝 —— 腾讯牌墙同款构造。 */
+  background: linear-gradient(180deg, #fbf7ea 0%, #ece4cd 40%, #ddd2b4 43%, #3f9e78 43%, #236a50 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .3),
-    inset 0 0 0 1px rgba(20, 70, 52, .45),
-    0 1.5px 0 rgba(233, 224, 198, .85),
-    0 2.5px 3px -1px rgba(0, 0, 0, .55);
+    inset 0 0 0 1px rgba(105, 95, 70, .38),
+    0 2px 3px -1px rgba(0, 0, 0, .6);
   transition: opacity .3s ease, transform .3s ease, box-shadow .3s ease;
 }
 .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 14px; height: 10px; }
 .mj-wstack.is-half { opacity: .5; }
 .mj-wstack.is-gone { opacity: 0; transform: scale(.5); }
 .mj-wstack.is-open {
-  box-shadow: 0 0 0 1.5px rgba(233, 200, 119, .95), 0 0 10px rgba(233, 200, 119, .6);
+  box-shadow:
+    inset 0 0 0 1px rgba(105, 95, 70, .38),
+    0 0 0 1.5px rgba(233, 200, 119, .95), 0 0 10px rgba(233, 200, 119, .6),
+    0 2px 3px -1px rgba(0, 0, 0, .6);
   transform: scale(1.2);
 }
 @media (max-height: 430px) {
