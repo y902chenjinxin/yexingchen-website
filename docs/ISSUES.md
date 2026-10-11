@@ -7,6 +7,13 @@
 
 ---
 
+## v2.46.48 麻将七点精修（2026-10-11）
+- **watch 缺 immediate**：开局自己坐庄时 `myTurn` 初值即 true，倒计时 watch 回调永不触发、
+  罗盘无数字。修法：`{ immediate: true }`。教训：对「初值即可为真」的状态做 watch 一律带 immediate
+- **SVG text 无 text-shadow**：牌面浮雕字不能走 text-shadow（浏览器对 SVG <text> 不生效），
+  改双层 `drop-shadow`（上亮下暗）模拟凸起浮雕
+- **倒计时遮挡方位字**：罗盘 76~116px 内 22px 数字会压住东/西，倒计时中 `.cx` 淡至 .25
+
 ## v2.46.47 麻将设计文档重构（2026-10-11）
 
 - **transform 元素的 ::before z-index:-1 陷阱（新坑）**：元素带 transform 后自成 stacking context，负 z-index 伪元素画在**元素自身背景之上**（画序：元素背景 → 负 z 子层 → 内容），`::before` 木底座直接把桌面绿布整个吞掉。要做「外框包内容」的两层结构，用**真实 DOM 包一层**（padding + 自身背景），或回到 spread box-shadow 硬边画法。

@@ -287,6 +287,12 @@ const tiaoSticks = computed(() => {
 
 <style scoped>
 .mj-face { display: block; width: 100%; height: 100%; }
+/* 浮雕字（v2.46.48 设计文档）：SVG <text> 不支持 text-shadow，
+ * 用双层 drop-shadow 模拟「上沿受光、下沿落影」的凸起浮雕 */
+.mj-face text {
+  filter: drop-shadow(0 -1px 0 rgba(255, 255, 255, .55))
+          drop-shadow(0 1.4px 0.6px rgba(58, 48, 28, .4));
+}
 /* ===== 文字浮雕（设计文档：亮边在下 / 暗边在上，模拟刻印凹凸）=====
    SVG <text> 在 Chrome / WebView 里支持 CSS text-shadow，缩到 16px 依然清晰。 */
 .mj-face text { text-shadow: 0 1.5px 0 rgba(255, 255, 255, .85), 0 -1px 0 rgba(0, 0, 0, .22); }

@@ -38,6 +38,7 @@
             <span class="gt-seat-score" :class="dispScores[p.seat] > 0 ? 'is-plus' : dispScores[p.seat] < 0 ? 'is-minus' : ''">
               {{ dispScores[p.seat] > 0 ? '+' : '' }}{{ dispScores[p.seat] }}
             </span>
+            <span v-if="p.seat === dealer" class="gt-seat-badge is-dealer">庄</span>
             <span v-if="isTurn(p.seat) && !out[p.seat]" class="gt-seat-badge">出牌中</span>
             <span v-else-if="out[p.seat]" class="gt-seat-badge">已胡</span>
             <!-- 听牌标识（v2.46.24，夜星：展示哪家听牌了） -->
@@ -71,6 +72,7 @@
             <span class="gt-seat-score" :class="dispScores[viewSeat] > 0 ? 'is-plus' : dispScores[viewSeat] < 0 ? 'is-minus' : ''">
               {{ dispScores[viewSeat] > 0 ? '+' : '' }}{{ dispScores[viewSeat] }}
             </span>
+            <span v-if="viewSeat === dealer" class="gt-seat-badge is-dealer">庄</span>
             <span v-if="isTurn(viewSeat) && !out[viewSeat]" class="gt-seat-badge">出牌中</span>
             <span v-else-if="out[viewSeat]" class="gt-seat-badge">已胡</span>
             <span v-else-if="tingFlags[viewSeat]" class="gt-seat-badge is-ting">听牌</span>
@@ -83,10 +85,14 @@
              把左右两家的弃牌挤到桌外、上下两家只剩一行 —— 实测弃牌区只有 403×28px。
              现在信息全部搬到下方信息条（.mj-handbar，本来就有位置），中央整块还给弃牌。 -->
         <div class="mj-center">
-          <!-- 桌心罗盘（v2.46.47 设计文档，纯装饰）：金环 + 深绿内圆 + 东南西北方位字 -->
+          <!-- 桌心罗盘（v2.46.47 设计文档）：金环 + 深绿内圆 + 东南西北方位字；
+               v2.46.48：轮到自己时中心显示 15s 倒计时 + 青色环形进度条（最后 5s 转红），
+               其余时间回落到金点装饰。纯表现层，不挡交互不参与逻辑 -->
           <div class="mj-compass" aria-hidden="true">
+            <i v-if="myTurn && turnLeft > 0" class="cx-ring" :style="{ '--p': (turnLeft / 15) * 100 }"></i>
             <i class="cx cx-n">北</i><i class="cx cx-e">东</i><i class="cx cx-s">南</i><i class="cx cx-w">西</i>
-            <b class="cx-core"></b>
+            <b v-if="myTurn && turnLeft > 0" class="cx-timer" :class="{ 'is-low': turnLeft <= 5 }">{{ turnLeft }}</b>
+            <b v-else class="cx-core"></b>
           </div>
           <!-- 四方牌墙（v2.46.42）：4 边 × 15 墩牌背，随摸牌缩短（零头墩半透）；
                开门墩鎏金标记。纯展示不挡交互；屏幕边 → 绝对座位过 povSeat
@@ -635,6 +641,26 @@ const waitingTing = computed(() => {
   return M.tingTiles(h, melds.value[seat].length)
 })
 const isTing = computed(() => waitingTing.value.length > 0)
+
+/* ---- 回合倒计时（v2.46.48 设计文档：罗盘中心 15s 倒计时 + 环形进度条）----
+ * 纯前端表现层：轮到自己出牌时起 15s 倒计时，最后 5s 数字转红；
+ * 归零不自动出牌（不碰逻辑，只做视觉），AI / 别人回合罗盘回落到金点装饰。 */
+const TURN_SECONDS = 15
+const turnLeft = ref(0)
+let turnTick = null
+const myTurn = computed(() => phase.value === 'playing' && isHuman(turn.value))
+watch(myTurn, (on) => {
+  clearInterval(turnTick)
+  if (!on) { turnLeft.value = 0; return }
+  const t0 = Date.now()
+  turnLeft.value = TURN_SECONDS
+  turnTick = setInterval(() => {
+    turnLeft.value = Math.max(0, TURN_SECONDS - Math.floor((Date.now() - t0) / 1000))
+    if (turnLeft.value <= 0) clearInterval(turnTick)
+  }, 250)
+}, { immediate: true })
+onBeforeUnmount(() => clearInterval(turnTick))
+
 /** 各家听牌标识（v2.46.24，夜星：展示哪家听牌了）：在线读服务端 players[].ting，
  *  本地全知视角现算（等牌直接验；轮到出牌的算「打一张能听」） */
 const tingFlags = computed(() => {
@@ -1615,9 +1641,9 @@ onBeforeUnmount(() => {
   background:
     radial-gradient(62% 44% at 50% -8%, rgba(255, 244, 214, .13), transparent 62%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(100% 100% at 50% 40%, #1a5c4a 0%, #0b3b2e 62%, #06241c 100%);
+    radial-gradient(100% 100% at 50% 40%, #1a5c4a 0%, #0b3b2e 58%, #041a14 100%);
   box-shadow:
-    inset 0 0 120px rgba(0, 0, 0, .55),
+    inset 0 0 150px rgba(0, 0, 0, .7),
     inset 0 2px 8px rgba(0, 0, 0, .5),
     inset 0 0 0 3px rgba(212, 175, 55, .22),
     inset 0 0 0 1px rgba(255, 255, 255, .06);
@@ -1724,13 +1750,81 @@ onBeforeUnmount(() => {
   width: clamp(76px, 19%, 116px); aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 3px solid rgba(212, 175, 55, .55);
+  border: 3px solid #D4AF37;
   background: radial-gradient(circle, #0f4436 0%, #0b3b2e 58%, #07281f 100%);
   box-shadow:
-    0 0 14px rgba(212, 175, 55, .35),
+    0 0 16px rgba(212, 175, 55, .55),
     inset 0 4px 12px rgba(0, 0, 0, .55),
     inset 0 -2px 0 rgba(255, 255, 255, .04);
   pointer-events: none;
+}
+/* 倒计时环形进度条（v2.46.48）：conic-gradient 随剩余秒数收敛，
+ * mask 挖成 3px 细环贴着金边内侧；--p 由模板按剩余比例注入 */
+.mj-compass .cx-ring {
+  position: absolute; inset: -3px; border-radius: 50%;
+  background: conic-gradient(rgba(0, 229, 255, .9) calc(var(--p) * 1%), rgba(0, 229, 255, .12) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4.5px), #000 calc(100% - 3.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4.5px), #000 calc(100% - 3.5px));
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, .55));
+}
+/* 罗盘中心倒计时数字：DIN Alternate + 青色发光；最后 5s 转红 */
+.mj-compass .cx-timer {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-family: 'DIN Alternate', 'Bahnschrift', 'Segoe UI', sans-serif;
+  font-size: 22px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+  color: #00E5FF;
+  text-shadow: 0 0 12px rgba(0, 229, 255, .85), 0 0 26px rgba(0, 229, 255, .4);
+}
+/* 倒计时进行中：方位字淡成背景纹，给数字让位 */
+.mj-compass:has(.cx-timer) .cx { opacity: .25; }
+.mj-compass .cx-timer.is-low {
+  color: #ff5252;
+  text-shadow: 0 0 12px rgba(255, 82, 82, .85), 0 0 26px rgba(255, 82, 82, .45);
+}
+.mj.is-big .cx-timer { font-size: 48px; }
+
+/* ---- 玩家信息（v2.46.48 设计文档）：头像金边发光 / 分数 DIN / 状态标签发光 ---- */
+.mj .gt-seat-av {
+  border: 1.5px solid #D4AF37;
+  box-shadow: 0 0 9px rgba(212, 175, 55, .45), inset 0 0 5px rgba(255, 255, 255, .16);
+}
+.mj .gt-seat-score {
+  font-family: 'DIN Alternate', 'Bahnschrift', 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums; letter-spacing: .3px;
+}
+.mj .gt-seat-badge {
+  box-shadow: 0 0 10px rgba(212, 175, 55, .4);
+}
+.mj .gt-seat-badge.is-ting { box-shadow: 0 0 10px rgba(0, 229, 255, .55); }
+.mj .gt-seat-badge.is-dealer { color: #ffd98a; }
+
+/* ---- 操作按钮（v2.46.48 设计文档）：深绿底 + 2px 金边胶囊，悬停发光、按下缩放 ---- */
+.mj .gt-btn {
+  background: rgba(11, 59, 46, .85);
+  border: 2px solid #D4AF37;
+  border-radius: 24px;
+  transition: box-shadow .18s ease, transform .12s ease, opacity .18s ease;
+}
+.mj .gt-btn:hover:not(:disabled) { box-shadow: 0 0 14px rgba(212, 175, 55, .55); }
+.mj .gt-btn:active:not(:disabled) { transform: scale(.96); }
+.mj .gt-btn:disabled { border-color: rgba(212, 175, 55, .38); }
+
+/* ---- 整体氛围（v2.46.48 设计文档）：罗盘上方柔和光源 + 手牌区底部落影 ---- */
+/* 中央顶光：一枚极淡的暖光椭圆悬在罗盘上方，与桌面顶部吊灯呼应、聚焦中央 */
+.mj-center::after {
+  content: ''; position: absolute; left: 50%; top: 0; z-index: 0;
+  width: 68%; height: 46%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 244, 214, .11), transparent 72%);
+  pointer-events: none;
+}
+/* 手牌落地影：牌排下方一道椭圆软影，让整排手牌「坐」在桌面上 */
+.mj-hand { position: relative; z-index: 0; }
+.mj-hand::after {
+  content: ''; position: absolute; left: 4%; right: 4%; bottom: -9px; z-index: -1;
+  height: 14px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .48), transparent);
 }
 .mj-compass .cx {
   position: absolute; font-style: normal;
@@ -1955,12 +2049,11 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(184, 170, 136, .78);
   border-radius: 7px 7px 6px 6px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 1px 2px rgba(255, 255, 255, .9),
     inset 0 -2px 3px rgba(152, 136, 98, .30),
-    0 2px 0 #e9e0c6,
-    0 4px 0 #c8bc9c,
-    0 5px 1px rgba(88, 78, 52, .32),
-    0 13px 20px -10px rgba(0, 0, 0, .8);
+    0 2px 0 #d9d0b8,
+    0 4px 0 #C0B8A8,
+    0 6px 10px rgba(0, 0, 0, .4);
 }
 /* 牌背：设计文档定稿（v2.46.47）—— 深绿渐变 + 金色菱形交叉纹 + 厚度阴影 */
 .mj .gt-tile.is-back {
@@ -2007,14 +2100,23 @@ onBeforeUnmount(() => {
     0 2px 0 #e9e0c6, 0 4px 0 #c8bc9c,
     0 14px 20px -10px rgba(0, 0, 0, .85);
 }
-/* 手牌选中：抬起来 + 金色描边 */
-.mj-hand .gt-tile.is-sel {
-  transform: translateY(-11px);
+/* 手牌（v2.46.48 设计文档）：比桌牌更厚的底部厚度 + 落影，压得住桌面 */
+.mj-hand .gt-tile {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 1px 2px rgba(255, 255, 255, .9),
+    inset 0 -2px 3px rgba(152, 136, 98, .30),
+    0 2px 0 #d9d0b8,
+    0 5px 0 #C0B8A8,
+    0 8px 12px rgba(0, 0, 0, .4);
+}
+/* 手牌选中：上浮 10px + 金色描边 */
+.mj-hand .gt-tile.is-sel {
+  transform: translateY(-10px);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, .95),
     0 0 0 2px var(--gt-gold), 0 0 18px -2px rgba(233, 200, 119, .7),
-    0 2px 0 #e9e0c6, 0 4px 0 #c8bc9c,
-    0 16px 22px -10px rgba(0, 0, 0, .9);
+    0 2px 0 #d9d0b8, 0 5px 0 #C0B8A8,
+    0 14px 20px -8px rgba(0, 0, 0, .75);
 }
 
 /* ===== 碰杠提示（V24617-010）=====
