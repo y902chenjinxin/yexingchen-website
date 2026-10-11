@@ -65,24 +65,6 @@
           </div>
         </div>
 
-        <!-- 自己（v2.46.47 四角布局）：左下角席位卡 —— 头像/名字/积分/徽标；
-             副露仍在手牌左侧（.mj-ownmelds）不重复摆 -->
-        <div class="mj-seat mj-seat-bl">
-          <div class="gt-seat" :class="seatCls(viewSeat)">
-            <span class="gt-seat-av">{{ seatAvatar(viewSeat) }}</span>
-            <span class="gt-seat-tx">
-              <b class="gt-seat-name">{{ seatName(viewSeat) }}</b>
-            </span>
-            <span class="gt-seat-score" :class="dispScores[viewSeat] > 0 ? 'is-plus' : dispScores[viewSeat] < 0 ? 'is-minus' : ''">
-              {{ dispScores[viewSeat] > 0 ? '+' : '' }}{{ dispScores[viewSeat] }}
-            </span>
-            <span v-if="viewSeat === dealer" class="gt-seat-badge is-dealer">庄</span>
-            <span v-if="isTurn(viewSeat) && !out[viewSeat]" class="gt-seat-badge">出牌中</span>
-            <span v-else-if="out[viewSeat]" class="gt-seat-badge">已胡</span>
-            <span v-else-if="tingFlags[viewSeat]" class="gt-seat-badge is-ting">听牌</span>
-          </div>
-        </div>
-
         <!-- 中央：四方弃牌（上=对家 / 下=自己 / 左=左家 / 右=右家），座位号全部过
              disSeats 投影 —— 在线时以自己的座位为原点，而不是写死的 0 号位视角。
              旧版中央还有个「最近舍牌 + 战报」信息盒，它在 grid 里占 minmax(0,1fr) 整列，
@@ -97,6 +79,10 @@
             <i class="cx cx-n">北</i><i class="cx cx-e">东</i><i class="cx cx-s">南</i><i class="cx cx-w">西</i>
             <b v-if="myTurn && turnLeft > 0" class="cx-timer" :class="{ 'is-low': turnLeft <= 5 }">{{ turnLeft }}</b>
             <b v-else class="cx-core"></b>
+            <!-- 场地锚点文字（v2.46.59 对照腾讯）：罗盘上/下各一行，交代「哪个玩法 / 第几局」。
+                 用局内真实信息，不照搬腾讯的「大众麻将 / 菜鸟场 / 底分500」（本玩法是四川麻将）。 -->
+            <b class="cx-venue is-top">四川麻将</b>
+            <b class="cx-venue is-bot">第 {{ roundNo }} 局</b>
           </div>
           <div class="mj-dis mj-dis-up">
             <span
@@ -165,6 +151,19 @@
            弃牌区因此被压到 28px 高。现在一行到底，高度全让给牌桌。 -->
       <footer class="mj-bottom">
         <div class="mj-handbar">
+          <!-- 「自己」席位（v2.46.59）：改成腾讯式小头像 chip 嵌在信息条最左，
+               不再占桌面左下角（那里让给牌墙转角与桌沿）—— 从根上消除
+               「我方的牌不在牌桌上」的错觉。积分已在右侧 pill，此处不重复。 -->
+          <div class="mj-seat mj-seat-own">
+            <div class="gt-seat" :class="seatCls(viewSeat)">
+              <span class="gt-seat-av">{{ seatAvatar(viewSeat) }}</span>
+              <span class="gt-seat-tx"><b class="gt-seat-name">{{ seatName(viewSeat) }}</b></span>
+              <span v-if="viewSeat === dealer" class="gt-seat-badge is-dealer">庄</span>
+              <span v-if="isTurn(viewSeat) && !out[viewSeat]" class="gt-seat-badge">出牌中</span>
+              <span v-else-if="out[viewSeat]" class="gt-seat-badge">已胡</span>
+              <span v-else-if="tingFlags[viewSeat]" class="gt-seat-badge is-ting">听牌</span>
+            </div>
+          </div>
           <span v-if="lastDiscard" class="mj-lastmini">
             <span class="gt-tile mini" :class="suitCls(lastDiscard.tile)">
               <MahjongTileFace :suit="faceSuit(lastDiscard.tile)" :rank="lastDiscard.tile.rank" />
@@ -1641,53 +1640,57 @@ onBeforeUnmount(() => {
 .mj-tpersp {
   flex: 1; min-height: 0;
   position: relative; overflow: hidden;
-  perspective: 1200px; perspective-origin: 50% 50%;
-  background: radial-gradient(120% 100% at 50% 0%, #0A2A20 0%, #041A14 62%, #020C09 100%);
+  /* v2.46.59：透视 1200→1600（更接近平视、梯形外扩更收敛，对照腾讯浅俯角） */
+  perspective: 1600px; perspective-origin: 50% 50%;
+  background: radial-gradient(120% 100% at 50% 0%, #17564A 0%, #0C3A31 62%, #07241E 100%);
 }
 .mj-base {
-  /* v2.46.57：桌面平面比可见区高 1.32 倍（inset 上边 -32%）—— 倾斜 22° 后纵向被透视
-     压缩约 1/1.32，内容尺寸因此回到「未倾斜」观感，同时露出近大远小的梯形。
-     v2.46.58：下边 12px → 0、下圆角归零、下边框去掉 —— 桌面平面一直铺到屏幕底，
-     近沿与木框下沿移出视野，绒布铺满整屏（对照腾讯：近沿不可见）；左右 10px 木轨保留。
-     木框：外层 10px 木色渐变 + 鎏金细线；绒布下移到 .mj-base::before（木框之内一块深绿绒布）。 */
-  position: absolute; inset: -32% 10px 0;
+  /* v2.46.57：桌面平面比可见区高约 1.16 倍（inset 上边 -16%）—— 倾斜 16° 后纵向被透视
+     压缩约 1/1.16，内容尺寸因此回到「未倾斜」观感，同时露出近大远小的梯形。
+     v2.46.58：下边归 0、下圆角归零、下边框去掉 —— 桌面一铺到屏幕底。
+     v2.46.59：倾角 22°→16°、上边 -32%→-16%、左右 10px→8px（收窄梯形外扩，
+     木框只在左右露极窄一线，上下都铺出屏幕，对照腾讯浅俯角）。 */
+  position: absolute; inset: -16% 8px 0;
   display: flex; flex-direction: column;
   padding: 10px;                       /* 木质外框厚度 */
   border-radius: 26px 26px 0 0;
-  transform: rotateX(22deg);
+  transform: rotateX(16deg);
   transform-origin: 50% 100%;
   transform-style: preserve-3d;
-  background: linear-gradient(160deg, #8B5A2B 0%, #6E4420 46%, #5A3A1A 100%);
-  border: 2px solid rgba(212, 175, 55, .5);
+  /* v2.46.59：木框提亮一档（腾讯是偏暖的浅木色，不是深棕） */
+  background: linear-gradient(160deg, #A97340 0%, #87592B 46%, #6B4420 100%);
+  border: 2px solid rgba(226, 190, 110, .55);
   border-bottom: 0;
   box-shadow:
-    inset 0 2px 0 rgba(255, 235, 200, .22),
-    inset 0 -8px 16px rgba(0, 0, 0, .5),
+    inset 0 2px 0 rgba(255, 235, 200, .28),
+    inset 0 -8px 16px rgba(0, 0, 0, .42),
     0 8px 0 #3A2410,
     0 14px 0 #2A1810,
     0 20px 34px rgba(0, 0, 0, .75);
 }
 /* v2.46.58：绒布从 .mj-table 上移到 .mj-base::before —— 因为手牌区 .mj-bottom 已搬进
-   .mj-base，绒布必须铺到它的**底下**（inset 下边 0）才不会露出木色。四层背景沿用 v2.46.57。 */
+   .mj-base，绒布必须铺到它的**底下**（inset 下边 0）才不会露出木色。
+   v2.46.59：基底整体提亮（#1A5C4A→#2E9A87），暗角 200px/.9 → 150px/.5（腾讯是明亮青绿，
+   不是近黑深绿），凹陷同步减半。 */
 .mj-base::before {
   content: ''; position: absolute; inset: 10px 10px 0;
   border-radius: 18px 18px 0 0;
   pointer-events: none;
   background:
     /* L3 绒布纹理：45° 交叉细线（2%） */
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
-    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .025) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .025) 0 2px, transparent 2px 6px),
     /* 中央聚光灯（处方 8）：circle at 50% 40% */
-    radial-gradient(60% 52% at 50% 40%, rgba(255, 255, 255, .15), transparent 62%),
-    /* 绒布基底：中央亮 → 四周暗 */
-    radial-gradient(circle at 50% 42%, #1A5C4A 0%, #0B3B2E 58%, #05201A 100%);
+    radial-gradient(62% 54% at 50% 40%, rgba(255, 255, 255, .22), transparent 64%),
+    /* 绒布基底：中央亮 → 四周暗（v2.46.59 提亮） */
+    radial-gradient(circle at 50% 44%, #2E9A87 0%, #1C6A59 58%, #0E4438 100%);
   box-shadow:
     /* 金线内嵌：木框与绒布之间的鎏金收口 */
-    inset 0 0 0 2px rgba(212, 175, 55, .32),
-    /* 桌面凹陷（处方 2） */
-    inset 0 20px 40px rgba(0, 0, 0, .8),
-    /* 环境暗角（处方 8） */
-    inset 0 0 200px rgba(0, 0, 0, .9);
+    inset 0 0 0 2px rgba(226, 190, 110, .45),
+    /* 桌面凹陷（处方 2，v2.46.59 减半） */
+    inset 0 16px 34px rgba(0, 0, 0, .5),
+    /* 环境暗角（处方 8，v2.46.59 减半） */
+    inset 0 0 150px rgba(0, 0, 0, .5);
 }
 .mj-table {
   /* v2.46.57：本层承担「四角席位 / 牌墙的定位基准」—— transform-style:preserve-3d +
@@ -1703,20 +1706,29 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   overflow: visible;
 }
-/* 席位卡在透视里反向回正（-22° 抵消 .mj-base 的 +22°，永久正面朝人） */
-.mj-table > .mj-seat { transform: rotateX(-22deg); }
-/* 手机横屏：倾角收到 14°，减少纵向压缩与字面倒伏（放在竖屏回退之前，让竖屏后置覆盖） */
+/* 席位卡在透视里反向回正（-16° 抵消 .mj-base 的 +16°，永久正面朝人） */
+.mj-table > .mj-seat { transform: rotateX(-16deg); }
+/* 左右家要「边中点」纵向居中，必须把 translateY(-50%) 与反向 rotateX **合并成一条**
+   —— 分开写会被上面这条覆盖（同层、且 `.mj-table > .mj-seat` 特异性 0,2,0 高于 .mj-seat-tl）。
+   v2.46.59：`.mj-seat-bl` 已搬去信息条，只剩 tl / br 需要居中。 */
+.mj-table > .mj-seat.mj-seat-tl,
+.mj-table > .mj-seat.mj-seat-br { transform: translateY(-50%) rotateX(-16deg); }
+/* 手机横屏：倾角收到 12°（更平的俯角，减少纵向压缩与字面倒伏） */
 @media (max-width: 900px) and (orientation: landscape) {
-  .mj-base { transform: rotateX(14deg); inset: -22% 10px 0; }
-  .mj-table > .mj-seat { transform: rotateX(-14deg); }
+  .mj-base { transform: rotateX(12deg); inset: -12% 8px 0; }
+  .mj-table > .mj-seat { transform: rotateX(-12deg); }
+  .mj-table > .mj-seat.mj-seat-tl,
+  .mj-table > .mj-seat.mj-seat-br { transform: translateY(-50%) rotateX(-12deg); }
 }
 /* 竖屏 / 减少动效：回退平面（桌面恢复四边圆角木框，绒布回到框内） */
 @media (orientation: portrait), (prefers-reduced-motion: reduce) {
-  .mj-base { transform: none; inset: 10px; border-radius: 26px; border-bottom: 2px solid rgba(212, 175, 55, .5); }
+  .mj-base { transform: none; inset: 10px; border-radius: 26px; border-bottom: 2px solid rgba(226, 190, 110, .55); }
   .mj-base::before { inset: 10px; border-radius: 18px; }
   .mj-handrow { perspective: none; }
   .mj-hand { transform: none; }
   .mj-table > .mj-seat { transform: none; }
+  .mj-table > .mj-seat.mj-seat-tl,
+  .mj-table > .mj-seat.mj-seat-br { transform: translateY(-50%); }
   .mj-tpersp .mj-dis > .gt-tile { transform: none; }
 }
 .mj-seat {
@@ -1733,14 +1745,40 @@ onBeforeUnmount(() => {
    中央弃牌只剩 28px 高 —— 这就是「出牌区间缩小了好多」。
    并排后还要再压：`.gt-seat` 全局是「34px 头像 + 7px 上下 padding + 边框」= 50px 高，
    在一屏 360px 的横屏里太奢侈 → 这里把对家的座位牌压到 34px 左右。 */
-/* 四角席位（v2.46.47）：紧凑卡 —— 头像金边 + 名字 + 积分 + 徽标，副露/牌背横排限宽 */
-/* 四边中点锚定（v2.46.58）：对照腾讯 —— 对家在**顶边居中**、左右家在**左右边中上**、
-   自己在**底边偏左**；牌墙贴桌沿后，席位卡也从四角移到四边中点，把四个角让给牌墙转角。 */
-.mj-seat-tl { left: 1.6%; top: 22%; align-items: flex-start; }
-.mj-seat-tr { top: 2%; left: 0; right: 0; max-width: none; align-items: center; }
-.mj-seat-bl { left: 1.6%; bottom: 4%; align-items: flex-start; }
-.mj-seat-br { right: 1.6%; top: 22%; align-items: flex-end; }
-.mj-seat-tl .gt-seat, .mj-seat-tr .gt-seat, .mj-seat-br .gt-seat, .mj-seat-bl .gt-seat {
+/* 四边席位（v2.46.47）：紧凑卡 —— 头像金边 + 名字 + 积分 + 徽标，副露/牌背横排限宽 */
+/* 三边中点锚定（v2.46.59）：对照腾讯 —— 对家在**顶边居中**、左右家在**左右边中点**
+   （纵向居中靠上面的 translateY(-50%) 合并规则）。
+   自己已搬去信息条 chip（.mj-seat-own），四个桌角因此全部让给牌墙转角。 */
+.mj-seat-tl { left: 1%; top: 50%; align-items: flex-start; }
+.mj-seat-tr { top: 1%; left: 0; right: 0; max-width: none; align-items: center; }
+.mj-seat-br { right: 1%; top: 50%; align-items: flex-end; }
+/* 「自己」席位（v2.46.59）：信息条最左的行内小头像 chip（对照腾讯的「自己」小头像）。
+   脱离桌面后不再是绝对定位，也不再裁切 —— 直接作为 .mj-handbar 的 flex 子项。 */
+.mj-seat-own {
+  position: static; grid-area: auto;
+  flex: none; flex-direction: row; gap: 0;
+  max-width: none; max-height: none; overflow: visible;
+}
+.mj-seat-own .gt-seat {
+  max-width: 138px; padding: 1px 9px 1px 2px; gap: 6px;
+  background: rgba(11, 59, 46, .85);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(212, 175, 55, .55);
+  border-radius: 999px;
+  box-shadow:
+    0 6px 16px -5px rgba(0, 0, 0, .7),
+    inset 0 1px 0 rgba(255, 255, 255, .14);
+}
+.mj-seat-own .gt-seat-av {
+  width: 24px; height: 24px; font-size: 12px;
+  border: 1.5px solid #D4AF37;
+  box-shadow: 0 0 10px rgba(212, 175, 55, .45), inset 0 0 5px rgba(255, 255, 255, .16);
+}
+.mj-seat-own .gt-seat-name { font-size: 11.5px; max-width: 74px; }
+.mj-seat-own .gt-seat-badge { font-size: 9.5px; padding: 0 5px; }
+.mj-seat-own .gt-seat-score { font-size: 11px; }
+.mj-seat-tl .gt-seat, .mj-seat-tr .gt-seat, .mj-seat-br .gt-seat {
   max-width: 168px; padding: 1px 8px 1px 2px; gap: 6px;
   /* L4 玩家信息：玻璃背景 rgba(11,59,46,.85) + blur(16px) + 1.5px 金边，
      多层落影让席位卡从绒布上「浮」起来，不再是贴布平面片 */
@@ -1756,12 +1794,12 @@ onBeforeUnmount(() => {
     inset 0 -1px 2px rgba(0, 0, 0, .35);
 }
 /* 头像金边 + 发光（v2.46.49 加强） */
-.mj-seat-tl .gt-seat-av, .mj-seat-tr .gt-seat-av, .mj-seat-br .gt-seat-av, .mj-seat-bl .gt-seat-av {
+.mj-seat-tl .gt-seat-av, .mj-seat-tr .gt-seat-av, .mj-seat-br .gt-seat-av {
   width: 26px; height: 26px; font-size: 13px;
   border: 1.5px solid #D4AF37;
   box-shadow: 0 0 10px rgba(212, 175, 55, .45), inset 0 0 5px rgba(255, 255, 255, .16);
 }
-.mj-seat-tl .gt-seat-name, .mj-seat-tr .gt-seat-name, .mj-seat-br .gt-seat-name, .mj-seat-bl .gt-seat-name {
+.mj-seat-tl .gt-seat-name, .mj-seat-tr .gt-seat-name, .mj-seat-br .gt-seat-name {
   font-size: 11.5px; max-width: 82px;
 }
 /* 角内副露 / 牌背：横排限宽自动换行，不吃中央宽度。
@@ -1822,7 +1860,7 @@ onBeforeUnmount(() => {
     "up    up"
     "left  right"
     "down  down";
-  padding: 18px 28px; border-radius: 14px;   /* v2.46.44：给四方牌墙留边（原 24px，匀 12px 给中行） */
+  padding: 46px 28px 48px; border-radius: 14px;   /* v2.46.59：上下各留出牌墙内框的空间（原 18px），弃牌落在四段厚墙「里侧」 */
   /* v2.46.46（夜星：还是没有四方桌感）：中央不再是一块「嵌进去的深色面板」——
    * 面板底色与内边线全撤，弃牌直接摆在绒布上，整张桌子就是一块完整的绿绒布；
    * 只保留一圈极淡的内阴影提示「桌面中央」的深度。 */
@@ -1838,17 +1876,20 @@ onBeforeUnmount(() => {
    东南西北四个方位字（金浅色）、中心一枚金点。pointer-events none 不挡交互 */
 .mj-compass {
   position: absolute; left: 50%; top: 50%; z-index: 0;
-  width: clamp(76px, 19%, 116px); aspect-ratio: 1;
+  /* v2.46.59 对照腾讯：中央「大号玻璃盘」—— 由 clamp(76px,19%,116px) 放大到
+     clamp(110px,26%,176px)，成为桌心的视觉锚点（旧版偏小偏上、下方留大片空白）。 */
+  width: clamp(110px, 26%, 176px); aspect-ratio: 1;
   /* v2.46.57：translateZ(18px) 把罗盘沿桌平面法线抬起来（透过 .mj-center/.mj-table/.mj-base
      的 preserve-3d 链在 3D 空间里真浮起，不是画上去的假阴影），配合下方多层托底阴影 */
   transform: translate(-50%, -50%) translateZ(18px);
   border-radius: 50%;
   /* L5 中央罗盘：4px 金环 */
   border: 4px solid #D4AF37;
-  /* 内圈径向渐变：左上受光，与全局光源（顶部偏左）一致 */
+  /* 内圈径向渐变：左上受光，与全局光源（顶部偏左）一致；
+     v2.46.59 对照腾讯的半透明玻璃盘：底色下调到 .82~.94 的微透明，透出一点绒布 */
   background:
-    radial-gradient(120% 120% at 30% 18%, rgba(88, 200, 160, .28), transparent 55%),
-    radial-gradient(circle, #0f4436 0%, #0b3b2e 58%, #07281f 100%);
+    radial-gradient(120% 120% at 30% 18%, rgba(120, 220, 180, .20), transparent 58%),
+    radial-gradient(circle, rgba(15, 68, 54, .82) 0%, rgba(11, 59, 46, .88) 58%, rgba(7, 40, 31, .94) 100%);
   box-shadow:
     /* L5 浮起阴影：两级实心托底 + 大落影，像一枚厚玉盘嵌在桌面上 */
     0 12px 0 #0A2A1E,
@@ -1860,6 +1901,26 @@ onBeforeUnmount(() => {
     inset 0 -2px 0 rgba(255, 255, 255, .04);
   pointer-events: none;
 }
+/* 菱形金环（v2.46.59 对照腾讯）：盘内嵌一枚 45° 金色方框，「圆中带方」的桌心徽记 */
+.mj-compass::before {
+  content: ''; position: absolute; inset: 16%;
+  border: 2px solid rgba(212, 175, 55, .5);
+  border-radius: 4px;
+  transform: rotate(45deg);
+  box-shadow: 0 0 12px rgba(212, 175, 55, .28);
+  pointer-events: none;
+}
+/* 场地锚点文字：贴在圆盘正上/正下方一线上，随圆盘尺寸自适应（不写死 px 偏移） */
+.mj-compass .cx-venue {
+  position: absolute; left: 50%; z-index: 1;
+  transform: translateX(-50%);
+  font-size: clamp(11px, 1.35vw, 14px); font-weight: 700; letter-spacing: .14em;
+  color: rgba(240, 217, 140, .92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .7), 0 0 12px rgba(212, 175, 55, .35);
+  white-space: nowrap;
+}
+.mj-compass .cx-venue.is-top { bottom: calc(100% + 10px); }
+.mj-compass .cx-venue.is-bot { top: calc(100% + 10px); }
 /* 倒计时环形进度条（v2.46.48）：conic-gradient 随剩余秒数收敛，
  * mask 挖成 3px 细环贴着金边内侧；--p 由模板按剩余比例注入 */
 .mj-compass .cx-ring {
@@ -1873,7 +1934,7 @@ onBeforeUnmount(() => {
 .mj-compass .cx-timer {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   font-family: 'DIN Alternate', 'Bahnschrift', 'Segoe UI', sans-serif;
-  font-size: 22px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+  font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
   color: #00E5FF;
   /* v2.46.52 发光加强（夜星清单 3 号）：text-shadow 16px */
   text-shadow: 0 0 16px rgba(0, 229, 255, .95), 0 0 34px rgba(0, 229, 255, .5);
@@ -1945,67 +2006,75 @@ onBeforeUnmount(() => {
 .mj-compass .cx-e { right: 7%; top: 50%; transform: translateY(-50%); }
 .mj-compass .cx-core {
   position: absolute; left: 50%; top: 50%;
-  width: 8px; aspect-ratio: 1; transform: translate(-50%, -50%);
+  width: 10px; aspect-ratio: 1; transform: translate(-50%, -50%);
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #f0d98c, #b8904a 72%);
   box-shadow: 0 0 9px rgba(212, 175, 55, .5);
 }
-/* ---- 四方牌墙（v2.46.42）：贴桌沿，随摸牌缩短；开门墩鎏金 ----
-   v2.46.58：挂载点从 .mj-center（中央弃牌区，仅 640px 宽）搬到 .mj-table（整张桌面）
-   → 牌墙才真正贴着「桌沿」而不是「弃牌区四周」。 */
-.mj-walls { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+/* ---- 四方牌墙（v2.46.42）：随摸牌缩短；开门墩鎏金 ----
+   v2.46.58：挂载点从 .mj-center 搬到 .mj-table（贴整张桌面）。
+   v2.46.59：对照腾讯 —— 牌墙不再贴最外沿，而是**内缩成四段厚实双层长墙**围出一个内框
+   （上/下横长条居中、左/右竖长条居边中），与弃牌区之间留出一道绒布；
+   墩体加大到 18×26 并加顶部亮面 / 双层白缝 / 两侧侧厚 / 落地投影，做成明显「厚墙」。 */
+/* 牌墙整体是一块**居中的内框**（v2.46.59）：与 .mj-center 同心、比它宽出约 40px/侧，
+   四段墙贴在这块内框的边线上 —— 既保证墙与弃牌区之间留出一道绒布，
+   又不会在窄桌（岛屿内嵌）上把墙压进弃牌里（旧版纯百分比定位在 ≤900px 会重叠）。 */
+.mj-walls {
+  position: absolute; inset: 0 auto 0 50%; z-index: 0; pointer-events: none;
+  width: min(calc(100% - 24px), 720px);
+  transform: translateX(-50%);
+}
 .mj-wall { position: absolute; display: flex; gap: 1px; }
-.mj-wall-up   { top: 2%; left: 50%; transform: translateX(-50%); }
-.mj-wall-down { bottom: 2%; left: 50%; transform: translateX(-50%); }
-.mj-wall-left  { left: 1.6%; top: 50%; transform: translateY(-50%); flex-direction: column; }
-.mj-wall-right { right: 1.6%; top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wall-up   { top: 8px; left: 50%; transform: translateX(-50%); }
+.mj-wall-down { bottom: 8px; left: 50%; transform: translateX(-50%); }
+.mj-wall-left  { left: 6px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wall-right { right: 6px; top: 50%; transform: translateY(-50%); flex-direction: column; }
 .mj-wstack {
-  width: 11px; height: 19px; border-radius: 3px;
-  /* v2.46.47 / v2.46.58：牌墙 = 立着的深绿牌背 + 金菱纹 + **双层牌墩**
-     （渐变中段一道收口线把「上/下两张牌」分开，再以两级错位阴影模拟堆叠侧影） */
+  width: 18px; height: 26px; border-radius: 4px;
+  /* v2.46.59：一墩 = 上下两张牌 —— 上一半是上牌顶面（受光亮面），下一半是下牌侧沿；
+     中间一道浅色「白缝」把两层分开；两侧内影 + 底部两级错位阴影做出实在的厚度。 */
   background:
-    repeating-linear-gradient(45deg, rgba(212, 175, 55, .14) 0 1.5px, transparent 1.5px 5px),
-    repeating-linear-gradient(-45deg, rgba(212, 175, 55, .14) 0 1.5px, transparent 1.5px 5px),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .07) 0 2px, transparent 2px 7px),
     linear-gradient(180deg,
-      #22735b 0%, #175c47 44%,
-      #114a39 46%, #0d4433 49%,
-      #1a6350 53%, #0f4738 100%);
+      #43c3a2 0%, #2faa8c 40%,
+      #e9f2ec 42%, #c4d2c9 45%,
+      #2aa287 48%, #17866a 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .18),
-    inset 0 0 0 1px rgba(4, 34, 26, .55),
-    inset 0 -4px 5px -2px rgba(0, 0, 0, .5),
-    0 3px 0 #0a2f24,
-    0 6px 0 #071f18,
-    0 8px 6px -2px rgba(0, 0, 0, .65);
+    inset 0 2px 0 rgba(255, 255, 255, .5),
+    inset 0 0 0 1.5px rgba(233, 242, 236, .5),
+    inset 0 -6px 7px -3px rgba(0, 0, 0, .45),
+    0 4px 0 #0d4b3c,
+    0 8px 0 #093529,
+    0 11px 10px -2px rgba(0, 0, 0, .7);
   transition: opacity .3s ease, transform .3s ease, box-shadow .3s ease;
 }
-/* 左/右墙：牌墩转 90°（宽高互换），收口线随之变竖线 */
+/* 左/右墙：牌墩转 90°（宽高互换），亮面/白缝方向随之转竖 */
 .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack {
-  width: 19px; height: 11px;
+  width: 26px; height: 18px;
   background:
-    repeating-linear-gradient(45deg, rgba(212, 175, 55, .14) 0 1.5px, transparent 1.5px 5px),
-    repeating-linear-gradient(-45deg, rgba(212, 175, 55, .14) 0 1.5px, transparent 1.5px 5px),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .07) 0 2px, transparent 2px 7px),
     linear-gradient(90deg,
-      #22735b 0%, #175c47 44%,
-      #114a39 46%, #0d4433 49%,
-      #1a6350 53%, #0f4738 100%);
+      #43c3a2 0%, #2faa8c 40%,
+      #e9f2ec 42%, #c4d2c9 45%,
+      #2aa287 48%, #17866a 100%);
 }
 .mj-wstack.is-half { opacity: .5; }
 .mj-wstack.is-gone { opacity: 0; transform: scale(.5); }
 .mj-wstack.is-open {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .18),
-    inset 0 0 0 1px rgba(4, 34, 26, .55),
-    0 0 0 1.5px rgba(212, 175, 55, .95), 0 0 10px rgba(212, 175, 55, .6),
-    0 3px 0 #0a2f24, 0 6px 0 #071f18,
-    0 8px 6px -2px rgba(0, 0, 0, .65);
-  transform: scale(1.2);
+    inset 0 2px 0 rgba(255, 255, 255, .5),
+    inset 0 0 0 1.5px rgba(255, 255, 255, .55),
+    0 0 0 2px rgba(233, 200, 119, .95), 0 0 14px rgba(233, 200, 119, .6),
+    0 4px 0 #0d4b3c,
+    0 8px 0 #093529,
+    0 11px 10px -2px rgba(0, 0, 0, .7);
+  transform: scale(1.15);
 }
 @media (max-height: 430px) {
   /* 矮屏（手机横屏）：弃牌再收一档 —— 中行能多让出 ~12px 给左右弃牌的纵向码列 */
   .mj { --dis-w: clamp(14px, calc(var(--gt-h, 420px) * 0.05), 22px); }
-  .mj-wstack { width: 10px; height: 16px; }
-  .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 16px; height: 10px; }
+  .mj-wstack { width: 14px; height: 20px; }
+  .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 20px; height: 14px; }
 }
 /* 碰/杠大字（v2.46.20）：绝对定位盖在弃牌区中央，金底墨字 pop 一闪；
    进出场都在一条 keyframes 里（0.95s），1s 后 v-if 摘除，无需 transition */
@@ -2139,20 +2208,21 @@ onBeforeUnmount(() => {
      position:relative 作为「操作按钮 position:absolute」的定位基准。
      **禁用 position:fixed**（夜星禁止事项）—— 遮挡由 flex 分区天然根治。
      v2.46.58：移进 .mj-base（倾斜桌面）内 → 手牌坐在桌面前沿的绒布上（对照腾讯）。
-     反向 rotateX(-22deg) 与 .mj-base 的 +22° 抵消，牌面仍正面朝人、可读；
-     台面背景改半透明，让 .mj-base::before 的绒布透上来（不再是独立深色条）。 */
+     反向 rotateX(-16deg) 与 .mj-base 的 +16° 抵消，牌面仍正面朝人、可读。
+     v2.46.59：背景改**几乎全透明**（仅底部极淡渐深）—— 去掉手牌与桌面之间的暗带，
+     让绒布一直铺到手牌脚下（对照腾讯：手牌直接坐在绒布上，无缝）。 */
   position: relative; z-index: 30;
   height: 200px; flex-shrink: 0;
   display: flex; flex-direction: column; justify-content: space-between; gap: 5px;
   padding: 0 14px 10px;
-  transform: rotateX(-22deg);
+  transform: rotateX(-16deg);
   transform-origin: bottom center;
-  background: linear-gradient(180deg, rgba(4, 20, 15, 0) 0%, rgba(3, 16, 12, .5) 72%, rgba(2, 12, 9, .62) 100%);
+  background: linear-gradient(180deg, rgba(6, 26, 20, 0) 0%, rgba(4, 18, 14, .05) 72%, rgba(3, 14, 11, .13) 100%);
 }
 /* 手牌区的倾斜回正必须与 .mj-base 同步（放在基规则之后，避免被后置基规则覆盖）：
-   手机横屏 14° / 竖屏·减少动效回退平面 */
+   手机横屏 12° / 竖屏·减少动效回退平面 */
 @media (max-width: 900px) and (orientation: landscape) {
-  .mj-bottom { transform: rotateX(-14deg); }
+  .mj-bottom { transform: rotateX(-12deg); }
 }
 @media (orientation: portrait), (prefers-reduced-motion: reduce) {
   .mj-bottom { transform: none; }
