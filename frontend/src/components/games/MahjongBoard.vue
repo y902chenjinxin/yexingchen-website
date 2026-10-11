@@ -19,7 +19,11 @@
         <button class="gt-btn sm ghost" @click="doExit">退出对局</button>
       </header>
 
-      <!-- ===== 牌桌：厚底座（木纹+金线）包深色绒布 ===== -->
+      <!-- ===== 牌桌：2.5D 透视（v2.46.57）=====
+           .mj-tpersp 承担 perspective + overflow:hidden（裁掉倾斜后外露的桌角）；
+           .mj-base 只承担 rotateX(22deg) 倾斜 —— perspective 必须父层、tilt 子层，
+           两者同层时 perspective 会作用于自身旋转，等于没有透视。 -->
+      <div class="mj-tpersp">
       <div class="mj-base">
         <div class="mj-table">
         <!-- 对家 / 左家 / 右家：席位 + 副露 + 手牌背面（左右家竖排，对家横排） -->
@@ -150,6 +154,7 @@
           <!-- 碰/杠大字（v2.46.20）：金底墨字 pop 一闪，动画自身管进出场 -->
           <b v-if="claimFx" class="mj-claim-fx" aria-hidden="true">{{ claimFx }}</b>
         </div>
+      </div>
       </div>
       </div>
 
@@ -1623,57 +1628,86 @@ onBeforeUnmount(() => {
   padding: 0;
   background: #041A14;
 }
-.mj-base {
-  /* v2.46.56 桌面区（夜星处方）：flex:1 吃掉手牌区之外的全部高度；**不设固定高度**；
-     margin 底为 0 → 与下方手牌区严丝合缝，两区之间不留任何空白。
-     position:relative 是四角玩家面板 + 中央罗盘的定位基准；overflow:hidden 把越界内容
-     全裁在桌内（顺带兜住 3D 打出牌的侧沿厚度）。 */
-  flex: 1; min-height: 0; display: flex; flex-direction: column;
+/* v2.46.57 2.5D 透视：透视容器与倾斜层分离
+   · .mj-tpersp：承担 perspective + overflow:hidden（裁掉倾斜后外露的桌角），
+     同时是「暗房地板」—— 桌面四周露出的深色地面。
+   · .mj-base：只承担 rotateX 倾斜。perspective 必须挂在父层、rotateX 挂在子层，
+     同层时 perspective 会作用于元素自身旋转＝无透视。
+   · ⚠️ .mj-base **绝不能** overflow:hidden —— 会把 transform-style 强制成 flat，
+     四角席位的 rotateX(-22deg) 反向回正随之失效（面板跟着倒伏）。裁切交给父层。 */
+.mj-tpersp {
+  flex: 1; min-height: 0;
   position: relative; overflow: hidden;
-  margin: 10px 10px 0; border-radius: 24px;
-  /* 整体透视（夜星处方）：perspective 1400px + 微倾斜 4° */
-  transform: perspective(1400px) rotateX(4deg);
+  perspective: 1200px; perspective-origin: 50% 50%;
+  background: radial-gradient(120% 100% at 50% 0%, #0A2A20 0%, #041A14 62%, #020C09 100%);
+}
+.mj-base {
+  /* v2.46.57：桌面平面比可见区高 1.32 倍（inset 上边 -32%）—— 倾斜 22° 后纵向被透视
+     压缩约 1/1.32，内容尺寸因此回到「未倾斜」观感，同时露出近大远小的梯形；
+     左右 10px / 下 12px 留出暗房地板（下边刻意收窄，桌面近沿几乎贴着手牌区，
+     不出现「两区之间留白」），并给 0 8px 桌体厚度阴影留绘制空间。
+     木框：外层 10px 木色渐变 + 鎏金细线；绒布下移到 .mj-table（木框之内一块深绿绒布）。 */
+  position: absolute; inset: -32% 10px 12px;
+  display: flex; flex-direction: column;
+  padding: 10px;                       /* 木质外框厚度 */
+  border-radius: 26px;
+  transform: rotateX(22deg);
   transform-origin: 50% 100%;
-  background:
-    /* L3 绒布纹理：45° 交叉细线（2%） */
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
-    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
-    /* 中央聚光灯 + 桌面暗角 */
-    radial-gradient(46% 34% at 50% 38%, rgba(255, 236, 190, .12), transparent 68%),
-    radial-gradient(62% 44% at 50% -8%, rgba(255, 244, 214, .13), transparent 62%),
-    radial-gradient(120% 104% at 50% 44%, transparent 40%, rgba(0, 0, 0, .7) 100%),
-    /* L1 桌面基底（夜星处方）：circle at 30% 20% → #1A5C4A → #0B3B2E → #041A14 */
-    radial-gradient(circle at 30% 20%, #1A5C4A 0%, #0B3B2E 55%, #041A14 100%);
-  /* 木质外框（夜星处方）：3px 鎏金线 + 0 10px 0 桌体厚度 + 大落影 */
-  border: 3px solid #D4AF37;
+  transform-style: preserve-3d;
+  background: linear-gradient(160deg, #8B5A2B 0%, #6E4420 46%, #5A3A1A 100%);
+  border: 2px solid rgba(212, 175, 55, .5);
   box-shadow:
-    /* 桌面凹陷（夜星处方） */
-    inset 0 20px 50px rgba(0, 0, 0, .9),
-    inset 0 -20px 50px rgba(0, 0, 0, .7),
-    inset 0 0 150px rgba(0, 0, 0, .6),
-    0 10px 0 #3A2410,
-    0 20px 40px rgba(0, 0, 0, .8);
+    inset 0 2px 0 rgba(255, 235, 200, .22),
+    inset 0 -8px 16px rgba(0, 0, 0, .5),
+    0 8px 0 #3A2410,
+    0 14px 0 #2A1810,
+    0 20px 34px rgba(0, 0, 0, .75);
 }
 .mj-table {
-  /* v2.46.56：桌面视觉（绒布渐变 / 木框 / 凹陷）已全部上移到 .mj-base；
-     本层只做中央牌池的网格排布，保持 position:static → 四角面板的包含块是 .mj-base。 */
+  /* v2.46.57：本层承担「桌面绒布」—— 木框之内一块深绿绒布，中央聚光 + 四周重暗角。
+     position:relative 让四角席位 / 牌墙以**绒布内沿**为基准（不再是木框外沿）。
+     transform-style:preserve-3d + overflow:visible 保证 3D 上下文透传到 .mj-base，
+     席位的反向回正才在桌面平面上生效。 */
   flex: 1; min-height: 0;
+  position: relative;
+  transform-style: preserve-3d;
   display: grid; gap: 6px;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: "ctr";
   padding: 10px 12px;
-  background: transparent;
+  border-radius: 18px;
   overflow: visible;
+  background:
+    /* L3 绒布纹理：45° 交叉细线（2%） */
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
+    /* 中央聚光灯（处方 8）：circle at 50% 40% */
+    radial-gradient(60% 52% at 50% 40%, rgba(255, 255, 255, .15), transparent 62%),
+    /* 绒布基底：中央亮 → 四周暗 */
+    radial-gradient(circle at 50% 42%, #1A5C4A 0%, #0B3B2E 58%, #05201A 100%);
+  box-shadow:
+    /* 金线内嵌：木框与绒布之间的鎏金收口 */
+    inset 0 0 0 2px rgba(212, 175, 55, .32),
+    /* 桌面凹陷（处方 2）：inset 0 20px 40px rgba(0,0,0,.8) */
+    inset 0 20px 40px rgba(0, 0, 0, .8),
+    /* 环境暗角（处方 8）：inset 0 0 200px rgba(0,0,0,.9) */
+    inset 0 0 200px rgba(0, 0, 0, .9);
 }
-/* 席位卡在透视里反向回正，避免文字倒伏（随全局 4° 透视同步） */
-.mj-table > .mj-seat { transform: rotateX(-4deg); }
+/* 席位卡在透视里反向回正（-22° 抵消 .mj-base 的 +22°，永久正面朝人） */
+.mj-table > .mj-seat { transform: rotateX(-22deg); }
+/* 手机横屏：倾角收到 14°，减少纵向压缩与字面倒伏（放在竖屏回退之前，让竖屏后置覆盖） */
+@media (max-width: 900px) and (orientation: landscape) {
+  .mj-base { transform: rotateX(14deg); inset: -22% 10px 12px; }
+  .mj-table > .mj-seat { transform: rotateX(-14deg); }
+}
 /* 竖屏 / 减少动效：回退平面 */
 @media (orientation: portrait), (prefers-reduced-motion: reduce) {
-  .mj-base { transform: none; }
+  .mj-base { transform: none; inset: 10px; }
   .mj-handrow { perspective: none; }
   .mj-hand { transform: none; }
   .mj-table > .mj-seat { transform: none; }
+  .mj-tpersp .mj-dis > .gt-tile { transform: none; }
 }
 .mj-seat {
   /* v2.46.54：脱离文档流 —— 绝对定位后**不参与父容器高度计算**，
@@ -1761,6 +1795,8 @@ onBeforeUnmount(() => {
 .mj-center {
   /* v2.46.55 空间层次：牌池 z-index 10（玩家面板 20、手牌区 100） */
   grid-area: ctr; position: relative; z-index: 10; min-width: 0; min-height: 0;
+  /* v2.46.57：保留 3D 上下文（中央罗盘的 translateZ 浮起靠它透传到 .mj-base） */
+  transform-style: preserve-3d;
   display: grid; gap: 2px 6px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   /* v2.46.44（夜星：弃牌会拉伸牌桌）：上下两条横排**定高一行**（牌多溢出裁切），
@@ -1793,7 +1829,9 @@ onBeforeUnmount(() => {
 .mj-compass {
   position: absolute; left: 50%; top: 50%; z-index: 0;
   width: clamp(76px, 19%, 116px); aspect-ratio: 1;
-  transform: translate(-50%, -50%);
+  /* v2.46.57：translateZ(18px) 把罗盘沿桌平面法线抬起来（透过 .mj-center/.mj-table/.mj-base
+     的 preserve-3d 链在 3D 空间里真浮起，不是画上去的假阴影），配合下方多层托底阴影 */
+  transform: translate(-50%, -50%) translateZ(18px);
   border-radius: 50%;
   /* L5 中央罗盘：4px 金环 */
   border: 4px solid #D4AF37;
@@ -1846,7 +1884,11 @@ onBeforeUnmount(() => {
 .mj .gt-seat-score {
   font-family: 'DIN Alternate', 'Bahnschrift', 'Segoe UI', sans-serif;
   font-variant-numeric: tabular-nums; letter-spacing: .3px;
+  /* v2.46.57（处方 7）：分数加发光，从绒布上「亮」起来 */
+  text-shadow: 0 0 9px rgba(212, 175, 55, .5);
 }
+.mj .gt-seat-score.is-plus { text-shadow: 0 0 10px rgba(212, 175, 55, .7); }
+.mj .gt-seat-score.is-minus { text-shadow: 0 0 10px rgba(255, 120, 120, .55); }
 .mj .gt-seat-badge {
   box-shadow: 0 0 10px rgba(212, 175, 55, .4);
 }
@@ -1979,9 +2021,10 @@ onBeforeUnmount(() => {
 }
 .mj-dis > .gt-tile {
   flex: none; transform-style: preserve-3d;
-  /* v2.46.55 处方：打出牌躺下（微透视 600px / 25°）；左右家牌身已由「盒宽高互换 +
-     牌面 SVG 反向 ±90°」横躺到位，这里不再叠 rotateZ(90deg)（会双重旋转把牌转回竖直） */
-  transform: perspective(600px) rotateX(25deg);
+  /* v2.46.57：弃牌「躺倒」由桌面 22° 倾斜 + 这里 28° 共同完成（撤掉旧的 perspective(600px)
+     前缀 —— 透视已由外层 .mj-tpersp 统一提供，子元素再叠 perspective 会二次透视失真）。
+     左右家牌身已由「盒宽高互换 + 牌面 SVG 反向 ±90°」横躺到位，这里不再叠 rotateZ(90deg)。 */
+  transform: rotateX(28deg);
   /* 厚度渲染：四层侧沿 + 落影；内高光 + 倒角 */
   box-shadow:
     inset 0 2px 3px rgba(255, 255, 255, 1),

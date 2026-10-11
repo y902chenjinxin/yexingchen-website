@@ -1,3 +1,30 @@
+## [v2.46.57] - 2026-10-11
+
+### 麻将牌桌 2.5D 透视核心改造（对照腾讯欢乐麻将）
+- **新增透视容器** `.mj-tpersp`（`flex:1; position:relative; overflow:hidden; perspective:1200px;
+  perspective-origin:50% 50%` + 暗房地板渐变）包住 `.mj-base` —— perspective 必须父层、rotateX 子层
+- **桌面倾斜** `.mj-base`：`position:absolute; inset:-32% 10px 12px`（平面比可见区高 1.32 倍，
+  用于抵消倾斜后的纵向透视压缩）`padding:10px`（木框厚度）`transform:rotateX(22deg);
+  transform-origin:50% 100%; transform-style:preserve-3d`
+  - 木框：外层 `linear-gradient(160deg,#8B5A2B,#6E4420,#5A3A1A)` + 鎏金细线 +
+    `0 8px 0 #3A2410 / 0 14px 0 #2A1810` 桌体厚度
+  - ⚠️ `.mj-base` **不给 `overflow:hidden`** —— 会强制 `transform-style:flat`，破坏席位反向回正
+- **绒布下移** `.mj-table`：`position:relative; transform-style:preserve-3d; border-radius:18px`；
+  `radial-gradient(circle at 50% 42%, #1A5C4A, #0B3B2E, #05201A)` + 中央聚光 `circle at 50% 40%`
+  + 凹陷 `inset 0 20px 40px rgba(0,0,0,.8)` + 暗角 `inset 0 0 200px rgba(0,0,0,.9)`
+- **四角席位反向回正** `.mj-table > .mj-seat { transform: rotateX(-22deg) }` → 永久正面朝人；
+  玻璃 `backdrop-filter:blur(16px)` + 金边 + 头像/分数发光（新增 `.gt-seat-score` text-shadow）
+- **打出牌** `.mj-dis > .gt-tile { transform: rotateX(28deg) }`（撤掉旧 `perspective(600px)` 前缀，
+  避免与外层透视二次失真）+ 四层侧沿厚度
+- **罗盘浮起** `.mj-compass { transform: translate(-50%,-50%) translateZ(18px) }`（真 3D 抬升）
+- **手牌区**在 `.mj-tpersp` 之外（`.mj` 的 flex 兄弟），保持 `perspective:1000px` + `rotateX(8deg)`
+- **响应式**：手机横屏 `@media (max-width:900px) and (orientation:landscape)` 倾角收 14°（席位 -14°）；
+  竖屏 / `prefers-reduced-motion` 回退平面（`.mj-base{transform:none; inset:10px}`）
+- 与处方的偏离（已获夜星批准）：倾角 35°→22°、弃牌 70°→28°、牌墙不加 `translateZ`
+  （牌墙随平面下沉，加 Z 会在斜面浮空错位）、手牌区不倾斜
+- 方案文档 `docs/ai/MAHJONG_LAYOUT_3D_20261011.md`（第五轮）；SW v369→v370；本地 `npm run build` 通过
+- 说明：本次按夜星要求**不做现网探针验证**，由夜星现网验收
+
 ## [v2.46.56] - 2026-10-11
 
 ### 麻将布局结构重构：纯 flex 分区（回退 v2.46.55 的 fixed 方案）
