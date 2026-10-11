@@ -1,3 +1,32 @@
+## [v2.46.56] - 2026-10-11
+
+### 麻将布局结构重构：纯 flex 分区（回退 v2.46.55 的 fixed 方案）
+- **撤销 v2.46.55 的 position:fixed + padding-bottom 预留**（夜星明确禁止 fixed 分区），
+  改为夜星处方的纯 flex 列布局，遮挡由分区机制天然根治
+- **1 页面容器** `.mj`：`display:flex; flex-direction:column; gap:0; padding:0; height:100%; overflow:hidden; background:#041A14`
+  - 偏离处方：用 `height:100%` 而非 `100vh` —— 宿主（岛屿内嵌 / 手机全屏 1280×720 缩放画布）
+    已给出确定高度，`100vh` 在手机全屏会解析成「视口高」（约 390）≠「画布高」（720）→ 牌桌被压扁
+- **2 桌面区** `.mj-base`：`flex:1; position:relative; overflow:hidden; margin:10px 10px 0; border-radius:24px`
+  - 底 margin 为 0 → 与手牌区严丝合缝，两区之间**无空白**
+  - 桌面视觉全部上移到这里：`radial-gradient(circle at 30% 20%, #1A5C4A 0%, #0B3B2E 55%, #041A14 100%)`
+    + 凹陷 `inset 0 20px 50px .9 / inset 0 -20px 50px .7 / inset 0 0 150px .6`
+    + 木质外框 `border:3px solid #D4AF37; box-shadow: 0 10px 0 #3A2410, 0 20px 40px rgba(0,0,0,.8)`
+  - 整体透视 `transform: perspective(1400px) rotateX(4deg)`（沿用）
+  - `.mj-table` 退化为纯网格（`position:static; background:transparent; overflow:visible`），
+    四角面板的包含块因此变成 `.mj-base`（桌面区）
+  - 四角面板贴桌沿 20px（沿用）；中央罗盘 `absolute; top/left:50%; translate(-50%,-50%)`（沿用）
+  - 四家牌墙距边缘 15px
+- **3 手牌区** `.mj-bottom`：`position:relative; z-index:30; height:200px; flex-shrink:0;
+  background:linear-gradient(180deg,#0B3B2E 0%,#06241C 100%)`；撤掉木质外框与 `::before` 绒布台
+  - 手牌 `.mj-handrow`：`perspective:1000px` + 左右 40px；`.mj-hand`：`rotateX(8deg); transform-origin:bottom center`
+  - 操作按钮 `.mj-actions`：`position:absolute; right:40px; top:20px`（相对手牌区）
+  - 偏离处方：手牌区纵向不做 20px 大 padding —— 200px 要装下「信息条 + 牌面(≈116px)」，
+    纵向留白会挤爆手牌
+- **4 禁止事项**全部满足：无 `position:fixed`、桌面区无固定高度、两区无空白、页面无滚动条
+  （`.mj { overflow:hidden }` 兜底）
+- 方案文档 `docs/ai/MAHJONG_LAYOUT_3D_20261011.md`；SW v368→v369；本地 `npm run build` 通过
+- 说明：本次按夜星要求**不做现网探针验证**，由夜星现网验收
+
 ## [v2.46.55] - 2026-10-11
 
 ### 麻将固定分区布局（修遮挡）+ 3D 空间感加强（夜星复述处方）

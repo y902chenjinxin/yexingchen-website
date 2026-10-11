@@ -1613,61 +1613,58 @@ onBeforeUnmount(() => {
    · 桌面 .mj-table：腾讯式青绿绒布（比旧深绿亮一档）
    · 透视：四角席位卡反向 rotateX 抵消倒伏；竖屏 / prefers-reduced-motion 回退平面。 */
 .mj {
-  /* v2.46.55 无遮挡：手牌区改 fixed 钉在视口底部（见 .mj-bottom），这里给它预留等高空间，
-     桌面容器内容区自然收到「100% - 200px」，桌面内元素不可能被手牌区盖住 */
-  padding-bottom: 200px;
-  background:
-    radial-gradient(120% 90% at 50% 20%, rgba(30, 82, 66, .30), transparent 62%),
-    radial-gradient(150% 110% at 50% 115%, rgba(0, 0, 0, .55), transparent 60%),
-    linear-gradient(180deg, #0b241d 0%, #071711 55%, #040d0a 100%);
+  /* v2.46.56 页面容器（夜星处方）：整页一屏 flex 列 —— 桌面区 flex:1、手牌区定高 200px，
+     无 gap、无内边距，两区严丝合缝不留白；overflow:hidden 兜底禁滚动条。
+     ⚠️ 用 height:100% 而非 100vh：宿主（岛屿内嵌 / 手机全屏的 1280×720 缩放画布）已给出确定高度，
+     100vh 在手机全屏会解析成「视口高」（约 390）而非「画布高」（720）→ 牌桌被压扁。
+     ⚠️ 禁用 position:fixed / min-height 固定值（夜星 4 条禁止事项）。 */
+  display: flex; flex-direction: column; gap: 0;
+  height: 100%; overflow: hidden;
+  padding: 0;
+  background: #041A14;
 }
 .mj-base {
+  /* v2.46.56 桌面区（夜星处方）：flex:1 吃掉手牌区之外的全部高度；**不设固定高度**；
+     margin 底为 0 → 与下方手牌区严丝合缝，两区之间不留任何空白。
+     position:relative 是四角玩家面板 + 中央罗盘的定位基准；overflow:hidden 把越界内容
+     全裁在桌内（顺带兜住 3D 打出牌的侧沿厚度）。 */
   flex: 1; min-height: 0; display: flex; flex-direction: column;
-  /* v2.46.53 七层结构 · L2 木质外框：绿绒布外围包一圈实木框 + 3px 鎏金线。
-     与 .mj-bottom（下半木框 + 前缘绒布台）拼成一张完整的实木麻将桌。
-     底部零 padding/零圆角，让桌面绒布一直铺到中缝，续接 .mj-bottom::before 的绒布。 */
-  margin: 3px 30px 0;
-  padding: 14px 14px 0; border-radius: 32px 32px 0 0;
-  /* 整体氛围（夜星清单）：全局透视 1400px / 4° */
+  position: relative; overflow: hidden;
+  margin: 10px 10px 0; border-radius: 24px;
+  /* 整体透视（夜星处方）：perspective 1400px + 微倾斜 4° */
   transform: perspective(1400px) rotateX(4deg);
   transform-origin: 50% 100%;
-  background: linear-gradient(160deg, #8B5A2B 0%, #5A3A1A 56%, #3A2410 100%);
-  border: 3px solid #D4AF37;
-  border-bottom: 0;
-  box-shadow:
-    inset 0 2px 3px rgba(255, 228, 170, .42),
-    inset 0 -8px 16px rgba(0, 0, 0, .50),
-    inset 0 0 0 1px rgba(255, 220, 160, .16);
-}
-.mj-table {
-  /* v2.46.55 无遮挡：桌面容器带 position:relative（四角面板的定位基准）+ overflow:hidden，
-     越界内容一律裁在桌内，绝不外溢到下方手牌区 */
-  flex: 1; min-height: 0; position: relative; overflow: hidden;
-  display: grid; gap: 6px;
-  /* v2.46.54 布局修复：四角席位改 position:absolute 脱离文档流（既不撑高桌面、
-     也不会互相挤压），中央牌池独占整块桌面。 */
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-  grid-template-areas: "ctr";
-  padding: 10px 12px; border-radius: 24px 24px 0 0;
   background:
-    /* L3 绒布纹理：45° 交叉细线，透明度 2%（只在桌面内叠加，不铺到整壳） */
+    /* L3 绒布纹理：45° 交叉细线（2%） */
     repeating-linear-gradient(45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
     repeating-linear-gradient(-45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
-    /* 整体氛围 · 中央聚光灯：暖白光斑压在罗盘正上方 */
+    /* 中央聚光灯 + 桌面暗角 */
     radial-gradient(46% 34% at 50% 38%, rgba(255, 236, 190, .12), transparent 68%),
     radial-gradient(62% 44% at 50% -8%, rgba(255, 244, 214, .13), transparent 62%),
-    /* 整体氛围 · 桌面暗角（夜星清单）：中央透明 40% → 四周 rgba(0,0,0,.7) */
     radial-gradient(120% 104% at 50% 44%, transparent 40%, rgba(0, 0, 0, .7) 100%),
-    /* L1 桌面基底：径向渐变 #1A5C4A → #0B3B2E → #041A14（光源在左上） */
-    radial-gradient(100% 100% at 44% 32%, #1A5C4A 0%, #0B3B2E 58%, #041A14 100%);
+    /* L1 桌面基底（夜星处方）：circle at 30% 20% → #1A5C4A → #0B3B2E → #041A14 */
+    radial-gradient(circle at 30% 20%, #1A5C4A 0%, #0B3B2E 55%, #041A14 100%);
+  /* 木质外框（夜星处方）：3px 鎏金线 + 0 10px 0 桌体厚度 + 大落影 */
+  border: 3px solid #D4AF37;
   box-shadow:
-    /* v2.46.55 L1 桌面凹陷加深（夜星处方）：上下各 20/50px、四周 150px */
+    /* 桌面凹陷（夜星处方） */
     inset 0 20px 50px rgba(0, 0, 0, .9),
     inset 0 -20px 50px rgba(0, 0, 0, .7),
     inset 0 0 150px rgba(0, 0, 0, .6),
-    inset 0 0 0 3px rgba(212, 175, 55, .22),
-    inset 0 0 0 1px rgba(255, 255, 255, .06);
+    0 10px 0 #3A2410,
+    0 20px 40px rgba(0, 0, 0, .8);
+}
+.mj-table {
+  /* v2.46.56：桌面视觉（绒布渐变 / 木框 / 凹陷）已全部上移到 .mj-base；
+     本层只做中央牌池的网格排布，保持 position:static → 四角面板的包含块是 .mj-base。 */
+  flex: 1; min-height: 0;
+  display: grid; gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "ctr";
+  padding: 10px 12px;
+  background: transparent;
+  overflow: visible;
 }
 /* 席位卡在透视里反向回正，避免文字倒伏（随全局 4° 透视同步） */
 .mj-table > .mj-seat { transform: rotateX(-4deg); }
@@ -1904,11 +1901,11 @@ onBeforeUnmount(() => {
 /* ---- 四方牌墙（v2.46.42）：贴中央区四边，随摸牌缩短；开门墩鎏金 ---- */
 .mj-walls { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .mj-wall { position: absolute; display: flex; gap: 1px; }
-/* v2.46.55：四家牌墙贴边 —— 5%（下限 10px，保证与桌沿留出间距） */
-.mj-wall-up   { top: max(10px, 5%); left: 50%; transform: translateX(-50%); }
-.mj-wall-down { bottom: max(10px, 5%); left: 50%; transform: translateX(-50%); }
-.mj-wall-left  { left: max(10px, 5%); top: 50%; transform: translateY(-50%); flex-direction: column; }
-.mj-wall-right { right: max(10px, 5%); top: 50%; transform: translateY(-50%); flex-direction: column; }
+/* v2.46.56（夜星处方）：四家牌墙围绕桌面边缘，与边缘保持 15px 间距 */
+.mj-wall-up   { top: 15px; left: 50%; transform: translateX(-50%); }
+.mj-wall-down { bottom: 15px; left: 50%; transform: translateX(-50%); }
+.mj-wall-left  { left: 15px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wall-right { right: 15px; top: 50%; transform: translateY(-50%); flex-direction: column; }
 .mj-wstack {
   width: 10px; height: 14px; border-radius: 2px;
   /* v2.46.47（设计文档）：牌墙 = 立着的深绿牌背 + 金菱纹 + 双层堆叠厚度
@@ -2070,40 +2067,15 @@ onBeforeUnmount(() => {
    桌沿（base，上圆下直）→ 台面（bottom，上直下圆）→ 桌体厚度/落影挂在最底部。
    手牌、信息 pill、按钮全部坐在桌面上，不再有独立的深色条 */
 .mj-bottom {
-  /* v2.46.55 无遮挡（夜星处方）：手牌区钉在视口底部固定 200px 高、z-index 100。
-     桌面根 .mj 已用 padding-bottom:200px 预留等高空间 → 桌面内元素不会被手牌区盖住。
-     ⚠️ fixed 在两种宿主都成立：桌面非全屏无 transform 祖先 → 相对视口；
-     手机全屏时祖先 .gtv-viewzoom.is-fs 带 transform → 它是包含块，相对 1280×720 逻辑画布。 */
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  height: 200px;
-  /* 信息条贴住桌沿、手牌排沉到带底；不裁切（否则选中牌上浮 16px 会被切顶） */
+  /* v2.46.56 手牌区（夜星处方）：定高 200px + flex-shrink:0（绝不压缩），
+     position:relative 作为「操作按钮 position:absolute」的定位基准；
+     深绿渐变台面。**禁用 position:fixed**（夜星禁止事项）—— 遮挡由 flex 分区天然根治。 */
+  position: relative; z-index: 30;
+  height: 200px; flex-shrink: 0;
   display: flex; flex-direction: column; justify-content: space-between; gap: 5px;
-  /* v2.46.53 L2 木质外框（下半）：与 .mj-base 上半木框拼成一张完整的实木桌。
-     fixed 后上缘不再与桌面自动连体，靠 0 上边距 + 同色木框贴住桌面下沿。 */
-  margin: 0 30px 8px; padding: 0 14px 14px;
-  border-radius: 0 0 32px 32px;
-  border: 3px solid #D4AF37;
-  border-top: 0;
-  background: linear-gradient(160deg, #8B5A2B 0%, #5A3A1A 56%, #3A2410 100%);
-  box-shadow:
-    /* L2 凸起阴影：桌体厚度 + 大落影（挂在视觉最低处） */
-    0 10px 0 #3A2410,
-    0 14px 0 #2A1808,
-    0 20px 40px rgba(0, 0, 0, .8),
-    inset 0 -8px 16px rgba(0, 0, 0, .45);
+  padding: 0 14px 10px;
+  background: linear-gradient(180deg, #0B3B2E 0%, #06241C 100%);
 }
-/* 前缘绒布台：与桌面 L1 同料续接，信息条 + 手牌都坐在这块布上；
-   inset 0 14px 14px → 顶边与桌面绒布无缝，左右/底露出 14px 木框 */
-.mj-bottom::before {
-  content: ''; position: absolute; inset: 0 14px 14px;
-  border-radius: 0 0 22px 22px;
-  background:
-    radial-gradient(120% 76% at 50% 0%, rgba(26, 92, 74, .5), transparent 70%),
-    linear-gradient(180deg, #0A3A2C 0%, #062A20 55%, #041A14 100%);
-  box-shadow: inset 0 10px 24px rgba(0, 0, 0, .55);
-  pointer-events: none; z-index: 0;
-}
-.mj-bottom > * { position: relative; z-index: 1; }
 /* v2.46.14：操作按钮从手牌右侧移到手牌**上方**独立一行（夜星：按钮放麻将上方）。
    手牌 flex:1 铺满整行；牌宽公式的百分比以手牌盒实际宽为基准。
    全屏 1280 逻辑宽下手牌仍由 0.12×屏高的上限封顶，不会被压小。 */
@@ -2111,7 +2083,9 @@ onBeforeUnmount(() => {
    与腾讯麻将一致；仅保留牌排上缘一道桌面反光 */
 .mj-handrow {
   display: flex; align-items: flex-end; gap: 8px; min-height: 0;
-  padding: 6px 12px 8px;
+  /* v2.46.56（夜星处方）：手牌行左右各留 40px；纵向不做大 padding ——
+     200px 手牌区要装下「信息条 + 牌面(≈116px)」，纵向留白会自动挤爆。 */
+  padding: 0 40px;
   /* v2.46.55 L7：透视挂在外层；手牌排自身 .mj-hand 加 rotateX(8deg) 躺下 */
   perspective: 1000px;
   /* L7 顶部阴影渐变：牌排上缘压一道桌面暗影 */
@@ -2154,7 +2128,12 @@ onBeforeUnmount(() => {
 .mj-hand-empty { margin: 0 auto; font-size: 12px; color: var(--gt-ink-dim); }
 /* 操作按钮（v2.46.14 独立一行 → v2.46.52 并进信息条同一行，夜星 0 号）：
    靠右贴齐，按钮收成 6px/16px；窄屏隐藏「上滑打出」提示防挤出 */
-.mj-actions { justify-content: flex-end; flex: none; margin-bottom: 0; }
+.mj-actions {
+  /* v2.46.56（夜星处方）：操作按钮绝对定位到手牌区右上角（相对 .mj-bottom，
+     因其所有中间祖先都是 static）。 */
+  position: absolute; right: 40px; top: 20px;
+  display: flex; gap: 8px; justify-content: flex-end; flex: none;
+}
 .mj-actions .gt-btn { padding: 6px 16px; font-size: 12.5px; }
 @media (max-width: 960px) {
   .mj-hint { display: none; }
