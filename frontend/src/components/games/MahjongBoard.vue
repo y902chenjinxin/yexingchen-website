@@ -1639,11 +1639,20 @@ onBeforeUnmount(() => {
     "bl ctr br";
   padding: 10px 12px; border-radius: 18px;
   background:
+    /* v2.46.49 中央聚光灯：一枚暖白光斑压在罗盘正上方，聚焦中央 */
+    radial-gradient(46% 34% at 50% 38%, rgba(255, 236, 190, .10), transparent 68%),
     radial-gradient(62% 44% at 50% -8%, rgba(255, 244, 214, .13), transparent 62%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(100% 100% at 50% 40%, #1a5c4a 0%, #0b3b2e 58%, #041a14 100%);
+    /* v2.46.49 色调偏暖：绿心掺一线暖橄榄（rgba 暖绿替代冷绿） */
+    radial-gradient(100% 100% at 50% 40%, #1c5e49 0%, #0d3c2e 58%, #041a14 100%);
   box-shadow:
-    inset 0 0 150px rgba(0, 0, 0, .7),
+    /* v2.46.49 外框凸起：桌沿像一道厚棱从底座上抬起来 */
+    0 6px 0 #5A3A1A,
+    0 14px 26px -10px rgba(0, 0, 0, .85),
+    /* 暗角 200px/.7（夜星清单 v2.46.49：周边收得更沉） */
+    inset 0 0 200px rgba(0, 0, 0, .8),
+    /* 桌面凹陷：顶部一圈下压阴影，绒布像嵌进桌框里 */
+    inset 0 8px 24px rgba(0, 0, 0, .6),
     inset 0 2px 8px rgba(0, 0, 0, .5),
     inset 0 0 0 3px rgba(212, 175, 55, .22),
     inset 0 0 0 1px rgba(255, 255, 255, .06);
@@ -1653,6 +1662,7 @@ onBeforeUnmount(() => {
 /* 竖屏 / 减少动效：回退平面 */
 @media (orientation: portrait), (prefers-reduced-motion: reduce) {
   .mj-base { transform: none; }
+  .mj-handrow { transform: none; }
   .mj-table > .mj-seat { transform: none; }
 }
 .mj-seat { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0;
@@ -1671,11 +1681,19 @@ onBeforeUnmount(() => {
 .mj-seat-bl { grid-area: bl; align-items: flex-start; }
 .mj-seat-tl .gt-seat, .mj-seat-tr .gt-seat, .mj-seat-br .gt-seat, .mj-seat-bl .gt-seat {
   max-width: 168px; padding: 1px 8px 1px 2px; gap: 6px;
+  /* v2.46.49 玻璃拟态：深绿半透明 + 背景虚化，席位卡浮在绒布上 */
+  background: rgba(11, 59, 46, .7);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(212, 175, 55, .30);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .10);
 }
+/* 头像金边 + 发光（v2.46.49 加强） */
 .mj-seat-tl .gt-seat-av, .mj-seat-tr .gt-seat-av, .mj-seat-br .gt-seat-av, .mj-seat-bl .gt-seat-av {
   width: 26px; height: 26px; font-size: 13px;
-  border: 1.5px solid rgba(212, 175, 55, .7);
-  box-shadow: 0 0 10px rgba(212, 175, 55, .28);
+  border: 1.5px solid #D4AF37;
+  box-shadow: 0 0 10px rgba(212, 175, 55, .45), inset 0 0 5px rgba(255, 255, 255, .16);
 }
 .mj-seat-tl .gt-seat-name, .mj-seat-tr .gt-seat-name, .mj-seat-br .gt-seat-name, .mj-seat-bl .gt-seat-name {
   font-size: 11.5px; max-width: 82px;
@@ -1753,6 +1771,9 @@ onBeforeUnmount(() => {
   border: 3px solid #D4AF37;
   background: radial-gradient(circle, #0f4436 0%, #0b3b2e 58%, #07281f 100%);
   box-shadow:
+    /* v2.46.49 浮起：像一枚厚玉盘嵌在桌面上 —— 底缘实心托底 + 大落影 */
+    0 8px 0 #0A2A1E,
+    0 12px 24px rgba(0, 0, 0, .7),
     0 0 16px rgba(212, 175, 55, .55),
     inset 0 4px 12px rgba(0, 0, 0, .55),
     inset 0 -2px 0 rgba(255, 255, 255, .04);
@@ -1994,9 +2015,13 @@ onBeforeUnmount(() => {
   display: flex; align-items: flex-end; gap: 8px; min-height: 0;
   padding: 6px 12px 8px; border-radius: 14px;
   background: linear-gradient(180deg, rgba(245, 240, 230, .12), rgba(245, 240, 230, .045));
+  /* v2.46.49 微透视：手牌排整体向后仰 5°，与桌面 7° 透视同一方向 */
+  transform: perspective(800px) rotateX(5deg);
+  transform-origin: 50% 100%;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .22),
     inset 0 -1px 0 rgba(0, 0, 0, .25),
+    0 -8px 24px rgba(0, 0, 0, .5),
     0 12px 22px -14px rgba(0, 0, 0, .8);
 }
 /* 自己的碰 / 杠副露（V24613-002）：迷你牌横排，flex:none 不参与手牌均分；
@@ -2049,11 +2074,16 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(184, 170, 136, .78);
   border-radius: 7px 7px 6px 6px;
   box-shadow:
+    /* 内倒角：内缘一圈微光 + 底部收暗，牌面像倒过角的象牙片 */
     inset 0 1px 2px rgba(255, 255, 255, .9),
+    inset 0 -1px 0 rgba(255, 255, 255, .45),
+    inset 0 0 5px rgba(120, 105, 75, .18),
     inset 0 -2px 3px rgba(152, 136, 98, .30),
+    /* 三段厚度（v2.46.49）：亮侧沿 → 暗侧沿 → 大落影，立体感翻倍 */
     0 2px 0 #d9d0b8,
-    0 4px 0 #C0B8A8,
-    0 6px 10px rgba(0, 0, 0, .4);
+    0 6px 0 #C0B8A8,
+    0 8px 0 #A89E8E,
+    0 12px 16px rgba(0, 0, 0, .5);
 }
 /* 牌背：设计文档定稿（v2.46.47）—— 深绿渐变 + 金色菱形交叉纹 + 厚度阴影 */
 .mj .gt-tile.is-back {
@@ -2109,9 +2139,10 @@ onBeforeUnmount(() => {
     0 5px 0 #C0B8A8,
     0 8px 12px rgba(0, 0, 0, .4);
 }
-/* 手牌选中：上浮 10px + 金色描边 */
+/* 手牌选中：上浮 10px + 放大 1.06 + 金色描边（v2.46.49 加放大） */
 .mj-hand .gt-tile.is-sel {
-  transform: translateY(-10px);
+  transform: translateY(-10px) scale(1.06);
+  z-index: 3;
   box-shadow:
     inset 0 1px 2px rgba(255, 255, 255, .95),
     0 0 0 2px var(--gt-gold), 0 0 18px -2px rgba(233, 200, 119, .7),

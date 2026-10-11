@@ -119,62 +119,69 @@ const props = defineProps({
 /* 万：传统牌「伍萬」用大写数字「伍」，其余用一二三四六七八九 */
 const NUM_CN = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '伍', 6: '六', 7: '七', 8: '八', 9: '九' }
 
-/* ===== 牌面配色 v2.46.47（夜星设计文档 majiang_design.md 定稿）=====
-   万 = 红 #C62828 / 筒 = 蓝 #1565C0 / 条 = 绿 #2E7D32，整花色统一一色；
-   字牌（中發白 + 风牌）沿用传统色。文字一律带「浮雕」text-shadow：
-   亮边在下、暗边在上，模拟刻印在象牙面上的凹凸。 */
-const BLUE = '#1565c0'
-const GREEN = '#2e7d32'
+/* 高饱和三色（筒 / 条共用）：在深绿桌布上不发灰。
+   条用的绿单独取「竹青」#0f9152 —— 旧值 #0b8a4d 偏墨，缩到手机弃牌尺寸（16×22）时
+   整张牌发暗，看着像脏绿块（夜星：「条牌的颜色不对劲」）。 */
+const BLUE = '#1657c9'
+const GREEN = '#0f9152'
+const RED = '#d42a2a'
 
 /**
  * 筒子圆点阵：{x, y, r, c, sw} + 可选 ring / solid / dot。
- * v2.46.47：整花色统一蓝（夜星拍板「全蓝按文档」），一筒大饼用深浅两档蓝
- * 做出环的层次（#1565c0 主蓝 / #0d3f7d 深蓝），其余牌圆点全部主蓝。
+ *
+ * 配色依据（v2.46.3 按传统牌面重排，不再是「每张牌单色或蓝绿随便配」）：
+ *  · 中文维基「麻将牌 / 麻雀牌」筒子一节：二筒由绿蓝色圆垂直组成；
+ *    三筒为蓝、红、绿的圆排成斜线；四筒两蓝两绿对角；五筒＝四筒＋中心红；
+ *    六筒顶部两个绿圆、底部四个红圆；七筒顶部三个绿圆斜排、底部四个红圆；
+ *    八筒八个蓝圆（2×4）；九筒三行，由顶至底为蓝、红、绿。
+ *  · 百度百科「筒子」条目：传统用红色与墨绿交替染筒，**唯四筒和八筒不着红**。
+ *  → 两张资料合并后，1/2/3/5/6/7/9 都带红，只有 4/8 是纯蓝绿，本表即按此落地。
+ *  · 一筒是「大饼」：一个多色同心大圆，外红环 + 内绿环 + 红心。
  */
 const TONG_LAYOUT = {
   1: [
-    { x: 50, y: 70, r: 34, c: BLUE, sw: 9, ring: true },
-    { x: 50, y: 70, r: 20, c: '#0d3f7d', sw: 7, ring: true },
-    { x: 50, y: 70, r: 7.5, c: BLUE, solid: true },
+    { x: 50, y: 70, r: 34, c: RED, sw: 9, ring: true },
+    { x: 50, y: 70, r: 20, c: GREEN, sw: 7, ring: true },
+    { x: 50, y: 70, r: 7.5, c: RED, solid: true },
   ],
   2: [
-    { x: 50, y: 40, r: 19, c: BLUE, sw: 6 },
-    { x: 50, y: 100, r: 19, c: BLUE, sw: 6 },
+    { x: 50, y: 40, r: 19, c: RED, sw: 6 },
+    { x: 50, y: 100, r: 19, c: GREEN, sw: 6 },
   ],
   3: [
     { x: 26, y: 32, r: 15.5, c: BLUE, sw: 5.4 },
-    { x: 50, y: 70, r: 15.5, c: BLUE, sw: 5.4 },
-    { x: 74, y: 108, r: 15.5, c: BLUE, sw: 5.4 },
+    { x: 50, y: 70, r: 15.5, c: RED, sw: 5.4 },
+    { x: 74, y: 108, r: 15.5, c: GREEN, sw: 5.4 },
   ],
   4: [
     { x: 30, y: 42, r: 16, c: BLUE, sw: 5.4 },
-    { x: 70, y: 42, r: 16, c: BLUE, sw: 5.4 },
-    { x: 30, y: 98, r: 16, c: BLUE, sw: 5.4 },
+    { x: 70, y: 42, r: 16, c: GREEN, sw: 5.4 },
+    { x: 30, y: 98, r: 16, c: GREEN, sw: 5.4 },
     { x: 70, y: 98, r: 16, c: BLUE, sw: 5.4 },
   ],
   5: [
     { x: 30, y: 40, r: 13, c: BLUE, sw: 4.8 },
-    { x: 70, y: 40, r: 13, c: BLUE, sw: 4.8 },
-    { x: 50, y: 70, r: 13, c: BLUE, sw: 4.8 },
-    { x: 30, y: 100, r: 13, c: BLUE, sw: 4.8 },
+    { x: 70, y: 40, r: 13, c: GREEN, sw: 4.8 },
+    { x: 50, y: 70, r: 13, c: RED, sw: 4.8 },
+    { x: 30, y: 100, r: 13, c: GREEN, sw: 4.8 },
     { x: 70, y: 100, r: 13, c: BLUE, sw: 4.8 },
   ],
   6: [
-    { x: 32, y: 30, r: 16, c: BLUE, sw: 5.4 },
-    { x: 68, y: 30, r: 16, c: BLUE, sw: 5.4 },
-    { x: 32, y: 76, r: 13.5, c: BLUE, sw: 4.8 },
-    { x: 68, y: 76, r: 13.5, c: BLUE, sw: 4.8 },
-    { x: 32, y: 114, r: 13.5, c: BLUE, sw: 4.8 },
-    { x: 68, y: 114, r: 13.5, c: BLUE, sw: 4.8 },
+    { x: 32, y: 30, r: 16, c: GREEN, sw: 5.4 },
+    { x: 68, y: 30, r: 16, c: GREEN, sw: 5.4 },
+    { x: 32, y: 76, r: 13.5, c: RED, sw: 4.8 },
+    { x: 68, y: 76, r: 13.5, c: RED, sw: 4.8 },
+    { x: 32, y: 114, r: 13.5, c: RED, sw: 4.8 },
+    { x: 68, y: 114, r: 13.5, c: RED, sw: 4.8 },
   ],
   7: [
-    { x: 24, y: 26, r: 12, c: BLUE, sw: 4.4 },
-    { x: 50, y: 46, r: 12, c: BLUE, sw: 4.4 },
-    { x: 76, y: 66, r: 12, c: BLUE, sw: 4.4 },
-    { x: 30, y: 94, r: 11, c: BLUE, sw: 4.2 },
-    { x: 70, y: 94, r: 11, c: BLUE, sw: 4.2 },
-    { x: 30, y: 124, r: 11, c: BLUE, sw: 4.2 },
-    { x: 70, y: 124, r: 11, c: BLUE, sw: 4.2 },
+    { x: 24, y: 26, r: 12, c: GREEN, sw: 4.4 },
+    { x: 50, y: 46, r: 12, c: GREEN, sw: 4.4 },
+    { x: 76, y: 66, r: 12, c: GREEN, sw: 4.4 },
+    { x: 30, y: 94, r: 11, c: RED, sw: 4.2 },
+    { x: 70, y: 94, r: 11, c: RED, sw: 4.2 },
+    { x: 30, y: 124, r: 11, c: RED, sw: 4.2 },
+    { x: 70, y: 124, r: 11, c: RED, sw: 4.2 },
   ],
   8: [
     { x: 32, y: 26, r: 12, c: BLUE, sw: 4.4 },
@@ -190,12 +197,12 @@ const TONG_LAYOUT = {
     { x: 26, y: 34, r: 12, c: BLUE, sw: 4.4 },
     { x: 50, y: 34, r: 12, c: BLUE, sw: 4.4 },
     { x: 74, y: 34, r: 12, c: BLUE, sw: 4.4 },
-    { x: 26, y: 70, r: 12, c: BLUE, sw: 4.4 },
-    { x: 50, y: 70, r: 12, c: BLUE, sw: 4.4 },
-    { x: 74, y: 70, r: 12, c: BLUE, sw: 4.4 },
-    { x: 26, y: 106, r: 12, c: BLUE, sw: 4.4 },
-    { x: 50, y: 106, r: 12, c: BLUE, sw: 4.4 },
-    { x: 74, y: 106, r: 12, c: BLUE, sw: 4.4 },
+    { x: 26, y: 70, r: 12, c: RED, sw: 4.4 },
+    { x: 50, y: 70, r: 12, c: RED, sw: 4.4 },
+    { x: 74, y: 70, r: 12, c: RED, sw: 4.4 },
+    { x: 26, y: 106, r: 12, c: GREEN, sw: 4.4 },
+    { x: 50, y: 106, r: 12, c: GREEN, sw: 4.4 },
+    { x: 74, y: 106, r: 12, c: GREEN, sw: 4.4 },
   ],
 }
 
@@ -276,10 +283,9 @@ const tiaoSticks = computed(() => {
     return {
       ...s,
       w,
-      // v2.46.47：整花色统一绿 #2e7d32（原 5/7/9 的红杆按设计文档取消，靠排列区分）
-      c: GREEN,
-      hi: 'rgba(255,255,255,.4)',
-      node: 'rgba(8,48,24,.52)',
+      c: s.red ? RED : GREEN,
+      hi: s.red ? 'rgba(255,255,255,.46)' : 'rgba(255,255,255,.4)',
+      node: s.red ? 'rgba(104,10,14,.46)' : 'rgba(4,72,38,.52)',
     }
   })
 })
@@ -287,18 +293,15 @@ const tiaoSticks = computed(() => {
 
 <style scoped>
 .mj-face { display: block; width: 100%; height: 100%; }
-/* 浮雕字（v2.46.48 设计文档）：SVG <text> 不支持 text-shadow，
+/* 浮雕字（v2.46.49）：SVG <text> 不支持 text-shadow，
  * 用双层 drop-shadow 模拟「上沿受光、下沿落影」的凸起浮雕 */
 .mj-face text {
   filter: drop-shadow(0 -1px 0 rgba(255, 255, 255, .55))
           drop-shadow(0 1.4px 0.6px rgba(58, 48, 28, .4));
 }
-/* ===== 文字浮雕（设计文档：亮边在下 / 暗边在上，模拟刻印凹凸）=====
-   SVG <text> 在 Chrome / WebView 里支持 CSS text-shadow，缩到 16px 依然清晰。 */
-.mj-face text { text-shadow: 0 1.5px 0 rgba(255, 255, 255, .85), 0 -1px 0 rgba(0, 0, 0, .22); }
-/* 万：数字化与「萬」统一红 #c62828（v2.46.47 文档定稿），字号上小下大 */
+/* 万：上「数字化」（蓝，本字号的 0.76 倍），下「萬」（红，略大）—— 真牌即上小下大 */
 .f-num {
-  font-size: 44px; font-weight: 700; fill: #c62828;
+  font-size: 44px; font-weight: 700; fill: #14549e;
   text-anchor: middle; dominant-baseline: central;
   font-family: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", "HarmonyOS Sans SC", serif;
 }
