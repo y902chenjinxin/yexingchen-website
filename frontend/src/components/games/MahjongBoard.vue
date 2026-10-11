@@ -98,19 +98,6 @@
             <b v-if="myTurn && turnLeft > 0" class="cx-timer" :class="{ 'is-low': turnLeft <= 5 }">{{ turnLeft }}</b>
             <b v-else class="cx-core"></b>
           </div>
-          <!-- 四方牌墙（v2.46.42）：4 边 × 15 墩牌背，随摸牌缩短（零头墩半透）；
-               开门墩鎏金标记。纯展示不挡交互；屏幕边 → 绝对座位过 povSeat
-               投影（V2467-001），墩序按各边物理朝向翻转。 -->
-          <div v-if="dice" class="mj-walls" aria-hidden="true">
-            <div v-for="side in ['up', 'left', 'right', 'down']" :key="side" class="mj-wall" :class="'mj-wall-' + side">
-              <span
-                v-for="(wst, s) in wallShape[side]"
-                :key="s"
-                class="mj-wstack"
-                :class="{ 'is-half': wst.n === 1, 'is-gone': wst.n === 0, 'is-open': isOpenStack(side, wst.i) }"
-              ></span>
-            </div>
-          </div>
           <div class="mj-dis mj-dis-up">
             <span
               v-for="t in discards[disSeats.up]"
@@ -154,8 +141,22 @@
           <!-- 碰/杠大字（v2.46.20）：金底墨字 pop 一闪，动画自身管进出场 -->
           <b v-if="claimFx" class="mj-claim-fx" aria-hidden="true">{{ claimFx }}</b>
         </div>
-      </div>
-      </div>
+
+        <!-- 四方牌墙（v2.46.42）：4 边 × 15 墩牌背，随摸牌缩短（零头墩半透）；
+             开门墩鎏金标记。纯展示不挡交互；屏幕边 → 绝对座位过 povSeat
+             投影（V2467-001），墩序按各边物理朝向翻转。
+             v2.46.58：从 .mj-center（中央弃牌区，仅 640px 宽）搬出，直接挂 .mj-table
+             —— 牌墙要贴的是「桌沿」而不是「中央弃牌区四周」。 -->
+        <div v-if="dice" class="mj-walls" aria-hidden="true">
+          <div v-for="side in ['up', 'left', 'right', 'down']" :key="side" class="mj-wall" :class="'mj-wall-' + side">
+            <span
+              v-for="(wst, s) in wallShape[side]"
+              :key="s"
+              class="mj-wstack"
+              :class="{ 'is-half': wst.n === 1, 'is-gone': wst.n === 0, 'is-open': isOpenStack(side, wst.i) }"
+            ></span>
+          </div>
+        </div>
       </div>
 
       <!-- ===== 底部：信息条 + 手牌 + 操作 =====
@@ -289,6 +290,8 @@
         </div>
         </div>
       </footer>
+      </div>
+      </div>
 
       <!-- ===== 胡牌动画浮层（V24617-011，在线 & 本地共用）=====
            胡牌后先全屏展示赢家 14 张牌 + 番种，牌逐张翻入；点击任意处关闭，
@@ -1643,19 +1646,20 @@ onBeforeUnmount(() => {
 }
 .mj-base {
   /* v2.46.57：桌面平面比可见区高 1.32 倍（inset 上边 -32%）—— 倾斜 22° 后纵向被透视
-     压缩约 1/1.32，内容尺寸因此回到「未倾斜」观感，同时露出近大远小的梯形；
-     左右 10px / 下 12px 留出暗房地板（下边刻意收窄，桌面近沿几乎贴着手牌区，
-     不出现「两区之间留白」），并给 0 8px 桌体厚度阴影留绘制空间。
-     木框：外层 10px 木色渐变 + 鎏金细线；绒布下移到 .mj-table（木框之内一块深绿绒布）。 */
-  position: absolute; inset: -32% 10px 12px;
+     压缩约 1/1.32，内容尺寸因此回到「未倾斜」观感，同时露出近大远小的梯形。
+     v2.46.58：下边 12px → 0、下圆角归零、下边框去掉 —— 桌面平面一直铺到屏幕底，
+     近沿与木框下沿移出视野，绒布铺满整屏（对照腾讯：近沿不可见）；左右 10px 木轨保留。
+     木框：外层 10px 木色渐变 + 鎏金细线；绒布下移到 .mj-base::before（木框之内一块深绿绒布）。 */
+  position: absolute; inset: -32% 10px 0;
   display: flex; flex-direction: column;
   padding: 10px;                       /* 木质外框厚度 */
-  border-radius: 26px;
+  border-radius: 26px 26px 0 0;
   transform: rotateX(22deg);
   transform-origin: 50% 100%;
   transform-style: preserve-3d;
   background: linear-gradient(160deg, #8B5A2B 0%, #6E4420 46%, #5A3A1A 100%);
   border: 2px solid rgba(212, 175, 55, .5);
+  border-bottom: 0;
   box-shadow:
     inset 0 2px 0 rgba(255, 235, 200, .22),
     inset 0 -8px 16px rgba(0, 0, 0, .5),
@@ -1663,21 +1667,12 @@ onBeforeUnmount(() => {
     0 14px 0 #2A1810,
     0 20px 34px rgba(0, 0, 0, .75);
 }
-.mj-table {
-  /* v2.46.57：本层承担「桌面绒布」—— 木框之内一块深绿绒布，中央聚光 + 四周重暗角。
-     position:relative 让四角席位 / 牌墙以**绒布内沿**为基准（不再是木框外沿）。
-     transform-style:preserve-3d + overflow:visible 保证 3D 上下文透传到 .mj-base，
-     席位的反向回正才在桌面平面上生效。 */
-  flex: 1; min-height: 0;
-  position: relative;
-  transform-style: preserve-3d;
-  display: grid; gap: 6px;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-  grid-template-areas: "ctr";
-  padding: 10px 12px;
-  border-radius: 18px;
-  overflow: visible;
+/* v2.46.58：绒布从 .mj-table 上移到 .mj-base::before —— 因为手牌区 .mj-bottom 已搬进
+   .mj-base，绒布必须铺到它的**底下**（inset 下边 0）才不会露出木色。四层背景沿用 v2.46.57。 */
+.mj-base::before {
+  content: ''; position: absolute; inset: 10px 10px 0;
+  border-radius: 18px 18px 0 0;
+  pointer-events: none;
   background:
     /* L3 绒布纹理：45° 交叉细线（2%） */
     repeating-linear-gradient(45deg, rgba(255, 255, 255, .02) 0 2px, transparent 2px 6px),
@@ -1689,21 +1684,36 @@ onBeforeUnmount(() => {
   box-shadow:
     /* 金线内嵌：木框与绒布之间的鎏金收口 */
     inset 0 0 0 2px rgba(212, 175, 55, .32),
-    /* 桌面凹陷（处方 2）：inset 0 20px 40px rgba(0,0,0,.8) */
+    /* 桌面凹陷（处方 2） */
     inset 0 20px 40px rgba(0, 0, 0, .8),
-    /* 环境暗角（处方 8）：inset 0 0 200px rgba(0,0,0,.9) */
+    /* 环境暗角（处方 8） */
     inset 0 0 200px rgba(0, 0, 0, .9);
+}
+.mj-table {
+  /* v2.46.57：本层承担「四角席位 / 牌墙的定位基准」—— transform-style:preserve-3d +
+     overflow:visible 保证 3D 上下文透传到 .mj-base，席位的反向回正才在桌面平面上生效。
+     v2.46.58：绒布视觉搬去 .mj-base::before，本层只留布局（背景透明、无阴影、无圆角）。 */
+  flex: 1; min-height: 0;
+  position: relative;
+  transform-style: preserve-3d;
+  display: grid; gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "ctr";
+  padding: 10px 12px;
+  overflow: visible;
 }
 /* 席位卡在透视里反向回正（-22° 抵消 .mj-base 的 +22°，永久正面朝人） */
 .mj-table > .mj-seat { transform: rotateX(-22deg); }
 /* 手机横屏：倾角收到 14°，减少纵向压缩与字面倒伏（放在竖屏回退之前，让竖屏后置覆盖） */
 @media (max-width: 900px) and (orientation: landscape) {
-  .mj-base { transform: rotateX(14deg); inset: -22% 10px 12px; }
+  .mj-base { transform: rotateX(14deg); inset: -22% 10px 0; }
   .mj-table > .mj-seat { transform: rotateX(-14deg); }
 }
-/* 竖屏 / 减少动效：回退平面 */
+/* 竖屏 / 减少动效：回退平面（桌面恢复四边圆角木框，绒布回到框内） */
 @media (orientation: portrait), (prefers-reduced-motion: reduce) {
-  .mj-base { transform: none; inset: 10px; }
+  .mj-base { transform: none; inset: 10px; border-radius: 26px; border-bottom: 2px solid rgba(212, 175, 55, .5); }
+  .mj-base::before { inset: 10px; border-radius: 18px; }
   .mj-handrow { perspective: none; }
   .mj-hand { transform: none; }
   .mj-table > .mj-seat { transform: none; }
@@ -1724,12 +1734,12 @@ onBeforeUnmount(() => {
    并排后还要再压：`.gt-seat` 全局是「34px 头像 + 7px 上下 padding + 边框」= 50px 高，
    在一屏 360px 的横屏里太奢侈 → 这里把对家的座位牌压到 34px 左右。 */
 /* 四角席位（v2.46.47）：紧凑卡 —— 头像金边 + 名字 + 积分 + 徽标，副露/牌背横排限宽 */
-/* 四角绝对锚定（v2.46.55 夜星处方）：贴近桌沿 20px —— 左上=左家 / 右上=对家 / 左下=自己 / 右下=右家。
-   手牌区已 fixed 到视口底部并预留了 200px，故左下角「你」不会被手牌盖住。 */
-.mj-seat-tl { top: 20px; left: 20px; align-items: flex-start; }
-.mj-seat-tr { top: 20px; right: 20px; align-items: flex-end; }
-.mj-seat-bl { bottom: 20px; left: 20px; align-items: flex-start; }
-.mj-seat-br { bottom: 20px; right: 20px; align-items: flex-end; }
+/* 四边中点锚定（v2.46.58）：对照腾讯 —— 对家在**顶边居中**、左右家在**左右边中上**、
+   自己在**底边偏左**；牌墙贴桌沿后，席位卡也从四角移到四边中点，把四个角让给牌墙转角。 */
+.mj-seat-tl { left: 1.6%; top: 22%; align-items: flex-start; }
+.mj-seat-tr { top: 2%; left: 0; right: 0; max-width: none; align-items: center; }
+.mj-seat-bl { left: 1.6%; bottom: 4%; align-items: flex-start; }
+.mj-seat-br { right: 1.6%; top: 22%; align-items: flex-end; }
 .mj-seat-tl .gt-seat, .mj-seat-tr .gt-seat, .mj-seat-br .gt-seat, .mj-seat-bl .gt-seat {
   max-width: 168px; padding: 1px 8px 1px 2px; gap: 6px;
   /* L4 玩家信息：玻璃背景 rgba(11,59,46,.85) + blur(16px) + 1.5px 金边，
@@ -1940,47 +1950,62 @@ onBeforeUnmount(() => {
   background: radial-gradient(circle at 35% 30%, #f0d98c, #b8904a 72%);
   box-shadow: 0 0 9px rgba(212, 175, 55, .5);
 }
-/* ---- 四方牌墙（v2.46.42）：贴中央区四边，随摸牌缩短；开门墩鎏金 ---- */
+/* ---- 四方牌墙（v2.46.42）：贴桌沿，随摸牌缩短；开门墩鎏金 ----
+   v2.46.58：挂载点从 .mj-center（中央弃牌区，仅 640px 宽）搬到 .mj-table（整张桌面）
+   → 牌墙才真正贴着「桌沿」而不是「弃牌区四周」。 */
 .mj-walls { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .mj-wall { position: absolute; display: flex; gap: 1px; }
-/* v2.46.56（夜星处方）：四家牌墙围绕桌面边缘，与边缘保持 15px 间距 */
-.mj-wall-up   { top: 15px; left: 50%; transform: translateX(-50%); }
-.mj-wall-down { bottom: 15px; left: 50%; transform: translateX(-50%); }
-.mj-wall-left  { left: 15px; top: 50%; transform: translateY(-50%); flex-direction: column; }
-.mj-wall-right { right: 15px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wall-up   { top: 2%; left: 50%; transform: translateX(-50%); }
+.mj-wall-down { bottom: 2%; left: 50%; transform: translateX(-50%); }
+.mj-wall-left  { left: 1.6%; top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wall-right { right: 1.6%; top: 50%; transform: translateY(-50%); flex-direction: column; }
 .mj-wstack {
-  width: 10px; height: 14px; border-radius: 2px;
-  /* v2.46.47（设计文档）：牌墙 = 立着的深绿牌背 + 金菱纹 + 双层堆叠厚度
-     （box-shadow 两级错位模拟「多层堆叠每层错位」的侧影） */
+  width: 11px; height: 19px; border-radius: 3px;
+  /* v2.46.47 / v2.46.58：牌墙 = 立着的深绿牌背 + 金菱纹 + **双层牌墩**
+     （渐变中段一道收口线把「上/下两张牌」分开，再以两级错位阴影模拟堆叠侧影） */
   background:
     repeating-linear-gradient(45deg, rgba(212, 175, 55, .14) 0 1.5px, transparent 1.5px 5px),
     repeating-linear-gradient(-45deg, rgba(212, 175, 55, .14) 0 1.5px, transparent 1.5px 5px),
-    linear-gradient(180deg, #1f6b55 0%, #12503d 58%, #0b3b2e 100%);
+    linear-gradient(180deg,
+      #22735b 0%, #175c47 44%,
+      #114a39 46%, #0d4433 49%,
+      #1a6350 53%, #0f4738 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .16),
+    inset 0 1px 0 rgba(255, 255, 255, .18),
     inset 0 0 0 1px rgba(4, 34, 26, .55),
-    0 2px 0 #0a2f24,
-    0 3.5px 0 #071f18,
-    0 4.5px 3px -1px rgba(0, 0, 0, .6);
+    inset 0 -4px 5px -2px rgba(0, 0, 0, .5),
+    0 3px 0 #0a2f24,
+    0 6px 0 #071f18,
+    0 8px 6px -2px rgba(0, 0, 0, .65);
   transition: opacity .3s ease, transform .3s ease, box-shadow .3s ease;
 }
-.mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 14px; height: 10px; }
+/* 左/右墙：牌墩转 90°（宽高互换），收口线随之变竖线 */
+.mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack {
+  width: 19px; height: 11px;
+  background:
+    repeating-linear-gradient(45deg, rgba(212, 175, 55, .14) 0 1.5px, transparent 1.5px 5px),
+    repeating-linear-gradient(-45deg, rgba(212, 175, 55, .14) 0 1.5px, transparent 1.5px 5px),
+    linear-gradient(90deg,
+      #22735b 0%, #175c47 44%,
+      #114a39 46%, #0d4433 49%,
+      #1a6350 53%, #0f4738 100%);
+}
 .mj-wstack.is-half { opacity: .5; }
 .mj-wstack.is-gone { opacity: 0; transform: scale(.5); }
 .mj-wstack.is-open {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .16),
+    inset 0 1px 0 rgba(255, 255, 255, .18),
     inset 0 0 0 1px rgba(4, 34, 26, .55),
     0 0 0 1.5px rgba(212, 175, 55, .95), 0 0 10px rgba(212, 175, 55, .6),
-    0 2px 0 #0a2f24, 0 3.5px 0 #071f18,
-    0 4.5px 3px -1px rgba(0, 0, 0, .6);
+    0 3px 0 #0a2f24, 0 6px 0 #071f18,
+    0 8px 6px -2px rgba(0, 0, 0, .65);
   transform: scale(1.2);
 }
 @media (max-height: 430px) {
   /* 矮屏（手机横屏）：弃牌再收一档 —— 中行能多让出 ~12px 给左右弃牌的纵向码列 */
   .mj { --dis-w: clamp(14px, calc(var(--gt-h, 420px) * 0.05), 22px); }
-  .mj-wstack { width: 9px; height: 11px; }
-  .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 11px; height: 9px; }
+  .mj-wstack { width: 10px; height: 16px; }
+  .mj-wall-left .mj-wstack, .mj-wall-right .mj-wstack { width: 16px; height: 10px; }
 }
 /* 碰/杠大字（v2.46.20）：绝对定位盖在弃牌区中央，金底墨字 pop 一闪；
    进出场都在一条 keyframes 里（0.95s），1s 后 v-if 摘除，无需 transition */
@@ -2111,13 +2136,26 @@ onBeforeUnmount(() => {
    手牌、信息 pill、按钮全部坐在桌面上，不再有独立的深色条 */
 .mj-bottom {
   /* v2.46.56 手牌区（夜星处方）：定高 200px + flex-shrink:0（绝不压缩），
-     position:relative 作为「操作按钮 position:absolute」的定位基准；
-     深绿渐变台面。**禁用 position:fixed**（夜星禁止事项）—— 遮挡由 flex 分区天然根治。 */
+     position:relative 作为「操作按钮 position:absolute」的定位基准。
+     **禁用 position:fixed**（夜星禁止事项）—— 遮挡由 flex 分区天然根治。
+     v2.46.58：移进 .mj-base（倾斜桌面）内 → 手牌坐在桌面前沿的绒布上（对照腾讯）。
+     反向 rotateX(-22deg) 与 .mj-base 的 +22° 抵消，牌面仍正面朝人、可读；
+     台面背景改半透明，让 .mj-base::before 的绒布透上来（不再是独立深色条）。 */
   position: relative; z-index: 30;
   height: 200px; flex-shrink: 0;
   display: flex; flex-direction: column; justify-content: space-between; gap: 5px;
   padding: 0 14px 10px;
-  background: linear-gradient(180deg, #0B3B2E 0%, #06241C 100%);
+  transform: rotateX(-22deg);
+  transform-origin: bottom center;
+  background: linear-gradient(180deg, rgba(4, 20, 15, 0) 0%, rgba(3, 16, 12, .5) 72%, rgba(2, 12, 9, .62) 100%);
+}
+/* 手牌区的倾斜回正必须与 .mj-base 同步（放在基规则之后，避免被后置基规则覆盖）：
+   手机横屏 14° / 竖屏·减少动效回退平面 */
+@media (max-width: 900px) and (orientation: landscape) {
+  .mj-bottom { transform: rotateX(-14deg); }
+}
+@media (orientation: portrait), (prefers-reduced-motion: reduce) {
+  .mj-bottom { transform: none; }
 }
 /* v2.46.14：操作按钮从手牌右侧移到手牌**上方**独立一行（夜星：按钮放麻将上方）。
    手牌 flex:1 铺满整行；牌宽公式的百分比以手牌盒实际宽为基准。
