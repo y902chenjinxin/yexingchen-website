@@ -1605,28 +1605,39 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 10px rgba(0, 229, 255, .35);
 }
 
-/* ===== 牌桌：厚底座 + 深色绒布 + 45° 微透视（v2.46.47 设计文档 majiang_design.md）=====
-   · 底座 .mj-base：真实 DOM 层（不能用 ::before z-index:-1 —— transform 的元素
-     自成 stacking context，负 z 伪元素会盖住自身背景，实测桌面被木纹吞掉）。
-     深棕木纹渐变 + 鎏金包线 + 顶部受光 + 底部落影，透视 transform 也挂在它身上。
-   · 桌面 .mj-table：文档色板 radial #1A5C4A→#0B3B2E→#06241C + SVG 噪点 5%
-     + 120px 暗角 + 顶部吊灯光斑。
-   · 透视：perspective + rotateX(7°) 上窄下宽；四角席位卡反向 rotateX 抵消倒伏；
-     竖屏 / prefers-reduced-motion 回退平面。 */
+/* ===== 牌桌形状（v2.46.50 对齐腾讯麻将）：暗房里的一张四方桌 =====
+   之前桌面铺满整个视口，看着像一块屏幕不像桌子；腾讯的样子是——
+   深色房间中央悬一张梯形桌面：四周露出地板、桌沿青绿包边金线收口、桌体有厚度。
+   · .mj：房间地板（深绿黑径向渐变 + 顶部微光 + 底部压暗）
+   · .mj-base：桌沿包边（青绿布面包过桌沿 + 鎏金线）+ 0 10px 0 桌体厚度，
+     透视 7°→11°、视距 1100→950，梯形收窄真正看得出来
+   · 桌面 .mj-table：腾讯式青绿绒布（比旧深绿亮一档）
+   · 透视：四角席位卡反向 rotateX 抵消倒伏；竖屏 / prefers-reduced-motion 回退平面。 */
+.mj {
+  background:
+    radial-gradient(120% 90% at 50% 20%, rgba(30, 82, 66, .30), transparent 62%),
+    radial-gradient(150% 110% at 50% 115%, rgba(0, 0, 0, .55), transparent 60%),
+    linear-gradient(180deg, #0b241d 0%, #071711 55%, #040d0a 100%);
+}
 .mj-base {
   flex: 1; min-height: 0; display: flex; flex-direction: column;
-  padding: 15px; border-radius: 30px;
-  transform: perspective(1100px) rotateX(7deg);
-  transform-origin: 50% 88%;
+  /* 四周留出地板：房间背景能透出来，桌子才有轮廓；左右留宽些才有「桌子里在房间中央」 */
+  margin: 3px 30px 6px;
+  padding: 13px; border-radius: 20px;
+  transform: perspective(760px) rotateX(13deg);
+  transform-origin: 50% 96%;
   background:
     repeating-linear-gradient(90deg, rgba(255, 255, 255, .022) 0 3px, transparent 3px 7px),
-    linear-gradient(180deg, #4d3a22 0%, #332413 32%, #241a0e 62%, #150e07 100%);
+    linear-gradient(180deg, #178568 0%, #0d5a46 38%, #083d2f 72%, #052a20 100%);
   box-shadow:
-    0 0 0 1.5px rgba(212, 175, 55, .55),
-    0 0 0 4px #0d0803,
-    0 34px 64px -20px rgba(0, 0, 0, .9),
-    inset 0 2px 3px rgba(255, 235, 190, .18),
-    inset 0 -3px 6px rgba(0, 0, 0, .6);
+    0 0 0 1.5px rgba(212, 175, 55, .6),
+    0 0 0 4px rgba(2, 8, 6, .7),
+    /* 桌体厚度：桌沿下面一圈深色侧壁，桌子才不是一张纸 */
+    0 10px 0 #04231a,
+    0 12px 14px -6px rgba(0, 0, 0, .7),
+    0 34px 60px -18px rgba(0, 0, 0, .9),
+    inset 0 2px 3px rgba(255, 240, 200, .18),
+    inset 0 -3px 6px rgba(0, 0, 0, .55);
 }
 .mj-table {
   flex: 1; min-height: 0; position: relative;
@@ -1644,7 +1655,7 @@ onBeforeUnmount(() => {
     radial-gradient(62% 44% at 50% -8%, rgba(255, 244, 214, .13), transparent 62%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
     /* v2.46.49 色调偏暖：绿心掺一线暖橄榄（rgba 暖绿替代冷绿） */
-    radial-gradient(100% 100% at 50% 40%, #1c5e49 0%, #0d3c2e 58%, #041a14 100%);
+    radial-gradient(100% 100% at 50% 40%, #1f8f6f 0%, #0f5f4a 56%, #083d2e 100%);
   box-shadow:
     /* v2.46.49 外框凸起：桌沿像一道厚棱从底座上抬起来 */
     0 6px 0 #5A3A1A,
@@ -1658,7 +1669,7 @@ onBeforeUnmount(() => {
     inset 0 0 0 1px rgba(255, 255, 255, .06);
 }
 /* 席位卡在透视里反向回正，避免文字倒伏 */
-.mj-table > .mj-seat { transform: rotateX(-7deg); }
+.mj-table > .mj-seat { transform: rotateX(-13deg); }
 /* 竖屏 / 减少动效：回退平面 */
 @media (orientation: portrait), (prefers-reduced-motion: reduce) {
   .mj-base { transform: none; }
