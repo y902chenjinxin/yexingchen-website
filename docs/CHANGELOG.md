@@ -1,3 +1,28 @@
+## [v2.46.55] - 2026-10-11
+
+### 麻将固定分区布局（修遮挡）+ 3D 空间感加强（夜星复述处方）
+- **一 修遮挡**：手牌区 `.mj-bottom` 改 `position:fixed; bottom:0; height:200px; z-index:100`；
+  桌面根 `.mj` 加 `padding-bottom:200px` —— 为固定手牌区**预留等高空间**，桌面容器内容区
+  自然收到「100% − 200px」，桌面元素不可能被手牌盖住（比 `height:calc(100vh-200px)` 更稳：
+  `100vh` 在「牌桌顶不在视口 0 点」的宿主里会算错）
+  - `.mj-table` 加 `position:relative; overflow:hidden`（面板定位基准 + 越界裁在桌内）
+  - 四角面板贴桌沿 20px：`tl top/left:20px`、`tr top/right:20px`、`bl bottom/left:20px`、`br bottom/right:20px`
+  - `position:fixed` 两种宿主都成立：桌面非全屏无 transform 祖先→相对视口；手机全屏祖先
+    `.gtv-viewzoom.is-fs` 带 transform→它为包含块，相对 1280×720 逻辑画布（故无需媒体查询分叉）
+- **二 3D 空间感**：
+  - 打出牌 `transform: perspective(600px) rotateX(25deg)` + 四层厚度
+    `0 4px 0 #B8AFA0, 0 6px 0 #A89E8E, 0 8px 0 #988E7E, 0 12px 16px rgba(0,0,0,.6)` + 内高光
+  - 手牌区 `.mj-handrow{perspective:1000px}` + `.mj-hand{rotateX(8deg); transform-origin:bottom center}`；
+    选中牌 `translateY(-16px) scale(1.08)` + 金色发光（保留）
+  - 桌面 `.mj-table` 凹陷加深：`inset 0 20px 50px rgba(0,0,0,.9), inset 0 -20px 50px rgba(0,0,0,.7),
+    inset 0 0 150px rgba(0,0,0,.6)`；整体透视 `.mj-base{perspective(1400px) rotateX(4deg)}` 沿用
+  - 四家牌墙贴边 `max(10px, 5%)`（5% + 10px 下限）
+  - **偏离处方**：左右家牌仍**不叠** `rotateZ(90deg)`——现有「布局盒宽高互换 + 牌面 SVG 反向 ±90°」
+    已实现横躺，再叠会双重旋转把牌转回竖直
+  - 竖屏 / `prefers-reduced-motion` 回退平面（`.mj-handrow{perspective:none}`、`.mj-hand{transform:none}`）
+- 方案文档 `docs/ai/MAHJONG_LAYOUT_3D_20261011.md`；SW v367→v368；本地 `npm run build` 通过
+- 说明：本次按夜星要求**不做现网探针验证**，由夜星现网验收
+
 ## [v2.46.54] - 2026-10-11
 
 ### 麻将布局纠偏 + 打出牌 3D 质感（夜星 4 项处方）
