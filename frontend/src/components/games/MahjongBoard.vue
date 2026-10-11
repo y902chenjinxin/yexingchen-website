@@ -198,43 +198,42 @@
             </template>
             <em v-else class="mj-ting-none">尚未听牌</em>
           </span>
-        </div>
 
-        <!-- 反应窗口：碰 / 杠 / 胡 / 过（v2.46.14：从手牌右侧移到手牌上方独立一行）
-             v2.46.17（V24617-010）：把被碰/杠的那张牌直接亮在按钮前，手上能组成
-             该刻子的牌同时描金脉冲（.is-claimhit），一眼看清「碰的是哪张、用哪几张」 -->
-        <div v-if="pending" class="gt-actions mj-actions">
-          <span class="gt-pill gold">可操作：{{ pending.kinds.map(k => REACT_NAME[k]).join(' / ') }}</span>
-          <span v-if="pending.tile" class="mj-claimtile">
-            <span class="gt-tile mini" :class="suitCls(pending.tile)">
-              <MahjongTileFace :suit="faceSuit(pending.tile)" :rank="pending.tile.rank" />
+          <!-- v2.46.52（夜星 0 号）：操作按钮并进信息条同一行 —— 左侧信息 pill、右侧操作。
+               反应窗口（碰/杠/胡/过）与出牌/自摸/提示两个分支同构搬入 -->
+          <div v-if="pending" class="gt-actions mj-actions">
+            <span class="gt-pill gold">可操作：{{ pending.kinds.map(k => REACT_NAME[k]).join(' / ') }}</span>
+            <span v-if="pending.tile" class="mj-claimtile">
+              <span class="gt-tile mini" :class="suitCls(pending.tile)">
+                <MahjongTileFace :suit="faceSuit(pending.tile)" :rank="pending.tile.rank" />
+              </span>
+              <em>{{ seatName(pending.from) }} 打出 {{ tileText(pending.tile) }}</em>
             </span>
-            <em>{{ seatName(pending.from) }} 打出 {{ tileText(pending.tile) }}</em>
-          </span>
-          <button v-if="pending.kinds.includes('hu')" class="gt-btn is-pulse" @click="onReact('hu')">胡</button>
-          <button v-if="pending.kinds.includes('kong')" class="gt-btn is-pulse" @click="onReact('kong')">杠</button>
-          <button v-if="pending.kinds.includes('pong')" class="gt-btn is-pulse" @click="onReact('pong')">碰</button>
-          <button v-if="pending.kinds.includes('chi')" class="gt-btn is-pulse" @click="onReact('chi')">吃</button>
-          <button class="gt-btn ghost" @click="onReact('pass')">过</button>
+            <button v-if="pending.kinds.includes('hu')" class="gt-btn is-pulse" @click="onReact('hu')">胡</button>
+            <button v-if="pending.kinds.includes('kong')" class="gt-btn is-pulse" @click="onReact('kong')">杠</button>
+            <button v-if="pending.kinds.includes('pong')" class="gt-btn is-pulse" @click="onReact('pong')">碰</button>
+            <button v-if="pending.kinds.includes('chi')" class="gt-btn is-pulse" @click="onReact('chi')">吃</button>
+            <button class="gt-btn ghost" @click="onReact('pass')">过</button>
+          </div>
+          <div v-else class="gt-actions mj-actions">
+            <button class="gt-btn" :disabled="!canDiscard || selId === null" @click="discardSel">出牌</button>
+            <button class="gt-btn" :disabled="!canDiscard || !canZimo" @click="doZimo">自摸</button>
+            <button
+              v-if="canDiscard && ankongs.length"
+              class="gt-btn ghost"
+              @click="doAnkong(ankongs[0])"
+            >暗杠 {{ tileText(ankongs[0]) }}</button>
+            <button
+              v-if="canDiscard && bugangs.length"
+              class="gt-btn ghost"
+              @click="doBugang(bugangs[0])"
+            >补杠 {{ tileText(bugangs[0]) }}</button>
+            <button class="gt-btn ghost" :disabled="!canDiscard" @click="doHint">提示</button>
+            <em v-if="canDiscard" class="mj-hint">上滑手牌直接打出</em>
+          </div>
         </div>
 
-        <!-- 自己回合的操作 -->
-        <div v-else class="gt-actions mj-actions">
-          <button class="gt-btn" :disabled="!canDiscard || selId === null" @click="discardSel">出牌</button>
-          <button class="gt-btn" :disabled="!canDiscard || !canZimo" @click="doZimo">自摸</button>
-          <button
-            v-if="canDiscard && ankongs.length"
-            class="gt-btn ghost"
-            @click="doAnkong(ankongs[0])"
-          >暗杠 {{ tileText(ankongs[0]) }}</button>
-          <button
-            v-if="canDiscard && bugangs.length"
-            class="gt-btn ghost"
-            @click="doBugang(bugangs[0])"
-          >补杠 {{ tileText(bugangs[0]) }}</button>
-          <button class="gt-btn ghost" :disabled="!canDiscard" @click="doHint">提示</button>
-          <em v-if="canDiscard" class="mj-hint">上滑手牌直接打出</em>
-        </div>
+        <!-- 操作按钮 v2.46.52 已并入 .mj-handbar（夜星 0 号：两行并一行） -->
 
         <div class="mj-handrow">
         <!-- 自己的碰 / 杠副露：旧版只给个「副露 N」文字计数，牌面不展示 ——
@@ -1647,12 +1646,13 @@ onBeforeUnmount(() => {
     "bl ctr br";
   padding: 10px 12px; border-radius: 18px;
   background:
-    /* v2.46.49 中央聚光灯：一枚暖白光斑压在罗盘正上方，聚焦中央 */
-    radial-gradient(46% 34% at 50% 38%, rgba(255, 236, 190, .10), transparent 68%),
+    /* v2.46.49→52 中央聚光灯：暖白光斑压在罗盘正上方（0.12） */
+    radial-gradient(46% 34% at 50% 38%, rgba(255, 236, 190, .12), transparent 68%),
     radial-gradient(62% 44% at 50% -8%, rgba(255, 244, 214, .13), transparent 62%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
     /* v2.46.49 色调偏暖：绿心掺一线暖橄榄（rgba 暖绿替代冷绿） */
-    radial-gradient(100% 100% at 50% 40%, #1f8f6f 0%, #0f5f4a 56%, #083d2e 100%);
+    /* v2.46.52 光源统一：桌面受光点随全局光源移到左上 */
+    radial-gradient(100% 100% at 44% 32%, #1f8f6f 0%, #0f5f4a 56%, #083d2e 100%);
   box-shadow:
     /* v2.46.49 外框凸起：桌沿像一道厚棱从底座上抬起来 */
     0 6px 0 #5A3A1A,
@@ -1777,12 +1777,16 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -50%);
   border-radius: 50%;
   border: 3px solid #D4AF37;
-  background: radial-gradient(circle, #0f4436 0%, #0b3b2e 58%, #07281f 100%);
+  /* v2.46.52 内圈径向渐变：左上受光，与全局光源（顶部偏左）一致 */
+  background:
+    radial-gradient(120% 120% at 30% 18%, rgba(88, 200, 160, .28), transparent 55%),
+    radial-gradient(circle, #0f4436 0%, #0b3b2e 58%, #07281f 100%);
   box-shadow:
-    /* v2.46.49 浮起：像一枚厚玉盘嵌在桌面上 —— 底缘实心托底 + 大落影 */
+    /* v2.46.49 浮起：像一枚厚玉盘嵌在桌面上 —— 底缘实心托底 + 落影右下 */
     0 8px 0 #0A2A1E,
-    0 12px 24px rgba(0, 0, 0, .7),
-    0 0 16px rgba(212, 175, 55, .55),
+    5px 14px 24px -6px rgba(0, 0, 0, .72),
+    /* v2.46.52 金环发光加强（夜星清单 3 号）：0 0 24px / 0.9 */
+    0 0 24px rgba(212, 175, 55, .9),
     inset 0 4px 12px rgba(0, 0, 0, .55),
     inset 0 -2px 0 rgba(255, 255, 255, .04);
   pointer-events: none;
@@ -1802,7 +1806,8 @@ onBeforeUnmount(() => {
   font-family: 'DIN Alternate', 'Bahnschrift', 'Segoe UI', sans-serif;
   font-size: 22px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
   color: #00E5FF;
-  text-shadow: 0 0 12px rgba(0, 229, 255, .85), 0 0 26px rgba(0, 229, 255, .4);
+  /* v2.46.52 发光加强（夜星清单 3 号）：text-shadow 16px */
+  text-shadow: 0 0 16px rgba(0, 229, 255, .95), 0 0 34px rgba(0, 229, 255, .5);
 }
 /* 倒计时进行中：方位字淡成背景纹，给数字让位 */
 .mj-compass:has(.cx-timer) .cx { opacity: .25; }
@@ -1978,7 +1983,11 @@ onBeforeUnmount(() => {
 
 /* ===== 底部信息条 ===== */
 /* 一行到底、不换行：换行会把好不容易让给牌桌的高度又吃回去 */
+/* v2.46.52 操作按钮并入后一行更挤：pill 禁止换行（「积分 0」折行成两行很丑），
+   空间不够时先让 spacer/听牌提示收缩，pill 恒定单行 */
 .mj-handbar { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow: hidden; min-height: 0; }
+.mj-handbar .gt-pill { white-space: nowrap; flex: none; }
+.mj-handbar .gt-spacer { flex: 1 1 0; min-width: 4px; }
 /* 最近一张舍牌：小牌 + 「谁打出」，替代旧版中央那个大信息盒。
    这张小牌是整条信息条的高度来源（28px），单独收小到 22px —— 一行文字不值得占 28px。
    注意选择器必须写成 `.mj .mj-lastmini .gt-tile.mini`：下面那条 `.mj .gt-tile.mini`
@@ -2028,10 +2037,11 @@ onBeforeUnmount(() => {
     repeating-linear-gradient(90deg, rgba(255, 255, 255, .015) 0 3px, transparent 3px 7px),
     linear-gradient(180deg, #0e5a45 0%, #0b4a39 55%, #083327 100%);
   box-shadow:
-    /* 桌体厚度 + 落影：整张桌子（含手牌台）的侧壁在最底部收口 */
+    /* 桌体厚度 + 落影：整张桌子（含手牌台）的侧壁在最底部收口；
+       v2.46.52 落影统一右下（顶部偏左光源） */
     0 10px 0 #04231a,
-    0 12px 14px -6px rgba(0, 0, 0, .7),
-    0 34px 60px -18px rgba(0, 0, 0, .9);
+    6px 14px 16px -8px rgba(0, 0, 0, .72),
+    10px 34px 60px -18px rgba(0, 0, 0, .9);
 }
 /* v2.46.14：操作按钮从手牌右侧移到手牌**上方**独立一行（夜星：按钮放麻将上方）。
    手牌 flex:1 铺满整行；牌宽公式的百分比以手牌盒实际宽为基准。
@@ -2075,12 +2085,14 @@ onBeforeUnmount(() => {
 /* 牌面 SVG 铺满整张牌（绝对定位，避免百分比高度在 aspect-ratio 盒子里解析不确定） */
 .mj .gt-tile > :deep(svg) { position: absolute; inset: 0; }
 .mj-hand-empty { margin: 0 auto; font-size: 12px; color: var(--gt-ink-dim); }
-/* 出牌 / 自摸 / 提示（V24614-001）：独立一行贴在手牌上方、**右对齐** ——
-   原先挤在手牌右侧，横屏 360px 高时 14+ 张牌把按钮压得很窄。
-   全局 .gt-btn 是 8px/18px（39px 高）偏奢侈，这里收成 6px/16px（约 32px），
-   独立行的整行高度从牌桌里出 —— 牌面尺寸**不动**，那是玩家最常碰的东西。 */
-.mj-actions { justify-content: flex-end; margin-bottom: 1px; }
+/* 操作按钮（v2.46.14 独立一行 → v2.46.52 并进信息条同一行，夜星 0 号）：
+   靠右贴齐，按钮收成 6px/16px；窄屏隐藏「上滑打出」提示防挤出 */
+.mj-actions { justify-content: flex-end; flex: none; margin-bottom: 0; }
 .mj-actions .gt-btn { padding: 6px 16px; font-size: 12.5px; }
+@media (max-width: 960px) {
+  .mj-hint { display: none; }
+  .mj-actions .gt-btn { padding: 5px 12px; }
+}
 
 /* ===== 牌：象牙白立体牌身（v2.46.44，夜星：对照腾讯棋牌做质感）=====
    旧版「平面色块 + 单层投影」塑料感的再升级 —— 真实麻将牌的五个视觉特征：
@@ -2101,11 +2113,12 @@ onBeforeUnmount(() => {
     inset 0 -1px 0 rgba(255, 255, 255, .45),
     inset 0 0 5px rgba(120, 105, 75, .18),
     inset 0 -2px 3px rgba(152, 136, 98, .30),
-    /* 三段厚度（v2.46.49）：亮侧沿 → 暗侧沿 → 大落影，立体感翻倍 */
+    /* 三段厚度（v2.46.49，v2.46.52 侧面加深 #B8AFA0）：亮侧沿 → 暗侧沿 → 大落影；
+       落影统一右下（顶部偏左光源，v2.46.52 光影统一） */
     0 2px 0 #d9d0b8,
-    0 6px 0 #C0B8A8,
+    0 6px 0 #B8AFA0,
     0 8px 0 #A89E8E,
-    0 12px 16px rgba(0, 0, 0, .5);
+    3px 12px 16px -4px rgba(0, 0, 0, .55);
 }
 /* 牌背：设计文档定稿（v2.46.47）—— 深绿渐变 + 金色菱形交叉纹 + 厚度阴影 */
 .mj .gt-tile.is-back {
@@ -2119,7 +2132,7 @@ onBeforeUnmount(() => {
     inset 0 -2px 3px rgba(4, 34, 26, .5),
     0 2px 0 #0a2f24,
     0 4px 0 #071f18,
-    0 12px 18px -10px rgba(0, 0, 0, .82);
+    3px 12px 18px -8px rgba(0, 0, 0, .82);
 }
 /* 迷你牌（背面 / 弃牌 / 副露）尺寸跟随屏高 */
 .mj .gt-tile.mini { width: var(--mini-w); height: var(--mini-h); border-radius: 4px; }
@@ -2152,24 +2165,26 @@ onBeforeUnmount(() => {
     0 2px 0 #e9e0c6, 0 4px 0 #c8bc9c,
     0 14px 20px -10px rgba(0, 0, 0, .85);
 }
-/* 手牌（v2.46.48 设计文档）：比桌牌更厚的底部厚度 + 落影，压得住桌面 */
+/* 手牌（v2.46.48 设计文档）：比桌牌更厚的底部厚度 + 落影，压得住桌面
+   （v2.46.52 侧面加深 #B8AFA0/#A89E8E 四段、落影统一右下） */
 .mj-hand .gt-tile {
   box-shadow:
     inset 0 1px 2px rgba(255, 255, 255, .9),
     inset 0 -2px 3px rgba(152, 136, 98, .30),
     0 2px 0 #d9d0b8,
-    0 5px 0 #C0B8A8,
-    0 8px 12px rgba(0, 0, 0, .4);
+    0 5px 0 #B8AFA0,
+    0 8px 0 #A89E8E,
+    3px 10px 14px -4px rgba(0, 0, 0, .5);
 }
-/* 手牌选中：上浮 10px + 放大 1.06 + 金色描边（v2.46.49 加放大） */
+/* 手牌选中：上浮 12px + 放大 1.05 + 金色描边（v2.46.52 夜星清单 5 号定稿值） */
 .mj-hand .gt-tile.is-sel {
-  transform: translateY(-10px) scale(1.06);
+  transform: translateY(-12px) scale(1.05);
   z-index: 3;
   box-shadow:
     inset 0 1px 2px rgba(255, 255, 255, .95),
     0 0 0 2px var(--gt-gold), 0 0 18px -2px rgba(233, 200, 119, .7),
-    0 2px 0 #d9d0b8, 0 5px 0 #C0B8A8,
-    0 14px 20px -8px rgba(0, 0, 0, .75);
+    0 2px 0 #d9d0b8, 0 5px 0 #B8AFA0,
+    4px 16px 22px -8px rgba(0, 0, 0, .78);
 }
 
 /* ===== 碰杠提示（V24617-010）=====
@@ -2197,12 +2212,14 @@ onBeforeUnmount(() => {
 .mj .gt-seat { transition: opacity .3s ease, filter .3s ease; }
 .mj .gt-seat.is-idle { opacity: .58; filter: saturate(.55); }
 .mj .gt-seat.is-active {
-  box-shadow: 0 0 0 2px rgba(199, 169, 107, .55), 0 0 22px rgba(199, 169, 107, .35);
+  /* v2.46.52：高亮边框提到正金色 + 边框提亮，当前玩家一眼可辨 */
+  box-shadow: 0 0 0 2px #D4AF37, 0 0 22px rgba(212, 175, 55, .5);
+  border-color: #ffd98a;
   animation: mj-seat-pulse 1.6s ease-in-out infinite;
 }
 @keyframes mj-seat-pulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(199, 169, 107, .5), 0 0 16px rgba(199, 169, 107, .28); }
-  50% { box-shadow: 0 0 0 3px rgba(199, 169, 107, .8), 0 0 30px rgba(199, 169, 107, .5); }
+  0%, 100% { box-shadow: 0 0 0 2px rgba(212, 175, 55, .75), 0 0 16px rgba(212, 175, 55, .35); }
+  50% { box-shadow: 0 0 0 3px #D4AF37, 0 0 30px rgba(212, 175, 55, .6); }
 }
 
 /* 听牌项改成可点按钮：外观仍是文字胶囊，hover 描金提示可点 */
