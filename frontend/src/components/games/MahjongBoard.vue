@@ -1621,23 +1621,20 @@ onBeforeUnmount(() => {
 }
 .mj-base {
   flex: 1; min-height: 0; display: flex; flex-direction: column;
-  /* 四周留出地板：房间背景能透出来，桌子才有轮廓；左右留宽些才有「桌子里在房间中央」 */
-  margin: 3px 30px 6px;
-  padding: 13px; border-radius: 20px;
+  /* v2.46.51 桌子连体：底部 margin/圆角清零，与前缘手牌台（.mj-bottom）无缝拼接
+     —— 手牌也要在「同一张桌子」上（夜星：别把上下拆开） */
+  margin: 3px 30px 0;
+  padding: 13px 13px 8px; border-radius: 20px 20px 0 0;
   transform: perspective(760px) rotateX(13deg);
   transform-origin: 50% 96%;
   background:
     repeating-linear-gradient(90deg, rgba(255, 255, 255, .022) 0 3px, transparent 3px 7px),
-    linear-gradient(180deg, #178568 0%, #0d5a46 38%, #083d2f 72%, #052a20 100%);
+    linear-gradient(180deg, #178568 0%, #0d5a46 38%, #083d2f 72%, #0a4434 100%);
   box-shadow:
     0 0 0 1.5px rgba(212, 175, 55, .6),
     0 0 0 4px rgba(2, 8, 6, .7),
-    /* 桌体厚度：桌沿下面一圈深色侧壁，桌子才不是一张纸 */
-    0 10px 0 #04231a,
-    0 12px 14px -6px rgba(0, 0, 0, .7),
-    0 34px 60px -18px rgba(0, 0, 0, .9),
     inset 0 2px 3px rgba(255, 240, 200, .18),
-    inset 0 -3px 6px rgba(0, 0, 0, .55);
+    inset 0 -6px 10px rgba(0, 0, 0, .45);
 }
 .mj-table {
   flex: 1; min-height: 0; position: relative;
@@ -2017,23 +2014,37 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) { .mj-hand.is-deal .gt-tile { animation: none; } }
 
 /* ===== 底部 ===== */
-.mj-bottom { display: flex; flex-direction: column; gap: 5px; min-height: 0; }
+/* v2.46.51 桌子前缘手牌台：与 .mj-base 同宽拼接成一张完整的桌子 ——
+   桌沿（base，上圆下直）→ 台面（bottom，上直下圆）→ 桌体厚度/落影挂在最底部。
+   手牌、信息 pill、按钮全部坐在桌面上，不再有独立的深色条 */
+.mj-bottom {
+  display: flex; flex-direction: column; gap: 5px; min-height: 0;
+  margin: 0 30px 5px; padding: 2px 13px 9px;
+  border-radius: 0 0 20px 20px;
+  border-left: 1.5px solid rgba(212, 175, 55, .45);
+  border-right: 1.5px solid rgba(212, 175, 55, .45);
+  border-bottom: 1.5px solid rgba(212, 175, 55, .55);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .015) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #0e5a45 0%, #0b4a39 55%, #083327 100%);
+  box-shadow:
+    /* 桌体厚度 + 落影：整张桌子（含手牌台）的侧壁在最底部收口 */
+    0 10px 0 #04231a,
+    0 12px 14px -6px rgba(0, 0, 0, .7),
+    0 34px 60px -18px rgba(0, 0, 0, .9);
+}
 /* v2.46.14：操作按钮从手牌右侧移到手牌**上方**独立一行（夜星：按钮放麻将上方）。
    手牌 flex:1 铺满整行；牌宽公式的百分比以手牌盒实际宽为基准。
    全屏 1280 逻辑宽下手牌仍由 0.12×屏高的上限封顶，不会被压小。 */
-/* 手牌托板（v2.46.47 设计文档）：手牌底下一条象牙色托架，托起整排大牌 */
+/* 手牌托板（v2.46.47）→ v2.46.51 撤独立托板：手牌直接坐在桌面（.mj-bottom 台面）上，
+   与腾讯麻将一致；仅保留牌排上缘一道桌面反光 */
 .mj-handrow {
   display: flex; align-items: flex-end; gap: 8px; min-height: 0;
-  padding: 6px 12px 8px; border-radius: 14px;
-  background: linear-gradient(180deg, rgba(245, 240, 230, .12), rgba(245, 240, 230, .045));
-  /* v2.46.49 微透视：手牌排整体向后仰 5°，与桌面 7° 透视同一方向 */
+  padding: 6px 12px 8px;
+  /* v2.46.49 微透视：手牌排整体向后仰 5°，与桌面 13° 透视同一方向 */
   transform: perspective(800px) rotateX(5deg);
   transform-origin: 50% 100%;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .22),
-    inset 0 -1px 0 rgba(0, 0, 0, .25),
-    0 -8px 24px rgba(0, 0, 0, .5),
-    0 12px 22px -14px rgba(0, 0, 0, .8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10);
 }
 /* 自己的碰 / 杠副露（V24613-002）：迷你牌横排，flex:none 不参与手牌均分；
    牌宽用 --mini-w（跟别家副露一致），多了往右推手牌、绝不换行溢出 */
