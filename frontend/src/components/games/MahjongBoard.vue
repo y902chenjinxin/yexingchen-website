@@ -328,14 +328,6 @@
 
       <div v-if="toast" class="gt-toast">{{ toast }}</div>
       <div class="gt-watermark">四 川 麻 将 · 胡 牌 即 结 束</div>
-
-      <!-- 开局仪式（v2.46.42）：码牌→掷骰→开门→流牌→跳牌；任意点击跳过 -->
-      <MahjongOpening
-        v-if="opening && dice && openingInfo"
-        :dice="dice"
-        :info="openingInfo"
-        @done="onOpeningDone"
-      />
     </div>
   </div>
 </template>
@@ -365,7 +357,6 @@ import { speak, tileSpeech } from '@/utils/games/tts'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { reportSettle } from '@/api/gameEconomy'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
-import MahjongOpening from '@/components/games/MahjongOpening.vue'
 import { useRootHeight } from '@/composables/useRootHeight'
 
 const props = defineProps({
@@ -410,8 +401,8 @@ const drawn = ref(null)
 const dice = ref(null)
 const openRel = ref(-1)            // 开门边（相对庄：0 本门/1 下家/2 对家/3 上家）
 const openIdx = ref(0)             // 开门墩（边内 0 基、自墩主右端数）
-const opening = ref(false)         // 开局仪式 overlay 播放中（纯表现层，可点击跳过）
-const openingRound = ref(-1)       // 已播过仪式的局号（防重播/重连重放）
+/* v2.46.46（夜星：开场动画碍事）：开牌仪式 overlay 已整体移除——
+   服务端的骰子/开门信息（dice/open_rel/open_idx）保留，牌墙开门墩鎏金仍靠它们渲染。 */
 const lastDiscard = ref(null)
 // 注意：牌堆 id 从 0 起，不能用 0 当「未选中」哨兵，否则 id=0 那张牌永远打不出去
 const selId = ref(null)
@@ -490,28 +481,6 @@ const openSideName = computed(() => (openRel.value >= 0 ? M.MJ_OPEN_SIDE_NAME[op
 function isOpenStack(screen, i) {
   return openAbs.value >= 0 && screenSeat(screen) === openAbs.value && i === openIdx.value
 }
-/* 仪式 overlay 需要的投影：庄/开门的屏幕方位、发牌顺序、摸墙环序 → 屏幕格子
- * 映射（side + 屏显 slot），以及开门墩在屏显里的下标（含翻序）。 */
-const openingInfo = computed(() => {
-  if (!dice.value) return null
-  const posName = ['down', 'right', 'up', 'left']
-  const posOf = (abs) => ((abs - povSeat.value) % 4 + 4) % 4
-  const absOf = (rel) => (dealer.value + rel) % 4
-  const flip = (side, i) => ((side === 'down' || side === 'left') ? M.MJ_STACKS - 1 - i : i)
-  const ringSlots = []
-  for (const rel of M.MJ_RING) {
-    const side = posName[posOf(absOf(rel))]
-    for (let i = 0; i < M.MJ_STACKS; i++) ringSlots.push({ side, slot: flip(side, i) })
-  }
-  const openSide = posName[posOf(openAbs.value)]
-  return {
-    dealerPos: posName[posOf(dealer.value)],
-    dealOrder: [0, 1, 2, 3].map(off => posName[posOf(absOf(off))]),
-    openSide,
-    openSlot: flip(openSide, openIdx.value),
-    ringSlots,
-  }
-})
 
 const viewSeat = computed(() => {
   if (isOnline.value) return oSeat.value
@@ -818,14 +787,10 @@ function syncFromView(v) {
   phase.value = PHASE_MAP[v.phase] || 'playing'
   roundNo.value = v.round_no || 1
   dealer.value = v.dealer ?? 0
-  // 开牌仪式（v2.46.42）：服务端广播骰子与开门信息；新局首帧（墙满 67 张）才播
-  // 仪式动画，重连/中途进房（墙已少）不重播。旧服务端无 dice 字段 → 全部跳过。
+  // 开牌仪式已移除（v2.46.46），但骰子/开门信息保留给牌墙渲染
   dice.value = v.dice || null
   openRel.value = (v.open_rel === undefined || v.open_rel === null) ? -1 : v.open_rel
   openIdx.value = v.open_idx || 0
-  if (dice.value && v.wall_left === M.MJ_WALL_AFTER_DEAL && roundNo.value !== openingRound.value) {
-    playOpeningFx()
-  }
   logs.value = v.logs || []
   const cl = v.claim
   pending.value = (cl && cl.seat === oSeat.value)
@@ -945,7 +910,6 @@ function newRound() {
   drawn.value = deal.lastDraw          // 庄家跳牌第 14 张，亮为「刚摸」，直接打牌开局
   selId.value = null
   sfx.deal()
-  playOpeningFx()                      // 开局仪式（码牌→掷骰→流牌→跳牌，可点击跳过）
   if (!isHuman(dealerSeat)) scheduleAI()
 }
 
@@ -954,13 +918,6 @@ function nextRound() {
   roundNo.value++
   newRound()
 }
-
-function playOpeningFx() {
-  if (!dice.value) return
-  openingRound.value = roundNo.value
-  opening.value = true
-}
-function onOpeningDone() { opening.value = false }
 
 /* ---------- 摸牌 ---------- */
 function drawFor(seat) {
@@ -1655,45 +1612,40 @@ onBeforeUnmount(() => {
     "left  right"
     "down  down";
   padding: 18px 28px; border-radius: 14px;   /* v2.46.44：给四方牌墙留边（原 24px，匀 12px 给中行） */
-  /* v2.46.45：弃牌区像桌面中央「凹下去」的一圈 —— 内阴影做深度，顶部留一线受光 */
-  background: radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .035), transparent 55%),
-              rgba(0, 0, 0, .22);
-  box-shadow:
-    inset 0 2px 10px rgba(0, 0, 0, .5),
-    inset 0 -1px 0 rgba(255, 255, 255, .04),
-    inset 0 0 0 1px rgba(255, 255, 255, .05);
+  /* v2.46.46（夜星：还是没有四方桌感）：中央不再是一块「嵌进去的深色面板」——
+   * 面板底色与内边线全撤，弃牌直接摆在绒布上，整张桌子就是一块完整的绿绒布；
+   * 只保留一圈极淡的内阴影提示「桌面中央」的深度。 */
+  background: transparent;
+  box-shadow: inset 0 0 44px -8px rgba(0, 0, 0, .28);
   /* v2.46.26（夜星：长方形看着怪）：宽屏下中央弃牌区被 1fr 拉成 3:1 长条，
    * 与真实牌桌「中央近方」的观感差很远。限宽居中后，两侧留出的绿绒布就是
    * 桌面空地，四方弃牌围合成近方阵 —— 这才是麻将桌该有的样子。 */
   width: 100%; max-width: min(100%, 640px);
   justify-self: center;
 }
-/* 桌心装饰（v2.46.26 / v2.46.45 罗盘化）：腾讯中央 logo 的克制版 ——
-   内圈「凹下去的暗面」（inset 阴影做深度）+ 金环 + 外圈第二道细环（outline），
-   像桌面中央嵌的一枚罗盘底座。纯装饰不挡交互 */
+/* 桌心装饰（v2.46.26 / v2.46.46 水印化）：夜星反馈大罗盘太抢戏、中央像「挖了个洞」。
+ * 收缩成腾讯中央 logo 那样的水印 —— 半径收一档、金环减淡、凹面撤掉，
+ * 像印在绒布上的暗纹而不是嵌进去的罗盘。纯装饰不挡交互 */
 .mj-center::before {
   content: ''; position: absolute; left: 50%; top: 50%; z-index: 0;
-  width: clamp(84px, 26%, 150px); aspect-ratio: 1;
+  width: clamp(64px, 19%, 110px); aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 1px solid rgba(222, 186, 106, .42);
-  outline: 1px solid rgba(222, 186, 106, .14); outline-offset: 5px;
-  background:
-    radial-gradient(circle, rgba(0, 0, 0, .34) 0%, rgba(0, 0, 0, .16) 55%, transparent 74%);
-  box-shadow:
-    inset 0 3px 10px rgba(0, 0, 0, .55),
-    inset 0 -1px 0 rgba(255, 255, 255, .05),
-    0 0 26px rgba(222, 186, 106, .06);
+  border: 1px solid rgba(222, 186, 106, .26);
+  outline: 1px solid rgba(222, 186, 106, .10); outline-offset: 4px;
+  background: radial-gradient(circle, rgba(222, 186, 106, .05), transparent 70%);
+  box-shadow: 0 0 20px rgba(222, 186, 106, .04);
   pointer-events: none;
 }
-/* 罗盘中心：一枚小金点 + 微光，避免正中空到突兀 */
+/* 桌心水印中心：一枚小金点 */
 .mj-center::after {
   content: ''; position: absolute; left: 50%; top: 50%; z-index: 0;
-  width: 7px; aspect-ratio: 1;
+  width: 6px; aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #f4dc9c, #c79b45 70%);
-  box-shadow: 0 0 10px rgba(222, 186, 106, .45);
+  background: radial-gradient(circle at 35% 30%, #e8cf92, #b8904a 70%);
+  opacity: .75;
+  box-shadow: 0 0 8px rgba(222, 186, 106, .3);
   pointer-events: none;
 }
 /* ---- 四方牌墙（v2.46.42）：贴中央区四边，随摸牌缩短；开门墩鎏金 ---- */
