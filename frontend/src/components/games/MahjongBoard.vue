@@ -1639,12 +1639,11 @@ onBeforeUnmount(() => {
 .mj-table {
   flex: 1; min-height: 0; position: relative;
   display: grid; gap: 6px;
-  /* 四角布局：左上=左家 / 右上=对家 / 右下=右家 / 左下=自己，中央跨两行 */
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas:
-    "tl ctr tr"
-    "bl ctr br";
+  /* v2.46.54 布局修复：四角席位改 position:absolute 脱离文档流（既不撑高桌面、
+     也不会互相挤压），中央牌池独占整块桌面。 */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "ctr";
   padding: 10px 12px; border-radius: 24px 24px 0 0;
   background:
     /* L3 绒布纹理：45° 交叉细线，透明度 2%（只在桌面内叠加，不铺到整壳） */
@@ -1673,7 +1672,12 @@ onBeforeUnmount(() => {
   .mj-handrow { transform: none; }
   .mj-table > .mj-seat { transform: none; }
 }
-.mj-seat { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0;
+.mj-seat {
+  /* v2.46.54：脱离文档流 —— 绝对定位后**不参与父容器高度计算**，
+     副露再多也撑不高桌面、更不会超出底部；四角各自锚定互不挤压。 */
+  position: absolute; z-index: 20; grid-area: auto;
+  display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0;
+  max-width: 176px; max-height: 42%;
   /* V24617-012：左右家 3 组副露后内容溢出本格、盖住上下两家的副露/弃牌 ——
      溢出一律裁在本席位内，绝不允许越界遮别人。 */
   overflow: hidden; }
@@ -1683,10 +1687,12 @@ onBeforeUnmount(() => {
    并排后还要再压：`.gt-seat` 全局是「34px 头像 + 7px 上下 padding + 边框」= 50px 高，
    在一屏 360px 的横屏里太奢侈 → 这里把对家的座位牌压到 34px 左右。 */
 /* 四角席位（v2.46.47）：紧凑卡 —— 头像金边 + 名字 + 积分 + 徽标，副露/牌背横排限宽 */
-.mj-seat-tl { grid-area: tl; align-items: flex-start; }
-.mj-seat-tr { grid-area: tr; align-items: flex-start; }
-.mj-seat-br { grid-area: br; align-items: flex-end; }
-.mj-seat-bl { grid-area: bl; align-items: flex-start; }
+/* 四角绝对锚定：左上=左家 / 右上=对家 / 左下=自己 / 右下=右家。
+   上下留 5% 间距 + 各自 max-height 42% → 两个面板之间至少隔开 ~11% 桌高。 */
+.mj-seat-tl { top: 5%; left: 3%; align-items: flex-start; }
+.mj-seat-tr { top: 5%; right: 3%; align-items: flex-end; }
+.mj-seat-bl { bottom: 5%; left: 3%; align-items: flex-start; }
+.mj-seat-br { bottom: 5%; right: 3%; align-items: flex-end; }
 .mj-seat-tl .gt-seat, .mj-seat-tr .gt-seat, .mj-seat-br .gt-seat, .mj-seat-bl .gt-seat {
   max-width: 168px; padding: 1px 8px 1px 2px; gap: 6px;
   /* L4 玩家信息：玻璃背景 rgba(11,59,46,.85) + blur(16px) + 1.5px 金边，
@@ -1750,17 +1756,19 @@ onBeforeUnmount(() => {
    看着就是「一堆牌乱堆在中间，不是摆在自己那边」。现在改 flex：内容宽度由牌数决定，
    居中 / 贴边才真正生效。 */
 .mj-center {
-  grid-area: ctr; position: relative; min-width: 0; min-height: 0;
+  /* v2.46.54 空间层次：牌池 z-index 10（玩家面板 20、手牌区 30） */
+  grid-area: ctr; position: relative; z-index: 10; min-width: 0; min-height: 0;
   display: grid; gap: 2px 6px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   /* v2.46.44（夜星：弃牌会拉伸牌桌）：上下两条横排**定高一行**（牌多溢出裁切），
      中行保底「两张侧牌的高度」（左右弃牌纵向码列至少两行）。⚠️ 不能用
      minmax(min, max) 给弃牌行 —— grid 的 maximize-tracks 会把轨道撑到 max、
      把中间 1fr 挤成 0（实测 Chrome 如此），定高才是硬约束。 */
+  /* v2.46.54：上下两条横排各 +16px —— 给「打出牌躺下 + 多层侧沿厚度」留绘制空间 */
   grid-template-rows:
-    calc(var(--dis-h) + 2px)
+    calc(var(--dis-h) + 16px)
     minmax(calc(var(--dis-w) * 2 + 4px), 1fr)
-    calc(var(--dis-h) + 2px);
+    calc(var(--dis-h) + 16px);
   grid-template-areas:
     "up    up"
     "left  right"
@@ -1960,10 +1968,27 @@ onBeforeUnmount(() => {
    `grid-auto-flow: column` + 固定行高：行数由容器高度算死，列内从上到下、
    满列才向中缝起新列，**任何高度下都不可能摊成横排**。
    左家 justify-content: start（贴外侧左缘，向右长）、右家 end（贴右缘，向左长）。 */
-.mj-dis { display: flex; gap: 2px; min-width: 0; min-height: 0; overflow: hidden; }
-.mj-dis > .gt-tile { flex: none; transform: rotate(var(--tilt, 0deg)); }
-.mj-dis-up { grid-area: up; flex-flow: row wrap; justify-content: center; align-content: flex-start; }
-.mj-dis-down { grid-area: down; flex-flow: row wrap; justify-content: center; align-content: flex-end; }
+/* v2.46.54：牌池开启 3D 上下文，打出牌「横躺」+ 侧沿厚度 */
+.mj-dis {
+  display: flex; gap: 2px; min-width: 0; min-height: 0; overflow: hidden;
+  transform-style: preserve-3d; perspective: 800px;
+}
+.mj-dis > .gt-tile {
+  flex: none; transform-style: preserve-3d;
+  /* 躺下：微透视；左右家牌身已由「盒宽高互换 + SVG 反向 ±90°」横躺到位，
+     这里不再叠 rotateZ(90deg)（会双重旋转把牌转回竖直） */
+  transform: rotateX(15deg);
+  /* 厚度渲染：多层侧沿 + 落影；内高光 + 倒角 */
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(255, 255, 255, .5),
+    0 4px 0 #B8AFA0,
+    0 6px 0 #A89E8E,
+    0 8px 12px rgba(0, 0, 0, .6);
+}
+/* 上下两行：牌身靠上/靠行内上缘，让「侧沿 + 落影」在加高的行里露出来 */
+.mj-dis-up { grid-area: up; flex-flow: row wrap; justify-content: center; align-content: flex-start; overflow: visible; }
+.mj-dis-down { grid-area: down; flex-flow: row wrap; justify-content: center; align-content: flex-start; overflow: visible; }
 .mj-dis-left, .mj-dis-right {
   display: grid; gap: 2px; align-content: start;
   grid-template-rows: repeat(auto-fill, var(--dis-w));
@@ -2037,7 +2062,8 @@ onBeforeUnmount(() => {
    桌沿（base，上圆下直）→ 台面（bottom，上直下圆）→ 桌体厚度/落影挂在最底部。
    手牌、信息 pill、按钮全部坐在桌面上，不再有独立的深色条 */
 .mj-bottom {
-  position: relative;
+  /* v2.46.54 空间层次：手牌区 z-index 30（牌池 10、玩家面板 20，全在 .mj-base 栈内）*/
+  position: relative; z-index: 30;
   display: flex; flex-direction: column; gap: 5px; min-height: 0;
   /* v2.46.53 L2 木质外框（下半）：与 .mj-base 上半木框拼成一张完整的实木桌。
      margin-top:-6px 抵消 .mj 的 6px gap，让木框与绒布在中缝处连体。 */

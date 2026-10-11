@@ -1,3 +1,24 @@
+## [v2.46.54] - 2026-10-11
+
+### 麻将布局纠偏 + 打出牌 3D 质感（夜星 4 项处方）
+- **1 修复玩家布局冲突**：四角席位卡改 `position:absolute` 脱离文档流 + `grid-area:auto`，
+  分别锚定桌面四角（tl/tr/bl/br 各 5%·3%）；各 `max-height:42%` → 上下两卡至少隔 ~11% 桌高，
+  副露再多也不挤压彼此、不撑高桌面
+- **2 解决吃碰牌撑开容器**：席位绝对定位后**不参与父容器高度计算**（机制上根治「超出底部」），
+  中央牌池独占 `1fr`；`grid-template-rows` 上下两条横排各 +16px 给 3D 厚度留绘制空间
+  - 偏离处方：未对 `.mj-table` 强制 `height:65vh`+`overflow:hidden`（会裁掉 3D 厚度阴影），
+    未对页面外层 `height:100vh`+`overflow:hidden`、手牌区未改 `position:fixed`
+    （会破坏 `usePinchZoom` 手机端整舞台缩放基准）；改为「取其意图」的等价方案
+- **3 打出牌 3D 质感**：`.mj-dis` 开 `transform-style:preserve-3d` + `perspective:800px`；
+  牌身 `rotateX(15deg)` 躺下；厚度多层侧沿 `0 4px 0 #B8AFA0, 0 6px 0 #A89E8E, 0 8px 12px rgba(0,0,0,.6)`
+  + 内高光 `inset 0 2px 3px #fff` + 倒角
+  - 偏离处方：左右家牌**不叠** `rotateZ(90deg)`——现有「布局盒宽高互换 + 牌面 SVG 反向 ±90°」
+    已实现横躺，再叠会双重旋转把牌转回竖直
+- **4 整体空间层次**：桌面容器 `.mj-base` 沿用 `perspective(1400px) rotateX(4deg)`；
+  牌池 `.mj-center` `z-index:10`、玩家面板 `.mj-seat` `z-index:20`、手牌区 `.mj-bottom` `z-index:30`
+- 方案文档 `docs/ai/MAHJONG_LAYOUT_3D_20261011.md`；SW v366→v367；本地 `npm run build` 通过
+- 说明：本次按夜星要求**不做现网探针验证**，由夜星现网验收
+
 ## [v2.46.53] - 2026-10-11
 
 ### 麻将牌桌空间结构改造（夜星 7 层规格 + 3 处缺陷）
