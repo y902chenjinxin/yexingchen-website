@@ -1827,7 +1827,10 @@ onBeforeUnmount(() => {
    对家在顶边中点、只有「席位卡 + 一条横排牌脊」两行，34% 足够且不越界；
    左右家在左右边中点、要竖排 13 张牌脊（≈180px），给到 78%。
    旧版全体 42%（桌高 ≈280px 时 ≈118px）把左右家竖排硬压到 6 张、对家横向牌背塌成 1px。 */
-.mj-seat-tl { left: 1%; top: 50%; max-height: 78%; align-items: flex-start; }
+/* v2.46.66（夜星：左右别压着桌沿）：1% 在 ~1100px 视口只有 ~11px 边距，
+   牌脊 + 落影 + 翘起投影全压在桌沿金线上。收到 2.6% 与桌沿留出明确间隙，
+   条带与桌子左右边平行、各行其道（牌墙在 mini-w+40px，仍在条带内侧不重叠）。 */
+.mj-seat-tl { left: 2.6%; top: 50%; max-height: 78%; align-items: flex-start; }
 /* 对家（v2.46.65，夜星红框：应展示在桌面顶边中央的条带内）：
    席位卡 + 副露（吃/碰/杠）+ 13 张牌脊 **并排一行**，贴顶边中央。
    旧版是竖排三行（席位卡 / 副露 / 牌背）—— 一旦有副露，整体就向下生长，
@@ -1836,7 +1839,7 @@ onBeforeUnmount(() => {
   top: -2%; left: 0; right: 0; max-width: none; max-height: none;
   flex-direction: row; align-items: center; justify-content: center; gap: 10px;
 }
-.mj-seat-br { right: 1%; top: 50%; max-height: 78%; align-items: flex-end; }
+.mj-seat-br { right: 2.6%; top: 50%; max-height: 78%; align-items: flex-end; }
 /* 「自己」席位（v2.46.59）：信息条最左的行内小头像 chip（对照腾讯的「自己」小头像）。
    脱离桌面后不再是绝对定位，也不再裁切 —— 直接作为 .mj-handbar 的 flex 子项。 */
 .mj-seat-own {
