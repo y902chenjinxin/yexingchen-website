@@ -1,6 +1,6 @@
 <template>
   <div class="gt-landscape">
-    <div ref="rootRef" class="gt-shell mj" :class="{ 'is-big': big }" :style="{ '--gt-h': rootH + 'px' }">
+    <div ref="rootRef" class="gt-shell mj" :class="{ 'is-big': big }" :style="{ '--gt-h': rootH + 'px', '--back-reveal-v': backRevealV + 'px' }">
       <!-- ===== 顶栏 ===== -->
       <header class="mj-top">
         <span class="gt-title">四川麻将</span>
@@ -1532,6 +1532,26 @@ function doExit() {
 /* ---------- 尺寸基准：把实际渲染高度写进 --gt-h，迷你牌/手牌据此定尺寸 ---------- */
 const { rootRef, rootH } = useRootHeight()
 
+/** v2.46.62：左右家竖排手牌的「露边」自适应 —— 13 张必须完整可见，且永不裁切。
+ *
+ *  为什么必须由 JS 算：`.mj-backs.is-v` 改成 `flex: 0 0 auto` 后不再被 flex 收缩，
+ *  体积完全由内容决定；露边若是固定值，矮屏（手机横屏）13 张就会超出席位上限被裁。
+ *  现按「席位可用高」反算：可用高 = 席位上限(78% 桌高) − 席位卡(≈31) − gap(4)；
+ *  露边 = (可用高 − 牌高) / 12，clamp 到 [4, 12]。
+ *
+ *  ⚠️ 桌高是由 `.mj` 高度反推的，公式里的常量与下面三条 CSS 强耦合，改任一处都要同步：
+ *     · `.mj { padding: 6px 10px 8px }`            → 纵向 −14
+ *     · `.mj-base { inset: -4% … }`                → 纵向 ×1.04
+ *     · `.mj-base { padding: 10px }` + `.mj-bottom { height: … }` → −20、−164
+ */
+const tableHeight = computed(() => Math.max(0, (rootH.value - 14) * 1.04 - 20 - 164))
+const backRevealV = computed(() => {
+  const th = tableHeight.value
+  if (th <= 0) return 10
+  const miniH = Math.min(28, Math.max(17, Math.min(rootH.value, 760) * 0.056)) * 1.38
+  return Math.max(4, Math.min(12, Math.round((th * 0.78 - 35 - miniH) / 12)))
+})
+
 onMounted(() => {
   sfx.preload() // v2.46.41 预热采样，消掉第一次打牌的取包延迟
   if (isOnline.value) { syncFromView(props.onlineView); return }
@@ -1749,7 +1769,10 @@ onBeforeUnmount(() => {
      副露再多也撑不高桌面、更不会超出底部；四角各自锚定互不挤压。 */
   position: absolute; z-index: 20; grid-area: auto;
   display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0;
-  max-width: 176px; max-height: 42%;
+  max-width: 176px;
+  /* v2.46.62：上限从「全体 42%」改为**按席位分档**（见下方三条 seat 规则）。
+     42% 是把三家手牌裁成残废的元凶：桌高仅 ≈280px 时上限 ≈118px，
+     而左右家 13 张竖排要 ≈215px，对家横排虽矮但空内容牌背行被 flex 收缩吃干塌成 1px。 */
   /* V24617-012：左右家 3 组副露后内容溢出本格、盖住上下两家的副露/弃牌 ——
      溢出一律裁在本席位内，绝不允许越界遮别人。 */
   overflow: hidden; }
@@ -1762,9 +1785,13 @@ onBeforeUnmount(() => {
 /* 三边中点锚定（v2.46.59）：对照腾讯 —— 对家在**顶边居中**、左右家在**左右边中点**
    （纵向居中靠上面的 translateY(-50%) 合并规则）。
    自己已搬去信息条 chip（.mj-seat-own），四个桌角因此全部让给牌墙转角。 */
-.mj-seat-tl { left: 1%; top: 50%; align-items: flex-start; }
-.mj-seat-tr { top: 1%; left: 0; right: 0; max-width: none; align-items: center; }
-.mj-seat-br { right: 1%; top: 50%; align-items: flex-end; }
+/* v2.46.62（夜星：左中右依然没有展示13张牌）—— 上限分档：
+   对家在顶边中点、只有「席位卡 + 一条横排牌脊」两行，34% 足够且不越界；
+   左右家在左右边中点、要竖排 13 张牌脊（≈180px），给到 78%。
+   旧版全体 42%（桌高 ≈280px 时 ≈118px）把左右家竖排硬压到 6 张、对家横向牌背塌成 1px。 */
+.mj-seat-tl { left: 1%; top: 50%; max-height: 78%; align-items: flex-start; }
+.mj-seat-tr { top: 1%; left: 0; right: 0; max-width: none; max-height: 34%; align-items: center; }
+.mj-seat-br { right: 1%; top: 50%; max-height: 78%; align-items: flex-end; }
 /* 「自己」席位（v2.46.59）：信息条最左的行内小头像 chip（对照腾讯的「自己」小头像）。
    脱离桌面后不再是绝对定位，也不再裁切 —— 直接作为 .mj-handbar 的 flex 子项。 */
 .mj-seat-own {
@@ -1831,7 +1858,10 @@ onBeforeUnmount(() => {
  * 视觉上就是「左右两方还是横着摆」。现在改 flex column + 等分（flex: 1 1 0）：
  * 张数再多也**永远只有一列**，牌身跟着容器高度自动压扁，既不换列也不会溢出。 */
 .mj-melds { display: flex; gap: 3px; }
-.mj-backs { display: flex; gap: 2px; }
+/* v2.46.62：牌背行**禁止伸缩**（`flex: 0 0 auto`）。
+   旧版 `.mj-backs` 是空内容的 `<span>`（牌由子元素撑），其 min-content 高度 = 0，
+   一旦父列被 max-height 挤到不够，flex 收缩会把整行吃干 → 对家牌背塌成 1px 切片。 */
+.mj-backs { display: flex; gap: 2px; flex: 0 0 auto; }
 .mj-melds.is-h {
   flex-flow: row wrap; justify-content: center; align-content: flex-start;
 }
@@ -1855,11 +1885,13 @@ onBeforeUnmount(() => {
 .mj-backs.is-v {
   flex-direction: column; flex-wrap: nowrap;
   justify-content: center; align-items: center;
-  gap: 0; min-height: 0; flex: 1 1 auto;
+  gap: 0; min-height: 0; flex: 0 0 auto;
 }
 .mj-backs .gt-tile { flex: 0 0 auto; }
+/* v2.46.62：竖排牌脊每张露出的高度由 JS 按「席位可用高」反算注入 `--back-reveal-v`
+   （clamp [4,12]px）。旧值 min(14px, …) 是定值，小屏/窄桌下 13 张总高会溢出上限被裁。 */
 .mj-backs.is-v .gt-tile + .gt-tile {
-  margin-top: calc(min(14px, var(--mini-h) * .3) - var(--mini-h));
+  margin-top: calc(var(--back-reveal-v, 10px) - var(--mini-h));
 }
 .mj-backs.is-h .gt-tile + .gt-tile {
   margin-left: calc(min(20px, var(--mini-w) * .72) - var(--mini-w));
@@ -1879,21 +1911,27 @@ onBeforeUnmount(() => {
   /* v2.46.57：保留 3D 上下文（中央罗盘的 translateZ 浮起靠它透传到 .mj-base） */
   transform-style: preserve-3d;
   display: grid; gap: 2px 6px;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* v2.46.62（夜星：中间图标压着牌墩）：中列独立 —— 罗盘从 position:absolute
+     （对整个 .mj-center 盒取几何中心，无视上内边距）改为这一列的 grid 项，
+     物理上只可能落在弃牌环内部，绝不再盖到上牌墙。 */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   /* v2.46.44（夜星：弃牌会拉伸牌桌）：上下两条横排**定高一行**（牌多溢出裁切），
      中行保底「两张侧牌的高度」（左右弃牌纵向码列至少两行）。⚠️ 不能用
      minmax(min, max) 给弃牌行 —— grid 的 maximize-tracks 会把轨道撑到 max、
      把中间 1fr 挤成 0（实测 Chrome 如此），定高才是硬约束。 */
-  /* v2.46.54：上下两条横排各 +16px —— 给「打出牌躺下 + 多层侧沿厚度」留绘制空间 */
+  /* v2.46.54：上下两条横排各留绘制空间（打出牌躺下 + 多层侧沿厚度）。
+     v2.46.62：垂直预算重算 —— 旧 pad-top(70) + 上下行(16×2) + pad-bottom(48)
+     在桌高 ≈280px 时合计超支 ≈83px，内容外溢后被 .mj-bottom（z-index 30）整块盖住
+     —— 这就是「一张弃牌都看不到」的真因。行高收到 +6、下边距 48→12，总预算落回盒内。 */
   grid-template-rows:
-    calc(var(--dis-h) + 16px)
-    minmax(calc(var(--dis-w) * 2 + 4px), 1fr)
-    calc(var(--dis-h) + 16px);
+    calc(var(--dis-h) + 6px)
+    minmax(0, 1fr)
+    calc(var(--dis-h) + 6px);
   grid-template-areas:
-    "up    up"
-    "left  right"
-    "down  down";
-  padding: calc(var(--mini-h) + 70px) 28px 48px; border-radius: 14px;   /* v2.46.61：上内边距 = 牌墙内缩量 + 墙厚 + 8px 缝，上家弃牌让到上牌墙「里侧」（原 46px 会被内缩后的牌墙压住）；下方无席位，保持 48px */
+    "up    up    up"
+    "left  ctr   right"
+    "down  down  down";
+  padding: calc(var(--mini-h) + 64px) 28px 12px; border-radius: 14px;   /* v2.46.62：上内边距 = 牌墙内缩(40) + 墙厚(26) − 桌面内边距(10) + 缝隙(8)，上家弃牌正好让到上牌墙「里侧」 */
   /* v2.46.46（夜星：还是没有四方桌感）：中央不再是一块「嵌进去的深色面板」——
    * 面板底色与内边线全撤，弃牌直接摆在绒布上，整张桌子就是一块完整的绿绒布；
    * 只保留一圈极淡的内阴影提示「桌面中央」的深度。 */
@@ -1902,19 +1940,25 @@ onBeforeUnmount(() => {
   /* v2.46.26（夜星：长方形看着怪）：宽屏下中央弃牌区被 1fr 拉成 3:1 长条，
    * 与真实牌桌「中央近方」的观感差很远。限宽居中后，两侧留出的绿绒布就是
    * 桌面空地，四方弃牌围合成近方阵 —— 这才是麻将桌该有的样子。 */
-  width: 100%; max-width: min(100%, 640px);
+  width: 100%; max-width: min(100%, 760px);
   justify-self: center;
 }
 /* 桌心罗盘（v2.46.47 设计文档，纯装饰）：金色外环 3px + 金晕、深绿内圆 + 内阴影、
    东南西北四个方位字（金浅色）、中心一枚金点。pointer-events none 不挡交互 */
 .mj-compass {
-  position: absolute; left: 50%; top: 50%; z-index: 0;
-  /* v2.46.59 对照腾讯：中央「大号玻璃盘」—— 由 clamp(76px,19%,116px) 放大到
-     clamp(110px,26%,176px)，成为桌心的视觉锚点（旧版偏小偏上、下方留大片空白）。 */
-  width: clamp(110px, 26%, 176px); aspect-ratio: 1;
+  /* v2.46.62（夜星：中间图标压着牌墩）：从 `position:absolute` 改为**中列 grid 项**。
+     旧版对整个 .mj-center 盒取几何中心（绝对定位无视上内边距 64px），落到 y≈129，
+     正压在上牌墙（y 75~101）上，把中间约 5 墩吃掉。
+     现在由 grid 轨道约束 —— 罗盘物理上只在「弃牌环内部」这一格里，绝无可能越界到牌墙。 */
+  grid-area: ctr; position: relative; z-index: 0;
+  align-self: center; justify-self: center;
+  /* v2.46.59 对照腾讯：中央「大号玻璃盘」作为桌心视觉锚点。
+     v2.46.62：尺寸由**行高驱动**（`min(100%, 132px)` + aspect-ratio），
+     小桌自动收小、不再溢出到上牌墙。 */
+  height: min(100%, 132px); aspect-ratio: 1;
   /* v2.46.57：translateZ(18px) 把罗盘沿桌平面法线抬起来（透过 .mj-center/.mj-table/.mj-base
      的 preserve-3d 链在 3D 空间里真浮起，不是画上去的假阴影），配合下方多层托底阴影 */
-  transform: translate(-50%, -50%) translateZ(18px);
+  transform: translateZ(18px);
   border-radius: 50%;
   /* L5 中央罗盘：4px 金环 */
   border: 4px solid #D4AF37;
@@ -2063,11 +2107,12 @@ onBeforeUnmount(() => {
 /* v2.46.61 上沿分层（夜星：牌遮挡了）：牌墙从「贴桌沿」内缩到**手牌列内侧**，
    让一条 y 带上的四样各自有位：桌沿 → 席位卡 → 手牌列 → 牌墙 → 弃牌区。
    上/左/右三边都有席位卡 + 手牌列，故内缩量 = 席位卡高(~34px) + 牌厚 + 8px 缝；
-   下边没有席位（自己的手牌在 .mj-bottom，桌外），保持贴沿。 */
-.mj-wall-up   { top: calc(var(--mini-h) + 46px); left: 50%; transform: translateX(-50%); }
+   下边没有席位（自己的手牌在 .mj-bottom，桌外），保持贴沿。
+   v2.46.62：46 → 40，为「上家弃牌行」多腾 6px 净空（保留分层机制，不换层序）。 */
+.mj-wall-up   { top: calc(var(--mini-h) + 40px); left: 50%; transform: translateX(-50%); }
 .mj-wall-down { bottom: 8px; left: 50%; transform: translateX(-50%); }
-.mj-wall-left  { left: calc(var(--mini-w) + 46px); top: 50%; transform: translateY(-50%); flex-direction: column; }
-.mj-wall-right { right: calc(var(--mini-w) + 46px); top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wall-left  { left: calc(var(--mini-w) + 40px); top: 50%; transform: translateY(-50%); flex-direction: column; }
+.mj-wall-right { right: calc(var(--mini-w) + 40px); top: 50%; transform: translateY(-50%); flex-direction: column; }
 .mj-wstack {
   width: 18px; height: 26px; border-radius: 4px;
   /* v2.46.59：一墩 = 上下两张牌 —— 上一半是上牌顶面（受光亮面），下一半是下牌侧沿；
@@ -2251,7 +2296,10 @@ onBeforeUnmount(() => {
      v2.46.59：背景改**几乎全透明**（仅底部极淡渐深）—— 去掉手牌与桌面之间的暗带，
      让绒布一直铺到手牌脚下（对照腾讯：手牌直接坐在绒布上，无缝）。 */
   position: relative; z-index: 30;
-  height: 200px; flex-shrink: 0;
+  /* v2.46.62：200 → 164px。手牌区纵向只装「一张牌面(≈77px) + 11px 选中上浮 + 信息条(≈30px)」，
+     200px 盒子实测有 ≈74px 空档；本家手牌宽度由 `.mj-hand .gt-tile` 的宽度公式驱动、
+     与盒子高度无关，故缩短这里**不会缩小本家手牌**，却给牌桌腾出 ≈36px。 */
+  height: 164px; flex-shrink: 0;
   display: flex; flex-direction: column; justify-content: space-between; gap: 5px;
   padding: 0 14px 10px;
   transform: rotateX(-16deg);

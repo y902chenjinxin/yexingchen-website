@@ -1,3 +1,34 @@
+## [v2.46.62] - 2026-10-12
+
+### 麻将牌桌：三家 13 张手牌真正可见 + 罗盘归位弃牌环内 + 中央弃牌不再被盖
+- 夜星验收 v2.46.61：「左中右依然没有展示 13 张牌，且中间图标压着牌墩了」→
+  1911×828 现网截图像素剖面取证 + 算术闭环定位三条真根因，夜星批准「按这个方案开始 v2.46.62 改造」
+- **根因 A（13 张看不到）**：`.mj-seat { max-height: 42% }` 强制压缩席位内容，
+  超出的部分靠 flex 收缩消化；而 `.mj-backs` 是空内容的 `<span>`（min-content 高 = 0），
+  于是：左右家 `.mj-backs.is-v { flex: 1 1 auto }` 按比例缩到只剩 6 张，
+  对家 `.mj-backs.is-h` 被吃干**塌成 ≈1px 切片**
+  （算术核对：31 席位卡 + 4 gap + 73 牌背 = 108 = 42% × 258 ✓）
+- **修法 A**：① `.mj-backs { flex: 0 0 auto }` 禁止收缩；② 上限**按席位分档** ——
+  对家（顶边中点、两行）34%、左右家（边中点、竖排 13 张）78%；
+  ③ 竖排牌脊每张露边由 JS 按「席位可用高」反算注入 `--back-reveal-v`（clamp [4,12]px），
+  公式与 `.mj` padding / `.mj-base` inset / `.mj-bottom` 高度强耦合（改任一处须同步）
+- **根因 B（罗盘压牌墩）**：`.mj-compass { left:50%; top:50% }` 绝对定位对整个 `.mj-center`
+  盒取几何中心、**无视上内边距**，落到 y≈129，正压在设计给上牌墙的 y 75~101 带上
+- **修法 B**：`.mj-center` 由两列改**三列** `minmax(0,1fr) auto minmax(0,1fr)`，
+  areas 加中列 `ctr`；罗盘从 `position:absolute` 改为 `grid-area: ctr` 的网格项
+  （`height: min(100%, 132px)` + aspect-ratio + `translateZ(18px)`）—— 物理上只在弃牌环内部
+- **根因 C（一张弃牌都看不到）**：`.mj-center` 垂直预算严重超支 ——
+  旧 `pad-top(mini-h+70)` + 上下弃牌行 `(dis-h+16)×2` + `pad-bottom 48`，
+  桌高 ≈280px 时合计超支 ≈83px，内容外溢后被 `.mj-bottom`（z-index 30）整块盖住
+- **修法 C**：`padding: calc(var(--mini-h) + 64px) 28px 12px` +
+  `grid-template-rows: calc(var(--dis-h)+6px) minmax(0,1fr) calc(var(--dis-h)+6px)`；
+  牌墙内缩量 46 → 40px，为「上家弃牌行」多腾 6px 净空（保留分层机制，不换层序）
+- **附带**：`.mj-center` 限宽 640 → 760px；`.mj-bottom` 高度 200 → 164px，
+  给牌桌腾出 ≈36px（本家手牌宽度由宽度公式驱动、与盒子高度无关，故不缩小手牌）
+- 改动文件：`frontend/src/components/games/MahjongBoard.vue`
+- 方案文档 `docs/ai/MAHJONG_CENTER_20261012.md`（第十轮）；SW v374→v375
+- 说明：按夜星要求**不做现网探针验证**，由夜星现网验收
+
 ## [v2.46.61] - 2026-10-12
 
 ### 麻将牌桌：三家手牌「支起来」（13 张叠成牌脊）+ 上沿四层不再挤在一条 y 带
