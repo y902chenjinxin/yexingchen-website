@@ -1640,8 +1640,14 @@ onBeforeUnmount(() => {
 .mj-tpersp {
   flex: 1; min-height: 0;
   position: relative; overflow: hidden;
-  /* v2.46.59：透视 1200→1600（更接近平视、梯形外扩更收敛，对照腾讯浅俯角） */
-  perspective: 1600px; perspective-origin: 50% 50%;
+  /* v2.46.59：透视 1200→1600（更接近平视、梯形外扩更收敛，对照腾讯浅俯角）
+     v2.46.60：透视原点 50% 50% → 50% 0%（贴容器顶边）。原点居中时，桌面顶边落到
+     容器 y=0 所需的高度是 H/V = d/(d·cosθ − (V/2)·sinθ)，**随容器高 V 变化**
+     （V≈420/d=1600/θ=16° 时只需 1.08 倍），而固定写 -16% 必然把桌面顶部裁掉：
+     对家席位卡、上牌墙上半截、左右木框上端转角全丢 = 「上面和左边展示不全」。
+     原点贴顶边后所需高度恒为 H = V/cosθ，与 V、d 都无关。
+     ⚠️ 横向收敛比 d/(d+h·sinθ) 与透视原点无关 → 梯形形状与观感完全不变。 */
+  perspective: 1600px; perspective-origin: 50% 0%;
   background: radial-gradient(120% 100% at 50% 0%, #17564A 0%, #0C3A31 62%, #07241E 100%);
 }
 .mj-base {
@@ -1649,8 +1655,11 @@ onBeforeUnmount(() => {
      压缩约 1/1.16，内容尺寸因此回到「未倾斜」观感，同时露出近大远小的梯形。
      v2.46.58：下边归 0、下圆角归零、下边框去掉 —— 桌面一铺到屏幕底。
      v2.46.59：倾角 22°→16°、上边 -32%→-16%、左右 10px→8px（收窄梯形外扩，
-     木框只在左右露极窄一线，上下都铺出屏幕，对照腾讯浅俯角）。 */
-  position: absolute; inset: -16% 8px 0;
+     木框只在左右露极窄一线，上下都铺出屏幕，对照腾讯浅俯角）。
+     v2.46.60：上边 -16%→-4% —— 配 perspective-origin:50% 0% 后，桌面顶边恰好落到
+     容器 y=0 所需高度精确等于 1/cos16° = 1.0403（即 -4.03%）：给多了顶部留白、
+     给少了继续裁顶，这个值是算出来的不是试出来的。 */
+  position: absolute; inset: -4% 8px 0;
   display: flex; flex-direction: column;
   padding: 10px;                       /* 木质外框厚度 */
   border-radius: 26px 26px 0 0;
@@ -1715,7 +1724,8 @@ onBeforeUnmount(() => {
 .mj-table > .mj-seat.mj-seat-br { transform: translateY(-50%) rotateX(-16deg); }
 /* 手机横屏：倾角收到 12°（更平的俯角，减少纵向压缩与字面倒伏） */
 @media (max-width: 900px) and (orientation: landscape) {
-  .mj-base { transform: rotateX(12deg); inset: -12% 8px 0; }
+  /* v2.46.60：1/cos12° = 1.0224 → 上边 -2.2%（同桌面端的算法，见 .mj-tpersp） */
+  .mj-base { transform: rotateX(12deg); inset: -2.2% 8px 0; }
   .mj-table > .mj-seat { transform: rotateX(-12deg); }
   .mj-table > .mj-seat.mj-seat-tl,
   .mj-table > .mj-seat.mj-seat-br { transform: translateY(-50%) rotateX(-12deg); }

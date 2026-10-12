@@ -1,6 +1,6 @@
 <template>
   <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇">
-    <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill, 'is-fsfit': fitActive }">
+    <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill, 'is-fsfit': fitActive, 'is-card': isCardGame }">
       <!-- ===== 左：游戏类型 ===== -->
       <!-- 手机端：未选游戏时铺开手账网格；选中后收起（对局区占满，切游戏走「返回列表」） -->
       <aside v-show="!isBig && !(isMobile && tab)" class="gm-rail">
@@ -113,7 +113,7 @@
 
           <!-- 第二步：对局 -->
           <div v-else class="gm-play" :class="{ 'is-fsfit': fitActive }">
-            <div v-if="showRules && cur.rules?.length && !fitActive" class="gm-rules gm-rules--play">
+            <div v-if="showRules && cur.rules?.length && !fitActive && !(isBig && isCardGame)" class="gm-rules gm-rules--play">
               <div v-for="(r, ri) in cur.rules" :key="ri" class="gm-rule">
                 <i class="gm-rule-dot"></i>{{ r }}
               </div>
@@ -175,21 +175,63 @@
               </div>
             </template>
 
-            <component
-              v-else
-              :is="cur.component"
-              :key="runKey"
-              :game-key="cur.key"
-              :initial-mode="chosenMode"
-              :board-size="chosenBoard"
-              :resume="resumeFlag"
-              :bare="true"
-              :big="isBig"
-              :join-room-id="pendingRoom.game === cur.key ? pendingRoom.id : 0"
-              @room-lock="roomLocked = true"
-              @room-unlock="roomLocked = false"
-              @exit="backToList"
-            />
+            <template v-else>
+              <component
+                :is="cur.component"
+                :key="runKey"
+                :game-key="cur.key"
+                :initial-mode="chosenMode"
+                :board-size="chosenBoard"
+                :resume="resumeFlag"
+                :bare="true"
+                :big="isBig"
+                :join-room-id="pendingRoom.game === cur.key ? pendingRoom.id : 0"
+                @room-lock="roomLocked = true"
+                @room-unlock="roomLocked = false"
+                @exit="backToList"
+              />
+
+              <!-- 桌面全屏牌类（v2.46.60）：与手机端全屏（fitActive 分支）同一套
+                   「无横栏 + 右上角 ☰」。此前 .gm-head 只在 is-fsfit 时隐藏，桌面端
+                   全屏（isBig）横栏常驻，白吃约 45px 画布高 —— 就是夜星看到的
+                   「顶部还有个横栏」。横栏去掉后，说明改走 .gm-help 侧抽屉
+                   （fixed 覆盖层，不挤压牌桌），其余两项收进 ☰ 浮层。 -->
+              <template v-if="isBig && isCardGame">
+                <div class="gtv-fsmenu" :class="{ 'is-open': fsMenuOpen }">
+                  <button
+                    class="gtv-fsmenu-btn"
+                    :aria-expanded="fsMenuOpen ? 'true' : 'false'"
+                    aria-label="牌桌菜单"
+                    @click="fsMenuOpen = !fsMenuOpen"
+                  >{{ fsMenuOpen ? '✕' : '☰' }}</button>
+                  <transition name="gtv-pop">
+                    <div v-if="fsMenuOpen" class="gtv-fsmenu-panel">
+                      <button class="gtv-fsmenu-item" @click="fsMenuOpen = false; showRules = true">
+                        <i aria-hidden="true">📖</i><span>游戏说明</span>
+                      </button>
+                      <button class="gtv-fsmenu-item" @click="fsMenuOpen = false; toggleBig()">
+                        <i aria-hidden="true">⤡</i><span>退出全屏</span>
+                      </button>
+                      <button class="gtv-fsmenu-item" @click="fsMenuOpen = false; backToList()">
+                        <i aria-hidden="true">↩</i><span>返回列表</span>
+                      </button>
+                    </div>
+                  </transition>
+                </div>
+                <div v-if="showRules && cur.rules?.length" class="gm-help" @click.self="showRules = false">
+                  <aside class="gm-help-panel" role="dialog" aria-label="游戏说明">
+                    <header class="gm-help-head">
+                      <b>{{ cur.label }} · 玩法说明</b>
+                      <button class="gtv-help-x" aria-label="关闭说明" @click="showRules = false">✕</button>
+                    </header>
+                    <ol class="gm-help-list">
+                      <li v-for="(r, ri) in cur.rules" :key="ri">{{ r }}</li>
+                    </ol>
+                    <button class="gm-op" @click="showRules = false">知道了</button>
+                  </aside>
+                </div>
+              </template>
+            </template>
           </div>
         </template>
       </section>
@@ -981,6 +1023,22 @@ watch(() => route.query.room, (v) => {
 /* ===== 牌类手机端：进桌全屏 + 横屏，牌桌等比缩放铺满一屏（不再左右滑动） ===== */
 .gm-root.is-fsfit .gm-stage { padding: 0; gap: 0; }
 .gm-root.is-fsfit .gm-head { display: none; }
+
+/* ===== 桌面全屏牌类（v2.46.60）：去掉横栏 + 牌桌精确吃满一屏 =====
+   此前只有 .is-fsfit（手机全屏）会隐藏 .gm-head，桌面端全屏（isBig）横栏常驻，
+   白吃约 45px 画布高（夜星截图里那条「四川麻将 + 游戏说明/退出全屏/返回列表」）。
+   · 高度链：.gm-stage（fixed inset:0，定高）→ .gm-play 100% → .gt-landscape 100%
+     → .mj 100% ⇒ 牌桌高度 = 舞台可用高度，不再靠内容撑高。这一步是必须的：
+     牌桌自身 `min-height: calc(100vh - 150px)` 在矮屏（≤500px）上会算出 335 之类的
+     小值，而内容（手牌按 --gt-h 定尺寸）又会把它撑到 400+，两者叠加让牌桌高度
+     不可控 —— 矮屏上就会出现「桌面顶部被挤出可视区」。
+   · 说明改走 .gm-help 侧抽屉（fixed 覆盖层），不占用牌桌高度。 */
+.gm-root.is-big.is-card .gm-stage { padding: 10px 14px 14px; overflow: hidden; }
+.gm-root.is-big.is-card .gm-head { display: none; }
+.gm-root.is-big.is-card .gm-play { height: 100%; max-width: none; }
+.gm-root.is-big.is-card :deep(.gt-landscape) { height: 100%; }
+/* ☰ 相对 .gm-stage（fixed）定位，浮在牌桌右上角，不参与布局 */
+.gm-root.is-big.is-card .gtv-fsmenu { position: absolute; top: 12px; right: 14px; z-index: 8; }
 .gm-play.is-fsfit {
   display: block; width: 100%; height: 100%; flex: 1 1 auto; min-height: 0; max-width: none;
 }
