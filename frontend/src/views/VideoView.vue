@@ -35,32 +35,32 @@
       <el-table ref="tableRef" :data="pagedRows" stripe class="admin-table" style="width: 100%" @selection-change="onSelectionChange" empty-text="还没有视频，点「上传」添加">
         <el-table-column type="selection" width="48" />
         <el-table-column prop="title" label="标题" min-width="150" />
-        <el-table-column prop="category" label="分类" width="100">
+        <el-table-column v-if="!isMobile" prop="category" label="分类" width="100">
           <template #default="{ row }">
             <el-tag v-if="row.category" size="small" type="info">{{ row.category }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="tags" label="标签" min-width="120" show-overflow-tooltip />
-        <el-table-column label="文件大小" width="100">
+        <el-table-column v-if="!isMobile" prop="tags" label="标签" min-width="120" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" label="文件大小" width="100">
           <template #default="{ row }">{{ formatSize(row.file_size) }}</template>
         </el-table-column>
-        <el-table-column label="链接(COS)" min-width="160" show-overflow-tooltip>
+        <el-table-column v-if="!isMobile" label="链接(COS)" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">
             <a v-if="row.cos_url" :href="row.cos_url" target="_blank" rel="noopener noreferrer" class="file-link">{{ row.cos_url }}</a>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="上传时间" width="150">
+        <el-table-column v-if="!isMobile" label="上传时间" width="150">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
         <!-- 上传人：只读展示，由上传时的账号决定，后端不支持修改 -->
-        <el-table-column label="上传人" width="96" show-overflow-tooltip>
+        <el-table-column v-if="!isMobile" label="上传人" width="96" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.uploader_name">{{ row.uploader_name }}</span>
             <span v-else>—</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? 132 : 150" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
             <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -277,8 +277,10 @@ import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { downloadVideoTemplate, getVideoUploaders } from '@/api/video'
+import { useIsMobile } from '@/composables/useIsMobile'
 
 const videoStore = useVideoStore()
+const { isMobile } = useIsMobile()
 
 const showUpload = ref(false)
 const keyword = ref('')

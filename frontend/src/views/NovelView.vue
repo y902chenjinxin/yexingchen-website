@@ -24,20 +24,20 @@
       <el-table ref="tableRef" :data="pagedRows" stripe class="admin-table" style="width: 100%" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="48" />
         <el-table-column prop="title" label="标题" min-width="150" />
-        <el-table-column prop="author" label="作者" width="110" />
-        <el-table-column prop="category" label="分类" width="100">
+        <el-table-column v-if="!isMobile" prop="author" label="作者" width="110" />
+        <el-table-column v-if="!isMobile" prop="category" label="分类" width="100">
           <template #default="{ row }">
             <el-tag v-if="row.category" size="small" type="info">{{ row.category }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="tags" label="标签" min-width="120" show-overflow-tooltip />
-        <el-table-column label="文件大小" width="100">
+        <el-table-column v-if="!isMobile" prop="tags" label="标签" min-width="120" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" label="文件大小" width="100">
           <template #default="{ row }">{{ formatSize(row.file_size) }}</template>
         </el-table-column>
-        <el-table-column label="上传时间" width="150">
+        <el-table-column v-if="!isMobile" label="上传时间" width="150">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? 132 : 150" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
             <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -264,8 +264,10 @@ import { Search } from '@element-plus/icons-vue'
 import { useNovelStore } from '@/stores/novel'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { downloadNovelTemplate } from '@/api/novel'
+import { useIsMobile } from '@/composables/useIsMobile'
 
 const novelStore = useNovelStore()
+const { isMobile } = useIsMobile()
 
 const showUpload = ref(false)
 const keyword = ref('')

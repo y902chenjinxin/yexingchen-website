@@ -77,27 +77,27 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="artist" label="作者" width="116" show-overflow-tooltip />
-        <el-table-column prop="category" label="分类" width="96">
+        <el-table-column v-if="!isMobile" prop="artist" label="作者" width="116" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" prop="category" label="分类" width="96">
           <template #default="{ row }">
             <el-tag v-if="row.category" size="small" type="info">{{ row.category }}</el-tag>
             <span v-else class="dim">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="tags" label="标签" min-width="120" show-overflow-tooltip>
+        <el-table-column v-if="!isMobile" prop="tags" label="标签" min-width="120" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.tags">{{ row.tags }}</span>
             <span v-else class="dim">—</span>
           </template>
         </el-table-column>
-        <el-table-column label="大小" width="86">
+        <el-table-column v-if="!isMobile" label="大小" width="86">
           <template #default="{ row }">{{ formatSize(row.file_size) }}</template>
         </el-table-column>
-        <el-table-column label="时长" width="72">
+        <el-table-column v-if="!isMobile" label="时长" width="72">
           <template #default="{ row }">{{ formatDuration(row.duration) }}</template>
         </el-table-column>
         <!-- 上传人：只读展示，由上传时的账号决定，后端不支持修改 -->
-        <el-table-column label="上传人" width="96" show-overflow-tooltip>
+        <el-table-column v-if="!isMobile" label="上传人" width="96" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.uploader_name">{{ row.uploader_name }}</span>
             <span v-else class="dim">—</span>
@@ -106,7 +106,7 @@
 
         <!-- 操作：设为背景乐 / 编辑 / 删除 —— 左对齐排布，保证各行按钮纵向对齐。
              内置古筝现在是普通曲目记录，所以不再有「只读行」守卫，每首都能编辑删除。 -->
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? 132 : 250" fixed="right">
           <template #default="{ row }">
             <div class="row-ops">
               <el-tag v-if="isCurBgm(row)" size="small" type="primary" effect="dark" class="bgm-on">背景乐</el-tag>

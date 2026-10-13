@@ -742,3 +742,211 @@ html[data-theme="day"] #app.is-mobile .pt-paper {
 }
 html[data-theme="day"] #app.is-mobile .pt-text { color: #4a3b22 !important; }
 html[data-theme="day"] #app.is-mobile :is(.pt-date, .pt-loading) { color: #a08a5a !important; }
+
+/* ======================================================================
+ * 宣纸化收编补全（v2.46.68 · 手机端 UI 一致性巡检 P0~P2）
+ * 夜星巡检结论：工作台/笔记/AI对话守规范；模块页缺质感；我的页/分页/开关
+ * 漏蓝紫；音乐/视频/小说是桌面管理表挤上手机。本段一次收编。
+ * 根因备忘：ab/native-glass 在 #app.is-mobile 直挂 --el-color-primary/#5b6ae0
+ * 与 --yq-gold=紫，paper 原先只挂在 html:has() 上（继承被直挂压掉）——
+ * 这里改为同作用域直挂、靠后加载顺序取胜。
+ * ===================================================================== */
+#app.is-mobile {
+  --el-color-primary: var(--xz-gold);
+  --el-color-primary-light-3: #d5b57c;
+  --el-color-primary-light-5: #ddc39b;
+  --el-color-primary-light-7: #e6d2ba;
+  --el-color-primary-light-8: #ecdcc8;
+  --el-color-primary-light-9: #f3e7d9;
+  --el-color-primary-dark-2: #a9853f;
+  /* yq 方言令牌重映射：EmptyState/笔记/视频的鎏金系回归真金 */
+  --yq-gold: var(--xz-gold);
+  --yq-rain: #46655f;
+  --yq-rain-bright: #568078;
+  --yq-gold-glow: rgba(201, 164, 92, .32);
+}
+html[data-theme="day"] #app.is-mobile {
+  --el-color-primary: var(--xz-ochre);
+  --el-color-primary-light-3: #c08a70;
+  --el-color-primary-light-5: #cda391;
+  --el-color-primary-light-7: #dbbcad;
+  --el-color-primary-light-8: #e4cdc2;
+  --el-color-primary-light-9: #f0e3db;
+  --el-color-primary-dark-2: #8d533a;
+  --yq-rain: #3d5a5c;
+  --yq-rain-bright: #4e6e6a;
+}
+
+/* ---- 输入/选择：宣纸卡底 + 墨描边（压过 native-glass 玻璃层） ---- */
+#app.is-mobile :is(.el-input__wrapper, .el-select__wrapper, .el-textarea__inner) {
+  background: var(--xz-card) !important;
+  box-shadow: 0 0 0 1.5px var(--xz-card-border) inset !important;
+  border-radius: var(--m-radius-sm) !important;
+}
+#app.is-mobile :is(.el-input__wrapper.is-focus, .el-select__wrapper.is-focused) {
+  box-shadow: 0 0 0 2px var(--xz-gold) inset !important;
+}
+#app.is-mobile :is(.el-input__inner, .el-select__selected-item, .el-textarea__inner,
+  .el-input__inner::placeholder, .el-select__placeholder) {
+  color: var(--m-text) !important;
+}
+
+/* ---- 开关 / 勾选 / 单选：金赭主色随令牌走（我的页/AI对话漏色修复） ---- */
+#app.is-mobile .el-switch.is-checked .el-switch__core {
+  background: var(--xz-btn-bg) !important;
+  border-color: var(--xz-btn-bg) !important;
+}
+#app.is-mobile :is(.el-checkbox__inner, .el-radio__inner) {
+  background: var(--xz-card);
+  border-color: var(--m-line-strong);
+}
+
+/* ---- 分页：墨/金胶囊（native-glass 蓝紫 active 压掉） ---- */
+#app.is-mobile .el-pagination {
+  background: transparent !important;
+}
+#app.is-mobile .el-pagination .el-pager li.is-active {
+  background: var(--xz-btn-bg) !important;
+  color: var(--xz-btn-fg) !important;
+}
+
+/* ---- 工具岛内页（音乐/视频/小说）：管理表 → 宣纸卡列表 ---- */
+#app.is-mobile .island-inner .el-table {
+  --el-table-border-color: var(--m-line);
+  --el-table-header-bg-color: var(--xz-card-2);
+  --el-table-tr-bg-color: var(--xz-card);
+  --el-table-row-hover-bg-color: var(--xz-card-2);
+  background: var(--xz-card) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+  overflow: hidden;
+}
+#app.is-mobile .island-inner .el-table th.el-table__cell {
+  background: var(--xz-card-2) !important;
+  color: var(--m-text-2) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  letter-spacing: .05em;
+}
+#app.is-mobile .island-inner .el-table td.el-table__cell,
+#app.is-mobile .island-inner .el-table tr {
+  background: var(--xz-card) !important;
+}
+#app.is-mobile .island-inner .el-table td.el-table__cell {
+  border-bottom: 1px dashed var(--m-line) !important;
+  color: var(--m-text);
+}
+#app.is-mobile .island-inner .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--xz-card) !important;   /* 去斑马：缝线虚线已足够 */
+}
+#app.is-mobile .island-inner .el-table__empty-block {
+  background: var(--xz-card-2);
+  color: var(--m-text-2);
+}
+/* 行内操作：小按钮收成描边胶囊 */
+#app.is-mobile .island-inner .el-table .el-button {
+  border-radius: var(--m-radius-sm) !important;
+  font-weight: 600;
+}
+#app.is-mobile .island-inner .el-table .row-ops { flex-wrap: wrap; gap: 4px; row-gap: 6px; }
+#app.is-mobile .island-inner .el-button--danger {
+  background: var(--xz-card) !important;
+  color: var(--m-negative) !important;
+  border: 1.5px solid var(--m-negative) !important;
+}
+#app.is-mobile .island-inner .el-button--danger:hover { opacity: .85; }
+/* plain 主按钮：宣纸描边胶囊（批量导入/查询/编辑） */
+#app.is-mobile .island-inner .el-button--primary.is-plain {
+  background: var(--xz-card) !important;
+  color: var(--m-text) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+}
+#app.is-mobile .island-inner .el-tag {
+  background: var(--xz-card-2) !important;
+  border: 1px solid var(--m-line-strong) !important;
+  color: var(--m-text-2) !important;
+  border-radius: 999px !important;
+}
+#app.is-mobile .island-inner .el-tag.el-tag--warning {
+  color: var(--xz-gold) !important;
+  border-color: var(--xz-gold) !important;
+}
+#app.is-mobile .island-inner .el-checkbox__inner { border-radius: 6px; }
+
+/* ---- 全部模块页：卡片补硬阴影（夜星：模块页与工作台不搭） ----
+   覆盖 v2.46.38「横滑小卡不加硬阴影」的克制条款——模块卡就是该页主卡。 */
+#app.is-mobile .mdl-card {
+  box-shadow: var(--xz-card-shadow) !important;
+  border-width: 2px !important;
+}
+#app.is-mobile .mdl-group__head { display: flex; align-items: baseline; gap: 8px; }
+#app.is-mobile .mdl-group__n {
+  padding: 1px 8px;
+  border: 1px solid var(--m-line-strong);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--m-text-2);
+  letter-spacing: .04em;
+}
+
+/* ---- 我的页：宣纸卡 + 硬阴影（info-card 玻璃卡收敛） ---- */
+#app.is-mobile .profile-page {
+  background: var(--xz-paper) !important;
+  color: var(--m-text);
+  font-family: inherit !important;
+}
+#app.is-mobile .profile-page .info-card {
+  background: var(--xz-card) !important;
+  border: 2px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#app.is-mobile .profile-page .info-card::before { display: none !important; }
+#app.is-mobile .profile-page .card-header {
+  border-bottom: 1px dashed var(--m-line) !important;
+  color: var(--m-text) !important;
+}
+
+/* ---- 登录页：暗墨品牌保留，形状语言对齐（描边/硬阴影/圆角规格） ---- */
+#app.is-mobile .login-card {
+  border: 1.5px solid rgba(201, 164, 92, .38) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    5px 5px 0 rgba(0, 0, 0, .5),
+    0 24px 60px rgba(0, 0, 0, .5) !important;
+}
+#app.is-mobile .login-card .el-input__wrapper { border-radius: var(--m-radius-sm) !important; }
+/* 日主题特异性对齐：ab-theme 用 html[data-theme="day"] #app.is-mobile 定义
+   --yq-gold=紫/雨青，paper 同特异性后加载覆盖回真金 */
+html[data-theme="day"] #app.is-mobile {
+  --yq-gold: var(--xz-gold);
+  --yq-gold-glow: rgba(201, 164, 92, .32);
+}
+/* EmptyState 主按钮：金青渐变偏脏，统一墨/金胶囊语言 */
+#app.is-mobile .ls-empty-btn--primary {
+  background: var(--xz-btn-bg) !important;
+  color: var(--xz-btn-fg) !important;
+  border-radius: var(--m-radius-sm) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+}
+/* el-table 桌面 min-width 620px 在手机撑破卡片——清掉，列已按需隐藏 */
+#app.is-mobile .island-inner .el-table,
+#app.is-mobile .island-inner .el-table__inner-wrapper {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+/* 登录页内控件：暗墨页专属——按钮回鎏金、输入框回暗底（上面全局宣纸化会误伤） */
+#app.is-mobile .login-card .el-button--primary {
+  background: linear-gradient(135deg, #d8b56a 0%, #f0e0b0 50%, #d8b56a 100%) !important;
+  color: #26231c !important;
+  border: 1px solid rgba(212, 175, 55, .55) !important;
+  font-weight: 700;
+}
+#app.is-mobile .login-card .el-input__wrapper {
+  background: rgba(24, 32, 41, .94) !important;
+  box-shadow: 0 0 0 1.5px rgba(127, 168, 163, .40) inset !important;
+}
