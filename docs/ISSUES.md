@@ -22,6 +22,14 @@
 | V24669-009 | AI 对话「＋新对话」手机端 Element 方角尖锐。补统一墨底胶囊 | 体验 | ✅ 已修 |
 | V24669-010 | deploy_backend_full.py 健康检查在 PM2 重启 5s 内探测 → health=000 误报（auth 401/rooms 405 实际正常）。建议加重试 | 基建 | ⏳ 待办 |
 
+## v2.46.70 掼蛋 DanKS V1 策略引擎 + AI 对话底角（2026-10-13）
+
+| ID | 问题 | 类别 | 状态 |
+|---|---|---|---|
+| V24670-001 | 掼蛋机器人策略硬规则「定死」（夜星）。调研 GitHub：金山 DanKS（Apache-2.0）V1=结构化检索+启发式评分（纯 NumPy 无权重依赖，CPU 18ms/步）；V2/V3 开源了框架但**不含训练权重**（PPO 需自训，CPU 服务器不现实）→ 移植 V1 整包（`danks_v1/`）+ 适配器 `guandan_danks.py`。**关键坑：DanKS 平台约定 legal_actions 只传「当前能压的动作+PASS」，传全部候选它会误判可出**（首测单张压钢板崩）。出炸三规则保留为 DanKS 主动过牌时的保底覆盖层 | 功能 | ✅ 已修 |
+| V24670-002 | `_history` 有 120 条裁剪上限（`del hist[:len-120]`），长局把起局的 tribute/return 事件从头部裁掉 → `test_guandan_tribute_flow` 事后数 history 出现 tribute=0/return=1 假象（DanKS 接入后对局变长首次踩中）。测试改用 `tribute.pairs`/`returns.done` 结构化状态断言 | 测试 | ✅ 已修 |
+| V24670-003 | AI 对话卡手机端左右下角尖角（V24669-009 没修全）。根因：`mobile-product.css` 给 composer 加白底+sticky，方角子元素盖住卡片圆角（border-radius 不裁剪子元素）；不能给卡片加 overflow:hidden（会破坏 composer 滚动吸底），改为 composer 补底角 radius-2px | 缺陷 | ✅ 已修 |
+
 ---
 
 ## v2.46.49 牌面单色化回退（2026-10-11）

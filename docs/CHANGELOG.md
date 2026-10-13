@@ -1,3 +1,22 @@
+## [v2.46.70] - 2026-10-13
+
+### 掼蛋 AI 接入 DanKS V1 策略引擎 + AI 对话弹窗底角修复（deploy91 / SW v383）
+
+**掼蛋机器人策略升级（后端，夜星：「定的策略有点定死，去 GitHub 找现成的」）**
+- 调研：选型 **DanKS**（金山 AI 产品中心开源，Apache-2.0）。V1 = 结构化候选检索 + 启发式评分（7000 行纯 NumPy、无需训练权重、CPU 单步约 18ms）；V2（ONNX 选择器）/ V3（PPO 神经网络）代码开源但**不含预训练权重**，自训需 GPU + 数天，不现实 → 采用 V1
+- 移植：`backend/app/games/danks_v1/`（retrieval 整包 + LICENSE/NOTICE），适配器 `guandan_danks.py` 做牌表示转换（♠→S、逢人配=H 级牌、王 BJ/RJ）、pattern kind 映射（tube→StraightPair / plate→StraightTriple / triple2→TriplePlus…）、上下文构造（public_counts / 记牌 = 全副牌 − 历史 − 手牌）
+- 决策流：`ai_choose` 新增 `st/seat` 参数 → 一手走完优先 → 队友不压 → **DanKS 在「能压的动作 + PASS」里选最优** → DanKS 主动过牌时，夜星出炸三规则（①对手领出要不起 ②对手打出王要不起 ③对手报牌 ≤7 张要不起）保底开最小炸 → 引擎异常回退旧启发式
+- 关键坑（V24670-001）：DanKS 约定 legal_actions 只传**当前合法动作**，传全部候选它会误判「单张能压钢板」直接崩（`压不过上一手`）
+- 验证：引擎套件 25 项全过；12 局全 AI 收敛压测通过；出炸三规则 4 场景单测通过（领出炸/不炸/报牌炸/王炸）
+
+**测试修复（V24670-002）**：`_history` 120 条裁剪上限会裁掉长局起局的进贡/还贡事件，`test_guandan_tribute_flow` 改用 `tribute.pairs`/`returns.done` 结构化状态断言
+
+**手机端 AI 对话（V24670-003）**：新对话弹出的对话卡左右下角尖角——composer 白底+sticky 方角子元素盖住卡片圆角；补 `border-radius: 0 0 calc(var(--m-radius) - 2px) ...`（不加 overflow:hidden 以保留 composer 滚动吸底）
+
+**其他**：`sw.js` xuanhuang-v383；`version.js` v2.46.70；dist-deploy91
+
+---
+
 ## [v2.46.69] - 2026-10-13
 
 ### 掼蛋机器人出炸规则 + 麻将结算全部牌 + 手机端九项体验修复（夜星 9 点 + 3 条出炸规则）
