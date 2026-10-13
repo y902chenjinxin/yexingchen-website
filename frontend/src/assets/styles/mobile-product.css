@@ -488,7 +488,7 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 #app.is-mobile .assistant-main .empty { min-height: 220px; display: flex; flex-direction: column; justify-content: center; padding: 30px 20px; }
 #app.is-mobile .assistant-main .empty-title { color: var(--m-text); font-size: 17px; }
 #app.is-mobile .assistant-main .empty-sub { color: var(--m-text-2); font-size: 13px; line-height: 1.6; }
-#app.is-mobile .assistant-main .composer { position: sticky; bottom: 0; padding: 10px; background: var(--m-surface) !important; border-top: 1px solid var(--m-line); }
+#app.is-mobile .assistant-main .composer { position: sticky; bottom: 0; padding: 10px; background: var(--m-surface) !important; border-top: 1px solid var(--m-line); /* v2.46.70 composer 白底是方角子元素，会盖掉卡片圆角（V24670-001）——补底角，radius 减 2px 贴合边框内弧 */ border-radius: 0 0 calc(var(--m-radius) - 2px) calc(var(--m-radius) - 2px); }
 
 /* 倒计时：清除旧岛屿光斑，空态变成紧凑行动卡 */
 #app.is-mobile .island-inner-tool,

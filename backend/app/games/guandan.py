@@ -18,6 +18,7 @@ v2.46.23 起**进贡在发牌后自动完成**（贡「手上最大的非逢人�
 from __future__ import annotations
 
 from app.games.base import TableEngine, TableError, copy_state, register, rng
+from app.games.guandan_danks import danks_pick
 
 SUITS = ["♠", "♥", "♣", "♦"]
 RANK_TEXT = {2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7", 8: "8", 9: "9",
@@ -471,19 +472,20 @@ def _highest_remaining_single(hand: list[dict], level: int, history: list[dict])
 def ai_choose(hand: list[dict], target: dict | None, level: int,
               last_is_teammate: bool = False, pressure: int = 0,
               highest_single: int | None = None,
-              opp_lead: bool = False, opp_joker: bool = False) -> list[dict]:
+              opp_lead: bool = False, opp_joker: bool = False,
+              st: dict | None = None, seat: int | None = None) -> list[dict]:
     """AI 出牌：返回要出的牌，``[]`` 表示不要。target 为牌型 dict（None=起牌）。
 
-    v2.46.25 策略升级（夜星：「机器人总把红心乱配，配不成同花顺和炸」）：
-    - ``pressure`` = 对手最少的剩余手牌数（由 step_ai 传入，越小越危险）；
-    - 起牌只出「安全牌」（不拆炸弹/同花顺雏形、不动被预留的逢人配）；
-    - 对手剩 ≤2 张（封堵绝杀）或自己 ≤6 张（残局冲刺）才舍得拆。
-    v2.46.31 记牌升级：``highest_single`` = 自己持有的、且其余副本全可见的单张
-    点数值（记牌算出）——起牌优先甩它，稳收一手。
-    v2.46.69 出炸规则（夜星）：起牌仍不出炸；跟牌「要不起」（无安全非炸可压）时，
-    满足以下任一才舍得用炸——① 对手领出要不起（抢牌权）；② 对手打出了王
-    （单王/王炸）要不起；③ 对手最少剩牌 ≤7 张（报牌线）且要不起。
-    多炸在手也只出最小的一个，绝不连甩。
+    v2.46.70 主决策切换 DanKS V1（金山开源结构化检索+评分引擎，见
+    ``guandan_danks.py``/``danks_v1/``）：传入 ``st``/``seat`` 时由 DanKS
+    在全部合法动作（含 PASS）里挑最优——拆牌代价、控制权、队友压制、
+    残手结构都在其评分体系内，不再「定死」。异常或缺上下文时回退旧启发式。
+    旧规则存档：
+    - v2.46.25：pressure=对手最少剩牌；起牌只出安全牌；≤2 张封堵 / ≤6 张冲刺才拆。
+    - v2.46.31 记牌：highest_single=全场最大剩余单张，起牌优先甩。
+    - v2.46.69 出炸三规则（夜星）：跟牌要不起时，①对手领出 ②对手打出王
+      ③对手报牌 ≤7 张，任一命中即出最小炸；多炸只出一个不连甩——
+      本版起此三条作为「DanKS 选择过牌时」的保底覆盖层。
     """
     seen: set[str] = set()
     plays: list[tuple[list[dict], dict]] = []
@@ -501,6 +503,25 @@ def ai_choose(hand: list[dict], target: dict | None, level: int,
     fin = next((x for x in plays if len(x[0]) == len(hand)), None)
     if fin and (not target or can_beat(fin[1], target)):
         return fin[0]
+
+    if target and last_is_teammate:
+        return []
+
+    # ---- v2.46.70 DanKS V1 主决策 ----
+    if st is not None and seat is not None:
+        pick = danks_pick(st, seat, hand, target, level, plays)
+        if pick is not None:
+            if pick:
+                return pick
+            # DanKS 主动过牌：夜星出炸三规则保底（要不起时按条件开炸）
+            if pressure > 0:
+                bomb_beats = sorted(
+                    [x for x in plays if x[1]["bomb_level"] and can_beat(x[1], target)],
+                    key=lambda x: (x[1]["bomb_level"], x[1]["key"], len(x[0])))
+                if bomb_beats and (opp_lead or opp_joker or pressure <= 7):
+                    return bomb_beats[0][0]
+            return []
+        # pick is None → 引擎异常，落回旧启发式
 
     prot = _protected_ids(hand, level)
     # 残局放宽：自己 ≤6 张时不搞储备，能走就走（此时「走完」比「留炸」值钱）
@@ -1003,7 +1024,7 @@ class GuandanEngine(TableEngine):
         pick = ai_choose(st["hands"][cur], tgt["pattern"] if tgt else None,
                          st["level"], last_is_teammate, pressure=opp_min,
                          highest_single=hi_single, opp_lead=opp_lead,
-                         opp_joker=opp_joker)
+                         opp_joker=opp_joker, st=st, seat=cur)
         if pick:
             _do_play(st, cur, pick, events)
         else:

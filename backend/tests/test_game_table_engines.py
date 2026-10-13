@@ -89,9 +89,12 @@ def test_guandan_tribute_flow():
                 events.extend(evs)
             assert st["phase"] == "finished"
             # v2.46.23 进贡在 new_game 里自动完成，不再走 step_ai 事件流 → 从 history 统计
-            hist = st.get("history") or []
-            tribute += sum(1 for h in hist if h.get("kind") == "tribute")
-            ret += sum(1 for h in hist if h.get("kind") == "return")
+            # v2.46.70 改用结构化状态统计：_history 有 120 条裁剪上限，长局会把起局的
+            # tribute/return 事件从头部裁掉（DanKS 接入后对局变长首次踩中），事后数
+            # history 不再可靠；tribute.pairs / returns.done 是权威状态。
+            tr = st.get("tribute") or {}
+            tribute += len(tr.get("pairs") or [])
+            ret += sum(1 for r in tr.get("returns") or [] if r.get("done"))
             res = eng.result(st)
             if res.get("match_over"):
                 break
