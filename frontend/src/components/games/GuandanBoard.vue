@@ -54,8 +54,14 @@
           </span>
         </div>
 
-        <!-- 左区：左家 + 主级 / 双方比分 / 升级进度（信息固定贴屏幕左缘，中间让给出牌区） -->
+        <!-- 左区：比分贴左上角（v2.46.74）+ 左家 + 主级；升级进度条已删（与主级/比分重复，
+             夜星：「很畸形，能删」） -->
         <div class="gd-zone gd-zone-left">
+          <span class="gd-score">
+            <i class="me">我方 {{ G.levelText(myLevel) }}</i>
+            <em>·</em>
+            <i class="op">对方 {{ G.levelText(oppLevel) }}</i>
+          </span>
           <div class="gt-seat gd-seat-side" :class="seatCls(leftSeat)">
             <span class="gt-seat-av">{{ seatAvatar(leftSeat) }}</span>
             <span class="gt-seat-tx">
@@ -71,15 +77,6 @@
             </transition>
           </div>
           <span class="gt-pill gold gd-lv-pill">主级 {{ G.levelText(roundLevel) }}</span>
-          <span class="gd-score">
-            <i class="me">我方 {{ G.levelText(myLevel) }}</i>
-            <em>·</em>
-            <i class="op">对方 {{ G.levelText(oppLevel) }}</i>
-          </span>
-          <span class="gd-lvbars" title="升级进度：2 → A">
-            <span class="gd-lvbar me"><i :style="{ width: lvPct(myLevel) }"></i></span>
-            <span class="gd-lvbar op"><i :style="{ width: lvPct(oppLevel) }"></i></span>
-          </span>
         </div>
 
         <!-- 中央：四座位出牌区 —— 每家只显示最近一手（小尺寸+who 胶囊），大面积留白 -->
@@ -913,11 +910,6 @@ watch(baoSeats, (list) => {
   }
   for (const s of [...seenBao]) if (!now.has(s)) seenBao.delete(s)
 })
-/** 升级进度：级数 2~A(14) 映射成 0~100%，打过 A 显示满格 */
-function lvPct(l) {
-  const p = Math.max(0, Math.min(1, (l - G.MIN_LEVEL) / (G.MAX_LEVEL - G.MIN_LEVEL)))
-  return `${Math.round(p * 100)}%`
-}
 function toggleMute() { muted.value = !muted.value; setMuted(muted.value) }
 let toastTimer = null
 function toastMsg(t, ms = 1800) {
@@ -1635,14 +1627,18 @@ watch(phase, (p, old) => {
 .gd-zone-left, .gd-zone-right {
   flex-direction: column; align-items: center; justify-content: center; gap: 6px;
 }
-.gd-zone-left { grid-column: 1; grid-row: 2; }
+.gd-zone-left { grid-column: 1; grid-row: 2; justify-content: flex-end; padding-bottom: 2px; }
 .gd-zone-right { grid-column: 3; grid-row: 2; }
+/* v2.46.74：比分+主级改绝对定位**左上角组**（夜星：比分放左上角）——
+   全屏 720×360 时牌桌只剩 ~100px 高，纵排三件套必然溢出桌沿；
+   拆成「左上角信息组 + 席位贴桌底」两段后互不相撞 */
+.gd-zone-left .gd-score { position: absolute; left: 12px; top: 8px; z-index: 4; }
+.gd-zone-left .gd-lv-pill { position: absolute; left: 12px; top: 34px; z-index: 4; }
 /* 记录入口按钮：右区角落，弱化 */
 .gd-hist-btn { opacity: .85; }
 .gd-lv-pill { font-size: 11px; }
 /* 左区比分/进度条纵向排布，尺寸压紧（左区只有 ~92px，字号/内边距都要收） */
 .gd-zone-left .gd-score { font-size: 10.5px; padding: 2px 6px; gap: 4px; white-space: nowrap; }
-.gd-zone-left .gd-lvbar { width: 64px; }
 
 /* 轮到谁出牌：顶部中央全局提示条，常驻。轮到自己时金底高亮（一眼看出该我动了） */
 .gd-turnbox {
@@ -1794,7 +1790,9 @@ watch(phase, (p, old) => {
 .gd-hand-zone {
   position: relative;
   width: 80%; margin: 0 auto; min-height: 0;
-  height: 180px;
+  /* v2.46.74：定高 180px 在手机 rotate90（逻辑高 ~390）下会把牌桌挤到 ~84px，
+     改 clamp 弹性——矮板收缩保牌桌，桌面高板仍 180px */
+  height: clamp(140px, 42%, 180px);
 }
 .gd-hand {
   display: flex; gap: 0; justify-content: center; align-items: flex-end;
@@ -2041,23 +2039,6 @@ watch(phase, (p, old) => {
 /* 触感开关：关闭时按钮压暗 */
 .gt-btn.is-off { opacity: .45; }
 
-/* 升级进度条：两支细条（上=我方金、下=对方灰蓝），顶栏比分旁一眼看进度 */
-.gd-lvbars {
-  display: inline-flex; flex-direction: column; gap: 3px;
-  padding: 4px 8px; border-radius: 8px;
-  background: rgba(255, 255, 255, .05); border: 1px solid var(--gt-line);
-}
-.gd-lvbar {
-  display: block; width: 52px; height: 4px; border-radius: 2px;
-  background: rgba(255, 255, 255, .1); overflow: hidden;
-}
-.gd-lvbar i {
-  display: block; height: 100%; border-radius: 2px;
-  background: linear-gradient(90deg, rgba(233, 200, 119, .55), #e9c877);
-  transition: width .6s cubic-bezier(.25, .6, .3, 1);
-}
-.gd-lvbar.op i { background: linear-gradient(90deg, rgba(140, 170, 200, .4), rgba(140, 170, 200, .85)); }
-
 /* 报牌徽标（≤7 张）：席位上红底白字小胶囊，轮到自己时底部信息条也有 */
 .gd-bao-badge {
   padding: 1px 7px; border-radius: 999px;
@@ -2106,13 +2087,14 @@ watch(phase, (p, old) => {
   transition: opacity .3s ease, filter .3s ease;
 }
 .gd .gt-seat { transition: opacity .3s ease, filter .3s ease; }
-/* v2.46.73 玩家信息面板分层（外部 UI 方案）：文字两行（名字/副信息）、
-   内边距加大；只覆盖掼蛋 scoped，不动共享 game-table.css（麻将等不受影响） */
-.gd .gt-seat { padding: 8px 14px 8px 8px; gap: 8px; }
-.gd .gt-seat-tx { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.gd .gt-seat-name { font-size: 13px; }
-.gd .gt-seat-sub { font-size: 11px; opacity: .82; }
-.gd .gt-seat-badge { font-size: 11px; }
+/* v2.46.74 玩家席位压缩（夜星：头像/姓名占位大了）——只覆盖掼蛋 scoped，
+   不动共享 game-table.css（麻将等不受影响）：头像 34→26、内边距收半、文字回落 */
+.gd .gt-seat { padding: 3px 9px 3px 3px; gap: 6px; }
+.gd .gt-seat-av { width: 26px; height: 26px; font-size: 13px; }
+.gd .gt-seat-tx { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.gd .gt-seat-name { font-size: 12px; max-width: 76px; }
+.gd .gt-seat-sub { font-size: 10.5px; opacity: .82; }
+.gd .gt-seat-badge { font-size: 10px; }
 
 /* 队友标识：青蓝描环 + 右上角「友」小角标（对家/左右家都适用） */
 .gd .gt-seat.is-mate { box-shadow: inset 0 0 0 1.5px rgba(96, 190, 255, .45); }
