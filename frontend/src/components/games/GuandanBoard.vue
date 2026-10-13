@@ -42,10 +42,15 @@
               <span v-if="passBubbles[topSeat]" class="gd-pass-bubble">不要</span>
             </transition>
           </div>
-          <span class="gd-turnbox" :class="{ 'is-me': turn === oSeat, 'is-done': turn < 0 }">
-            <em>轮到</em>
-            <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
-            <i>{{ isOnline && props.onlineView?.phase === 'return' ? '还贡' : '出牌' }}</i>
+          <!-- v2.46.73：轮次条下方补一行真实对局信息（级牌·局数）——外部 UI 评审建议的
+               「罗盘下加底分」不可行（掼蛋无底分概念，代码也无此字段），改显示真实数据 -->
+          <span class="gd-turn-wrap">
+            <span class="gd-turnbox" :class="{ 'is-me': turn === oSeat, 'is-done': turn < 0 }">
+              <em>轮到</em>
+              <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
+              <i>{{ isOnline && props.onlineView?.phase === 'return' ? '还贡' : '出牌' }}</i>
+            </span>
+            <span class="gd-round-info">级牌 {{ G.levelText(roundLevel) }} · 第 {{ roundNo }} 局</span>
           </span>
         </div>
 
@@ -797,21 +802,23 @@ const overlap = computed(() => {
   return Math.min(w - minShow, Math.max(0, o))
 })
 function measureHand() {
-  // clientWidth 含左右各 4px padding，扣掉才是真正可摆牌的内容宽
-  if (handRef.value) handW.value = handRef.value.clientWidth - 8
+  // clientWidth 含左右内边距，扣掉才是真正可摆牌的内容宽
+  // v2.46.73 左右内边距 4px→80px（夜星确认的外部 UI 方案），故 -160-8
+  if (handRef.value) handW.value = handRef.value.clientWidth - 168
 }
 
-/* ---------- 手牌弧形叠放（v2.46.72，夜星清单「像真实拿牌一样」）----------
+/* ---------- 手牌弧形叠放（v2.46.72，v2.46.73 弧度收敛）----------
  * 每张牌按索引算扇形角 --fa（度）与抬升 --fy（px）：中间高、两端低、微外旋。
- * 张数越多角度越收敛，27 张满手时中牌也只抬 ~12px，不会顶到出牌区。
+ * v2.46.73 按外部 UI 评审把总弧度压到 14° 内（27 张满手单牌 ±7°）、
+ * 抬升收到 10px——牌身更正、角标数字更可读，仍保留一点持牌感。
  * 选中上浮走全局 .is-sel（在 --fy 基础上再抬），两者都是独立 transform 属性，可叠加。 */
 function fanStyle(i) {
   const n = viewHand.value.length
   if (n < 3) return null
   const half = (n - 1) / 2
   const t = (i - half) / half          // -1（最左）… 1（最右）
-  const maxDeg = Math.min(11, 2.2 + n * 0.35)
-  const arcH = Math.min(13, 3 + n * 0.38)
+  const maxDeg = Math.min(7, 1.6 + n * 0.2)
+  const arcH = Math.min(10, 2 + n * 0.3)
   return {
     '--fa': (t * maxDeg).toFixed(2),
     '--fy': (-(1 - t * t) * arcH).toFixed(2),
@@ -1655,6 +1662,12 @@ watch(phase, (p, old) => {
 }
 .gd-turnbox.is-me b, .gd-turnbox.is-me em, .gd-turnbox.is-me i { color: #2a1d05; }
 .gd-turnbox.is-done { opacity: .55; }
+/* v2.46.73：轮次条 + 级牌/局数信息纵向成组（外部 UI 建议「罗盘下加信息行」） */
+.gd-turn-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.gd-round-info {
+  font-size: 11px; letter-spacing: .04em; white-space: nowrap;
+  color: var(--gt-ink-dim); text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
+}
 
 /* 中央出牌区：四座位方位浮层（v2.46.72）—— 不再是一个盒子，直接在牌桌留白上摆。
    每家只显示本圈最近一手：who 胶囊（谁 · 牌型）+ 小尺寸牌行；
@@ -1664,15 +1677,17 @@ watch(phase, (p, old) => {
   position: absolute; display: flex; flex-direction: column; align-items: center; gap: 3px;
   max-width: 100%; pointer-events: none;
 }
-.gd-thz-0 { bottom: 3%; left: 50%; transform: translateX(-50%); }   /* 我 */
-.gd-thz-1 { right: 2%; top: 50%; transform: translateY(-50%); }     /* 右家 */
-.gd-thz-2 { top: 4%; left: 50%; transform: translateX(-50%); }      /* 对家 */
-.gd-thz-3 { left: 2%; top: 50%; transform: translateY(-50%); }      /* 左家 */
+/* v2.46.73：改固定像素定位（外部 UI 方案）——百分比在窄板上贴得太近，
+   固定 12px 保证四家牌行永远离桌沿/信息面板一拳远，互不重叠 */
+.gd-thz-0 { bottom: 12px; left: 50%; transform: translateX(-50%); }   /* 我 */
+.gd-thz-1 { right: 12px; top: 50%; transform: translateY(-50%); }     /* 右家 */
+.gd-thz-2 { top: 12px; left: 50%; transform: translateX(-50%); }      /* 对家 */
+.gd-thz-3 { left: 12px; top: 50%; transform: translateY(-50%); }      /* 左家 */
 .gd-thz-who {
   font-size: 10.5px; line-height: 1.7; white-space: nowrap;
   padding: 0 9px; border-radius: 999px;
   color: var(--gt-ink-dim); background: rgba(0, 0, 0, .38);
-  border: 1px solid rgba(255, 255, 255, .1);
+  border: none;
 }
 .gd-thz-cards { display: flex; gap: 3px; justify-content: center; min-width: 0; }
 /* 出牌区的牌缩到 0.78 倍：四家同屏不互相顶，牌型仍可辨（who 胶囊兜底语义） */
@@ -1769,20 +1784,24 @@ watch(phase, (p, old) => {
 .gd-hand-tag { font-size: 12.5px; font-weight: 600; color: var(--gt-gold); }
 .gd-mini {
   font-size: 11px; padding: 2px 8px; border-radius: 999px;
-  background: rgba(255, 255, 255, .07); border: 1px solid var(--gt-line);
+  background: rgba(255, 255, 255, .07); border: none;
   color: var(--gt-ink-dim); font-variant-numeric: tabular-nums;
 }
 .gd-mini.on { background: rgba(233, 200, 119, .18); border-color: rgba(233, 200, 119, .5); color: var(--gt-gold); }
-/* ===== 手牌区（v2.46.72）：占宽 80% 靠底居中、弧形叠放、悬浮卡片感 ===== */
+/* ===== 手牌区（v2.46.72）：占宽 80% 靠底居中、弧形叠放、悬浮卡片感 =====
+   v2.46.73：高度固定 180px、左右内边距 80px（外部 UI 方案；牌尺寸经拍板保持
+   随板高缩放不缩到 44×64——手机缩放后数字可读性优先） */
 .gd-hand-zone {
   position: relative;
   width: 80%; margin: 0 auto; min-height: 0;
+  height: 180px;
 }
 .gd-hand {
   display: flex; gap: 0; justify-content: center; align-items: flex-end;
+  height: 100%;
   /* 上留白 = 选中上浮 + 弧形抬升；下留白 = 让出 footer 两角大按钮的高度带，
      手牌与按钮垂直错开、互不遮挡（大按钮挂在 footer 级，见 .gd-big） */
-  padding: calc(var(--card-h, 88px) * 0.26) 4px 46px; min-height: 0;
+  padding: calc(var(--card-h, 88px) * 0.26) 80px 46px; min-height: 0;
   overflow: visible;
   touch-action: none;            /* 划选时既不滚动页面也不触发双指缩放 */
   -webkit-user-select: none; user-select: none;
@@ -1835,16 +1854,21 @@ watch(phase, (p, old) => {
 .gd-hand-empty { margin: auto; font-size: 12px; color: var(--gt-ink-dim); }
 
 /* ===== 操作区（v2.46.72 精简）：工具行 + 左下/右下浮动大按钮 ===== */
-/* 工具行：提示（左）· 挪左 · 牌型识别标签（中） · 挪右 · 重选（右），弱按钮 + 毛玻璃 */
+/* 工具行：提示（左）· 挪左 · 牌型识别标签（中） · 挪右 · 重选（右）
+   v2.46.73：统一深色胶囊 + 金边（外部 UI 方案），间距 12px；
+   禁用态去掉底与边（降噪：只留可用的按钮壳），字保留 45% 提示功能存在 */
 .gd-hand-tools {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 12px;
   width: 80%; margin: 0 auto; padding: 0 2px;
 }
 .gd-hand-tools .gt-btn {
-  padding: 4px 13px; font-size: 12px;
+  padding: 4px 14px; font-size: 12px; border-radius: 999px;
   background: rgba(10, 20, 16, .38);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, .14);
+  border: 1px solid rgba(233, 200, 119, .32);
+}
+.gd-hand-tools .gt-btn:disabled {
+  background: transparent; border-color: transparent; opacity: .45;
 }
 /* 选牌自动识别牌型（夜星清单：同花顺/顺子不单独做按钮，选完自动报牌型） */
 .gd-pat-label {
@@ -1867,7 +1891,7 @@ watch(phase, (p, old) => {
 .gd-pass-big {
   left: 6px;
   background: rgba(22, 28, 32, .66); color: #cfc9bb;
-  border: 1px solid rgba(255, 255, 255, .18);
+  border: 1px solid rgba(233, 200, 119, .38);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .9);
 }
@@ -2082,6 +2106,13 @@ watch(phase, (p, old) => {
   transition: opacity .3s ease, filter .3s ease;
 }
 .gd .gt-seat { transition: opacity .3s ease, filter .3s ease; }
+/* v2.46.73 玩家信息面板分层（外部 UI 方案）：文字两行（名字/副信息）、
+   内边距加大；只覆盖掼蛋 scoped，不动共享 game-table.css（麻将等不受影响） */
+.gd .gt-seat { padding: 8px 14px 8px 8px; gap: 8px; }
+.gd .gt-seat-tx { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.gd .gt-seat-name { font-size: 13px; }
+.gd .gt-seat-sub { font-size: 11px; opacity: .82; }
+.gd .gt-seat-badge { font-size: 11px; }
 
 /* 队友标识：青蓝描环 + 右上角「友」小角标（对家/左右家都适用） */
 .gd .gt-seat.is-mate { box-shadow: inset 0 0 0 1.5px rgba(96, 190, 255, .45); }
