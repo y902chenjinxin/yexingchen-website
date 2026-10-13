@@ -1,3 +1,24 @@
+## [v2.46.68] - 2026-10-13
+
+### 手机端 UI 一致性收编——宣纸手账全站统一（巡检 P0~P2，夜星「全部开始做吧」）
+
+**根因**（生产 390×844 实拍巡检，`_probe_ui_audit.cjs`）：
+- `mobile-ab-theme.css` / `mobile-native-glass.css` 在 `#app.is-mobile` 直挂 `--el-color-primary:#5b6ae0`（蓝紫）与 `--yq-gold=紫`，paper 层原先挂在 `html:has(#app.is-mobile)` 上的重映射被**直挂压掉继承** → 分页/开关/勾选/空态/标签全漏蓝紫
+- 音乐/视频/小说 = `IslandInnerBase` 桌面管理表（el-table 8~9 列）直接挤上手机：表头溢出裁切、斑马行、紫色按钮——后台观感
+- 模块页卡片细边框平面、缺硬阴影；我的页混入蓝紫 Element 默认色与玻璃卡
+
+**修法**：
+- **P0 工具岛内页**：music/video/novel 次要列 `v-if="!isMobile"`、操作列 132px（桌面不动）；el-table 宣纸卡化（2px 描边+硬阴影+缝线虚线行+去斑马）；桌面 `min-width:620px` 清除；danger=赭红描边、plain=宣纸描边胶囊
+- **令牌收编**：paper 层在 `#app.is-mobile` 同作用域直挂 `--el-color-primary`=金(夜)/赭(日) + `--yq-gold/rain` 重映射（含 `html[data-theme="day"]` 特异性对齐）——分页 active/开关/勾选/输入框/弹层全跟随
+- **P2 模块页**：mdl-card 补 2px 描边+硬阴影（覆盖 v2.46.38 横滑卡克制条款）、分组计数编号胶囊
+- **P1 我的页**：profile-page 宣纸底、info-card 粗描边硬阴影、玻璃卡收敛
+- **P1 登录页**：暗墨品牌保留——卡片金描边+5px 硬阴影+18px 圆角、按钮回鎏金、输入框暗底雨青描边（全局宣纸化误伤回滚）
+- **EmptyState**：主按钮统一墨/金胶囊（原金青渐变偏脏）
+
+**验证**：eslint 通过；390×844 本地代码+生产 API 实拍 9 页全过（表格不溢出/无蓝紫/硬阴影统一，`ui-audit2-*.png`）；dist-deploy89 产物 grep 确认 v2.46.68 / xuanhuang-v381 / `--yq-gold:var(--xz-gold)` 进包；线上 home=200
+
+**巡检基建**：`frontend/_probe_ui_audit.cjs`（生产实拍）/ `_probe_ui_audit_local.cjs`（本地代码+生产 API route 代理，注意 playwright 谓词收 URL 对象、fulfill 需剥 content-encoding）；坑：vite 代理表 `/music` 前缀会把文档请求转给后端返回 JSON，需 route 回 index.html
+
 ## [v2.46.67] - 2026-10-13
 
 ### 麻将回滚平面版 + 掼蛋左区按组/手动优先（夜星 4 点）
