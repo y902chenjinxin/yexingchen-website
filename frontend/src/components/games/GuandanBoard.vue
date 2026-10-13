@@ -515,52 +515,65 @@ const topSeat = computed(() => (povSeat.value + 2) % 4)
 const rightSeat = computed(() => (povSeat.value + 1) % 4)
 const leftSeat = computed(() => (povSeat.value + 3) % 4)
 
-/** 手牌展示顺序：[左钉区 | 散牌区]，区间画分隔线。
- *  同花顺：**只有纯天然的（不含逢人配凑的）**自动理到最左——夜星：「4 张同花需要
- *  配牌成同花顺的不在左侧展示」，红桃级牌搭进来的半成品顺不许被拉走。
- *  顺子：v2.46.21 起手动（点「顺子」弹出预览 → 「挪左侧」钉住）。
- *  「挪右侧」v2.46.39 重定义（夜星）：不再是「钉到最右」，而是把选中的这组牌**插回
- *  散牌区**，位置 = 第一张比自己小的牌的左边（即排序边界、成组不拆）——4 张 9 挪右
- *  就是落到 8 的左边（10 10 与 8 之间），拼顺子正好看到相邻关系。每组记 id，出掉
- *  自动失效，新局自然清空；散牌区本身仍按发牌降序，插入点每次动态计算，不怕中间
- *  有牌被打掉。 */
-const pinnedSeq = ref(new Set())
+/** 手牌展示顺序：[左区（钉组/同花顺组）| 散牌区]，区间画分隔线。
+ *  v2.46.67（夜星四点）左区规则重写：
+ *  1) **手动优先**——「挪右侧」过的牌绝不被自动同花顺拉回左区，直到再点「挪左侧」；
+ *  2) 左区**按组展示不混排**——钉的组保持独立、天然同花顺一组一张，组内升序、
+ *     组间按组内最大牌从大到小排，只排序不加分隔（不再把相同牌汇总到一起）；
+ *  3) 天然同花顺（不含逢人配凑的）从大到小**贪心取互不重叠的 5 张组**：同花 6~9 张
+ *     只取最大的 5 张进左区、剩余回散牌区；同花 10 张能拆两组就自动拆成两组。
+ *  顺子仍手动（点「顺子」弹出预览 → 「挪左侧」钉住）。
+ *  「挪右侧」v2.46.39 重定义（夜星）：把选中的这组牌**插回散牌区**，位置 = 第一张
+ *  比自己小的牌的左边（排序边界、成组不拆）。每组记 id，出掉自动失效，新局自然清空。 */
+const pinnedGroups = ref([]) // 每项 = 一次「挪左侧」钉住的 ids 数组，按操作顺序
 const rightDocks = ref([]) // 每项 { ids: [...] }，按操作顺序依次插入
 const handParts = computed(() => {
   const base = isOnline.value ? (props.onlineView?.me?.hand || []) : (hands.value[viewSeat.value] || [])
   if (phase.value === 'settled' || !base.length) return { head: base, mid: [], tail: [] }
-  const naturals = base.filter(c => !G.isWild(c, roundLevel.value))
-  const flushes = G.findFlushBombs(naturals, roundLevel.value)
-  const left = pinnedSeq.value
-  const hasLeft = base.some(c => left.has(c.id))
-  /** 本局还活着的 dock 组（id 已被打掉的剔除；撞上左钉/同花顺的让位给头区） */
   const inBase = new Set(base.map(c => c.id))
+  const val = c => G.cardValue(c, roundLevel.value)
+  const asc = (a, b) => val(a) - val(b)
+  /* ① 手动挪右最优先：dock 组的牌不进左区（旧版 dock 撞上同花顺会让位给头区——
+     这就是「同花顺不支持手动向右移动」的根源） */
   const docks = rightDocks.value
     .map(d => ({ ids: d.ids.filter(id => inBase.has(id)) }))
     .filter(d => d.ids.length)
-  if (!flushes.length && !hasLeft && !docks.length) return { head: [], mid: base, tail: [] }
-  const usedL = new Set()
-  for (const cs of flushes) for (const c of cs) usedL.add(c.id)
-  for (const c of base) if (left.has(c.id)) usedL.add(c.id)
-  const val = c => G.cardValue(c, roundLevel.value)
-  const asc = (a, b) => val(a) - val(b)
-  /** 散牌区 = 排除头区与 dock 组，再把各组依次插到「第一张比它小的牌」的左边 */
   const dockIds = new Set()
-  for (const d of docks) for (const id of d.ids) if (!usedL.has(id)) dockIds.add(id)
+  for (const d of docks) for (const id of d.ids) dockIds.add(id)
+  /* ② 手动钉的左区组（按钉的顺序；与 dock 撞牌的让位——挪右是更新的操作） */
+  const pinGroups = pinnedGroups.value
+    .map(g => g.filter(id => inBase.has(id) && !dockIds.has(id)))
+    .filter(g => g.length)
+  const pinnedIds = new Set(pinGroups.flat())
+  /* ③ 天然同花顺：从大到小贪心取互不重叠的 5 张组。旧版把所有滑窗组合取并集——
+     6 张同花 6 张全进左区还跟别的组交叉混排；现在只取最大 5 张，剩余回散牌区 */
+  const naturals = base.filter(c => !G.isWild(c, roundLevel.value) && !pinnedIds.has(c.id) && !dockIds.has(c.id))
+  const flushGroups = []
+  const usedF = new Set()
+  for (const cs of G.findFlushBombs(naturals, roundLevel.value)) {
+    if (cs.some(c => usedF.has(c.id))) continue
+    flushGroups.push(cs)
+    for (const c of cs) usedF.add(c.id)
+  }
+  if (!pinGroups.length && !flushGroups.length && !docks.length) return { head: [], mid: base, tail: [] }
+  /* ④ 左区 = 钉组 + 同花顺组：组内升序、组间按组内最大牌降序，整组拼接不互混 */
+  const groups = [
+    ...pinGroups.map(ids => base.filter(c => ids.includes(c.id)).sort(asc)),
+    ...flushGroups.map(cs => cs.slice().sort(asc)),
+  ].sort((a, b) => Math.max(...b.map(val)) - Math.max(...a.map(val)))
+  const head = groups.flat()
+  const usedL = new Set(head.map(c => c.id))
+  /** 散牌区 = 排除左区与 dock 组，再把各组依次插到「第一张比它小的牌」的左边 */
   let mid = base.filter(c => !usedL.has(c.id) && !dockIds.has(c.id))
   for (const d of docks) {
-    const cards = base.filter(c => d.ids.includes(c.id) && !usedL.has(c.id)).sort((a, b) => val(b) - val(a))
+    const cards = base.filter(c => d.ids.includes(c.id)).sort((a, b) => val(b) - val(a))
     if (!cards.length) continue
     const gMax = Math.max(...cards.map(val))
     let at = mid.findIndex(c => val(c) < gMax)
     if (at < 0) at = mid.length
     mid = mid.slice(0, at).concat(cards, mid.slice(at))
   }
-  return {
-    head: base.filter(c => usedL.has(c.id)).sort(asc),
-    mid,
-    tail: [],
-  }
+  return { head, mid, tail: [] }
 })
 const viewHand = computed(() => {
   const p = handParts.value
@@ -680,13 +693,20 @@ function cycleSeq() {
 /** 「挪左侧」（v2.46.21）：把当前选中的牌钉到最左（配合顺子按钮弹出后使用）；
  *  没有选中时退而钉第一组顺子。钉住持久：出掉对应牌 id 自动失效，新局换新牌自然清空。
  *  v2.46.39：与「挪右侧」仍然互斥——挪左先解除该组的右侧归位 dock。 */
+/** 「挪左侧」（v2.46.21）：把当前选中的牌钉到最左（配合顺子按钮弹出后使用）；
+ *  没有选中时退而钉第一组顺子。钉住持久：出掉对应牌 id 自动失效，新局换新牌自然清空。
+ *  v2.46.67：改为**按组**记录（保持钉的顺序，左区整组展示不与别的牌混排）；
+ *  与「挪右侧」仍然互斥——挪左先解除该组的右侧归位 dock。 */
 function pinSeqToLeft() {
   let ids = sel.value.slice()
   if (!ids.length) {
     if (!seqGroups.value.length) { toastMsg('手上没有顺子'); return }
     ids = seqGroups.value[0].map(c => c.id)
   }
-  pinnedSeq.value = new Set([...pinnedSeq.value, ...ids])
+  const rest = pinnedGroups.value
+    .map(g => g.filter(id => !ids.includes(id)))
+    .filter(g => g.length)
+  pinnedGroups.value = [...rest, ids]
   if (rightDocks.value.length) {
     rightDocks.value = rightDocks.value
       .map(d => ({ ids: d.ids.filter(id => !ids.includes(id)) }))
@@ -701,13 +721,16 @@ function pinSeqToLeft() {
 function pinToRight() {
   const ids = sel.value.slice()
   if (!ids.length) { toastMsg('先选牌，再点「挪右侧」'); return }
-  // 先从旧 dock 组里摘掉（重复挪 = 重新计算插入点），也解除左钉
+  // 先从旧 dock 组里摘掉（重复挪 = 重新计算插入点）
   const rest = rightDocks.value
     .map(d => ({ ids: d.ids.filter(id => !ids.includes(id)) }))
     .filter(d => d.ids.length)
   rightDocks.value = [...rest, { ids }]
-  if (pinnedSeq.value.size) {
-    pinnedSeq.value = new Set([...pinnedSeq.value].filter(id => !ids.includes(id)))
+  // v2.46.67：挪右解除左钉（按组过滤）——dock 优先于自动同花顺与左钉
+  if (pinnedGroups.value.length) {
+    pinnedGroups.value = pinnedGroups.value
+      .map(g => g.filter(id => !ids.includes(id)))
+      .filter(g => g.length)
   }
   sel.value = []
   toastMsg(`已挪到右侧 ${ids.length} 张`)
@@ -1516,7 +1539,7 @@ watch(() => viewHand.value.length, () => {
 // 新一局（settled → playing）清掉上一局钉住的顺子与右侧归位组；同局内打出后 id 自动失效
 watch(phase, (p, old) => {
   if (p === 'playing' && old === 'settled') {
-    pinnedSeq.value = new Set()
+    pinnedGroups.value = []
     rightDocks.value = []
   }
 })
