@@ -29,6 +29,10 @@
 | V24670-001 | 掼蛋机器人策略硬规则「定死」（夜星）。调研 GitHub：金山 DanKS（Apache-2.0）V1=结构化检索+启发式评分（纯 NumPy 无权重依赖，CPU 18ms/步）；V2/V3 开源了框架但**不含训练权重**（PPO 需自训，CPU 服务器不现实）→ 移植 V1 整包（`danks_v1/`）+ 适配器 `guandan_danks.py`。**关键坑：DanKS 平台约定 legal_actions 只传「当前能压的动作+PASS」，传全部候选它会误判可出**（首测单张压钢板崩）。出炸三规则保留为 DanKS 主动过牌时的保底覆盖层 | 功能 | ✅ 已修 |
 | V24670-002 | `_history` 有 120 条裁剪上限（`del hist[:len-120]`），长局把起局的 tribute/return 事件从头部裁掉 → `test_guandan_tribute_flow` 事后数 history 出现 tribute=0/return=1 假象（DanKS 接入后对局变长首次踩中）。测试改用 `tribute.pairs`/`returns.done` 结构化状态断言 | 测试 | ✅ 已修 |
 | V24670-003 | AI 对话卡手机端左右下角尖角（V24669-009 没修全）。根因：`mobile-product.css` 给 composer 加白底+sticky，方角子元素盖住卡片圆角（border-radius 不裁剪子元素）；不能给卡片加 overflow:hidden（会破坏 composer 滚动吸底），改为 composer 补底角 radius-2px | 缺陷 | ✅ 已修 |
+| V24672-001 | 掼蛋横屏旧布局挤（左右家+记录竖栏挤占中央）。按夜星横屏清单重构：grid 四区 + 四座位出牌区（povSeat 投影）+ 手牌 80% 弧形叠放 + 大按钮挂 footer 两角不压手牌热区；同花顺/顺子按钮改选牌自动识别 | 体验 | ✅ 已修 |
+| V24672-002 | 手牌弧形与选中上浮叠加：transform 会互相覆盖。改用独立 `rotate`/`translate` 属性（Chromium 104+），.is-sel 的 transform 与弧形变量各管各的 | 实现 | ✅ 已修 |
+| V24672-003 | 「不要/出牌」大按钮若放 80% 手牌区内会压住两端牌的点击热区（探针截图实锤）。移到 footer 两角（手牌区外）+ 手牌 padding-bottom 46px 垂直错开 | 缺陷 | ✅ 已修 |
+| V24672-004 | 四座位出牌区的清场时机：领出者再次领出 = 新一圈。本地在 applyPlay 比较 `target.seat===seat` 清；在线 syncFromView 增量里逐条比对 prevTargetSeat；`!v.target`（一圈结束/开局）整体清 | 实现 | ✅ 已修 |
 
 ---
 
