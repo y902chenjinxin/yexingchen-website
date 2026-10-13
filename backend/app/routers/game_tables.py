@@ -224,8 +224,8 @@ def _append_events(db: Session, room: GameRoom, events: list[dict]) -> int:
 
 # AI 行动节奏：两次 AI 动作之间的间隔秒数（v2.46.24：夜星要求统一 5s——
 # 「机器人出牌不管有没有都 5s 后再出」，掼蛋 / 麻将通用）
-AI_ACT_MIN = 5.0
-AI_ACT_MAX = 5.0
+AI_ACT_MIN = 3.0
+AI_ACT_MAX = 3.5
 
 
 def _deadline_for(game: str, state: dict) -> datetime | None:

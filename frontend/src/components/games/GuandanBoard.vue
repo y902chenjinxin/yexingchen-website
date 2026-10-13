@@ -1231,8 +1231,8 @@ function nextRound() {
  * 出牌与过牌走的是同一个 aiTurn，所以这一个延时把两种情况都覆盖了；
  * 2.0~3.0s 随机，避免三家像节拍器。
  */
-const AI_THINK_MIN = 2000
-const AI_THINK_MAX = 3000
+const AI_THINK_MIN = 3000
+const AI_THINK_MAX = 3500
 function aiThink() { return AI_THINK_MIN + Math.floor(Math.random() * (AI_THINK_MAX - AI_THINK_MIN)) }
 
 let aiTimer = null

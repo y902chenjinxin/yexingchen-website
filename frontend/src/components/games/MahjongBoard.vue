@@ -1362,8 +1362,8 @@ function onReact(kind) {
  * 除本档位下移外，真正让动作可见的是新加的「弃牌落桌」动效（.gt-tile.is-land）。
  * 固定值会让三家像节拍器，随机更接近真人。
  */
-const AI_THINK_MIN = 2200
-const AI_THINK_MAX = 3200
+const AI_THINK_MIN = 3000
+const AI_THINK_MAX = 3500
 function aiThink() { return AI_THINK_MIN + Math.floor(Math.random() * (AI_THINK_MAX - AI_THINK_MIN)) }
 
 let aiTimer = null
