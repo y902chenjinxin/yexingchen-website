@@ -6,20 +6,11 @@
       :class="{ 'is-big': big }"
       :style="{ '--gt-h': rootH + 'px', '--card-w': cardW + 'px', '--card-h': cardH + 'px' }"
     >
-      <!-- ===== 顶栏 ===== -->
+      <!-- ===== 顶栏（v2.46.72 横屏改版后只留标题与全局开关：
+           级牌/比分/升级进度常驻左区，不再与顶栏重复） ===== -->
       <header class="gd-top">
         <span class="gt-title">掼蛋</span>
         <span class="gt-pill gold">主级 {{ G.levelText(roundLevel) }}</span>
-        <span class="gd-score" :title="`第 ${roundNo} 局 · 我方 ${G.levelText(myLevel)} / 对方 ${G.levelText(oppLevel)}`">
-          <i class="me">我方 {{ G.levelText(myLevel) }}</i>
-          <em>·</em>
-          <i class="op">对方 {{ G.levelText(oppLevel) }}</i>
-        </span>
-        <!-- 升级进度条（2 → A）：两支细条一眼看出两队离打过 A 还有多远 -->
-        <span class="gd-lvbars" title="升级进度：2 → A">
-          <span class="gd-lvbar me"><i :style="{ width: lvPct(myLevel) }"></i></span>
-          <span class="gd-lvbar op"><i :style="{ width: lvPct(oppLevel) }"></i></span>
-        </span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
           {{ muted ? '🔇' : '🔊' }}
@@ -30,115 +21,121 @@
         <button class="gt-btn sm ghost" @click="doExit">退出对局</button>
       </header>
 
-      <!-- ===== 牌桌：主区 + 右侧出牌历史竖栏 ===== -->
+      <!-- ===== 牌桌：左区（左家+比分） / 顶部（对家+轮次条） / 中央四座位出牌区 / 右区（右家+记录入口）
+           v2.46.72 横屏改版（夜星清单）：左右各 ~13% 玩家信息，中部大面积留白；
+           出牌区按座位投影摆四家最近一手（povSeat 投影，座位号≠屏幕位置）；
+           出牌记录收成右区入口按钮，打开时浮层盖在右区上，不占牌桌宽度。 ===== -->
       <div class="gd-table" :class="{ 'is-shake': tableShake, 'is-freeze': freeze }">
-        <div class="gd-main">
-          <!-- 对家 -->
-          <div class="gd-row gd-row-top">
-            <!-- 轮到谁出牌：钉在牌区右上角，常驻不消失。
-                 旧版把「轮到 X 出牌」放在中央 `.gd-center-empty` 里，而那段只在**还没有人出过牌**
-                 时渲染 —— 只要有人出了第一手，轮到谁的提示就永远消失了
-                 （夜星：「轮到谁出牌都不展示」）。现改成常驻胶囊，轮到自己时变金底高亮。 -->
-            <span class="gd-turnbox" :class="{ 'is-me': turn === oSeat, 'is-done': turn < 0 }">
-              <em>轮到</em>
-              <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
-              <i>{{ isOnline && props.onlineView?.phase === 'return' ? '还贡' : '出牌' }}</i>
+        <!-- 顶部：对家 + 全局「轮到谁出牌」提示条（先手提示从右家头上移到顶部中央，夜星） -->
+        <div class="gd-zone gd-zone-top">
+          <div class="gt-seat" :class="seatCls(topSeat)">
+            <span class="gt-seat-av">{{ seatAvatar(topSeat) }}</span>
+            <span class="gt-seat-tx">
+              <b class="gt-seat-name">{{ seatName(topSeat) }}</b>
+              <i class="gt-seat-sub">{{ seatSub(topSeat) }}</i>
             </span>
-            <div class="gt-seat" :class="seatCls(topSeat)">
-              <span class="gt-seat-av">{{ seatAvatar(topSeat) }}</span>
-              <span class="gt-seat-tx">
-                <b class="gt-seat-name">{{ seatName(topSeat) }}</b>
-                <i class="gt-seat-sub">{{ seatSub(topSeat) }}</i>
-              </span>
-              <span v-if="isTurn(topSeat)" class="gt-seat-badge">出牌中</span>
-              <transition name="gd-pop">
-                <span v-if="baoCount(topSeat)" class="gd-bao-badge">报牌 {{ baoCount(topSeat) }}</span>
-              </transition>
-              <transition name="gd-pop">
-                <span v-if="passBubbles[topSeat]" class="gd-pass-bubble">不要</span>
-              </transition>
-            </div>
+            <span v-if="isTurn(topSeat)" class="gt-seat-badge">出牌中</span>
+            <transition name="gd-pop">
+              <span v-if="baoCount(topSeat)" class="gd-bao-badge">报牌 {{ baoCount(topSeat) }}</span>
+            </transition>
+            <transition name="gd-pop">
+              <span v-if="passBubbles[topSeat]" class="gd-pass-bubble">不要</span>
+            </transition>
           </div>
-
-          <div class="gd-row gd-row-mid">
-            <!-- 左家 -->
-            <div class="gt-seat gd-seat-side" :class="seatCls(leftSeat)">
-              <span class="gt-seat-av">{{ seatAvatar(leftSeat) }}</span>
-              <span class="gt-seat-tx">
-                <b class="gt-seat-name">{{ seatName(leftSeat) }}</b>
-                <i class="gt-seat-sub">{{ seatSub(leftSeat) }}</i>
-              </span>
-              <span v-if="isTurn(leftSeat)" class="gt-seat-badge">出牌中</span>
-              <transition name="gd-pop">
-                <span v-if="baoCount(leftSeat)" class="gd-bao-badge">报牌 {{ baoCount(leftSeat) }}</span>
-              </transition>
-              <transition name="gd-pop">
-                <span v-if="passBubbles[leftSeat]" class="gd-pass-bubble">不要</span>
-              </transition>
-            </div>
-
-            <!-- 中央：本轮出牌 -->
-            <div class="gd-center">
-              <div class="gd-center-head">
-                <span v-if="lastPlay" class="gt-pill gold">{{ G.PATTERN_NAME[lastPlay.pattern.type] }} · {{ seatName(lastPlay.seat) }}</span>
-                <span v-else class="gt-pill">本轮先手</span>
-                <span v-if="target" class="gt-pill">待压 · {{ G.PATTERN_NAME[target.pattern.type] }}</span>
-              </div>
-              <div class="gd-center-cards">
-                <template v-if="lastPlay">
-                  <span
-                    v-for="(c, i) in lastPlay.cards"
-                    :key="c.id"
-                    class="gt-card gd-throw"
-                    :class="cardCls(c)"
-                    :style="{ '--i': i }"
-                  >
-                    <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-                    <span class="c-mid">{{ cardSuit(c) }}</span>
-                    <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-                    <span v-if="isWildCard(c)" class="tag">配</span>
-                  </span>
-                </template>
-                <!-- 开局空态不再写文案：head 的胶囊已经是「本轮先手」，
-                     「轮到谁出牌」又常驻右上角；这里再写一遍就是同一句话出现两次。 -->
-                <p v-else-if="phase !== 'playing'" class="gd-center-empty">本局结束</p>
-              </div>
-
-              <!-- 炸弹 / 同花顺 / 火箭：中央金圈炸开 + 大字，见 playFxFor -->
-              <div v-if="bombFx" class="gd-bomb-fx" aria-hidden="true">
-                <span class="gd-bomb-ring"></span>
-                <b>炸弹！</b>
-              </div>
-
-              <!-- 牌型名称浮现（v2.46.19）：每手牌打出后中央短暂放大牌型名再淡出，
-                   普通牌型墨底金字、炸弹/同花顺/火箭金底 —— 比角落小胶囊更醒目 -->
-              <transition name="gd-patfade">
-                <div v-if="patFx" class="gd-pat-fx" :class="{ gold: patFx.gold }" aria-hidden="true">
-                  <b>{{ patFx.name }}</b>
-                </div>
-              </transition>
-            </div>
-
-            <!-- 右家 -->
-            <div class="gt-seat gd-seat-side" :class="seatCls(rightSeat)">
-              <span class="gt-seat-av">{{ seatAvatar(rightSeat) }}</span>
-              <span class="gt-seat-tx">
-                <b class="gt-seat-name">{{ seatName(rightSeat) }}</b>
-                <i class="gt-seat-sub">{{ seatSub(rightSeat) }}</i>
-              </span>
-              <span v-if="isTurn(rightSeat)" class="gt-seat-badge">出牌中</span>
-              <transition name="gd-pop">
-                <span v-if="baoCount(rightSeat)" class="gd-bao-badge">报牌 {{ baoCount(rightSeat) }}</span>
-              </transition>
-              <transition name="gd-pop">
-                <span v-if="passBubbles[rightSeat]" class="gd-pass-bubble">不要</span>
-              </transition>
-            </div>
-          </div>
+          <span class="gd-turnbox" :class="{ 'is-me': turn === oSeat, 'is-done': turn < 0 }">
+            <em>轮到</em>
+            <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
+            <i>{{ isOnline && props.onlineView?.phase === 'return' ? '还贡' : '出牌' }}</i>
+          </span>
         </div>
 
-        <!-- 右侧竖栏：出牌历史小窗（默认展开最近 3 条，窗内滚动回看，可收起） -->
-        <aside class="gd-history" :class="{ 'is-collapsed': !histOpen }" aria-label="出牌历史">
+        <!-- 左区：左家 + 主级 / 双方比分 / 升级进度（信息固定贴屏幕左缘，中间让给出牌区） -->
+        <div class="gd-zone gd-zone-left">
+          <div class="gt-seat gd-seat-side" :class="seatCls(leftSeat)">
+            <span class="gt-seat-av">{{ seatAvatar(leftSeat) }}</span>
+            <span class="gt-seat-tx">
+              <b class="gt-seat-name">{{ seatName(leftSeat) }}</b>
+              <i class="gt-seat-sub">{{ seatSub(leftSeat) }}</i>
+            </span>
+            <span v-if="isTurn(leftSeat)" class="gt-seat-badge">出牌中</span>
+            <transition name="gd-pop">
+              <span v-if="baoCount(leftSeat)" class="gd-bao-badge">报牌 {{ baoCount(leftSeat) }}</span>
+            </transition>
+            <transition name="gd-pop">
+              <span v-if="passBubbles[leftSeat]" class="gd-pass-bubble">不要</span>
+            </transition>
+          </div>
+          <span class="gt-pill gold gd-lv-pill">主级 {{ G.levelText(roundLevel) }}</span>
+          <span class="gd-score">
+            <i class="me">我方 {{ G.levelText(myLevel) }}</i>
+            <em>·</em>
+            <i class="op">对方 {{ G.levelText(oppLevel) }}</i>
+          </span>
+          <span class="gd-lvbars" title="升级进度：2 → A">
+            <span class="gd-lvbar me"><i :style="{ width: lvPct(myLevel) }"></i></span>
+            <span class="gd-lvbar op"><i :style="{ width: lvPct(oppLevel) }"></i></span>
+          </span>
+        </div>
+
+        <!-- 中央：四座位出牌区 —— 每家只显示最近一手（小尺寸+who 胶囊），大面积留白 -->
+        <div class="gd-center">
+          <div v-for="pos in [0, 1, 2, 3]" :key="pos" class="gd-thz" :class="'gd-thz-' + pos">
+            <template v-if="throwByPos[pos]">
+              <span class="gd-thz-who">{{ seatName(throwByPos[pos].seat) }} · {{ G.PATTERN_NAME[throwByPos[pos].pattern?.type] || '出牌' }}</span>
+              <div class="gd-thz-cards">
+                <span
+                  v-for="(c, i) in throwByPos[pos].cards"
+                  :key="c.id"
+                  class="gt-card gd-throw"
+                  :class="cardCls(c)"
+                  :style="{ '--i': i }"
+                >
+                  <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+                  <span class="c-mid">{{ cardSuit(c) }}</span>
+                  <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+                  <span v-if="isWildCard(c)" class="tag">配</span>
+                </span>
+              </div>
+            </template>
+          </div>
+
+          <!-- 炸弹 / 同花顺 / 火箭：中央金圈炸开 + 大字，见 playFxFor -->
+          <div v-if="bombFx" class="gd-bomb-fx" aria-hidden="true">
+            <span class="gd-bomb-ring"></span>
+            <b>炸弹！</b>
+          </div>
+
+          <!-- 牌型名称浮现（v2.46.19）：每手牌打出后中央短暂放大牌型名再淡出 -->
+          <transition name="gd-patfade">
+            <div v-if="patFx" class="gd-pat-fx" :class="{ gold: patFx.gold }" aria-hidden="true">
+              <b>{{ patFx.name }}</b>
+            </div>
+          </transition>
+        </div>
+
+        <!-- 右区：右家 + 出牌记录入口（清单：记录收进右侧角落，不占核心操作区） -->
+        <div class="gd-zone gd-zone-right">
+          <div class="gt-seat gd-seat-side" :class="seatCls(rightSeat)">
+            <span class="gt-seat-av">{{ seatAvatar(rightSeat) }}</span>
+            <span class="gt-seat-tx">
+              <b class="gt-seat-name">{{ seatName(rightSeat) }}</b>
+              <i class="gt-seat-sub">{{ seatSub(rightSeat) }}</i>
+            </span>
+            <span v-if="isTurn(rightSeat)" class="gt-seat-badge">出牌中</span>
+            <transition name="gd-pop">
+              <span v-if="baoCount(rightSeat)" class="gd-bao-badge">报牌 {{ baoCount(rightSeat) }}</span>
+            </transition>
+            <transition name="gd-pop">
+              <span v-if="passBubbles[rightSeat]" class="gd-pass-bubble">不要</span>
+            </transition>
+          </div>
+          <button class="gt-btn ghost sm gd-hist-btn" @click="histOpen = !histOpen">
+            记录<em v-if="history.length" class="gd-btn-count">{{ history.length }}</em>
+          </button>
+        </div>
+
+        <!-- 出牌记录浮层：默认收起，打开时盖在右区上方，窗内滚动回看 -->
+        <aside v-show="histOpen" class="gd-history" aria-label="出牌历史">
           <div class="gd-history-head">
             <span>出牌记录</span>
             <i>{{ history.length }}</i>
@@ -148,7 +145,7 @@
               @click="histOpen = !histOpen"
             >{{ histOpen ? '收起' : '展开' }}</button>
           </div>
-          <ol v-show="histOpen" class="gd-history-list">
+          <ol class="gd-history-list">
             <li v-for="(h, i) in history" :key="i" class="gd-his" :class="'is-' + h.kind">
               <template v-if="h.kind === 'play'">
                 <span class="gd-his-seat">{{ seatName(h.seat) }}</span>
@@ -191,10 +188,7 @@
             <transition name="gd-pop">
               <span v-if="passBubbles[viewSeat]" class="gd-pass-bubble gd-pass-bubble-me">不要</span>
             </transition>
-          <!-- 全屏时顶栏被收起，级牌与比分改由这条承载，保证一直可见；非全屏时隐藏以免与顶栏重复 -->
-          <span class="gd-scorebar">
-            主级 {{ G.levelText(roundLevel) }} · 我方 {{ G.levelText(myLevel) }} / 对方 {{ G.levelText(oppLevel) }}
-          </span>
+            <!-- v2.46.72：级牌/比分移到左区常驻，这里不再重复（全屏顶栏收起也不丢信息） -->
           <span class="gt-spacer"></span>
           <span v-if="showCountdown" class="gd-mini gd-timer" :class="{ urgent: leftSec <= 60 }">
             ⏳ 贡牌剩余 {{ mmss(leftSec) }}
@@ -227,37 +221,27 @@
           </template>
         </div>
 
-        <!-- 操作区：次要工具（提示/重选/同花顺/顺子）收成小号弱按钮，主力只留「不要 / 出牌」两个大按钮 -->
-        <div class="gt-actions gd-actions" v-if="!tributePending && !returnPending">
+        <!-- 手牌上方工具条（v2.46.72）：提示（左）· 挪左 · 选牌自动识别牌型（中） · 挪右 · 重选（右）。
+             同花顺/顺子不再单独占按钮——选完牌中央标签直接报牌型（识别优先级见 detectPattern）；
+             挪左/挪右收成手牌上方边缘小按钮，不占核心操作区（夜星清单）。 -->
+        <div class="gd-hand-tools" v-if="!tributePending && !returnPending">
           <button class="gt-btn ghost sm" :disabled="!canAct" @click="doHint">提示</button>
-          <button class="gt-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
           <button
-            class="gt-btn ghost sm"
-            :disabled="!flushCombos.length"
-            :title="flushCombos.length ? `点击轮换同花顺（共 ${flushCombos.length} 组，从大到小）` : '手上没有同花顺'"
-            @click="cycleFlush"
-          >同花顺<em v-if="flushCombos.length > 1" class="gd-btn-count">{{ flushCombos.length }}</em></button>
-          <button
-            class="gt-btn ghost sm"
-            :disabled="!seqGroups.length"
-            :title="seqGroups.length ? `点击轮换顺子（共 ${seqGroups.length} 组，同花顺优先），弹出对应牌` : '手上没有顺子'"
-            @click="cycleSeq"
-          >顺子<em v-if="seqGroups.length > 1" class="gd-btn-count">{{ seqGroups.length }}</em></button>
-          <button
-            class="gt-btn ghost sm"
+            class="gt-btn ghost sm gd-pin"
             :disabled="!seqGroups.length && !sel.length"
-            :title="seqGroups.length || sel.length ? '把选中的牌（未选则第一组顺子）钉到最左' : '先点顺子按钮弹出一组，再挪到左侧'"
+            :title="seqGroups.length || sel.length ? '把选中的牌（未选则第一组顺子）钉到最左' : '先选牌，再挪到左侧'"
             @click="pinSeqToLeft"
-          >挪左侧</button>
+          >挪左</button>
+          <span class="gd-pat-label" :class="{ ok: selPattern && canPlay, bad: selPattern && !canPlay }" aria-live="polite">
+            <template v-if="selPattern">{{ G.PATTERN_NAME[selPattern.type] }}<i v-if="!canPlay && canAct"> · 压不过</i></template>
+          </span>
           <button
-            class="gt-btn ghost sm"
+            class="gt-btn ghost sm gd-pin"
             :disabled="!sel.length"
             :title="sel.length ? '把选中的牌插回散牌区，落在第一张比它小的牌左边（成组不拆）' : '先选牌，再挪到右侧'"
             @click="pinToRight"
-          >挪右侧</button>
-          <span class="gd-act-gap"></span>
-          <button class="gt-btn gd-pass" :disabled="!canAct || !target" @click="doPass">不要</button>
-          <button class="gt-btn gd-play" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
+          >挪右</button>
+          <button class="gt-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
         </div>
 
         <!-- 进贡（在线 · 手动选牌，逢人配不能贡；服务端 5 分钟未选则自动代选） -->
@@ -303,46 +287,52 @@
             </span>
             <p v-if="!returnOptions.length" class="gd-hand-empty">手上没有 ≤10 的牌可还</p>
           </div>
-          <button class="gt-btn gd-play gd-return-ok" :disabled="returnSel == null" @click="confirmReturn">
+          <button class="gt-btn gd-return-ok" :disabled="returnSel == null" @click="confirmReturn">
             还贡{{ returnSelCard ? ` ${cardText(returnSelCard)}${cardSuit(returnSelCard)}` : '' }}
           </button>
         </div>
 
-        <!-- 划选手势：pointerdown 落在手牌区，pointermove / up 由脚本挂到 window
-             —— 手指滑出牌区（往上飘 / 划到牌桌）时仍能收到事件，不会半途断掉。
-             手机上还支持「上滑出牌」：按住往上带过阈值，松手即打（见 onHandUp）。 -->
-        <div
-          class="gd-hand"
-          ref="handRef"
-          :class="{ 'is-up': upHint }"
-          :style="{ '--gd-overlap': overlap + 'px' }"
-          @pointerdown="onHandDown"
-        >
-          <template v-for="(c, i) in viewHand" :key="c.id">
-            <!-- 分区线（v2.46.24）：左钉区|散牌区、散牌区|右钉区 之间画一道竖线，
-                 理好的牌和散牌一眼分开（夜星：「现在都展示在一块，很乱」） -->
-            <i
-              v-if="(headCount > 0 && i === headCount) || (tailStart > headCount && i === tailStart)"
-              class="gd-hand-divider"
-              aria-hidden="true"
-            ></i>
-            <span
-              class="gt-card"
-              :class="cardCls(c, i)"
-              :style="dealWave ? { '--i': i } : null"
-              :data-idx="i"
-              @click="onPick(c, i, $event)"
-            >
-              <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-              <span class="c-mid">{{ cardSuit(c) }}</span>
-              <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
-              <span v-if="isWildCard(c)" class="tag">配</span>
-            </span>
-          </template>
-          <p v-if="!viewHand.length" class="gd-hand-empty">— 无手牌 —</p>
+        <!-- 手牌区（v2.46.72）：占宽 80% 靠底居中、弧形叠放（只露左上角花色数字）、
+             去底部多余横线；「不要 / 出牌」做成左下/右下浮动大按钮（毛玻璃/鎏金），
+             不单独占一行——省下的高度全给手牌。 -->
+        <div class="gd-hand-zone">
+          <div
+            class="gd-hand"
+            ref="handRef"
+            :class="{ 'is-up': upHint }"
+            :style="{ '--gd-overlap': overlap + 'px' }"
+            @pointerdown="onHandDown"
+          >
+            <template v-for="(c, i) in viewHand" :key="c.id">
+              <!-- 分区线（v2.46.24）：左钉区|散牌区 之间画一道竖线，
+                   理好的牌和散牌一眼分开（夜星：「现在都展示在一块，很乱」） -->
+              <i
+                v-if="headCount > 0 && i === headCount"
+                class="gd-hand-divider"
+                aria-hidden="true"
+              ></i>
+              <span
+                class="gt-card"
+                :class="cardCls(c, i)"
+                :style="{ '--i': i, ...(fanStyle(i) || {}) }"
+                :data-idx="i"
+                @click="onPick(c, i, $event)"
+              >
+                <span class="c-tl"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+                <span class="c-mid">{{ cardSuit(c) }}</span>
+                <span class="c-br"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+                <span v-if="isWildCard(c)" class="tag">配</span>
+              </span>
+            </template>
+            <p v-if="!viewHand.length" class="gd-hand-empty">— 无手牌 —</p>
+          </div>
         </div>
+        <!-- 大按钮挂在 footer 两角（手牌 80% 区之外），不压两端手牌的热区 -->
+        <template v-if="!tributePending && !returnPending">
+          <button class="gt-btn gd-big gd-pass-big" :disabled="!canAct || !target" @click="doPass">不要</button>
+          <button class="gt-btn gd-big gd-play-big" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
+        </template>
       </footer>
-
       <!-- 进贡 / 还贡飞牌动画 -->
       <span
         v-if="flyCard"
@@ -448,6 +438,20 @@ const hands = ref([[], [], [], []])
 const turn = ref(0)
 const target = ref(null)        // { seat, cards, pattern }
 const lastPlay = ref(null)      // 展示用
+/** 四座位出牌区（v2.46.72 横屏改版）：每家在**本圈**最近一手，按座位投影摆到
+ *  对家上/左家左/右家右/自己下（screenPos 走 povSeat，座位号≠屏幕位置）。
+ *  新一圈开始（领出者再次领出 / target 清空 / 新一局）即整体清空，保持中部留白。 */
+const seatThrows = ref({})
+function setThrow(seat, h) { seatThrows.value = { ...seatThrows.value, [seat]: h } }
+function clearThrows() { seatThrows.value = {} }
+const throwByPos = computed(() => {
+  const m = {}
+  for (const [s, h] of Object.entries(seatThrows.value)) {
+    const pos = screenPos(Number(s))
+    if (!(pos in m)) m[pos] = h
+  }
+  return m
+})
 const passCount = ref(0)
 const finished = ref([])
 const phase = ref('playing')    // playing | settled
@@ -579,9 +583,8 @@ const viewHand = computed(() => {
   const p = handParts.value
   return p.head.concat(p.mid, p.tail)
 })
-/** 手牌分隔线位置：headCount>0 时在 head|mid 之间画线；tailStart 在 mid|tail 之间画线 */
+/** 手牌分隔线位置：headCount>0 时在 head|mid 之间画线（v2.46.67 起 tail 恒空，不再有第二道线） */
 const headCount = computed(() => handParts.value.head.length)
-const tailStart = computed(() => handParts.value.head.length + handParts.value.mid.length)
 /** 别家手牌张数：在线从投影取，本地从 hands 取 */
 function handCount(s) {
   if (isOnline.value) return props.onlineView?.players?.[s]?.hand_count ?? 0
@@ -655,41 +658,9 @@ const tributePlan = computed(() => {
 /** 只有「轮到自己选贡牌 + 服务端确实给了截止时间」才显示倒计时 */
 const showCountdown = computed(() => (returnPending.value || tributePending.value) && leftSec.value > 0)
 
-/* ---------- 同花顺 / 顺子：一键选中 + 轮换 ----------
- * 夜星定的规则（v2.46.15 起「放到最左」是**自动**的，见 viewHand；按钮只管选中）：
- *  1) 组合按牌型**从大到小**（见 guandan.js 的 seqCombos）—— 第一次点给的是**最大**的一组，
- *     6~9 张同花时也就是「默认选中最大的同花顺」；再点依次换小的，转完一圈回到最大；
- *  2) 「顺子」按钮的候选是 **同花顺优先，其次普通顺子**（优先级 同花顺 > 顺子）；
- *  3) 点按钮同时把这一组写进 sel，直接「出牌」即可。
- */
-const flushCombos = computed(() => G.findFlushBombs(viewHand.value, roundLevel.value))
+/* ---------- 顺子组：供「挪左」在未选中时兜底钉第一组（v2.46.72 起同花顺/顺子
+ *  不再单独占按钮——选牌后中央标签自动报牌型，归集动作只剩挪左/挪右两个小按钮） ---------- */
 const seqGroups = computed(() => G.findSeqGroups(viewHand.value, roundLevel.value))
-const flushIdx = ref(0)
-const seqIdx = ref(0)
-
-function gather(combos, idxRef, label) {
-  if (!combos.length) { toastMsg(`手上没有${label}`); return }
-  if (idxRef.value >= combos.length) idxRef.value = 0
-  const cards = combos[idxRef.value]
-  sel.value = cards.map(c => c.id)
-  toastMsg(`${label} ${idxRef.value + 1}/${combos.length}`)
-  idxRef.value = (idxRef.value + 1) % combos.length
-  sfx.pick()
-}
-/** 顺子弹出预览（v2.46.21）：点「顺子」按钮把刚轮换出的那组整排弹跳高亮 1.2s，
- *  不再自动理到最左 —— 先看清是哪五张，再决定要不要点「挪左侧」钉住。 */
-const seqPopIds = ref(new Set())
-let seqPopTimer = null
-function cycleFlush() { gather(flushCombos.value, flushIdx, '同花顺') }
-function cycleSeq() {
-  gather(seqGroups.value, seqIdx, '顺子')
-  const shown = seqGroups.value[(seqIdx.value + seqGroups.value.length - 1) % seqGroups.value.length]
-  if (shown) {
-    seqPopIds.value = new Set(shown.map(c => c.id))
-    clearTimeout(seqPopTimer)
-    seqPopTimer = setTimeout(() => { seqPopIds.value = new Set() }, 1200)
-  }
-}
 /** 「挪左侧」（v2.46.21）：把当前选中的牌钉到最左（配合顺子按钮弹出后使用）；
  *  没有选中时退而钉第一组顺子。钉住持久：出掉对应牌 id 自动失效，新局换新牌自然清空。
  *  v2.46.39：与「挪右侧」仍然互斥——挪左先解除该组的右侧归位 dock。 */
@@ -830,6 +801,23 @@ function measureHand() {
   if (handRef.value) handW.value = handRef.value.clientWidth - 8
 }
 
+/* ---------- 手牌弧形叠放（v2.46.72，夜星清单「像真实拿牌一样」）----------
+ * 每张牌按索引算扇形角 --fa（度）与抬升 --fy（px）：中间高、两端低、微外旋。
+ * 张数越多角度越收敛，27 张满手时中牌也只抬 ~12px，不会顶到出牌区。
+ * 选中上浮走全局 .is-sel（在 --fy 基础上再抬），两者都是独立 transform 属性，可叠加。 */
+function fanStyle(i) {
+  const n = viewHand.value.length
+  if (n < 3) return null
+  const half = (n - 1) / 2
+  const t = (i - half) / half          // -1（最左）… 1（最右）
+  const maxDeg = Math.min(11, 2.2 + n * 0.35)
+  const arcH = Math.min(13, 3 + n * 0.38)
+  return {
+    '--fa': (t * maxDeg).toFixed(2),
+    '--fy': (-(1 - t * t) * arcH).toFixed(2),
+  }
+}
+
 /* ---------- 小工具 ---------- */
 function cardText(c) { return c.joker ? (c.joker === 'big' ? '大' : '小') : G.RANK_TEXT[c.rank] }
 function cardSuit(c) { return c.joker ? '🃏' : c.suit }
@@ -852,7 +840,6 @@ function cardCls(c, i) {
     'is-level': !c.joker && c.rank === roundLevel.value,
     'is-wild': isWildCard(c),
     'is-sel': sel.value.includes(c.id),
-    'is-seqpop': seqPopIds.value.has(c.id),
   }
   if (i !== undefined) {
     cls.pickable = canAct.value
@@ -1057,8 +1044,11 @@ function syncFromView(v) {
   empty[oSeat.value] = v.me?.hand || []
   hands.value = empty
   turn.value = (v.turn === null || v.turn === undefined) ? -1 : v.turn
+  let prevTargetSeat = target.value?.seat
   target.value = normPlay(v.target)
   lastPlay.value = normPlay(v.last_play)
+  // 一圈结束（target 清空）或开局 → 四座位出牌区整体清空留白（V24672）
+  if (!v.target) clearThrows()
   // 服务端 history 按时间正序，取最新在前；增量部分里最后一条是 pass → 弹「不要」气泡
   const hist = v.history || []
   if (hist.length !== onlineHistLen.value) {
@@ -1068,6 +1058,13 @@ function syncFromView(v) {
       if (lastEv && lastEv.kind === 'pass') {
         showPassBubble(lastEv.seat)
         speakPass(lastEv.seat)   // v2.46.26：在线「不要」补语音（夜星：没有合成音）
+      }
+      // 四座位出牌区：把本轮增量里的出牌逐条落位（轮询批量到达也不漏）
+      for (const ev of hist.slice(onlineHistLen.value)) {
+        if (ev.kind !== 'play') continue
+        if (ev.seat === prevTargetSeat) clearThrows()   // 领出者再次领出 = 新一圈
+        prevTargetSeat = ev.seat
+        setThrow(ev.seat, normPlay(ev))
       }
     }
     onlineHistLen.value = hist.length
@@ -1122,6 +1119,7 @@ function newRound() {
   finished.value = []
   phase.value = 'playing'
   sel.value = []
+  clearThrows()
   history.value = []
   sfx.deal()
   startDealWave()
@@ -1157,6 +1155,7 @@ function advance() {
       passCount.value = 0
       lastPlay.value = null
       sel.value = []
+      clearThrows()   // 一圈结束，中央出牌区清空留白（V24672）
       scheduleAI()
       return
     }
@@ -1171,6 +1170,9 @@ function applyPlay(seat, cards) {
   if (!pat) return
   const ids = new Set(cards.map(c => c.id))
   hands.value[seat] = hands.value[seat].filter(c => !ids.has(c.id))
+  // 四座位出牌区：领出者再次领出 = 新一圈，先清掉上一圈的牌（V24672）
+  if (target.value?.seat === seat) clearThrows()
+  setThrow(seat, { seat, cards, pattern: pat })
   target.value = { seat, cards, pattern: pat }
   lastPlay.value = { seat, cards, pattern: pat }
   passCount.value = 0
@@ -1518,7 +1520,6 @@ onBeforeUnmount(() => {
   clearTimeout(bombTimer1)
   clearTimeout(bombTimer2)
   clearTimeout(freezeTimer)
-  clearTimeout(seqPopTimer)
   clearInterval(tickTimer)
   if (ro) ro.disconnect()
   // 划选期间被卸载：window 上的手势监听必须摘掉，否则残留到下一个页面
@@ -1530,10 +1531,8 @@ watch(() => props.deadlineAt, tickLeft)
 // v2.46.36 本地双人：视角座位随回合在两位玩家间切换，切走时清掉上一个视角的选牌，
 // 防止 A 攒的选中串到 B 的手牌上（在线模式 viewSeat 恒为自己，不受影响）
 watch(viewSeat, () => { sel.value = []; anchorIdx.value = null })
-// 手牌张数一变（发牌 / 出牌 / 换局）→ 轮换指针复位；顺子「挪左侧」是手动钉住，不清
+// 手牌张数一变（发牌 / 出牌 / 换局）→ 重测手牌宽度（重叠度自适应）；顺子「挪左」是手动钉住，不清
 watch(() => viewHand.value.length, () => {
-  flushIdx.value = 0
-  seqIdx.value = 0
   requestAnimationFrame(measureHand)
 })
 // 新一局（settled → playing）清掉上一局钉住的顺子与右侧归位组；同局内打出后 id 自动失效
@@ -1573,7 +1572,7 @@ watch(phase, (p, old) => {
 
 /* 顶栏 */
 .gd-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-/* 全屏时顶栏让位给牌桌：收起顶栏，级牌与比分改由底栏 .gd-scorebar 承载（信息不丢） */
+/* 全屏时顶栏让位给牌桌：收起顶栏（级牌/比分常驻左区，信息不丢） */
 .gd.is-big .gd-top { display: none; }
 /* 团队比分胶囊：把「我方 / 对方」两枚 pill 合成一枚，顶栏不再被撑成两行 */
 .gd-score {
@@ -1592,9 +1591,16 @@ watch(phase, (p, old) => {
    ② 叠 45°/135° 两层极淡织纹（crosshatch，模拟绒布的布纹走向，透明度 <3% 不抢牌）；
    ③ 内圈一条鎏金细线（::before，inset 7px）当「桌沿镶边」，呼应全站鎏金 accent；
    ④ 暗角加深（inset 大半径黑晕），四角沉下去、视线聚焦中央出牌区。 */
+/* ===== v2.46.72 横屏布局（夜星清单）：grid 四区 =====
+   左右各 ~13% 放玩家信息，顶部对家+轮次条，中央大面积留白给出牌区。
+   旧版 flex 三列把左右家挤在中央两侧、记录占掉一整条竖栏 —— 中部没有留白。 */
 .gd-table {
   position: relative;
-  flex: 1; min-height: 0; display: flex; gap: 10px;
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(92px, 13%) 1fr minmax(92px, 13%);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
   padding: 8px; border-radius: 16px;
   background:
     repeating-linear-gradient(45deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px),
@@ -1613,23 +1619,26 @@ watch(phase, (p, old) => {
   box-shadow: 0 0 14px -6px rgba(233, 200, 119, .35);
   pointer-events: none;
 }
-.gd-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.gd-row { display: flex; align-items: center; }
-.gd-row-top { justify-content: center; position: relative; }
-/* 对家座位压扁到 ~34px：全局 .gt-seat 是 34px 头像 + 7px 上下 padding = 50px 高，
-   一屏 360px 的横屏里太奢侈（它和中央出牌区抢的正是同一份高度）。 */
-.gd-row-top .gt-seat { padding: 2px 9px 2px 3px; gap: 7px; }
-.gd-row-top .gt-seat-av { width: 26px; height: 26px; font-size: 13px; }
-.gd-row-top .gt-seat-name { font-size: 11.5px; max-width: 92px; }
-.gd-row-top .gt-seat-sub { font-size: 10px; }
-.gd-row-mid { flex: 1; min-height: 0; justify-content: space-between; align-items: center; gap: 14px; }
-.gd-seat-side { flex-direction: column; text-align: center; max-width: 96px; padding: 8px 6px; }
-.gd-seat-side .gt-seat-tx { align-items: center; }
-.gd-seat-side .gt-seat-name { max-width: 84px; }
+/* 四个信息区：贴边固定，中间留白（夜星：所有头像/牌数对齐屏幕边缘固定位置） */
+.gd-zone { display: flex; min-width: 0; min-height: 0; }
+.gd-zone-top {
+  grid-column: 2; grid-row: 1;
+  align-items: center; justify-content: center; gap: 10px;
+}
+.gd-zone-left, .gd-zone-right {
+  flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+}
+.gd-zone-left { grid-column: 1; grid-row: 2; }
+.gd-zone-right { grid-column: 3; grid-row: 2; }
+/* 记录入口按钮：右区角落，弱化 */
+.gd-hist-btn { opacity: .85; }
+.gd-lv-pill { font-size: 11px; }
+/* 左区比分/进度条纵向排布，尺寸压紧（左区只有 ~92px，字号/内边距都要收） */
+.gd-zone-left .gd-score { font-size: 10.5px; padding: 2px 6px; gap: 4px; white-space: nowrap; }
+.gd-zone-left .gd-lvbar { width: 64px; }
 
-/* 轮到谁出牌：牌区右上角，常驻。轮到自己时金底高亮（一眼看出该我动了） */
+/* 轮到谁出牌：顶部中央全局提示条，常驻。轮到自己时金底高亮（一眼看出该我动了） */
 .gd-turnbox {
-  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
   display: inline-flex; align-items: baseline; gap: 5px;
   padding: 5px 12px; border-radius: 999px;
   background: rgba(0, 0, 0, .42);
@@ -1647,35 +1656,44 @@ watch(phase, (p, old) => {
 .gd-turnbox.is-me b, .gd-turnbox.is-me em, .gd-turnbox.is-me i { color: #2a1d05; }
 .gd-turnbox.is-done { opacity: .55; }
 
-/* 中央出牌区 */
-.gd-center {
-  position: relative;
-
-  flex: 1; min-width: 0; min-height: 84px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 6px;
-  padding: 8px; border-radius: 14px;
-  background: rgba(0, 0, 0, .13); border: 1px solid rgba(255, 255, 255, .07);
+/* 中央出牌区：四座位方位浮层（v2.46.72）—— 不再是一个盒子，直接在牌桌留白上摆。
+   每家只显示本圈最近一手：who 胶囊（谁 · 牌型）+ 小尺寸牌行；
+   位置按 screenPos（povSeat 投影）固定：0=下(我) 1=右 2=上 3=左。 */
+.gd-center { position: relative; grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; }
+.gd-thz {
+  position: absolute; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  max-width: 100%; pointer-events: none;
 }
-.gd-center-head { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.gd-center-cards { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; min-height: 60px; align-items: center; }
-/* 中央已出的牌接近手牌尺寸：出牌区才是牌桌主角，旧版缩到 0.82 倍反而比手牌小一圈，
-   「谁出了什么」得凑近才看得清 */
-.gd-center .gt-card { width: calc(var(--card-w, 62px) * 0.94); height: calc(var(--card-h, 88px) * 0.94); }
-.gd-center-empty { margin: 0; font-size: 12.5px; color: var(--gt-ink-dim); }
+.gd-thz-0 { bottom: 3%; left: 50%; transform: translateX(-50%); }   /* 我 */
+.gd-thz-1 { right: 2%; top: 50%; transform: translateY(-50%); }     /* 右家 */
+.gd-thz-2 { top: 4%; left: 50%; transform: translateX(-50%); }      /* 对家 */
+.gd-thz-3 { left: 2%; top: 50%; transform: translateY(-50%); }      /* 左家 */
+.gd-thz-who {
+  font-size: 10.5px; line-height: 1.7; white-space: nowrap;
+  padding: 0 9px; border-radius: 999px;
+  color: var(--gt-ink-dim); background: rgba(0, 0, 0, .38);
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+.gd-thz-cards { display: flex; gap: 3px; justify-content: center; min-width: 0; }
+/* 出牌区的牌缩到 0.78 倍：四家同屏不互相顶，牌型仍可辨（who 胶囊兜底语义） */
+.gd-thz .gt-card { width: calc(var(--card-w, 62px) * 0.78); height: calc(var(--card-h, 88px) * 0.78); }
+.gd-thz .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.4); }
+/* 左右家的牌行靠桌沿一侧对齐，避免挤进中央 */
+.gd-thz-1 { align-items: flex-end; }
+.gd-thz-3 { align-items: flex-start; }
 
-/* 出牌记录：牌桌**右侧真正的竖栏**（不再是 absolute 浮层）。
-   旧版是 `position:absolute; left:10px; bottom:10px; width:190px` 的浮层 ——
-   它正压在左家的座位牌上（截图里 左家的「15 张」被盖掉半截），
-   长起来还会压住中央出的牌；三样东西叠在一起，就是「横屏挤在一块」的主因。
-   改成 flex 列后彻底不重叠，窗内自己滚动回看。 */
+/* 出牌记录：浮层（v2.46.72 收进右区入口，打开时盖在右区上方，不占牌桌宽度）
+   旧版是右侧真竖栏（更早以前是 absolute 浮层压左家）—— 改版后中央要留白，
+   记录是低频回看，收成按钮 + 按需浮层最合适。 */
 .gd-history {
-  flex: 0 0 176px; align-self: stretch; min-height: 0;
+  position: absolute; right: 10px; top: 10px; z-index: 30;
+  width: 216px; max-height: calc(100% - 20px); min-height: 0;
   display: flex; flex-direction: column; gap: 6px;
   border-radius: 12px; padding: 7px 6px 7px 8px;
-  background: rgba(6, 18, 26, .5); border: 1px solid var(--gt-line);
+  background: rgba(6, 18, 26, .88); border: 1px solid var(--gt-line);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, .9);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
-.gd-history.is-collapsed { flex: 0 0 106px; padding: 4px 6px; }
-.gd-history.is-collapsed .gd-history-head { padding: 0 2px; gap: 5px; }
 .gd-history-head {
   display: flex; align-items: center; gap: 6px;
   font-size: 11.5px; font-weight: 600; color: var(--gt-ink-dim);
@@ -1742,36 +1760,45 @@ watch(phase, (p, old) => {
 @media (prefers-reduced-motion: reduce) {
   .gd-fly { animation-duration: .01ms; }
   .gd-hand.is-up { transform: none; }
-  .gd-center-cards > .gt-card { animation: none !important; }
+  .gd-thz-cards > .gt-card { animation: none !important; }
 }
 
 /* 底部手牌 */
-.gd-bottom { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.gd-bottom { position: relative; display: flex; flex-direction: column; gap: 4px; flex: none; }
 .gd-bottom-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .gd-hand-tag { font-size: 12.5px; font-weight: 600; color: var(--gt-gold); }
-/* 全屏才出现的级牌 / 比分（此时顶栏已收起，靠它兜住信息） */
-.gd-scorebar {
-  display: none; font-size: 11.5px; color: var(--gt-ink-dim);
-  font-variant-numeric: tabular-nums;
-}
-.gd.is-big .gd-scorebar { display: inline-flex; }
 .gd-mini {
   font-size: 11px; padding: 2px 8px; border-radius: 999px;
   background: rgba(255, 255, 255, .07); border: 1px solid var(--gt-line);
   color: var(--gt-ink-dim); font-variant-numeric: tabular-nums;
 }
 .gd-mini.on { background: rgba(233, 200, 119, .18); border-color: rgba(233, 200, 119, .5); color: var(--gt-gold); }
+/* ===== 手牌区（v2.46.72）：占宽 80% 靠底居中、弧形叠放、悬浮卡片感 ===== */
+.gd-hand-zone {
+  position: relative;
+  width: 80%; margin: 0 auto; min-height: 0;
+}
 .gd-hand {
   display: flex; gap: 0; justify-content: center; align-items: flex-end;
-  /* 上留白正好是选中上浮的高度，牌不会被裁 */
-  padding: calc(var(--card-h, 88px) * 0.2) 4px 4px; min-height: 0;
+  /* 上留白 = 选中上浮 + 弧形抬升；下留白 = 让出 footer 两角大按钮的高度带，
+     手牌与按钮垂直错开、互不遮挡（大按钮挂在 footer 级，见 .gd-big） */
+  padding: calc(var(--card-h, 88px) * 0.26) 4px 46px; min-height: 0;
   overflow: visible;
   touch-action: none;            /* 划选时既不滚动页面也不触发双指缩放 */
   -webkit-user-select: none; user-select: none;
 }
-.gd-hand .gt-card { margin-right: calc(-1 * var(--gd-overlap, 0px)); }
+.gd-hand .gt-card {
+  margin-right: calc(-1 * var(--gd-overlap, 0px));
+  /* 弧形叠放（夜星清单）：rotate / translate 用独立 transform 属性，
+     与 .is-sel 的 transform 上浮互不覆盖（WebView Chromium 104+ 支持） */
+  rotate: calc(var(--fa, 0) * 1deg);
+  translate: 0 calc(var(--fy, 0) * 1px);
+  transform-origin: 50% 120%;
+}
 .gd-hand .gt-card:last-child { margin-right: 0; }
-/* 分区线（v2.46.24）：左钉区|散牌区、散牌区|右钉区 之间的鎏金竖线 */
+/* 选中牌：在弧形抬升基础上再上浮（沿用全局 .is-sel transform，z-index 抬层） */
+.gd-hand .gt-card.is-sel { translate: 0 calc(var(--fy, 0) * 1px - 16px); }
+/* 分区线（v2.46.24）：左钉区|散牌区 之间的鎏金竖线 */
 .gd-hand-divider {
   flex: none; width: 2px; align-self: stretch; margin: 4px 5px;
   border-radius: 2px; background: rgba(233, 200, 119, .5);
@@ -1794,61 +1821,65 @@ watch(phase, (p, old) => {
    打出的牌不再「凭空出现」：从上方带角度甩进中央、逐张 30ms 错峰落下，
    落定时轻微回弹。旧版只有一个 0.34s 的原地 pop（`gt-anim-play`），
    牌是「先在位、再抖一下」，看不出是谁打过来的。 */
+/* 出牌动效：四座位出牌区的牌行沿用逐张甩入（gd-throw），选择器随结构改名 */
 @keyframes gd-throw {
   0% { transform: translateY(-52px) rotate(-15deg) scale(1.26); opacity: 0; }
   62% { transform: translateY(3px) rotate(2deg) scale(.985); opacity: 1; }
   100% { transform: none; opacity: 1; }
 }
-.gd-center-cards > .gt-card {
+.gd-thz-cards > .gt-card {
   animation: gd-throw .36s cubic-bezier(.2, .85, .3, 1) both;
   animation-delay: calc(var(--i, 0) * 32ms);
 }
 .gd-hand .gt-card:hover, .gd-hand .gt-card.is-sel { z-index: 5; }
-/* 顺子弹出预览（v2.46.21）：点「顺子」按钮后整组弹起 + 金描边呼吸 1.2s，
-   与选中态（is-sel 常驻上浮）区分：弹出是短暂的「看这一组」，钉住靠「挪左侧」按钮 */
-.gd-hand .gt-card.is-seqpop {
-  z-index: 6;
-  animation: gd-seqpop 1.2s ease-out both;
-}
-@keyframes gd-seqpop {
-  0% { transform: translateY(0); box-shadow: 0 2px 0 rgba(0, 0, 0, .22); }
-  12% { transform: translateY(-18px) scale(1.06); }
-  22% { transform: translateY(-14px) scale(1.03); }
-  30%, 82% { transform: translateY(-14px); }
-  100% { transform: translateY(0); }
-}
-.gd-hand .gt-card.is-seqpop::after {
-  content: ''; position: absolute; inset: -3px; border-radius: 10px;
-  border: 2px solid rgba(233, 200, 119, .95);
-  box-shadow: 0 0 12px rgba(233, 200, 119, .5);
-  animation: gd-seqpop-ring 1.2s ease-out both;
-  pointer-events: none;
-}
-@keyframes gd-seqpop-ring {
-  0% { opacity: 0; }
-  15%, 82% { opacity: 1; }
-  100% { opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .gd-hand .gt-card.is-seqpop { animation: none; transform: translateY(-14px); }
-  .gd-hand .gt-card.is-seqpop::after { animation: none; }
-}
 .gd-hand-empty { margin: auto; font-size: 12px; color: var(--gt-ink-dim); }
 
-/* 操作区：次要工具收成小号弱按钮，「不要 / 出牌」是大按钮主力（腾讯棋牌同款主次关系） */
-.gd-actions { justify-content: center; gap: 8px; }
-/* 提示/重选/同花顺/不要/出牌：全局 .gt-btn 是 8px/18px（39px 高），
-   一屏 360px 的横屏里偏奢侈，收成 6px/16px（约 33px）。手牌尺寸不动。 */
-.gd-actions .gt-btn { padding: 6px 16px; font-size: 12.5px; }
-.gd-act-gap { width: 10px; flex: none; }
-.gd-play {
-  min-width: 96px;
-  background: linear-gradient(180deg, #d9483f, #a82f2a);
-  border-color: rgba(255, 255, 255, .28);
-  box-shadow: 0 6px 16px -8px rgba(217, 72, 63, .95);
+/* ===== 操作区（v2.46.72 精简）：工具行 + 左下/右下浮动大按钮 ===== */
+/* 工具行：提示（左）· 挪左 · 牌型识别标签（中） · 挪右 · 重选（右），弱按钮 + 毛玻璃 */
+.gd-hand-tools {
+  display: flex; align-items: center; gap: 8px;
+  width: 80%; margin: 0 auto; padding: 0 2px;
 }
-.gd-play:not(:disabled):hover { background: linear-gradient(180deg, #e2554c, #b8332d); }
-.gd-pass { min-width: 80px; }
+.gd-hand-tools .gt-btn {
+  padding: 4px 13px; font-size: 12px;
+  background: rgba(10, 20, 16, .38);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, .14);
+}
+/* 选牌自动识别牌型（夜星清单：同花顺/顺子不单独做按钮，选完自动报牌型） */
+.gd-pat-label {
+  flex: 1; text-align: center; font-size: 13px; font-weight: 700;
+  letter-spacing: .06em; color: var(--gt-ink-dim); white-space: nowrap;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+.gd-pat-label.ok { color: var(--gt-gold); text-shadow: 0 0 12px rgba(233, 200, 119, .4); }
+.gd-pat-label.bad { color: #ff8f7d; }
+.gd-pat-label i { font-style: normal; font-size: 11px; font-weight: 400; opacity: .85; }
+/* 主力大按钮：左下「不要」墨灰毛玻璃、右下「出牌」鎏金（夜星拍板：不用亮绿，
+   与全站宣纸+鎏金体系一致；深绿桌面上鎏金对比度最高） */
+.gd-big {
+  position: absolute; bottom: 6px; z-index: 8;
+  min-width: 108px; padding: 11px 0;
+  font-size: 16.5px; font-weight: 800; letter-spacing: .1em;
+  border-radius: 999px;
+}
+.gd-big:disabled { opacity: .38; }
+.gd-pass-big {
+  left: 6px;
+  background: rgba(22, 28, 32, .66); color: #cfc9bb;
+  border: 1px solid rgba(255, 255, 255, .18);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .9);
+}
+.gd-pass-big:not(:disabled):hover { background: rgba(40, 48, 54, .78); }
+.gd-play-big {
+  right: 6px;
+  background: linear-gradient(180deg, #f4dc9c, #d9b65f);
+  color: #2a1d05;
+  border: 1px solid rgba(255, 255, 255, .55);
+  box-shadow: 0 8px 22px -8px rgba(233, 200, 119, .85), inset 0 1px 0 rgba(255, 255, 255, .65);
+}
+.gd-play-big:not(:disabled):hover { background: linear-gradient(180deg, #f9e6b4, #e2c06c); }
 
 /* 出牌方光效（PRD §7.3）：当前行动席位加一圈脉动光，避免误解轮到谁 */
 .gd .gt-seat.is-active {
@@ -1873,6 +1904,10 @@ watch(phase, (p, old) => {
 }
 .gd-return-ok {
   margin-top: 8px; align-self: center; min-width: 148px;
+  background: linear-gradient(180deg, #f4dc9c, #d9b65f);
+  color: #2a1d05; font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, .5);
+  box-shadow: 0 6px 18px -8px rgba(233, 200, 119, .85);
 }
 .gd-return-ok:disabled { opacity: .45; }
 .gd-return { display: flex; flex-direction: column; gap: 6px; padding: 6px 2px; }
