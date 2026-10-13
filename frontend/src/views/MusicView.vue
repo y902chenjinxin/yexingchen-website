@@ -1,8 +1,11 @@
 <template>
   <IslandInnerBase type="music" title="音乐" subtitle="音律飘渺 · 曲库管理">
     <template #toolbar>
-      <el-button type="primary" size="small" @click="openUpload">上传音乐</el-button>
-      <el-button size="small" plain @click="openBatch">批量导入</el-button>
+      <!-- v2.46.69：手机端纯播放列表，上传/导入是管理动作，只在桌面展示 -->
+      <template v-if="!isMobile">
+        <el-button type="primary" size="small" @click="openUpload">上传音乐</el-button>
+        <el-button size="small" plain @click="openBatch">批量导入</el-button>
+      </template>
     </template>
 
     <!-- 管理表格（默认进入即管理页） -->
@@ -16,11 +19,15 @@
             clearable
             placeholder="搜索标题 / 作者 / 标签"
             class="mt-search"
+            @keyup.enter="doSearch"
+            @clear="doSearch"
           >
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
-          <!-- 上传人筛选：曲库是全账号共享的，用它快速定位「自己传的」 -->
+          <!-- 上传人筛选：曲库是全账号共享的，用它快速定位「自己传的」。
+               v2.46.69：手机端纯播放列表，筛选/查询/批量删除收去桌面端 -->
           <el-select
+            v-if="!isMobile"
             v-model="uploaderId"
             size="small"
             clearable
@@ -30,13 +37,14 @@
           >
             <el-option v-for="u in uploaders" :key="u.id" :label="u.name" :value="u.id" />
           </el-select>
-          <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
-          <el-button v-if="hasFilter" size="small" plain @click="resetSearch">清空筛选</el-button>
-          <span v-if="hasFilter" class="search-count">匹配 {{ musicStore.list.length }} 条</span>
+          <el-button v-if="!isMobile" type="primary" size="small" plain @click="doSearch">查询</el-button>
+          <el-button v-if="!isMobile && hasFilter" size="small" plain @click="resetSearch">清空筛选</el-button>
+          <span v-if="!isMobile && hasFilter" class="search-count">匹配 {{ musicStore.list.length }} 条</span>
         </div>
         <div class="mt-right">
           <span class="mt-count">共 {{ musicStore.list.length }} 首</span>
           <el-button
+            v-if="!isMobile"
             type="danger"
             plain
             size="small"
@@ -58,8 +66,9 @@
         @selection-change="onSelectionChange"
         empty-text="暂无音乐，点上方「导入」添加"
       >
-        <!-- 全选：内置古筝已是普通曲目，不再有「不可勾选」的只读行 -->
-        <el-table-column type="selection" width="46" />
+        <!-- 全选：内置古筝已是普通曲目，不再有「不可勾选」的只读行。
+             v2.46.69：手机端纯播放列表，批量勾选无意义，隐藏 -->
+        <el-table-column v-if="!isMobile" type="selection" width="46" />
 
         <!-- 标题：播放按钮内联，省一列 -->
         <el-table-column label="曲目" min-width="220">
@@ -105,15 +114,18 @@
         </el-table-column>
 
         <!-- 操作：设为背景乐 / 编辑 / 删除 —— 左对齐排布，保证各行按钮纵向对齐。
-             内置古筝现在是普通曲目记录，所以不再有「只读行」守卫，每首都能编辑删除。 -->
-        <el-table-column label="操作" :width="isMobile ? 132 : 250" fixed="right">
+             内置古筝现在是普通曲目记录，所以不再有「只读行」守卫，每首都能编辑删除。
+             v2.46.69：手机端纯播放列表只留「设为背景乐」，编辑/删除收去桌面端。 -->
+        <el-table-column label="操作" :width="isMobile ? 110 : 250" fixed="right">
           <template #default="{ row }">
             <div class="row-ops">
               <el-tag v-if="isCurBgm(row)" size="small" type="primary" effect="dark" class="bgm-on">背景乐</el-tag>
               <el-button v-else size="small" @click="setAsBg(row)">设为背景乐</el-button>
 
-              <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
-              <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
+              <template v-if="!isMobile">
+                <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
+                <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
+              </template>
             </div>
           </template>
         </el-table-column>

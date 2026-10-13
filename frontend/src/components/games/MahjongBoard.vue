@@ -800,7 +800,8 @@ function syncFromView(v) {
   const huInfo = v.result?.hu_info || {}
   const hus = (v.result?.hu || []).map(s => {
     const hi = huInfo[String(s)] || {}
-    return { seat: s, fan: hi.fan || 0, names: hi.names || [], zimo: !!hi.zimo, from: hi.from, hand: hi.hand || [] }
+    // v2.46.69：结算展示全部牌 = 暗手牌+胡的牌+碰杠副露展开
+    return { seat: s, fan: hi.fan || 0, names: hi.names || [], zimo: !!hi.zimo, from: hi.from, hand: (hi.hand || []).concat(flatMeldTiles(hi.melds)) }
   })
   huResults.value = hus
   // v2.46.26：在线胡牌语音 —— 服务端 result 投影没有事件，phase 转 finished 且有人胡时
@@ -1172,6 +1173,15 @@ function drawReplacement(seat) {
 }
 
 /* ---------- 胡 ---------- */
+// v2.46.69：副露（碰/杠）展开成可渲染的牌数组——碰 3 张、杠 4 张；id 加后缀防 key 冲突
+function flatMeldTiles(list) {
+  return (list || []).flatMap((m) => {
+    const tile = m && m.tile
+    if (!tile) return []
+    const n = m.type === 'pong' ? 3 : 4
+    return Array.from({ length: n }, (_, k) => ({ ...tile, id: `${tile.id ?? 't'}-m${k}` }))
+  })
+}
 function doHu(seat, tile, from, zimo) {
   if (out.value[seat]) return
   out.value[seat] = true
@@ -1179,8 +1189,8 @@ function doHu(seat, tile, from, zimo) {
     ? (drawn.value ? hands.value[seat].concat([drawn.value]) : hands.value[seat].slice())
     : hands.value[seat].concat([tile])
   const sc = M.scoreHu(winning, melds.value[seat], {})
-  // hand：胡牌动画浮层要展示赢家全部牌（V24617-011）
-  huResults.value.push({ seat, fan: sc.fan, names: sc.names, zimo, from, hand: winning.slice() })
+  // hand：胡牌动画浮层要展示赢家全部牌（V24617-011）；v2.46.69 副露一并展开
+  huResults.value.push({ seat, fan: sc.fan, names: sc.names, zimo, from, hand: winning.concat(flatMeldTiles(melds.value[seat])) })
   log(`${seatName(seat)} ${zimo ? '自摸' : '胡'} ${sc.names.join('·')} ${sc.fan}番`)
   sfx.win(panOf(seat, povSeat.value))
   speak(zimo ? '自摸' : '胡', seat)   // v2.46.26：胡牌喊一声（自摸报「自摸」更带感）

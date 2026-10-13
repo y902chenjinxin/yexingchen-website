@@ -470,7 +470,8 @@ def _highest_remaining_single(hand: list[dict], level: int, history: list[dict])
 
 def ai_choose(hand: list[dict], target: dict | None, level: int,
               last_is_teammate: bool = False, pressure: int = 0,
-              highest_single: int | None = None) -> list[dict]:
+              highest_single: int | None = None,
+              opp_lead: bool = False, opp_joker: bool = False) -> list[dict]:
     """AI 出牌：返回要出的牌，``[]`` 表示不要。target 为牌型 dict（None=起牌）。
 
     v2.46.25 策略升级（夜星：「机器人总把红心乱配，配不成同花顺和炸」）：
@@ -479,6 +480,10 @@ def ai_choose(hand: list[dict], target: dict | None, level: int,
     - 对手剩 ≤2 张（封堵绝杀）或自己 ≤6 张（残局冲刺）才舍得拆。
     v2.46.31 记牌升级：``highest_single`` = 自己持有的、且其余副本全可见的单张
     点数值（记牌算出）——起牌优先甩它，稳收一手。
+    v2.46.69 出炸规则（夜星）：起牌仍不出炸；跟牌「要不起」（无安全非炸可压）时，
+    满足以下任一才舍得用炸——① 对手领出要不起（抢牌权）；② 对手打出了王
+    （单王/王炸）要不起；③ 对手最少剩牌 ≤7 张（报牌线）且要不起。
+    多炸在手也只出最小的一个，绝不连甩。
     """
     seen: set[str] = set()
     plays: list[tuple[list[dict], dict]] = []
@@ -527,11 +532,19 @@ def ai_choose(hand: list[dict], target: dict | None, level: int,
         return []
     if last_is_teammate:
         return []
-    safe_beats = [x for x in beats if safe(x)]
+    non_bomb_beats = [x for x in beats if not x[1]["bomb_level"]]
+    # v2.46.69：候选炸只按「从小到大」排，一次最多出一个，绝不连甩
+    bomb_beats = sorted([x for x in beats if x[1]["bomb_level"]],
+                        key=lambda x: (x[1]["bomb_level"], x[1]["key"], len(x[0])))
+    safe_beats = [x for x in non_bomb_beats if safe(x)]
     if safe_beats:
-        safe_beats.sort(key=lambda x: (x[1]["bomb_level"] or 0, x[1]["key"], len(x[0])))
+        safe_beats.sort(key=lambda x: (x[1]["key"], len(x[0])))
         return safe_beats[0][0]
-    # 没有安全牌可压：对手冲刺（≤2 张）必须封堵；自己残局也能拆
+    # ---- v2.46.69 出炸三规则：要不起（无安全非炸可压）时按条件开炸 ----
+    # ① 对手领出要不起（抢牌权） ② 对手打出了王要不起 ③ 对手报牌（≤7 张）且要不起
+    if bomb_beats and (opp_lead or opp_joker or pressure <= 7):
+        return bomb_beats[0][0]
+    # 原封堵/残局逻辑保留：对手 ≤2 张绝杀必堵；自己残局（≤6 张）能拆就拆
     if (pressure <= 2 or not strict) and pressure > 0:
         beats.sort(key=lambda x: (x[1]["bomb_level"] or 0, x[1]["key"], len(x[0])))
         return beats[0][0]
@@ -747,7 +760,8 @@ def _do_play(st: dict, seat: int, cards: list[dict], events: list[dict]) -> None
         raise TableError("压不过上一手")
     ids = {c["id"] for c in cards}
     st["hands"][seat] = [c for c in st["hands"][seat] if c["id"] not in ids]
-    st["target"] = {"seat": seat, "cards": cards, "pattern": pat}
+    # v2.46.69：lead=这手是否本圈领出（target 上一刻为空即领出），供 AI 出炸规则判断
+    st["target"] = {"seat": seat, "cards": cards, "pattern": pat, "lead": tgt is None}
     st["last_play"] = {"seat": seat, "cards": cards, "pattern": pat}
     st["pass_count"] = 0
     events.append({"kind": "play", "seat": seat, "cards": cards, "pattern": pat})
@@ -982,9 +996,14 @@ class GuandanEngine(TableEngine):
                       default=99)
         # v2.46.31 记牌：算自己持有的「全场最大剩余」单张点数（其余副本全在历史里）
         hi_single = _highest_remaining_single(st["hands"][cur], st["level"], st.get("history", []))
+        # v2.46.69 出炸三规则的信息采集：target 是否对手领出 / 对手是否打出了王
+        tgt_is_opp = bool(tgt) and not last_is_teammate
+        opp_lead = tgt_is_opp and bool(tgt.get("lead"))
+        opp_joker = tgt_is_opp and any(c.get("joker") for c in (tgt.get("cards") or []))
         pick = ai_choose(st["hands"][cur], tgt["pattern"] if tgt else None,
                          st["level"], last_is_teammate, pressure=opp_min,
-                         highest_single=hi_single)
+                         highest_single=hi_single, opp_lead=opp_lead,
+                         opp_joker=opp_joker)
         if pick:
             _do_play(st, cur, pick, events)
         else:

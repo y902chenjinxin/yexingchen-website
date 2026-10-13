@@ -909,6 +909,8 @@ class MahjongEngine(TableEngine):
         st["hu_info"][str(seat)] = {
             "fan": fan, "names": res["names"], "zimo": zimo,
             "from": fan_seat, "hand": hand_all,
+            # v2.46.69：副露一并下发，结算卡展示赢家全部牌（手牌+胡牌+碰杠）
+            "melds": st["melds"][seat],
         }
         events.append({"kind": "hu", "seat": seat, "fan": fan, "names": res["names"],
                        "zimo": zimo, "from": fan_seat})

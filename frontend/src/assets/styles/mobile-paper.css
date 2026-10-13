@@ -950,3 +950,189 @@ html[data-theme="day"] #app.is-mobile {
   background: rgba(24, 32, 41, .94) !important;
   box-shadow: 0 0 0 1.5px rgba(127, 168, 163, .40) inset !important;
 }
+
+/* =====================================================================
+ * 宣纸化收编补全二（v2.46.69 · 夜星 9 项：我的页游戏面板/时光痕迹/证件照/
+ * 笔记编辑/AI对话新对话按钮）
+ * ==================================================================== */
+
+/* ---- 我的页 · 游戏面板（积分中心/我的战绩/家庭排行榜）：暗玻璃软卡 → 宣纸贴纸 ---- */
+#app.is-mobile .gw-card {
+  background: var(--xz-card) !important;
+  border: 2px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#app.is-mobile .gw-card::before { display: none !important; }  /* 金线高光归零，缝线语言统一 */
+#app.is-mobile .gw-head { border-bottom: 1px dashed var(--m-line) !important; }
+#app.is-mobile .gw-head h2 { color: var(--m-text) !important; }
+#app.is-mobile .gw-head-sub { color: var(--m-text-2) !important; }
+#app.is-mobile .gw-bal {
+  background: var(--xz-card-2) !important;
+  border: 1px solid var(--m-line) !important;
+  border-radius: var(--m-radius-sm) !important;
+}
+#app.is-mobile .gw-bal :is(i, em) { color: var(--m-text-2) !important; }
+#app.is-mobile .gw-bal b { color: var(--m-text) !important; }
+#app.is-mobile .gw-bal.gold { border-color: var(--xz-gold) !important; }
+#app.is-mobile .gw-bal.gold b { color: var(--xz-gold) !important; }
+/* 主按钮 = 墨/金胶囊 + 硬阴影；ghost/relief 走描边胶囊不背阴影（克制条款） */
+#app.is-mobile .gw-btn {
+  background: var(--xz-btn-bg) !important;
+  color: var(--xz-btn-fg) !important;
+  border-color: transparent !important;
+  border-radius: var(--m-radius-sm) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+  font-weight: 700;
+}
+#app.is-mobile .gw-btn.ghost {
+  background: var(--xz-card) !important;
+  color: var(--m-text) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+  box-shadow: none !important;
+}
+#app.is-mobile .gw-btn.relief {
+  background: var(--xz-card) !important;
+  color: var(--m-negative) !important;
+  border: 1.5px solid var(--m-negative) !important;
+  box-shadow: none !important;
+}
+#app.is-mobile .gw-card :is(.gw-tip, .gw-empty, .gw-inline-hint, .gw-field) { color: var(--m-text-2) !important; }
+#app.is-mobile .gw-inline {
+  background: var(--xz-card-2) !important;
+  border: 1px dashed var(--m-line) !important;
+  border-radius: var(--m-radius-sm) !important;
+}
+#app.is-mobile .gw-inline-head b { color: var(--m-text) !important; }
+#app.is-mobile .gw-field :is(input, select) {
+  background: var(--xz-card) !important;
+  border: 1px solid var(--xz-card-border) !important;
+  color: var(--m-text) !important;
+}
+#app.is-mobile .gw-stat > b { color: var(--m-text) !important; }
+#app.is-mobile .gw-stat-nums i { color: var(--m-text) !important; }
+#app.is-mobile .gw-bar { background: var(--xz-card-2) !important; border: 1px solid var(--m-line); }
+#app.is-mobile .gw-bar span { background: var(--xz-teal) !important; }
+#app.is-mobile .gw-seg { background: var(--xz-card-2) !important; border: 1px solid var(--m-line-strong) !important; }
+#app.is-mobile .gw-seg-btn { color: var(--m-text-2) !important; }
+#app.is-mobile .gw-seg-btn.on { background: var(--xz-btn-bg) !important; color: var(--xz-btn-fg) !important; }
+#app.is-mobile .gw-ledger-tabs button {
+  color: var(--m-text-2) !important;
+  border: 1px solid var(--m-line-strong) !important;
+}
+#app.is-mobile .gw-ledger-tabs button.on { background: var(--xz-btn-bg) !important; color: var(--xz-btn-fg) !important; border-color: transparent !important; }
+#app.is-mobile .gw-ledger-list li { border-bottom: 1px dashed var(--m-line) !important; }
+#app.is-mobile .gw-ledger-note { color: var(--m-text) !important; }
+#app.is-mobile .gw-ledger-time { color: var(--m-text-2) !important; }
+#app.is-mobile .gw-rank li {
+  background: var(--xz-card-2) !important;
+  border: 1px solid var(--m-line) !important;
+  border-radius: var(--m-radius-sm) !important;
+}
+#app.is-mobile .gw-rank-name { color: var(--m-text) !important; }
+#app.is-mobile .gw-rank-val { color: var(--xz-gold) !important; }
+#app.is-mobile .gw-rank-sub { color: var(--m-text-2) !important; }
+
+/* ---- 时光痕迹：手机端 2 列矮卡（一屏 3~4 个，夜星拍板） ---- */
+#app.is-mobile .cd-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+#app.is-mobile .cd-card { aspect-ratio: 1 / 1 !important; border-radius: var(--m-radius-sm) !important; }
+#app.is-mobile .cd-card-body { padding: 10px; }
+#app.is-mobile .cd-days { font-size: 24px; }
+#app.is-mobile .cd-card-title { font-size: 12.5px; }
+#app.is-mobile .cd-card-date { font-size: 10px; }
+#app.is-mobile .cd-tag { font-size: 9px; }
+
+/* ---- 证件照：AB 主题把 --lj-bg 映成淡蓝紫 #eef2fb——页面底收编回宣纸 ---- */
+#app.is-mobile .idp-page {
+  background: var(--xz-paper) !important;
+  background-image: var(--xz-grain) !important;
+  color: var(--m-text) !important;
+  font-family: inherit !important;
+}
+#app.is-mobile .idp-page .lj-bg { background: var(--xz-paper) !important; }
+#app.is-mobile .idp-page .lj-wash { opacity: .16; }
+#app.is-mobile .idp-page :is(.idp-title, .idp-pane-title, .idp-drop-text) { color: var(--m-text) !important; }
+#app.is-mobile .idp-page .idp-sub { color: var(--m-text-2) !important; }
+#app.is-mobile .idp-page .idp-stepper-wrap {
+  background: var(--xz-card) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius-sm) !important;
+}
+#app.is-mobile .idp-page .idp-drop {
+  background: var(--xz-card-2) !important;
+  border-color: var(--m-line-strong) !important;
+}
+#app.is-mobile .idp-page :is(.idp-drop-hint, .idp-upload-note) { color: var(--m-text-2) !important; }
+
+/* ---- 笔记编辑页（NoteEditor 子组件）：玻璃工具栏/白玻璃卡 → 宣纸手账 ---- */
+#app.is-mobile .note-editor {
+  background: var(--xz-paper) !important;
+  background-image: var(--xz-grain) !important;
+  color: var(--m-text);
+}
+#app.is-mobile .note-editor :is(.ne-header, .ne-toolbar) {
+  background: var(--xz-card) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius-sm) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#app.is-mobile .note-editor .ne-title-input { color: var(--m-text) !important; }
+#app.is-mobile .note-editor .ne-toolbar button,
+#app.is-mobile .note-editor .ne-toolbar .ne-upload-btn {
+  border: 1px solid var(--m-line-strong) !important;
+  border-radius: 999px !important;
+  color: var(--m-text) !important;
+  background: transparent !important;
+}
+#app.is-mobile .note-editor .ne-toolbar button:hover,
+#app.is-mobile .note-editor .ne-toolbar .ne-upload-btn:hover {
+  color: var(--xz-gold) !important;
+  border-color: var(--xz-gold) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none;
+}
+#app.is-mobile .note-editor .ne-toolbar button:active { transform: none; }
+#app.is-mobile .note-editor .ne-content {
+  background: var(--xz-card) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius-sm) !important;
+  color: var(--m-text) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#app.is-mobile .note-editor .ne-content :is(h1, h2) { color: var(--xz-gold) !important; }
+#app.is-mobile .note-editor .ne-content h3 { color: var(--xz-gold) !important; }
+#app.is-mobile .note-editor .ne-content blockquote {
+  background: var(--xz-card-2) !important;
+  border-left: 3px solid var(--xz-teal) !important;
+  color: var(--m-text-2) !important;
+}
+#app.is-mobile .note-editor .ne-content pre {
+  background: rgba(20, 20, 17, .88) !important;
+  border-color: var(--m-line) !important;
+  color: #e8dcc0 !important;
+}
+#app.is-mobile .note-editor .ne-tags {
+  background: var(--xz-card) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius-sm) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#app.is-mobile .note-editor .ne-tags h4 { color: var(--xz-gold) !important; }
+
+/* ---- AI 对话：手机端「＋ 新对话」补统一胶囊语言（原走 Element 方角） ---- */
+#app.is-mobile .assistant-mobile-new-chat {
+  border-radius: 999px !important;
+  background: var(--xz-btn-bg) !important;
+  border-color: transparent !important;
+  color: var(--xz-btn-fg) !important;
+  font-weight: 700;
+}

@@ -96,6 +96,7 @@ const ICONS = {
   travels: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 2 6 5 6 9a6 6 0 0 1-12 0c0-4 2.5-7 6-9z"/><path d="M9.5 19h5"/></svg>',
   contacts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a7 7 0 0 1 14 0c0 5.5-7 10-7 10z"/><circle cx="12" cy="10" r="2.4"/></svg>',
   idphoto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M8.5 18c.8-2.3 2.2-3.4 3.5-3.4s2.7 1.1 3.5 3.4"/></svg>',
+  games: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 19 6v5.2c0 4.6-3 8-7 9.3-4-1.3-7-4.7-7-9.3V6l7-2.5z"/><path d="M12 8.2v5.6M9.5 10.4c.6-1.1 1.6-1.7 2.5-1.7s1.9.6 2.5 1.7"/></svg>',
   // v2.40.21 生活三件套：遗失物件 / 穿搭推荐 / 密码保险箱
   lost: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5 12 4l8 4.5v9L12 22l-8-4.5z"/><path d="M4 8.5 12 13l8-4.5M12 13v9"/></svg>',
   wardrobe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4"/><path d="M12 7c-4.4 0-8 2.2-8 5v9h16v-9c0-2.8-3.6-5-8-5z"/><path d="M12 12v9"/></svg>',
@@ -115,7 +116,7 @@ const QUICK = [
   { label:'股票',   path:'/finance/market',  acc:'--ab-cor', icon:ICONS.stocks },
   { label:'足迹',   path:'/travels', acc:'--ab-cyn', icon:ICONS.travels },
   { label:'通讯录', path:'/contacts',acc:'--ab-amb', icon:ICONS.contacts },
-  { label:'证件照', path:'/tool/idphoto', acc:'--ab-cyn', icon:ICONS.idphoto },
+  { label:'棋牌游戏', path:'/tool/games', acc:'--ab-cyn', icon:ICONS.games },
   { label:'时光痕迹', path:'/tool/countdown', acc:'--ab-vio', icon:ICONS.countdown },
   // v2.40.21 生活三件套
   { label:'遗失物件', path:'/lost',   acc:'--ab-cor', icon:ICONS.lost },
