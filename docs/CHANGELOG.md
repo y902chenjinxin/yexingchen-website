@@ -1,3 +1,28 @@
+## [v2.46.69] - 2026-10-13
+
+### 掼蛋机器人出炸规则 + 麻将结算全部牌 + 手机端九项体验修复（夜星 9 点 + 3 条出炸规则）
+
+**掼蛋机器人出炸（后端 `guandan.py`，夜星补的 3 条规则）**
+- 根因：起牌强制排除炸弹、跟牌仅「对手剩 ≤2 张且无安全牌」才炸——实际对局机器人近乎永不炸
+- 修法：`_do_play` 给 `st["target"]` 加 `lead` 标志（target 上一刻为空即领出）；`step_ai` 采集「是否对手领出 / 对手牌里是否含王」传入 `ai_choose`；跟牌要不起（无安全非炸可压）时，**①对手领出要不起 ②对手打出大小王要不起 ③对手最少剩牌 ≤7 张（报牌）且要不起**，三条件任一命中即出**最小**炸弹；原「对手 ≤2 绝杀必堵 / 自己 ≤6 张残局能拆就拆」保留
+- 节制：起牌仍不出炸（手里只剩炸弹才被迫出）；候选炸只按从小到大取一个，绝不连甩
+- 验证：引擎测试 42 项全过（`test_game_table_engines.py` + `test_mahjong_conservation.py`）
+
+**麻将胡牌结算展示全部牌（前后端）**
+- 根因：结算的 `hand` 只含暗手牌+胡的那张，碰/杠副露在 `melds` 里没拼进展示
+- 修法：后端 `mahjong.py` 结算 `hu_info` 补 `melds` 字段；前端本地 `doHu` 与在线投影两处统一 `flatMeldTiles()` 展开副露（碰 3 张/杠 4 张，id 加后缀防 key 冲突）——胡牌浮层与结算卡都展示赢家全部牌
+
+**手机端宣纸收编二（`mobile-paper.css` v2.46.69 段 + 组件）**
+- 音乐：管理动作（上传/导入/勾选列/编辑/删除/筛选/批量删除）全部 `v-if="!isMobile"` 收去桌面端，手机=纯播放列表（曲目+播放+设为背景乐）；搜索框补 `@keyup.enter/@clear` 触发（原靠查询按钮）
+- 我的页游戏面板（积分中心/我的战绩/家庭排行榜，`GameWalletPanel`）：暗玻璃软卡→宣纸贴纸——2px 描边+硬阴影+虚线缝线，主按钮墨/金胶囊+硬阴影，ghost/relief 描边胶囊不背阴影（克制条款）
+- 时光痕迹（`CountdownsView`）：手机端 `.cd-cards` 2 列、卡片 1:1 矮卡、数字 24px——一屏 3~4 个（原 3:4 大竖卡一屏 1 个）
+- 工作台宫格（`MobileWorkbenchHome` QUICK）：证件照 → 棋牌游戏（`/tool/games`，新盾形 SVG 图标）
+- 证件照页（`IdPhotoToolView`）：AB 主题把 `--lj-bg` 映成淡蓝紫 `#eef2fb` 是页面底色露馅根因——`#app.is-mobile .idp-page` 收编回宣纸底+纸纹，光斑降 opacity，步骤条/上传区/标题全对齐
+- 笔记编辑页（`NoteEditor*` 子组件）：`.ne-header/.ne-toolbar/.ne-content/.ne-tags` 玻璃卡→宣纸描边卡，工具按钮 6px 方块→描边胶囊
+- AI 对话：手机端「＋ 新对话」（`.assistant-mobile-new-chat`）原走 Element 方角默认圆角——补统一墨底胶囊
+
+**验证**：eslint 0 error；本地探针 `_probe_ui_audit_local.cjs` 390×844 实拍 **13 页**全过（新增 note-editor/countdown/idphoto/games 四页，截图 `artifacts/_probe/ui-audit2-*.png`）；dist-deploy90 产物 grep 核验 `xuanhuang-v382`/`v2.46.69`/棋牌游戏/gw-card/cd-cards/idp-page/ne-toolbar 全进包；线上 home=200、auth 401、`/api/games/rooms` 405（路由活着）——deploy_backend_full 的 health=000 为重启 5s 内探测过早，服务实际正常
+
 ## [v2.46.68] - 2026-10-13
 
 ### 手机端 UI 一致性收编——宣纸手账全站统一（巡检 P0~P2，夜星「全部开始做吧」）
