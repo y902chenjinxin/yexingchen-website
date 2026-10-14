@@ -5,7 +5,7 @@
  */
 const { chromium } = require('playwright')
 
-const BASE = 'http://[::1]:5199'
+const BASE = 'http://127.0.0.1:5199'
 const PROD = 'https://yexingchen.cn'
 const PAGES = [
   ['/workbench', 'wb-grid'],
@@ -51,20 +51,54 @@ const PAGES = [
     }
     if (key === 'danmu') {
       await page.fill('#dm-text', '丽莎姐姐最棒')
+      // 配色板：点第二颗前景预设 + 第一颗背景预设
+      await page.$$eval('.dm-color-block', (blocks) => blocks[0]?.querySelectorAll('.dm-swatch')[1]?.click())
+      await page.$$eval('.dm-color-block', (blocks) => blocks[1]?.querySelectorAll('.dm-swatch')[0]?.click())
+      out.danmuFg = await page.$eval('.dm-color-block .dm-color-hex', (e) => e.textContent.trim())
+      // 横屏模式 + 竖屏视口 → rotate90 兜底
+      await page.click('.dm-dir:has-text("横屏")')
       await page.click('.dm-show-btn')
       await page.waitForTimeout(800)
       out.danmuStage = !!(await page.$('.dm-stage'))
       out.danmuText = await page.$eval('.dm-text', (e) => e.textContent.trim()).catch(() => null)
-      await page.screenshot({ path: '../artifacts/_probe/nt-danmu-stage.png' })
+      out.danmuRot = await page.$eval('.dm-stage', (e) => {
+        const cs = getComputedStyle(e)
+        return { rot: e.classList.contains('is-rot'), w: e.style.width, h: e.style.height, tf: e.style.transform }
+      }).catch(() => null)
+      await page.screenshot({ path: '../artifacts/_probe/nt-danmu-rot.png' })
       await page.click('.dm-exit')
       out.danmuClosed = !(await page.$('.dm-stage'))
+      // 真横屏视口 → 不旋转，铺满
+      await page.setViewportSize({ width: 844, height: 390 })
+      await page.click('.dm-show-btn')
+      await page.waitForTimeout(600)
+      out.danmuLand = await page.$eval('.dm-stage', (e) => {
+        const r = e.getBoundingClientRect()
+        return { rot: e.classList.contains('is-rot'), w: Math.round(r.width), h: Math.round(r.height) }
+      }).catch(() => null)
+      await page.screenshot({ path: '../artifacts/_probe/nt-danmu-land.png' })
+      await page.click('.dm-exit')
+      await page.setViewportSize({ width: 390, height: 844 })
     }
     if (key === 'spin') {
+      out.spinPalette = await page.$eval('.sp-wheel', (e) => getComputedStyle(e).backgroundImage.slice(0, 90))
       out.segLabels = await page.$$eval('.sp-seg-label', (els) => els.map((e) => e.textContent.trim()))
       await page.click('.sp-hub')
       await page.waitForTimeout(4800)
       out.spinResult = await page.$eval('.sp-result-text', (e) => e.textContent.trim()).catch(() => null)
       await page.screenshot({ path: '../artifacts/_probe/nt-spin-result.png' })
+      // 多签组：新建 → 回主面卡片 2 张 → 切回首张 → 刷新后仍在（持久化）
+      await page.click('.sp-cfg-add')
+      await page.fill('#sp-name', '今晚谁做饭')
+      await page.click('.sp-btn.primary')
+      await page.waitForTimeout(300)
+      out.spinCards = await page.$$eval('.sp-cfg-card', (els) => els.map((e) => e.querySelector('.sp-cfg-card-name')?.textContent?.trim()))
+      await page.$$eval('.sp-cfg-card', (els) => els[0]?.click())
+      out.spinActiveAfterSwitch = await page.$eval('.sp-cfg-card.on .sp-cfg-card-name', (e) => e.textContent.trim()).catch(() => null)
+      await page.reload({ waitUntil: 'domcontentloaded' })
+      await page.waitForTimeout(1500)
+      out.spinCardsAfterReload = await page.$$eval('.sp-cfg-card', (els) => els.map((e) => e.querySelector('.sp-cfg-card-name')?.textContent?.trim()))
+      await page.screenshot({ path: '../artifacts/_probe/nt-spin-strip.png' })
     }
     if (key === 'password') {
       await page.click('.pw-generate')

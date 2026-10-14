@@ -3,29 +3,28 @@
     <!-- ===== 主界面：转盘 ===== -->
     <div v-if="mode === 'play'" class="sp-play">
       <div class="sp-top">
-        <button class="sp-cfg-pill" :title="'切换配置'" @click="openSwitch">
-          🔍 {{ activeCfg?.name || '默认' }}
-        </button>
-        <button class="sp-icon-btn" aria-label="编辑配置" title="编辑配置" @click="mode = 'edit'">✏️</button>
+        <span class="sp-top-lab">我的签组</span>
+        <button class="sp-icon-btn" aria-label="编辑当前配置" title="编辑当前配置" @click="mode = 'edit'">✏️</button>
       </div>
 
-      <!-- 配置切换浮层 -->
-      <div v-if="switchOpen" class="sp-switch" @click.self="switchOpen = false">
-        <div class="sp-switch-card">
-          <div class="sp-switch-head">
-            <span>选择配置</span>
-            <button class="sp-switch-add" @click="createCfg">＋ 新建</button>
-          </div>
-          <button
-            v-for="c in configs" :key="c.id"
-            class="sp-switch-item" :class="{ on: c.id === activeId }"
-            @click="pickCfg(c.id)"
-          >
-            <span>{{ c.name }}</span>
-            <i>{{ c.options.length }} 项</i>
-            <span v-if="c.id === activeId" class="sp-switch-check">✓</span>
-          </button>
-        </div>
+      <!-- 配置卡片条：多套签组并列常驻（v2.46.78 夜星：多个任务一起存在，切换不丢数据），
+           点卡片切换、末位 ＋ 新建 -->
+      <div class="sp-cfg-strip">
+        <button
+          v-for="c in configs"
+          :key="c.id"
+          class="sp-cfg-card"
+          :class="{ on: c.id === activeId }"
+          @click="pickCfg(c.id)"
+        >
+          <b class="sp-cfg-card-name">{{ c.name }}</b>
+          <span class="sp-cfg-card-chips">
+            <i v-for="(o, i) in c.options.slice(0, 3)" :key="i">{{ o.label }}</i>
+            <em v-if="c.options.length > 3">+{{ c.options.length - 3 }}</em>
+          </span>
+          <span class="sp-cfg-card-num">{{ c.options.length }} 项</span>
+        </button>
+        <button class="sp-cfg-card sp-cfg-add" aria-label="新建签组" title="新建签组" @click="createCfg">＋</button>
       </div>
 
       <!-- 转盘：conic-gradient 依权重分段，标签沿径向排布 -->
@@ -127,7 +126,6 @@ const activeStats = computed(() => activeCfg.value?.stats || {})
 /* ---------- 模式与编辑草稿 ---------- */
 const mode = ref('play')            // play | edit
 const draft = ref(null)
-const switchOpen = ref(false)
 watch(mode, (m) => { if (m === 'edit') {
   draft.value = JSON.parse(JSON.stringify(activeCfg.value || { name: '', options: [{ label: '', weight: 1 }] }))
 } })
@@ -155,7 +153,6 @@ function createCfg() {
   configs.value.push(c)
   activeId.value = c.id
   persist()
-  switchOpen.value = false
   mode.value = 'edit'
 }
 function removeCfg() {
@@ -165,14 +162,18 @@ function removeCfg() {
   persist()
   mode.value = 'play'
 }
-function pickCfg(id) { activeId.value = id; switchOpen.value = false; result.value = ''; rot.value = 0; persist() }
-function openSwitch() { switchOpen.value = !switchOpen.value }
+function pickCfg(id) { activeId.value = id; result.value = ''; rot.value = 0; persist() }
 
 /* ---------- 转盘几何 ---------- */
+/* v2.46.78 配色淡化（夜星：格子颜色太深）：宣纸/鎏金体系浅马卡龙底 + 深墨字，
+   替代原来的深绿/深金段，旋转时整体轻盈、标签可读 */
 const COLORS = [
-  { bg: '#2f6d55', fg: '#f4efe4' }, { bg: '#e9c877', fg: '#3a2c0d' },
-  { bg: '#57907a', fg: '#f4efe4' }, { bg: '#c9a44e', fg: '#3a2c0d' },
-  { bg: '#3a7d61', fg: '#f4efe4' }, { bg: '#a8873d', fg: '#fff8e8' },
+  { bg: '#f3e6c8', fg: '#6d4f16' },  // 米金
+  { bg: '#e9f2ea', fg: '#2f5d46' },  // 淡竹青
+  { bg: '#f7e8e0', fg: '#8a4a34' },  // 赭石
+  { bg: '#e9edf6', fg: '#3c4a6b' },  // 黛蓝
+  { bg: '#f2ebf6', fg: '#5e4472' },  // 藕紫
+  { bg: '#fbf3dc', fg: '#7a5c1e' },  // 宣纸金
 ]
 const segs = computed(() => {
   const opts = activeCfg.value?.options || []
@@ -250,41 +251,49 @@ function resetRound() { result.value = ''; haptic.light() }
 
 <style scoped>
 .sp-play { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 16px; padding-bottom: 24px; position: relative; }
-.sp-top { display: flex; align-items: center; gap: 12px; width: 100%; justify-content: center; }
-.sp-cfg-pill {
-  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-  padding: 9px 18px; border-radius: 14px; border: none; font-size: 14px; font-weight: 600;
-  color: var(--color-ink-dim, #7a8087);
-  background: var(--ls-card, #fff); border: 1px solid var(--ls-line, rgba(0,0,0,.08));
-}
+.sp-top { display: flex; align-items: center; gap: 12px; width: 100%; justify-content: space-between; padding: 0 2px; }
+.sp-top-lab { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--color-ink-dim, #7a8087); }
 .sp-icon-btn {
   width: 36px; height: 36px; border-radius: 10px; border: none; cursor: pointer; font-size: 16px;
   background: transparent; color: var(--color-accent, #c7a96b);
 }
-.sp-switch {
-  position: absolute; inset: 0; z-index: 30; display: grid; place-items: center;
-  background: rgba(0, 0, 0, .28); border-radius: 16px;
+/* 配置卡片条：横向滚动，多签组并列常驻；选中态鎏金描边 */
+.sp-cfg-strip {
+  display: flex; gap: 10px; width: 100%; overflow-x: auto; padding: 2px 2px 6px;
+  scrollbar-width: none;
 }
-.sp-switch-card {
-  width: min(320px, 86%); max-height: 70%; overflow-y: auto;
-  background: var(--ls-card, #fff); border-radius: 16px; padding: 14px;
-  display: flex; flex-direction: column; gap: 8px;
-  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .5);
+.sp-cfg-strip::-webkit-scrollbar { display: none; }
+.sp-cfg-card {
+  flex: none; width: 132px; display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; border-radius: 14px; cursor: pointer; text-align: left;
+  background: var(--ls-card, #fff);
+  border: 1.5px solid var(--ls-line, rgba(0,0,0,.08));
+  transition: border-color .2s, box-shadow .2s, transform .15s;
 }
-.sp-switch-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--color-ink, #3a3f45); }
-.sp-switch-add {
-  border: none; cursor: pointer; border-radius: 999px; padding: 4px 12px; font-size: 12px;
-  background: color-mix(in srgb, var(--color-accent, #c7a96b) 16%, transparent); color: var(--color-accent, #c7a96b);
+.sp-cfg-card:active { transform: scale(.97); }
+.sp-cfg-card.on {
+  border-color: var(--color-accent, #c7a96b);
+  box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--color-accent, #c7a96b) 80%, transparent);
+  background: color-mix(in srgb, var(--color-accent, #c7a96b) 7%, var(--ls-card, #fff));
 }
-.sp-switch-item {
-  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer;
-  padding: 9px 12px; border-radius: 10px; border: none; font-size: 14px;
-  background: transparent; color: var(--color-ink, #3a3f45);
+.sp-cfg-card-name {
+  font-size: 13px; font-weight: 700; color: var(--color-ink, #3a3f45);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.sp-switch-item:hover { background: rgba(0, 0, 0, .04); }
-.sp-switch-item.on { background: color-mix(in srgb, var(--color-accent, #c7a96b) 12%, transparent); font-weight: 700; }
-.sp-switch-item i { margin-left: auto; font-style: normal; font-size: 11px; color: var(--color-ink-dim, #7a8087); }
-.sp-switch-check { color: var(--color-accent, #c7a96b); }
+.sp-cfg-card.on .sp-cfg-card-name { color: var(--color-accent, #c7a96b); }
+.sp-cfg-card-chips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 18px; }
+.sp-cfg-card-chips i {
+  font-style: normal; font-size: 10px; line-height: 1; padding: 3px 6px; border-radius: 999px;
+  color: var(--color-ink-dim, #7a8087); background: rgba(0, 0, 0, .05);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sp-cfg-card-chips em { font-style: normal; font-size: 10px; color: var(--color-ink-dim, #7a8087); }
+.sp-cfg-card-num { font-size: 10.5px; color: var(--color-ink-dim, #7a8087); font-variant-numeric: tabular-nums; }
+.sp-cfg-add {
+  width: 52px; align-items: center; justify-content: center;
+  font-size: 20px; color: var(--color-accent, #c7a96b);
+  border-style: dashed; background: transparent;
+}
 
 .sp-wheel-wrap { position: relative; width: min(320px, 82vw); aspect-ratio: 1; margin-top: 6px; }
 .sp-pointer {
