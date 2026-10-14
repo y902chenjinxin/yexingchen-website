@@ -7,7 +7,16 @@
 
 ---
 
-## v2.46.75 掼蛋左区与桌沿精简（2026-10-14）
+## v2.46.76 工作台重排 + 四新工具 + 掼蛋五则（2026-10-14）
+
+| ID | 问题 | 类别 | 状态 |
+|---|---|---|---|
+| V24676-001 | 工作台 14 格重排（9 固定顺序 + 手持弹幕/自定义标签/体重记录/美食记忆/摸鱼日历；遗失物件/穿搭/密码保险箱下架）；新增 DanmuToolView（全屏弹幕）与 SpinToolView（抽签转盘）；密码工具批量模式；工具岛播种 migration | 功能 | ✅ 已做 |
+| V24676-002 | 🔴 新 migration 挂在 z6a7b8c9d0e1 上→`Multiple head revisions`（z6a7b8c9d0e1 是 branchpoint，真实 head 是另一链尾 f3a4b5c6d7e8）；**deploy 脚本输出被 tail 截断，第一次部署 alembic 已 FAILED 却显示 done**——后端部署后必须 grep FAILED/ERROR 或看 health 之外的 alembic 行。修：down_revision=f3a4b5c6d7e8 | 基建 | ✅ 已修 |
+| V24676-003 | 掼蛋：删「可出 N」「本轮由你先出牌」「你·N 张」标签；记录按钮移左上角；我方出牌区上移中央偏下；删桌沿黑 border+内圈白描边 | 体验 | ✅ 已做 |
+| V24676-004 | 探针基建：本机 curl localhost 被系统代理劫持 502 → 探活一律 `--noproxy "*"`；token 注入 key 是 `token` 不是 `xuanhuang-token`；vite 用 run_in_background 常驻+轮询 200 | 基建 | ✅ 已修 |
+
+
 
 | ID | 问题 | 类别 | 状态 |
 |---|---|---|---|
