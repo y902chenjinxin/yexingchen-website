@@ -103,25 +103,34 @@ const ICONS = {
   vault: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/><circle cx="12" cy="15.5" r="1.6"/><path d="M12 17.1v1.6"/></svg>',
   countdown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.6 1.5"/><path d="M9 3h6M12 3v1.5"/></svg>',
   ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.6c0 3.4-3.6 6.2-8 6.2-.9 0-1.7-.1-2.5-.3L5.5 20l1.1-3.1A6.6 6.6 0 0 1 4 11.6C4 8.2 7.6 5.4 12 5.4s8 2.8 8 6.2z"/><path d="M12 8.6v3.6M10.2 10.4h3.6"/></svg>',
+  // v2.46.76 新五入口：手持弹幕 / 自定义标签 / 体重记录 / 美食记忆 / 摸鱼日历
+  danmu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="10" rx="3"/><path d="M7 13h7M16.5 13h.5"/><path d="M8 5l1.2 1.8M16 5l-1.2 1.8"/></svg>',
+  spin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 13V5.2M12 13l5.6 5.4M12 13l-5.6 5.4"/><path d="M12 2.6v1.6"/></svg>',
+  weight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M10 16h4"/></svg>',
+  meals: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16a8 8 0 0 1-16 0z"/><path d="M8 11V6.5M12 11V5M16 11V6.5"/></svg>',
+  fish: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c3-4 7-6 11-6 3 0 5.5 2 7 6-1.5 4-4 6-7 6-4 0-8-2-11-6z"/><circle cx="15.5" cy="11" r=".9"/><path d="M3 12l2.5-3M3 12l2.5 3"/></svg>',
 }
 
-/* 快捷宫格（3 列），带可达性过滤；工具以证件照/倒计时独立暴露；
-   AI 对话放首位（手机端此前没有任何 AI 入口，桌面端是悬浮球，移动端没有对应位）。
-   注：手机端 product 收敛层已把所有宫格图标统一成 --m-accent，acc 仅作语义标记保留。 */
+/* 快捷宫格（3 列），带可达性过滤。
+   v2.46.76（夜星）：9 个固定顺序（记账/音乐/棋牌游戏/股票/足迹/通讯录/时光痕迹/AI对话/笔记），
+   原生活三件套（遗失物件/穿搭推荐/密码保险箱）下架，换为手持弹幕/自定义标签/体重记录/美食记忆/摸鱼日历；
+   密码生成器只在工具岛（/tool/password），不占工作台。 */
 const QUICK = [
-  { label:'AI 对话', path:'/assistant', acc:'--ab-vio', icon:ICONS.ai },
-  { label:'音乐',   path:'/music',   acc:'--ab-blu', icon:ICONS.music },
-  { label:'笔记',   path:'/notes',   acc:'--ab-pur', icon:ICONS.notes },
   { label:'记账',   path:'/finance/book', acc:'--ab-grn', icon:ICONS.finance },
+  { label:'音乐',   path:'/music',   acc:'--ab-blu', icon:ICONS.music },
+  { label:'棋牌游戏', path:'/tool/games', acc:'--ab-cyn', icon:ICONS.games },
   { label:'股票',   path:'/finance/market',  acc:'--ab-cor', icon:ICONS.stocks },
   { label:'足迹',   path:'/travels', acc:'--ab-cyn', icon:ICONS.travels },
   { label:'通讯录', path:'/contacts',acc:'--ab-amb', icon:ICONS.contacts },
-  { label:'棋牌游戏', path:'/tool/games', acc:'--ab-cyn', icon:ICONS.games },
   { label:'时光痕迹', path:'/tool/countdown', acc:'--ab-vio', icon:ICONS.countdown },
-  // v2.40.21 生活三件套
-  { label:'遗失物件', path:'/lost',   acc:'--ab-cor', icon:ICONS.lost },
-  { label:'穿搭推荐', path:'/wardrobe', acc:'--ab-pur', icon:ICONS.wardrobe },
-  { label:'密码保险箱', path:'/vault',  acc:'--ab-amb', icon:ICONS.vault },
+  { label:'AI 对话', path:'/assistant', acc:'--ab-vio', icon:ICONS.ai },
+  { label:'笔记',   path:'/notes',   acc:'--ab-pur', icon:ICONS.notes },
+  // v2.46.76 新五入口
+  { label:'手持弹幕', path:'/tool/danmu', acc:'--ab-cor', icon:ICONS.danmu },
+  { label:'自定义标签', path:'/tool/spin', acc:'--ab-vio', icon:ICONS.spin },
+  { label:'体重记录', path:'/life/weight', acc:'--ab-cyn', icon:ICONS.weight },
+  { label:'美食记忆', path:'/life/meals', acc:'--ab-grn', icon:ICONS.meals },
+  { label:'摸鱼日历', path:'/tool/fish', acc:'--ab-blu', icon:ICONS.fish },
 ]
 const quick = QUICK
 

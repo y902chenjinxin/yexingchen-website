@@ -38,7 +38,30 @@
             <code class="pw-sample">0O1lI|</code>
           </label>
         </div>
+        <!-- v2.46.76 批量模式（夜星参考图）：生成数量 + 主按钮 → 列表 + 复制全部 -->
+        <label class="pw-opt">生成数量
+          <b class="hl">{{ count }}</b>
+          <input v-model.number="count" type="number" min="1" max="50" step="1" class="pw-count-input" aria-label="生成数量">
+        </label>
+        <button class="pw-generate" :disabled="!!error" @click="generateBatch">
+          <span aria-hidden="true">↻</span> 生成
+        </button>
         <div v-if="error" class="pw-err">{{ error }}</div>
+      </div>
+
+      <!-- 批量结果列表 -->
+      <div v-if="batch.length" class="pw-batch">
+        <div class="pw-batch-head">
+          <span class="pw-batch-title">🔒 生成结果</span>
+          <button class="pw-copy-all" @click="copyBatch">复制全部</button>
+        </div>
+        <div class="pw-batch-list">
+          <div v-for="(p, i) in batch" :key="i" class="pw-batch-item">
+            <i class="pw-batch-idx">{{ i + 1 }}</i>
+            <code class="pw-batch-value">{{ p }}</code>
+            <button class="pw-batch-copy" aria-label="复制" title="复制" @click="copyOne(p)">⧉</button>
+          </div>
+        </div>
       </div>
     </div>
   </IslandInnerBase>
@@ -48,6 +71,7 @@
 import { ref, computed, onMounted } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { copyText as copyToClipboard } from '@/utils/clipboard'
+import { haptic } from '@/utils/haptic'
 
 const classes = ref([
   { key: 'lower', label: '小写字母', sample: 'a-z', on: true, chars: 'abcdefghijklmnopqrstuvwxyz' },
@@ -117,6 +141,33 @@ async function copy() {
   await copyToClipboard(password.value, '已复制（剪贴板约 30s 后建议自行清空）')
 }
 
+/* ---------- v2.46.76 批量生成（夜星参考图）：数量 1~50、列表逐条复制、复制全部 ---------- */
+const count = ref(10)
+const batch = ref([])
+
+function genOne(pool) {
+  return Array.from({ length: length.value }, () => pool[randomInt(pool.length)]).join('')
+}
+
+function generateBatch() {
+  error.value = ''
+  const pool = activePool()
+  if (!pool) { error.value = '至少选择一种字符类型'; return }
+  const n = Math.min(50, Math.max(1, Math.floor(Number(count.value) || 1)))
+  count.value = n
+  batch.value = Array.from({ length: n }, () => genOne(pool))
+  haptic.light()
+}
+
+async function copyOne(p) {
+  await copyToClipboard(p, '已复制（剪贴板约 30s 后建议自行清空）')
+}
+
+async function copyBatch() {
+  if (!batch.value.length) return
+  await copyToClipboard(batch.value.join('\n'), `已复制 ${batch.value.length} 条（剪贴板约 30s 后建议自行清空）`)
+}
+
 onMounted(generate)
 </script>
 
@@ -164,4 +215,50 @@ onMounted(generate)
 .pw-check input { accent-color: var(--yq-gold, #c7a96b); }
 .pw-sample { margin-left: auto; font-size: 11px; color: var(--dp-text3, #8a8f98); }
 .pw-err { color: #e5484d; font-size: 13px; }
+/* v2.46.76 批量生成 */
+.pw-count-input {
+  width: 64px; text-align: center; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--yq-gold, #c7a96b); background: none; border: none;
+  border-bottom: 2px solid currentColor; outline: none;
+}
+.pw-generate {
+  padding: 12px 0; border: none; border-radius: 12px; cursor: pointer;
+  font-size: 15px; font-weight: 700; letter-spacing: .06em;
+  color: #fff; background: linear-gradient(180deg, #6fae90, #4d8f70);
+  transition: filter .2s;
+}
+.pw-generate:not(:disabled):hover { filter: brightness(1.06); }
+.pw-generate:disabled { opacity: .4; cursor: not-allowed; }
+.pw-batch { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+.pw-batch-head { display: flex; align-items: center; justify-content: space-between; }
+.pw-batch-title { font-size: 14px; font-weight: 700; color: var(--dp-text, #18202a); }
+.pw-copy-all {
+  border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600;
+  color: #4d8f70; text-decoration: underline;
+}
+.pw-batch-list {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 420px; overflow-y: auto; scrollbar-width: thin;
+}
+.pw-batch-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 12px;
+  background: var(--dp-surface, #fff); border: 1px solid var(--dp-line, rgba(0,0,0,.08));
+}
+.pw-batch-idx {
+  flex: none; width: 22px; height: 22px; border-radius: 50%; font-style: normal;
+  display: grid; place-items: center; font-size: 11px; font-weight: 700;
+  background: rgba(77, 143, 112, .16); color: #3d7a5d;
+}
+.pw-batch-value {
+  flex: 1; font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 13.5px; letter-spacing: .04em; word-break: break-all;
+  color: var(--dp-text, #18202a);
+}
+.pw-batch-copy {
+  flex: none; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 14px;
+  border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff);
+  color: #4d8f70;
+}
+.pw-batch-copy:hover { background: rgba(77, 143, 112, .1); }
 </style>

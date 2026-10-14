@@ -149,6 +149,20 @@ const routes = [
     component: () => import('@/views/PasswordToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 手持弹幕 工具页（v2.46.76：全屏滚动/静止字幕，纯前端）
+  {
+    path: '/tool/danmu',
+    name: 'DanmuTool',
+    component: () => import('@/views/DanmuToolView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 内置 自定义抽签 工具页（v2.46.76：转盘 + 权重 + 多套配置，纯前端）
+  {
+    path: '/tool/spin',
+    name: 'SpinTool',
+    component: () => import('@/views/SpinToolView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 内置 OCR 文字识别（服务端 RapidOCR 本地推理）
   {
     path: '/tool/ocr',

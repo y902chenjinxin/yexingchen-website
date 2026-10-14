@@ -75,6 +75,11 @@
           </div>
         </div>
 
+        <!-- v2.46.76：记录按钮移左上角（比分/局数组之下，夜星） -->
+        <button class="gt-btn ghost sm gd-hist-btn" @click="histOpen = !histOpen">
+          记录<em v-if="history.length" class="gd-btn-count">{{ history.length }}</em>
+        </button>
+
         <!-- 中央：四座位出牌区 —— 每家只显示最近一手（小尺寸+who 胶囊），大面积留白 -->
         <div class="gd-center">
           <div v-for="pos in [0, 1, 2, 3]" :key="pos" class="gd-thz" :class="'gd-thz-' + pos">
@@ -111,7 +116,7 @@
           </transition>
         </div>
 
-        <!-- 右区：右家 + 出牌记录入口（清单：记录收进右侧角落，不占核心操作区） -->
+        <!-- 右区：右家（v2.46.76：记录入口已移左上角） -->
         <div class="gd-zone gd-zone-right">
           <div class="gt-seat gd-seat-side" :class="seatCls(rightSeat)">
             <span class="gt-seat-av">{{ seatAvatar(rightSeat) }}</span>
@@ -127,9 +132,6 @@
               <span v-if="passBubbles[rightSeat]" class="gd-pass-bubble">不要</span>
             </transition>
           </div>
-          <button class="gt-btn ghost sm gd-hist-btn" @click="histOpen = !histOpen">
-            记录<em v-if="history.length" class="gd-btn-count">{{ history.length }}</em>
-          </button>
         </div>
 
         <!-- 出牌记录浮层：默认收起，打开时盖在右区上方，窗内滚动回看 -->
@@ -179,7 +181,8 @@
            也不影响出牌的顺滑」）—— 手牌贴底、按钮在其正上方，视线不必在牌堆下方找按钮。 -->
       <footer class="gd-bottom">
         <div class="gd-bottom-bar">
-          <span class="gd-hand-tag">{{ seatName(viewSeat) }} · {{ viewHand.length }} 张</span>
+          <!-- v2.46.76：「你 · N 张」标签删（夜星：自己手牌自己可见，其余三家席位已有张数） -->
+          <span class="gt-spacer"></span>
             <transition name="gd-pop">
               <span v-if="baoCount(viewSeat)" class="gd-mini gd-bao-me">报牌 {{ baoCount(viewSeat) }}</span>
             </transition>
@@ -191,9 +194,9 @@
           <span v-if="showCountdown" class="gd-mini gd-timer" :class="{ urgent: leftSec <= 60 }">
             ⏳ 贡牌剩余 {{ mmss(leftSec) }}
           </span>
-          <span v-if="viewTing.length" class="gd-mini">可出 {{ viewTing.length }}</span>
+          <!-- v2.46.76：「可出 N」删（夜星：与选牌识别/轮次条重合）；statusLine 为空时不占位 -->
           <span v-if="sel.length" class="gd-mini" :class="{ on: sel.length }">已选 {{ sel.length }}</span>
-          <span class="gt-sub gd-status">{{ statusLine }}</span>
+          <span v-if="statusLine" class="gt-sub gd-status">{{ statusLine }}</span>
         </div>
 
         <!-- 进贡 / 还贡全局横幅：谁贡给谁（贡了哪张）一目了然。
@@ -597,13 +600,6 @@ const canAct = computed(() => {
 const selCards = computed(() => viewHand.value.filter(c => sel.value.includes(c.id)))
 const selPattern = computed(() => sel.value.length ? G.detectPattern(selCards.value, roundLevel.value) : null)
 const canPlay = computed(() => !!selPattern.value && G.canBeat(selPattern.value, target.value?.pattern ?? null))
-/** 当前手牌里所有能压过 target 的候选（给「提示」按钮显示可用性） */
-const viewTing = computed(() => {
-  if (phase.value !== 'playing' || !canAct.value) return []
-  const tgt = target.value
-  const ctx = { lastIsTeammate: !!tgt && G.TEAM_OF[tgt.seat] === G.TEAM_OF[turn.value] }
-  return G.aiChoose(viewHand.value, tgt?.pattern ?? null, roundLevel.value, ctx).length ? [1] : []
-})
 const statusLine = computed(() => {
   if (phase.value === 'settled') return isOnline.value ? '本局结束，等房主「再来一局」' : '本局结束，点「再来一局」继续'
   if (isOnline.value && props.onlineView?.phase === 'tribute') {
@@ -619,7 +615,8 @@ const statusLine = computed(() => {
   }
   if (!HUMAN_SEATS.value.includes(turn.value)) return `${seatName(turn.value)} 思考中…`
   if (turn.value !== viewSeat.value) return `轮到 ${seatName(turn.value)}`
-  return target.value ? '请压过上一手，或选择「不要」' : '本轮由你先出牌'
+  // v2.46.76：「本轮由你先出牌」删（与顶部轮次条重合，夜星）
+  return target.value ? '请压过上一手，或选择「不要」' : ''
 })
 /** 还贡候选项（在线 return 阶段、自己还有未还的贡时；v2.46.23 起双方并行，不再看 turn） */
 const returnPending = computed(() =>
@@ -1601,9 +1598,8 @@ watch(phase, (p, old) => {
     repeating-linear-gradient(45deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px),
     repeating-linear-gradient(135deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px),
     radial-gradient(120% 105% at 50% 38%, #1f5c45 0%, #164534 46%, #0c3125 78%, #082419 100%);
-  border: 1px solid rgba(0, 0, 0, .45);
+  /* v2.46.76：黑色 border 与内圈白描边删（夜星：桌沿暗黑边框去除），仅留暗角聚光 */
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, .05),
     inset 0 0 90px -18px rgba(0, 0, 0, .72),
     0 10px 30px -18px rgba(0, 0, 0, .8);
 }
@@ -1625,8 +1621,11 @@ watch(phase, (p, old) => {
    拆成「左上角信息组 + 席位贴桌底」两段后互不相撞
    v2.46.75：主级胶囊删，组内只剩比分 + 「第 N 局」（.gd-round-info） */
 .gd-zone-left .gd-score { position: absolute; left: 12px; top: 8px; z-index: 4; }
-/* 记录入口按钮：右区角落，弱化 */
-.gd-hist-btn { opacity: .85; }
+/* v2.46.76：记录按钮移左上角（比分 top8 / 第N局 top34 之下），不再占右区 */
+.gd-hist-btn {
+  position: absolute; left: 12px; top: 58px; z-index: 4;
+  opacity: .85;
+}
 
 /* 左区比分/进度条纵向排布，尺寸压紧（左区只有 ~92px，字号/内边距都要收） */
 .gd-zone-left .gd-score { font-size: 10.5px; padding: 2px 6px; gap: 4px; white-space: nowrap; }
@@ -1667,7 +1666,7 @@ watch(phase, (p, old) => {
 }
 /* v2.46.73：改固定像素定位（外部 UI 方案）——百分比在窄板上贴得太近，
    固定 12px 保证四家牌行永远离桌沿/信息面板一拳远，互不重叠 */
-.gd-thz-0 { bottom: 12px; left: 50%; transform: translateX(-50%); }   /* 我 */
+.gd-thz-0 { bottom: clamp(14px, 18%, 34px); left: 50%; transform: translateX(-50%); }   /* 我：中央偏下（夜星红框位） */
 .gd-thz-1 { right: 12px; top: 50%; transform: translateY(-50%); }     /* 右家 */
 .gd-thz-2 { top: 12px; left: 50%; transform: translateX(-50%); }      /* 对家 */
 .gd-thz-3 { left: 12px; top: 50%; transform: translateY(-50%); }      /* 左家 */
@@ -1769,7 +1768,6 @@ watch(phase, (p, old) => {
 /* 底部手牌 */
 .gd-bottom { position: relative; display: flex; flex-direction: column; gap: 4px; flex: none; }
 .gd-bottom-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.gd-hand-tag { font-size: 12.5px; font-weight: 600; color: var(--gt-gold); }
 .gd-mini {
   font-size: 11px; padding: 2px 8px; border-radius: 999px;
   background: rgba(255, 255, 255, .07); border: none;
