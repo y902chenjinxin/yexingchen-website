@@ -99,6 +99,14 @@ function goToolList() {
   overflow: visible;
 }
 
+/* 移动端：滚动容器底部给固定 Tab 栏留位（72px + 安全区）。
+   .island-inner 是 fixed 全屏层、脱离 #app 的 padding-bottom 兜底，
+   若 .inner-main 不补这块留白，最后一行内容（如棋牌首页游戏网格、音乐列表…）
+   滚动到底会被 z-index:1500 的底栏盖住。一处加，所有 island 模块页通用。 */
+#app.is-mobile .island-inner .inner-main {
+  padding-bottom: calc(72px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
 /* 背景由 desktop-product.css J 段按 day/night 主题化接管（双晕染 / 纯色 + 单晕染），
    这里不再写 ::before 渐变与 ::after 噪点，避免与主题层冲突。 */
 

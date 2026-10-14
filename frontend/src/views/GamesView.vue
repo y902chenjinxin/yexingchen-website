@@ -915,7 +915,7 @@ watch(() => route.query.room, (v) => {
 /* ===== 手机端：全屏游戏网格（替代桌面左栏「挑选游戏」方框，v2.46.81） =====
  * 仅在手机端渲染（v-if="isMobile && !tab"），桌面端仍是左栏。卡片复用桌面端的
  * 鎏金玻璃 token，保证昼夜都成立；点按即 pick() 进入对应游戏。 */
-.gm-mobile-pick { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px 16px; }
+.gm-mobile-pick { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px 0; }
 .gm-mp-grp { display: flex; flex-direction: column; gap: 8px; }
 .gm-mp-name {
   font-size: 11.5px; letter-spacing: .08em; color: var(--dp-text3, #8a8f98);

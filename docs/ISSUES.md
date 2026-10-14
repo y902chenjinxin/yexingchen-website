@@ -7,6 +7,11 @@
 
 ---
 
+## v2.46.83 移动端底栏遮挡修复（2026-10-14）
+
+- **根因**：`.island-inner` 是 `position:fixed; inset:0` 全屏层，脱离 `#app.is-mobile` 全局 `padding-bottom:72px` 兜底；内部 `.inner-main` 滚动容器底 `padding` 仅 20px，被 72px 固定底栏（z-index:1500）盖住末行。受影响=所有 IslandInnerBase 模块页（棋牌/音乐/生活/工具/倒计时…）。
+- **修法**：中心化在 `#app.is-mobile .island-inner .inner-main` 加 `padding-bottom: calc(72px + safe-bottom)`；`.gm-mobile-pick` 自身 16px 底留白归零。一处改全模块受益。
+
 ## v2.46.81 手机端四则 UI 优化（2026-10-14）
 
 | ID | 问题 | 类别 | 状态 |

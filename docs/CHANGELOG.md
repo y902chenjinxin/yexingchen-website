@@ -1,3 +1,11 @@
+## [v2.46.83] - 2026-10-14
+
+### 移动端底栏遮挡修复（夜星）
+- 根因：`.island-inner`（IslandInnerBase 移动端外壳）是 `position:fixed; inset:0` 全屏层，脱离 `#app.is-mobile` 的 `padding-bottom:72px` 兜底；其内部 `.inner-main` 滚动容器底部 `padding` 仅 20px，被 `fixed;bottom:0` 的 72px 底栏（z-index:1500）盖住最后一行。
+- 受影响：所有 IslandInnerBase 模块页（棋牌首页、音乐、生活、各工具页、倒计时…），即用户所述「棋牌游戏首页底部 + 其他页面」。
+- 修法：中心化一处——`#app.is-mobile .island-inner .inner-main` 加 `padding-bottom: calc(72px + safe-bottom)`；棋牌 `.gm-mobile-pick` 自身 16px 底留白归零（交统一兜底，避免双重留白）。一处改全模块受益。
+- 版本 SW v395→v396、APP_VERSION v2.46.82→v2.46.83。（deploy104）
+
 ## [v2.46.82] - 2026-10-14
 
 ### 通讯录新增「身份照号」字段（夜星）
