@@ -184,7 +184,9 @@ const segs = computed(() => {
     const mid = acc + span / 2
     const col = COLORS[i % COLORS.length]
     const style = {
-      transform: `rotate(${mid}deg) translateY(-86px)`,
+      // 居中修复（v2.46.80 夜星：标签偏右）：锚点原在径向线上、文字向右展开 → 偏右；
+      // translate(-50%,-50%) 把元素自身中心摆到半径 86px 的段中点，径向/切向都居中
+      transform: `rotate(${mid}deg) translateY(-86px) translate(-50%, -50%)`,
       color: col.fg,
     }
     acc += span

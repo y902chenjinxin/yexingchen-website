@@ -51,10 +51,26 @@ const PAGES = [
     }
     if (key === 'danmu') {
       await page.fill('#dm-text', '丽莎姐姐最棒')
+      // v2.46.80：200 字符上限 + 计数器
+      out.danmuMax = await page.$eval('#dm-text', (e) => e.maxLength)
+      await page.fill('#dm-text', 'x'.repeat(150))
+      out.danmuCount = await page.$eval('.dm-count', (e) => e.textContent.trim())
+      out.danmuLen = await page.$eval('#dm-text', (e) => e.value.length)
+      // v2.46.80：手动输入 rgb → 前景实时变 #e9c877，输入框归一化
+      const fgBox = (await page.$$('.dm-color-text'))[0]
+      await fgBox.fill('rgb(233,200,119)')
+      await page.waitForTimeout(250)
+      out.danmuRgbInput = await fgBox.inputValue()
+      out.danmuRgbFg = await page.$eval('.dm-color-cur', (e) => getComputedStyle(e).backgroundColor)
+      // 非法值：标红但不改当前色；失焦回滚
+      await fgBox.fill('not-a-color')
+      out.danmuBad = await page.$eval('.dm-color-text', (e) => e.classList.contains('bad'))
+      await page.evaluate(() => { document.activeElement?.blur() })
+      out.danmuRollback = await fgBox.inputValue()
       // 配色板：点第二颗前景预设 + 第一颗背景预设
       await page.$$eval('.dm-color-block', (blocks) => blocks[0]?.querySelectorAll('.dm-swatch')[1]?.click())
       await page.$$eval('.dm-color-block', (blocks) => blocks[1]?.querySelectorAll('.dm-swatch')[0]?.click())
-      out.danmuFg = await page.$eval('.dm-color-block .dm-color-hex', (e) => e.textContent.trim())
+      out.danmuFg = await page.$eval('.dm-color-text', (e) => e.value)
       // 横屏模式 + 竖屏视口 → rotate90 兜底
       await page.click('.dm-dir:has-text("横屏")')
       await page.click('.dm-show-btn')
@@ -83,6 +99,25 @@ const PAGES = [
     if (key === 'spin') {
       out.spinPalette = await page.$eval('.sp-wheel', (e) => getComputedStyle(e).backgroundImage.slice(0, 90))
       out.segLabels = await page.$$eval('.sp-seg-label', (els) => els.map((e) => e.textContent.trim()))
+      // v2.46.80：标签段中心居中断言——标签中心相对盘心的切向偏移应 ≈0（旧实现从径向线向右展开，偏右）
+      out.segCenter = await page.evaluate(() => {
+        const wheel = document.querySelector('.sp-wheel')
+        const wr = wheel.getBoundingClientRect()
+        const cx = wr.left + wr.width / 2, cy = wr.top + wr.height / 2
+        const labels = [...wheel.querySelectorAll('.sp-seg-label')]
+        const n = labels.length
+        const worst = { off: 0, dist: 0 }
+        labels.forEach((el, i) => {
+          const r = el.getBoundingClientRect()
+          const lx = r.left + r.width / 2 - cx, ly = r.top + r.height / 2 - cy
+          const rad = (((i + 0.5) * 360) / n * Math.PI) / 180
+          const rx = Math.sin(rad), ry = -Math.cos(rad)   // 径向（12 点起顺时针）
+          const tx = Math.cos(rad), ty = Math.sin(rad)    // 切向
+          worst.dist = Math.max(worst.dist, Math.abs(lx * rx + ly * ry - 86))
+          worst.off = Math.max(worst.off, Math.abs(lx * tx + ly * ty))
+        })
+        return worst
+      })
       await page.click('.sp-hub')
       await page.waitForTimeout(4800)
       out.spinResult = await page.$eval('.sp-result-text', (e) => e.textContent.trim()).catch(() => null)

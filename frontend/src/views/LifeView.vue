@@ -285,8 +285,8 @@
       </section>
     </div>
 
-    <!-- 记体重弹窗 -->
-    <el-dialog v-model="showWeightDialog" title="记体重" width="420px" append-to-body>
+    <!-- 记体重弹窗（life-dlg-compact：v2.46.80 压紧内边距/行距，一屏展示不滑动） -->
+    <el-dialog v-model="showWeightDialog" class="life-dlg-compact" title="记体重" width="420px" append-to-body>
       <el-form :model="weightForm" label-width="80px">
         <el-form-item label="家人">
           <el-select v-model="weightForm.member_id" placeholder="选家人" style="width:100%">

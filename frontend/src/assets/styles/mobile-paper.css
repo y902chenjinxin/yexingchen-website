@@ -1203,3 +1203,37 @@ html.m-app .el-overlay .el-input__wrapper:focus-within {
 }
 html.m-app .el-overlay .el-input__inner { color: var(--xz-ink) !important; }
 html.m-app .el-overlay .el-input__inner::placeholder { color: var(--xz-ink); opacity: .5; }
+
+/* ================= v2.46.80 记体重弹窗一屏化（html.m-app） =================
+ * 夜星：420px 定宽在 390px 视口左右各溢 15px；EP 默认 dialog 自身 16px padding
+ * 与 header/body/footer 内边距双重叠加 + form-item 行距 18px，手机上撑过一屏，
+ * 要滑动才能看到「记录」。只作用于 .life-dlg-compact（记体重），美食等不受影响。
+ * 布局口径：.el-overlay 是 position:fixed 块容器，块级流里 margin:auto 纵向解析为 0
+ * （规范：只有 abs/flex/grid 下 auto margin 才居中）→ 改绝对定位 inset:0 + margin:auto
+ * 双向居中；不占 transform，EP 的 translate3d 开合动画原样播放。外层 padding 归零
+ * 改由 header/body/footer 各自承担，flex column + body 滚动兜底。 */
+html.m-app .life-dlg-compact {
+  position: absolute !important;
+  inset: 0 !important;
+  margin: auto !important;
+  width: min(420px, calc(100vw - 24px)) !important;
+  padding: 0 !important;
+  /* fit-content：auto 高度 + top/bottom 都非 auto 时 abs 盒会拉伸填满（被 max-height
+     截到 820 而非内容高 262）；高度改非 auto 后 margin auto 才平分自由空间真正居中 */
+  height: fit-content !important;
+  max-height: calc(100dvh - 24px);
+  display: flex; flex-direction: column;
+}
+html.m-app .life-dlg-compact .el-dialog__header { padding: 12px 16px 6px !important; margin-right: 0 !important; flex: none; }
+html.m-app .life-dlg-compact .el-dialog__title { font-size: 15px !important; font-weight: 700 !important; }
+html.m-app .life-dlg-compact .el-dialog__body { padding: 4px 16px 0 !important; flex: 1 1 auto; min-height: 0; overflow: auto; }
+html.m-app .life-dlg-compact .el-dialog__footer { padding: 8px 16px 14px !important; flex: none; }
+/* 行距 18px → 10px，四行省 ~32px；标签行高与控件对齐 */
+html.m-app .life-dlg-compact .el-form-item { margin-bottom: 10px !important; }
+html.m-app .life-dlg-compact .el-form-item:last-child { margin-bottom: 2px !important; }
+html.m-app .life-dlg-compact .el-form-item__label { font-size: 12.5px !important; line-height: 34px !important; }
+html.m-app .life-dlg-compact .el-form-item__content { line-height: 34px !important; }
+/* 控件内边距收紧，高度仍保持 32px 触控友好 */
+html.m-app .life-dlg-compact .el-input__wrapper { padding: 1px 10px !important; }
+/* 底部按钮：等宽两分，拇指区好点 */
+html.m-app .life-dlg-compact .el-dialog__footer .el-button { min-width: 96px; margin-left: 10px; }

@@ -52,6 +52,19 @@ const PROD = 'https://yexingchen.cn'
     return { text: e.textContent.trim(), bg: cs.backgroundColor, fg: cs.color }
   }).catch(() => null)
   out.dialogBg = await page.$eval('.el-overlay .el-dialog', (e) => getComputedStyle(e).backgroundColor).catch(() => null)
+  // v2.46.80：一屏断言——弹窗整体不超视口高、底部按钮完整可见、无需滑动
+  out.dialogBox = await page.$eval('.el-overlay .el-dialog', (e) => {
+    const r = e.getBoundingClientRect()
+    return { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), bottom: Math.round(r.bottom) }
+  }).catch(() => null)
+  out.itemGap = await page.$eval('.el-overlay .el-dialog .el-form-item', (e) => getComputedStyle(e).marginBottom).catch(() => null)
+  out.footVisible = await page.$eval('.el-overlay .el-dialog__footer .el-button--primary', (e) => {
+    const r = e.getBoundingClientRect()
+    return { inView: r.bottom <= window.innerHeight && r.top >= 0, bottom: Math.round(r.bottom) }
+  }).catch(() => null)
+  out.bodyScrollable = await page.$eval('.el-overlay .el-dialog__body', (e) => ({
+    scrollH: e.scrollHeight, clientH: e.clientHeight, needsScroll: e.scrollHeight > e.clientHeight + 1,
+  })).catch(() => null)
   await page.screenshot({ path: '../artifacts/_probe/life-weight-dlg.png' })
 
   // 打开「家人」下拉，看 popper 表面兜底

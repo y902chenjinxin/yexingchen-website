@@ -3,7 +3,10 @@
     <div class="dm-tool">
       <!-- 内容 -->
       <div class="dm-field">
-        <label class="dm-label" for="dm-text">弹幕内容</label>
+        <div class="dm-field-head">
+          <label class="dm-label" for="dm-text">弹幕内容</label>
+          <span class="dm-count" :class="{ warn: text.length > 180 }">{{ text.length }} / 200</span>
+        </div>
         <div class="dm-input-wrap">
           <input
             id="dm-text"
@@ -11,7 +14,7 @@
             class="dm-input"
             type="text"
             placeholder="请输入弹幕内容…"
-            maxlength="60"
+            maxlength="200"
             @keydown.enter="show"
           />
           <button v-if="text" class="dm-clear" aria-label="清空内容" @click="text = ''">×</button>
@@ -55,7 +58,7 @@
         </div>
       </div>
 
-      <!-- 颜色（v2.46.78：预设色板 + 十六进制 + 自定义，替代粗糙的系统取色弹窗） -->
+      <!-- 颜色（v2.46.80：预设色板 + 手动输入颜色值（hex / rgb）+ 取色器） -->
       <div class="dm-field">
         <span class="dm-label">选择颜色</span>
 
@@ -63,7 +66,17 @@
           <div class="dm-color-head">
             <span class="dm-color-name">前景色</span>
             <i class="dm-color-cur" :style="{ background: fg }" aria-hidden="true"></i>
-            <code class="dm-color-hex">{{ fg }}</code>
+            <input
+              class="dm-color-text"
+              :class="{ bad: fgBad }"
+              :value="fgInput"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="#ffffff 或 rgb(255,255,255)"
+              aria-label="前景色颜色值，支持 hex 或 rgb 手动输入"
+              @input="onColorInput('fg', $event)"
+              @blur="commitColor('fg')"
+            />
           </div>
           <div class="dm-swatches">
             <button
@@ -85,7 +98,17 @@
           <div class="dm-color-head">
             <span class="dm-color-name">背景色</span>
             <i class="dm-color-cur" :style="{ background: bg }" aria-hidden="true"></i>
-            <code class="dm-color-hex">{{ bg }}</code>
+            <input
+              class="dm-color-text"
+              :class="{ bad: bgBad }"
+              :value="bgInput"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="#000000 或 rgb(0,0,0)"
+              aria-label="背景色颜色值，支持 hex 或 rgb 手动输入"
+              @input="onColorInput('bg', $event)"
+              @blur="commitColor('bg')"
+            />
           </div>
           <div class="dm-swatches">
             <button
@@ -102,6 +125,7 @@
             </label>
           </div>
         </div>
+        <p class="dm-color-tip">手动输入支持 <code>#e9c877</code>、<code>rgb(233,200,119)</code>、<code>233,200,119</code> 三种写法</p>
       </div>
 
       <!-- 类型 -->
@@ -152,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { haptic } from '@/utils/haptic'
 
@@ -180,6 +204,54 @@ const BG_PRESETS = [
   '#000000', '#101820', '#1b2a4a', '#0f2e26', '#3b1f2b',
   '#2b2440', '#4a3520', '#5a1f1f', '#f7f3ea', '#ffffff',
 ]
+
+/* ---------- 手动输入颜色值（v2.46.80 夜星：支持 rgb 手动输入） ----------
+ * 输入框与 fg/bg 双向：输入合法值实时生效（预览同步），非法只标红不动值，
+ * 失焦时归一化（合法 → 规范 hex；非法 → 回滚当前色）。点色板 / 取色器
+ * 改色时 watch 反向同步输入框文本。 */
+const fgInput = ref(fg.value)
+const bgInput = ref(bg.value)
+const fgBad = ref(false)
+const bgBad = ref(false)
+watch([fg, bg], ([f, b]) => { fgInput.value = f; bgInput.value = b })
+
+/** 解析颜色值：#abc / #aabbcc / rgb(r,g,b) / r,g,b → #rrggbb；非法返回 null */
+function parseColor(s) {
+  const t = String(s || '').trim().toLowerCase()
+  let m = t.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/)
+  if (m) {
+    const h = m[1]
+    return h.length === 3 ? `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}` : `#${h}`
+  }
+  m = t.match(/^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})/)
+  if (m) return rgbToHex(m[1], m[2], m[3])
+  m = t.match(/^(\d{1,3})\s*[,，]\s*(\d{1,3})\s*[,，]\s*(\d{1,3})$/)
+  if (m) return rgbToHex(m[1], m[2], m[3])
+  return null
+}
+function rgbToHex(r, g, b) {
+  const c = (v) => Math.max(0, Math.min(255, parseInt(v, 10) || 0))
+  return `#${[c(r), c(g), c(b)].map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+function onColorInput(which, e) {
+  const raw = e.target.value
+  if (which === 'fg') fgInput.value = raw; else bgInput.value = raw
+  const hex = parseColor(raw)
+  if (hex) {
+    if (which === 'fg') { fg.value = hex; fgBad.value = false } else { bg.value = hex; bgBad.value = false }
+  } else if (which === 'fg') { fgBad.value = true } else { bgBad.value = true }
+}
+function commitColor(which) {
+  const raw = which === 'fg' ? fgInput.value : bgInput.value
+  const hex = parseColor(raw)
+  if (hex) {
+    if (which === 'fg') { fg.value = hex; fgInput.value = hex; fgBad.value = false }
+    else { bg.value = hex; bgInput.value = hex; bgBad.value = false }
+  } else {
+    if (which === 'fg') { fgInput.value = fg.value; fgBad.value = false }
+    else { bgInput.value = bg.value; bgBad.value = false }
+  }
+}
 
 function persist() {
   try {
@@ -295,6 +367,9 @@ function startRoll() {
 .dm-tool { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; padding-bottom: 24px; }
 .dm-field { display: flex; flex-direction: column; gap: 8px; }
 .dm-field.is-off { opacity: .45; }
+.dm-field-head { display: flex; align-items: baseline; justify-content: space-between; }
+.dm-count { font-size: 11px; color: var(--color-ink-dim, #7a8087); font-variant-numeric: tabular-nums; }
+.dm-count.warn { color: #c08a1e; }
 .dm-label { font-size: 13px; font-weight: 600; color: var(--color-ink, #3a3f45); }
 .dm-input-wrap { position: relative; }
 .dm-input {
@@ -333,7 +408,7 @@ function startRoll() {
   background: color-mix(in srgb, var(--color-accent, #c7a96b) 10%, var(--ls-card, #fff));
 }
 
-/* 颜色：前景/背景两块，块内 = 名称 + 当前色 + 十六进制 + 预设色板 + 自定义 */
+/* 颜色：前景/背景两块，块内 = 名称 + 当前色 + 手动输入框 + 预设色板 + 取色器 */
 .dm-color-block {
   padding: 12px 14px 14px; border-radius: 14px;
   background: var(--ls-card, #fff);
@@ -342,12 +417,24 @@ function startRoll() {
 }
 .dm-color-head { display: flex; align-items: center; gap: 8px; }
 .dm-color-name { font-size: 13px; font-weight: 600; color: var(--color-ink, #3a3f45); }
-.dm-color-hex {
-  font-size: 11px; color: var(--color-ink-dim, #7a8087);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em;
+.dm-color-tip { margin: 2px 2px -4px; font-size: 11px; line-height: 1.6; color: var(--color-ink-dim, #7a8087); }
+.dm-color-tip code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 1px 5px; border-radius: 5px; background: rgba(0, 0, 0, .05);
 }
+.dm-color-text {
+  margin-left: auto; width: 150px; box-sizing: border-box;
+  padding: 5px 9px; font-size: 11.5px; letter-spacing: .02em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--color-ink, #3a3f45);
+  background: var(--ls-card, #fff);
+  border: 1px solid var(--ls-line, rgba(0,0,0,.12)); border-radius: 8px;
+  outline: none; transition: border-color .2s, color .2s;
+}
+.dm-color-text:focus { border-color: var(--color-accent, #c7a96b); }
+.dm-color-text.bad { border-color: #e5484d; color: #e5484d; }
 .dm-color-cur {
-  margin-left: auto; width: 22px; height: 22px; border-radius: 50%;
+  width: 22px; height: 22px; border-radius: 50%;
   border: 1px solid rgba(0,0,0,.14);
   box-shadow: inset 0 0 0 2px rgba(255,255,255,.9);
 }
