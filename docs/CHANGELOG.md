@@ -1,3 +1,11 @@
+## [v2.46.82] - 2026-10-14
+
+### 通讯录新增「身份照号」字段（夜星）
+- 后端 `xuanhuang_contacts` 表新增 `identity_no VARCHAR(40) NOT NULL DEFAULT ''`（migration `a1b2c3d4e5f6`，挂 `t7b8c9d0e1f2` 下，单 head 无冲突）。
+- `ContactIn` / `ContactUpdateIn` 加 `identity_no`；create / update / `_to_out` 全链路透传；列表搜索 `or_` 增加 `identity_no` 命中。
+- 前端 `ContactsView`：编辑弹窗新增「身份照号」输入框（maxlength 40）；卡片 meta 区展示；列表关键字搜索覆盖该字段；`emptyForm` / `openEdit` / `submit` 已带入。
+- 版本 SW v394→v395、APP_VERSION v2.46.81→v2.46.82。（deploy103 + 后端 deploy）
+
 ## [v2.46.81] - 2026-10-14
 
 ### 手机端四则 UI 优化（夜星）

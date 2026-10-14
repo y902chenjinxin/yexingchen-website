@@ -76,6 +76,7 @@
                   电话 <a class="ct-tel" :href="`tel:${c.phone}`">{{ c.phone }}</a>
                 </span>
                 <span v-if="c.address">住址 {{ c.address }}</span>
+                <span v-if="c.identity_no">身份照号 {{ c.identity_no }}</span>
                 <span v-if="c.creator_name" class="ct-creator">{{ c.creator_avatar || '👤' }} {{ c.creator_name }} 录入</span>
               </div>
               <p v-if="c.notes" class="ct-notes">{{ c.notes }}</p>
@@ -192,6 +193,9 @@
         </el-form-item>
         <el-form-item label="住址">
           <el-input v-model="form.address" placeholder="省市区 + 详细地址" maxlength="255" />
+        </el-form-item>
+        <el-form-item label="身份照号">
+          <el-input v-model="form.identity_no" placeholder="身份证 / 护照等证件号" maxlength="40" />
         </el-form-item>
         <el-form-item label="标签">
           <el-input v-model="form.tags" placeholder="逗号分隔，如 老家,常联系" maxlength="255" />
@@ -317,7 +321,7 @@ const maxBirthDay = computed(() => (form.birthday_type === 'lunar' ? 30 : 31))
 
 function emptyForm() {
   return {
-    id: null, name: '', relation: '', phone: '', address: '',
+    id: null, name: '', relation: '', phone: '', address: '', identity_no: '',
     birthday_type: 'solar', lunar_leap: 0, birth_year: null, tags: '', notes: '', is_pinned: 0,
   }
 }
@@ -341,7 +345,7 @@ const filtered = computed(() => {
   return list.value.filter((c) => {
     if (relationFilter.value && c.relation !== relationFilter.value) return false
     if (!q) return true
-    return [c.name, c.relation, c.phone, c.address, c.tags]
+    return [c.name, c.relation, c.phone, c.address, c.identity_no, c.tags]
       .some((v) => (v || '').toLowerCase().includes(q))
   })
 })
@@ -440,6 +444,7 @@ function openCreate() {
 function openEdit(c) {
   Object.assign(form, {
     id: c.id, name: c.name, relation: c.relation, phone: c.phone, address: c.address,
+    identity_no: c.identity_no || '',
     birthday_type: c.birthday_type || 'solar', lunar_leap: c.lunar_leap || 0,
     birth_year: c.birth_year,
     tags: c.tags, notes: c.notes, is_pinned: c.is_pinned || 0,
@@ -474,6 +479,7 @@ async function submit() {
       relation: form.relation || '',
       phone: form.phone || '',
       address: form.address || '',
+      identity_no: form.identity_no || '',
       birthday: bday,
       birth_year: form.birth_year || null,
       birthday_type: form.birthday_type,

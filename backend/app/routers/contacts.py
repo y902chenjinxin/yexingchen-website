@@ -52,6 +52,7 @@ class ContactIn(BaseModel):
     relation: Optional[str] = ""
     phone: Optional[str] = ""
     address: Optional[str] = ""
+    identity_no: Optional[str] = ""
     birthday: Optional[str] = None       # MM-DD（公历或农历，由 birthday_type 决定）
     birth_year: Optional[int] = None
     birthday_type: Optional[str] = "solar"   # solar / lunar
@@ -82,6 +83,7 @@ class ContactUpdateIn(BaseModel):
     relation: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    identity_no: Optional[str] = None
     birthday: Optional[str] = None
     birth_year: Optional[int] = None
     birthday_type: Optional[str] = None
@@ -144,6 +146,7 @@ def _to_out(c: Contact, today: date | None = None, mmap: dict | None = None) -> 
         "relation": c.relation or "",
         "phone": c.phone or "",
         "address": c.address or "",
+        "identity_no": c.identity_no or "",
         # v2.18：联系人头像。avatar_path 是相对路径（/contacts/xxx.jpg），
         # 已通过 FastAPI 静态挂在 /uploads 下供前端直接 <img src> 取用；
         # 没上传时为空字符串，前端 fall back 到「姓字首字」头像。
@@ -190,6 +193,7 @@ def list_contacts(
                 Contact.relation.contains(q),
                 Contact.phone.contains(q),
                 Contact.address.contains(q),
+                Contact.identity_no.contains(q),
                 Contact.tags.contains(q),
             )
         )
@@ -256,6 +260,7 @@ def create_contact(
         relation=payload.relation or "",
         phone=payload.phone or "",
         address=payload.address or "",
+        identity_no=payload.identity_no or "",
         birthday=payload.birthday or None,
         birth_year=payload.birth_year,
         birthday_type=_norm_type(payload.birthday_type),
@@ -289,7 +294,7 @@ def update_contact(
         if not name:
             raise_error(ErrCode.INVALID_PARAM, "姓名不能为空")
         c.name = name
-    for field in ("relation", "phone", "address", "tags", "notes"):
+    for field in ("relation", "phone", "address", "identity_no", "tags", "notes"):
         v = getattr(payload, field)
         if v is not None:
             setattr(c, field, v)

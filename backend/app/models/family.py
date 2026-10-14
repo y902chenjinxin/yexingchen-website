@@ -39,6 +39,8 @@ class Contact(Base):
     relation = Column(String(40), nullable=False, default="")  # 关系：父亲/母亲/姑姑…
     phone = Column(String(40), nullable=False, default="")
     address = Column(String(255), nullable=False, default="")
+    # 身份照号（身份证 / 护照等证件号），纯文本存储，按需填写
+    identity_no = Column(String(40), nullable=False, default="")
     # 联系人头像：相对路径如 /contacts/1234567890_abcd.jpg；None 表示沿用「姓字」首字占位
     # 沿用 meal photo 一样的存储约定（UPLOAD_DIR 下子目录 + 时间戳_随机串.扩展名）
     avatar_path = Column(String(255), nullable=True)
