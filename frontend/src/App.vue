@@ -86,6 +86,13 @@ const { isMobile } = useIsMobile()
 // 牌桌等全屏对局的沉浸态：置位期间收起底部 Tab 栏 / 桌宠 / 播放条
 const { immersive } = useImmersive()
 
+// v2.46.79：给 <html> 打移动端标记。el-dialog/el-popover 用 append-to-body 挂到 body 下，
+// 会逃出 #app.is-mobile 作用域（手机弹窗里的主按钮因此掉回 Element Plus 默认浅紫+白字，
+// 对比度不足看不清）。html.m-app 让全局样式能覆盖这些 teleport 到 body 的浮层。
+watch(isMobile, (v) => {
+  document.documentElement.classList.toggle('m-app', !!v)
+}, { immediate: true })
+
 // 移动端缓存三个底部 Tab 首页组件（切 Tab 不重挂载、不闪白）；桌面 include 为空 → 不缓存
 const keepAliveNames = computed(() => isMobile.value ? ['WorkbenchView', 'ModulesView', 'ProfileView'] : [])
 

@@ -1136,3 +1136,70 @@ html[data-theme="day"] #app.is-mobile {
   color: var(--xz-btn-fg) !important;
   font-weight: 700;
 }
+
+/* ================= v2.46.79 teleport 浮层兜底（html.m-app） =================
+ * el-dialog / el-popover / el-select 下拉默认 append-to-body，挂到 body 下，
+ * 会逃出 #app.is-mobile 作用域 → 手机弹窗里的 EP 主按钮掉回桌面夜主题的
+ * 浅紫 #A78BFA + 白字（对比度 ~2:1，「记录」按钮看不清，夜星实测）。
+ * App.vue 给 <html> 打 m-app 标记，这里用同套宣纸令牌给浮层兜底：
+ * 主按钮 = 金底墨字（夜）/ 墨底宣纸字（日），与站内主按钮完全一致。 */
+html.m-app {
+  --xz-ink: #ede7d8;
+  --xz-card: #2a2823;
+  --xz-card-2: #322f29;
+  --xz-card-border: rgba(237, 231, 216, .30);
+  --xz-gold: #c9a45c;
+  --xz-btn-bg: var(--xz-gold);
+  --xz-btn-fg: #262521;
+  --xz-line: rgba(237, 231, 216, .14);
+}
+html[data-theme="day"].m-app {
+  --xz-ink: #2b2b26;
+  --xz-card: #fffdf8;
+  --xz-card-2: #f3ede0;
+  --xz-card-border: #2b2b26;
+  --xz-btn-bg: #2b2b26;
+  --xz-btn-fg: #f7f3ea;
+  --xz-line: rgba(43, 43, 38, .16);
+}
+/* 浮层表面：dialog / 下拉 / popover 统一宣纸卡色 + 墨字 */
+html.m-app .el-overlay .el-dialog,
+html.m-app .el-popper,
+html.m-app .el-popper.el-select__popper {
+  background: var(--xz-card) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+  color: var(--xz-ink) !important;
+}
+html.m-app .el-overlay .el-dialog { border-radius: 16px !important; }
+html.m-app .el-overlay .el-dialog__title,
+html.m-app .el-overlay .el-dialog__body,
+html.m-app .el-overlay .el-form-item__label,
+html.m-app .el-popper .el-select-dropdown__item { color: var(--xz-ink) !important; }
+html.m-app .el-overlay .el-dialog__body { color: var(--xz-ink); }
+/* 主按钮：金底墨字 / 墨底宣纸字（与 #app.is-mobile 站内主按钮同令牌） */
+html.m-app .el-overlay .el-button--primary:not(.is-plain),
+html.m-app .el-popper .el-button--primary:not(.is-plain) {
+  background: var(--xz-btn-bg) !important;
+  border-color: var(--xz-btn-bg) !important;
+  color: var(--xz-btn-fg) !important;
+  font-weight: 700;
+}
+/* 次按钮：透明底 + 墨线 */
+html.m-app .el-overlay .el-button:not(.el-button--primary),
+html.m-app .el-popper .el-button:not(.el-button--primary) {
+  background: transparent !important;
+  border-color: var(--xz-card-border) !important;
+  color: var(--xz-ink) !important;
+}
+/* 弹窗内输入控件：描边改墨线，焦点金 */
+html.m-app .el-overlay .el-input__wrapper,
+html.m-app .el-overlay .el-textarea__wrapper {
+  background: var(--xz-card-2) !important;
+  box-shadow: 0 0 0 1px var(--xz-line) inset !important;
+}
+html.m-app .el-overlay .el-input__wrapper.is-focus,
+html.m-app .el-overlay .el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 1.5px var(--xz-gold) inset !important;
+}
+html.m-app .el-overlay .el-input__inner { color: var(--xz-ink) !important; }
+html.m-app .el-overlay .el-input__inner::placeholder { color: var(--xz-ink); opacity: .5; }
