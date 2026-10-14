@@ -115,8 +115,10 @@
 
         <!-- 操作：设为背景乐 / 编辑 / 删除 —— 左对齐排布，保证各行按钮纵向对齐。
              内置古筝现在是普通曲目记录，所以不再有「只读行」守卫，每首都能编辑删除。
-             v2.46.69：手机端纯播放列表只留「设为背景乐」，编辑/删除收去桌面端。 -->
-        <el-table-column label="操作" :width="isMobile ? 110 : 250" fixed="right">
+             v2.46.69：手机端纯播放列表只留「设为背景乐」，编辑/删除收去桌面端。
+             v2.46.81：手机端纯播放列表，连「设为背景乐」也一并收去（只展示曲目 + 内联播放键），
+             故整列不在手机端渲染。 -->
+        <el-table-column v-if="!isMobile" label="操作" :width="250" fixed="right">
           <template #default="{ row }">
             <div class="row-ops">
               <el-tag v-if="isCurBgm(row)" size="small" type="primary" effect="dark" class="bgm-on">背景乐</el-tag>

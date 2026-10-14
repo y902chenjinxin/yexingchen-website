@@ -2,8 +2,10 @@
   <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇">
     <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill, 'is-fsfit': fitActive, 'is-card': isCardGame }">
       <!-- ===== 左：游戏类型 ===== -->
-      <!-- 手机端：未选游戏时铺开手账网格；选中后收起（对局区占满，切游戏走「返回列表」） -->
-      <aside v-show="!isBig && !(isMobile && tab)" class="gm-rail">
+      <!-- 手机端：未选游戏时铺开手账网格；选中后收起（对局区占满，切游戏走「返回列表」）。
+           v2.46.81：桌面端的左栏「挑选游戏」方框不在手机端展示（手机端改由 gm-stage 内的
+           全屏游戏网格 gm-mobile-pick 承接选游戏，避免一块独立侧栏挤占竖屏空间）。 -->
+      <aside v-show="!isBig && !isMobile" class="gm-rail">
         <div v-for="grp in groups" :key="grp.name" class="gm-grp">
           <div class="gm-grp-name">{{ grp.name }}</div>
           <button
@@ -46,14 +48,48 @@
 
       <!-- ===== 右：游戏空间 ===== -->
       <section ref="stageRef" class="gm-stage">
-        <!-- 空态：默认什么都不摆，避免一屏平铺 -->
-        <div v-if="!tab" class="gm-empty">
+        <!-- 手机端：进模块即全屏游戏网格（桌面端左栏「挑选游戏」方框不在手机端展示）。
+             选游戏、我的对局都收进这块，选中后 tab 置位即切到对局，返回列表再回到这里。 -->
+        <div v-if="isMobile && !tab" class="gm-mobile-pick">
+          <div v-for="grp in groups" :key="grp.name" class="gm-mp-grp">
+            <div class="gm-mp-name">{{ grp.name }}</div>
+            <div class="gm-mp-grid">
+              <button
+                v-for="g in grp.items"
+                :key="g.key"
+                class="gm-mp-item"
+                :class="{ dim: itemLocked(g) }"
+                :disabled="itemLocked(g)"
+                @click="pick(g.key)"
+              >
+                <!-- eslint-disable-next-line vue/no-v-html -- 图标为本地常量字符串，无外部输入 -->
+                <span class="gm-mp-ic" v-html="g.icon"></span>
+                <span class="gm-mp-tx"><b>{{ g.label }}</b><i>{{ g.tag }}</i></span>
+              </button>
+            </div>
+          </div>
+          <div class="gm-mp-grp">
+            <div class="gm-mp-name">我的</div>
+            <button class="gm-mp-item" @click="roomsOpen = true">
+              <span class="gm-mp-ic gm-mp-ic--rooms">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="4" y="6" width="16" height="13" rx="2.6" />
+                  <path d="M4 10.4h16M9.6 10.4V19" />
+                </svg>
+              </span>
+              <span class="gm-mp-tx"><b>我的对局</b><i>长按可删除房间</i></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 空态：默认什么都不摆，避免一屏平铺（仅桌面端；手机端走上方全屏网格） -->
+        <div v-if="!tab && !isMobile" class="gm-empty">
           <div class="gm-empty-ic">♟</div>
-          <b>{{ isMobile ? '从上面挑一个游戏' : '从左边挑一个游戏' }}</b>
+          <b>从左边挑一个游戏</b>
           <p>选中后先选模式，再进对局。想看得舒服一点，进去后可点「放大」全屏玩，随时能退出或续上进度。</p>
         </div>
 
-        <template v-else>
+        <template v-else-if="tab">
           <header class="gm-head">
             <div class="gm-head-tx">
               <b>{{ cur.label }}</b>
@@ -875,6 +911,36 @@ watch(() => route.query.room, (v) => {
 
 /* ===== 舞台 ===== */
 .gm-stage { min-height: 340px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ===== 手机端：全屏游戏网格（替代桌面左栏「挑选游戏」方框，v2.46.81） =====
+ * 仅在手机端渲染（v-if="isMobile && !tab"），桌面端仍是左栏。卡片复用桌面端的
+ * 鎏金玻璃 token，保证昼夜都成立；点按即 pick() 进入对应游戏。 */
+.gm-mobile-pick { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px 16px; }
+.gm-mp-grp { display: flex; flex-direction: column; gap: 8px; }
+.gm-mp-name {
+  font-size: 11.5px; letter-spacing: .08em; color: var(--dp-text3, #8a8f98);
+  padding: 14px 4px 0; font-weight: 600;
+}
+.gm-mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gm-mp-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 11px 12px; border-radius: 13px; cursor: pointer; font-family: inherit;
+  border: 1px solid var(--glass-border, var(--dp-line, rgba(0,0,0,.14)));
+  background: var(--color-bg-glass, rgba(255,255,255,.5));
+  transition: border-color .18s ease, background-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.gm-mp-item:hover {
+  border-color: var(--yq-gold, #c7a96b);
+  background: var(--yq-gold-faint, rgba(199,169,107,.14));
+  transform: translateY(-1px);
+}
+.gm-mp-item.dim { opacity: .38; cursor: not-allowed; }
+.gm-mp-ic { width: 22px; height: 22px; flex: none; color: var(--yq-gold, #c7a96b); }
+.gm-mp-ic :deep(svg) { width: 22px; height: 22px; display: block; }
+.gm-mp-tx { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.gm-mp-tx b { font-size: 13.5px; color: var(--dp-text, #18202a); font-weight: 600; }
+.gm-mp-tx i { font-style: normal; font-size: 11px; color: var(--dp-text3, #8a8f98); }
+
 /* 空态：毛玻璃面板 + 金色柔光锚点 + 淡棋盘格纹理。
    夜间主题下不能再用半透明白（会和纯黑背景糊成一块灰砖），统一走全站玻璃 token。 */
 .gm-empty {

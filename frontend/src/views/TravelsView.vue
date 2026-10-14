@@ -253,5 +253,17 @@ onMounted(reload)
   .tv-layout { grid-template-columns: 1fr; }
   .tv-slide { height: 400px; }
   .tv-kpi { grid-template-columns: repeat(3, 1fr); }
+  /* v2.46.81：手机端标题吸顶（原先 .tv-head 随页面滚动一起下移）。
+     顶部留白从 86px 压到 safe-area+8px，标题靠近左上角，玻璃底盖住滚动内容，
+     与其它 island 模块一致。 */
+  .tv-inner { padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 60px; }
+  .tv-head {
+    position: sticky; top: 0; z-index: 20;
+    margin: 0 -16px 20px; padding: 6px 16px 12px;
+    background: var(--lj-glass, rgba(243, 239, 230, .82));
+    -webkit-backdrop-filter: var(--lj-glass-blur, blur(12px) saturate(160%));
+    backdrop-filter: var(--lj-glass-blur, blur(12px) saturate(160%));
+    border-bottom: 1px solid var(--lj-line, rgba(74, 95, 99, .14));
+  }
 }
 </style>
