@@ -15,7 +15,7 @@ const { chromium } = require('playwright')
   page.on('console', (m) => { if (m.type() === 'error') logs.push('err: ' + m.text()) })
   page.on('pageerror', (e) => logs.push('pageerror: ' + e.message))
 
-  await page.goto('http://[::1]:5199/_probe.html?g=gd', { waitUntil: 'domcontentloaded', timeout: 30000 })
+  await page.goto('http://127.0.0.1:5199/_probe.html?g=gd', { waitUntil: 'domcontentloaded', timeout: 30000 })
   await page.waitForTimeout(1500)
   await page.screenshot({ path: '../artifacts/_probe/gd2-open.png' })
 

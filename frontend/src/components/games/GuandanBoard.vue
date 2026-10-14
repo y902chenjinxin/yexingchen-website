@@ -42,26 +42,23 @@
               <span v-if="passBubbles[topSeat]" class="gd-pass-bubble">不要</span>
             </transition>
           </div>
-          <!-- v2.46.73：轮次条下方补一行真实对局信息（级牌·局数）——外部 UI 评审建议的
-               「罗盘下加底分」不可行（掼蛋无底分概念，代码也无此字段），改显示真实数据 -->
-          <span class="gd-turn-wrap">
-            <span class="gd-turnbox" :class="{ 'is-me': turn === oSeat, 'is-done': turn < 0 }">
-              <em>轮到</em>
-              <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
-              <i>{{ isOnline && props.onlineView?.phase === 'return' ? '还贡' : '出牌' }}</i>
-            </span>
-            <span class="gd-round-info">级牌 {{ G.levelText(roundLevel) }} · 第 {{ roundNo }} 局</span>
+          <!-- v2.46.75：轮次条缩小（夜星）；级牌/局数信息已挪左区左上角 -->
+          <span class="gd-turnbox" :class="{ 'is-me': turn === oSeat, 'is-done': turn < 0 }">
+            <em>轮到</em>
+            <b>{{ turn < 0 ? '本局结束' : seatName(turn) }}</b>
+            <i>{{ isOnline && props.onlineView?.phase === 'return' ? '还贡' : '出牌' }}</i>
           </span>
         </div>
 
-        <!-- 左区：比分贴左上角（v2.46.74）+ 左家 + 主级；升级进度条已删（与主级/比分重复，
-             夜星：「很畸形，能删」） -->
+        <!-- 左区：比分+局数贴左上角（v2.46.75：主级胶囊删——与比分重复；局数从轮次条
+             下挪来左上角，夜星）+ 左家席位贴桌底 -->
         <div class="gd-zone gd-zone-left">
           <span class="gd-score">
             <i class="me">我方 {{ G.levelText(myLevel) }}</i>
             <em>·</em>
             <i class="op">对方 {{ G.levelText(oppLevel) }}</i>
           </span>
+          <span class="gd-round-info">第 {{ roundNo }} 局</span>
           <div class="gt-seat gd-seat-side" :class="seatCls(leftSeat)">
             <span class="gt-seat-av">{{ seatAvatar(leftSeat) }}</span>
             <span class="gt-seat-tx">
@@ -76,7 +73,6 @@
               <span v-if="passBubbles[leftSeat]" class="gd-pass-bubble">不要</span>
             </transition>
           </div>
-          <span class="gt-pill gold gd-lv-pill">主级 {{ G.levelText(roundLevel) }}</span>
         </div>
 
         <!-- 中央：四座位出牌区 —— 每家只显示最近一手（小尺寸+who 胶囊），大面积留白 -->
@@ -1611,13 +1607,8 @@ watch(phase, (p, old) => {
     inset 0 0 90px -18px rgba(0, 0, 0, .72),
     0 10px 30px -18px rgba(0, 0, 0, .8);
 }
-/* 鎏金桌沿镶线：一条细线就够，宁可克制不要花哨（Apple HIG 式留白） */
-.gd-table::before {
-  content: ''; position: absolute; inset: 7px; border-radius: 11px;
-  border: 1px solid rgba(233, 200, 119, .2);
-  box-shadow: 0 0 14px -6px rgba(233, 200, 119, .35);
-  pointer-events: none;
-}
+/* v2.46.75：桌沿鎏金镶线矩形已删（夜星：矩形框框住对家/左家/右家很怪）——
+   桌面质感由绒布渐变 + 内圈暗角承担，不再画框 */
 /* 四个信息区：贴边固定，中间留白（夜星：所有头像/牌数对齐屏幕边缘固定位置） */
 .gd-zone { display: flex; min-width: 0; min-height: 0; }
 .gd-zone-top {
@@ -1629,28 +1620,29 @@ watch(phase, (p, old) => {
 }
 .gd-zone-left { grid-column: 1; grid-row: 2; justify-content: flex-end; padding-bottom: 2px; }
 .gd-zone-right { grid-column: 3; grid-row: 2; }
-/* v2.46.74：比分+主级改绝对定位**左上角组**（夜星：比分放左上角）——
+/* v2.46.74：比分改绝对定位**左上角组**（夜星：比分放左上角）——
    全屏 720×360 时牌桌只剩 ~100px 高，纵排三件套必然溢出桌沿；
-   拆成「左上角信息组 + 席位贴桌底」两段后互不相撞 */
+   拆成「左上角信息组 + 席位贴桌底」两段后互不相撞
+   v2.46.75：主级胶囊删，组内只剩比分 + 「第 N 局」（.gd-round-info） */
 .gd-zone-left .gd-score { position: absolute; left: 12px; top: 8px; z-index: 4; }
-.gd-zone-left .gd-lv-pill { position: absolute; left: 12px; top: 34px; z-index: 4; }
 /* 记录入口按钮：右区角落，弱化 */
 .gd-hist-btn { opacity: .85; }
-.gd-lv-pill { font-size: 11px; }
+
 /* 左区比分/进度条纵向排布，尺寸压紧（左区只有 ~92px，字号/内边距都要收） */
 .gd-zone-left .gd-score { font-size: 10.5px; padding: 2px 6px; gap: 4px; white-space: nowrap; }
 
-/* 轮到谁出牌：顶部中央全局提示条，常驻。轮到自己时金底高亮（一眼看出该我动了） */
+/* 轮到谁出牌：顶部中央全局提示条，常驻。轮到自己时金底高亮（一眼看出该我动了）
+   v2.46.75：整体缩小一档（夜星：小一点），不再压顶部视野 */
 .gd-turnbox {
-  display: inline-flex; align-items: baseline; gap: 5px;
-  padding: 5px 12px; border-radius: 999px;
+  display: inline-flex; align-items: baseline; gap: 4px;
+  padding: 2px 9px; border-radius: 999px;
   background: rgba(0, 0, 0, .42);
   border: 1px solid rgba(233, 200, 119, .45);
   box-shadow: 0 0 18px -7px rgba(233, 200, 119, .55);
   white-space: nowrap;
 }
-.gd-turnbox em, .gd-turnbox i { font-style: normal; font-size: 11px; color: var(--gt-ink-dim); }
-.gd-turnbox b { font-size: 15px; font-weight: 700; color: var(--gt-gold); letter-spacing: .02em; }
+.gd-turnbox em, .gd-turnbox i { font-style: normal; font-size: 10px; color: var(--gt-ink-dim); }
+.gd-turnbox b { font-size: 12.5px; font-weight: 700; color: var(--gt-gold); letter-spacing: .02em; }
 .gd-turnbox.is-me {
   background: linear-gradient(180deg, rgba(244, 220, 156, .96), rgba(217, 182, 95, .96));
   border-color: rgba(255, 255, 255, .5);
@@ -1658,9 +1650,9 @@ watch(phase, (p, old) => {
 }
 .gd-turnbox.is-me b, .gd-turnbox.is-me em, .gd-turnbox.is-me i { color: #2a1d05; }
 .gd-turnbox.is-done { opacity: .55; }
-/* v2.46.73：轮次条 + 级牌/局数信息纵向成组（外部 UI 建议「罗盘下加信息行」） */
-.gd-turn-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+/* v2.46.75：「第 N 局」从轮次条下挪到左区左上角（比分下方，绝对定位同组） */
 .gd-round-info {
+  position: absolute; left: 12px; top: 34px; z-index: 4;
   font-size: 11px; letter-spacing: .04em; white-space: nowrap;
   color: var(--gt-ink-dim); text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
 }
