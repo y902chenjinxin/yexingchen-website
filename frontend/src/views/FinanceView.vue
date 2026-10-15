@@ -495,6 +495,17 @@
                   </div>
                   <div class="fin-row-ops">
                     <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                    <el-popconfirm
+                      title="确认删除这条流水？"
+                      confirm-button-text="删除"
+                      cancel-button-text="取消"
+                      width="220"
+                      @confirm="del(row)"
+                    >
+                      <template #reference>
+                        <button class="fin-op danger" title="删除">🗑</button>
+                      </template>
+                    </el-popconfirm>
                   </div>
                 </div>
               </div>
