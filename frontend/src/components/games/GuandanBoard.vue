@@ -528,8 +528,9 @@ const leftSeat = computed(() => (povSeat.value + 3) % 4)
  *  3) 天然同花顺（不含逢人配凑的）从大到小**贪心取互不重叠的 5 张组**：同花 6~9 张
  *     只取最大的 5 张进左区、剩余回散牌区；同花 10 张能拆两组就自动拆成两组。
  *  顺子仍手动（点「顺子」弹出预览 → 「挪左侧」钉住）。
- *  「挪右侧」v2.46.39 重定义（夜星）：把选中的这组牌**插回散牌区**，位置 = 第一张
- *  比自己小的牌的左边（排序边界、成组不拆）。每组记 id，出掉自动失效，新局自然清空。 */
+ *  「挪右侧」v2.46.39 重定义（夜星）：把选中的这组牌**插回散牌区**；v2.46.85 起
+ *  改为组内从大到小**逐张**插到「第一张比自己小的牌」左边（混合选区按大小分配，
+ *  真实组合仍连续不拆）。每组记 id，出掉自动失效，新局自然清空。 */
 const pinnedGroups = ref([]) // 每项 = 一次「挪左侧」钉住的 ids 数组，按操作顺序
 const rightDocks = ref([]) // 每项 { ids: [...] }，按操作顺序依次插入
 const handParts = computed(() => {
@@ -568,15 +569,22 @@ const handParts = computed(() => {
   ].sort((a, b) => Math.max(...b.map(val)) - Math.max(...a.map(val)))
   const head = groups.flat()
   const usedL = new Set(head.map(c => c.id))
-  /** 散牌区 = 排除左区与 dock 组，再把各组依次插到「第一张比它小的牌」的左边 */
-  let mid = base.filter(c => !usedL.has(c.id) && !dockIds.has(c.id))
+  /** 散牌区 = 排除左区与 dock 组，先按牌值降序铺底（v2.46.85），再把挪右的牌
+   *  **逐张**归位（v2.46.85 重写，夜星）：旧版整组插到「第一张比组内最大牌小的
+   *  牌」左边——混合牌值的选区（先全挪左、再把剩余一把挪右）会整块顶到最前，
+   *  块内大牌沉右、小牌靠前，观感乱。改为组内从大到小逐张插到「第一张比它小
+   *  的牌」左边：真实组合（555/顺子）依然连续不拆，混合选区被按大小分配进
+   *  整个散牌区，整体读起来是一条降序 continuum。 */
+  let mid = base
+    .filter(c => !usedL.has(c.id) && !dockIds.has(c.id))
+    .sort((a, b) => val(b) - val(a))
   for (const d of docks) {
     const cards = base.filter(c => d.ids.includes(c.id)).sort((a, b) => val(b) - val(a))
-    if (!cards.length) continue
-    const gMax = Math.max(...cards.map(val))
-    let at = mid.findIndex(c => val(c) < gMax)
-    if (at < 0) at = mid.length
-    mid = mid.slice(0, at).concat(cards, mid.slice(at))
+    for (const c of cards) {
+      let at = mid.findIndex(x => val(x) < val(c))
+      if (at < 0) at = mid.length
+      mid = mid.slice(0, at).concat([c], mid.slice(at))
+    }
   }
   return { head, mid, tail: [] }
 })

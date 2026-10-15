@@ -517,7 +517,9 @@ function resetRegister() {
   background:
     radial-gradient(ellipse 70% 50% at 20% 12%, rgba(127, 168, 163, 0.10), transparent 60%),
     radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.07), transparent 60%),
-    linear-gradient(180deg, #0a1218 0%, #111a22 52%, #0b1419 100%);
+    /* v2.46.85：恢复旧版青调渐变（#1a2530 暮青中段与雨青粒子线呼应）——
+       63c250f 改版误压成近黑 #111a22，夜星看着突兀 */
+    linear-gradient(180deg, #0a1218 0%, #1a2530 50%, #0d1a24 100%);
   position: relative;
   overflow: hidden;
 }
