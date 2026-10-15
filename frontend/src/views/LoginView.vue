@@ -515,11 +515,14 @@ function resetRegister() {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 70% 50% at 20% 12%, rgba(127, 168, 163, 0.10), transparent 60%),
-    radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.07), transparent 60%),
-    /* v2.46.85：恢复旧版青调渐变（#1a2530 暮青中段与雨青粒子线呼应）——
-       63c250f 改版误压成近黑 #111a22，夜星看着突兀 */
-    linear-gradient(180deg, #0a1218 0%, #1a2530 50%, #0d1a24 100%);
+    radial-gradient(ellipse 70% 50% at 20% 12%, rgba(127, 168, 163, 0.16), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.08), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(127, 168, 163, 0.14), transparent 65%),
+    /* v2.46.87：v2.46.85 只恢复渐变没解决——旧版「青色感」来自 63c250f 删掉的双开门/
+       山峦等大面积青灰图层（因卡顿清理，不回收）。改为把底色直接调成暮青
+       （#1e3a44 中段带明确青调），雨青粒子线（127,168,163）在其上自然呼应；
+       三个光晕均为静态 CSS 渐变，零逐帧成本 */
+    linear-gradient(180deg, #0c1d24 0%, #1e3a44 50%, #102831 100%);
   position: relative;
   overflow: hidden;
 }

@@ -476,22 +476,26 @@
             <h2 class="fin-chart-title">{{ FUND_META[activeTab].label }}流水</h2>
             <div v-if="poolTxns.length" class="fin-list">
               <div v-for="row in poolTxns" :key="row.id" class="fin-row">
-                <div class="fin-row-icon">{{ row.category_icon }}</div>
-                <div class="fin-row-main">
-                  <div class="fin-row-top">
-                    <span class="fin-row-cat">{{ row.category }}</span>
-                    <span class="fin-row-note">{{ row.note }}</span>
+                <!-- v2.46.87：补 fin-row-body 层——v2.46.33 把 .fin-row 改 display:block
+                     （布局职责移交给滑动删除载体），池子列表当时没跟这层，PC 端整行竖着堆 -->
+                <div class="fin-row-body">
+                  <div class="fin-row-icon">{{ row.category_icon }}</div>
+                  <div class="fin-row-main">
+                    <div class="fin-row-top">
+                      <span class="fin-row-cat">{{ row.category }}</span>
+                      <span class="fin-row-note">{{ row.note }}</span>
+                    </div>
+                    <div class="fin-row-date">
+                      <span v-if="row.member" class="fin-row-member">{{ row.member.avatar }} {{ row.member.name }}</span>
+                      {{ fmtDay(row.occurred_at) }}
+                    </div>
                   </div>
-                  <div class="fin-row-date">
-                    <span v-if="row.member" class="fin-row-member">{{ row.member.avatar }} {{ row.member.name }}</span>
-                    {{ fmtDay(row.occurred_at) }}
+                  <div class="fin-row-amt" :class="row.type">
+                    {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
                   </div>
-                </div>
-                <div class="fin-row-amt" :class="row.type">
-                  {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
-                </div>
-                <div class="fin-row-ops">
-                  <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                  <div class="fin-row-ops">
+                    <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -540,38 +544,41 @@
             <template v-else>
               <div class="fin-list">
                 <div v-for="row in pcardTxns" :key="row.id" class="fin-row">
-                  <div class="fin-row-icon">{{ row.category_icon }}</div>
-                  <div class="fin-row-main">
-                    <div class="fin-row-top">
-                      <span class="fin-row-cat">{{ row.category }}</span>
-                      <!-- 面板已锁定个人零花，普通进出不用再重复徽标；只有调拨要标出方向 -->
-                      <button
-                        v-if="row.type === 'transfer'"
-                        class="fin-fund-badge"
-                        :class="row.fund"
-                        title="点击修改归属"
-                        @click="openEdit(row)"
-                      >{{ row.fund_label }} → {{ row.fund_to_label }}</button>
-                      <span class="fin-row-note">{{ row.note }}</span>
+                  <!-- v2.46.87：同池子列表，补 fin-row-body 层恢复横排 -->
+                  <div class="fin-row-body">
+                    <div class="fin-row-icon">{{ row.category_icon }}</div>
+                    <div class="fin-row-main">
+                      <div class="fin-row-top">
+                        <span class="fin-row-cat">{{ row.category }}</span>
+                        <!-- 面板已锁定个人零花，普通进出不用再重复徽标；只有调拨要标出方向 -->
+                        <button
+                          v-if="row.type === 'transfer'"
+                          class="fin-fund-badge"
+                          :class="row.fund"
+                          title="点击修改归属"
+                          @click="openEdit(row)"
+                        >{{ row.fund_label }} → {{ row.fund_to_label }}</button>
+                        <span class="fin-row-note">{{ row.note }}</span>
+                      </div>
+                      <div class="fin-row-date">{{ fmtDay(row.occurred_at) }}</div>
                     </div>
-                    <div class="fin-row-date">{{ fmtDay(row.occurred_at) }}</div>
-                  </div>
-                  <div class="fin-row-amt" :class="row.type">
-                    {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
-                  </div>
-                  <div class="fin-row-ops">
-                    <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
-                    <el-popconfirm
-                      title="确认删除这条流水？"
-                      confirm-button-text="删除"
-                      cancel-button-text="取消"
-                      width="220"
-                      @confirm="del(row)"
-                    >
-                      <template #reference>
-                        <button class="fin-op danger" title="删除">🗑</button>
-                      </template>
-                    </el-popconfirm>
+                    <div class="fin-row-amt" :class="row.type">
+                      {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
+                    </div>
+                    <div class="fin-row-ops">
+                      <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                      <el-popconfirm
+                        title="确认删除这条流水？"
+                        confirm-button-text="删除"
+                        cancel-button-text="取消"
+                        width="220"
+                        @confirm="del(row)"
+                      >
+                        <template #reference>
+                          <button class="fin-op danger" title="删除">🗑</button>
+                        </template>
+                      </el-popconfirm>
+                    </div>
                   </div>
                 </div>
               </div>
