@@ -24,6 +24,7 @@ package cn.yexingchen.app;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.res.Configuration;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
@@ -88,6 +89,39 @@ public class MainActivity extends Activity {
             start = (path == null || path.isEmpty()) ? START_URL : data.toString();
         }
         webView.loadUrl(start);
+    }
+
+    /* ===== v2.46.91 横屏沉浸式（夜星：全屏牌桌下方一大块系统栏黑条） =====
+     * 横屏（牌桌只横屏玩）→ immersive-sticky 隐藏状态栏+导航栏，内容 edge-to-edge，
+     * WebView 视口随之长高（网页 resize 自愈重测 → 牌桌铺满全屏）；
+     * 竖屏（工作台/模块页）→ 恢复系统栏，不影响日常浏览。 */
+    private void applySystemBars() {
+        View decor = getWindow().getDecorView();
+        boolean landscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        if (landscape) {
+            decor.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN);
+        } else {
+            decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) applySystemBars();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        applySystemBars();
     }
 
     private void configureWebView() {

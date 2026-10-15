@@ -196,12 +196,25 @@ export function usePinchZoom(stageRef, active, opts = {}) {
     el.addEventListener('touchend', onEnd)
     el.addEventListener('touchcancel', onEnd)
     el.addEventListener('wheel', onWheel, { passive: false })
+    // v2.46.91 自愈重测：舞台盒子一变（系统栏显隐 / 转屏 / 键盘 / 全屏切换）
+    // 就重量画布——此前只观察画布自身，画布不变就永远不再量，
+    // 手机上「进全屏时量到小尺寸 → 之后舞台变大」会一直留着黑边（夜星横屏截图）。
+    let ro = null
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => { if (active()) measure() })
+      ro.observe(el)
+    }
+    const onOr = () => { if (active()) measure() }
+    window.addEventListener('orientationchange', onOr)
     return () => {
       el.removeEventListener('touchstart', onStart)
       el.removeEventListener('touchmove', onMove)
       el.removeEventListener('touchend', onEnd)
       el.removeEventListener('touchcancel', onEnd)
       el.removeEventListener('wheel', onWheel)
+      ro?.disconnect()
+      ro = null
+      window.removeEventListener('orientationchange', onOr)
     }
   }
 

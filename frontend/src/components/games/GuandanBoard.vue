@@ -1697,7 +1697,7 @@ watch(phase, (p, old) => {
    固定 12px 保证四家牌行永远离桌沿/信息面板一拳远，互不重叠
    v2.46.89：我方（pos0）pill 移到牌行下方（贴手牌一侧）、对家（pos2）贴顶——
    中轴上两家的牌行各让出 ~21px，矮桌里不易相撞 */
-.gd-thz-0 { bottom: clamp(8px, 4%, 18px); left: 50%; transform: translateX(-50%); flex-direction: column-reverse; }   /* 我：中央偏下（夜星红框位） */
+.gd-thz-0 { bottom: 2px; left: 50%; transform: translateX(-50%); flex-direction: column-reverse; }   /* 我：贴底（夜星：别跟对家挤，往手牌侧压） */
 .gd-thz-1 { right: 12px; top: 50%; transform: translateY(-50%); }     /* 右家 */
 .gd-thz-2 { top: 6px; left: 50%; transform: translateX(-50%); }       /* 对家 */
 .gd-thz-3 { left: 12px; top: 50%; transform: translateY(-50%); }      /* 左家 */

@@ -7,6 +7,11 @@
 
 ---
 
+## v2.46.91 横屏全屏黑边（2026-10-15）
+
+- **V24691-001 全屏牌桌下方黑条**：网页层排除法取证（生产 island 链注入 fixed 探针=满视口；usePinchZoom 所有路径 canvas=stage）→ 黑边不在网页，是 **APK WebView 未开沉浸式**，横屏系统栏占 ~90px。教训：**「网页怎么改都填不满的边」先量 OS 预留**——用截图里 shell 圆角位置 + 卡片宽（cardW=max(44,rootH·0.135)）反推视口高，比猜 CSS 快。修：APK 壳横屏 immersive-sticky（`build_webview_apk.py` 模板）+ 网页 usePinchZoom 舞台 RO/orientationchange 自愈重测 + 全屏 Fullscreen API best-effort。
+- **V24691-002 usePinchZoom 只观察画布不观察舞台**：RO 挂在 zoomRef（尺寸被 measure 自己写死）→ 舞台变了永远不重测。RO 必须**挂舞台**。
+
 ## v2.46.90 掼蛋出牌一排 + 席位撑大错位（2026-10-15）
 
 - **V24690-001 出牌像展示一排**：v2.46.89 矮桌 2×2 错行的 `bottom` 是**逻辑坐标**——rotate90 后三家全叠在屏幕同一条线上（转屏前后的坐标系差异踩第二次了，V2462-001 同族）。修：矮桌回归菱形（各钉自己方位），只缩牌/压胶囊。教训：**rotate90 下所有 top/left/bottom 判断先想逻辑坐标→屏幕坐标的映射**，摆位类改动必须跑竖屏探针（`_probe_gd_portrait.cjs`）看转屏后效果。

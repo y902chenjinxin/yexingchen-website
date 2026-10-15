@@ -397,11 +397,15 @@ function enterFullscreen() {
   fullscreen.value = true
   // lock() 返回 Promise，多数浏览器会异步 reject；不接住会变成未处理拒绝（控制台报错）
   try { screen.orientation?.lock?.('landscape')?.catch?.(() => {}) } catch { /* 忽略 */ }
+  // v2.46.91：浏览器里再把系统状态栏/导航栏收掉（真全屏；WebView 会拒绝，静默忽略）。
+  // APK 端由壳的横屏沉浸式（build_webview_apk.py v2.46.91）负责同一件事。
+  try { stageRef.value?.requestFullscreen?.()?.catch?.(() => {}) } catch { /* 忽略 */ }
 }
 function exitFullscreen() {
   fullscreen.value = false
   menuOpen.value = false
   try { screen.orientation?.unlock?.() } catch { /* 忽略 */ }
+  try { document.exitFullscreen?.()?.catch?.(() => {}) } catch { /* 忽略 */ }
 }
 
 watch(fullscreen, async (v) => {

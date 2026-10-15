@@ -1,3 +1,12 @@
+## [v2.46.91] - 2026-10-15
+
+### 掼蛋横屏全屏黑边根因 + 我方出牌贴底（夜星）
+- **全屏下方一大块黑（根因在 APK 壳）**：生产实测（fixed 探针注入真实 island 链 = 满视口；usePinchZoom 全部代码路径 canvas=stage）证明网页层无短画布——黑边是 **APK WebView 没开沉浸式**，横屏时系统状态栏+导航栏（~90-97 CSS px）一直占着底部，网页视口只有屏高的 ~74%。修法（双管齐下）：
+  - **APK 壳**（`scripts/build_webview_apk.py`）：MainActivity 加横屏 immersive-sticky（隐藏系统栏 + edge-to-edge，`onWindowFocusChanged`/`onConfigurationChanged` 重挂），竖屏恢复——重打 APK 生效。
+  - **网页自愈**：`usePinchZoom.bind()` 加舞台 ResizeObserver + orientationchange 监听（此前只观察画布自身，舞台变大永远不重测）；进全屏 best-effort 请求 Fullscreen API（浏览器真隐藏系统栏，WebView 拒绝静默）。
+- **我方出牌贴底**：`.gd-thz-0` bottom `clamp(8px,4%,18px)` → `2px`，出牌行压到手牌侧，与对家拉满间距。
+- 版本 SW v403→v404、APP_VERSION v2.46.90→v2.46.91。
+
 ## [v2.46.90] - 2026-10-15
 
 ### 掼蛋：出牌菱形摆位（修 v2.46.89 一排问题）+ 席位「出牌中」徽标改浮层（夜星）

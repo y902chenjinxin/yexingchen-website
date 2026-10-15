@@ -756,7 +756,14 @@ function backToList() {
   runId.value += 1
 }
 
-function toggleBig() { isBig.value = !isBig.value }
+function toggleBig() {
+  isBig.value = !isBig.value
+  // v2.46.91：浏览器里进/出全屏时顺带把系统栏收掉/恢复（WebView 会拒绝，静默忽略）
+  try {
+    if (isBig.value) stageRef.value?.requestFullscreen?.()?.catch?.(() => {})
+    else if (document.fullscreenElement) document.exitFullscreen?.()?.catch?.(() => {})
+  } catch { /* 忽略 */ }
+}
 
 /* 大屏要把整座岛抬到应用侧栏(90)/顶栏(1000)之上。
  * 坑：.island-inner / .inner-content 自身是 position:relative + z-index:1 —— **自成层叠上下文**，
