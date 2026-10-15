@@ -1137,6 +1137,62 @@ html[data-theme="day"] #app.is-mobile {
   font-weight: 700;
 }
 
+/* =====================================================================
+ * 手机端 UI 一致性收编（v2.46.84 · 夜星「整体 UI 突兀」巡检）
+ * 1) 工作台 14 快捷图标原用 --ab-* 七彩高饱和令牌（蓝/紫/绿/珊瑚/青/琥珀/紫），
+ *    与全站「墨/黛青/金/赭石」哑光纸面调性冲突，且是落地首屏最显眼 → 全部收敛为
+ *    纸面强调色赭石（夜/日同源 --xz-ochre），与底栏激活色、FAB 一致。
+ *    --ab-* 经 grep 确认仅工作台图标使用，无其它副作用。
+ *    若想保留模块区分：可改 2 色（黛青 --xz-teal + 金 --xz-gold）或降饱和彩虹，均一行令牌切换。
+ * 2) 对局邀请胶囊 MobileInviteDock 是唯一仍用玻璃模糊（--lj-glass + backdrop-blur）的
+ *    常驻浮层，在 flat 纸面上像毛玻璃泡 → 改实色纸卡 + 墨描边 + 赭石强调，与底栏/FAB 一致。
+ *    组件本身 v-if=isMobile，仅在有对局邀请时出现。
+ * ===================================================================== */
+#app.is-mobile {
+  --ab-grn: var(--xz-ochre);
+  --ab-blu: var(--xz-ochre);
+  --ab-cyn: var(--xz-ochre);
+  --ab-cor: var(--xz-ochre);
+  --ab-amb: var(--xz-ochre);
+  --ab-vio: var(--xz-ochre);
+  --ab-pur: var(--xz-ochre);
+}
+/* 日主题下 --ab-* 定义在 html[data-theme="day"] #app.is-mobile（特异性 0,3,0），
+   必须用同特异性规则覆盖，否则日主题图标仍是七彩 */
+html[data-theme="day"] #app.is-mobile {
+  --ab-grn: var(--xz-ochre);
+  --ab-blu: var(--xz-ochre);
+  --ab-cyn: var(--xz-ochre);
+  --ab-cor: var(--xz-ochre);
+  --ab-amb: var(--xz-ochre);
+  --ab-vio: var(--xz-ochre);
+  --ab-pur: var(--xz-ochre);
+}
+#app.is-mobile .mid-pill {
+  background: var(--xz-card) !important;
+  border: 1.5px solid var(--xz-card-border) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  color: var(--m-text) !important;
+}
+#app.is-mobile .mid-pill.open { border-color: var(--xz-ochre) !important; }
+#app.is-mobile .mid-pill__ico { color: var(--xz-ochre) !important; }
+#app.is-mobile .mid-card {
+  background: var(--xz-card) !important;
+  border: 2px solid var(--xz-card-border) !important;
+  border-radius: var(--m-radius) !important;
+  box-shadow: var(--xz-card-shadow) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  color: var(--m-text) !important;
+}
+#app.is-mobile .mid-card__head { color: var(--m-text-2) !important; border-bottom-color: var(--m-line) !important; }
+#app.is-mobile .mid-row { border-bottom-color: var(--m-line) !important; }
+#app.is-mobile .mid-row__txt { color: var(--m-text) !important; }
+#app.is-mobile .mid-row__meta { color: var(--m-text-3) !important; }
+#app.is-mobile .mid-btn.decline { color: var(--m-text-3) !important; border-color: var(--m-line) !important; }
+
 /* ================= v2.46.79 teleport 浮层兜底（html.m-app） =================
  * el-dialog / el-popover / el-select 下拉默认 append-to-body，挂到 body 下，
  * 会逃出 #app.is-mobile 作用域 → 手机弹窗里的 EP 主按钮掉回桌面夜主题的

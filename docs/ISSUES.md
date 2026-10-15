@@ -7,6 +7,15 @@
 
 ---
 
+## v2.46.84 手机端 UI 一致性巡检（2026-10-15）
+
+夜星：手机端整体 UI 突兀审查。
+
+- 🔴 **工作台 14 快捷图标七彩高饱和**：`--ab-*` 令牌（移动端 `mobile-ab-theme.css` 解析为蓝/紫/绿/珊瑚/青/琥珀/紫 7 色），与全站哑光墨/青/金/赭石调性冲突，且是落地首屏。→ `#app.is-mobile` + `html[data-theme="day"] #app.is-mobile` 两处全部重映射到 `--xz-ochre`（赭石）。`--ab-*` grep 确认仅工作台图标用，无副作用。
+- 🔴 **邀请胶囊玻璃遗留**：`MobileInviteDock` `.mid-pill`/`.mid-card` 仍 `--lj-glass`+`backdrop-blur`，是全站唯一玻璃模糊常驻浮层。→ 改实色纸卡 `var(--xz-card)` + 墨描边 + 赭石强调（`#app.is-mobile` 覆盖，组件本身 `v-if=isMobile`）。
+- **未动项（待夜星确认）**：① 底栏未激活 Tab 色 `#8a8f98` 偏冷灰，与纸面暖灰 `--m-text-3` 略有差；② 记账/金融页 28px 标题在手机偏大；③ 工具岛内页（压缩/封面等）可能残留玻璃/极光底，需另开巡检；④ `/feeds` 已 `redirect` 到 `/finance/news`，其玻璃/28px 标题不影响手机端。
+- 交付链：eslint(误报 css) 忽略 → build 含 `--ab-*:var(--xz-ochre)`×7（夜+日同特异性）+ `mid-pill{background:var(--xz-card)` → commit → 前端 deploy105（home=200）
+
 ## v2.46.83 移动端底栏遮挡修复（2026-10-14）
 
 - **根因**：`.island-inner` 是 `position:fixed; inset:0` 全屏层，脱离 `#app.is-mobile` 全局 `padding-bottom:72px` 兜底；内部 `.inner-main` 滚动容器底 `padding` 仅 20px，被 72px 固定底栏（z-index:1500）盖住末行。受影响=所有 IslandInnerBase 模块页（棋牌/音乐/生活/工具/倒计时…）。
