@@ -25,7 +25,7 @@
            v2.46.72 横屏改版（夜星清单）：左右各 ~13% 玩家信息，中部大面积留白；
            出牌区按座位投影摆四家最近一手（povSeat 投影，座位号≠屏幕位置）；
            出牌记录收成右区入口按钮，打开时浮层盖在右区上，不占牌桌宽度。 ===== -->
-      <div class="gd-table" :class="{ 'is-shake': tableShake, 'is-freeze': freeze }">
+      <div class="gd-table" ref="tableRef" :class="{ 'is-shake': tableShake, 'is-freeze': freeze }">
         <!-- 顶部：对家 + 全局「轮到谁出牌」提示条（先手提示从右家头上移到顶部中央，夜星） -->
         <div class="gd-zone gd-zone-top">
           <div class="gt-seat" :class="seatCls(topSeat)">
@@ -80,8 +80,10 @@
           记录<em v-if="history.length" class="gd-btn-count">{{ history.length }}</em>
         </button>
 
-        <!-- 中央：四座位出牌区 —— 每家只显示最近一手（小尺寸+who 胶囊），大面积留白 -->
-        <div class="gd-center">
+        <!-- 中央：四座位出牌区 —— 每家只显示最近一手（小尺寸+who 胶囊），大面积留白
+             v2.46.89：矮桌（手机 rotate90 逻辑高 ~390，牌桌仅 ~140-190px）改 2×2 对角
+             摆位——旧版上下两家贴着顶/底摆，矮桌里对家牌行直接压在我方牌行上（夜星截图） -->
+        <div class="gd-center" :class="{ 'is-low': lowTable }">
           <div v-for="pos in [0, 1, 2, 3]" :key="pos" class="gd-thz" :class="'gd-thz-' + pos">
             <template v-if="throwByPos[pos]">
               <span class="gd-thz-who">{{ seatName(throwByPos[pos].seat) }} · {{ G.PATTERN_NAME[throwByPos[pos].pattern?.type] || '出牌' }}</span>
@@ -566,8 +568,12 @@ const handParts = computed(() => {
   // v2.46.86：只要存在「挪右」的牌，就进入"按大小全排序"模式——整手按牌值降序排成
   // 一条 continuum，挪右的牌逐张落到各自牌值位置。顺子/三张等组合在此被拆开、并入全局
   // 排序（夜星：顺子向右挪移时需要拆开），不再保留左区分组，彻底解决"小牌靠前、大牌靠右"。
+  // v2.46.89：挪左钉组优先级最高——旧版这里直接 return { head: [] }，只要这手牌
+  // 之前用过一次「挪右」（rightDocks 整手常驻），之后点「挪左」钉的组就被整个丢弃，
+  // 只弹「已挪到左侧」提示、牌面纹丝不动（夜星截图复现）。现在钉组照常进左区，
+  // 其余牌（含同花顺）按 continuum 归位，挪右语义不变。
   if (docks.length) {
-    let seq = base.slice().sort((a, b) => val(b) - val(a))
+    let seq = base.filter(c => !pinnedIds.has(c.id)).sort((a, b) => val(b) - val(a))
     for (const d of docks) {
       const set = new Set(d.ids)
       seq = seq.filter(c => !set.has(c.id))
@@ -577,7 +583,8 @@ const handParts = computed(() => {
         seq = seq.slice(0, at).concat([c], seq.slice(at))
       }
     }
-    return { head: [], mid: seq, tail: [] }
+    const head = pinGroups.map(ids => base.filter(c => ids.includes(c.id)).sort(asc)).flat()
+    return { head, mid: seq, tail: [] }
   }
   /* ④ 左区 = 钉组 + 同花顺组：组内升序、组间按组内最大牌降序，整组拼接不互混 */
   const groups = [
@@ -790,6 +797,14 @@ watch(history, (list) => {
 const handRef = ref(null)
 const handW = ref(0)
 let ro = null
+/* v2.46.89：矮桌检测——牌桌高度不足时中央出牌区切 2×2 对角摆位（防上下两家压牌）。
+   手机 rotate90 兜底下壳逻辑高只有 ~390，牌桌被手牌/工具条挤到 ~140-190px，
+   上下两家出牌区（各 ~85px 高）必然重叠；桌面（≥720 高）不受影响 */
+const tableRef = ref(null)
+const lowTable = ref(false)
+function measureTable() {
+  if (tableRef.value) lowTable.value = tableRef.value.clientHeight < 230
+}
 const overlap = computed(() => {
   const n = viewHand.value.length
   const avail = handW.value
@@ -1499,10 +1514,14 @@ function doExit() {
 onMounted(() => {
   sfx.preload() // v2.46.41 预热采样，消掉第一次出牌的取包延迟
   if (typeof ResizeObserver !== 'undefined' && handRef.value) {
-    ro = new ResizeObserver(() => measureHand())
+    ro = new ResizeObserver(() => { measureHand(); measureTable() })
     ro.observe(handRef.value)
+    if (tableRef.value) ro.observe(tableRef.value)
   }
   measureHand()
+  measureTable()
+  // 壳高度就位后再测一次（首帧 --gt-h 可能尚未写入，牌桌真实高度晚一拍）
+  requestAnimationFrame(measureTable)
   // 贡牌倒计时：本地每秒自算剩余时间，不额外请求（死亡时间来自服务端 deadline_at）
   tickLeft()
   clearInterval(tickTimer)
@@ -1604,15 +1623,13 @@ watch(phase, (p, old) => {
   grid-template-columns: minmax(92px, 13%) 1fr minmax(92px, 13%);
   grid-template-rows: auto minmax(0, 1fr);
   gap: 6px;
-  padding: 8px; border-radius: 16px;
-  background:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px),
-    radial-gradient(120% 105% at 50% 38%, #1f5c45 0%, #164534 46%, #0c3125 78%, #082419 100%);
-  /* v2.46.76：黑色 border 与内圈白描边删（夜星：桌沿暗黑边框去除），仅留暗角聚光 */
-  box-shadow:
-    inset 0 0 90px -18px rgba(0, 0, 0, .72),
-    0 10px 30px -18px rgba(0, 0, 0, .8);
+  padding: 8px;
+  /* v2.46.89：桌面全出血——旧版在壳内再画一层更暗的圆角矩形绒布，牌桌被
+     「限制在一个矩形框里」（夜星截图）。壳 .gt-shell 本身已有全幅绒布+织物纹理
+     +暗角（game-table.css），这里全部透出即可，出牌面积即整个牌屏 */
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 /* v2.46.75：桌沿鎏金镶线矩形已删（夜星：矩形框框住对家/左家/右家很怪）——
    桌面质感由绒布渐变 + 内圈暗角承担，不再画框 */
@@ -1676,10 +1693,12 @@ watch(phase, (p, old) => {
   max-width: 100%; pointer-events: none;
 }
 /* v2.46.73：改固定像素定位（外部 UI 方案）——百分比在窄板上贴得太近，
-   固定 12px 保证四家牌行永远离桌沿/信息面板一拳远，互不重叠 */
-.gd-thz-0 { bottom: clamp(14px, 18%, 34px); left: 50%; transform: translateX(-50%); }   /* 我：中央偏下（夜星红框位） */
+   固定 12px 保证四家牌行永远离桌沿/信息面板一拳远，互不重叠
+   v2.46.89：我方（pos0）pill 移到牌行下方（贴手牌一侧）、对家（pos2）贴顶——
+   中轴上两家的牌行各让出 ~21px，矮桌里不易相撞 */
+.gd-thz-0 { bottom: clamp(8px, 4%, 18px); left: 50%; transform: translateX(-50%); flex-direction: column-reverse; }   /* 我：中央偏下（夜星红框位） */
 .gd-thz-1 { right: 12px; top: 50%; transform: translateY(-50%); }     /* 右家 */
-.gd-thz-2 { top: 12px; left: 50%; transform: translateX(-50%); }      /* 对家 */
+.gd-thz-2 { top: 6px; left: 50%; transform: translateX(-50%); }       /* 对家 */
 .gd-thz-3 { left: 12px; top: 50%; transform: translateY(-50%); }      /* 左家 */
 .gd-thz-who {
   font-size: 10.5px; line-height: 1.7; white-space: nowrap;
@@ -1694,6 +1713,18 @@ watch(phase, (p, old) => {
 /* 左右家的牌行靠桌沿一侧对齐，避免挤进中央 */
 .gd-thz-1 { align-items: flex-end; }
 .gd-thz-3 { align-items: flex-start; }
+
+/* ===== v2.46.89 矮桌摆位（手机 rotate90 / 矮屏）：错行错位 =====
+   牌桌高度 <230px 时上下两家各 ~85px 的牌行必然重叠——改为两行错位：
+   上行只摆对家（中偏右），下行摆 左家｜我方｜右家 三家（左中右拉开）；
+   出牌的牌再缩一档（0.62），四家同屏互不压牌。
+   左上角是比分/局数/记录的绝对定位区，不摆牌。 */
+.gd-center.is-low .gd-thz-0 { left: 42%; bottom: 2px; top: auto; }
+.gd-center.is-low .gd-thz-1 { right: 6px; top: auto; bottom: 2px; transform: none; }
+.gd-center.is-low .gd-thz-2 { left: 62%; top: 2px; }
+.gd-center.is-low .gd-thz-3 { left: 6px; top: auto; bottom: 2px; transform: none; }
+.gd-center.is-low .gd-thz .gt-card { width: calc(var(--card-w, 62px) * 0.62); height: calc(var(--card-h, 88px) * 0.62); }
+.gd-center.is-low .gd-thz .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.32); }
 
 /* 出牌记录：浮层（v2.46.72 收进右区入口，打开时盖在右区上方，不占牌桌宽度）
    旧版是右侧真竖栏（更早以前是 absolute 浮层压左家）—— 改版后中央要留白，
