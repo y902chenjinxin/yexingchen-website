@@ -81,8 +81,9 @@
         </button>
 
         <!-- 中央：四座位出牌区 —— 每家只显示最近一手（小尺寸+who 胶囊），大面积留白
-             v2.46.89：矮桌（手机 rotate90 逻辑高 ~390，牌桌仅 ~140-190px）改 2×2 对角
-             摆位——旧版上下两家贴着顶/底摆，矮桌里对家牌行直接压在我方牌行上（夜星截图） -->
+             v2.46.90：矮桌（手机 rotate90 逻辑高 ~180）保持菱形摆位（上=对家 下=我
+             左=左家 右=右家），仅牌缩 0.62 + 胶囊压扁；v2.46.89 的 2×2 错行
+             在转屏后会叠成一条线（夜星截图），已废弃 -->
         <div class="gd-center" :class="{ 'is-low': lowTable }">
           <div v-for="pos in [0, 1, 2, 3]" :key="pos" class="gd-thz" :class="'gd-thz-' + pos">
             <template v-if="throwByPos[pos]">
@@ -1714,15 +1715,17 @@ watch(phase, (p, old) => {
 .gd-thz-1 { align-items: flex-end; }
 .gd-thz-3 { align-items: flex-start; }
 
-/* ===== v2.46.89 矮桌摆位（手机 rotate90 / 矮屏）：错行错位 =====
-   牌桌高度 <230px 时上下两家各 ~85px 的牌行必然重叠——改为两行错位：
-   上行只摆对家（中偏右），下行摆 左家｜我方｜右家 三家（左中右拉开）；
-   出牌的牌再缩一档（0.62），四家同屏互不压牌。
-   左上角是比分/局数/记录的绝对定位区，不摆牌。 */
-.gd-center.is-low .gd-thz-0 { left: 42%; bottom: 2px; top: auto; }
-.gd-center.is-low .gd-thz-1 { right: 6px; top: auto; bottom: 2px; transform: none; }
-.gd-center.is-low .gd-thz-2 { left: 62%; top: 2px; }
-.gd-center.is-low .gd-thz-3 { left: 6px; top: auto; bottom: 2px; transform: none; }
+/* ===== v2.46.90 矮桌摆位：保持菱形（v2.46.89 的 2×2 错行已废弃）=====
+   v2.46.89 把左家/我方/右家全钉逻辑 bottom——但 CSS top/bottom 是逻辑坐标，
+   rotate90 竖屏兜底后三家在屏幕上叠成一条线（夜星：出牌像展示一排）。
+   现在四家各钉自己的方位（上=对家 下=我 左=左家 右=右家），转屏前后都是菱形；
+   矮桌只把牌缩到 0.62、who 胶囊压扁，保证 ~120px 的中央区竖向放得下两行。 */
+.gd-center.is-low .gd-thz-0 { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.gd-center.is-low .gd-thz-1 { right: 6px; top: 50%; transform: translateY(-50%); }
+.gd-center.is-low .gd-thz-2 { top: 2px; left: 50%; transform: translateX(-50%); }
+.gd-center.is-low .gd-thz-3 { left: 6px; top: 50%; transform: translateY(-50%); }
+.gd-center.is-low .gd-thz { gap: 2px; }
+.gd-center.is-low .gd-thz-who { font-size: 10px; line-height: 1.4; padding: 0 8px; }
 .gd-center.is-low .gd-thz .gt-card { width: calc(var(--card-w, 62px) * 0.62); height: calc(var(--card-h, 88px) * 0.62); }
 .gd-center.is-low .gd-thz .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.32); }
 
@@ -2121,12 +2124,18 @@ watch(phase, (p, old) => {
 .gd .gt-seat { transition: opacity .3s ease, filter .3s ease; }
 /* v2.46.74 玩家席位压缩（夜星：头像/姓名占位大了）——只覆盖掼蛋 scoped，
    不动共享 game-table.css（麻将等不受影响）：头像 34→26、内边距收半、文字回落 */
-.gd .gt-seat { padding: 3px 9px 3px 3px; gap: 6px; }
+.gd .gt-seat { position: relative; padding: 3px 9px 3px 3px; gap: 6px; }
 .gd .gt-seat-av { width: 26px; height: 26px; font-size: 13px; }
 .gd .gt-seat-tx { display: flex; flex-direction: column; gap: 0; min-width: 0; }
 .gd .gt-seat-name { font-size: 12px; max-width: 76px; }
 .gd .gt-seat-sub { font-size: 10.5px; opacity: .82; }
-.gd .gt-seat-badge { font-size: 10px; }
+/* v2.46.90「出牌中」徽标改浮层（夜星：轮到左右家时席位被撑大、里面文本错位）——
+   徽标从 flex 流里拔出来悬在席位胶囊下缘，胶囊尺寸恒定不再跳动；
+   轮到谁的高亮继续由 is-active 金色脉动光承担（不放大，只留选中特效） */
+.gd .gt-seat-badge {
+  position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%);
+  font-size: 10px; white-space: nowrap; z-index: 3; pointer-events: none;
+}
 
 /* 队友标识：青蓝描环 + 右上角「友」小角标（对家/左右家都适用） */
 .gd .gt-seat.is-mate { box-shadow: inset 0 0 0 1.5px rgba(96, 190, 255, .45); }
