@@ -529,8 +529,9 @@ const leftSeat = computed(() => (povSeat.value + 3) % 4)
  *     只取最大的 5 张进左区、剩余回散牌区；同花 10 张能拆两组就自动拆成两组。
  *  顺子仍手动（点「顺子」弹出预览 → 「挪左侧」钉住）。
  *  「挪右侧」v2.46.39 重定义（夜星）：把选中的这组牌**插回散牌区**；v2.46.85 起
- *  改为组内从大到小**逐张**插到「第一张比自己小的牌」左边（混合选区按大小分配，
- *  真实组合仍连续不拆）。每组记 id，出掉自动失效，新局自然清空。 */
+ *  组内从大到小逐张归位；v2.46.86 起——只要存在挪右的牌，整手按牌值降序排成一条
+ *  continuum，组合（顺子/三张）逐张拆开并入全局排序（夜星：顺子向右挪移需要拆开）。
+ *  每组记 id，出掉自动失效，新局自然清空。 */
 const pinnedGroups = ref([]) // 每项 = 一次「挪左侧」钉住的 ids 数组，按操作顺序
 const rightDocks = ref([]) // 每项 { ids: [...] }，按操作顺序依次插入
 const handParts = computed(() => {
@@ -562,6 +563,22 @@ const handParts = computed(() => {
     for (const c of cs) usedF.add(c.id)
   }
   if (!pinGroups.length && !flushGroups.length && !docks.length) return { head: [], mid: base, tail: [] }
+  // v2.46.86：只要存在「挪右」的牌，就进入"按大小全排序"模式——整手按牌值降序排成
+  // 一条 continuum，挪右的牌逐张落到各自牌值位置。顺子/三张等组合在此被拆开、并入全局
+  // 排序（夜星：顺子向右挪移时需要拆开），不再保留左区分组，彻底解决"小牌靠前、大牌靠右"。
+  if (docks.length) {
+    let seq = base.slice().sort((a, b) => val(b) - val(a))
+    for (const d of docks) {
+      const set = new Set(d.ids)
+      seq = seq.filter(c => !set.has(c.id))
+      for (const c of base.filter(c => set.has(c.id)).sort((a, b) => val(b) - val(a))) {
+        let at = seq.findIndex(x => val(x) < val(c))
+        if (at < 0) at = seq.length
+        seq = seq.slice(0, at).concat([c], seq.slice(at))
+      }
+    }
+    return { head: [], mid: seq, tail: [] }
+  }
   /* ④ 左区 = 钉组 + 同花顺组：组内升序、组间按组内最大牌降序，整组拼接不互混 */
   const groups = [
     ...pinGroups.map(ids => base.filter(c => ids.includes(c.id)).sort(asc)),
@@ -569,23 +586,9 @@ const handParts = computed(() => {
   ].sort((a, b) => Math.max(...b.map(val)) - Math.max(...a.map(val)))
   const head = groups.flat()
   const usedL = new Set(head.map(c => c.id))
-  /** 散牌区 = 排除左区与 dock 组，先按牌值降序铺底（v2.46.85），再把挪右的牌
-   *  **逐张**归位（v2.46.85 重写，夜星）：旧版整组插到「第一张比组内最大牌小的
-   *  牌」左边——混合牌值的选区（先全挪左、再把剩余一把挪右）会整块顶到最前，
-   *  块内大牌沉右、小牌靠前，观感乱。改为组内从大到小逐张插到「第一张比它小
-   *  的牌」左边：真实组合（555/顺子）依然连续不拆，混合选区被按大小分配进
-   *  整个散牌区，整体读起来是一条降序 continuum。 */
   let mid = base
     .filter(c => !usedL.has(c.id) && !dockIds.has(c.id))
     .sort((a, b) => val(b) - val(a))
-  for (const d of docks) {
-    const cards = base.filter(c => d.ids.includes(c.id)).sort((a, b) => val(b) - val(a))
-    for (const c of cards) {
-      let at = mid.findIndex(x => val(x) < val(c))
-      if (at < 0) at = mid.length
-      mid = mid.slice(0, at).concat([c], mid.slice(at))
-    }
-  }
   return { head, mid, tail: [] }
 })
 const viewHand = computed(() => {
@@ -689,9 +692,9 @@ function pinSeqToLeft() {
   toastMsg('已挪到左侧')
   sfx.pick()
 }
-/** 「挪右侧」（v2.46.39 重定义，夜星）：把选中的牌**插回散牌区**，落到「第一张比
- *  它小的牌」的左边（排序边界、成组不拆）——4 张 9 挪右 = 8 的左边。已在位的组
- *  再点一次位置不变。与「挪左侧」互斥：挪右先解除左钉。 */
+/** 「挪右侧」（v2.46.39 重定义，夜星）：把选中的牌**按牌值归位**到整手降序序列——
+ *  v2.46.86 起，只要存在挪右的牌，整手即按大小排成一条 continuum（顺子等组合被拆开）。
+ *  已在位的组再点一次位置不变。与「挪左侧」互斥：挪右先解除左钉。 */
 function pinToRight() {
   const ids = sel.value.slice()
   if (!ids.length) { toastMsg('先选牌，再点「挪右侧」'); return }
