@@ -1179,11 +1179,12 @@ function drawReplacement(seat) {
 /* ---------- 胡 ---------- */
 // v2.46.69：副露（碰/杠）展开成可渲染的牌数组——碰 3 张、杠 4 张；id 加后缀防 key 冲突
 function flatMeldTiles(list) {
-  return (list || []).flatMap((m) => {
-    const tile = m && m.tile
+  // v2.46.98：胡牌牌面展开复用副露区同一套 meldTiles —— 吃出 3 张不同牌（按点数升序）、
+  // 碰 3 张、杠 4 张；旧版把吃也走「非 pong → 4 张」，结算卡上吃碰全变「杠」。
+  return (list || []).flatMap((md, mi) => {
+    const tile = md && md.tile
     if (!tile) return []
-    const n = m.type === 'pong' ? 3 : 4
-    return Array.from({ length: n }, (_, k) => ({ ...tile, id: `${tile.id ?? 't'}-m${k}` }))
+    return meldTiles(md).map((t, k) => ({ ...t, id: `${tile.id ?? tile.suit + tile.rank}-m${mi}-${k}` }))
   })
 }
 function doHu(seat, tile, from, zimo) {
