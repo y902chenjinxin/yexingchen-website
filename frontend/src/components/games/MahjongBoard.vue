@@ -1513,9 +1513,10 @@ onBeforeUnmount(() => {
      弃牌小到看不清牌面）。 */
   --mini-w: clamp(17px, calc(var(--gt-h, 420px) * 0.056), 28px);
   --mini-h: calc(var(--mini-w) * 1.38);
-  /* 弃牌专用尺寸（V24613-003 → v2.46.24 放大一档，夜星：中央牌桌牌少看着空）：
-     0.047 → 0.056、上限 23 → 27px，与副露 mini 同档 */
-  --dis-w: clamp(15px, calc(var(--gt-h, 420px) * 0.056), 27px);
+  /* 弃牌专用尺寸（V24613-003 → v2.46.24 一档 → v2.46.96 再一档，夜星：参考掼蛋空间利用，
+     中央牌少看着空）：0.056 → 0.068、上限 27 → 32px。左右家席位竖排收窄后中央更宽，
+     大一号的弃牌正好吃掉这份空间 */
+  --dis-w: clamp(17px, calc(var(--gt-h, 420px) * 0.068), 32px);
   --dis-h: calc(var(--dis-w) * 1.38);
 }
 .mj.is-big { min-height: calc(100vh - 150px); }
@@ -1565,6 +1566,16 @@ onBeforeUnmount(() => {
 .mj-seat-top .mj-melds, .mj-seat-top .mj-backs { flex: 0 1 auto; }
 .mj-seat-left { grid-area: left; align-items: flex-start; }
 .mj-seat-right { grid-area: right; align-items: flex-end; }
+/* v2.46.96 借掼蛋「席位贴边不占宽」：左右家座位卡改**竖排**（头像/名字/积分/徽标
+   自上而下叠放），列宽从横排卡撑出的 ~127px 收到 ~50px —— 牌背条本来就只用
+   ~20px，外侧 ~100px×200px 全是空绒布（探针 780×390 实测）。中央弃牌区每侧
+   多拿 ~80px；副露出现时 auto 列自动加宽到副露行宽，V24617-012 的溢出裁剪照旧兜底。 */
+.mj-seat-left .gt-seat, .mj-seat-right .gt-seat {
+  flex-direction: column; align-items: center; gap: 3px;
+  padding: 4px 3px; border-radius: 10px; max-width: 60px;
+}
+.mj-seat-left .gt-seat-av, .mj-seat-right .gt-seat-av { width: 22px; height: 22px; font-size: 11px; }
+.mj-seat-left .gt-seat-name, .mj-seat-right .gt-seat-name { max-width: 100%; font-size: 10.5px; }
 
 /* ---------- 副露 / 手牌背面 ----------
  * 对家（上）横排；**左右两家必须竖排**。
@@ -1610,7 +1621,7 @@ onBeforeUnmount(() => {
     "up    up"
     "left  right"
     "down  down";
-  padding: 18px 28px; border-radius: 14px;   /* v2.46.67：给四方牌墙留边（24→18，匀给中行） */
+  padding: 18px 20px; border-radius: 14px;   /* v2.46.67：给四方牌墙留边（24→18）；v2.46.96 横向 28→20（墙宽 14+offset5，再贴就压墙） */
   background: rgba(0, 0, 0, .2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
   /* v2.46.26（夜星：长方形看着怪）：宽屏下中央弃牌区被 1fr 拉成 3:1 长条，
