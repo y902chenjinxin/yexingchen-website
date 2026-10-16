@@ -1,3 +1,11 @@
+## [数据清理] - 2026-10-16
+
+### 记账模块：清除 10-01 之前的全部流水（夜星：统计基于 10-01 之后的数据）
+- **删除范围**：`xuanhuang_finance_transactions` 中 `occurred_at < '2026-10-01'` 的 **354 条**（user_id=1 350 条 + user_id=5 4 条；expense 312 笔 ¥76,620.87 / income 42 笔 ¥51,038.21；全部 fund=none 历史数据，无子表级联，categories 表未动）
+- **安全流程**：服务器整库备份 `yexingchen.db.bak-finpurge-20261016-091620`（90MB）+ 被删 354 条全字段 JSONL dump（服务器 `/tmp/fin_purge_dump_20261001.jsonl`，本地 `artifacts/_probe/`，可精确回灌）→ 删除 → 验证
+- **验证**：删后 total=63（alive 58，最早 2026-10-01 01:40）/ integrity_check=ok；生产 API 实测 `/api/finance/transactions` total=58 全为 10-01 后、`/api/finance/summary` income=13,554 / expense=6,270.85 / balance=7,283.15（count=52），统计口径已切到 10-01 后
+- 工具沉淀：`scripts/purge_finance_before.py`（先 dump 后删 + 事务内验证，可复用）
+
 ## [v2.46.91] - 2026-10-15
 
 ### 掼蛋横屏全屏黑边根因 + 我方出牌贴底（夜星）
