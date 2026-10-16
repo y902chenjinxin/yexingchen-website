@@ -54,7 +54,7 @@ const { chromium } = require('playwright')
     const q = (s) => document.querySelector(s)
     const qa = (s) => Array.from(document.querySelectorAll(s))
     const btns = qa('.gd-hand-tools .gt-btn').map((b) => ({ t: b.textContent.trim(), ...box(b) }))
-    const center = q('.gd-center'), tools = q('.gd-hand-tools')
+    const center = q('.gd-center'), tools = q('.gd-hand-tools'), hand = q('.gd-hand-zone') || q('.gd-hand')
     // 两枚钉按钮（挪左/挪右）的中点
     const pins = btns.filter((b) => b.t === '挪左' || b.t === '挪右')
     const mid = pins.length === 2 ? {
@@ -66,6 +66,7 @@ const { chromium } = require('playwright')
       isLow: !!q('.gd-center.is-low'),
       center: center ? box(center) : null,
       tools: tools ? box(tools) : null,
+      hand: hand ? box(hand) : null,
       btns, pinsMid: mid,
     }
   })
