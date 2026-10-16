@@ -1729,6 +1729,23 @@ watch(phase, (p, old) => {
 .gd-center.is-low .gd-thz .gt-card { width: calc(var(--card-w, 62px) * 0.62); height: calc(var(--card-h, 88px) * 0.62); }
 .gd-center.is-low .gd-thz .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.32); }
 
+/* ===== v2.46.92 手机横屏（矮宽视口）我方出牌防撞 =====
+   横屏全屏下中央区被压到 ~80-120px，我方出牌（贴底）与对家出牌（贴顶）牌行在中间
+   相撞（夜星：我方出牌会和对方出牌重合）。把「我方出牌」下移到手牌工具条（挪左/挪右）
+   正上方居中：① 给工具条上方留 48px 间隙；② 我方出牌改挂中央区底边下方 48px
+   （彻底脱离中央竖向空间，不再与对家重叠）。竖屏 / 桌面走原菱形摆位，不受影响。 */
+@media (orientation: landscape) and (max-height: 480px) {
+  .gd-hand-tools { margin-top: 48px; }
+  .gd-center .gd-thz-0,
+  .gd-center.is-low .gd-thz-0 {
+    bottom: -48px; top: auto;
+    left: 50%; transform: translateX(-50%);
+    flex-direction: column-reverse;
+  }
+  .gd-center.is-low .gd-thz-0 .gt-card { width: calc(var(--card-w, 62px) * 0.62); height: calc(var(--card-h, 88px) * 0.62); }
+  .gd-center.is-low .gd-thz-0 .gd-thz-cards .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.32); }
+}
+
 /* 出牌记录：浮层（v2.46.72 收进右区入口，打开时盖在右区上方，不占牌桌宽度）
    旧版是右侧真竖栏（更早以前是 absolute 浮层压左家）—— 改版后中央要留白，
    记录是低频回看，收成按钮 + 按需浮层最合适。 */
