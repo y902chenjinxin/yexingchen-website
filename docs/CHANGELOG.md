@@ -1,3 +1,12 @@
+## [v2.46.97] - 2026-10-16
+
+### 麻将弃牌区对齐腾讯棋牌：左右家 2 行横条带 → 3 行竖牌堆 + 最新一张常驻高亮（夜星）
+- **问题**：夜星截图（手机横屏）：左右家弃牌排成「2 行 × N 列」横条带横贯半桌，看着怪。根因：`.mj-center` 中行 `minmax(--dis-w*2+4, 1fr)` 只保底 **2 行**侧牌高度，矮屏下 `grid-auto-flow: column` 每列只装 2 张就横向起新列。
+- **修法**：① 中行 min 提为 `--dis-w*3+6px`（3 行保底，上限仍 1fr 由外层 flex 限高不反撑牌桌）；② 中央区纵向 padding 18→14px 给中行匀高度；③ 新增 `is-last` 常驻高亮——腾讯式「桌面最后一张」一直亮到下一张打出（`freshDiscardId` 本来就持久，之前只绑了 0.38s 的 `is-land` 落桌动画；高亮走 outline+filter 通道，因 `fill:both` 动画优先级高于普通声明会锁死 box-shadow/transform）。
+- **顺手修真 bug**：`meldsPrevLen`/`MELD_ACT` 声明在 `watch(onlineView,…,{immediate:true})` **之后**（TDZ），`onlineView` 挂载时就绪会抛 `Cannot access 'meldsPrevLen' before initialization` 并中断首帧同步——已移到 watch 之前（探针 pageerror 复现）。
+- **实测**（`_probe_mj_discard.cjs`，780×390，?dis=N 注入中盘弃牌量）：9 张时左右家 [5,4]→**[3,3,3]**（3 列×3 行竖堆贴边向桌心生长）；12 张 [3,3,3,3]；`is-last` 断言全桌恰一张金圈（右家 x642）。无页面报错。eslint 通过。
+- 版本 SW v409→v410、APP_VERSION v2.46.96→v2.46.97。
+
 ## [v2.46.96] - 2026-10-16
 
 ### 麻将布局参考掼蛋空间利用：中央区 +35%、左右家贴边竖排（夜星）

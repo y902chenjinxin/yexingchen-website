@@ -7,6 +7,13 @@
 
 ---
 
+## v2.46.97 麻将弃牌横条带 + TDZ（2026-10-16）
+
+- **V24697-001 中行 min 只保底 2 行**：`.mj-center` 中行 `minmax(--dis-w*2+4, 1fr)` 是 v2.46.67 防「弃牌拉伸牌桌」的保底值，矮屏下它同时成了左右家弃牌的天花板——`grid-auto-flow: column` 每列只装 2 张就横向起新列，弃牌变成 2 行横条带横贯半桌。修法：min 提到 3 行（上限仍 1fr，外层 flex 限高不会反撑）。
+- **V24697-002 TDZ：声明必须在 immediate watch 之前**：`meldsPrevLen` 声明在 `watch(onlineView,…,{immediate:true})` 之后，immediate 回调同步执行 `syncFromView` 会读它 → `Cannot access 'meldsPrevLen' before initialization`。平时没炸是因为 onlineView 通常挂载后才就绪（异步），探针直接合成挂载时就绪的数据当场复现。教训：**immediate watch 用到的所有变量必须声明在 watch 注册行之前**。
+- **V24697-003 is-last 高亮通道选择**：`is-land` 落桌动画 `fill:both` 优先级高于普通声明，box-shadow/transform 在动画元素上写了也不生效——常驻高亮要走 `outline`（负 offset 内描）+ `filter` 这类动画没占用的通道。
+- 新探针 `frontend/_probe_mj_discard.cjs`（?dis=N 注入中盘弃牌量）；`_probe.js` 补 `last_discard` 引用真实弃牌 id（旧值 799 匹配不上任何弃牌，高亮验不了）。
+
 ## v2.46.96 麻将布局空间浪费（2026-10-16）
 
 - **V24696-001 席位列被座位卡撑宽**：左右家 `auto` 列宽 = 列内最宽内容 = 横排座位卡（~127px），但牌背竖条只用 ~20px，外侧 ~100×200px 空绒布 ×2（占牌桌 ~21%）。教训：**grid `auto` 列宽由最宽子元素决定**——想让某列窄，先压缩该列最宽的元素，而不是调 gap/padding。

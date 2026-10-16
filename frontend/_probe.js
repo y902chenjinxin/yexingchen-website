@@ -79,34 +79,46 @@ function makeOnlineView(seat) {
 
 /* ?g=mj&seat=1 → 麻将**在线投影**：按服务端 view() 的真实形状合成（绝对座位，
    不做任何旋转 —— 旋转必须由组件的 povSeat 投影完成），验证「下=自己、
-   左=上家、右=下家」。对家固定塞一组碰、每家 3 张弃牌，肉眼可核对。 */
+   左=上家、右=下家」。对家固定塞一组碰、每家 3 张弃牌，肉眼可核对。
+   ?dis=N → 每家 N 张弃牌（中盘复现弃牌区布局，v2.46.97 弃牌区重排用）。 */
 function makeMjOnlineView(seat) {
   let id = 8000
   const T = (suit, rank) => ({ id: id++, suit, rank })
+  const disN = Number(new URLSearchParams(location.search).get('dis') || 3)
+  const DIS_POOL = [
+    ['m', 9], ['p', 1], ['s', 7], ['m', 4], ['t', 2], ['p', 8], ['m', 1],
+    ['s', 3], ['t', 7], ['p', 5], ['m', 6], ['s', 9], ['t', 5], ['p', 3],
+    ['m', 2], ['s', 5], ['t', 8], ['p', 6], ['m', 8], ['s', 1], ['t', 4],
+  ]
   const hand = [
     T('m', 1), T('m', 2), T('m', 3), T('m', 5), T('m', 6), T('m', 7), T('m', 9),
     T('p', 1), T('p', 2), T('p', 3), T('p', 7), T('p', 8), T('p', 9),
   ]
+  const players = [0, 1, 2, 3].map((s) => ({
+      seat: s,
+      hand_count: 13,
+      melds: s === (seat + 2) % 4 ? [{ type: 'pong', tile: { id: 770, suit: 'm', rank: 8 }, from: seat }] : [],
+      discards: Array.from({ length: disN }, (_, i) => T(DIS_POOL[(s * 7 + i) % DIS_POOL.length][0], DIS_POOL[(s * 7 + i) % DIS_POOL.length][1])),
+      missing: 's',
+      is_turn: false,
+      hu: false,
+      hu_info: null,
+      score: 0,
+  }))
+  /* v2.46.97：last_discard 必须引用真实弃牌（旧值 id 799 不在任何弃牌里，
+     freshDiscardId 永远匹配不上 → is-last 常驻高亮在探针里验不了） */
+  const lastSeat = (seat + 1) % 4
+  const lastTile = players[lastSeat].discards[disN - 1]
   return {
     phase: 'playing',
     turn: (seat + 1) % 4,
     dealer: 0,
     round_no: 2,
     wall_left: 55,
-    players: [0, 1, 2, 3].map((s) => ({
-      seat: s,
-      hand_count: 13,
-      melds: s === (seat + 2) % 4 ? [{ type: 'pong', tile: { id: 770, suit: 'm', rank: 8 }, from: seat }] : [],
-      discards: [T('m', 4), T('p', 5), T('s', 7)],
-      missing: 's',
-      is_turn: false,
-      hu: false,
-      hu_info: null,
-      score: 0,
-    })),
+    players,
     me: { seat, hand, melds: [], missing: 's', last_draw: null, options: [] },
     claim: null,
-    last_discard: { seat: (seat + 1) % 4, tile: { id: 799, suit: 's', rank: 7 } },
+    last_discard: { seat: lastSeat, tile: lastTile },
     history: [],
     logs: ['1 号位打出 7条'],
     result: null,

@@ -83,7 +83,7 @@
               v-for="t in discards[disSeats.up]"
               :key="t.id"
               class="gt-tile mini"
-              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
+              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId, 'is-last': t.id === freshDiscardId }]"
               :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
@@ -93,7 +93,7 @@
               v-for="t in discards[disSeats.left]"
               :key="t.id"
               class="gt-tile mini"
-              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
+              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId, 'is-last': t.id === freshDiscardId }]"
               :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
@@ -103,7 +103,7 @@
               v-for="t in discards[disSeats.right]"
               :key="t.id"
               class="gt-tile mini"
-              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
+              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId, 'is-last': t.id === freshDiscardId }]"
               :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
@@ -113,7 +113,7 @@
               v-for="t in discards[disSeats.down]"
               :key="t.id"
               class="gt-tile mini"
-              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId }]"
+              :class="[suitCls(t), { 'is-land': t.id === freshDiscardId, 'is-last': t.id === freshDiscardId }]"
               :style="{ '--tilt': discardTilt(t) }"
             ><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></span>
           </div>
@@ -833,6 +833,14 @@ function syncFromView(v) {
   const ids = new Set(hand.map(t => t.id).concat(drawnTile ? [drawnTile.id] : []))
   if (selId.value !== null && !ids.has(selId.value)) selId.value = null
 }
+/* v2.46.97：meldsPrevLen / MELD_ACT 必须声明在下面这条 immediate watch **之前** ——
+   immediate 回调在 setup 此行同步执行，syncFromView 会读 meldsPrevLen；
+   原先声明在 watch 之后（TDZ），onlineView 挂载时就绪会抛
+   「Cannot access 'meldsPrevLen' before initialization」并中断首帧同步（探针复现）。 */
+/** 在线 melds diff 用的上一帧长度基线（null = 进房首帧，只记不播） */
+const meldsPrevLen = [null, null, null, null]
+/** meld.type → onReact 的 act kind（selfClaimSig 去重用） */
+const MELD_ACT = { pong: 'pong', chi: 'chi', kong: 'kong', ankong: 'kong', bugang: 'kong' }
 watch(() => props.onlineView, (v) => { if (isOnline.value) syncFromView(v) }, { immediate: true, deep: true })
 
 /* ---------- 在线语音报牌（v2.46.24）：盯 last_discard 变化口播牌面 ----------
@@ -841,10 +849,6 @@ watch(() => props.onlineView, (v) => { if (isOnline.value) syncFromView(v) }, { 
 let lastSpokenKey = ''
 /** 自己刚点过的吃碰杠胡（onReact 记录），服务端 diff 4 秒内同 kind 不重复播 */
 let selfClaimSig = ''
-/** 在线 melds diff 用的上一帧长度基线（null = 进房首帧，只记不播） */
-const meldsPrevLen = [null, null, null, null]
-/** meld.type → onReact 的 act kind（selfClaimSig 去重用） */
-const MELD_ACT = { pong: 'pong', chi: 'chi', kong: 'kong', ankong: 'kong', bugang: 'kong' }
 watch(lastDiscard, (nd, od) => {
   if (!isOnline.value || !nd?.tile) return
   const key = `${nd.seat}:${nd.tile.id}:${discards.value[nd.seat]?.length || 0}`
@@ -1612,16 +1616,18 @@ onBeforeUnmount(() => {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows:
     calc(var(--dis-h) + 2px)
-    minmax(calc(var(--dis-w) * 2 + 4px), 1fr)
+    minmax(calc(var(--dis-w) * 3 + 6px), 1fr)
     calc(var(--dis-h) + 2px);
   /* ↑ v2.46.67 移植 v2.46.44 修复（夜星：弃牌会拉伸牌桌）：上下两条横排**定高一行**
-     （牌多溢出裁切），中行保底「两张侧牌的高度」。⚠️ 不能用 minmax(min,max) 给弃牌行
-     —— grid 的 maximize-tracks 会把轨道撑到 max、把中间 1fr 挤成 0，定高才是硬约束。 */
+     （牌多溢出裁切）。中行 min 提为「三张侧牌高度」（v2.46.97）：手机横屏矮屏下原先
+     只保底 2 行 → 左右家弃牌被压成 2 行横条带横贯半桌（夜星截图反馈）；提到 3 行后
+     变竖向向桌心生长的牌堆（腾讯式）。⚠️ 上限仍用 1fr（由外层 flex 限高，不会反撑牌桌），
+     不能写死 max —— maximize-tracks 会把轨道撑到 max 把 1fr 挤成 0。 */
   grid-template-areas:
     "up    up"
     "left  right"
     "down  down";
-  padding: 18px 20px; border-radius: 14px;   /* v2.46.67：给四方牌墙留边（24→18）；v2.46.96 横向 28→20（墙宽 14+offset5，再贴就压墙） */
+  padding: 14px 20px; border-radius: 14px;   /* v2.46.67：给四方牌墙留边（24→18）；v2.46.96 横向 28→20；v2.46.97 纵向 18→14 —— 中行加高到能装 3 行躺牌，左右家弃牌从「2 行横条带」变「3 行竖牌堆」（腾讯式向桌心生长） */
   background: rgba(0, 0, 0, .2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
   /* v2.46.26（夜星：长方形看着怪）：宽屏下中央弃牌区被 1fr 拉成 3:1 长条，
@@ -2038,6 +2044,15 @@ button.mj-ting-item:hover { border-color: rgba(233, 200, 119, .5); color: var(--
   }
 }
 .mj .gt-tile.is-land { animation: mj-land .38s cubic-bezier(.2, .85, .3, 1) both; z-index: 2; }
+/* 最新一张弃牌常驻高亮（v2.46.97，腾讯式）：is-land 只响落桌 0.38s，腾讯会把
+   「桌面最后一张」一直亮到下一张打出。高亮走 outline+filter 通道 —— is-land 的
+   fill:both 动画优先级高于普通声明，会锁死 box-shadow/transform，这两条写了也不生效；
+   outline-offset 负值内描不占布局、不被 .mj-dis 的 overflow:hidden 裁掉。 */
+.mj .gt-tile.is-last {
+  outline: 1.5px solid rgba(233, 200, 119, .9);
+  outline-offset: -1.5px;
+  filter: brightness(1.08) saturate(1.06);
+}
 
 /* 手势提示：小号弱化，跟在操作按钮后面 */
 .mj-hint {
