@@ -48,6 +48,9 @@
   <meta name="apple-mobile-web-app-title" content="玄黄">
 
   <link rel="icon" type="image/svg+xml" href="/icons/icon-512.svg">
+  <!-- PNG 兜底：Chrome 密码管理器/自动填充下拉等上下文不吃 SVG favicon，
+       会退回找 /favicon.ico 或旧缓存；显式给新 PNG 让它们拿到新图标 -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
