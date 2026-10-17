@@ -77,7 +77,7 @@
             v-for="(t, i) in walls.N"
             :key="'n'+t.id"
             class="pc3d mj-wall"
-            :style="pieceBox(40, 54, 18, wallTF('N', i, walls.N.length), i)"
+            :style="pieceBox(46, 60, 16, wallTF('N', i, walls.N.length), i)"
           >
             <div class="pc-face pc-front mj-back"></div>
             <div class="pc-face pc-back mj-back"></div>
@@ -90,7 +90,7 @@
             v-for="(t, i) in walls.W"
             :key="'w'+t.id"
             class="pc3d mj-wall"
-            :style="pieceBox(40, 54, 18, wallTF('W', i, walls.W.length), i)"
+            :style="pieceBox(46, 60, 16, wallTF('W', i, walls.W.length), i)"
           >
             <div class="pc-face pc-front mj-back"></div>
             <div class="pc-face pc-back mj-back"></div>
@@ -103,7 +103,7 @@
             v-for="(t, i) in walls.E"
             :key="'e'+t.id"
             class="pc3d mj-wall"
-            :style="pieceBox(40, 54, 18, wallTF('E', i, walls.E.length), i)"
+            :style="pieceBox(46, 60, 16, wallTF('E', i, walls.E.length), i)"
           >
             <div class="pc-face pc-front mj-back"></div>
             <div class="pc-face pc-back mj-back"></div>
@@ -239,10 +239,10 @@ const turn = ref('you')
 
 /* 座位（随桌倾斜的铭牌） */
 const seats = [
-  { key: 'N', name: '上家', face: '🀄', color: 'linear-gradient(160deg,#3a7,#276)', pos: [0, -372] },
-  { key: 'W', name: '左家', face: '🎴', color: 'linear-gradient(160deg,#a76,#743)', pos: [-372, 0] },
-  { key: 'E', name: '右家', face: '🌟', color: 'linear-gradient(160deg,#67a,#345)', pos: [372, 0] },
-  { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 372] },
+  { key: 'N', name: '上家', face: '🀄', color: 'linear-gradient(160deg,#3a7,#276)', pos: [0, -318] },
+  { key: 'W', name: '左家', face: '🎴', color: 'linear-gradient(160deg,#a76,#743)', pos: [-318, 0] },
+  { key: 'E', name: '右家', face: '🌟', color: 'linear-gradient(160deg,#67a,#345)', pos: [318, 0] },
+  { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 336] },
 ]
 const scores = reactive({ you: 1280, N: 980, W: 1510, E: 760 })
 
@@ -265,7 +265,7 @@ function buildMjHand() {
   return a
 }
 function buildWalls() {
-  const mk = () => Array.from({ length: 11 }, () => ({ id: nextId() }))
+  const mk = () => Array.from({ length: 22 }, () => ({ id: nextId() }))
   return { N: mk(), W: mk(), E: mk() }
 }
 function buildGdHand() {
@@ -306,14 +306,18 @@ function pieceBox(w, h, t, finalTF, delayIdx, clickable) {
 }
 
 function wallTF(side, i, n) {
-  const span = 260, step = (span * 2) / (n - 1)
-  const off = -span + i * step
+  // 22 张/面，仍排一行：step=48 与牌宽 46 几乎贴合（2px 缝），砌成连续的墙
+  const half = Math.ceil(n / 2)
+  const j = i % half
+  const step = 48
+  const span = ((half - 1) * step) / 2
+  const off = -span + j * step
   let x = 0, y = 0, rotZ = 0
-  if (side === 'N') { x = off; y = -282; rotZ = 180 }
-  else if (side === 'W') { x = -282; y = off; rotZ = 90 }
-  else { x = 282; y = off; rotZ = -90 }
-  // 桌面顶在 z=15，牌立起后高 54 → 中心 15+27=42，牌底刚好落在桌面上
-  return `translate(-50%,-50%) translate3d(${x}px,${y}px,42px) rotateZ(${rotZ}deg) rotateX(-90deg)`
+  if (side === 'N') { x = off; y = -278; rotZ = 180 }
+  else if (side === 'W') { x = -278; y = off; rotZ = 90 }
+  else { x = 278; y = off; rotZ = -90 }
+  // 桌面顶 z=15；立牌高 60 → 中心 15+30=45，牌底恰好落在桌面
+  return `translate(-50%,-50%) translate3d(${x}px,${y}px,45px) rotateZ(${rotZ}deg) rotateX(-90deg)`
 }
 function handTF(i, n, lift = 16) {
   const span = 300, step = (span * 2) / (n - 1)
@@ -343,7 +347,7 @@ function seatTF(s) {
 }
 
 const worldStyle = computed(() => ({
-  transform: `rotateX(${rx.value}deg) rotateY(${ry.value}deg)`,
+  transform: `rotateX(${rx.value}deg) rotateY(${ry.value}deg) scale3d(.94, .94, .94)`,
 }))
 
 /* ---------- 出牌模拟 ---------- */
@@ -536,7 +540,10 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
   background:
     radial-gradient(120% 90% at 50% 40%, rgba(255, 255, 255, .07), transparent 60%),
     linear-gradient(160deg, #1d5c46, #0f3a2c 58%, #082019);
-  box-shadow: inset 0 0 0 3px rgba(233, 200, 119, .35), inset 0 0 36px rgba(0, 0, 0, .5);
+  box-shadow:
+    inset 0 0 0 3px rgba(233, 200, 119, .38),
+    inset 0 0 0 12px rgba(233, 200, 119, .1),
+    inset 0 0 40px rgba(0, 0, 0, .5);
 }
 .gt3-woven {
   position: absolute; inset: 0; opacity: .5;
@@ -612,18 +619,23 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
 
 /* 麻将牌面（玉牌质感） */
 .mj-front {
-  border-radius: 7px; overflow: hidden;
+  border-radius: 5px; overflow: hidden;
   background: linear-gradient(175deg, #fdfbf4 0%, #f3efe2 62%, #ddd6c2 100%);
   box-shadow: inset 0 0 0 1px rgba(120, 100, 60, .25);
 }
-.mj-ivory { background: linear-gradient(175deg, #fdfbf4, #ece6d6); border-radius: 7px; }
-.mj-edge { background: linear-gradient(90deg, #e7e0cf, #cfc6ad); border-radius: 4px; }
+.mj-ivory {
+  border-radius: 4px;
+  background: linear-gradient(175deg, #f6f1e2 0%, #eae2cd 55%, #d6ccb1 100%);
+  box-shadow: inset 0 0 0 1px rgba(140, 118, 78, .32);
+}
+.mj-edge { background: linear-gradient(90deg, #eee6d2, #d3c9ad); border-radius: 3px; }
 .mj-back {
-  border-radius: 7px;
+  border-radius: 5px;
   background:
-    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, .18), transparent 62%),
-    linear-gradient(160deg, #2e8f7a, #1a6a58 58%, #0d4636);
-  box-shadow: inset 0 0 0 2px rgba(233, 200, 119, .45), inset 0 0 12px rgba(0, 0, 0, .3);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 6px, transparent 6px 12px),
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, .15), transparent 62%),
+    linear-gradient(165deg, #2f8a74 0%, #1c6a57 55%, #11503f 100%);
+  box-shadow: inset 0 0 0 2px rgba(233, 200, 119, .48), inset 0 0 14px rgba(0, 0, 0, .28);
 }
 
 /* 扑克牌 */
