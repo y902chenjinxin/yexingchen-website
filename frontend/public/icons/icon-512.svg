@@ -1,31 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1c4a47"/>
-      <stop offset="0.55" stop-color="#157a6e"/>
-      <stop offset="1" stop-color="#0e2e2c"/>
+      <stop offset="0" stop-color="#3db8a8"/>
+      <stop offset="0.45" stop-color="#2a9d8f"/>
+      <stop offset="1" stop-color="#136b60"/>
     </linearGradient>
     <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f3e6bd"/>
+      <stop offset="0" stop-color="#f7ecce"/>
       <stop offset="0.5" stop-color="#c7a96b"/>
       <stop offset="1" stop-color="#9c7b3c"/>
     </linearGradient>
-    <radialGradient id="gloss" cx="0.32" cy="0.2" r="0.75">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
+    <!-- 玻璃斜向高光带：中央一道窄亮带，模拟玻璃/金属反光 -->
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.44" stop-color="#ffffff" stop-opacity="0.40"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="0.56" stop-color="#ffffff" stop-opacity="0.40"/>
       <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- 顶部玻璃圆顶高光 -->
+    <radialGradient id="gloss" cx="0.32" cy="0.18" r="0.82">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.36"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 底部暗角：增强金属立体的下沉感 -->
+    <radialGradient id="vignette" cx="0.5" cy="0.94" r="0.72">
+      <stop offset="0.58" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#06201d" stop-opacity="0.24"/>
     </radialGradient>
   </defs>
 
-  <!-- 圆角方底：墨青→雨青渐变 -->
+  <!-- 圆角方底：雨青渐变（保留站点基因） -->
   <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#bg)"/>
-  <!-- 顶部高光（玻璃质感） -->
+  <!-- 底部暗角 -->
+  <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#vignette)"/>
+  <!-- 顶部玻璃高光 -->
   <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#gloss)"/>
-  <!-- 鎏金描边 -->
-  <rect x="22" y="22" width="468" height="468" rx="98" fill="none" stroke="url(#gold)" stroke-width="9" opacity="0.9"/>
-  <!-- 内描边再压一层细金线，质感更厚 -->
-  <rect x="40" y="40" width="432" height="432" rx="82" fill="none" stroke="#c7a96b" stroke-width="2" opacity="0.35"/>
+  <!-- 斜向玻璃高光带 -->
+  <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#glass)"/>
+  <!-- 鎏金描边（外） -->
+  <rect x="22" y="22" width="468" height="468" rx="98" fill="none" stroke="url(#gold)" stroke-width="9" opacity="0.95"/>
+  <!-- 鎏金细内描边，质感更厚 -->
+  <rect x="40" y="40" width="432" height="432" rx="82" fill="none" stroke="#c7a96b" stroke-width="2" opacity="0.4"/>
+  <!-- 顶部内高光线（玻璃边缘反光） -->
+  <rect x="22" y="22" width="468" height="468" rx="98" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.32"/>
 
-  <!-- 玄（鎏金，衬线）。浏览器标签用 index.html 引入的 Noto Serif SC 渲染；
+  <!-- 玄（鎏金衬线）。浏览器标签用 index.html 引入的 Noto Serif SC 渲染；
        位图导出若环境无 CJK 字体则该字缺省——已用金描边方底保证即便缺字也是完整质感图标 -->
   <text x="256" y="356" font-family="'Noto Serif SC','Songti SC','STSong','SimSun',serif"
         font-size="312" font-weight="700" fill="url(#gold)" text-anchor="middle">玄</text>

@@ -188,7 +188,7 @@ const POINTER_DIST = 190        // 鼠标影响半径（原始值）
 const BASE_SPEED = 0.32         // 克制漂移速度（原始值）
 const MAX_SPEED = 0.9           // 速度上限（原始值）
 const PULL = 0.022              // 鼠标吸引力（原始值）
-const LINE_ALPHA = 0.22         // 连线透明度上限（0.15→0.18→0.22）
+const LINE_ALPHA = 0.16         // 连线透明度上限（浅底版下调，避免显脏；0.15→0.18→0.22→0.16）
 // 面积自适应粒子数：1920×937 基准取 66，夹取 44~80（下限保证小屏不空，上限顾手机端性能）
 const PARTICLE_BASE = 66
 const PARTICLE_MIN = 44
@@ -235,10 +235,10 @@ function initParticles(w, h) {
   }
 }
 
-const COL_LINE = '127, 168, 163'        // 雨青连线
-const COL_POINTER = '168, 211, 206'     // 鼠标连线偏亮
-const COL_HALO = '168, 211, 206'        // 粒子光晕
-const COL_CORE = '206, 226, 220'        // 粒子核
+const COL_LINE = '42, 108, 98'          // 淡青底上的中青连线（浅底需更深才可见）
+const COL_POINTER = '70, 138, 126'      // 鼠标连线偏亮青
+const COL_HALO = '120, 175, 162'        // 粒子光晕（淡青）
+const COL_CORE = '38, 98, 90'           // 粒子核（深青，浅底上清晰）
 
 function setupCanvas() {
   const canvas = particleCanvas.value
@@ -515,14 +515,14 @@ function resetRegister() {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 70% 50% at 18% 12%, rgba(127, 168, 163, 0.28), transparent 60%),
-    radial-gradient(ellipse 60% 45% at 84% 80%, rgba(199, 169, 107, 0.16), transparent 60%),
-    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(127, 168, 163, 0.26), transparent 65%),
-    /* v2.46.100：夜星反馈登录页「还是黑」。v2.46.99 的中调 #1f6b5e 在深色屏上对比不足，
-       仍读作近黑。本版整体再提亮一档——主渐变改为清晰的青碧/石绿（#2a9d8f→#43c4b0→#1f8b7d），
-       三个光晕同步加亮雨青（0.20/0.18→0.28/0.26），鎏金点睛保留。仍零逐帧成本。
-       方向取自千里江山·青绿山水，沿用站点雨青(#7fa8a3)+鎏金基因。 */
-    linear-gradient(155deg, #2a9d8f 0%, #43c4b0 50%, #1f8b7d 100%);
+    radial-gradient(ellipse 70% 50% at 18% 12%, rgba(127, 168, 163, 0.16), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 84% 80%, rgba(199, 169, 107, 0.10), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(127, 168, 163, 0.14), transparent 65%),
+    /* v2.46.102：夜星记忆中的「乳白底 + 粒子 + 整体淡青」登录页（历史无此版本，
+       v1.0 是 #0D1F27 深墨青、v1.1 是蓝紫，粒子是 63c250f 才加的；此处新做一版淡青乳白版）。
+       主渐变改为极淡青白→淡青（#eef4f2→#d9e9e4→#cfe3de），三处光晕雨青/鎏金极淡点缀，
+       雨青粒子网在浅底上用中青色（script 里 COL_LINE 已调深）保持呼吸感。零逐帧成本。 */
+    linear-gradient(160deg, #eef4f2 0%, #d9e9e4 48%, #cfe3de 100%);
   position: relative;
   overflow: hidden;
 }
@@ -537,22 +537,22 @@ function resetRegister() {
   z-index: 0;
 }
 
-/* 登录卡片（克制淡入，无位移/无 blur 动画，避免逐帧重绘卡顿） */
+/* 登录卡片（浅底淡雅玻璃卡，克制淡入） */
 .login-card {
   position: relative;
   z-index: 100;
   width: 360px;
   padding: 40px;
-  background: rgba(20, 28, 36, 0.6);
+  background: rgba(255, 255, 255, 0.62);
   -webkit-backdrop-filter: blur(24px) saturate(185%);
   backdrop-filter: blur(24px) saturate(185%);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 20px;
   box-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.04),
-    0 8px 24px rgba(0, 0, 0, 0.10),
-    0 24px 60px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 1px 1px rgba(40, 90, 82, 0.04),
+    0 8px 24px rgba(40, 90, 82, 0.10),
+    0 24px 60px rgba(40, 90, 82, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   opacity: 0;
   animation: card-in 0.5s ease-out 0.15s forwards;
 }
@@ -586,7 +586,7 @@ function resetRegister() {
 
 .site-subtitle {
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: rgba(35, 70, 66, 0.68);
   text-align: center;
   margin-bottom: 30px;
   letter-spacing: 4px;
@@ -606,17 +606,17 @@ function resetRegister() {
 }
 .remember-label {
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 13px; color: var(--color-text-secondary); cursor: pointer;
+  font-size: 13px; color: rgba(35, 70, 66, 0.72); cursor: pointer;
 }
 .remember-check {
   width: 16px; height: 16px; accent-color: var(--color-gold);
   cursor: pointer;
 }
-.remember-hint { font-size: 12px; color: rgba(200, 214, 208, 0.45); }
+.remember-hint { font-size: 12px; color: rgba(35, 70, 66, 0.45); }
 
 .password-toggle {
   cursor: pointer;
-  color: var(--color-text-secondary);
+  color: rgba(35, 70, 66, 0.6);
   display: flex;
   align-items: center;
   transition: color 0.2s;
@@ -627,29 +627,29 @@ function resetRegister() {
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(24, 32, 41, 0.7) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(127, 168, 163, 0.3) !important;
+  border: 1px solid rgba(45, 120, 110, 0.3) !important;
   border-radius: 10px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 :deep(.el-input__wrapper:hover),
 :deep(.el-input__wrapper.is-focus) {
-  border-color: rgba(127, 168, 163, 0.6) !important;
+  border-color: rgba(45, 120, 110, 0.65) !important;
 }
 
 :deep(.el-input__inner) {
-  color: #e8f4fc !important;
-  -webkit-text-fill-color: #e8f4fc;
-  caret-color: #e8f4fc;
+  color: #1f3d3a !important;
+  -webkit-text-fill-color: #1f3d3a;
+  caret-color: #1f8b7d;
 }
 
 /* 浏览器自动填充（记住我 / 密码管理器）：Chrome 会强制给 input 刷
    浅蓝底 + 自带文字色，普通 CSS 覆盖不了，必须用 inset box-shadow 遮蔽，
-   并用 -webkit-text-fill-color 强制文字色 */
+   并用 -webkit-text-fill-color 强制文字色（浅底版用白底 + 深字） */
 :deep(input:-webkit-autofill),
 :deep(input:-webkit-autofill:hover),
 :deep(input:-webkit-autofill:focus),
@@ -657,30 +657,30 @@ function resetRegister() {
 :deep(input:autofill),
 :deep(input:autofill:hover),
 :deep(input:autofill:focus) {
-  -webkit-text-fill-color: #e8f4fc !important;
-  color: #e8f4fc !important;
-  -webkit-box-shadow: 0 0 0 1000px rgba(24, 32, 41, 0.94) inset !important;
-  box-shadow: 0 0 0 1000px rgba(24, 32, 41, 0.94) inset !important;
-  background-color: rgba(24, 32, 41, 0.94) !important;
+  -webkit-text-fill-color: #1f3d3a !important;
+  color: #1f3d3a !important;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  background-color: #ffffff !important;
   transition: background-color 9999s ease-out 0s;
   filter: none !important;
-  caret-color: #e8f4fc;
+  caret-color: #1f8b7d;
 }
 /* 自动填充时同步把外框描边维持雨青 */
 :deep(.el-input__wrapper:has(input:-webkit-autofill)),
 :deep(.el-input__wrapper:has(input:autofill)) {
-  background: rgba(24, 32, 41, 0.94) !important;
-  border-color: rgba(127, 168, 163, 0.45) !important;
+  background: #ffffff !important;
+  border-color: rgba(45, 120, 110, 0.45) !important;
 }
 
 :deep(.el-input__inner::placeholder) {
-  color: rgba(200, 214, 208, 0.62) !important;
+  color: rgba(35, 70, 66, 0.5) !important;
 }
 
 :deep(.el-input__suffix .el-icon),
 :deep(.el-input__clear),
 :deep(.el-input__password) {
-  color: rgba(200, 214, 208, 0.7) !important;
+  color: rgba(35, 70, 66, 0.6) !important;
 }
 
 :deep(.el-button--primary) {
@@ -695,7 +695,7 @@ function resetRegister() {
 
 .register-link {
   text-align: center;
-  color: var(--color-text-secondary);
+  color: rgba(35, 70, 66, 0.72);
   font-size: 13px;
   margin-top: 20px;
   cursor: pointer;
@@ -713,14 +713,14 @@ function resetRegister() {
 
 .step-title {
   font-size: 16px;
-  color: var(--color-text-primary);
+  color: #1f3d3a;
   text-align: center;
   margin-bottom: 20px;
 }
 
 .back-link {
   text-align: center;
-  color: rgba(232, 244, 252, 0.5);
+  color: rgba(35, 70, 66, 0.5);
   font-size: 13px;
   margin-top: 20px;
   cursor: pointer;
@@ -736,7 +736,7 @@ function resetRegister() {
 }
 
 .text-secondary {
-  color: rgba(232, 244, 252, 0.6);
+  color: rgba(35, 70, 66, 0.6);
   font-size: 14px;
   margin-top: 10px;
 }
@@ -807,9 +807,9 @@ function resetRegister() {
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(13, 31, 39, 0.9);
+  background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(78, 205, 196, 0.15);
+  border-top: 1px solid rgba(45, 120, 110, 0.18);
   padding: 10px 20px;
 }
 
@@ -834,7 +834,7 @@ function resetRegister() {
 }
 
 .filing-links a {
-  color: rgba(232, 244, 252, 0.88);
+  color: rgba(35, 70, 66, 0.85);
   text-decoration: none;
   transition: color 0.2s;
   font-weight: 500;
@@ -845,7 +845,7 @@ function resetRegister() {
 }
 
 .filing-divider {
-  color: rgba(232, 244, 252, 0.6);
+  color: rgba(35, 70, 66, 0.55);
 }
 
 @media (max-width: 768px) {
