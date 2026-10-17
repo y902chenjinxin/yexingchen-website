@@ -109,7 +109,8 @@
             v-for="(t, i) in hand"
             :key="t.id"
             class="pc3d mj-hand"
-            :style="pieceBox(46, 62, 16, handTF(i, hand.length, true), i, true)"
+            :class="{ fresh: freshIds.has(t.id) }"
+            :style="pieceBox(46, 62, 16, freshIds.has(t.id) ? 'translate(-50%,-50%) translate3d(0px,-258px,46px) rotateX(-90deg)' : handTF(i, hand.length, true), i, true, freshIds.has(t.id))"
             @click="playMj(i)"
           >
             <div class="pc-face pc-front mj-front"><MahjongTileFace :suit="t.suit" :rank="t.rank" /></div>
@@ -162,7 +163,8 @@
             v-for="(t, i) in gHand"
             :key="t.id"
             class="pc3d gd-hand"
-            :style="pieceBox(46, 64, 11, handTF(i, gHand.length, false), i, true)"
+            :class="{ fresh: freshIds.has(t.id) }"
+            :style="pieceBox(46, 64, 11, freshIds.has(t.id) ? 'translate(-50%,-50%) translate3d(0px,-258px,21px)' : handTF(i, gHand.length, false), i, true, freshIds.has(t.id))"
             @click="playGd(i)"
           >
             <div class="pc-face pc-front card-front" :class="t.red ? 'red' : 'blk'">
@@ -216,6 +218,13 @@ const CARD_SUITS = [
 ]
 const CARD_RANKS = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2']
 
+/* 排序次序：手牌自动整理用 */
+const SUIT_ORDER = { wan: 0, tiao: 1, tong: 2, zi: 3 }
+const CARD_ORDER = { spade: 0, club: 1, heart: 2, diamond: 3 }
+const RANK_ORDER = { '3':0,'4':1,'5':2,'6':3,'7':4,'8':5,'9':6,'10':7,'J':8,'Q':9,'K':10,'A':11,'2':12 }
+/* 正在飞入（摸牌）的牌 id，用于触发「上牌」动画 */
+const freshIds = ref(new Set())
+
 const rnd = (n) => Math.floor(Math.random() * n)
 const pick = (a) => a[rnd(a.length)]
 let uid = 0
@@ -226,8 +235,8 @@ const dealt = ref(false)
 const auto = ref(false)
 const turn = ref('you')
 
-/* 固定正视视角：只要透视立体感，不做旋转/俯仰交互 */
-const worldTF = 'rotateX(58deg) scale3d(.94, .94, .94)'
+/* 固定正视、微微前倾对着你：只要透视立体感，不做旋转/俯仰交互 */
+const worldTF = 'rotateX(66deg) scale3d(.94, .94, .94)'
 
 /* 座位（随桌倾斜的铭牌） */
 const seats = [
@@ -269,10 +278,13 @@ function buildGdHand() {
 }
 
 function rebuild() {
+  freshIds.value.clear()
   hand.value = buildMjHand()
+  sortMj()
   const w = buildWalls(); walls.N = w.N; walls.W = w.W; walls.E = w.E
   mCenter.value = []
   gHand.value = buildGdHand()
+  sortGd()
   gCenter.value = []
   scores.you = 1280; scores.N = 980; scores.W = 1510; scores.E = 760
   dealt.value = false
@@ -286,13 +298,13 @@ function boxVars(w, h, t) {
   return { '--w': w + 'px', '--h': h + 'px', '--t': t + 'px' }
 }
 // 牌桌 6 面挤出（face 由模板内 .gt3-* 类直接定义，无需 JS）
-// 通用 3D 块样式：传入 w/h/t、最终变换、错峰延迟；未发牌时收拢到中央
-function pieceBox(w, h, t, finalTF, delayIdx, clickable) {
+// 通用 3D 块样式：传入 w/h/t、最终变换、错峰延迟；未发牌时收拢到中央；instant=true 用于摸牌飞入（无错峰延迟）
+function pieceBox(w, h, t, finalTF, delayIdx, clickable, instant) {
   const tf = dealt.value ? finalTF : CENTER_TF
   return {
     ...boxVars(w, h, t),
     transform: tf,
-    transitionDelay: (delayIdx * 28) + 'ms',
+    transitionDelay: instant ? '0ms' : (delayIdx * 28) + 'ms',
     cursor: clickable ? 'pointer' : 'default',
   }
 }
@@ -340,8 +352,27 @@ function seatTF(s) {
 
 /* ---------- 出牌模拟 ---------- */
 let autoTimer = null
+function sortMj() {
+  hand.value.sort((a, b) => SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit] || a.rank - b.rank)
+}
+function sortGd() {
+  gHand.value.sort((a, b) => CARD_ORDER[a.suit] - CARD_ORDER[b.suit] || RANK_ORDER[a.rank] - RANK_ORDER[b.rank])
+}
 function bump(scoreKey) {
   scores[scoreKey] = (scores[scoreKey] || 0) + 8
+}
+/* 摸一张新牌：插入后立即整理，并标记为「飞入」，触发从牌墙滑入的上牌动画 */
+function drawFreshMj() {
+  const s = pick(SUITS)
+  const t = { id: nextId(), suit: s, rank: s === 'zi' ? pick(ZI) : 1 + rnd(9), fresh: true }
+  hand.value.push(t); sortMj(); freshIds.value.add(t.id)
+  requestAnimationFrame(() => requestAnimationFrame(() => freshIds.value.delete(t.id)))
+}
+function drawFreshGd() {
+  const s = pick(CARD_SUITS)
+  const t = { id: nextId(), suit: s.k, suitGlyph: s.g, red: s.red, rank: pick(CARD_RANKS), fresh: true }
+  gHand.value.push(t); sortGd(); freshIds.value.add(t.id)
+  requestAnimationFrame(() => requestAnimationFrame(() => freshIds.value.delete(t.id)))
 }
 function playMj(i) {
   if (!dealt.value) return
@@ -350,6 +381,8 @@ function playMj(i) {
   turn.value = 'you'
   bump('you')
   mCenter.value.push({ id: nextId(), suit: t.suit, rank: t.rank })
+  sortMj()
+  drawFreshMj() // 出牌后摸牌 → 短暂上牌过程
   if (auto.value) scheduleAi('mj')
 }
 function aiPlayMj() {
@@ -366,6 +399,8 @@ function playGd(i) {
   turn.value = 'you'
   bump('you')
   gCenter.value.push({ id: nextId(), suit: t.suit, suitGlyph: t.suitGlyph, red: t.red, rank: t.rank })
+  sortGd()
+  drawFreshGd()
   if (auto.value) scheduleAi('gd')
 }
 function aiPlayGd() {
@@ -575,6 +610,8 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
 }
 .pc3d.mj-hand, .pc3d.gd-hand { transition: transform .7s cubic-bezier(.22, .9, .28, 1), opacity .5s, box-shadow .2s; }
 .pc3d.mj-hand:hover, .pc3d.gd-hand:hover { filter: brightness(1.08); }
+/* 摸牌飞入：从牌墙滑入，无错峰延迟、稍快 */
+.pc3d.fresh { transition: transform .5s cubic-bezier(.22, .7, .25, 1), opacity .3s; }
 .pc3d.mj-center, .pc3d.mj-center { animation: pop .42s ease both; }
 @keyframes pop { from { transform: translate(-50%, -50%) translate3d(0, 0, 220px) scale(.3); opacity: 0; } }
 .pc-face { position: absolute; left: 50%; top: 50%; backface-visibility: hidden; }
