@@ -257,7 +257,7 @@ function buildMjHand() {
   return a
 }
 function buildWalls() {
-  const mk = () => Array.from({ length: 22 }, () => ({ id: nextId() }))
+  const mk = () => Array.from({ length: 12 }, () => ({ id: nextId() }))
   return { N: mk(), W: mk(), E: mk() }
 }
 function buildGdHand() {
@@ -298,39 +298,35 @@ function pieceBox(w, h, t, finalTF, delayIdx, clickable) {
 }
 
 function wallTF(side, i, n) {
-  // 22 张/面，仍排一行：step=48 与牌宽 46 几乎贴合（2px 缝），砌成连续的墙
-  const half = Math.ceil(n / 2)
-  const j = i % half
-  const step = 48
-  const span = ((half - 1) * step) / 2
-  const off = -span + j * step
+  // 12 张/面、step=45（牌宽46，1px 搭接）：两端牌边正好到 ±270.5，与墙线 ±270 齐平，四角闭合
+  const step = 45
+  const off = (i - (n - 1) / 2) * step
   let x = 0, y = 0, rotZ = 0
-  if (side === 'N') { x = off; y = -278; rotZ = 180 }
-  else if (side === 'W') { x = -278; y = off; rotZ = 90 }
-  else { x = 278; y = off; rotZ = -90 }
+  if (side === 'N') { x = off; y = -270; rotZ = 180 }
+  else if (side === 'W') { x = -270; y = off; rotZ = 90 }
+  else { x = 270; y = off; rotZ = -90 }
   // 桌面顶 z=15；立牌高 60 → 中心 15+30=45，牌底恰好落在桌面
   return `translate(-50%,-50%) translate3d(${x}px,${y}px,45px) rotateZ(${rotZ}deg) rotateX(-90deg)`
 }
 function handTF(i, n, stand) {
+  // 齐整：无扇形、无高低差，纯直排
   const step = 44
   const off = (i - (n - 1) / 2) * step
-  const fan = (i - (n - 1) / 2) * 2.2
   if (stand) {
     // 麻将手牌：立起来、牌面朝玩家（与牌墙同款立姿，桌面顶 z=15 + 半牌高 31）
-    return `translate(-50%,-50%) translate3d(${off}px,324px,46px) rotateZ(${fan}deg) rotateX(-90deg)`
+    return `translate(-50%,-50%) translate3d(${off}px,324px,46px) rotateX(-90deg)`
   }
   // 掼蛋手牌：平贴桌面（桌面顶 15 + 半厚 5.5）
-  return `translate(-50%,-50%) translate3d(${off}px,322px,21px) rotateZ(${fan}deg)`
+  return `translate(-50%,-50%) translate3d(${off}px,322px,21px)`
 }
 function oppTF(side, k, n) {
-  const span = 150, step = (span * 2) / (n - 1)
-  const off = -span + k * step
-  const fan = (k - (n - 1) / 2) * 5
+  const step = 50
+  const off = (k - (n - 1) / 2) * step
   let x = 0, y = 0
   if (side === 'N') { x = off; y = -300 }
   else if (side === 'W') { x = -300; y = off }
   else { x = 300; y = off }
-  return `translate(-50%,-50%) translate3d(${x}px,${y}px,21px) rotateZ(${fan}deg)`
+  return `translate(-50%,-50%) translate3d(${x}px,${y}px,21px)`
 }
 function centerTF(i, lift = 25) {
   const a = i * 0.7
