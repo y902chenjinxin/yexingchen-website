@@ -1,3 +1,17 @@
+## [v2.46.100] - 2026-10-17
+
+### 五项体验批：品牌图标重做 + 下线两工具 + 顶栏随滚动 + 登录青绿再提亮（夜星）
+
+1. **favicon 重设计**：原「玄」图标是 `#8e6a2c` 棕底白字（夜星反馈 low）。重做为**墨青→雨青渐变方底 + 鎏金双描边 + 顶部玻璃高光 + 鎏金衬线「玄」**（`icon-512.svg` 全量重写），同步用 sharp 从 SVG 重导出 `icon-192/icon-512/icon-maskable-512/apple-touch-icon.png`；`manifest.webmanifest` 的 `theme_color` `#8e6a2c`→`#157a6e` 对齐新品牌。
+2. **工作台侧栏 logo 质感化**：`.dsb-brand-rune` 原 `--dp-accent` 单色块 → 墨青→雨青渐变底（`#2a9d8f→#157a6e`）+ 鎏金描边（`rgba(199,169,107,.6)`）+ 顶部高光内阴影，与 favicon 同一套品牌基因。
+3. **下线「人生 4000 周」+「时间胶囊」**（夜星点名）：前端 `navModules.js` 删两条目与 `TOOLS_IN_OTHER_MODULES` 引用（连带移除不再使用的 `Grid`/`Message` 图标导入）、`router/index.js` 删 `/tool/capsule` 与 `/tool/lifegrid` 两路由、删 `CapsuleToolView.vue`/`LifeGridView.vue`；生产库 `xuanhuang_menus` 删菜单 24/25 两项并把角色「丽莎姐姐」menu_ids 28→26（脚本 `artifacts/_probe/del_menus_2tools.py`，校验 public 菜单无残留）。后端 capsule 路由/表暂留（无入口、无数据破坏，后续再清）。
+4. **顶栏随页面滚动**：`.lj-topbar` `position:fixed`→`absolute`——提醒/账号图标不再是常驻悬浮，下滑随页面滚走，不再遮挡内容（`#app` 为 static，absolute 包含块即文档，自然随滚动消失）。
+5. **登录页背景再提亮**（接 v2.46.99「还是黑的」）：v2.46.99 中调 `#1f6b5e` 在深色屏上对比不足，仍读作近黑。主渐变整体再抬一档：`#2a9d8f→#43c4b0→#1f8b7d`（清晰青碧/石绿），三个光晕雨青 0.20/0.18→0.28/0.26、鎏金 0.10→0.16。**SW 已 bump 到 v413，若仍见旧黑请 Ctrl+F5 硬刷一次**。
+
+- 版本 SW v412→v413、APP_VERSION v2.46.99→v2.46.100。
+- 验证：eslint 0 errors；产物 grep——LoginView CSS 含 `2a9d8f`/`43c4b0`、sw.js=v413、`v2.46.100` 进包、capsule/lifegrid 零残留、`.lj-topbar{position:absolute`、`.dsb-brand-rune` 新样式均确认；favicon PNG 已肉眼核验（鎏金「玄」+青绿方底）。线上由夜星自查。
+
+
 ## [v2.46.99] - 2026-10-17
 
 ### 登录页背景：近黑墨青 → 青绿山水夜山（夜星）

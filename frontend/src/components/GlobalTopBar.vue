@@ -524,7 +524,10 @@ onUnmounted(() => {
 /* 顶栏已「去条化」：不再是一条通栏，只有右上角悬浮按钮组
    v2.41.2 进一步收紧：右侧只剩「提醒中心」+「账号」两个区域（倒计时徽章算提醒语义） */
 .lj-topbar {
-  position: fixed;
+  /* v2.46.100：原 position:fixed 让提醒/账号图标常驻悬浮，下滑后仍压在内容右上角（夜星反馈遮挡）。
+     改 absolute —— 相对文档初始包含块定位，随页面一起向上滚走，下滑即不再遮挡。
+     （#app 为 static，absolute 的包含块即文档，故自然随滚动消失；桌面端不再需要 JS 收起逻辑） */
+  position: absolute;
   top: 12px;
   right: 16px;
   z-index: 1000;

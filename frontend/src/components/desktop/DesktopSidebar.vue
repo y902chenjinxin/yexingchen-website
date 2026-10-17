@@ -247,12 +247,17 @@ function invokeNavAction(item) {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--dp-accent), var(--dp-accent-strong));
+  /* v2.46.100：原用 --dp-accent 单色块，偏「low」。改墨青→雨青渐变底 + 鎏金描边 + 顶部高光，
+     与重做的 favicon 同一套品牌基因（玄黄·雨青+鎏金），小方块也有质感。 */
+  background: linear-gradient(135deg, #2a9d8f 0%, #157a6e 100%);
   color: #fff;
   font-weight: 700;
   font-size: 14px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px var(--dp-accent-faint);
+  border: 1px solid rgba(199, 169, 107, 0.6);
+  box-shadow:
+    0 2px 8px rgba(42, 157, 143, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 .dsb-brand-text {
   font-size: 14px;

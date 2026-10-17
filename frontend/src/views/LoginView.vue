@@ -515,14 +515,14 @@ function resetRegister() {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 70% 50% at 20% 12%, rgba(127, 168, 163, 0.20), transparent 60%),
-    radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.10), transparent 60%),
-    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(127, 168, 163, 0.18), transparent 65%),
-    /* v2.46.99：夜星反馈登录背景「太黑」。底色从近黑墨青（#0c1d24→#1e3a44→#102831）
-       抬成「青绿山水」夜山——中调改 #1f6b5e（石绿/青碧），顶/底深青绿收边；
-       三个光晕同步加亮雨青（0.16/0.14→0.20/0.18），鎏金点睛保持。仍零逐帧成本。
+    radial-gradient(ellipse 70% 50% at 18% 12%, rgba(127, 168, 163, 0.28), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 84% 80%, rgba(199, 169, 107, 0.16), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(127, 168, 163, 0.26), transparent 65%),
+    /* v2.46.100：夜星反馈登录页「还是黑」。v2.46.99 的中调 #1f6b5e 在深色屏上对比不足，
+       仍读作近黑。本版整体再提亮一档——主渐变改为清晰的青碧/石绿（#2a9d8f→#43c4b0→#1f8b7d），
+       三个光晕同步加亮雨青（0.20/0.18→0.28/0.26），鎏金点睛保留。仍零逐帧成本。
        方向取自千里江山·青绿山水，沿用站点雨青(#7fa8a3)+鎏金基因。 */
-    linear-gradient(155deg, #163a3f 0%, #1f6b5e 50%, #13454a 100%);
+    linear-gradient(155deg, #2a9d8f 0%, #43c4b0 50%, #1f8b7d 100%);
   position: relative;
   overflow: hidden;
 }

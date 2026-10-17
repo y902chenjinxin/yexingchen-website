@@ -32,8 +32,6 @@ import {
   Lock,
   Menu,
   Coffee,
-  Message,
-  Grid,
   Football,
   Refresh,
   Box,
@@ -68,8 +66,6 @@ export const NAV_GROUPS = [
       { path: '/life/weight', title: '体重记录', icon: Apple },  // v2.41 由「体重三餐」拆出
       { path: '/life/meals', title: '美食记忆', icon: Bowl },    // v2.41 只记大餐 / 纪念餐
       { path: '/tool/countdown', title: '时光痕迹', icon: Calendar },
-      { path: '/tool/lifegrid', title: '人生 4000 周', icon: Grid },
-      { path: '/tool/capsule', title: '时间胶囊', icon: Message },
       { path: '/tool/fish', title: '摸鱼日历', icon: Coffee },
       { path: '/travels', title: '足迹地图', icon: MapLocation },
       { path: '/finance/book', title: '记账', icon: Money },
@@ -166,7 +162,7 @@ const EXACT_MATCH_PATHS = new Set([
 
 // 这些内置工具挂到了「生活 / 娱乐 / 通讯录」等模块下，点它们时不该把「工具」一并点亮
 const TOOLS_IN_OTHER_MODULES = [
-  '/tool/countdown', '/tool/lifegrid', '/tool/capsule', '/tool/fish',
+  '/tool/countdown', '/tool/fish',
   '/tool/muyu', '/tool/games', '/tool/contactsmap',
 ]
 

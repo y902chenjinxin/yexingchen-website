@@ -177,13 +177,6 @@ const routes = [
     component: () => import('@/views/AsrToolView.vue'),
     meta: { requiresAuth: true }
   },
-  // 内置 时间胶囊（写给未来的信）
-  {
-    path: '/tool/capsule',
-    name: 'CapsuleTool',
-    component: () => import('@/views/CapsuleToolView.vue'),
-    meta: { requiresAuth: true }
-  },
   // 内置 摸鱼日历
   {
     path: '/tool/fish',
@@ -196,13 +189,6 @@ const routes = [
     path: '/tool/poem',
     name: 'PoemTool',
     component: () => import('@/views/PoemToolView.vue'),
-    meta: { requiresAuth: true }
-  },
-  // 内置 人生 4000 周
-  {
-    path: '/tool/lifegrid',
-    name: 'LifeGrid',
-    component: () => import('@/views/LifeGridView.vue'),
     meta: { requiresAuth: true }
   },
   // v2.40.24 电子木鱼下线（不符合棋类定位，夜星要求删除）
