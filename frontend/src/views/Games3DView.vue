@@ -183,7 +183,7 @@
             v-for="(p, i) in gCenter"
             :key="'gc'+p.id"
             class="pc3d gd-hand mj-center"
-            :style="pieceBox(46, 64, 11, centerTF(i, 21), i, false)"
+            :style="pieceBox(46, 64, 11, centerTF(i), i, false)"
           >
             <div class="pc-face pc-front card-front" :class="p.red ? 'red' : 'blk'">
               <span class="cf-rank">{{ p.rank }}</span>
@@ -197,8 +197,6 @@
           </div>
         </template>
       </div>
-
-      <div class="g3d-hint">点手牌出牌 · 切换麻将 / 掼蛋</div>
     </div>
   </div>
 </template>
@@ -244,7 +242,7 @@ const seats = [
   { key: 'N', name: '上家', face: '🀄', color: 'linear-gradient(160deg,#3a7,#276)', pos: [0, -318], lift: 96 },
   { key: 'W', name: '左家', face: '🎴', color: 'linear-gradient(160deg,#a76,#743)', pos: [-318, 0], lift: 80 },
   { key: 'E', name: '右家', face: '🌟', color: 'linear-gradient(160deg,#67a,#345)', pos: [318, 0], lift: 80 },
-  { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 356], lift: 36 },
+  { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 398], lift: 24 },
 ]
 const scores = reactive({ you: 1280, N: 980, W: 1510, E: 760 })
 
@@ -341,11 +339,12 @@ function oppTF(side, k, n) {
   else { x = 300; y = off }
   return `translate(-50%,-50%) translate3d(${x}px,${y}px,21px)`
 }
-function centerTF(i, lift = 25) {
+function centerTF(i, lift = 40) {
   const a = i * 0.7
   const x = Math.cos(a) * (i * 6)
   const y = Math.sin(a) * (i * 6)
-  return `translate(-50%,-50%) translate3d(${x}px,${y}px,${lift}px)`
+  // 打出去的牌：立起 52° 朝向你，牌面正对镜头好认（中心抬到 40 让牌底边贴桌面）
+  return `translate(-50%,-50%) translate3d(${x}px,${y}px,${lift}px) rotateX(-52deg)`
 }
 function seatTF(s) {
   // 铭牌 billboard：rotateX(-VIEW_RX) 抵消世界倾斜，始终竖立正对镜头、悬浮桌沿上方（不再平贴桌面被透视压扁）
@@ -665,11 +664,5 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
   box-shadow: inset 0 0 0 2px rgba(233, 200, 119, .4);
 }
 
-/* 提示 */
-.g3d-hint {
-  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-  font-size: 12px; color: #8fb3a6; letter-spacing: .3px;
-  background: rgba(6, 14, 11, .6); padding: 6px 14px; border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, .08); z-index: 20;
-}
+/* 提示条已按夜星要求移除（v2.46.112） */
 </style>
