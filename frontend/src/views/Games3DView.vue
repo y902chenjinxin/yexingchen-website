@@ -47,19 +47,21 @@
           <div class="gt3-face gt3-back"></div>
         </div>
 
-        <!-- 座位铭牌（平铺在桌面上的 3D 卡，随桌倾斜） -->
+        <!-- 座位铭牌（billboard 浮动卡：分数作头像角标，窄卡不压牌墙） -->
         <div
           v-for="s in seats"
           :key="s.key"
           class="gt3-seat"
           :style="seatTF(s)"
         >
-          <div class="gt3-ava" :style="{ background: s.color }">{{ s.face }}</div>
+          <div class="gt3-ava" :style="{ background: s.color }">
+            {{ s.face }}
+            <i class="gt3-score" :class="{ 'is-you': s.key === 'you' }">{{ scores[s.key] }}</i>
+          </div>
           <div class="gt3-meta">
             <b>{{ s.name }}</b>
             <i :class="{ turn: turn === s.key }">{{ turn === s.key ? '出牌中…' : '准备' }}</i>
           </div>
-          <div class="gt3-score" :class="{ 'is-you': s.key === 'you' }">{{ scores[s.key] }}</div>
         </div>
 
         <!-- ===== 麻将：三面立体牌墙 + 手牌 ===== -->
@@ -240,8 +242,8 @@ const worldTF = `rotateX(${VIEW_RX}deg) scale3d(.94, .94, .94)`
 /* 座位（billboard 浮动铭牌：lift 为悬浮高度，N/W/E 抬到牌墙顶以上避免遮挡） */
 const seats = [
   { key: 'N', name: '上家', face: '🀄', color: 'linear-gradient(160deg,#3a7,#276)', pos: [0, -318], lift: 96 },
-  { key: 'W', name: '左家', face: '🎴', color: 'linear-gradient(160deg,#a76,#743)', pos: [-318, 0], lift: 80 },
-  { key: 'E', name: '右家', face: '🌟', color: 'linear-gradient(160deg,#67a,#345)', pos: [318, 0], lift: 80 },
+  { key: 'W', name: '左家', face: '🎴', color: 'linear-gradient(160deg,#a76,#743)', pos: [-392, 0], lift: 80 },
+  { key: 'E', name: '右家', face: '🌟', color: 'linear-gradient(160deg,#67a,#345)', pos: [392, 0], lift: 80 },
   { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 398], lift: 24 },
 ]
 const scores = reactive({ you: 1280, N: 980, W: 1510, E: 760 })
@@ -589,19 +591,25 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
   white-space: nowrap;
 }
 .gt3-ava {
-  width: 34px; height: 34px; border-radius: 50%;
+  position: relative;
+  width: 38px; height: 38px; border-radius: 50%;
   display: grid; place-items: center; font-size: 18px;
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .25);
 }
+.gt3-score {
+  position: absolute; right: -8px; bottom: -8px;
+  font-size: 11px; font-weight: 800; font-style: normal;
+  font-variant-numeric: tabular-nums; line-height: 1;
+  color: #2a1d05; padding: 3px 7px; border-radius: 9px;
+  background: linear-gradient(160deg, #f2d89a, #c9a44e);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, .55);
+  white-space: nowrap;
+}
+.gt3-score.is-you { background: linear-gradient(160deg, #fff3d6, #e9c877); }
 .gt3-meta { display: flex; flex-direction: column; line-height: 1.1; }
 .gt3-meta b { font-size: 13px; }
 .gt3-meta i { font-size: 10.5px; color: #9fc4b6; font-style: normal; }
 .gt3-meta i.turn { color: #e9c877; }
-.gt3-score {
-  font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums;
-  color: #cfe2da; padding-left: 6px;
-}
-.gt3-score.is-you { color: #e9c877; }
 
 /* 通用 3D 块 */
 .pc3d {
