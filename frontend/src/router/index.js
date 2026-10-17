@@ -207,6 +207,14 @@ const routes = [
     component: () => import('@/views/GameTableView.vue'),
     meta: { requiresAuth: true }
   },
+  // v2.46.105：3D 棋牌（腾讯棋牌风真 3D 透视牌桌：麻将 + 掼蛋）。纯前端展示，不依赖后端；
+  // 与既有「棋类游戏」并列新增，不改任何旧视图 / 路由。
+  {
+    path: '/tool/games-3d',
+    name: 'Games3D',
+    component: () => import('@/views/Games3DView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 内置 打字测速
   {
     path: '/tool/typing',

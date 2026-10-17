@@ -81,6 +81,7 @@ export const NAV_GROUPS = [
     label: '娱乐',
     items: [
       { path: '/tool/games', title: '棋类游戏', icon: Football },
+      { path: '/tool/games-3d', title: '3D 棋牌', icon: Box },
       { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },
       // 第三方站（Sprite Fusion「Destroy Any Website」）：输入网址后横版闯关把该站砸到 100%。
       // 站方 CSP frame-ancestors 不含本站域名，**不能 iframe 内嵌**（实测被拦），故走外链新标签。
