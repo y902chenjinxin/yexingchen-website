@@ -32,7 +32,7 @@
       @pointerleave="onUp"
       @wheel.prevent="onWheel"
     >
-      <div class="g3d-world" :style="worldStyle">
+      <div class="g3d-world" :class="{ 'no-anim': dragging }" :style="worldStyle">
         <!-- 牌桌（真实 3D 板：6 面挤出，看得见厚度与边缘） -->
         <div class="gt3-table" :style="boxVars(660, 660, 30)">
           <div class="gt3-face gt3-top">
@@ -77,40 +77,40 @@
             v-for="(t, i) in walls.N"
             :key="'n'+t.id"
             class="pc3d mj-wall"
-            :style="pieceBox(38, 52, 15, wallTF('N', i, walls.N.length), i)"
+            :style="pieceBox(40, 54, 18, wallTF('N', i, walls.N.length), i)"
           >
             <div class="pc-face pc-front mj-back"></div>
             <div class="pc-face pc-back mj-back"></div>
-            <div class="pc-face pc-top mj-back"></div>
-            <div class="pc-face pc-bottom mj-back"></div>
-            <div class="pc-face pc-left mj-side"></div>
-            <div class="pc-face pc-right mj-side"></div>
+            <div class="pc-face pc-top mj-ivory"></div>
+            <div class="pc-face pc-bottom mj-ivory"></div>
+            <div class="pc-face pc-left mj-edge"></div>
+            <div class="pc-face pc-right mj-edge"></div>
           </div>
           <div
             v-for="(t, i) in walls.W"
             :key="'w'+t.id"
             class="pc3d mj-wall"
-            :style="pieceBox(38, 52, 15, wallTF('W', i, walls.W.length), i)"
+            :style="pieceBox(40, 54, 18, wallTF('W', i, walls.W.length), i)"
           >
             <div class="pc-face pc-front mj-back"></div>
             <div class="pc-face pc-back mj-back"></div>
-            <div class="pc-face pc-top mj-back"></div>
-            <div class="pc-face pc-bottom mj-back"></div>
-            <div class="pc-face pc-left mj-side"></div>
-            <div class="pc-face pc-right mj-side"></div>
+            <div class="pc-face pc-top mj-ivory"></div>
+            <div class="pc-face pc-bottom mj-ivory"></div>
+            <div class="pc-face pc-left mj-edge"></div>
+            <div class="pc-face pc-right mj-edge"></div>
           </div>
           <div
             v-for="(t, i) in walls.E"
             :key="'e'+t.id"
             class="pc3d mj-wall"
-            :style="pieceBox(38, 52, 15, wallTF('E', i, walls.E.length), i)"
+            :style="pieceBox(40, 54, 18, wallTF('E', i, walls.E.length), i)"
           >
             <div class="pc-face pc-front mj-back"></div>
             <div class="pc-face pc-back mj-back"></div>
-            <div class="pc-face pc-top mj-back"></div>
-            <div class="pc-face pc-bottom mj-back"></div>
-            <div class="pc-face pc-left mj-side"></div>
-            <div class="pc-face pc-right mj-side"></div>
+            <div class="pc-face pc-top mj-ivory"></div>
+            <div class="pc-face pc-bottom mj-ivory"></div>
+            <div class="pc-face pc-left mj-edge"></div>
+            <div class="pc-face pc-right mj-edge"></div>
           </div>
 
           <!-- 玩家手牌：13 张，真矢量牌面 -->
@@ -155,7 +155,7 @@
               v-for="k in 5"
               :key="c+k"
               class="pc3d gd-back"
-              :style="pieceBox(46, 64, 8, oppTF(c, k - 1, 5), k - 1)"
+              :style="pieceBox(46, 64, 12, oppTF(c, k - 1, 5), k - 1)"
             >
               <div class="pc-face pc-front card-back"></div>
               <div class="pc-face pc-back card-back"></div>
@@ -171,7 +171,7 @@
             v-for="(t, i) in gHand"
             :key="t.id"
             class="pc3d gd-hand"
-            :style="pieceBox(46, 64, 8, handTF(i, gHand.length, 6), i, true)"
+            :style="pieceBox(46, 64, 11, handTF(i, gHand.length, 6), i, true)"
             @click="playGd(i)"
           >
             <div class="pc-face pc-front card-front" :class="t.red ? 'red' : 'blk'">
@@ -190,7 +190,7 @@
             v-for="(p, i) in gCenter"
             :key="'gc'+p.id"
             class="pc3d gd-hand mj-center"
-            :style="pieceBox(46, 64, 8, centerTF(i, 6), i, false)"
+            :style="pieceBox(46, 64, 11, centerTF(i, 6), i, false)"
           >
             <div class="pc-face pc-front card-front" :class="p.red ? 'red' : 'blk'">
               <span class="cf-rank">{{ p.rank }}</span>
@@ -306,13 +306,14 @@ function pieceBox(w, h, t, finalTF, delayIdx, clickable) {
 }
 
 function wallTF(side, i, n) {
-  const span = 250, step = (span * 2) / (n - 1)
+  const span = 260, step = (span * 2) / (n - 1)
   const off = -span + i * step
   let x = 0, y = 0, rotZ = 0
-  if (side === 'N') { x = off; y = -288; rotZ = 180 }
-  else if (side === 'W') { x = -288; y = off; rotZ = 90 }
-  else { x = 288; y = off; rotZ = -90 }
-  return `translate(-50%,-50%) translate3d(${x}px,${y}px,9px) rotateZ(${rotZ}deg) rotateX(-90deg)`
+  if (side === 'N') { x = off; y = -282; rotZ = 180 }
+  else if (side === 'W') { x = -282; y = off; rotZ = 90 }
+  else { x = 282; y = off; rotZ = -90 }
+  // 桌面顶在 z=15，牌立起后高 54 → 中心 15+27=42，牌底刚好落在桌面上
+  return `translate(-50%,-50%) translate3d(${x}px,${y}px,42px) rotateZ(${rotZ}deg) rotateX(-90deg)`
 }
 function handTF(i, n, lift = 16) {
   const span = 300, step = (span * 2) / (n - 1)
@@ -406,17 +407,17 @@ function resetView() { rx.value = 60; ry.value = 0 }
 
 /* ---------- 轨道控制（拖动旋转 + 滚轮俯仰） ---------- */
 const stageRef = ref(null)
-let dragging = false
+const dragging = ref(false)
 let last = { x: 0, y: 0 }
-function onDown(e) { dragging = true; last.x = e.clientX; last.y = e.clientY; stageRef.value && (stageRef.value.style.cursor = 'grabbing') }
+function onDown(e) { dragging.value = true; last.x = e.clientX; last.y = e.clientY; stageRef.value && (stageRef.value.style.cursor = 'grabbing') }
 function onMove(e) {
-  if (!dragging) return
+  if (!dragging.value) return
   const dx = e.clientX - last.x, dy = e.clientY - last.y
   last.x = e.clientX; last.y = e.clientY
   ry.value = Math.max(-32, Math.min(32, ry.value + dx * 0.35))
   rx.value = Math.max(38, Math.min(78, rx.value - dy * 0.35))
 }
-function onUp() { dragging = false; stageRef.value && (stageRef.value.style.cursor = 'grab') }
+function onUp() { dragging.value = false; stageRef.value && (stageRef.value.style.cursor = 'grab') }
 function onWheel(e) { rx.value = Math.max(38, Math.min(78, rx.value + (e.deltaY > 0 ? 3 : -3))) }
 
 onMounted(() => { rebuild() })
@@ -492,8 +493,10 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
   position: absolute; left: 50%; top: 52%;
   width: 0; height: 0;
   transform-style: preserve-3d;
-  transition: transform .12s linear;
+  transition: transform .5s cubic-bezier(.22, .9, .28, 1);
 }
+/* 拖动时 1:1 跟手（去掉过渡滞后导致的整桌摇晃感） */
+.g3d-world.no-anim { transition: none; }
 
 /* 牌桌 3D 板 */
 .gt3-table { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
@@ -511,22 +514,22 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
 .gt3-left {
   width: var(--t); height: var(--h);
   transform: translate(-50%, -50%) rotateY(-90deg) translateZ(calc(var(--w) / 2));
-  background: linear-gradient(180deg, #1d5c46, #0c3a2c);
+  background: linear-gradient(180deg, #164433, #061a12);
 }
 .gt3-right {
   width: var(--t); height: var(--h);
   transform: translate(-50%, -50%) rotateY(90deg) translateZ(calc(var(--w) / 2));
-  background: linear-gradient(180deg, #1d5c46, #0c3a2c);
+  background: linear-gradient(180deg, #164433, #061a12);
 }
 .gt3-front {
   width: var(--w); height: var(--t);
   transform: translate(-50%, -50%) rotateX(90deg) translateZ(calc(var(--h) / 2));
-  background: linear-gradient(90deg, #1d5c46, #0c3a2c);
+  background: linear-gradient(90deg, #164433, #061a12);
 }
 .gt3-back {
   width: var(--w); height: var(--t);
   transform: translate(-50%, -50%) rotateX(-90deg) translateZ(calc(var(--h) / 2));
-  background: linear-gradient(90deg, #1d5c46, #0c3a2c);
+  background: linear-gradient(90deg, #061a12, #164433);
 }
 .gt3-felt {
   position: absolute; inset: 0; border-radius: 26px; overflow: hidden;
@@ -618,11 +621,10 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
 .mj-back {
   border-radius: 7px;
   background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .14), transparent 60%),
-    linear-gradient(160deg, #2f9c84, #1c6f5d 60%, #0f4939);
-  box-shadow: inset 0 0 0 2px rgba(233, 200, 119, .4), inset 0 0 10px rgba(0, 0, 0, .35);
+    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, .18), transparent 62%),
+    linear-gradient(160deg, #2e8f7a, #1a6a58 58%, #0d4636);
+  box-shadow: inset 0 0 0 2px rgba(233, 200, 119, .45), inset 0 0 12px rgba(0, 0, 0, .3);
 }
-.mj-side { background: linear-gradient(90deg, #1c6f5d, #0f4939); border-radius: 3px; }
 
 /* 扑克牌 */
 .card-front {
