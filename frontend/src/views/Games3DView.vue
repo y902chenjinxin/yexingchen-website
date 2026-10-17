@@ -236,14 +236,15 @@ const auto = ref(false)
 const turn = ref('you')
 
 /* 固定正视、微微前倾对着你：只要透视立体感，不做旋转/俯仰交互 */
-const worldTF = 'rotateX(66deg) scale3d(.94, .94, .94)'
+const VIEW_RX = 66
+const worldTF = `rotateX(${VIEW_RX}deg) scale3d(.94, .94, .94)`
 
-/* 座位（随桌倾斜的铭牌） */
+/* 座位（billboard 浮动铭牌：lift 为悬浮高度，N/W/E 抬到牌墙顶以上避免遮挡） */
 const seats = [
-  { key: 'N', name: '上家', face: '🀄', color: 'linear-gradient(160deg,#3a7,#276)', pos: [0, -318] },
-  { key: 'W', name: '左家', face: '🎴', color: 'linear-gradient(160deg,#a76,#743)', pos: [-318, 0] },
-  { key: 'E', name: '右家', face: '🌟', color: 'linear-gradient(160deg,#67a,#345)', pos: [318, 0] },
-  { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 356] },
+  { key: 'N', name: '上家', face: '🀄', color: 'linear-gradient(160deg,#3a7,#276)', pos: [0, -318], lift: 96 },
+  { key: 'W', name: '左家', face: '🎴', color: 'linear-gradient(160deg,#a76,#743)', pos: [-318, 0], lift: 80 },
+  { key: 'E', name: '右家', face: '🌟', color: 'linear-gradient(160deg,#67a,#345)', pos: [318, 0], lift: 80 },
+  { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 356], lift: 36 },
 ]
 const scores = reactive({ you: 1280, N: 980, W: 1510, E: 760 })
 
@@ -347,7 +348,8 @@ function centerTF(i, lift = 25) {
   return `translate(-50%,-50%) translate3d(${x}px,${y}px,${lift}px)`
 }
 function seatTF(s) {
-  return { transform: `translate(-50%,-50%) translate3d(${s.pos[0]}px,${s.pos[1]}px,4px)` }
+  // 铭牌 billboard：rotateX(-VIEW_RX) 抵消世界倾斜，始终竖立正对镜头、悬浮桌沿上方（不再平贴桌面被透视压扁）
+  return { transform: `translate(-50%,-50%) translate3d(${s.pos[0]}px,${s.pos[1]}px,${s.lift}px) rotateX(-${VIEW_RX}deg)` }
 }
 
 /* ---------- 出牌模拟 ---------- */
@@ -581,9 +583,10 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
   position: absolute; left: 0; top: 0;
   display: flex; align-items: center; gap: 8px;
   padding: 7px 12px 7px 7px; border-radius: 14px;
-  background: rgba(8, 20, 16, .82);
-  border: 1px solid rgba(255, 255, 255, .14);
-  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .8);
+  background: rgba(8, 20, 16, .86);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, .16);
+  box-shadow: 0 12px 26px -12px rgba(0, 0, 0, .85);
   white-space: nowrap;
 }
 .gt3-ava {
