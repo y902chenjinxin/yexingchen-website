@@ -183,12 +183,12 @@ let reduceMotion = false
  * 疏密分区：登录卡片正后方保持稀疏（玻璃卡底下太密会显脏），粒子被软性推离卡片区，
  *   越靠中心推力越大；出生时也避开卡片区，避免首帧爆开。
  */
-const LINK_DIST = 180           // 粒子间连线最大距离（130→155→180，v2.40.12）
-const POINTER_DIST = 190        // 鼠标影响半径（原始值）
+const LINK_DIST = 150           // 粒子间连线最大距离（对齐 a.html links.distance 150）
+const POINTER_DIST = 140        // 鼠标影响半径（对齐 a.html grab.distance 140）
 const BASE_SPEED = 0.32         // 克制漂移速度（原始值）
 const MAX_SPEED = 0.9           // 速度上限（原始值）
 const PULL = 0.022              // 鼠标吸引力（原始值）
-const LINE_ALPHA = 0.16         // 连线透明度上限（浅底版下调，避免显脏；0.15→0.18→0.22→0.16）
+const LINE_ALPHA = 0.20         // 连线透明度上限（对齐 a.html links.opacity 0.2）
 // 面积自适应粒子数：1920×937 基准取 66，夹取 44~80（下限保证小屏不空，上限顾手机端性能）
 const PARTICLE_BASE = 66
 const PARTICLE_MIN = 44
@@ -230,15 +230,17 @@ function initParticles(w, h) {
       x, y,
       vx: (Math.random() - 0.5) * 2 * BASE_SPEED,
       vy: (Math.random() - 0.5) * 2 * BASE_SPEED,
-      r: 0.7 + Math.random() * 1.5
+      r: 1 + Math.random() * 2       // 1~3px（对齐 a.html size {min:1,max:3}）
     })
   }
 }
 
-const COL_LINE = '42, 108, 98'          // 淡青底上的中青连线（浅底需更深才可见）
-const COL_POINTER = '70, 138, 126'      // 鼠标连线偏亮青
-const COL_HALO = '120, 175, 162'        // 粒子光晕（淡青）
-const COL_CORE = '38, 98, 90'           // 粒子核（深青，浅底上清晰）
+// v2.46.103：参考夜星桌面 a.html（tsParticles 极致登录页）——背景转极深蓝黑 #050510，
+// 粒子改为纯白点 + 白连线（a.html links color #ffffff），在深底上呼吸感最强
+const COL_LINE = '255, 255, 255'        // 白色连线（a.html links #fff）
+const COL_POINTER = '255, 255, 255'     // 鼠标连线（白）
+const COL_HALO = '255, 255, 255'        // 粒子光晕（白）
+const COL_CORE = '255, 255, 255'        // 粒子核（白）
 
 function setupCanvas() {
   const canvas = particleCanvas.value
@@ -339,7 +341,7 @@ function draw() {
     if (pointer.x > -9000 && pointer.y > -9000) {
       const dp = Math.hypot(a.x - pointer.x, a.y - pointer.y)
       if (dp < POINTER_DIST) {
-        const alpha = (1 - dp / POINTER_DIST) * 0.30
+        const alpha = (1 - dp / POINTER_DIST) * 0.50   // 对齐 a.html grab.links.opacity 0.5
         pctx.strokeStyle = `rgba(${COL_POINTER}, ${alpha.toFixed(3)})`
         pctx.beginPath()
         pctx.moveTo(a.x, a.y)
@@ -352,13 +354,13 @@ function draw() {
   // 粒子（光晕 + 核）
   for (const p of particles) {
     const halo = pctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4)
-    halo.addColorStop(0, `rgba(${COL_HALO}, 0.50)`)
+    halo.addColorStop(0, `rgba(${COL_HALO}, 0.35)`)
     halo.addColorStop(1, `rgba(${COL_HALO}, 0)`)
     pctx.fillStyle = halo
     pctx.beginPath()
     pctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2)
     pctx.fill()
-    pctx.fillStyle = `rgba(${COL_CORE}, 0.9)`
+    pctx.fillStyle = `rgba(${COL_CORE}, 0.7)`
     pctx.beginPath()
     pctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
     pctx.fill()
@@ -515,14 +517,8 @@ function resetRegister() {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 70% 50% at 18% 12%, rgba(127, 168, 163, 0.16), transparent 60%),
-    radial-gradient(ellipse 60% 45% at 84% 80%, rgba(199, 169, 107, 0.10), transparent 60%),
-    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(127, 168, 163, 0.14), transparent 65%),
-    /* v2.46.102：夜星记忆中的「乳白底 + 粒子 + 整体淡青」登录页（历史无此版本，
-       v1.0 是 #0D1F27 深墨青、v1.1 是蓝紫，粒子是 63c250f 才加的；此处新做一版淡青乳白版）。
-       主渐变改为极淡青白→淡青（#eef4f2→#d9e9e4→#cfe3de），三处光晕雨青/鎏金极淡点缀，
-       雨青粒子网在浅底上用中青色（script 里 COL_LINE 已调深）保持呼吸感。零逐帧成本。 */
-    linear-gradient(160deg, #eef4f2 0%, #d9e9e4 48%, #cfe3de 100%);
+    radial-gradient(circle at 50% 38%, rgba(99, 102, 241, 0.10), transparent 62%),
+    #050510;
   position: relative;
   overflow: hidden;
 }
