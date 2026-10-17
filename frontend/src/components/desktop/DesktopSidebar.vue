@@ -5,7 +5,7 @@
     <div class="dsb-head">
       <div class="dsb-head-row">
         <div class="dsb-brand" @click="go('/workbench')" title="返回工作台">
-          <span class="dsb-brand-rune">玄</span>
+          <img class="dsb-brand-rune" src="/icons/icon-512.svg" alt="玄黄" draggable="false" />
           <span class="dsb-brand-text">玄 黄</span>
         </div>
         <button
@@ -243,21 +243,13 @@ function invokeNavAction(item) {
 .dsb-brand-rune {
   width: 28px;
   height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   border-radius: 8px;
-  /* v2.46.100：原用 --dp-accent 单色块，偏「low」。改墨青→雨青渐变底 + 鎏金描边 + 顶部高光，
-     与重做的 favicon 同一套品牌基因（玄黄·雨青+鎏金），小方块也有质感。 */
-  background: linear-gradient(135deg, #2a9d8f 0%, #157a6e 100%);
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
+  /* v2.46.104：直接引用新玻璃流体金属 favicon（/icons/icon-512.svg，与浏览器 tab/PWA 同源同图），
+     彻底替代 CSS 手绘方块——渐变/玻璃高光/鎏金描边与 favicon 完全一致，品牌统一。 */
   flex-shrink: 0;
-  border: 1px solid rgba(199, 169, 107, 0.6);
-  box-shadow:
-    0 2px 8px rgba(42, 157, 143, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(42, 157, 143, 0.35);
 }
 .dsb-brand-text {
   font-size: 14px;

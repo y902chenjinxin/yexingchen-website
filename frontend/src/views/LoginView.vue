@@ -533,22 +533,23 @@ function resetRegister() {
   z-index: 0;
 }
 
-/* 登录卡片（浅底淡雅玻璃卡，克制淡入） */
+/* 登录卡片（深色玻璃，克制淡入）——v2.46.104：登录页已是深黑 #050510 + 白粒子（a.html 风），
+   卡片转深色玻璃与背景、desktop-product 全局深墨青输入框统一；文字亮色化提升可读性 */
 .login-card {
   position: relative;
   z-index: 100;
   width: 360px;
   padding: 40px;
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(17, 24, 40, 0.66);
   -webkit-backdrop-filter: blur(24px) saturate(185%);
   backdrop-filter: blur(24px) saturate(185%);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 20px;
   box-shadow:
-    0 1px 1px rgba(40, 90, 82, 0.04),
-    0 8px 24px rgba(40, 90, 82, 0.10),
-    0 24px 60px rgba(40, 90, 82, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 1px 1px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 24px 60px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   opacity: 0;
   animation: card-in 0.5s ease-out 0.15s forwards;
 }
@@ -582,7 +583,7 @@ function resetRegister() {
 
 .site-subtitle {
   font-size: 14px;
-  color: rgba(35, 70, 66, 0.68);
+  color: rgba(214, 232, 228, 0.85);
   text-align: center;
   margin-bottom: 30px;
   letter-spacing: 4px;
@@ -602,17 +603,17 @@ function resetRegister() {
 }
 .remember-label {
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 13px; color: rgba(35, 70, 66, 0.72); cursor: pointer;
+  font-size: 13px; color: rgba(220, 236, 232, 0.85); cursor: pointer;
 }
 .remember-check {
   width: 16px; height: 16px; accent-color: var(--color-gold);
   cursor: pointer;
 }
-.remember-hint { font-size: 12px; color: rgba(35, 70, 66, 0.45); }
+.remember-hint { font-size: 12px; color: rgba(220, 236, 232, 0.5); }
 
 .password-toggle {
   cursor: pointer;
-  color: rgba(35, 70, 66, 0.6);
+  color: rgba(220, 236, 232, 0.7);
   display: flex;
   align-items: center;
   transition: color 0.2s;
@@ -623,29 +624,29 @@ function resetRegister() {
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.82) !important;
+  background: rgba(24, 32, 41, 0.72) !important;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(45, 120, 110, 0.3) !important;
+  border: 1px solid rgba(127, 168, 163, 0.3) !important;
   border-radius: 10px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 :deep(.el-input__wrapper:hover),
 :deep(.el-input__wrapper.is-focus) {
-  border-color: rgba(45, 120, 110, 0.65) !important;
+  border-color: rgba(127, 168, 163, 0.65) !important;
 }
 
 :deep(.el-input__inner) {
-  color: #1f3d3a !important;
-  -webkit-text-fill-color: #1f3d3a;
-  caret-color: #1f8b7d;
+  color: #f2f8f6 !important;
+  -webkit-text-fill-color: #f2f8f6;
+  caret-color: #f2f8f6;
 }
 
 /* 浏览器自动填充（记住我 / 密码管理器）：Chrome 会强制给 input 刷
    浅蓝底 + 自带文字色，普通 CSS 覆盖不了，必须用 inset box-shadow 遮蔽，
-   并用 -webkit-text-fill-color 强制文字色（浅底版用白底 + 深字） */
+   并用 -webkit-text-fill-color 强制文字色 */
 :deep(input:-webkit-autofill),
 :deep(input:-webkit-autofill:hover),
 :deep(input:-webkit-autofill:focus),
@@ -653,30 +654,30 @@ function resetRegister() {
 :deep(input:autofill),
 :deep(input:autofill:hover),
 :deep(input:autofill:focus) {
-  -webkit-text-fill-color: #1f3d3a !important;
-  color: #1f3d3a !important;
-  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-  box-shadow: 0 0 0 1000px #ffffff inset !important;
-  background-color: #ffffff !important;
+  -webkit-text-fill-color: #f2f8f6 !important;
+  color: #f2f8f6 !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(24, 32, 41, 0.96) inset !important;
+  box-shadow: 0 0 0 1000px rgba(24, 32, 41, 0.96) inset !important;
+  background-color: rgba(24, 32, 41, 0.96) !important;
   transition: background-color 9999s ease-out 0s;
   filter: none !important;
-  caret-color: #1f8b7d;
+  caret-color: #f2f8f6;
 }
 /* 自动填充时同步把外框描边维持雨青 */
 :deep(.el-input__wrapper:has(input:-webkit-autofill)),
 :deep(.el-input__wrapper:has(input:autofill)) {
-  background: #ffffff !important;
-  border-color: rgba(45, 120, 110, 0.45) !important;
+  background: rgba(24, 32, 41, 0.96) !important;
+  border-color: rgba(127, 168, 163, 0.45) !important;
 }
 
 :deep(.el-input__inner::placeholder) {
-  color: rgba(35, 70, 66, 0.5) !important;
+  color: rgba(200, 214, 208, 0.66) !important;
 }
 
 :deep(.el-input__suffix .el-icon),
 :deep(.el-input__clear),
 :deep(.el-input__password) {
-  color: rgba(35, 70, 66, 0.6) !important;
+  color: rgba(200, 214, 208, 0.75) !important;
 }
 
 :deep(.el-button--primary) {
@@ -691,7 +692,7 @@ function resetRegister() {
 
 .register-link {
   text-align: center;
-  color: rgba(35, 70, 66, 0.72);
+  color: rgba(232, 244, 252, 0.78);
   font-size: 13px;
   margin-top: 20px;
   cursor: pointer;
@@ -709,14 +710,14 @@ function resetRegister() {
 
 .step-title {
   font-size: 16px;
-  color: #1f3d3a;
+  color: #f2f8f6;
   text-align: center;
   margin-bottom: 20px;
 }
 
 .back-link {
   text-align: center;
-  color: rgba(35, 70, 66, 0.5);
+  color: rgba(232, 244, 252, 0.55);
   font-size: 13px;
   margin-top: 20px;
   cursor: pointer;
@@ -732,7 +733,7 @@ function resetRegister() {
 }
 
 .text-secondary {
-  color: rgba(35, 70, 66, 0.6);
+  color: rgba(232, 244, 252, 0.62);
   font-size: 14px;
   margin-top: 10px;
 }
@@ -803,9 +804,9 @@ function resetRegister() {
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(10, 16, 28, 0.9);
   backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(45, 120, 110, 0.18);
+  border-top: 1px solid rgba(78, 205, 196, 0.15);
   padding: 10px 20px;
 }
 
@@ -830,7 +831,7 @@ function resetRegister() {
 }
 
 .filing-links a {
-  color: rgba(35, 70, 66, 0.85);
+  color: rgba(232, 244, 252, 0.88);
   text-decoration: none;
   transition: color 0.2s;
   font-weight: 500;
@@ -841,7 +842,7 @@ function resetRegister() {
 }
 
 .filing-divider {
-  color: rgba(35, 70, 66, 0.55);
+  color: rgba(232, 244, 252, 0.55);
 }
 
 @media (max-width: 768px) {
