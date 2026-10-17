@@ -18,21 +18,12 @@
       <div class="g3d-ops">
         <button class="g3d-op" @click="deal">{{ dealt ? '重新发牌' : '发牌' }}</button>
         <button class="g3d-op" :class="{ on: auto }" @click="toggleAuto">{{ auto ? '停止出牌' : '自动出牌' }}</button>
-        <button class="g3d-op ghost" @click="resetView">复位视角</button>
       </div>
     </header>
 
-    <!-- 3D 舞台 -->
-    <div
-      ref="stageRef"
-      class="g3d-stage"
-      @pointerdown="onDown"
-      @pointermove="onMove"
-      @pointerup="onUp"
-      @pointerleave="onUp"
-      @wheel.prevent="onWheel"
-    >
-      <div class="g3d-world" :class="{ 'no-anim': dragging }" :style="worldStyle">
+    <!-- 3D 舞台（固定正视角度，纯透视立体，无旋转交互） -->
+    <div class="g3d-stage">
+      <div class="g3d-world" :style="{ transform: worldTF }">
         <!-- 牌桌（真实 3D 板：6 面挤出，看得见厚度与边缘） -->
         <div class="gt3-table" :style="boxVars(660, 660, 30)">
           <div class="gt3-face gt3-top">
@@ -118,7 +109,7 @@
             v-for="(t, i) in hand"
             :key="t.id"
             class="pc3d mj-hand"
-            :style="pieceBox(46, 62, 20, handTF(i, hand.length), i, true)"
+            :style="pieceBox(46, 62, 16, handTF(i, hand.length, true), i, true)"
             @click="playMj(i)"
           >
             <div class="pc-face pc-front mj-front"><MahjongTileFace :suit="t.suit" :rank="t.rank" /></div>
@@ -171,7 +162,7 @@
             v-for="(t, i) in gHand"
             :key="t.id"
             class="pc3d gd-hand"
-            :style="pieceBox(46, 64, 11, handTF(i, gHand.length, 6), i, true)"
+            :style="pieceBox(46, 64, 11, handTF(i, gHand.length, false), i, true)"
             @click="playGd(i)"
           >
             <div class="pc-face pc-front card-front" :class="t.red ? 'red' : 'blk'">
@@ -190,7 +181,7 @@
             v-for="(p, i) in gCenter"
             :key="'gc'+p.id"
             class="pc3d gd-hand mj-center"
-            :style="pieceBox(46, 64, 11, centerTF(i, 6), i, false)"
+            :style="pieceBox(46, 64, 11, centerTF(i, 21), i, false)"
           >
             <div class="pc-face pc-front card-front" :class="p.red ? 'red' : 'blk'">
               <span class="cf-rank">{{ p.rank }}</span>
@@ -205,13 +196,13 @@
         </template>
       </div>
 
-      <div class="g3d-hint">拖动旋转视角 · 滚轮微调俯仰 · 点手牌出牌</div>
+      <div class="g3d-hint">点手牌出牌 · 切换麻将 / 掼蛋</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
 
 /* ---------- 基础数据 ---------- */
@@ -233,16 +224,17 @@ const nextId = () => 'p' + (uid++)
 const mode = ref('mahjong')
 const dealt = ref(false)
 const auto = ref(false)
-const rx = ref(60)
-const ry = ref(0)
 const turn = ref('you')
+
+/* 固定正视视角：只要透视立体感，不做旋转/俯仰交互 */
+const worldTF = 'rotateX(58deg) scale3d(.94, .94, .94)'
 
 /* 座位（随桌倾斜的铭牌） */
 const seats = [
   { key: 'N', name: '上家', face: '🀄', color: 'linear-gradient(160deg,#3a7,#276)', pos: [0, -318] },
   { key: 'W', name: '左家', face: '🎴', color: 'linear-gradient(160deg,#a76,#743)', pos: [-318, 0] },
   { key: 'E', name: '右家', face: '🌟', color: 'linear-gradient(160deg,#67a,#345)', pos: [318, 0] },
-  { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 336] },
+  { key: 'you', name: '你', face: '🀆', color: 'linear-gradient(160deg,#e9c877,#a9812f)', pos: [0, 356] },
 ]
 const scores = reactive({ you: 1280, N: 980, W: 1510, E: 760 })
 
@@ -319,12 +311,16 @@ function wallTF(side, i, n) {
   // 桌面顶 z=15；立牌高 60 → 中心 15+30=45，牌底恰好落在桌面
   return `translate(-50%,-50%) translate3d(${x}px,${y}px,45px) rotateZ(${rotZ}deg) rotateX(-90deg)`
 }
-function handTF(i, n, lift = 16) {
-  const span = 300, step = (span * 2) / (n - 1)
-  const off = -span + i * step
-  const fan = (i - (n - 1) / 2) * 3
-  const bow = -Math.abs(i - (n - 1) / 2) * 2
-  return `translate(-50%,-50%) translate3d(${off}px,322px,${lift}px) rotateZ(${fan}deg) translateY(${bow}px)`
+function handTF(i, n, stand) {
+  const step = 44
+  const off = (i - (n - 1) / 2) * step
+  const fan = (i - (n - 1) / 2) * 2.2
+  if (stand) {
+    // 麻将手牌：立起来、牌面朝玩家（与牌墙同款立姿，桌面顶 z=15 + 半牌高 31）
+    return `translate(-50%,-50%) translate3d(${off}px,324px,46px) rotateZ(${fan}deg) rotateX(-90deg)`
+  }
+  // 掼蛋手牌：平贴桌面（桌面顶 15 + 半厚 5.5）
+  return `translate(-50%,-50%) translate3d(${off}px,322px,21px) rotateZ(${fan}deg)`
 }
 function oppTF(side, k, n) {
   const span = 150, step = (span * 2) / (n - 1)
@@ -334,9 +330,9 @@ function oppTF(side, k, n) {
   if (side === 'N') { x = off; y = -300 }
   else if (side === 'W') { x = -300; y = off }
   else { x = 300; y = off }
-  return `translate(-50%,-50%) translate3d(${x}px,${y}px,18px) rotateZ(${fan}deg)`
+  return `translate(-50%,-50%) translate3d(${x}px,${y}px,21px) rotateZ(${fan}deg)`
 }
-function centerTF(i, lift = 24) {
+function centerTF(i, lift = 25) {
   const a = i * 0.7
   const x = Math.cos(a) * (i * 6)
   const y = Math.sin(a) * (i * 6)
@@ -345,10 +341,6 @@ function centerTF(i, lift = 24) {
 function seatTF(s) {
   return { transform: `translate(-50%,-50%) translate3d(${s.pos[0]}px,${s.pos[1]}px,4px)` }
 }
-
-const worldStyle = computed(() => ({
-  transform: `rotateX(${rx.value}deg) rotateY(${ry.value}deg) scale3d(.94, .94, .94)`,
-}))
 
 /* ---------- 出牌模拟 ---------- */
 let autoTimer = null
@@ -398,7 +390,7 @@ function toggleAuto() {
   else clearTimeout(autoTimer)
 }
 
-/* ---------- 模式切换 / 发牌 / 视角 ---------- */
+/* ---------- 模式切换 / 发牌 ---------- */
 function switchMode(m) {
   if (m === mode.value) return
   mode.value = m
@@ -407,22 +399,6 @@ function switchMode(m) {
   rebuild()
 }
 function deal() { rebuild() }
-function resetView() { rx.value = 60; ry.value = 0 }
-
-/* ---------- 轨道控制（拖动旋转 + 滚轮俯仰） ---------- */
-const stageRef = ref(null)
-const dragging = ref(false)
-let last = { x: 0, y: 0 }
-function onDown(e) { dragging.value = true; last.x = e.clientX; last.y = e.clientY; stageRef.value && (stageRef.value.style.cursor = 'grabbing') }
-function onMove(e) {
-  if (!dragging.value) return
-  const dx = e.clientX - last.x, dy = e.clientY - last.y
-  last.x = e.clientX; last.y = e.clientY
-  ry.value = Math.max(-32, Math.min(32, ry.value + dx * 0.35))
-  rx.value = Math.max(38, Math.min(78, rx.value - dy * 0.35))
-}
-function onUp() { dragging.value = false; stageRef.value && (stageRef.value.style.cursor = 'grab') }
-function onWheel(e) { rx.value = Math.max(38, Math.min(78, rx.value + (e.deltaY > 0 ? 3 : -3))) }
 
 onMounted(() => { rebuild() })
 onBeforeUnmount(() => clearTimeout(autoTimer))
@@ -490,17 +466,13 @@ onBeforeUnmount(() => clearTimeout(autoTimer))
   position: absolute; inset: 0;
   perspective: 1500px;
   perspective-origin: 50% 42%;
-  cursor: grab;
   overflow: hidden;
 }
 .g3d-world {
   position: absolute; left: 50%; top: 52%;
   width: 0; height: 0;
   transform-style: preserve-3d;
-  transition: transform .5s cubic-bezier(.22, .9, .28, 1);
 }
-/* 拖动时 1:1 跟手（去掉过渡滞后导致的整桌摇晃感） */
-.g3d-world.no-anim { transition: none; }
 
 /* 牌桌 3D 板 */
 .gt3-table { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
