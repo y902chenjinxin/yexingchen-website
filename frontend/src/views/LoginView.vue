@@ -515,14 +515,14 @@ function resetRegister() {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 70% 50% at 20% 12%, rgba(127, 168, 163, 0.16), transparent 60%),
-    radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.08), transparent 60%),
-    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(127, 168, 163, 0.14), transparent 65%),
-    /* v2.46.87：v2.46.85 只恢复渐变没解决——旧版「青色感」来自 63c250f 删掉的双开门/
-       山峦等大面积青灰图层（因卡顿清理，不回收）。改为把底色直接调成暮青
-       （#1e3a44 中段带明确青调），雨青粒子线（127,168,163）在其上自然呼应；
-       三个光晕均为静态 CSS 渐变，零逐帧成本 */
-    linear-gradient(180deg, #0c1d24 0%, #1e3a44 50%, #102831 100%);
+    radial-gradient(ellipse 70% 50% at 20% 12%, rgba(127, 168, 163, 0.20), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 82% 78%, rgba(199, 169, 107, 0.10), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(127, 168, 163, 0.18), transparent 65%),
+    /* v2.46.99：夜星反馈登录背景「太黑」。底色从近黑墨青（#0c1d24→#1e3a44→#102831）
+       抬成「青绿山水」夜山——中调改 #1f6b5e（石绿/青碧），顶/底深青绿收边；
+       三个光晕同步加亮雨青（0.16/0.14→0.20/0.18），鎏金点睛保持。仍零逐帧成本。
+       方向取自千里江山·青绿山水，沿用站点雨青(#7fa8a3)+鎏金基因。 */
+    linear-gradient(155deg, #163a3f 0%, #1f6b5e 50%, #13454a 100%);
   position: relative;
   overflow: hidden;
 }
