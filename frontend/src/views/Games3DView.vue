@@ -206,6 +206,19 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
+import { useImmersive } from '@/composables/useImmersive'
+
+/* ---------- v2.46.114：横屏沉浸态 ----------
+ * 3D 棋牌是演示视图，横屏时 App 底部 Tab 栏（fixed z-index 1500）会压住手牌
+ * （夜星截图复现）。进入横屏即 enterImmersive 让 App.vue 收起 Tab 栏，
+ * 竖屏恢复。引用计数防重复 enter/漏 exit。 */
+const { enterImmersive, exitImmersive } = useImmersive()
+let immersiveOn = false
+function syncImmersive() {
+  const landscape = window.innerWidth > window.innerHeight
+  if (landscape && !immersiveOn) { enterImmersive(); immersiveOn = true }
+  else if (!landscape && immersiveOn) { exitImmersive(); immersiveOn = false }
+}
 
 /* ---------- 基础数据 ---------- */
 const SUITS = ['wan', 'tiao', 'tong']
@@ -434,8 +447,18 @@ function switchMode(m) {
 }
 function deal() { rebuild() }
 
-onMounted(() => { rebuild() })
-onBeforeUnmount(() => clearTimeout(autoTimer))
+onMounted(() => {
+  rebuild()
+  syncImmersive()
+  window.addEventListener('resize', syncImmersive)
+  window.addEventListener('orientationchange', syncImmersive)
+})
+onBeforeUnmount(() => {
+  clearTimeout(autoTimer)
+  window.removeEventListener('resize', syncImmersive)
+  window.removeEventListener('orientationchange', syncImmersive)
+  if (immersiveOn) { exitImmersive(); immersiveOn = false }
+})
 </script>
 
 <style scoped>

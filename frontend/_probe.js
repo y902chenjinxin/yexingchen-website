@@ -61,9 +61,30 @@ function makeOnlineView(seat) {
   const hand = dealt[seat].slice()
   const extra = [3, 4, 5, 6, 7, 8].map((r, i) => ({ id: 9000 + i, suit: '♠', rank: r, joker: null }))
   hand.splice(0, 6, ...extra)
+  /* ?thrown=N&tseat=S → 合成一手 N 张的出牌（S 号位，默认 0=我）落进 history，
+     并把 target/last_play 指向它、turn 设回我 → 复刻「轮到 你 出牌·请压过上一手」
+     的出牌区展示态（量中央出牌区与手牌/工具条的几何关系用）。 */
+  const thrown = Number(new URLSearchParams(location.search).get('thrown') || 0)
+  const tSeat = Number(new URLSearchParams(location.search).get('tseat') || 0)
+  let history = []
+  let target = null
+  let lastPlay = null
+  let turn = (seat + 1) % 4
+  if (thrown > 0) {
+    const RANKS = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2']
+    const SUITS = ['♠', '♥', '♣', '♦']
+    const cards = Array.from({ length: Math.min(thrown, 12) }, (_, i) => ({
+      id: 7000 + i, suit: SUITS[i % 4], rank: RANKS[(3 + i) % 13], joker: null,
+    }))
+    const pat = { type: thrown >= 4 ? 'bomb' : 'triple2', len: cards.length, key: 8, bombLevel: thrown >= 4 ? cards.length : 0 }
+    history = [{ kind: 'play', seat: tSeat, cards, pattern: pat }]
+    target = { seat: tSeat, cards, pattern: pat }
+    lastPlay = { seat: tSeat, cards, pattern: pat }
+    turn = seat
+  }
   return {
     phase: 'playing',
-    turn: (seat + 1) % 4,
+    turn,
     level: 2,
     round_no: 2,
     team_levels: [3, 2],
@@ -71,9 +92,9 @@ function makeOnlineView(seat) {
     players: [0, 1, 2, 3].map((s) => ({
       seat: s, rank: 0, hand_count: dealt[s].length, team: G.TEAM_OF[s],
     })),
-    target: null,
-    last_play: null,
-    history: [],
+    target,
+    last_play: lastPlay,
+    history,
   }
 }
 

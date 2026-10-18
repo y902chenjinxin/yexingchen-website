@@ -700,8 +700,8 @@ def _log(st: dict, text: str) -> None:
 def _history(st: dict, item: dict) -> None:
     hist = st.setdefault("history", [])
     hist.append(item)
-    if len(hist) > 120:
-        del hist[:len(hist) - 120]
+    if len(hist) > 200:
+        del hist[:len(hist) - 200]
 
 
 def _next_active(st: dict, frm: int) -> int:
@@ -865,6 +865,10 @@ class GuandanEngine(TableEngine):
                 st["phase"] = "playing"
                 st["turn"] = plan["turn"]
                 _log(st, "抗贡成功，不进贡（进贡方合计两张大王）")
+                # v2.46.114：抗贡也写一条 history——此前只写 log，前端历史通道完全
+                # 不可见，用户看到「赢了但对面没进贡」以为逻辑丢了（夜星报障）。
+                # 形状与 tribute/return 条目并列，kind='resist'，前端据此弹横幅+toast。
+                _history(st, {"kind": "resist", "leader": plan["leader"]})
             elif plan["givers"]:
                 # v2.46.23：进贡**不再手动选牌**——按规则进贡牌就是「手上最大的非逢人配」，
                 # 没有策略空间（夜星 2026-10-09：真人贡了张 8，被当成 bug 报上来）。
@@ -921,7 +925,9 @@ class GuandanEngine(TableEngine):
             "target": _pub_play(st.get("target")),
             "last_play": _pub_play(st.get("last_play")),
             "pass_count": st.get("pass_count", 0),
-            "history": st.get("history", [])[-60:],
+            # v2.46.114：60 → 200（夜星：超过 60 次出牌后记录冻结、牌桌也不展示）。
+            # 与 _history 内部上限（200）对齐，轮询 payload 每次多约 140 条短记录可接受。
+            "history": st.get("history", [])[-200:],
             "logs": st.get("logs", [])[:10],
             "tribute": st.get("tribute"),
             "result": st.get("result"),

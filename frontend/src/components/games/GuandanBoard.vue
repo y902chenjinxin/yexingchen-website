@@ -88,7 +88,7 @@
           <div v-for="pos in [0, 1, 2, 3]" :key="pos" class="gd-thz" :class="'gd-thz-' + pos">
             <template v-if="throwByPos[pos]">
               <span class="gd-thz-who">{{ seatName(throwByPos[pos].seat) }} · {{ G.PATTERN_NAME[throwByPos[pos].pattern?.type] || '出牌' }}</span>
-              <div class="gd-thz-cards">
+              <div class="gd-thz-cards" :style="{ '--thz-scale': throwScale(throwByPos[pos].cards.length) }">
                 <span
                   v-for="(c, i) in throwByPos[pos].cards"
                   :key="c.id"
@@ -170,6 +170,10 @@
                 </span>
                 <span class="gd-his-arrow">→ {{ seatName(h.to) }}</span>
               </template>
+              <template v-else-if="h.kind === 'resist'">
+                <span class="gd-his-pat gold">抗贡</span>
+                <span class="gd-his-cards">头游 {{ seatName(h.leader) }} 直接出牌</span>
+              </template>
               <template v-else>
                 <span class="gd-his-pat gold">本局结束 · {{ (h.ranking || []).map(s => seatName(s)).join(' → ') }}</span>
               </template>
@@ -223,6 +227,17 @@
               <em v-else class="gd-tb-pending">待{{ tributePhaseLabel }}</em>
             </span>
           </template>
+        </div>
+
+        <!-- v2.46.114：抗贡横幅——后端 new_game 抗贡时写 kind='resist' 的 history 条目才可见。
+             此前后端只写 log：tribute 横幅要 phase∈[tribute,return]、抗贡时 phase='playing'，
+             状态栏/记录同样查不到 → 用户看到「赢了但对面没进贡」以为逻辑丢了（夜星报障）。
+             与上方进贡横幅同款样式，独立显隐 6s。 -->
+        <div v-if="resistBanner" class="gd-tribute-banner" aria-live="polite">
+          <span class="gd-tb-title">抗贡</span>
+          <span class="gd-tb-item">
+            进贡方合计两张大王（大小王不算）· 抗贡成立，由头游 {{ seatName(resistLeader) }} 直接出牌
+          </span>
         </div>
 
         <!-- 手牌上方工具条（v2.46.72）：提示（左）· 挪左 · 选牌自动识别牌型（中） · 挪右 · 重选（右）。
@@ -442,11 +457,13 @@ const hands = ref([[], [], [], []])
 const turn = ref(0)
 const target = ref(null)        // { seat, cards, pattern }
 const lastPlay = ref(null)      // 展示用
-/** 四座位出牌区（v2.46.72 横屏改版）：每家在**本圈**最近一手，按座位投影摆到
- *  对家上/左家左/右家右/自己下（screenPos 走 povSeat，座位号≠屏幕位置）。
- *  新一圈开始（领出者再次领出 / target 清空 / 新一局）即整体清空，保持中部留白。 */
+/** 四座位出牌区（v2.46.72 横屏改版）：按座位投影摆到对家上/左家左/右家右/自己下
+ *  （screenPos 走 povSeat，座位号≠屏幕位置）。
+ *  v2.46.114（夜星）：**只展示最新一家出牌**——下一人出牌后上一人的牌收起，
+ *  四家同显在一圈里互相压牌（尤其横屏矮桌上下两家必叠）。新一圈开始
+ *  （领出者再次领出 / target 清空 / 新一局）即 clearThrows 整体清空留白。 */
 const seatThrows = ref({})
-function setThrow(seat, h) { seatThrows.value = { ...seatThrows.value, [seat]: h } }
+function setThrow(seat, h) { seatThrows.value = { [seat]: h } }
 function clearThrows() { seatThrows.value = {} }
 const throwByPos = computed(() => {
   const m = {}
@@ -456,6 +473,17 @@ const throwByPos = computed(() => {
   }
   return m
 })
+/** v2.46.114：出牌张数越多、牌越小——一行排爆出牌区会横向溢出中央区
+ *  （横屏 852 逻辑宽尚可，竖屏 rotate90 逻辑宽仅 ~390，12 张连对/顺子必超）。
+ *  缩放经 CSS 变量 --thz-scale 乘到 .gd-thz 的 gt-card 宽高上。 */
+function throwScale(n) {
+  if (n >= 12) return 0.5
+  if (n >= 10) return 0.6
+  if (n >= 8) return 0.7
+  if (n >= 6) return 0.8
+  if (n >= 5) return 0.9
+  return 1
+}
 const passCount = ref(0)
 const finished = ref([])
 const phase = ref('playing')    // playing | settled
@@ -792,7 +820,31 @@ watch(history, (list) => {
     seenFly.add(k)
     enqueueFly(h)
   }
+  // v2.46.114：抗贡可见化——后端 new_game 抗贡时写 kind='resist' 的 history 条目
+  // （此前只写 log，横幅/状态栏/记录三通道全瞎，用户看到「赢了但对面没进贡」
+  // 以为逻辑丢了，夜星报障）。无飞牌（没人递牌），横幅 6s + toast + 抽屉记录。
+  for (let i = 0; i < list.length; i++) {
+    const h = list[i]
+    if (h.kind !== 'resist') continue
+    const k = `resist:${h.leader}:${i}`
+    if (seenResist.has(k)) continue
+    seenResist.add(k)
+    showResist(h.leader)
+  }
 }, { deep: true })
+
+/* v2.46.114：抗贡横幅（与 gd-tribute-banner 同款样式，独立显隐） */
+const resistBanner = ref(false)
+const resistLeader = ref(null)
+const seenResist = new Set()
+let resistTimer = null
+function showResist(leader) {
+  resistLeader.value = leader
+  resistBanner.value = true
+  toastMsg(`抗贡成立：进贡方合计两张大王，不进不还，由头游 ${seatName(leader)} 直接出牌`, 4200)
+  clearTimeout(resistTimer)
+  resistTimer = setTimeout(() => { resistBanner.value = false }, 6000)
+}
 
 /* ---------- 手牌自适应重叠（一屏展示全，不滑动） ---------- */
 const handRef = ref(null)
@@ -1039,9 +1091,11 @@ function playFxFor(p) {
 watch(lastPlay, (p) => playFxFor(p))
 
 /* ---------- 出牌历史 ---------- */
+/* v2.46.114：上限 60 → 200（夜星：超过 60 次不再记录、牌桌也不展示）。
+ * 后端 view() 同步放宽到最近 200 条、引擎 _history 上限 200。 */
 function pushHistory(item) {
   history.value.unshift(item)
-  if (history.value.length > 60) history.value.length = 60
+  if (history.value.length > 200) history.value.length = 200
 }
 
 /* ---------- 在线：服务端投影 → 展示态 ---------- */
@@ -1708,9 +1762,10 @@ watch(phase, (p, old) => {
   border: none;
 }
 .gd-thz-cards { display: flex; gap: 3px; justify-content: center; min-width: 0; }
-/* 出牌区的牌缩到 0.78 倍：四家同屏不互相顶，牌型仍可辨（who 胶囊兜底语义） */
-.gd-thz .gt-card { width: calc(var(--card-w, 62px) * 0.78); height: calc(var(--card-h, 88px) * 0.78); }
-.gd-thz .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.4); }
+/* 出牌区的牌缩到 0.78 倍：四家同屏不互相顶，牌型仍可辨（who 胶囊兜底语义）
+   v2.46.114：再乘 --thz-scale（张数越多越小，防一行排爆出牌区，见 throwScale） */
+.gd-thz .gt-card { width: calc(var(--card-w, 62px) * 0.78 * var(--thz-scale, 1)); height: calc(var(--card-h, 88px) * 0.78 * var(--thz-scale, 1)); }
+.gd-thz .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.4 * var(--thz-scale, 1)); }
 /* 左右家的牌行靠桌沿一侧对齐，避免挤进中央 */
 .gd-thz-1 { align-items: flex-end; }
 .gd-thz-3 { align-items: flex-start; }
@@ -1726,25 +1781,17 @@ watch(phase, (p, old) => {
 .gd-center.is-low .gd-thz-3 { left: 6px; top: 50%; transform: translateY(-50%); }
 .gd-center.is-low .gd-thz { gap: 2px; }
 .gd-center.is-low .gd-thz-who { font-size: 10px; line-height: 1.4; padding: 0 8px; }
-.gd-center.is-low .gd-thz .gt-card { width: calc(var(--card-w, 62px) * 0.62); height: calc(var(--card-h, 88px) * 0.62); }
-.gd-center.is-low .gd-thz .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.32); }
+.gd-center.is-low .gd-thz .gt-card { width: calc(var(--card-w, 62px) * 0.62 * var(--thz-scale, 1)); height: calc(var(--card-h, 88px) * 0.62 * var(--thz-scale, 1)); }
+.gd-center.is-low .gd-thz .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.32 * var(--thz-scale, 1)); }
 
-/* ===== v2.46.92 手机横屏（矮宽视口）我方出牌防撞 =====
-   横屏全屏下中央区被压到 ~80-120px，我方出牌（贴底）与对家出牌（贴顶）牌行在中间
-   相撞（夜星：我方出牌会和对方出牌重合）。把「我方出牌」下移到手牌工具条（挪左/挪右）
-   正上方居中：① 给工具条上方留 48px 间隙；② 我方出牌改挂中央区底边下方 48px
-   （彻底脱离中央竖向空间，不再与对家重叠）。竖屏 / 桌面走原菱形摆位，不受影响。 */
-@media (orientation: landscape) and (max-height: 480px) {
-  .gd-hand-tools { margin-top: 48px; }
-  .gd-center .gd-thz-0,
-  .gd-center.is-low .gd-thz-0 {
-    bottom: -48px; top: auto;
-    left: 50%; transform: translateX(-50%);
-    flex-direction: column-reverse;
-  }
-  .gd-center.is-low .gd-thz-0 .gt-card { width: calc(var(--card-w, 62px) * 0.62); height: calc(var(--card-h, 88px) * 0.62); }
-  .gd-center.is-low .gd-thz-0 .gd-thz-cards .gt-card .c-mid { font-size: calc(var(--card-w, 62px) * 0.32); }
-}
+/* ===== v2.46.114 撤销 v2.46.92 横屏悬垂（出牌压牌根因）=====
+   旧方案：我方出牌 bottom:-48px 悬垂到工具条上方 + .gd-hand-tools margin-top:48px 让位。
+   实测两个 bug 叠加导致「出牌区压在工具条与手牌之间」（夜星截图）：
+   ① .gd-hand-tools 基础规则（margin: 0 auto）写在媒体查询**之后**，同特异性后者胜出，
+     margin-top:48px 从未生效（探针实测 computed 0px）；
+   ② v2.46.114 起牌桌只展示最新一家出牌（setThrow 只留最新一手），上下两家不再同显，
+     贴底 bottom:2px 足矣，无需悬垂——悬垂反而挤占工具条与手牌之间仅有的空间。
+   探针实测（852×393）：贴底后出牌区 y117-177、工具条 y210、手牌 y245，间隙 33px。 */
 
 /* ===== v2.46.93/95 手机竖屏 rotate90 兜底：我方出牌垂到挪左/挪右按钮行正中间 =====
    竖屏 rotate90 下中央区逻辑高仅 ~116px，对家（贴顶下垂 ~65px）+ 我方（贴底）
@@ -1926,7 +1973,10 @@ watch(phase, (p, old) => {
    禁用态去掉底与边（降噪：只留可用的按钮壳），字保留 45% 提示功能存在 */
 .gd-hand-tools {
   display: flex; align-items: center; gap: 12px;
-  width: 80%; margin: 0 auto; padding: 0 2px;
+  width: 80%; padding: 0 2px;
+  /* v2.46.114：拆 longhand——shorthand margin 写在媒体查询之后会覆盖前者的
+     margin-top 让位（同特异性后者胜），历史踩坑两次 */
+  margin-left: auto; margin-right: auto;
 }
 .gd-hand-tools .gt-btn {
   padding: 4px 14px; font-size: 12px; border-radius: 999px;

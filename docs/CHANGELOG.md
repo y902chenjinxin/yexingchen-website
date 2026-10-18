@@ -1,3 +1,16 @@
+## [v2.46.114] - 2026-10-17
+
+### 棋牌五合一：3D 麻将横屏去底部遮挡 + 掼蛋出牌三题 + 抗贡可见化（夜星五问）
+
+- 夜星五问（均附在线对局截图）：
+  1. **3D 麻将横屏底部被 Tab 栏压住**：`Games3DView.vue` 接入 `useImmersive`——横屏（`innerWidth > innerHeight`）即 `enterImmersive()` 让 `App.vue` 收起 MobileTabBar（fixed z-index 1500）与 MobileInviteDock，竖屏/退出恢复；监听 resize/orientationchange，本地 flag 防重复 enter，`onBeforeUnmount` 兜底 exit。
+  2. **掼蛋出牌多时压手牌**：根因是 v2.46.92 横屏悬垂方案的两个 bug——① `.gd-hand-tools` 基础规则 `margin: 0 auto` 写在媒体查询**之后**（同特异性后者胜），`margin-top:48px` 让位从未生效（探针实测 computed 0px）；② 悬垂 `bottom:-48px` 本身挤占工具条与手牌间仅有的空间。修法：撤销横屏悬垂媒体查询（v2.46.114 起牌桌只展示最新一家，贴底足矣）；`.gd-hand-tools` margin 拆 longhand 防再被覆盖；新增 `throwScale(n)` 按张数缩放（≥12→0.5、≥10→0.6、≥8→0.7、≥6→0.8、≥5→0.9），经 CSS 变量 `--thz-scale` 乘到 `.gd-thz` 的 gt-card 宽高，防一行排爆中央区。探针复测 852×393：6 张出牌区 y121-175、工具条 y210、手牌 y245（间隙 35px）；12 张收敛宽 230px 不出中央区，均无重叠。
+  3. **出牌记录超 60 次冻结**：后端引擎 `_history` 内部上限 120→200、`view()` 下发切片 `[-60:]`→`[-200:]`；前端 `pushHistory` cap 60→200。生产只读核查确认线上就是 `[-60:]`（计数器冻结在 60、旧记录被裁）。
+  4. **四家出牌同屏展示**：`setThrow` 由「合并进 seatThrows」改为「只留最新一家」（`{ [seat]: h }`）——下一人出牌后上一人的牌即收起；新圈开始（领出者再次领出/target 清空/新局）仍 `clearThrows()` 整体清空留白。与第 2 项协同：上下两家不再同显，横屏矮桌相撞问题一并解决。
+  5. **进贡/回贡缺失（实为抗贡不可见）**：生产只读核查 room 69（夜星当天的局）`tribute.resisted=true, leader=0`——第 2→3 局抗贡命中（两家机器人新牌合计两把大王），按规则不进不还、头游直接起牌，**引擎与路由链路本身正常**（复现脚本 + 5 项贡牌单测全过）；根因是抗贡在前端完全不可见：横幅要 `phase∈[tribute,return]`（抗贡时 phase='playing'）、状态栏只查 tribute 阶段、后端抗贡只写 log 不写 history。修法：后端 `new_game` 抗贡分支补写 `{"kind":"resist","leader":...}` history 条目；前端 `watch(history)` 捕获后弹抗贡横幅（复用 `gd-tribute-banner` 样式，6s）+ toast 4.2s + 抽屉「出牌记录」新增 resist 条目。
+- 版本 SW v426→v427、APP_VERSION v2.46.113→v2.46.114。
+- 验证：eslint 0 errors；本地探针 `_probe_gd_throw.cjs` 6/12 张两档几何达标；pytest `-k "tribute or resist or double_loss"` 5 项全过；产物 grep 核验。线上夜星自查。
+
 ## [v2.46.113] - 2026-10-17
 
 ### 3D 棋牌：左右铭牌分数改头像角标 + 外移不压墙（夜星八轮反馈）
