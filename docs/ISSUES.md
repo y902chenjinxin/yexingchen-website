@@ -7,6 +7,15 @@
 
 ---
 
+## v2.46.122 3D 棋牌大厅化 + 双引擎接入（2026-10-19）
+
+- **V246122-001 口径更新（覆盖 V246105-001）**：3D 棋牌不再是「纯前端展示、不接后端」的随机演示——现改为**单入口 + 选择页大厅**，并接入本地规则引擎（`utils/games/guandan.js`、`utils/games/mahjong.js`）。**没有**新增后端接口，仍是纯前端计算。
+- **V246122-002 全局样式必须非 scoped**：3D 原语（`.gt3-/pc3d/mj-/card-`）现集中在 `assets/styles/games3d.css`（全局）。原因：`Games3DView` 的 `<style scoped>` 不会作用到子组件棋盘，旧写法把原语写在 scoped 里，board 组件拿不到样式。
+- **V246122-003 麻将「吃」别误删**：2D 四川麻将实现**是有吃的**（v2.46.24 加，仅下家可吃，`M.chiCombos`），别按「四川麻将无吃」的惯例想当然删掉；暗杠 / 补杠同理（`M.findAnkongs` / `M.findBugangs`）。
+- **V246122-004 验收方式**：省积分，夜星线上自查；本次仅做 `npm run build` + 产物核验，不跑浏览器取证（沿用 V246105-003 口径）。
+
+---
+
 ## v2.46.119 翻页时钟点击入口直接全屏（2026-10-19）
 
 - **V246119-001 flex max-content 循环（Blink）**：flex-column 容器默认 `align-items:stretch` 时，子项宽依赖容器宽；此时给容器 `width:max-content` → 容器尺寸又依赖子项 → **循环定义，Blink 静默回退成填满 containing block**（时钟被拉到旋转平面宽 844px 撑爆视口）。修：容器 `align-items:center` 切断「子项→容器」依赖 + `width:max-content`。诊断手法：对比 `getBoundingClientRect`（旋转后 AABB）与 `offsetWidth`/computed width（未旋转），再 dump 子项 offsetWidth 看谁被拉伸。

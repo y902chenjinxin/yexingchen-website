@@ -1,3 +1,16 @@
+## [v2.46.122] - 2026-10-19
+
+### 3D 棋牌大厅化 + 麻将 / 掼蛋接入本地规则引擎
+
+- **进入即开局 → 选择页**：`/tool/games-3d` 改为「3D 棋牌大厅」，先选游戏（3D 麻将 / 3D 掼蛋）再开局；去掉顶栏麻将/掼蛋切换按钮，两游戏各自独立进入。交互与牌局逻辑对齐 2D（`GamesView`）。
+- **接入本地规则引擎**（不再是纯前端演示随机抽牌）：掼蛋复用 `frontend/src/utils/games/guandan.js`（发牌 27 张 / 牌型识别 / 压牌 / AI 选牌 / 升级 / 接风 / 无进贡），麻将复用 `frontend/src/utils/games/mahjong.js`（开牌仪式 / 摸打 / 碰·杠·吃·胡·过 / 听牌 / 番型 / 胡牌即结束）。3D 掼蛋与 2D 掼蛋逻辑一致。
+- **背景美化**：近黑底改为「深空冷蓝」多层光晕 + 点阵纹理 + 光点装饰，不再是一块黑。
+- **座位铭牌重排**：积分从头像右下角绝对定位角标改为铭牌内独立分栏 chip，头像与积分不再重叠。
+- **结构**：新增全局 `frontend/src/assets/styles/games3d.css`（3D 原语 + 大厅/背景/铭牌样式）、`frontend/src/components/games3d/use3dTable.js`（3D 变换助手）、`Guandan3DBoard.vue`、`Mahjong3DBoard.vue`；`Games3DView.vue` 改写为大厅。
+- 版本 SW v435→v436、APP_VERSION v2.46.121→v2.46.122。
+
+---
+
 ## [v2.46.121] - 2026-10-19
 
 ### 后台与模块清单对齐 + 个人中心页头返回按钮归位
