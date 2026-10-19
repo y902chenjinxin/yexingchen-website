@@ -1,3 +1,17 @@
+## [v2.46.117] - 2026-10-19
+
+### 手机端三优化：持仓盈亏下架 + 股票退出快捷入口 + 全部模块按账号权限过滤（夜星三条）
+
+- **夜星三条**：①「持仓盈亏不在手机端工作台展示」；②「股票入口不在快捷入口」；③「全部功能模块只展示对应账号权限的功能」。
+- **① 持仓盈亏下架**：`MobileWorkbenchHome.vue` 移除「持仓盈亏」stat 卡（今日速览 3 卡 → 2 卡：流水笔数 / 已接入），连带移除 `stocksApi.dashboard()` 请求、`stockPnl`/`fmtPnl`（首页少一次股票接口请求）；全局 `mobile-product.css` 的 `.abb-stats` 三列网格 → 两列（该类仅本组件使用，已 grep 确认）。
+- **② 股票退出快捷入口**：QUICK 移除「股票」（`/finance/market`）项与 ICONS.stocks，16→15 项。注意：**「财经 › 行情」入口仍在「全部模块」页**（navModules 注册表未动）——夜星需求字面针对快捷入口，模块目录保留由权限口径兜底。
+- **③ 全部模块 / 快捷入口按账号权限过滤**（核心）：数据源 = 既有 `stores/menus.js`（`/admin/menus/public`，后端已按角色 `menu_ids` 过滤）——此前**只有桌面搜索框消费**，ModulesView 副标题却写着「按账号角色展示」名不副实。`ModulesView.vue` 与 `MobileWorkbenchHome.vue` 的 QUICK 接入同一过滤口径：超管全部；菜单接口未加载成功（`loadedOk=false`）不拦截（宁多勿少）；工作台 `/workbench` 与外链站豁免（主页/第三方站不属站内授权对象）；其余按 `allowedPaths` 过滤。两处 `onMounted` 各调 `menus.load()`（store `inflight` 去重，共用一次请求）。
+- **部署顺序 = DB 先行**（关键）：生产 `xuanhuang_menus` 停在旧快照（30 条），缺 `/life/weight`、`/life/meals`、`/tool/games-3d`、`/tool/flipclock`、`/tool/danmu`、`/tool/spin`——不补齐就上前端过滤会把 lisa（唯一配置 `menu_ids` 的角色，26 项）的新功能全挡掉。新增探针脚本 `artifacts/_probe/sync_menus117.py`（走超管 API、幂等、只增不删）：新增 6 项菜单（id 34-39，体重记录/美食记忆/翻页时钟/手持弹幕/自定义标签挂生活组、3D 棋牌挂娱乐组）；旧条目「体重三餐 /life」内置禁改 path（11106）→ 停用降影响；lisa 的 `menu_ids` 26→32 幂等合并。踩坑记录：`RoleIn` 非部分更新模型——`description` 默认 "" 会清空、`permissions` 默认 "[]" 会覆盖、`sort_order` 默认 0 会冲排序，PUT 必须三者的原值一起回传（旧 sync_menus.py 踩过前两个）。
+- **生产只读核查结论**（`artifacts/_probe/check_prod_menus.py`）：`xuanhuang_roles` 三角色——super_admin/user 均 `menu_ids=[]`（未配置=全部可见，过滤对其无感），lisa 26 项 = 除管理后台外全部；sync 后 32 项含全部新功能 → 过滤上线对三类账号均无误伤。
+- 另：navModules 注册表补「翻页时钟」（生活组，时光痕迹旁，Clock 图标）——上版只加了路由/快捷入口，「全部模块」目录里看不到，本版补齐。
+- 版本 SW v429→v430、APP_VERSION v2.46.116→v2.46.117。
+- 验证：eslint 0 errors；产物 grep：sw=v430、v2.46.117、翻页时钟（index+WorkbenchView chunk）、isPathAllowed（ModulesView+WorkbenchView chunk）、首页已无持仓盈亏/今日变化/股票项。线上夜星自查（建议用 lisa 账号看「全部模块」与首页快捷入口的过滤效果）。
+
 ## [v2.46.116] - 2026-10-19
 
 ### 翻页时钟收进工具 + 翻页动画修复（夜星反馈两条）

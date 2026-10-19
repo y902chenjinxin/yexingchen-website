@@ -35,11 +35,6 @@
         <small>本月记录</small>
       </div>
       <div class="abb-stat">
-        <span class="abb-stat__label">持仓盈亏</span>
-        <strong :class="{ positive: stockPnl > 0, negative: stockPnl < 0 }">{{ fmtPnl(stockPnl) }}</strong>
-        <small>今日变化</small>
-      </div>
-      <div class="abb-stat">
         <span class="abb-stat__label">已接入</span>
         <strong>{{ quick.length }}</strong>
         <small>个功能模块</small>
@@ -75,18 +70,24 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { financeApi } from '@/api/finance'
-import { stocksApi } from '@/api/stocks'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
+import { useMenusStore } from '@/stores/menus'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const menus = useMenusStore()
+const auth = useAuthStore()
+/* v2.46.117 权限口径与 ModulesView 完全一致（超管判定抄 DesktopSidebar/ModulesView 现役写法） */
+const isSuper = computed(() => auth.user?.role === 'super_admin' || auth.user?.is_super_admin === 1)
+/* 非授权对象：工作台是主页，不参与角色菜单授权 */
+const NAV_EXEMPT = new Set(['/workbench'])
 
 /* 快捷入口：线性描边图标 + 模块语义色（工具已含：证件照/倒计时） */
 const ICONS = {
   music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><path d="M9.5 9.5 14.5 12l-5 2.5z"/></svg>',
   notes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
   finance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 5V3.5A1 1 0 0 1 9 2.5h6a1 1 0 0 1 1 1V5"/><path d="M8 12h8M8 16h5"/></svg>',
-  stocks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18l5-6 3 3 8-9"/><path d="M15 6h5v5"/></svg>',
   travels: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 2 6 5 6 9a6 6 0 0 1-12 0c0-4 2.5-7 6-9z"/><path d="M9.5 19h5"/></svg>',
   contacts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a7 7 0 0 1 14 0c0 5.5-7 10-7 10z"/><circle cx="12" cy="10" r="2.4"/></svg>',
   idphoto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M8.5 18c.8-2.3 2.2-3.4 3.5-3.4s2.7 1.1 3.5 3.4"/></svg>',
@@ -115,7 +116,6 @@ const QUICK = [
   { label:'记账',   path:'/finance/book', acc:'--ab-grn', icon:ICONS.finance },
   { label:'音乐',   path:'/music',   acc:'--ab-blu', icon:ICONS.music },
   { label:'棋牌游戏', path:'/tool/games', acc:'--ab-cyn', icon:ICONS.games },
-  { label:'股票',   path:'/finance/market',  acc:'--ab-cor', icon:ICONS.stocks },
   { label:'足迹',   path:'/travels', acc:'--ab-cyn', icon:ICONS.travels },
   { label:'通讯录', path:'/contacts',acc:'--ab-amb', icon:ICONS.contacts },
   { label:'时光痕迹', path:'/tool/countdown', acc:'--ab-vio', icon:ICONS.countdown },
@@ -129,14 +129,16 @@ const QUICK = [
   { label:'美食记忆', path:'/life/meals', acc:'--ab-grn', icon:ICONS.meals },
   { label:'摸鱼日历', path:'/tool/fish', acc:'--ab-blu', icon:ICONS.fish },
 ]
-const quick = QUICK
+const quick = computed(() => {
+  // v2.46.117 按账号权限过滤（与「全部模块」同口径）：
+  // 超管全部；菜单接口未加载成功不拦截（宁多勿少）；工作台等非授权对象豁免
+  if (isSuper.value || !menus.loadedOk) return QUICK
+  return QUICK.filter((m) => NAV_EXEMPT.has(m.path) || menus.isPathAllowed(m.path))
+})
 
 const income = ref(null)
 const expense = ref(null)
 const count = ref(null)
-const stockPnl = ref(null)
-
-const fmtPnl = (v) => v === null || v === undefined ? '—' : (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2) + '%'
 
 /* 数字滚动（#26）：hero 收支从 0 滚到位；null 期间维持「—」占位 */
 const animIncome = countUp(() => income.value ?? 0, 700, 2)
@@ -159,6 +161,7 @@ function go(path) {
 
 onMounted(async () => {
   window.addEventListener('scroll', onScroll, { passive: true })
+  menus.load()   // 权限过滤数据源（store 内 inflight 去重，与 ModulesView 共用一次请求）
   try {
     const res = await financeApi.summary()
     const d = res?.data
@@ -167,11 +170,6 @@ onMounted(async () => {
       expense.value = d.month_expense ?? d.expense ?? null
       count.value = d.month_count ?? d.count ?? null
     }
-  } catch { /* 未就绪保持占位 */ }
-  try {
-    const res = await stocksApi.dashboard()
-    const t = res?.data?.today_pnl
-    if (typeof t === 'number') stockPnl.value = t
   } catch { /* 未就绪保持占位 */ }
 })
 

@@ -13,6 +13,15 @@
 - **V246105-002 腾讯棋牌风还原点**：绿绒布牌桌（6 面挤出体显厚度）+ 三面独立 3D 立体牌墙（每张牌 6 面块、竖立朝心）+ 玩家 13 张矢量手牌（复用 `MahjongTileFace`）+ 中央东南西北罗盘 + 四座位铭牌（头像/分数）+ 拖动旋转/滚轮俯仰/点牌出牌。掼蛋模式切 3D 扑克牌。
 - **V246105-003 验收方式**：省积分，夜星线上自查；本次仅做 eslint + 构建 + 产物 grep 核验（chunk/nav/路由/SW/版本号全部命中），不跑浏览器取证。
 
+## v2.46.117 手机端三优化：持仓盈亏下架 + 股票退出快捷入口 + 权限过滤（2026-10-19）
+
+- **V246117-001 持仓盈亏下架**：夜星「持仓盈亏不在手机端工作台展示」。MobileWorkbenchHome 移除 stat 卡 + stocksApi.dashboard 请求 + stockPnl/fmtPnl；mobile-product.css `.abb-stats` 3 列 → 2 列（仅本组件用）。
+- **V246117-002 股票退出快捷入口**：夜星「股票入口不在快捷入口」。QUICK 移除股票项 + ICONS.stocks（16→15）。「财经 › 行情」在全部模块页保留（需求字面只针对快捷入口；权限口径兜底）。
+- **V246117-003 全部模块按权限过滤**：夜星「全部功能模块只展示对应账号权限的功能」。真因：stores/menus.js（/admin/menus/public 已按角色 menu_ids 过滤）此前只有 DesktopSearchBox 消费，ModulesView 读硬编码 buildNavModules——副标题「按账号角色展示」名不副实。修复：ModulesView + MobileWorkbenchHome QUICK 双端接入 menus store 过滤；超管豁免、loadedOk=false 不拦截、/workbench 与外链豁免。
+- **V246117-004 部署顺序坑（权限类改动必读）**：DB 菜单是授权真源，停在旧快照（缺 6 个新 path）。**先 sync_menus117 补 DB 再部署前端**，否则 lisa（唯一配了 menu_ids 的角色）被挡新功能。生产核查：super_admin/user 角色 menu_ids=[]（未配置=全部，过滤无感）；lisa 26→32 含全部新功能，无误伤。
+- **V246117-005 内置菜单禁改 path**：PUT /admin/menus/{id} 改内置菜单 path 返 11106「内置菜单不可修改路径」→ 旧「体重三餐 /life」改为停用（is_enabled=0）降影响，新增「体重记录 /life/weight」。影响面仅顶栏快速前往（ModulesView 走 navModules 不渲染 DB 死条目）。
+- **V246117-006 RoleIn 非部分更新三坑**：PUT /admin/roles/{id} 的 RoleIn 默认值会冲掉数据——description 默认 ""（清空）、permissions 默认 "[]"（覆盖）、sort_order 默认 0（冲排序）→ 回传原值三件套（旧 sync_menus.py 踩过前两个，本次补齐第三个并写进脚本注释）。
+
 ## v2.46.116 翻页时钟收进工具 + 翻页动画修复（2026-10-19）
 
 - **V246115-002 首页改快捷入口**：夜星「时分秒是工具，快捷入口留入口、首页不展示」。`MobileWorkbenchHome` 摘掉 `<FlipClock>`；新增 `views/FlipClockView.vue`（IslandInnerBase 工具外壳 + lg 实例）+ 路由 `/tool/flipclock`；QUICK 加「翻页时钟」（琥珀 `--ab-amb`，图标=翻牌+中缝+点阵）置于「时光痕迹」后，15→16 项。

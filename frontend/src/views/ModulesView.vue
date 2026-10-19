@@ -104,10 +104,12 @@ import { computed, nextTick, onMounted, ref, inject } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { useMenusStore } from '@/stores/menus'
 import { buildNavModules, countNavItems, isNavItemActive, formatKbd } from '@/constants/navModules'
 
 const route = useRoute()
 const auth = useAuthStore()
+const menus = useMenusStore()
 const { isMobile } = useIsMobile()
 
 const isSuper = computed(() => auth.user?.role === 'super_admin' || auth.user?.is_super_admin === 1)
@@ -116,12 +118,27 @@ const isSuper = computed(() => auth.user?.role === 'super_admin' || auth.user?.i
  * 手机端过滤掉 `kind:'action'` 条目（命令面板 / AI 高级工具）。
  * 这两个面板在 App.vue 里是 `v-if="!isMobile"`，手机上没有可开的东西 —— 留着会变成
  * 「点一下什么也不发生」的空卡片，不如不显示；桌面兜底网格仍完整保留（带快捷键标签）。
+ *
+ * v2.46.117 按账号权限过滤（夜星：「全部功能模块只展示对应账号权限的功能」）：
+ * 数据源 = menus store（`/admin/menus/public`，后端已按角色 menu_ids 过滤）。
+ * - 超管不过滤（超管即全部）；
+ * - 菜单接口未加载成功不过滤（loadedOk=false，宁多勿少，避免接口故障把导航清空）；
+ * - 工作台豁免（主页，不参与角色菜单授权）；外链站豁免（第三方站不属于站内账号权限体系）；
+ * - 其余按 allowedPaths 命中过滤。
+ * 部署顺序：DB 菜单由 sync_menus117 补齐后本过滤才上线，防止新功能（3D棋牌/翻页时钟等）
+ * 对已配置 menu_ids 的角色被误伤。
  */
+const NAV_EXEMPT = new Set(['/workbench'])
 const groups = computed(() => {
-  const gs = buildNavModules(isSuper.value)
-  if (!isMobile.value) return gs
-  return gs
-    .map((g) => ({ ...g, items: g.items.filter((it) => it.kind !== 'action') }))
+  const permOn = menus.loadedOk && !isSuper.value
+  const visible = (it) => {
+    if (it.kind === 'action') return !isMobile.value
+    if (it.external) return true
+    if (!permOn || NAV_EXEMPT.has(it.path)) return true
+    return menus.isPathAllowed(it.path)
+  }
+  return buildNavModules(isSuper.value)
+    .map((g) => ({ ...g, items: g.items.filter(visible) }))
     .filter((g) => g.items.length > 0)
 })
 const total = computed(() => countNavItems(groups.value))
@@ -159,6 +176,7 @@ function onActionClick(item) {
 }
 
 onMounted(async () => {
+  menus.load()   // v2.46.117 权限过滤数据源（与首页 QUICK 共用一次请求，store inflight 去重）
   await nextTick()
   strips.value.forEach(syncStrip)
 })

@@ -40,6 +40,7 @@ import {
   Search,
   MagicStick,
   Aim,
+  Clock,
 } from '@element-plus/icons-vue'
 
 export const NAV_GROUPS = [
@@ -66,6 +67,8 @@ export const NAV_GROUPS = [
       { path: '/life/weight', title: '体重记录', icon: Apple },  // v2.41 由「体重三餐」拆出
       { path: '/life/meals', title: '美食记忆', icon: Bowl },    // v2.41 只记大餐 / 纪念餐
       { path: '/tool/countdown', title: '时光痕迹', icon: Calendar },
+      // v2.46.117 翻页时钟进全部模块目录（工具属性，与时光痕迹相邻）
+      { path: '/tool/flipclock', title: '翻页时钟', icon: Clock },
       { path: '/tool/fish', title: '摸鱼日历', icon: Coffee },
       { path: '/travels', title: '足迹地图', icon: MapLocation },
       { path: '/finance/book', title: '记账', icon: Money },
