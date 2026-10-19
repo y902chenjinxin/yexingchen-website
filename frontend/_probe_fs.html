@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<!-- v2.46.118 探针页：直挂 FlipClockView 绕登录，验证横屏全屏舞台（?m=1 走移动端口径） -->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>html,body{margin:0;padding:0;background:#0b0c11;min-height:100%}</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { createApp } from 'vue'
+    import { createPinia } from 'pinia'
+    import { createRouter, createWebHashHistory } from 'vue-router'
+    import FlipClockView from '/src/views/FlipClockView.vue'
+    const router = createRouter({
+      history: createWebHashHistory(),
+      routes: [{ path: '/', component: FlipClockView }],
+    })
+    createApp(FlipClockView).use(createPinia()).use(router).mount('#app')
+  </script>
+</body>
+</html>

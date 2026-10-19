@@ -7,6 +7,14 @@
 
 ---
 
+## v2.46.118 翻页时钟全屏横屏化（2026-10-19）
+
+- **V246118-001 裸挂组件缺 router/pinia 上下文**：探针页直挂 `FlipClockView`（含 `IslandInnerBase`）时炸 `injection "Symbol(router)" not found` → `Cannot read properties of undefined (reading 'options')`（RouterLink 无 router 上下文渲染）。探针 HTML 页须 `createApp(...).use(createPinia()).use(createRouter(...))` 补最小上下文。
+- **V246118-002 scoped 动画名带 hash**：scoped CSS 里 `@keyframes mfc-blink` 构建后是 `mfc-blink-<hash>`，探针断言 `animationName === 'mfc-blink'` 恒 FAIL——断言用 `startsWith('mfc-blink')`。
+- **V246118-003 全屏尺寸公式**：横屏任意视口自适应用 `min(46vh, 21vw)` 驱动卡高（宽=高×.645、字号=宽×.84），勿再定 px 档——852×393 实测 179px/97px 命中。压缩产物 grep 注意 min() 内空格（`46vh, 21vw)`）。
+
+---
+
 ## v2.46.105 新增「3D 棋牌」模块（真 3D 透视牌桌，2026-10-17）
 
 - **V246105-001 全新模块、零侵入**：夜星明言「怕你把之前的改了，所以新增个」。故只新增 `Games3DView.vue` + 导航「3D 棋牌」+ 路由 `/tool/games-3d`，**未改任何旧 GameTableView/GamesView/MahjongBoard/GuandanBoard 等**。3D 用纯 CSS（`perspective` + `preserve-3d`），无新依赖、纯前端展示、不接后端。

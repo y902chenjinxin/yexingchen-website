@@ -1,3 +1,17 @@
+## [v2.46.118] - 2026-10-19
+
+### 翻页时钟全屏横屏化（夜星：做成全屏横屏展示，做精致点）
+
+- **全屏舞台**：`FlipClockView.vue` 横屏（`innerWidth > innerHeight`，resize + orientationchange 监听，照 Games3DView 已验证模式）时经 `<Teleport to="body">` 弹出 fixed 全屏层（z-index 1600 项目全屏惯例），`useImmersive` 收起底部 Tab 栏 / 邀请 dock；转回竖屏自动退出、卸载兜底退出。**仅移动端外壳生效**（`useIsMobile`：APK WebView 或 `?m=1`），桌面浏览器窗口宽高比不触发全屏。
+- **全屏钟 `size="full"` 档**（`FlipClock.vue`）：尺寸不再定 px，CSS 公式自适应任意横屏视口——卡高 `min(46vh, 21vw)`（852×393 ≈179px / 平板 1024×768 ≈215px）、宽 = 高×.645 经典竖长比例、字号随卡宽（852 屏 ≈97px）；容器透明融入舞台背景。
+- **精致细节**：深墨渐变舞台 + 时钟后极淡鎏金光晕（radial 62vmin，呼应玄黄 accent，克制不喧宾）；冒号两点交替呼吸（2.4s opacity，错峰 1.2s，秒针般的时间感）；日期字距 .34em + padding 补偿视觉居中；右上角低存在感 × 圆钮（hover/按压微亮）；进入 0.45s 淡入。竖屏工具页加鎏金提示「手机横屏，自动进入全屏时钟」。
+- **手动退出语义**：点 × 后本段横屏不再自动弹（`manualExit`），转回竖屏自动重置——再横屏重新出现。
+- **动效降级**：`prefers-reduced-motion` 下冒号呼吸 / 淡入关闭。
+- **验证**：CDP 探针 `_probe_fs.html` + `_probe_fs.cjs`（直挂 View + 最小 router/pinia 绕登录，`?m=1` 走移动端口径）12 项断言全 PASS：舞台出现 / z-index 1600 / 钟不溢出 / 卡高命中公式 / fs≥55 / 冒号呼吸（scoped hash 前缀匹配）/ 竖屏收舞台保 lg / × 可点 / manualExit 重置重现。eslint 0 errors。
+- 版本 SW v430→v431、APP_VERSION v2.46.117→v2.46.118。
+
+---
+
 ## [v2.46.117] - 2026-10-19
 
 ### 手机端三优化：持仓盈亏下架 + 股票退出快捷入口 + 全部模块按账号权限过滤（夜星三条）

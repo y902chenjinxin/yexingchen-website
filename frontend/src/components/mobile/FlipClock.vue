@@ -177,6 +177,34 @@ onBeforeUnmount(() => {
 @keyframes mfc-undim { from { opacity: .45; } to { opacity: 0; } }
 @keyframes mfc-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
+/* ===== v2.46.118 full：全屏横屏档（工具页横屏时 Teleport 到 body 的舞台内）
+   尺寸不再定 px，用 vh/vw 公式随任意横屏视口自适应：
+   卡高 min(46vh, 21vw) —— 852×393 手机横屏 ≈179px、平板 1024×768 ≈215px，
+   宽 = 高 × .645（经典 flip clock 竖长比例），字号随卡宽走，永不溢出。 */
+.mfc.is-full {
+  --mfc-h: min(46vh, 21vw);
+  --mfc-w: calc(var(--mfc-h) * .645);
+  --mfc-fs: calc(var(--mfc-w) * .84);
+  --mfc-r: calc(var(--mfc-w) * .14);
+  --mfc-gap: calc(var(--mfc-w) * .09);
+  background: transparent; border: none; box-shadow: none; padding: 0;
+  gap: calc(var(--mfc-h) * .17);
+  animation: none;
+}
+.mfc.is-full .mfc-date {
+  font-size: clamp(13px, 2.8vh, 18px); letter-spacing: .34em;
+  color: rgba(255, 255, 255, .48); padding-left: .34em; /* 视觉居中补偿 letter-spacing 尾空隙 */
+}
+.mfc.is-full .mfc-clock { gap: calc(var(--mfc-w) * .24); }
+.mfc.is-full .mfc-colon { gap: calc(var(--mfc-h) * .135); }
+.mfc.is-full .mfc-colon i {
+  width: calc(var(--mfc-w) * .09); height: calc(var(--mfc-w) * .09);
+  /* 冒号呼吸：两点交替微光，秒针般的时间感（极低开销 opacity 动画） */
+  animation: mfc-blink 2.4s ease-in-out infinite;
+}
+.mfc.is-full .mfc-colon i:last-child { animation-delay: 1.2s; }
+@keyframes mfc-blink { 0%, 100% { opacity: .22; } 50% { opacity: .95; } }
+
 /* 窄屏缩档，保证三组 + 冒号放得下 */
 @media (max-width: 360px) {
   .mfc.is-sm { --mfc-w: 37px; --mfc-h: 55px; --mfc-fs: 31px; --mfc-r: 9px; padding: 14px 16px 16px; }
@@ -197,5 +225,6 @@ onBeforeUnmount(() => {
   .mfc { animation: none; }
   .mfc-flip-up, .mfc-flip-down { animation-duration: .001s; animation-delay: 0s; }
   .mfc-flip-up::after, .mfc-flip-down::after { animation-duration: .001s; animation-delay: 0s; }
+  .mfc.is-full .mfc-colon i { animation: none; opacity: .8; }
 }
 </style>
