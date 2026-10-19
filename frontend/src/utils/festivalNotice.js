@@ -59,7 +59,7 @@ function fire(sent, key, title, body) {
   if (sent[key]) return false
   try {
     // eslint-disable-next-line no-new
-    new Notification(title, { body, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png' })
+    new Notification(title, { body, icon: '/icons/icon-192.png?v=428', badge: '/icons/icon-192.png?v=428' })
   } catch { return false }
   sent[key] = Date.now()
   return true

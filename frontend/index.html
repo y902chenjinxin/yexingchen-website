@@ -41,16 +41,19 @@
   </script>
 
   <!-- iOS 添加到主屏幕（不读 manifest 图标，只认下面这几个） -->
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=428">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="玄黄">
 
-  <link rel="icon" type="image/svg+xml" href="/icons/icon-512.svg">
+  <!-- 品牌图标升级为「玄黄 · 云雷玉璧」（v428）。末尾 ?v= 是必需的：
+       favicon 由浏览器独立缓存、且不吃 SW 版本号，只有换掉 URL 才能让
+       标签页立刻拿到新图，否则旧图标会顽固地留着。 -->
+  <link rel="icon" type="image/svg+xml" href="/icons/icon-512.svg?v=428">
   <!-- PNG 兜底：Chrome 密码管理器/自动填充下拉等上下文不吃 SVG favicon，
        会退回找 /favicon.ico 或旧缓存；显式给新 PNG 让它们拿到新图标 -->
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=428">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

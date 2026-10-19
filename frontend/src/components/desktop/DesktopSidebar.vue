@@ -5,7 +5,55 @@
     <div class="dsb-head">
       <div class="dsb-head-row">
         <div class="dsb-brand" @click="go('/workbench')" title="返回工作台">
-          <img class="dsb-brand-rune" src="/icons/icon-512.svg" alt="玄黄" draggable="false" />
+          <!-- 品牌标：玄黄 · 曜石方壳（内联 SVG）。
+               白天/夜间是两套，共用同一轮廓与高光走向，只换材质极性：
+               白天走「黑曜石」= 深体压浅底；夜间走「夜曜石」= 同体加深，但内嵌青光 + 环绕棱光，
+               否则深色标在夜间深底上会被吞成一团黑。28px 下描边按比例放大，避免细线糊成灰边。
+               白天不画外描边：浅底上亮棱光会读成一圈白边，改成只留体内高光 + 一道冷青光。 -->
+          <svg class="dsb-brand-rune rune-day" viewBox="0 0 100 100" role="img" aria-label="玄黄" focusable="false">
+            <defs>
+              <radialGradient id="dsbDayCore" cx="0.34" cy="0.26" r="0.94">
+                <stop offset="0" stop-color="#5a7590" />
+                <stop offset="0.42" stop-color="#1a2530" />
+                <stop offset="1" stop-color="#05090c" />
+              </radialGradient>
+              <linearGradient id="dsbDaySpec" x1="0" y1="0" x2="0.45" y2="1">
+                <stop offset="0" stop-color="#ffffff" stop-opacity="0.52" />
+                <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M50 4h26a20 20 0 0 1 20 20v52a20 20 0 0 1-20 20H24a20 20 0 0 1-20-20V24A20 20 0 0 1 24 4z" fill="url(#dsbDayCore)" />
+            <ellipse cx="37" cy="30" rx="21" ry="12.5" transform="rotate(-28 37 30)" fill="url(#dsbDaySpec)" />
+            <path d="M31 75c7 9 16 12.5 25 10" fill="none" stroke="#5fc9e8" stroke-width="2.6" stroke-linecap="round" opacity="0.6" />
+          </svg>
+          <svg class="dsb-brand-rune rune-night" viewBox="0 0 100 100" role="img" aria-label="玄黄" focusable="false">
+            <defs>
+              <radialGradient id="dsbNightCore" cx="0.33" cy="0.26" r="0.95">
+                <stop offset="0" stop-color="#33475a" />
+                <stop offset="0.45" stop-color="#16202b" />
+                <stop offset="1" stop-color="#05090d" />
+              </radialGradient>
+              <radialGradient id="dsbNightGlow" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0" stop-color="#22d3ee" stop-opacity="0.55" />
+                <stop offset="0.55" stop-color="#22d3ee" stop-opacity="0.14" />
+                <stop offset="1" stop-color="#22d3ee" stop-opacity="0" />
+              </radialGradient>
+              <linearGradient id="dsbNightSpec" x1="0" y1="0" x2="0.45" y2="1">
+                <stop offset="0" stop-color="#ffffff" stop-opacity="0.45" />
+                <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+              </linearGradient>
+              <linearGradient id="dsbNightRim" x1="1" y1="1" x2="0" y2="0">
+                <stop offset="0" stop-color="#22d3ee" stop-opacity="0.35" />
+                <stop offset="0.45" stop-color="#67e8f9" stop-opacity="1" />
+                <stop offset="1" stop-color="#22d3ee" stop-opacity="0.25" />
+              </linearGradient>
+            </defs>
+            <path d="M50 4h26a20 20 0 0 1 20 20v52a20 20 0 0 1-20 20H24a20 20 0 0 1-20-20V24A20 20 0 0 1 24 4z" fill="url(#dsbNightCore)" />
+            <circle cx="50" cy="50" r="30" fill="url(#dsbNightGlow)" />
+            <ellipse cx="36" cy="29" rx="20" ry="12" transform="rotate(-28 36 29)" fill="url(#dsbNightSpec)" />
+            <path d="M50 4h26a20 20 0 0 1 20 20v52a20 20 0 0 1-20 20H24a20 20 0 0 1-20-20V24A20 20 0 0 1 24 4z" fill="none" stroke="url(#dsbNightRim)" stroke-width="3" />
+            <path d="M32 77c7 8 15 10.5 23 8.5" fill="none" stroke="#67e8f9" stroke-width="2.8" stroke-linecap="round" opacity="0.9" />
+          </svg>
           <span class="dsb-brand-text">玄 黄</span>
         </div>
         <button
@@ -244,13 +292,22 @@ function invokeNavAction(item) {
   width: 28px;
   height: 28px;
   display: block;
-  border-radius: 8px;
-  /* v2.46.104：直接引用新玻璃流体金属 favicon（/icons/icon-512.svg，与浏览器 tab/PWA 同源同图），
-     彻底替代 CSS 手绘方块——渐变/玻璃高光/鎏金描边与 favicon 完全一致，品牌统一。 */
+  /* 形状由 SVG 自己画（方壳，无外框），圆角不再需要。 */
   flex-shrink: 0;
   user-select: none;
-  box-shadow: 0 2px 8px rgba(42, 157, 143, 0.35);
+  /* 夜间：深底上的中性深色投影，基本看不见，只当一层垫底 */
+  box-shadow: 0 2px 10px rgba(12, 20, 24, 0.38);
 }
+/* 白天底是白的：任何投影都落在 SVG 的**方形盒**上（不是方壳轮廓），会在方壳外铺出一圈
+   灰底/白边观感。白底上深色标本身对比已经足够，干脆不投影，让方壳干净贴底。 */
+:root[data-theme="day"] .dsb-brand-rune {
+  box-shadow: none;
+}
+/* 白天/夜间两套品牌标：默认（无 data-theme 或 data-theme="night"）走夜曜石，
+   只有白天主题才切黑曜石 —— 深色标在深底上会被吞，所以夜间版单独加青光。 */
+.rune-day { display: none; }
+:root[data-theme="day"] .rune-day { display: block; }
+:root[data-theme="day"] .rune-night { display: none; }
 .dsb-brand-text {
   font-size: 14px;
   font-weight: 600;
