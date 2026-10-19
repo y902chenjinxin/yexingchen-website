@@ -7,7 +7,7 @@ import logging
 
 from app.database import engine, Base
 from app.routers import (
-    admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, datahub, finance, fish, idphoto, life, log, lost, music, novel,
+    admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, crawler, datahub, finance, fish, idphoto, life, log, lost, music, novel,
     ocr, poem, quick, search, settings as settings_router, subscriptions,
     day_calendar, game_economy, game_rooms, game_tables, stocks, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
@@ -152,6 +152,7 @@ app.include_router(music.router)
 app.include_router(novel.router)
 app.include_router(video.router)
 app.include_router(tool.router)
+app.include_router(crawler.router)
 app.include_router(cover.router)
 app.include_router(voice_clone.router)
 app.include_router(countdown.router)

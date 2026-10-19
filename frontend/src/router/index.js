@@ -100,6 +100,20 @@ const routes = [
     component: () => import('@/views/PdfToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 通用爬虫工具页（v2.46.120，服务端代理抓取）
+  {
+    path: '/tool/crawler',
+    name: 'CrawlerTool',
+    component: () => import('@/views/CrawlerToolView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 小说下载工具页（v2.46.120，番茄/起点 + 精校）
+  {
+    path: '/tool/novel-dl',
+    name: 'NovelDlTool',
+    component: () => import('@/views/NovelDlToolView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 内置 像素压缩 工具页（纯前端本地处理）
   {
     path: '/tool/compress',

@@ -25,6 +25,15 @@
 
 ---
 
+## v2.46.123 PC 卡片统一 + 爬虫/小说下载工具（2026-10-19）
+
+- **V246123-001 移动端组件上 PC 的「主题断层」**：ProfileView 这类页面有 `#app:not(.is-mobile)` PC 覆盖块（把移动端修仙玻璃卡换成桌面 dp token），但页面内引用的**子组件**（GameWalletPanel）自己不知道这套覆盖——PC 夜间出现「一个页面两套卡片语言」。规律：给页面加 PC 覆盖时，**同步排查页面内所有子组件的卡片**；子组件 PC 覆盖写在自己 scoped 里（`#app:not(.is-mobile) .gw-card`）。
+- **V246123-002 SQLite 部分写入回滚**：事务中前一条 INSERT 成功、后面语句炸（如列名不存在）→ `con.commit()` 不执行 → 连接关闭时**整事务回滚**，前面的插入也没落库；脚本报错只看到后面的异常，容易误以为前面成功。幂等脚本必须重跑确认「已存在/新增」输出。
+- **V246123-003 生产表结构与本地假设漂移**：xuanhuang_menus 生产无 `updated_at` 列（本地模型/记忆里有）——写库脚本先 `PRAGMA table_info` 探列名再 INSERT；凭据别硬编码键名（local.env 网站账密在 `#项目网站信息` 段「账号：/密码：」中文冒号格式）。
+- **V246123-004 小说抓取合规边界**：番茄/起点正文抓取只做公开免费内容（番茄 SSR `__INITIAL_STATE__` JSON、起点 DOM `.read-content`），付费/登录章节显式标注跳过；起点部分章节反爬（字体混淆/加密）如实报「结构变化未取到」，不做绕过。章节限速 0.35s/章、单批 ≤60，避免请求轰炸。
+
+---
+
 ## v2.46.118 翻页时钟全屏横屏化（2026-10-19）
 
 - **V246118-001 裸挂组件缺 router/pinia 上下文**：探针页直挂 `FlipClockView`（含 `IslandInnerBase`）时炸 `injection "Symbol(router)" not found` → `Cannot read properties of undefined (reading 'options')`（RouterLink 无 router 上下文渲染）。探针 HTML 页须 `createApp(...).use(createPinia()).use(createRouter(...))` 补最小上下文。

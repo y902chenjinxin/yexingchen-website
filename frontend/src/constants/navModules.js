@@ -41,6 +41,7 @@ import {
   MagicStick,
   Aim,
   Clock,
+  Download,
 } from '@element-plus/icons-vue'
 
 export const NAV_GROUPS = [
@@ -59,6 +60,9 @@ export const NAV_GROUPS = [
       { path: '/log', title: '日志', icon: EditPen },
       { path: '/tool', title: '工具', icon: Bell },
       { path: '/notes', title: '笔记云台', icon: Notebook },
+      // v2.46.123 爬虫 + 小说下载（工具岛配套抓取类工具，与小说岛相邻）
+      { path: '/tool/crawler', title: '网页爬虫', icon: Search },
+      { path: '/tool/novel-dl', title: '小说下载', icon: Download },
     ],
   },
   {

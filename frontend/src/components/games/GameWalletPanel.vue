@@ -515,4 +515,38 @@ onMounted(() => {
   .gw-rank-sub { display: none; }
   .gw-card { padding: 18px; }
 }
+
+/* ===== PC 端对齐桌面 dp token（v2.46.120，夜星：黑夜下三件套与周边卡片不一致）=====
+   ProfileView 的 PC 覆盖把 .info-card 换成 --dp-surface/--dp-line/--dp-shadow（去玻璃
+   去金线），三件套此前没跟上——黑夜下这里是青黑玻璃+金线，与周边紫黑桌面卡割裂。
+   桌面 token 主题无关（night/day 各一套），PC 统一走 dp；移动端保持原修仙玻璃风。 */
+#app:not(.is-mobile) .gw-card {
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-line);
+  box-shadow: var(--dp-shadow);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+#app:not(.is-mobile) .gw-card::before { display: none; }
+#app:not(.is-mobile) .gw-head { border-bottom-color: var(--dp-line); }
+#app:not(.is-mobile) .gw-bal { background: var(--dp-accent-faint); border-color: var(--dp-line); }
+#app:not(.is-mobile) .gw-bal.gold { background: var(--yq-gold-faint); border-color: rgba(252, 211, 77, .28); }
+#app:not(.is-mobile) .gw-btn {
+  color: #fff; border-color: transparent;
+  background: linear-gradient(180deg, var(--dp-accent), var(--dp-accent-hover));
+}
+#app:not(.is-mobile) .gw-btn.ghost { color: var(--dp-text); border-color: var(--dp-line); background: var(--dp-accent-faint); }
+#app:not(.is-mobile) .gw-inline { background: var(--dp-surface2); border-color: var(--dp-line); }
+#app:not(.is-mobile) .gw-field input,
+#app:not(.is-mobile) .gw-field select { background: var(--dp-surface2); border-color: var(--dp-line); }
+#app:not(.is-mobile) .gw-x:hover { background: var(--dp-accent-faint); }
+#app:not(.is-mobile) .gw-seg { background: var(--dp-accent-faint); border-color: var(--dp-line); }
+#app:not(.is-mobile) .gw-seg-btn.on { background: var(--dp-accent); color: #fff; }
+#app:not(.is-mobile) .gw-ledger-tabs button { border-color: var(--dp-line); }
+#app:not(.is-mobile) .gw-ledger-tabs button.on { background: var(--yq-gold-faint); color: var(--yq-gold); border-color: rgba(252, 211, 77, .4); }
+#app:not(.is-mobile) .gw-rank li { background: var(--dp-surface2); border-color: var(--dp-line); }
+#app:not(.is-mobile) .gw-medal { background: var(--dp-accent-faint); }
+#app:not(.is-mobile) .gw-bar { background: rgba(167, 139, 250, .14); }
+#app:not(.is-mobile) .gw-bar span { background: linear-gradient(90deg, var(--dp-accent), var(--dp-warning)); }
+#app:not(.is-mobile) .gw-rank-val { color: var(--dp-warning); }
+
 </style>

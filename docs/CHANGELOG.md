@@ -1,3 +1,17 @@
+## [v2.46.123] - 2026-10-19
+
+### PC 个人中心暗黑卡片统一 + 网页爬虫工具 + 小说下载工具（夜星三条）
+
+- **① PC 三件套卡片对齐桌面体系**：根因 = ProfileView 的 PC 覆盖（`#app:not(.is-mobile) .info-card`）把卡片换成 `--dp-surface/--dp-line/--dp-shadow`（去玻璃去金线），`GameWalletPanel` 没跟上——黑夜下三件套还是移动端青黑玻璃+金线，与周边紫黑桌面卡割裂。修：gw-card 及内部全部元素（余额卡/按钮/分段控件/内联面板/输入框/排行条目/进度条等 20+ 选择器）PC 端统一走 dp token（主题无关，night/day 自动跟随），移动端保持原修仙玻璃风。
+- **② 通用爬虫工具** `/tool/crawler`（后端 `/api/crawler/fetch`）：服务端 httpx 代理抓取（免 CORS），模式 = 正文文本/链接列表/图片列表/表格数据/原始 HTML；结果可复制/下载 JSON/CSV。**安全边界**：SSRF 拦截（解析全部 IP 拒内网/环回/链路本地/保留地址）、仅 http(s)、单页 ≤3MB、超时 15s、登录态鉴权；不绕过登录/验证码/付费，页面常驻合规提示。
+- **③ 小说下载工具** `/tool/novel-dl`（后端 `/api/crawler/novel/*`）：粘贴番茄/起点目录页 → 自动识别站点拉书名/作者/章节列表 → 选范围抓正文（单批 ≤60 章、章节间 0.35s 限速、进度提示）→ **规则精校**（NFKC 规范化/去广告噪声行 16 类正则/段落规整/HTML 解码）→ 导出 TXT / Markdown（RFC5987 中文文件名）。**合规**：仅公开免费章节，付费/需登录章节自动标注跳过（番茄 `need_pay`、起点 VIP/登录检测），不做任何绕过；起点反爬章节如实报「结构变化未取到」。
+- 新增依赖 `beautifulsoup4==4.12.3`（纯 Python html.parser 后端，无 C 扩展）；`api/crawler.js` 独立 axios 实例（同构模式）；navModules 内容组 + 爬虫/小说下载两项（Search/Download 图标）。
+- **DB 先行**（权限类铁律）：生产 tools 表插 2 条 builtin（id 33/34，内置区置顶）、xuanhuang_menus 内容组插 2 条（id 40/41）、丽莎姐姐 menu_ids 23→25（走超管 API 回传三原值）。踩坑：menus 表无 updated_at 列（INSERT 炸 → 事务回滚 → tools 插入也回滚，重跑才真正落库）；local.env 网站账密在 `#项目网站信息` 段的「账号：/密码：」格式。
+- 验证：py_compile 过；eslint 0 errors；产物 grep sw=v437/v2.46.123/CrawlerToolView chunk/NovelDlToolView chunk/gw-card dp 覆盖/网页爬虫/小说下载 全命中。线上自查建议：夜间模式看个人中心三件套；两工具各抓一个真实页面。
+- 版本 SW v436→v437、APP_VERSION v2.46.122→v2.46.123。
+
+---
+
 ## [v2.46.122] - 2026-10-19
 
 ### 3D 棋牌大厅化 + 麻将 / 掼蛋接入本地规则引擎
