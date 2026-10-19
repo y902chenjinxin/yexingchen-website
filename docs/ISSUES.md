@@ -7,6 +7,15 @@
 
 ---
 
+## v2.46.119 翻页时钟点击入口直接全屏（2026-10-19）
+
+- **V246119-001 flex max-content 循环（Blink）**：flex-column 容器默认 `align-items:stretch` 时，子项宽依赖容器宽；此时给容器 `width:max-content` → 容器尺寸又依赖子项 → **循环定义，Blink 静默回退成填满 containing block**（时钟被拉到旋转平面宽 844px 撑爆视口）。修：容器 `align-items:center` 切断「子项→容器」依赖 + `width:max-content`。诊断手法：对比 `getBoundingClientRect`（旋转后 AABB）与 `offsetWidth`/computed width（未旋转），再 dump 子项 offsetWidth 看谁被拉伸。
+- **V246119-002 translate 百分比 ≠ 尺寸一半的坑**：`translate(-50%,-50%)` 的百分比是**元素自身尺寸**，平面尺寸用 vh/vw（100vh×100vw）时其一半是 -50vh/-50vw，写成 translate(-50%,-50%) 值恰好相同——但与 `rotate(90deg)` 组合时**先 rotate 再 translate 的次序**导致平移方向被旋转，元素绕错中心（实测偏出 422px）。修：定位交给 margin（`margin-left:-50vh; margin-top:-50vw`），transform 只留纯 `rotate(90deg)`——默认 origin 50% 50% = 元素中心 = 视口中心，中心不动。
+- **V246119-003 vite dev HMR 失效**：编辑组件后 dev server 未感知（编译产物旧），新开页面也拿旧代码——重启 dev server 解决；另注意 SFC 主模块请求不含样式（样式走独立 `?vue&type=style` 请求），grep 主模块判断「代码是否生效」会误判。
+- **探针断言维度**：旋转场景 `getBoundingClientRect().width` 是 AABB（=平面内高度），不旋转时卡高在 `.height` 上——两场景断言维度不同，别复用同一字段。
+
+---
+
 ## v2.46.118 翻页时钟全屏横屏化（2026-10-19）
 
 - **V246118-001 裸挂组件缺 router/pinia 上下文**：探针页直挂 `FlipClockView`（含 `IslandInnerBase`）时炸 `injection "Symbol(router)" not found` → `Cannot read properties of undefined (reading 'options')`（RouterLink 无 router 上下文渲染）。探针 HTML 页须 `createApp(...).use(createPinia()).use(createRouter(...))` 补最小上下文。

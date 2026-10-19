@@ -190,6 +190,11 @@ onBeforeUnmount(() => {
   background: transparent; border: none; box-shadow: none; padding: 0;
   gap: calc(var(--mfc-h) * .17);
   animation: none;
+  /* 锁内容宽 + 子项居中：flex-column 默认 align-items:stretch 会让子项宽依赖
+     容器宽、容器 max-content 又依赖子项 → 循环定义，Blink 回退成填满
+     旋转平面（844）把时钟撑爆。center 切断依赖，容器塌到内容实宽。 */
+  width: max-content;
+  align-items: center;
 }
 .mfc.is-full .mfc-date {
   font-size: clamp(13px, 2.8vh, 18px); letter-spacing: .34em;
@@ -204,6 +209,12 @@ onBeforeUnmount(() => {
 }
 .mfc.is-full .mfc-colon i:last-child { animation-delay: 1.2s; }
 @keyframes mfc-blink { 0%, 100% { opacity: .22; } 50% { opacity: .95; } }
+
+/* ===== v2.46.119 is-rot：竖屏旋转平面变体（配合舞台 rotate90 兜底）=====
+   舞台在竖屏下把内容平面旋转 90°（宽高互换 100vh×100vw）模拟横屏，
+   平面的"横/纵"恰好对应真实视口的 vh/vw 互换 → 尺寸公式同步互换，
+   卡高 min(46vw, 21vh)：390×844 竖屏 ≈177px，与物理横屏 179px 几乎一致。 */
+.mfc.is-full.is-rot { --mfc-h: min(46vw, 21vh); }
 
 /* 窄屏缩档，保证三组 + 冒号放得下 */
 @media (max-width: 360px) {

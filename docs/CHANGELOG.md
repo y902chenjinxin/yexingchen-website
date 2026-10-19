@@ -1,3 +1,18 @@
+## [v2.46.119] - 2026-10-19
+
+### 翻页时钟点击入口直接全屏（夜星：不要先进竖屏列表、不要手动切换横竖屏）
+
+- **进入即全屏**：`FlipClockView` 挂载即 `setFullscreen(true)`（仅移动端外壳），点击快捷入口直接进全屏舞台 + `useImmersive` 收 Tab 栏——不再要求物理横屏。
+- **竖屏 rotate90 兜底**（V2462-001 牌桌同款思路）：物理竖屏时内容平面（`100vh×100vw`，宽高互换）绕自身中心 `rotate(90deg)`（头朝右），物理横屏正常横排，resize/orientationchange 实时切换。时钟 `is-rot` 变体公式 vh/vw 互换（卡高 `min(46vw,21vh)`），390×844 竖屏 ≈177px 与物理横屏 179px 几乎一致。
+- **× 退出回工具页**：lg 钟 + 鎏金描边「全屏时钟」胶囊按钮可重进。
+- **两个布局深坑**（详见 ISSUES V246119）：
+  1. **flex max-content 循环**：`.mfc`（flex-column）默认 `align-items:stretch` → 子项宽依赖容器宽、容器 `width:max-content` 又依赖子项 → 循环定义，Blink 回退成填满旋转平面（844px）把时钟撑爆。修：`align-items:center` 切断依赖 + `width:max-content`。
+  2. **translate 百分比与 rotate 组合错位**：`translate(-50%,-50%) rotate(90deg)` 的百分比是**元素自身尺寸**（844×390），与 rotate 组合后绕错中心，实测整体偏出视口 422px。修：margin 负半宽定位（`margin-left:-50vh; margin-top:-50vw`）+ transform 只留纯 `rotate(90deg)`（绕元素中心=视口中心，中心不动）。
+- **验证**：探针 `_probe_fs.cjs` 重写 10 断言全 PASS（挂载即全屏 / is-rot 平面旋转 / 竖屏卡视觉长≈177 / 竖屏时钟在视口内 / 横屏去旋转卡高≈179 / × 回工具页 / 「全屏时钟」重进）。eslint 0 errors。产物 grep sw=v432 / v2.46.119 / is-rot / -50vh / fc-enter 全命中。
+- 版本 SW v431→v432、APP_VERSION v2.46.118→v2.46.119。
+
+---
+
 ## [v2.46.118] - 2026-10-19
 
 ### 翻页时钟全屏横屏化（夜星：做成全屏横屏展示，做精致点）
