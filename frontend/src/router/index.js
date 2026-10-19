@@ -184,6 +184,13 @@ const routes = [
     component: () => import('@/views/FishToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 内置 翻页时钟（时分秒 · v2.46.116 从首页收为工具，快捷入口进入）
+  {
+    path: '/tool/flipclock',
+    name: 'FlipClockTool',
+    component: () => import('@/views/FlipClockView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 内置 AI 诗签
   {
     path: '/tool/poem',

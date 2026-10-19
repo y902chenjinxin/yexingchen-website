@@ -11,9 +11,6 @@
       </div>
     </header>
 
-    <!-- v2.46.115 翻页时钟：时分秒经典 flip clock（黑卡白字，参考夜星截图） -->
-    <FlipClock />
-
     <!-- 数据总览：首屏只放可行动的数据，不放装饰性趋势占位。
          原先主视觉是「本月净流入」大数字、下面再列收入与支出 —— 但净流入本身就是
          「收入 − 支出」，三项互相重复，与桌面账本同一个问题，故一并去掉，
@@ -77,7 +74,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import FlipClock from '@/components/mobile/FlipClock.vue'
 import { financeApi } from '@/api/finance'
 import { stocksApi } from '@/api/stocks'
 import countUp from '@/utils/games/countUp'
@@ -100,6 +96,8 @@ const ICONS = {
   wardrobe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4"/><path d="M12 7c-4.4 0-8 2.2-8 5v9h16v-9c0-2.8-3.6-5-8-5z"/><path d="M12 12v9"/></svg>',
   vault: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/><circle cx="12" cy="15.5" r="1.6"/><path d="M12 17.1v1.6"/></svg>',
   countdown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.6 1.5"/><path d="M9 3h6M12 3v1.5"/></svg>',
+  // v2.46.116 翻页时钟：一张牌 + 中缝 + 上下两行点阵（翻页钟点）
+  flipclock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="16" rx="2.5"/><path d="M6 12h12"/><path d="M9 8.5h2M13 8.5h2M9 15.5h2M13 15.5h2"/></svg>',
   ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.6c0 3.4-3.6 6.2-8 6.2-.9 0-1.7-.1-2.5-.3L5.5 20l1.1-3.1A6.6 6.6 0 0 1 4 11.6C4 8.2 7.6 5.4 12 5.4s8 2.8 8 6.2z"/><path d="M12 8.6v3.6M10.2 10.4h3.6"/></svg>',
   // v2.46.76 新五入口：手持弹幕 / 自定义标签 / 体重记录 / 美食记忆 / 摸鱼日历
   danmu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="10" rx="3"/><path d="M7 13h7M16.5 13h.5"/><path d="M8 5l1.2 1.8M16 5l-1.2 1.8"/></svg>',
@@ -121,6 +119,7 @@ const QUICK = [
   { label:'足迹',   path:'/travels', acc:'--ab-cyn', icon:ICONS.travels },
   { label:'通讯录', path:'/contacts',acc:'--ab-amb', icon:ICONS.contacts },
   { label:'时光痕迹', path:'/tool/countdown', acc:'--ab-vio', icon:ICONS.countdown },
+  { label:'翻页时钟', path:'/tool/flipclock', acc:'--ab-amb', icon:ICONS.flipclock },
   { label:'AI 对话', path:'/assistant', acc:'--ab-vio', icon:ICONS.ai },
   { label:'笔记',   path:'/notes',   acc:'--ab-pur', icon:ICONS.notes },
   // v2.46.76 新五入口

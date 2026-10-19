@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flip clock probe</title>
+</head>
+<body style="margin:0;background:#eef0f4">
+<div id="app"></div>
+<script type="module">
+import { createApp, h } from 'vue'
+import FlipClock from '/src/components/mobile/FlipClock.vue'
+createApp({
+  render() {
+    return h('div', { style: 'display:flex;flex-direction:column;gap:28px;padding:24px;align-items:center' },
+      h(FlipClock, { size: 'lg' }),
+      h(FlipClock, { size: 'sm' }))
+  }
+}).mount('#app')
+</script>
+</body>
+</html>
