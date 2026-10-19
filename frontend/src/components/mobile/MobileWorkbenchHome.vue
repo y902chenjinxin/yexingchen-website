@@ -11,6 +11,9 @@
       </div>
     </header>
 
+    <!-- v2.46.115 翻页时钟：时分秒经典 flip clock（黑卡白字，参考夜星截图） -->
+    <FlipClock />
+
     <!-- 数据总览：首屏只放可行动的数据，不放装饰性趋势占位。
          原先主视觉是「本月净流入」大数字、下面再列收入与支出 —— 但净流入本身就是
          「收入 − 支出」，三项互相重复，与桌面账本同一个问题，故一并去掉，
@@ -74,6 +77,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import FlipClock from '@/components/mobile/FlipClock.vue'
 import { financeApi } from '@/api/finance'
 import { stocksApi } from '@/api/stocks'
 import countUp from '@/utils/games/countUp'

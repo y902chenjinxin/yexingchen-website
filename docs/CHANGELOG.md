@@ -1,3 +1,19 @@
+## [v2.46.115] - 2026-10-19
+
+### 手机端工作台首页新增翻页时钟（时分秒，参考夜星截图）
+
+- 夜星要「能展示时分秒的工具，手机端工作台首页展示，参考截图做精致」。
+- GitHub 选型评估：`xiaxiangfeng/vue-flip-clock` 要求 Vue 3.5+（项目 3.4.27，不兼容）；`edmasini/countdown-flipping-clock-vue3` 是 GPL-3.0（排除）；`limintao/vue-turn-clock` 仅 4 star 且偏倒计时。最终参考 **Yuezi32/flipClock**（MIT 教学仓库）的四层翻牌原理，按玄黄移动端设计语言重写为项目内组件，零新依赖。
+- 新组件 `frontend/src/components/mobile/FlipClock.vue`（`mfc-` 前缀，已 grep 防撞）：
+  1. **经典四层翻牌**：每张卡 = 上下半当前值 + 翻转中的两份下一值；上半绕底边 `rotateX(0→-90°)`（同时 `brightness(1→.55)` 变暗）、下半延迟 0.3s 绕顶边 `rotateX(90°→0°)`（恢复），两段合计 620ms——「翻下半明暗」是精致关键，平面翻转变立体纸牌。
+  2. **数字居中技巧**：span 用整卡高 + `line-height` 卡高，上半 `top:0` / 下半 `bottom:0`，拼接后数字正好骑在整卡中线；中缝 1px 暗线 + 上下半内阴影模拟折痕。
+  3. **黑卡白字**（经典 flip clock 语言，亮/暗双主题下都成立）：深墨渐变卡面 + 发丝边 + 硬投影；冒号两点；日期行「10 月 19 日 · 星期一」。
+  4. **驱动**：250ms 轮询 + 值对比（天然对齐整秒、无 setInterval 漂移跳秒）；只翻变化的那张卡；`prefers-reduced-motion` 直接切数字不翻；<360px 窄屏缩一档；鸿蒙 WebView 3D transform 支持良好。
+- 挂载：`MobileWorkbenchHome.vue` 首页顶部（品牌行下方、数据总览上方），作首页第一视觉。
+- 另：并行会话的「品牌图标升级（云雷玉璧 favicon/PWA 图标/侧栏内联 SVG）」随本次工作区一并上线（sw.js 的 v428 版本号即由其引入），eslint 全量 0 errors 冒烟通过，产物核验 `?v=428` ×3、`dsbGold` 云雷玉璧渐变均在包。
+- 版本 SW v427→v428、APP_VERSION v2.46.114→v2.46.115。
+- 验证：eslint 0 errors；产物 grep：sw=v428、`v2.46.115`、`mfc-rise`/`mfc-up`（翻页 keyframes）、`dsbGold`、`?v=428`。线上夜星自查。
+
 ## [v2.46.114] - 2026-10-17
 
 ### 棋牌五合一：3D 麻将横屏去底部遮挡 + 掼蛋出牌三题 + 抗贡可见化（夜星五问）

@@ -13,6 +13,11 @@
 - **V246105-002 腾讯棋牌风还原点**：绿绒布牌桌（6 面挤出体显厚度）+ 三面独立 3D 立体牌墙（每张牌 6 面块、竖立朝心）+ 玩家 13 张矢量手牌（复用 `MahjongTileFace`）+ 中央东南西北罗盘 + 四座位铭牌（头像/分数）+ 拖动旋转/滚轮俯仰/点牌出牌。掼蛋模式切 3D 扑克牌。
 - **V246105-003 验收方式**：省积分，夜星线上自查；本次仅做 eslint + 构建 + 产物 grep 核验（chunk/nav/路由/SW/版本号全部命中），不跑浏览器取证。
 
+## v2.46.115 手机端首页翻页时钟（2026-10-19）
+
+- **V246115-001 翻页时钟**：夜星参考截图（黑卡白字 flip clock）要「时分秒展示 + 手机端工作台首页」。GitHub 选型：`xiaxiangfeng/vue-flip-clock` 要 Vue 3.5+（项目 3.4 不兼容）、`countdown-flipping-clock-vue3` GPL-3.0 排除；参考 **Yuezi32/flipClock**（MIT）四层翻牌原理重写为项目内组件 `components/mobile/FlipClock.vue`（`mfc-` 前缀）。要点：① 翻转明暗（`brightness .55` 中段）让纸牌立体；② span 整卡高 + 上下半 `top/bottom:0` 数字骑中线；③ 250ms 轮询值对比防 setInterval 漂移跳秒；④ reduced-motion 直切；⑤ <360px 缩档。挂 `MobileWorkbenchHome` 首页顶部。
+- **V246115-002 并行会话改动随本次上线**：另一会话的「品牌图标升级（云雷玉璧 favicon/PWA/侧栏 SVG）」未提交即随本次构建上线（工作区即上线内容，项目常态）。冒烟：eslint 全量 0 errors、产物 grep `?v=428`×3 + `dsbGold`。提交时只提交本会话文件，未替他提交，特此点明。
+
 ## v2.46.114 棋牌五合一：横屏遮挡 + 出牌三题 + 抗贡可见化（2026-10-17）
 
 - **V246114-001 3D 麻将横屏底部被 Tab 栏遮挡**：Games3DView 是独立演示视图，未接 `useImmersive`，横屏时 MobileTabBar（fixed z-index 1500）压住手牌。修法：横屏 `enterImmersive()` / 竖屏 `exitImmersive()`（引用计数），resize/orientationchange 监听 + onBeforeUnmount 兜底。**教训：全屏态视图一律过 useImmersive，别各自为政。**
