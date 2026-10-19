@@ -9,7 +9,7 @@
 <template>
   <IslandInnerBase
     type="life"
-    :title="isMeals ? '美食记忆' : '体重记录'"
+    :title="isMeals ? '美食记忆' : '体重管理'"
     :subtitle="isMeals ? '家人共享 · 只记大餐与值得纪念的一顿' : '家人共享 · 体重趋势与记录'"
   >
     <template #toolbar>

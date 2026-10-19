@@ -30,6 +30,15 @@
 - **V246105-002 腾讯棋牌风还原点**：绿绒布牌桌（6 面挤出体显厚度）+ 三面独立 3D 立体牌墙（每张牌 6 面块、竖立朝心）+ 玩家 13 张矢量手牌（复用 `MahjongTileFace`）+ 中央东南西北罗盘 + 四座位铭牌（头像/分数）+ 拖动旋转/滚轮俯仰/点牌出牌。掼蛋模式切 3D 扑克牌。
 - **V246105-003 验收方式**：省积分，夜星线上自查；本次仅做 eslint + 构建 + 产物 grep 核验（chunk/nav/路由/SW/版本号全部命中），不跑浏览器取证。
 
+## v2.46.121 后台与模块清单对齐 + 个人中心页头按钮归位（2026-10-19）
+
+- **V246121-001 个人中心返回按钮位置**：夜星「返回按钮位置不对，应该在左上方」。真因：`.header-with-back` 是「column + align-items:center」，返回按钮与标题纵向堆叠居中 → 按钮浮在正文正上方。修复：桌面端把 `.page-back` 绝对定位到内容列左上方（`top:50%` 与标题垂直居中），标题保持居中、两者不再互相挤位。手机端 `.app-back-btn` 本就隐藏（mobile-deink.css），不受影响。
+- **V246121-002 用户管理「可访问模块」整块移除**：夜星「可访问模块不止这些，需要优化下」。真因：编辑弹窗只硬编码 5 个 island（`music/novel/video/diary/tools`，漏 `life`），列表列 `ISLAND_NAME` 也没有 `life` → 存量用户（V2.15 迁移给所有人加过 life）只显示英文 key `life`。而 `allowed_islands` 早已不参与鉴权（真权限 = 角色 `menu_ids`）。决策（夜星选「去掉这个字段的展示」）：整块删掉列表列 + 表单复选框 + `ISLAND_NAME`/`getIslandName`/`getIslandList`/`.island-tags`，保存也不再提交 `allowed_islands`（后端 `is not None` 语义 → 从此不再改动该字段）。
+- **V246121-003 停用历史菜单行会挂在角色树上**：夜星「角色管理里生活模块有个体重三餐，要改为体重管理」。「体重三餐」正是 V246117-005 里被停用的遗留行 `id=12 /life`，而 `/admin/menus`（`admin_menus.py` 的 `list_menus`）**不过滤 `is_enabled`** → 全表返回，停用行照样出现在角色管理的可见菜单树里，看着像「这个模块还在」。处理：删行 12；`id=34` 标题「体重记录」→「体重管理」；清角色 lisa `menu_ids` 里的残留 `12`（防 id 日后被复用而静默放权）；前端 `navModules.js` / `LifeView.vue` 页面标题 / `MobileWorkbenchHome.vue` 入口名同步改名。**遗留观察**：`/admin/menus` 是否该默认过滤 `is_enabled`（或角色树只画启用项），本次未动，夜星未选该项。
+- **V246121-004 铁律：后台必须随模块清单变动**：夜星「这整个后台管理要跟着变动才行，这块要写进记忆了，不然每次都要单独提需求改」。`navModules.js` 是模块单一真源 → 模块的增 / 删 / 改名 / 改路径，必须同步 ① 生产库 `xuanhuang_menus`（菜单管理 + 角色可见树 + `/admin/menus/public` 按 `menu_ids` 过滤的唯一来源，且是运维数据、不走 alembic） ② 角色 `menu_ids` ③ 后台里的模块枚举 / 中文名映射。已写入 `project_memory.md`，并记下「手机端专属模块（`/tool/danmu` 手持弹幕、`/tool/spin` 自定义标签）只进 `xuanhuang_menus`、不进 navModules」这一**刻意例外**。
+
+---
+
 ## v2.46.117 手机端三优化：持仓盈亏下架 + 股票退出快捷入口 + 权限过滤（2026-10-19）
 
 - **V246117-001 持仓盈亏下架**：夜星「持仓盈亏不在手机端工作台展示」。MobileWorkbenchHome 移除 stat 卡 + stocksApi.dashboard 请求 + stockPnl/fmtPnl；mobile-product.css `.abb-stats` 3 列 → 2 列（仅本组件用）。

@@ -2,7 +2,7 @@
   <div class="profile-page">
     <div class="page-header">
       <div class="header-with-back">
-        <BackButton fallback="/workbench" style="margin-right: 12px;" />
+        <BackButton fallback="/workbench" class="page-back" />
         <h1 class="page-title font-serif">个人中心</h1>
       </div>
     </div>
@@ -740,5 +740,15 @@ async function savePassword() {
   background: var(--dp-surface2);
   border: 1px solid var(--dp-line);
   box-shadow: var(--dp-shadow);
+}
+/* 页头里的返回按钮原与标题一起「居中堆叠」，看起来浮在正文正上方、位置不对。
+   桌面端把它钉到内容列左上方，标题继续居中不受影响（两者不再互相挤位）。
+   手机端 .app-back-btn 本来就隐藏（mobile-deink.css），不受这条影响。 */
+#app:not(.is-mobile) .page-header { position: relative; }
+#app:not(.is-mobile) .page-back {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 </style>

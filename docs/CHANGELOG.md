@@ -1,3 +1,14 @@
+## [v2.46.121] - 2026-10-19
+
+### 后台与模块清单对齐 + 个人中心页头返回按钮归位
+
+- **个人中心返回按钮归位**：桌面端 `.header-with-back` 原是「列方向 + 居中」，返回按钮被堆在标题正上方、浮在正文中间；改为把它绝对定位钉到内容列左上方（`top: 50%` 与标题垂直居中对齐），标题继续居中、两者不再互相挤位。手机端 `.app-back-btn` 本就隐藏（mobile-deink.css），不受影响。
+- **用户管理移除「可访问模块」**：`allowed_islands` 已不参与鉴权（真正权限由角色 `menu_ids` 决定），整块删掉列表列 + 编辑弹窗复选框，连带清掉 `ISLAND_NAME` / `getIslandName` / `getIslandList` / `.island-tags`，编辑保存也不再提交 `allowed_islands`（后端是 `is not None` 语义 → 从此不再改动该字段）。顺带修掉「life 只能显示成英文 key」的老毛病。
+- **「体重三餐」→「体重管理」全链路统一**：生产库 `xuanhuang_menus` 删掉停用的历史遗留行 `id=12「体重三餐」/life`（该行因 `/admin/menus` 不过滤 `is_enabled`，一直挂在角色管理的可见菜单树里），现行 `id=34「体重记录」/life/weight` 统一改名「体重管理」；并清掉角色「丽莎姐姐」`menu_ids` 里残留的 id `12`。前端 `navModules.js`、`LifeView.vue` 页面标题、`MobileWorkbenchHome.vue` 入口名一并对齐。
+- 版本 SW v434→v435、APP_VERSION v2.46.120→v2.46.121。
+
+---
+
 ## [v2.46.120] - 2026-10-19
 
 ### 品牌视觉重做：favicon 全套换「玄黄 · 云雷玉璧」+ 桌面侧栏 logo 昼夜双版

@@ -125,7 +125,7 @@ const QUICK = [
   // v2.46.76 新五入口
   { label:'手持弹幕', path:'/tool/danmu', acc:'--ab-cor', icon:ICONS.danmu },
   { label:'自定义标签', path:'/tool/spin', acc:'--ab-vio', icon:ICONS.spin },
-  { label:'体重记录', path:'/life/weight', acc:'--ab-cyn', icon:ICONS.weight },
+  { label:'体重管理', path:'/life/weight', acc:'--ab-cyn', icon:ICONS.weight },
   { label:'美食记忆', path:'/life/meals', acc:'--ab-grn', icon:ICONS.meals },
   { label:'摸鱼日历', path:'/tool/fish', acc:'--ab-blu', icon:ICONS.fish },
 ]

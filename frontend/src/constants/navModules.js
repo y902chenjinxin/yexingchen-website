@@ -64,7 +64,7 @@ export const NAV_GROUPS = [
   {
     label: '生活',
     items: [
-      { path: '/life/weight', title: '体重记录', icon: Apple },  // v2.41 由「体重三餐」拆出
+      { path: '/life/weight', title: '体重管理', icon: Apple },  // v2.41 由「体重三餐」拆出；v2.46.121 统一改名（后台菜单表同步）
       { path: '/life/meals', title: '美食记忆', icon: Bowl },    // v2.41 只记大餐 / 纪念餐
       { path: '/tool/countdown', title: '时光痕迹', icon: Calendar },
       // v2.46.117 翻页时钟进全部模块目录（工具属性，与时光痕迹相邻）

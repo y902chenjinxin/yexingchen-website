@@ -30,15 +30,6 @@
             <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="allowed_islands" label="可访问模块" min-width="200">
-          <template #default="{ row }">
-            <div class="island-tags">
-              <el-tag v-for="island in getIslandList(row)" :key="island" size="small" type="info">
-                {{ getIslandName(island) }}
-              </el-tag>
-            </div>
-          </template>
-        </el-table-column>
         <el-table-column prop="last_login_at" label="最后登录" width="160">
           <template #default="{ row }">
             {{ row.last_login_at ? formatTime(row.last_login_at) : '-' }}
@@ -82,15 +73,6 @@
             <el-option label="已通过" value="approved" />
             <el-option label="已拒绝" value="rejected" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="可访问模块">
-          <el-checkbox-group v-model="editForm.islands">
-            <el-checkbox label="music">音乐</el-checkbox>
-            <el-checkbox label="novel">小说</el-checkbox>
-            <el-checkbox label="video">视频</el-checkbox>
-            <el-checkbox label="diary">日志</el-checkbox>
-            <el-checkbox label="tools">工具</el-checkbox>
-          </el-checkbox-group>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -162,7 +144,7 @@ const showAddDialog = ref(false)
 const showResetPwdDialog = ref(false)
 const editId = ref(null)
 const resetPwdTarget = ref(null)
-const editForm = ref({ role: '', status: 'pending', islands: [] })
+const editForm = ref({ role: '', status: 'pending' })
 const addForm = ref({ email: '', password: '', strict: false })
 const resetPwdForm = ref({ password: '', strict: false })
 
@@ -187,17 +169,6 @@ function getStatusType(s) {
   if (s === 'approved') return 'success'
   if (s === 'rejected') return 'danger'
   return 'info'
-}
-
-const ISLAND_NAME = { music: '音乐', novel: '小说', video: '视频', diary: '日志', tools: '工具' }
-function getIslandName(k) { return ISLAND_NAME[k] || k }
-/* 容错：allowed_islands 理论上恒为字符串，但若为 null/非字符串，
-   直接在模板里 .split 会抛错 → 单元格渲染失败 → 整行列错位（同角色管理那次事故） */
-function getIslandList(row) {
-  const raw = row?.allowed_islands
-  if (Array.isArray(raw)) return raw.filter(Boolean)
-  if (typeof raw !== 'string') return []
-  return raw.split(',').map(s => s.trim()).filter(Boolean)
 }
 
 function formatTime(s) {
@@ -255,7 +226,6 @@ function openEdit(userId) {
   editForm.value = {
     role: u.role || 'user',
     status: u.status || 'approved',
-    islands: (u.allowed_islands || '').split(',').filter(Boolean),
   }
   showEditDialog.value = true
 }
@@ -264,7 +234,6 @@ async function handleSaveEdit() {
   await updateUser(editId.value, {
     role: editForm.value.role,
     status: editForm.value.status,
-    allowed_islands: editForm.value.islands.join(','),
   })
   ElMessage.success('已保存')
   showEditDialog.value = false
@@ -319,7 +288,6 @@ onMounted(async () => {
   color: var(--dp-text3);
   margin-bottom: 12px;
 }
-.island-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 
 .empty-placeholder {
   text-align: center;
