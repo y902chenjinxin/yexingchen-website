@@ -1943,6 +1943,11 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   background: linear-gradient(90deg, transparent, var(--lj-dai), transparent); opacity: .45; }
 .fin-kpi-label { font-size: 12px; color: var(--lj-text-2); letter-spacing: .08em; }
 .fin-kpi-val { font-size: 22px; font-weight: 600; letter-spacing: .02em; }
+/* 窄屏：22px 的「+ ¥ 13554.00」放不进 46% 宽的 KPI 卡，会被省略号截断（夜星反馈过「看不清」）。
+   这里按屏宽降一档，并保证数字等宽不抖动。 */
+@media (max-width: 430px) {
+  .fin-kpi-val { font-size: 17px; letter-spacing: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+}
 .fin-kpi-val.income { color: var(--lj-ochre); }
 .fin-kpi-val.expense { color: var(--lj-vermilion); }
 .fin-kpi-sub { font-size: 11px; color: var(--lj-text-3); }
