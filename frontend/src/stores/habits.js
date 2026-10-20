@@ -24,6 +24,10 @@ function localDay() {
 
 export const useHabitsStore = defineStore('habits', () => {
   const list = ref([])
+  /** 本周复盘（/habits/weekly）：打卡率 / 断链 / 罚金 / 一句话建议 */
+  const weekly = ref(null)
+  /** 最近一次结算结果（有新罚单时用来弹提示） */
+  const lastSettle = ref(null)
   const loading = ref(false)
   const error = ref('')
   /** 这批数据属于哪一天（判断跨天） */
@@ -91,6 +95,30 @@ export const useHabitsStore = defineStore('habits', () => {
     }
   }
 
+  /** 结算断链罚金（幂等）。返回本次新增的罚单数组（可能为空）。 */
+  async function settle() {
+    try {
+      const res = await workbenchApi.habits.settle()
+      const data = res?.data || res || {}
+      lastSettle.value = data
+      if (data?.created) await load(true) // 罚金进账本，顺手刷一次（罚单数会变）
+      return data?.items || []
+    } catch {
+      return []
+    }
+  }
+
+  async function loadWeekly() {
+    try {
+      const res = await workbenchApi.habits.weekly()
+      weekly.value = res?.data || res || null
+      return weekly.value
+    } catch {
+      weekly.value = null
+      return null
+    }
+  }
+
   async function create(payload) {
     const res = await workbenchApi.habits.create(payload)
     await load(true)
@@ -108,8 +136,8 @@ export const useHabitsStore = defineStore('habits', () => {
   }
 
   return {
-    list, loading, error, day,
+    list, weekly, lastSettle, loading, error, day,
     doneCount, total, progress, pending, bestStreak, allDone,
-    load, toggle, create, update, remove,
+    load, toggle, create, update, remove, settle, loadWeekly,
   }
 })

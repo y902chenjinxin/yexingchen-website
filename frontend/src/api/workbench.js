@@ -66,6 +66,9 @@ export const workbenchApi = {
     update: (id, data) => api.patch(`/habits/${id}`, data),
     remove: (id) => api.delete(`/habits/${id}`),
     toggle: (id, data) => api.post(`/habits/${id}/toggle`, data),
+    // v2.46.143：断链自罚结算（幂等，进「今天」页调用一次）+ 本周复盘
+    settle: () => api.post('/habits/settle'),
+    weekly: () => api.get('/habits/weekly'),
   },
 
   // 服务器资源监测（PC 工作台，仅超管）：内存 / 磁盘 / 模块存储占用 / 进程内存

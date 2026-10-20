@@ -65,6 +65,7 @@
                 <span class="hb-meta">
                   连续 {{ h.streak }} 天 · 本周 {{ h.week_count }}<template v-if="h.weekly_goal">/{{ h.weekly_goal }}</template>
                   · 累计 {{ h.total_count }}
+                  <template v-if="h.penalty_cents"> · 罚 ¥{{ (h.penalty_cents / 100).toFixed(0) }}/天</template>
                 </span>
               </span>
               <span class="hb-tick" :class="{ on: h.checked_today }" aria-hidden="true">
@@ -94,6 +95,34 @@
           action-label="＋ 新建第一个"
           @action="openCreate"
         />
+      </section>
+
+      <!-- 本周复盘（v2.46.143） -->
+      <section v-if="weekly && total" class="hb-card glass-card">
+        <div class="hb-card-head">
+          <h2 class="hb-card-title">本周复盘</h2>
+          <span class="hb-card-sub">{{ weekly.week_start }} 起 · 第 {{ weekly.days_elapsed }} 天</span>
+        </div>
+        <div class="hb-wk">
+          <div class="hb-wk-stat">
+            <b>{{ weekly.rate }}<i>%</i></b>
+            <span>完成率</span>
+          </div>
+          <div class="hb-wk-stat">
+            <b>{{ weekly.checked }}<i>/{{ weekly.possible }}</i></b>
+            <span>打卡</span>
+          </div>
+          <div class="hb-wk-stat" :class="{ warn: weekly.penalty_count > 0 }">
+            <b>{{ weekly.penalty_count }}</b>
+            <span>断链</span>
+          </div>
+          <div class="hb-wk-stat" :class="{ warn: weekly.penalty_cents > 0 }">
+            <b>¥{{ (weekly.penalty_cents / 100).toFixed(0) }}</b>
+            <span>罚金</span>
+          </div>
+        </div>
+        <p class="hb-wk-text">{{ weekly.text }}</p>
+        <p class="hb-wk-advice"><span>小玄</span>{{ weekly.suggestion }}</p>
       </section>
 
       <!-- 最近 30 天记录 -->
@@ -143,6 +172,15 @@
           <span>每周目标（0 = 不限）</span>
           <el-input-number v-model="form.weekly_goal" :min="0" :max="7" controls-position="right" />
         </label>
+        <label class="hb-field">
+          <span>断链自罚（每天，元；填 0 = 关闭）</span>
+          <el-input-number v-model="form.penalty_yuan" :min="0" :max="1000" :step="1" :precision="2" controls-position="right" />
+        </label>
+        <label class="hb-field">
+          <span>宽限天数（连续漏的前 N 天不罚）</span>
+          <el-input-number v-model="form.penalty_grace" :min="0" :max="7" controls-position="right" />
+        </label>
+        <p class="hb-form-tip">开了自罚后，漏一天会自动在账本记一笔「断链罚金」支出（个人零花池），漏几天记几笔。</p>
       </div>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
@@ -167,7 +205,7 @@
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -175,12 +213,19 @@ import IconButton from '@/components/common/IconButton.vue'
 import { useHabitsStore } from '@/stores/habits'
 
 const store = useHabitsStore()
-const { list, loading, doneCount, total, progress, pending, bestStreak, allDone } = storeToRefs(store)
+const { list, weekly, loading, doneCount, total, progress, pending, bestStreak, allDone } = storeToRefs(store)
 
 const managing = ref(false)
 const dialog = ref(false)
 const saving = ref(false)
-const form = reactive({ id: 0, name: '', icon: '✓', weekly_goal: 0 })
+const form = reactive({
+  id: 0,
+  name: '',
+  icon: '✓',
+  weekly_goal: 0,
+  penalty_yuan: 0,   // 存「元」，提交时转分
+  penalty_grace: 0,
+})
 
 /** 图标候选：走 AppIcon 的 emoji 查表，命中就画线性图标；没命中的原样显示也不难看 */
 const ICON_CHOICES = ['💧', '🏃', '📖', '✍️', '🧘', '💰', '🌙', '☀️', '🥗', '🧹', '📷', '🎯']
@@ -201,12 +246,19 @@ async function onToggle(h) {
 }
 
 function openCreate() {
-  Object.assign(form, { id: 0, name: '', icon: ICON_CHOICES[0], weekly_goal: 0 })
+  Object.assign(form, { id: 0, name: '', icon: ICON_CHOICES[0], weekly_goal: 0, penalty_yuan: 0, penalty_grace: 0 })
   dialog.value = true
 }
 
 function openEdit(h) {
-  Object.assign(form, { id: h.id, name: h.name, icon: h.icon || '✓', weekly_goal: h.weekly_goal || 0 })
+  Object.assign(form, {
+    id: h.id,
+    name: h.name,
+    icon: h.icon || '✓',
+    weekly_goal: h.weekly_goal || 0,
+    penalty_yuan: (h.penalty_cents || 0) / 100,
+    penalty_grace: h.penalty_grace || 0,
+  })
   dialog.value = true
 }
 
@@ -214,7 +266,15 @@ async function submit() {
   if (!form.name.trim()) return
   saving.value = true
   try {
-    const payload = { name: form.name.trim(), icon: form.icon, color: null, weekly_goal: form.weekly_goal || 0 }
+    const payload = {
+      name: form.name.trim(),
+      icon: form.icon,
+      color: null,
+      weekly_goal: form.weekly_goal || 0,
+      // 元 → 分（后端只认分，避免浮点误差）
+      penalty_cents: Math.round((Number(form.penalty_yuan) || 0) * 100),
+      penalty_grace: form.penalty_grace || 0,
+    }
     if (form.id) await store.update(form.id, payload)
     else await store.create(payload)
     dialog.value = false
@@ -242,8 +302,28 @@ async function onRemove(h) {
   }
 }
 
-onMounted(() => {
-  store.load(true).catch(() => ElMessage({ message: '加载失败，稍后重试', type: 'warning' }))
+/** 进页面先结算断链罚金（幂等），有新罚单就弹一条，再拉本周复盘 */
+async function bootSettle() {
+  const items = await store.settle()
+  if (!items.length) return
+  const yuan = (items.reduce((s, i) => s + i.amount_cents, 0) / 100).toFixed(0)
+  ElNotification({
+    title: `断链了 ${items.length} 天，已记 ¥${yuan}`,
+    message: `账本里多了 ${items.length} 笔「断链罚金」：${items.slice(0, 3).map((i) => `${i.date.slice(5)} ${i.habit}`).join('、')}${items.length > 3 ? ' …' : ''}`,
+    type: 'warning',
+    duration: 7000,
+    position: 'bottom-right',
+  })
+}
+
+onMounted(async () => {
+  try {
+    await store.load(true)
+  } catch {
+    ElMessage({ message: '加载失败，稍后重试', type: 'warning' })
+  }
+  await bootSettle()
+  await store.loadWeekly()
 })
 </script>
 
@@ -331,6 +411,28 @@ onMounted(() => {
 
 .hb-empty { padding: 20px 0; }
 
+/* 本周复盘 */
+.hb-wk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 4px 10px 2px; }
+.hb-wk-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 4px; border-radius: 10px; background: rgba(14, 147, 184, .06);
+}
+.hb-wk-stat b { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tc-text, #0b1622); }
+.hb-wk-stat b i { font-size: 10px; font-style: normal; opacity: .55; margin-left: 1px; }
+.hb-wk-stat span { font-size: 11px; color: var(--tc-text-3, #5b6f8a); }
+.hb-wk-stat.warn { background: rgba(255, 77, 109, .09); }
+.hb-wk-stat.warn b { color: var(--color-danger, #cf2540); }
+.hb-wk-text { margin: 10px 10px 0; font-size: 12.5px; color: var(--tc-text-2, #46586e); line-height: 1.65; }
+.hb-wk-advice {
+  margin: 8px 10px 6px; padding-left: 8px; font-size: 12.5px; line-height: 1.65;
+  color: var(--tc-text, #0b1622); border-left: 2px solid var(--tc-cyan, #0e93b8);
+}
+.hb-wk-advice span {
+  display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 999px;
+  background: rgba(14, 147, 184, .12); color: var(--tc-cyan-deep, #0a708c);
+  font-size: 10.5px; font-weight: 700;
+}
+
 /* 弹窗表单 */
 .hb-form { display: flex; flex-direction: column; gap: 14px; }
 .hb-field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--tc-text-2, #46586e); }
@@ -341,6 +443,7 @@ onMounted(() => {
   display: flex; align-items: center; justify-content: center;
 }
 .hb-icon-btn.on { border-color: var(--tc-cyan, #0e93b8); color: var(--tc-cyan, #0e93b8); background: rgba(14, 147, 184, .08); }
+.hb-form-tip { margin: -4px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--tc-text-3, #5b6f8a); }
 
 /* 手机端 */
 :global(#app.is-mobile .hb-page) { padding: 14px 14px 90px; }

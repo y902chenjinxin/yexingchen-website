@@ -31,6 +31,12 @@ class Habit(Base):
     color = Column(String(16), nullable=True, default="#67e8f9")
     # 每周目标打卡次数（0 表示不限）
     weekly_goal = Column(Integer, nullable=False, default=0)
+    # 断链自罚（v2.46.143）：漏一天罚多少钱（分）。0 = 关闭自罚。
+    # 罚金会写成一条记账支出（category 「断链罚金」，fund personal），
+    # 幂等由 HabitPenalty 的唯一约束 (habit_id, miss_date) 保证，重复结算不会重复记账。
+    penalty_cents = Column(Integer, nullable=False, default=0, server_default="0")
+    # 宽限：允许漏几天不罚（0 = 漏一天就罚）。给「一周只能做 3 次」这类习惯用。
+    penalty_grace = Column(Integer, nullable=False, default=0, server_default="0")
     sort_order = Column(Integer, nullable=False, default=0)
     archived = Column(Boolean, nullable=False, default=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -68,4 +74,34 @@ class HabitCheckin(Base):
     __table_args__ = (
         UniqueConstraint("habit_id", "checkin_date", name="uq_hbh_checkin_day"),
         Index("ix_hbh_user_date", "user_id", "checkin_date"),
+    )
+
+
+class HabitPenalty(Base):
+    """断链罚单（v2.46.143）。
+
+    为什么单独一张表而不是只写记账：
+      结算要**幂等** —— 每次进站都会跑一次 settle，靠 (habit_id, miss_date) 唯一约束
+      才能保证「同一个漏掉的日子只罚一次」。记账流水本身没有这个语义。
+    txn_id 指向生成的 xuanhuang_finance_transactions.id，删罚单时可连带处理。
+    """
+
+    __tablename__ = "xuanhuang_habit_penalties"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    habit_id = Column(
+        Integer,
+        ForeignKey("xuanhuang_habits.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    miss_date = Column(Integer, nullable=False)  # YYYYMMDD，被漏掉的那一天
+    amount_cents = Column(Integer, nullable=False, default=0)
+    txn_id = Column(Integer, nullable=True)  # 对应的记账流水
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint("habit_id", "miss_date", name="uq_hbh_penalty_day"),
+        Index("ix_hbh_penalty_user", "user_id", "miss_date"),
     )
