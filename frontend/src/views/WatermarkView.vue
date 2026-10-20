@@ -1,5 +1,5 @@
 <template>
-  <IslandInnerBase type="tool" title="视频去水印" subtitle="粘贴分享链接，去除水印并下载">
+  <IslandInnerBase type="tool" title="视频去水印" subtitle="粘贴分享链接或 B 站 BV 号，去除水印并下载">
     <div class="wt-stepper-wrap">
       <StepIndicator :steps="[
         { key: 'paste', label: '粘贴链接' },
@@ -10,14 +10,14 @@
     <div class="parse-area">
       <div class="parse-head">
         <span class="parse-title"><AppIcon icon="🎬" :size="17" /> 视频去水印</span>
-        <span class="parse-sub">支持抖音 / 快手 / 小红书等平台分享链接</span>
+        <span class="parse-sub">支持抖音 / 快手 / 小红书 / B 站（b23.tv 短链、BV 号均可）等平台分享链接</span>
       </div>
       <div class="parse-input-row">
         <input
           v-model="link"
           class="parse-input"
           type="text"
-          placeholder="粘贴视频分享链接，如 https://v.douyin.com/xxxx"
+          placeholder="粘贴视频分享链接或 B 站 BV 号，如 https://v.douyin.com/xxxx"
           @keyup.enter="doParse"
         />
         <button class="parse-btn" :disabled="parsing" @click="doParse">

@@ -153,7 +153,9 @@ function onBarScroll() {
   barVisible.value = (barScrollEl?.scrollTop || 0) > 6
 }
 onMounted(() => {
-  barScrollEl = actionbar.value?.closest('.inner-main') || null
+  // v2.46.136：手机端的滚动容器已从 .inner-main 上移到 .inner-content（刊头随内容一起滚），
+  // 监听对象要跟着换，否则滚动事件收不到、操作栏一直藏着不出现。
+  barScrollEl = actionbar.value?.closest('.inner-content') || actionbar.value?.closest('.inner-main') || null
   if (barScrollEl) { barScrollEl.addEventListener('scroll', onBarScroll); onBarScroll() }
 })
 

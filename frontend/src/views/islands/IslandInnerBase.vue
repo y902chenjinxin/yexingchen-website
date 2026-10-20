@@ -100,12 +100,18 @@ function goToolList() {
   overflow: visible;
 }
 
-/* 移动端：滚动容器底部给固定 Tab 栏留位（72px + 安全区）。
-   .island-inner 是 fixed 全屏层、脱离 #app 的 padding-bottom 兜底，
-   若 .inner-main 不补这块留白，最后一行内容（如棋牌首页游戏网格、音乐列表…）
-   滚动到底会被 z-index:1500 的底栏盖住。一处加，所有 island 模块页通用。 */
-#app.is-mobile .island-inner .inner-main {
+/* 移动端：刊头不再吸顶 —— v2.46.136 起整页（刊头 + 正文 + 页脚）在同一个滚动容器里，
+   随内容一起上滑。原先刊头是 .inner-main 的兄弟节点，滚动发生在 .inner-main 内部，
+   刊头必然被钉在顶部，下滑时正文像被切一刀。 */
+#app.is-mobile .island-inner .inner-content {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Tab 栏留白改挂在滚动容器上：页脚也能滚到固定 Tab 栏之上 */
   padding-bottom: calc(72px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+#app.is-mobile .island-inner .inner-main {
+  flex: none;
+  overflow: visible;
 }
 
 /* 背景由 desktop-product.css J 段按 day/night 主题化接管（双晕染 / 纯色 + 单晕染），
@@ -220,7 +226,6 @@ function goToolList() {
   .island-inner { background: var(--ls-bg, #0d1a15); }
 
   .inner-header {
-    position: sticky; top: 0; z-index: 10;
     flex-direction: row; flex-wrap: wrap; align-items: center;
     gap: 6px 10px;
     padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 12px;

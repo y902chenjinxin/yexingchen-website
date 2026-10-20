@@ -153,7 +153,7 @@
 #app.is-mobile .profile-page .back-btn { display: none; }
 
 /* =====================================================================
- * P4 · 手机端子页质感统一层 —— iOS 大标题 + sticky 毛玻璃头 + 克制动效
+ * P4 · 手机端子页质感统一层 —— iOS 大标题 + 毛玻璃头 + 克制动效
  * ---------------------------------------------------------------------
  * 目标：把各子页（记账/行情/足迹/通讯录/证件照/笔记等手写 header 页，
  *       以及音乐/倒计时的 island 外壳页）统一成「一个页面一个焦点」的
@@ -166,9 +166,10 @@
 /* ---- B · 返回按钮：全局隐藏 BackButton 组件 ---- */
 #app.is-mobile .app-back-btn { display: none !important; }
 
-/* ---- A · 手写子页 header → iOS 大标题 + sticky 液态玻璃头 ---- */
+/* ---- A · 手写子页 header → iOS 大标题 + 液态玻璃头 ----
+   v2.46.136：去掉吸顶（原 v2.46.81 起是 sticky）。夜星反馈：手机端所有模块标题都钉在顶部，
+   下滑时顶部不动、正文像被切一刀；改为随页面一起上滑。 */
 #app.is-mobile :is(.fin-head, .st-head, .tv-head, .ct-head, .idp-head) {
-  position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; flex-wrap: wrap;
   gap: 6px 12px;
   margin: 0 !important;
@@ -201,9 +202,9 @@
   display: flex; align-items: center; gap: 8px;
 }
 
-/* ---- Notes 独特 header（h1 直接放 header 内）---- */
+/* ---- Notes 独特 header（h1 直接放 header 内）----
+   v2.46.136：同上去掉吸顶，标题随内容一起滚动 */
 #app.is-mobile .notes-header {
-  position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; gap: 12px;
   margin: 0 !important;
   padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px !important;

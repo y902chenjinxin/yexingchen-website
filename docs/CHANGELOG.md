@@ -1,3 +1,34 @@
+## [v2.46.138] - 2026-10-20
+
+> 备注：本节内容随 **v2.46.138 / SW v452** 一起发版（该版本号同时包含另一处「记账 KPI 窄屏截断修复」）。
+> 撰写时代码注释里标的是 `v2.46.136`（当时预估的发版号），实际发版号以后者为准。
+
+### 手机端模块标题随内容一起滚 + 去水印支持 B 站（夜星两条）
+
+夜星原话：「手机端所有模块的标题都占据了顶部，向下滑动时，顶部没有变动，就像是被切断了一样，需要优化下，顶部随着一起滑动」「视频去水印的工具要支持 bilibili 链接，集成下」。
+
+#### ① 手机端刊头不再吸顶 —— 两种"钉住"来源一起拆
+
+症状看着一样（下滑时顶部不动、正文像被切一刀），成因却是两套：
+
+- **手写子页（记账 / 行情 / 足迹 / 通讯录 / 证件照 / 笔记）**：页面走文档流滚动，但 `mobile-deink.css` 从 P4 层起给 `.fin-head / .st-head / .tv-head / .ct-head / .idp-head / .notes-header` 挂了 `position: sticky; top: 0`；`TravelsView` / `StocksView` 又在自己的手机断点里单独 sticky 过（v2.46.81）。**这两处一并去掉**，只留 safe-area 顶部留白与玻璃底，标题随页面一起上滑。
+- **island 模块页（音乐 / 小说 / 视频 / 工具岛 25 个页面）**：外壳 `IslandInnerBase` 是 `fixed` 全屏层 + `.inner-main` 内部滚动，而刊头 `.inner-header` 是 `.inner-main` 的**兄弟节点** —— 滚动发生在正文里，刊头根本没参与滚动，**去掉 sticky 也没用**。改法：手机端把滚动容器上移到 `.inner-content`（刊头 + 正文 + 页脚同处一条滚动流），`.inner-main` 改 `flex: none; overflow: visible`；底部 Tab 栏的 72px 留白同步从 `.inner-main` 挪到 `.inner-content`（页脚也能滚到 Tab 栏之上）。桌面端本就走的文档流（`#app:not(.is-mobile)` 覆盖），行为不变。
+
+#### ② 连环修复：底部操作栏的滚动监听跟着换容器
+
+`CompressToolView` / `PdfToolView` 的底部操作栏靠 `closest('.inner-main')` 拿滚动元素、滚动超过 6px 才浮现。容器上移后这份监听会收不到事件 → 操作栏永远藏着不出现。两处改成 `closest('.inner-content') || closest('.inner-main')`（后者兜底桌面）。
+
+#### ③ 视频去水印接入 B 站
+
+- **解析侧其实早就支持**：`parse-service` 包的是 `parse-video-py`，其中 `parser/bilibili.py` + 域名表 `www.bilibili.com / m.bilibili.com / b23.tv` 都已注册（现网实测 BV1xx411c7mD 返回标题与直链）。真正缺的是**输入形态**与**下载链路**。
+- **输入归一化（后端 `video_parse.py`）**：用户粘来的往往不是裸链接 —— B 站是「【标题】 https://b23.tv/xxx」，抖音是「7.35 复制打开抖音… https://v.douyin.com/xxx」。新增 `_normalize()`：先抠出文案里第一条 `http(s)` 链接，抠不到再看有没有纯 BV 号（`BV` + 10 位 Base62）补成完整链接。解析与抽音频两个接口都走它。
+- **B 站直链必须带 User-Agent**：实测同一 CDN 直链 —— 带浏览器 UA `200/206`，**不带 UA 直接 `403`**（httpx 默认 UA 会被拦）。前端 `<video>` 预览、`下载视频` 走浏览器自带 UA 没问题；**后端抽音频**原先是裸 httpx 下载 → 必 403。已给下载客户端补浏览器 UA，服务器实测 mp4 下载 98.6MB → ffmpeg 出 mp3 33.1MB，成功。
+- **界面文案**：副标题、说明行、输入框 placeholder 都补上 B 站（并提示可直接粘 BV 号）。
+
+- 发版：随 v2.46.138 / SW v452 上线（现网实测已生效：`dist/sw.js` = `xuanhuang-v452`，`IslandInnerBase-*.css` 含新的滚动容器规则）。
+
+---
+
 ## [v2.46.129] - 2026-10-20
 
 ### 全站 emoji 图标统一换成线性图标（夜星：项目中还有很多地方用到了 emoji 图标，需要全部找出来，然后都设计、优化、替换下）

@@ -495,18 +495,15 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 
 @media (max-width: 760px) {
   .st-kpi { grid-template-columns: 1fr; }
-  /* v2.46.81：手机端标题对齐标准模块（靠近左上角、吸顶不动）。
-     原先 .st-inner 顶部留白 84px，标题比其它模块低一大截；且 .st-head 未吸顶，
-     滚动时标题会跟着滑走。这里把顶部留白压到 safe-area+8px，并把 .st-head 设为
-     sticky，玻璃底盖住下方滚动内容，与其它 island 模块一致。 */
-  .st-inner { padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 36px; }
-  .st-head {
-    position: sticky; top: 0; z-index: 20;
-    margin: 0 -16px 16px; padding: 6px 16px 12px;
-    background: var(--lj-glass, rgba(243, 239, 230, .82));
-    -webkit-backdrop-filter: var(--lj-glass-blur, blur(12px) saturate(160%));
-    backdrop-filter: var(--lj-glass-blur, blur(12px) saturate(160%));
-    border-bottom: 1px solid var(--lj-line, rgba(74, 95, 99, .14));
-  }
+  /* v2.46.136：手机端标题不再吸顶（原 v2.46.81 起 sticky）。夜星反馈标题钉在顶部、
+         下滑时正文像被切一刀；改为随页面一起上滑，仅保留左上角紧凑留白。 */
+      .st-inner { padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 36px; }
+      .st-head {
+        margin: 0 -16px 16px; padding: 6px 16px 12px;
+        background: var(--lj-glass, rgba(243, 239, 230, .82));
+        -webkit-backdrop-filter: var(--lj-glass-blur, blur(12px) saturate(160%));
+        backdrop-filter: var(--lj-glass-blur, blur(12px) saturate(160%));
+        border-bottom: 1px solid var(--lj-line, rgba(74, 95, 99, .14));
+      }
 }
 </style>

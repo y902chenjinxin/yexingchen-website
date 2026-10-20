@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 import asyncio
+import re
 import time
 import os
 import shutil
@@ -26,6 +27,33 @@ _last_by_user: dict = {}
 
 class ParseRequest(BaseModel):
     url: str
+
+
+# 分享链接外可能还带着标题/口令等文案（抖音「7.35 复制打开抖音…」，B 站「【标题】 https://b23.tv/xxx」），
+# 抠出其中第一条 http(s) 链接再交解析服务；纯 BV 号则补成完整链接（v2.46.136 起支持 B 站）
+_URL_RE = re.compile(r"https?://[^\s\u4e00-\u9fff，。、；]+", re.I)
+_BV_RE = re.compile(r"BV[0-9A-Za-z]{10}")
+_URL_TAIL = "，,。.、；;：:）)]}\"'"
+
+
+def _normalize(raw: str) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    m = _URL_RE.search(text)
+    if m:
+        return m.group(0).rstrip(_URL_TAIL)
+    bv = _BV_RE.search(text)
+    if bv:
+        return f"https://www.bilibili.com/video/{bv.group(0)}"
+    return text
+
+
+# B 站 CDN 校验 UA：无 UA（httpx 默认）会直接 403，抽音频前必须先带上浏览器 UA
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+)
 
 
 def _rate_check(uid: int):
@@ -61,7 +89,7 @@ async def video_parse(
     req: ParseRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    url = (req.url or "").strip()
+    url = _normalize(req.url)
     if not url:
         raise_error(ErrCode.INVALID_PARAM, "请粘贴视频分享链接")
 
@@ -76,7 +104,7 @@ async def video_parse_audio(
     current_user: dict = Depends(get_current_user)
 ):
     """下载音频。平台提供音频源则原样透传；否则下载无水印视频经 ffmpeg 抽音轨成 mp3。"""
-    url = (req.url or "").strip()
+    url = _normalize(req.url)
     if not url:
         raise_error(ErrCode.INVALID_PARAM, "请粘贴视频分享链接")
 
@@ -106,9 +134,9 @@ async def _extract_audio(video_url: str):
         shutil.rmtree(tmpdir, ignore_errors=True)
 
     try:
-        # 下载无水印视频（支持流式）
+        # 下载无水印视频（支持流式）。必须带浏览器 UA：B 站 CDN 对无 UA 请求直接 403
         async with _lock:
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=120, headers={"User-Agent": _BROWSER_UA}) as client:
                 async with client.stream("GET", video_url) as r:
                     if r.status_code != 200:
                         raise_error(ErrCode.PARSE_FAILED, "视频下载失败，可能已失效或需重试")
