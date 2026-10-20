@@ -100,6 +100,8 @@
   --color-danger: #cf2540;
   --color-success: #0f7a56;
   --color-warning: #a86400;
+  --color-warning-soft: rgba(168, 100, 0, .12);
+  --color-warning-line: rgba(168, 100, 0, .34);
   --dp-danger: #cf2540;
   --dp-up: #cf2540;
   --dp-down: #0f7a56;
@@ -435,12 +437,39 @@ html[data-theme="day"] #app.is-mobile {
   --xz-card-shadow-press: 1px 1px 0 rgba(11, 22, 34, .82);
   --xz-head-line: rgba(11, 22, 34, .38);
   --xz-teal: #0e93b8;           /* 大色块：白底上的实色青 */
-  --xz-teal-ink: #ffffff;
+  /* 🔴 这里必须是深色字：`--xz-teal-ink` 被 mobile-paper 直接当文字色用（不一定配上青底），
+   * 白天填白就会「白字白底」——夜星反馈的「记账本月收入看不清」就是这条（实测 1.07:1）。 */
+  --xz-teal-ink: #0b1622;
   --xz-ochre: #3358d4;
   --xz-gold: #0e93b8;
   --xz-btn-bg: linear-gradient(135deg, #12a8cf, #3358d4);
   --xz-btn-fg: #ffffff;
   --xz-grain: none;
+
+  /* 白天移动端文字 / yq 方言（对应 tech-theme 第 9 节的夜间版）：
+   * mobile-ab-theme 把 --color-text-muted 写成 #8a8f98、#62666d，白底上对比仅 ~2.9~3.0，
+   * 看着「发灰发淡」（夜星：音乐页歌名看不清）。统一压到深墨灰/深青。 */
+  --color-text: #0b1622;
+  --color-text-secondary: #46586e;
+  --color-text-muted: #5b6f8a;
+  --color-text-light: #f2f6fb;
+  --xiu-text: #0b1622;
+  --xiu-text-2: #46586e;
+  --xiu-text-3: #5b6f8a;
+  --yq-rain: #0e93b8;
+  --yq-rain-bright: #12a8cf;
+  --yq-rain-deep: #0a7492;
+  --yq-rain-faint: rgba(14, 147, 184, .12);
+  --yq-rain-glow: rgba(14, 147, 184, .30);
+  --yq-gold: #0e93b8;
+  --yq-gold-bright: #12a8cf;
+  --yq-gold-fg: #ffffff;
+  --yq-gold-glow: rgba(14, 147, 184, .26);
+  --color-primary: #0e93b8;
+  --color-secondary: #3358d4;
+  --color-accent: #6d4aff;
+  --color-gold: #0e93b8;
+  --color-gold-bright: #12a8cf;
 
   --el-color-primary: #0e93b8;
   --el-color-primary-light-3: #3fb0cd;
@@ -528,7 +557,46 @@ html[data-theme="day"] #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
   border-color: #0e93b8 !important;
 }
 
-/* ============ 8. 白天主按钮：覆盖 desktop-product.css 的琥珀规则 ============
+/* ============ 8. 白天组件对比兜底 ============
+ * 探针实测（v2.46.130 全站巡检）暴露的两类低对比：
+ *   .el-tag 文字 #12a8cf 落在 #e6fcff 浅青底上 → 2.61:1
+ *   .el-button--danger.is-plain 浅粉字 #fab6b6 落在 #fef0f0 上 → 1.52:1
+ * 都是 EL 用自己的 light-3/light-9 阶梯算出来的，白底上必然发淡，这里压深。 */
+:root[data-theme="day"] .el-tag {
+  --el-tag-text-color: #0a6f8c;
+  --el-tag-bg-color: rgba(14, 147, 184, .12);
+  --el-tag-border-color: rgba(14, 147, 184, .34);
+  color: #0a6f8c !important;
+}
+:root[data-theme="day"] .el-tag.el-tag--danger {
+  --el-tag-text-color: #b01a32;
+  --el-tag-bg-color: rgba(207, 37, 64, .10);
+  --el-tag-border-color: rgba(207, 37, 64, .30);
+  color: #b01a32 !important;
+}
+:root[data-theme="day"] .el-button--danger:not(.is-text):not(.is-link) {
+  --el-button-text-color: #ffffff;
+  --el-button-bg-color: #cf2540;
+  --el-button-border-color: #cf2540;
+  --el-button-hover-bg-color: #b81f37;
+  --el-button-hover-border-color: #b81f37;
+  color: #ffffff !important;
+}
+:root[data-theme="day"] .el-button--danger.is-plain {
+  --el-button-text-color: #b01a32;
+  --el-button-bg-color: rgba(207, 37, 64, .08);
+  --el-button-border-color: rgba(207, 37, 64, .38);
+  --el-button-hover-text-color: #ffffff;
+  --el-button-hover-bg-color: #cf2540;
+  --el-button-hover-border-color: #cf2540;
+  color: #b01a32 !important;
+  background: rgba(207, 37, 64, .08) !important;
+  border-color: rgba(207, 37, 64, .38) !important;
+}
+:root[data-theme="day"] .el-tag.el-tag--success { color: #0b6b4b !important; }
+:root[data-theme="day"] .el-tag.el-tag--warning { color: #8a5200 !important; }
+
+/* ============ 9. 白天主按钮：覆盖 desktop-product.css 的琥珀规则 ============
  * 必须带 `:root[data-theme="day"]` 前缀（1,3,0），才能压过桌面层那条
  * `:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary{ 琥珀 !important }`。
  * 不写的话白天所有主按钮会退回 #fef3c7→#fde68a 的淡金药丸（夜星截图里那一片黄）。 */
@@ -554,7 +622,7 @@ html[data-theme="day"] #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
   border-color: transparent !important;
 }
 
-/* ============ 9. 白天移动端：边框统一青（与工作台一致） ============
+/* ============ 10. 白天移动端：边框统一青（与工作台一致） ============
  * 夜星：「手机端全部模块是灰色边框，跟工作台青色边框不一致」。
  * 模块页边框来自 --m-line / --lj-line / --ls-line / --glass-border，原来多是「白 10%」→ 看着是灰。 */
 html[data-theme="day"] #app.is-mobile {

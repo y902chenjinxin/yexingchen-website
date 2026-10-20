@@ -105,6 +105,8 @@
   --color-danger: #ff4d6d;
   --color-success: #2ee6a0;
   --color-warning: #ffd166;
+  --color-warning-soft: rgba(255, 209, 102, .16);
+  --color-warning-line: rgba(255, 209, 102, .38);
   --dp-danger: #ff4d6d;
   --dp-up: #ff4d6d;
   --dp-down: #2ee6a0;
@@ -598,6 +600,33 @@ html[data-theme="day"] #app.is-mobile {
   --xz-btn-bg: linear-gradient(135deg, #2de2ff, #5aa8ff);
   --xz-btn-fg: #04121c;
   --xz-grain: none;              /* 纸纹噪点关掉，纯冷面 */
+
+  /* mobile-ab-theme.css / mobile-paper.css 在 #app.is-mobile 上把文字色与 yq 方言
+   * 重声明成了「薰衣草灰 + 暗青」（--color-text-muted #62666d、--color-text-secondary
+   * #8a8f98、--yq-rain #46655f），特异性 (1,1,0) 压过本层第 1 节的 :root。
+   * 结果手机端正文发灰、`.ct-tel`/`.sb-tag`/棋牌提示一类文字直接在暗底上看不清
+   * （v2.46.130 探针实测对比度 2.2~3.2）。这里按科技色重给一遍。 */
+  --color-text: #e6f2ff;
+  --color-text-secondary: #a6bcd6;
+  --color-text-muted: #8299b2;
+  --color-text-light: rgba(230, 242, 255, .92);
+  --xiu-text: #e6f2ff;
+  --xiu-text-2: #a6bcd6;
+  --xiu-text-3: #8299b2;
+  --yq-rain: #2de2ff;
+  --yq-rain-bright: #7beeff;
+  --yq-rain-deep: #1aa9c9;
+  --yq-rain-faint: rgba(45, 226, 255, .14);
+  --yq-rain-glow: rgba(45, 226, 255, .40);
+  --yq-gold: #2de2ff;
+  --yq-gold-bright: #7beeff;
+  --yq-gold-fg: #04121c;
+  --yq-gold-glow: rgba(45, 226, 255, .32);
+  --color-primary: #2de2ff;
+  --color-secondary: #6a8bff;
+  --color-accent: #8b5cff;
+  --color-gold: #2de2ff;
+  --color-gold-bright: #7beeff;
 
   /* mobile-native-glass.css 在 #app.is-mobile 上把 EP 主色改成靛紫 #5b6ae0 + 一串淡紫白
    * light-3~9（弹层/下拉/按钮 hover 全用它）= 夜星说的「淡紫色」来源之一。同特异性覆盖回青。 */

@@ -459,7 +459,9 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
   font-size: 11px; color: #fff; vertical-align: 2px; }
 .st-alert.a-up { background: var(--dp-up); }
 .st-alert.a-down { background: var(--dp-down); }
-.st-alert.a-set { background: rgba(216, 162, 74, 0.18); color: #e2bb6f; border: 1px solid rgba(216, 162, 74, 0.35); }
+/* 目标价预警徽标：底色/字色一律走语义令牌（原来硬编码琥珀 #e2bb6f，
+ * 白天白底上对比只有 1.58，属于「淡金色看不清」那一类；改令牌后昼夜自动跟随） */
+.st-alert.a-set { background: var(--color-warning-soft, rgba(255, 209, 102, .16)); color: var(--color-warning); border: 1px solid var(--color-warning-line, rgba(255, 209, 102, .38)); }
 
 .st-list { border-radius: 16px; padding: 18px 20px; }
 .st-list-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
