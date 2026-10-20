@@ -40,9 +40,14 @@
         <el-table-column type="selection" width="48" />
         <el-table-column label="名称" min-width="150">
           <template #default="{ row }">
-            <span class="icon-cell"><AppIcon :icon="row.icon || '🔧'" :size="16" /></span>{{ row.title }}
-            <el-tag v-if="row.kind === 'builtin'" size="small" type="warning" effect="plain" class="kind-tag">内置</el-tag>
-            <el-tag v-if="!row.is_enabled" size="small" type="info" effect="plain" class="kind-tag">下架</el-tag>
+            <!-- 名称 + 小标识同一行（v2.46.145）：标签原来跟在文本后面，列一窄就折到第二行、
+                 每行凭空多出一截高度。改成 nowrap 的 flex 行 + 迷你 chip，只占宽度不占行高。 -->
+            <span class="name-cell">
+              <span class="icon-cell"><AppIcon :icon="row.icon || '🔧'" :size="16" /></span>
+              <span class="name-text" :title="row.title">{{ row.title }}</span>
+              <el-tag v-if="row.kind === 'builtin'" size="small" type="warning" effect="plain" class="kind-tag">内置</el-tag>
+              <el-tag v-if="!row.is_enabled" size="small" type="info" effect="plain" class="kind-tag">下架</el-tag>
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="160" show-overflow-tooltip />
@@ -67,14 +72,14 @@
         <el-table-column label="上传时间" width="130">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
             <!-- 使用＝打开工具本体（内置走模块路由 / 外链走站内详情内嵌页），
                  与「编辑」区分开：以前只有编辑删除，没有任何使用入口 -->
             <div class="row-ops">
-              <IconButton icon="play" size="sm" label="使用" @click="go(row)" />
-              <IconButton icon="edit" size="sm" label="编辑" @click="openDialog(row)" />
-              <IconButton icon="trash" size="sm" label="删除" variant="danger" :disabled="row.kind === 'builtin'" @click="handleDelete(row)" />
+              <IconButton icon="play" size="sm" label="使用" icon-only @click="go(row)" />
+              <IconButton icon="edit" size="sm" label="编辑" icon-only @click="openDialog(row)" />
+              <IconButton icon="trash" size="sm" label="删除" variant="danger" icon-only :disabled="row.kind === 'builtin'" @click="handleDelete(row)" />
             </div>
           </template>
         </el-table-column>
@@ -379,7 +384,17 @@ function formatTime(timeStr) {
 .pager-wrap { display: flex; justify-content: flex-end; margin-top: 18px; }
 .pager-wrap :deep(.el-pagination) { --el-pagination-bg-color: transparent; }
 .icon-cell { margin-right: 8px; }
-.kind-tag { margin-left: 6px; }
+.name-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 迷你标识：不换行、不吃行高，只占一点宽度 */
+.kind-tag {
+  flex: none;
+  height: 17px;
+  line-height: 15px;
+  padding: 0 5px;
+  font-size: 10.5px;
+  border-radius: 5px;
+}
 .file-link { color: var(--ls-dai); text-decoration: none; word-break: break-all; }
 .file-link:hover { text-decoration: underline; }
 .route-cell { color: var(--ls-text-2); font-family: monospace; font-size: 12px; }

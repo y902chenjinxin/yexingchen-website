@@ -255,7 +255,7 @@
         <div v-else-if="mealFiltered.length" class="meal-grid">
           <figure v-for="m in mealFiltered" :key="m.id" class="meal-card">
             <button class="meal-img-wrap" type="button" :aria-label="`预览 ${m.note || m.member_name} 的照片`" @click="openPreview(m)">
-              <img :src="mealPhotoUrl(m.photo_path)" :alt="m.note || m.member_name" class="meal-img" loading="lazy" />
+              <img :src="mealThumb(m.photo_path)" :alt="m.note || m.member_name" class="meal-img" loading="lazy" decoding="async" />
               <span class="meal-type-tag" :class="mealKindClass(m.meal_type)">{{ mealLabel(m.meal_type) }}</span>
               <span class="meal-zoom"><AppIcon icon="🔍" :size="12" /></span>
             </button>
@@ -346,7 +346,7 @@
               <input type="file" accept="image/*" hidden @change="onMealPick($event)">
             </label>
             <div v-if="mealPhotoShown" class="meal-photo-preview">
-              <img :src="mealPhotoShown" alt="已选照片">
+              <img :src="thumb(mealPhotoShown, 320)" alt="已选照片" decoding="async">
               <button type="button" class="meal-photo-del" aria-label="移除照片" @click="clearMealPhoto"><AppIcon icon="×" /></button>
             </div>
           </div>
@@ -421,6 +421,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import { thumb } from '@/utils/img'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -698,6 +699,11 @@ function mealPhotoUrl(p) {
   // photo_path 是 /meals/xxx.jpg，由后端 /uploads/ 静态服务返回
   if (p.startsWith('http')) return p
   return p.startsWith('/') ? `/uploads${p}` : `/uploads/${p}`
+}
+
+/** 列表/预览用的缩略图（v2.46.145）：原图动辄 3~4MB，列表只要 480px */
+function mealThumb(p, w = 480) {
+  return thumb(mealPhotoUrl(p), w)
 }
 
 // ============================== 弹窗 ==============================

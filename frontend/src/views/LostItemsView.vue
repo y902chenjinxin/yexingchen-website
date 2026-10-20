@@ -48,7 +48,7 @@
           <div class="li-list">
             <article v-for="it in grp.items" :key="it.id" class="li-card glass" @click="openDetail(it)">
               <div v-if="it.photos && it.photos.length" class="li-thumb">
-                <img :src="it.photos[0]" :alt="it.name" loading="lazy">
+                <img :src="thumb(it.photos[0], 480)" :alt="it.name" loading="lazy" decoding="async">
                 <span v-if="it.photos.length > 1" class="li-thumb-more">+{{ it.photos.length - 1 }}</span>
               </div>
               <div v-else class="li-thumb li-thumb-plain"><AppIcon :icon="categoryEmoji(it.category)" :size="28" /></div>
@@ -153,6 +153,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import { thumb } from '@/utils/img'
 import IconButton from '@/components/common/IconButton.vue'
 import { lostApi, uploadLifeImage } from '@/api/lifeExtra'
 

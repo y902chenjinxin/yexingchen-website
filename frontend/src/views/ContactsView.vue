@@ -46,7 +46,7 @@
               :aria-label="`预览 ${c.name} 的头像`"
               :title="`点击预览 ${c.name}`"
             >
-              <img :src="c.avatar_url" :alt="`${c.name} 的头像`" loading="lazy" />
+              <img :src="thumb(c.avatar_url, 160)" :alt="`${c.name} 的头像`" loading="lazy" decoding="async" />
             </div>
             <div
               v-else
@@ -238,6 +238,7 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import { contactsApi, RELATION_OPTIONS } from '@/api/family'
+import { thumb } from '@/utils/img'
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']
 

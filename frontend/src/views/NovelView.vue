@@ -37,10 +37,10 @@
         <el-table-column v-if="!isMobile" label="上传时间" width="150">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" :width="isMobile ? 132 : 150" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? 132 : 100" fixed="right">
           <template #default="{ row }">
-            <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(row)" />
-            <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="handleDelete(row)" />
+            <IconButton icon="edit" size="sm" label="编辑" icon-only @click="openEdit(row)" />
+            <IconButton icon="trash" size="sm" label="删除" variant="danger" icon-only @click="handleDelete(row)" />
           </template>
         </el-table-column>
       </el-table>

@@ -118,15 +118,15 @@
              v2.46.69：手机端纯播放列表只留「设为背景乐」，编辑/删除收去桌面端。
              v2.46.81：手机端纯播放列表，连「设为背景乐」也一并收去（只展示曲目 + 内联播放键），
              故整列不在手机端渲染。 -->
-        <el-table-column v-if="!isMobile" label="操作" :width="250" fixed="right">
+        <el-table-column v-if="!isMobile" label="操作" :width="150" fixed="right">
           <template #default="{ row }">
             <div class="row-ops">
               <el-tag v-if="isCurBgm(row)" size="small" type="primary" effect="dark" class="bgm-on">背景乐</el-tag>
-              <IconButton v-else icon="star" label="设为背景乐" @click="setAsBg(row)" />
+              <IconButton v-else icon="star" label="设为背景乐" icon-only @click="setAsBg(row)" />
 
               <template v-if="!isMobile">
-                <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(row)" />
-                <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="handleDelete(row)" />
+                <IconButton icon="edit" size="sm" label="编辑" icon-only @click="openEdit(row)" />
+                <IconButton icon="trash" size="sm" label="删除" variant="danger" icon-only @click="handleDelete(row)" />
               </template>
             </div>
           </template>

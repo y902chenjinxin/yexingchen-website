@@ -9,7 +9,7 @@ from app.database import engine, Base
 from app.routers import (
     admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, crawler, datahub, finance, fish, idphoto, life, log, lost, music, novel,
     ocr, poem, quick, search, settings as settings_router, subscriptions,
-    day_calendar, game_economy, game_rooms, game_tables, stocks, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
+    day_calendar, game_economy, game_rooms, game_tables, stocks, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
 from app.routers.workbench import router as workbench_router
 from app.routers.feed import router as feed_router
@@ -148,6 +148,7 @@ app.include_router(auth.router)
 app.include_router(admin_users.router)
 app.include_router(admin_roles.router)
 app.include_router(admin_menus.router)
+app.include_router(thumb.router)
 app.include_router(music.router)
 app.include_router(novel.router)
 app.include_router(video.router)
