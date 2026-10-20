@@ -18,7 +18,7 @@
 
 /* ============ 1. 白天调色板（覆盖 tech-theme.css 第 0 节的 --tc-*） ============ */
 :root[data-theme="day"] {
-  --tc-cyan: #0e93b8;          /* 青：压深，白底才够对比（原 #2de2ff 白底几乎看不见） */
+  --tc-cyan: #0a708c;          /* 青：白底上当文字用必须再深一档（#0a708c 实测仅 3.0~3.2:1） */
   --tc-cyan-bright: #12a8cf;
   --tc-cyan-deep: #0a7492;
   --tc-blue: #3358d4;
@@ -33,7 +33,7 @@
   --tc-line-strong: rgba(15, 60, 110, .26);
   --tc-text: #0b1622;
   --tc-text-2: #46586e;
-  --tc-text-3: #7285a0;
+  --tc-text-3: #5b6f8a;
   --tc-glow-cyan: rgba(14, 147, 184, .22);
   --tc-glow-violet: rgba(109, 74, 255, .18);
   /* 白天主按钮：实色青→蓝 + 白字（亮底上不能再用「深字压亮渐变」，对比反而更低） */
@@ -199,7 +199,7 @@
   --el-fill-color-light: #f4f8fd;
   --el-fill-color-lighter: #f8fbfe;
   --el-mask-color: rgba(228, 235, 245, .72);
-  --el-color-primary: #0e93b8;
+  --el-color-primary: #0a708c;
   --el-color-primary-light-3: #3fb0cd;
   --el-color-primary-light-5: #74c8dd;
   --el-color-primary-light-7: #a8dcea;
@@ -325,14 +325,14 @@
 }
 /* 文字渐变：白底上必须压深，否则「亮青」几乎等于无字 */
 :root[data-theme="day"] :is(.text-gold, .text-gold-premium) {
-  background: linear-gradient(92deg, #0a7492, #0e93b8 48%, #3358d4);
+  background: linear-gradient(92deg, #0a7492, #0a708c 48%, #3358d4);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: none;
 }
 :root[data-theme="day"] .tech-gradient-text {
-  background: linear-gradient(92deg, #0e93b8, #3358d4);
+  background: linear-gradient(92deg, #0a708c, #3358d4);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -420,8 +420,8 @@ html[data-theme="day"] #app.is-mobile {
   --m-line-strong: rgba(15, 60, 110, .24);
   --m-text: #0b1622;
   --m-text-2: #46586e;
-  --m-text-3: #64789a;
-  --m-accent: #0e93b8;
+  --m-text-3: #5b6f8a;
+  --m-accent: #0a708c;
   --m-accent-strong: #0a7492;
   --m-positive: #0f7a56;
   --m-negative: #cf2540;
@@ -436,13 +436,13 @@ html[data-theme="day"] #app.is-mobile {
   --xz-card-shadow: 3px 3px 0 rgba(11, 22, 34, .82);   /* 白天保留 Neo-Brutalism 墨色硬偏移 */
   --xz-card-shadow-press: 1px 1px 0 rgba(11, 22, 34, .82);
   --xz-head-line: rgba(11, 22, 34, .38);
-  --xz-teal: #0e93b8;           /* 大色块：白底上的实色青 */
+  --xz-teal: #0e93b8;           /* 大色块：白底上的实色青（背景块，保持饱和） */
   /* 🔴 这里必须是深色字：`--xz-teal-ink` 被 mobile-paper 直接当文字色用（不一定配上青底），
    * 白天填白就会「白字白底」——夜星反馈的「记账本月收入看不清」就是这条（实测 1.07:1）。 */
   --xz-teal-ink: #0b1622;
   --xz-ochre: #3358d4;
-  --xz-gold: #0e93b8;
-  --xz-btn-bg: linear-gradient(135deg, #12a8cf, #3358d4);
+  --xz-gold: #0a708c;
+  --xz-btn-bg: #0a708c;   /* 纯色，理由同 tech-theme 第 9 节 */
   --xz-btn-fg: #ffffff;
   --xz-grain: none;
 
@@ -456,22 +456,22 @@ html[data-theme="day"] #app.is-mobile {
   --xiu-text: #0b1622;
   --xiu-text-2: #46586e;
   --xiu-text-3: #5b6f8a;
-  --yq-rain: #0e93b8;
+  --yq-rain: #0a708c;
   --yq-rain-bright: #12a8cf;
   --yq-rain-deep: #0a7492;
   --yq-rain-faint: rgba(14, 147, 184, .12);
   --yq-rain-glow: rgba(14, 147, 184, .30);
-  --yq-gold: #0e93b8;
+  --yq-gold: #0a708c;
   --yq-gold-bright: #12a8cf;
   --yq-gold-fg: #ffffff;
   --yq-gold-glow: rgba(14, 147, 184, .26);
-  --color-primary: #0e93b8;
+  --color-primary: #0a708c;
   --color-secondary: #3358d4;
   --color-accent: #6d4aff;
-  --color-gold: #0e93b8;
+  --color-gold: #0a708c;
   --color-gold-bright: #12a8cf;
 
-  --el-color-primary: #0e93b8;
+  --el-color-primary: #0a708c;
   --el-color-primary-light-3: #3fb0cd;
   --el-color-primary-light-5: #74c8dd;
   --el-color-primary-light-7: #a8dcea;
@@ -484,7 +484,7 @@ html[data-theme="day"] #app.is-mobile {
   --lj-line: rgba(15, 60, 110, .14);
   --lj-line-strong: rgba(15, 60, 110, .26);
   --lj-ochre: #3358d4;
-  --lj-seal: #0e93b8;
+  --lj-seal: #0a708c;
   --lj-seal-hover: #12a8cf;
   --ls-paper: #ffffff;
   --ls-paper-2: #f6f9fd;
@@ -493,7 +493,7 @@ html[data-theme="day"] #app.is-mobile {
   --ls-line-strong: rgba(15, 60, 110, .26);
   --ls-bg-glow: rgba(14, 147, 184, .10);
   --ls-ochre: #3358d4;
-  --ls-dai: #0e93b8;
+  --ls-dai: #0a708c;
   --glass-border: rgba(15, 60, 110, .18);
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .9);
 }
@@ -504,8 +504,8 @@ html[data-theme="day"].m-app {
   --xz-card: #ffffff;
   --xz-card-2: #f4f8fd;
   --xz-card-border: rgba(15, 60, 110, .20);
-  --xz-gold: #0e93b8;
-  --xz-btn-bg: linear-gradient(135deg, #12a8cf, #3358d4);
+  --xz-gold: #0a708c;
+  --xz-btn-bg: #0a708c;
   --xz-btn-fg: #ffffff;
   --xz-line: rgba(15, 60, 110, .16);
 }
@@ -554,7 +554,7 @@ html[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
   border: 1px solid rgba(15, 60, 110, .18) !important;
 }
 html[data-theme="day"] #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
-  border-color: #0e93b8 !important;
+  border-color: #0a708c !important;
 }
 
 /* ============ 8. 白天组件对比兜底 ============
@@ -634,4 +634,19 @@ html[data-theme="day"] #app.is-mobile {
   --ls-line: rgba(14, 147, 184, .26);
   --ls-line-strong: rgba(14, 147, 184, .42);
   --glass-border: rgba(14, 147, 184, .32);
+}
+
+/* 桌面危险按钮：desktop-product.css 用 (1,2,0) 把 is-plain 设成白字，白底上看不见
+ * （探针实测 1.13:1）。这里用同等特异性 + !important 压回深红。 */
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--danger.is-plain,
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--danger.is-text,
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--danger.is-link {
+  color: #b01a32 !important;
+  background: rgba(207, 37, 64, .08) !important;
+  border-color: rgba(207, 37, 64, .38) !important;
+}
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--danger:not(.is-plain) {
+  color: #fff !important;
+  background: #cf2540 !important;
+  border-color: #cf2540 !important;
 }

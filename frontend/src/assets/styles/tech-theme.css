@@ -597,7 +597,9 @@ html[data-theme="day"] #app.is-mobile {
   --xz-teal-ink: #d6f4ff;
   --xz-ochre: #6a8bff;           /* 赭石 → 电蓝，留住「第三种色」不至全站单青 */
   --xz-gold: #2de2ff;            /* 鎏金 → 霓虹青 */
-  --xz-btn-bg: linear-gradient(135deg, #2de2ff, #5aa8ff);
+  /* 必须保持纯色：mobile-paper 里有 background-color: var(--xz-btn-bg) 的用法，
+   * 填渐变色会整条失效（文字有、底色没有）。渐变只走 --tc-btn-grad。 */
+  --xz-btn-bg: #6a8bff;
   --xz-btn-fg: #04121c;
   --xz-grain: none;              /* 纸纹噪点关掉，纯冷面 */
 
@@ -670,7 +672,7 @@ html.m-app {
   --xz-card-2: #101a2b;
   --xz-card-border: rgba(45, 226, 255, .26);
   --xz-gold: #2de2ff;
-  --xz-btn-bg: linear-gradient(135deg, #2de2ff, #5aa8ff);
+  --xz-btn-bg: #6a8bff;
   --xz-btn-fg: #04121c;
   --xz-line: rgba(45, 226, 255, .16);
 }
@@ -679,7 +681,7 @@ html[data-theme="day"].m-app {
   --xz-card: rgba(18, 28, 46, .96);
   --xz-card-2: #101a2b;
   --xz-card-border: rgba(45, 226, 255, .26);
-  --xz-btn-bg: linear-gradient(135deg, #2de2ff, #5aa8ff);
+  --xz-btn-bg: #6a8bff;
   --xz-btn-fg: #04121c;
   --xz-line: rgba(45, 226, 255, .16);
 }
@@ -737,7 +739,7 @@ html[data-theme="day"].m-app {
   color: #cfe6ff !important;
 }
 
-/* --xz-btn-bg 改成了渐变：mobile-paper.css 里 `.fin-quick-tag.on / .fin-fund.active`
+/* --xz-btn-bg 是纯色：mobile-paper.css 里 `.fin-quick-tag.on / .fin-fund.active`
  * 拿它去填 `border-color`，而 border-color 不接受渐变 → 该声明在计算值时非法、退成
  * currentColor（= 深墨按钮字色），胶囊看起来没有边框。这里显式补回青边。 */
 #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) { border-color: #2de2ff !important; }
