@@ -13,6 +13,7 @@
 - **令牌化不到的硬编码逐条补**（对照原文，均带 `!important` 压过原规则）：移动端玻璃卡被写死 `#10111a` 平涂底 → 换冷黑 + 青色发丝边；我的页主题分段选中态靛紫渐变 → 青蓝；`.mt-tabbar` 昼夜两版；记账左滑删除砖红 `#c14b3a` → 霓虹红 `#ff4d6d`；拼图/贴纸日间浅纸卡 + 深棕字；手机端登录卡主按钮被写死回旧鎏金渐变 → 青蓝；笔记代码块奶油字 `#e8dcc0` → 冷白。
 - **顺带修掉的连带坑**：`--xz-btn-bg` 改成渐变后，`mobile-paper.css` 里 `.fin-quick-tag.on/.fin-fund.active` 拿它去填 `border-color`（不接受渐变）会非法退成 `currentColor`，已显式补回青边；`#app.is-mobile` 自带的 `background: var(--m-bg) !important` 会把辉光/粒子层整片盖死（同 v2.46.126 的 `#app` 坑），已置 `transparent`。
 - 版本 SW v440→v441、APP_VERSION v2.46.126→v2.46.127。
+- **已部署**（commit `f4174a8`，dist-deploy127）：341 文件、sw=xuanhuang-v441、home=200；生产入口 `index-Cn03JAoY.css` / `index-BVV3Ecgq.js` 与本地一致；生产 CSS 里移动端令牌桥位于 245677 字节处、旧暖色块在 140193，**确认位于其后生效**，`html[data-theme=day] #app.is-mobile` 选择器共 24 处。
 
 ---
 
