@@ -6,7 +6,10 @@
  * 白天正确做法不是「暗色整体调亮」，而是另一套配色关系：
  *   夜 = 深空底 + 亮霓虹（发光体压在暗背景上）
  *   昼 = 冷白底 + 深青墨（描边与实色块压在亮背景上，靠对比度而不是发光）
- * 所以这里独立定义一套 --tc-*/核心 token，并把「靠发光表达层次」的地方换成「靠描边+浅投影」。
+ * 所以这里独立定义一套 --tc-* 与核心 token，并把「靠发光表达层次」的地方换成「靠描边+浅投影」。
+ * ⚠️ 注释里不要写「星号+斜杠」这种字符组合（例如把 --tc-* 直接接 / ），它会**提前闭合注释**，
+ * 剩下的中文变成非法选择器，紧跟其后的第一条规则会被整块吞掉 —— v2.46.128 的昼间调色板
+ * 就是这么消失的（白天底色/主色全没生效，只有后面的块生效，排查了两轮才定位）。
  *
  * 加载顺序：main.js 里紧跟 tech-theme.css 之后（必须是最后一个 CSS 层）。
  * 覆盖策略：全部用 `:root[data-theme="day"]`（0,2,0）或 `html[data-theme="day"] ...`
@@ -33,6 +36,11 @@
   --tc-text-3: #7285a0;
   --tc-glow-cyan: rgba(14, 147, 184, .22);
   --tc-glow-violet: rgba(109, 74, 255, .18);
+  /* 白天主按钮：实色青→蓝 + 白字（亮底上不能再用「深字压亮渐变」，对比反而更低） */
+  --tc-btn-grad: linear-gradient(135deg, #12a8cf, #3358d4);
+  --tc-btn-grad-hover: linear-gradient(135deg, #17b6dd, #3d63e0);
+  --tc-btn-fg: #ffffff;
+  --tc-btn-ring: rgba(14, 147, 184, .30);
 }
 
 /* ============ 2. 核心 token（覆盖 tech-theme.css 第 1 节） ============ */
@@ -518,4 +526,44 @@ html[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
 }
 html[data-theme="day"] #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
   border-color: #0e93b8 !important;
+}
+
+/* ============ 8. 白天主按钮：覆盖 desktop-product.css 的琥珀规则 ============
+ * 必须带 `:root[data-theme="day"]` 前缀（1,3,0），才能压过桌面层那条
+ * `:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary{ 琥珀 !important }`。
+ * 不写的话白天所有主按钮会退回 #fef3c7→#fde68a 的淡金药丸（夜星截图里那一片黄）。 */
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary:not(.is-plain) {
+  background: var(--tc-btn-grad) !important;
+  border-color: transparent !important;
+  color: var(--tc-btn-fg) !important;
+  box-shadow: 0 6px 18px var(--tc-btn-ring) !important;
+  font-weight: 700;
+}
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary:not(.is-plain):hover {
+  background: var(--tc-btn-grad-hover) !important;
+  box-shadow: 0 10px 26px var(--tc-btn-ring) !important;
+}
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary:not(.is-plain):active {
+  background: var(--tc-btn-grad) !important;
+  transform: translateY(1px);
+}
+:root[data-theme="day"] #app.is-mobile .el-button--primary:not(.is-plain),
+:root[data-theme="day"] #app.is-mobile :is(.fin-btn.primary, .st-btn.primary, .tv-btn.primary, .ct-btn.primary, .abb-ai) {
+  background: var(--tc-btn-grad) !important;
+  color: var(--tc-btn-fg) !important;
+  border-color: transparent !important;
+}
+
+/* ============ 9. 白天移动端：边框统一青（与工作台一致） ============
+ * 夜星：「手机端全部模块是灰色边框，跟工作台青色边框不一致」。
+ * 模块页边框来自 --m-line / --lj-line / --ls-line / --glass-border，原来多是「白 10%」→ 看着是灰。 */
+html[data-theme="day"] #app.is-mobile {
+  --m-line: rgba(14, 147, 184, .26);
+  --m-line-strong: rgba(14, 147, 184, .42);
+  --xz-card-border: rgba(14, 147, 184, .38);
+  --lj-line: rgba(14, 147, 184, .26);
+  --lj-line-strong: rgba(14, 147, 184, .42);
+  --ls-line: rgba(14, 147, 184, .26);
+  --ls-line-strong: rgba(14, 147, 184, .42);
+  --glass-border: rgba(14, 147, 184, .32);
 }

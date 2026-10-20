@@ -36,6 +36,13 @@
   --tc-text-3: #5e7396;
   --tc-glow-cyan: rgba(45, 226, 255, .35);
   --tc-glow-violet: rgba(185, 139, 255, .30);
+  /* 主按钮唯一来源（v2.46.130）：全站所有「主按钮」只认这三个 token，
+   * 不要再各页面自己写渐变 —— 之前桌面主按钮是 desktop-product.css 里写死的
+   * 鎏金/琥珀渐变（还带 !important），跟笔记模块的紫→青完全两套，页面之间就不一致。 */
+  --tc-btn-grad: linear-gradient(135deg, #8b5cff, #2de2ff);
+  --tc-btn-grad-hover: linear-gradient(135deg, #a279ff, #5ae9ff);
+  --tc-btn-fg: #04121c;
+  --tc-btn-ring: rgba(45, 226, 255, .45);
 }
 
 /* ============ 1. 夜间核心 token（夜/默认；白天由 tech-theme-day.css 接管） ============
@@ -559,8 +566,10 @@ html[data-theme="day"] #app.is-mobile {
   --m-bg-elevated: #0c1422;
   --m-surface: rgba(18, 28, 46, .84);
   --m-surface-2: #101a2b;
-  --m-line: rgba(45, 226, 255, .14);
-  --m-line-strong: rgba(45, 226, 255, .30);
+  /* v2.46.130：夜星「手机端全部模块是灰色边框，跟工作台青色边框不一致」——
+   * 原来这几个线色只有 14%~24% 的青，暗底上肉眼读成灰。统一提到 26%~44% 的实青。 */
+  --m-line: rgba(45, 226, 255, .26);
+  --m-line-strong: rgba(45, 226, 255, .44);
   --m-text: #e6f2ff;
   --m-text-2: #a6bcd6;
   --m-text-3: #8299b2;          /* 对 #070c16 约 6:1，保留原「对比度修复 #29」的初衷 */
@@ -578,7 +587,7 @@ html[data-theme="day"] #app.is-mobile {
   --xz-paper: #070c16;
   --xz-card: rgba(18, 28, 46, .86);
   --xz-card-2: #101a2b;
-  --xz-card-border: rgba(45, 226, 255, .24);
+  --xz-card-border: rgba(45, 226, 255, .38);
   --xz-card-shadow: 3px 3px 0 rgba(45, 226, 255, .18);   /* 保留 Neo-Brutalism 硬偏移，改青调 */
   --xz-card-shadow-press: 1px 1px 0 rgba(45, 226, 255, .18);
   --xz-head-line: rgba(45, 226, 255, .35);
@@ -607,20 +616,20 @@ html[data-theme="day"] #app.is-mobile {
   --lj-bg-deep: var(--tc-bg-0);
   --lj-paper: rgba(18, 28, 46, .66);
   --lj-glass: rgba(13, 20, 33, .66);
-  --lj-line: rgba(120, 180, 255, .16);
-  --lj-line-strong: rgba(120, 180, 255, .30);
+  --lj-line: rgba(45, 226, 255, .24);
+  --lj-line-strong: rgba(45, 226, 255, .42);
   --lj-ochre: #6a8bff;
   --lj-seal: var(--tc-cyan);
   --lj-seal-hover: var(--tc-cyan-bright);
   --ls-paper: #0f1726;
   --ls-paper-2: #142033;
   --ls-glass: rgba(13, 20, 33, .66);
-  --ls-line: rgba(120, 180, 255, .16);
-  --ls-line-strong: rgba(120, 180, 255, .30);
+  --ls-line: rgba(45, 226, 255, .24);
+  --ls-line-strong: rgba(45, 226, 255, .42);
   --ls-bg-glow: rgba(45, 226, 255, .10);
   --ls-ochre: #6a8bff;
   --ls-dai: var(--tc-cyan);
-  --glass-border: rgba(120, 180, 255, .22);
+  --glass-border: rgba(45, 226, 255, .34);
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .07);
   --glass-blur: blur(22px) saturate(165%);
 }
@@ -703,6 +712,46 @@ html[data-theme="day"].m-app {
  * 拿它去填 `border-color`，而 border-color 不接受渐变 → 该声明在计算值时非法、退成
  * currentColor（= 深墨按钮字色），胶囊看起来没有边框。这里显式补回青边。 */
 #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) { border-color: #2de2ff !important; }
+
+/* ============ 10. 主按钮唯一规范（桌面 + 移动，昼夜同源） ============
+ * 为什么必须单列（v2.46.130，夜星：「都有一些淡金色或黄色，没跟笔记的按钮风格一样」）：
+ * 桌面主按钮的真身是 desktop-product.css 里的
+ *   `#app:not(.is-mobile) .el-button--primary { background: linear-gradient(鎏金, 雨青) !important }`
+ *   `:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary { 琥珀底 + 深棕字 !important }`
+ * 特异性 (1,2,0) / (1,3,0) 且带 !important —— 本层第 3 节那种 `.el-button--primary`(0,1,0)
+ * 根本压不住，于是「首页一套、后台一套、白天又是一套」。
+ * 解法：在这里用**同等特异性 + !important** 重写一次，取 --tc-btn-* 令牌（昼夜各一份值），
+ * 全站主按钮从此只有一个来源。桌面 custom 按钮（.nt-btn-primary 等）走 var(--yq-gold/--yq-rain)，
+ * 已经和这里的渐变同色系，不需要再单独处理。 */
+#app:not(.is-mobile) .el-button--primary:not(.is-plain),
+#app:not(.is-mobile) .el-button--primary:not(.is-plain):hover,
+#app:not(.is-mobile) .el-button--primary:not(.is-plain):focus {
+  background: var(--tc-btn-grad) !important;
+  border-color: transparent !important;
+  color: var(--tc-btn-fg) !important;
+  box-shadow: 0 6px 18px var(--tc-btn-ring) !important;
+  font-weight: 700;
+}
+#app:not(.is-mobile) .el-button--primary:not(.is-plain):hover {
+  background: var(--tc-btn-grad-hover) !important;
+  box-shadow: 0 10px 26px var(--tc-btn-ring) !important;
+}
+#app:not(.is-mobile) .el-button--primary:not(.is-plain):active { transform: translateY(1px) scale(.995); }
+
+/* 手机端：mobile-paper.css 用 :is(...,.el-button--primary)（1,3,0）写死 --xz-btn-bg，
+ * 这里同样特异性、靠后覆盖，值统一走 --tc-btn-*。 */
+#app.is-mobile .el-button--primary:not(.is-plain) {
+  background: var(--tc-btn-grad) !important;
+  border-color: transparent !important;
+  color: var(--tc-btn-fg) !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+/* 手机端主业务按钮（.fin-btn.primary 等）也接到同一套令牌 */
+#app.is-mobile :is(.fin-btn.primary, .st-btn.primary, .tv-btn.primary, .ct-btn.primary, .abb-ai) {
+  background: var(--tc-btn-grad) !important;
+  color: var(--tc-btn-fg) !important;
+}
 
 /* 尊重减少动态效果偏好 */
 @media (prefers-reduced-motion: reduce) {
