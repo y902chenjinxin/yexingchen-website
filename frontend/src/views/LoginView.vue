@@ -45,9 +45,7 @@
           </div>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="large" style="width: 100%" :loading="loading" native-type="submit" aria-label="登录按钮">
-            登 录
-          </el-button>
+          <TechButton block :loading="loading" native-type="submit" aria-label="登录按钮">登 录</TechButton>
         </el-form-item>
       </el-form>
 
@@ -160,6 +158,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { register as registerApi, verifyCode as verifyCodeApi } from '@/api/auth'
+import TechButton from '@/components/common/TechButton.vue'
 
 /** ============ 雨青粒子网背景（原始实现，保留用户偏好的绿色调） ============ */
 const particleCanvas = ref(null)
@@ -235,12 +234,12 @@ function initParticles(w, h) {
   }
 }
 
-// v2.46.103：参考夜星桌面 a.html（tsParticles 极致登录页）——背景转极深蓝黑 #050510，
-// 粒子改为纯白点 + 白连线（a.html links color #ffffff），在深底上呼吸感最强
-const COL_LINE = '255, 255, 255'        // 白色连线（a.html links #fff）
-const COL_POINTER = '255, 255, 255'     // 鼠标连线（白）
-const COL_HALO = '255, 255, 255'        // 粒子光晕（白）
-const COL_CORE = '255, 255, 255'        // 粒子核（白）
+// 全站科技风（TECH_OVERHAUL 2026-10-20）：粒子改为霓虹青 + 鼠标聚拢线改品紫，
+// 与全站 cyan/violet 霓虹体系统一，深底上呼吸感最强
+const COL_LINE = '45, 226, 255'         // 霓虹青连线
+const COL_POINTER = '185, 139, 255'     // 鼠标连线（品紫）
+const COL_HALO = '45, 226, 255'         // 粒子光晕（青）
+const COL_CORE = '180, 240, 255'        // 粒子核（浅青白）
 
 function setupCanvas() {
   const canvas = particleCanvas.value
@@ -517,8 +516,9 @@ function resetRegister() {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 50% 38%, rgba(99, 102, 241, 0.10), transparent 62%),
-    #050510;
+    radial-gradient(60% 50% at 18% 12%, rgba(45, 226, 255, .14), transparent 60%),
+    radial-gradient(55% 45% at 84% 88%, rgba(185, 139, 255, .14), transparent 62%),
+    #05080f;
   position: relative;
   overflow: hidden;
 }
@@ -540,15 +540,16 @@ function resetRegister() {
   z-index: 100;
   width: 360px;
   padding: 40px;
-  background: rgba(17, 24, 40, 0.66);
+  background: linear-gradient(160deg, rgba(20, 30, 48, .72), rgba(10, 16, 28, .86));
   -webkit-backdrop-filter: blur(24px) saturate(185%);
   backdrop-filter: blur(24px) saturate(185%);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--tc-line, rgba(120, 180, 255, .18));
   border-radius: 20px;
   box-shadow:
     0 1px 1px rgba(0, 0, 0, 0.04),
-    0 8px 24px rgba(0, 0, 0, 0.12),
-    0 24px 60px rgba(0, 0, 0, 0.35),
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 0 40px rgba(45, 226, 255, .12),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   opacity: 0;
   animation: card-in 0.5s ease-out 0.15s forwards;
@@ -559,31 +560,46 @@ function resetRegister() {
   to { opacity: 1; }
 }
 
-/* 金色顶边高光 */
+/* 霓虹渐变描边（青→紫） */
 .login-card::before {
   content: '';
   position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(45, 226, 255, .7), rgba(185, 139, 255, .55), rgba(45, 226, 255, .12));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* 顶部青色高光扫描线 */
+.login-card::after {
+  content: '';
+  position: absolute;
   top: 0;
-  left: 10%;
-  right: 10%;
+  left: 12%;
+  right: 12%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+  background: linear-gradient(90deg, transparent, var(--tc-cyan, #2de2ff), transparent);
   border-radius: 0 0 4px 4px;
+  box-shadow: 0 0 12px rgba(45, 226, 255, .6);
 }
 
 .site-title {
   font-size: 28px;
   text-align: center;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #C9A96E 0%, #F0E6C8 50%, #C9A96E 100%);
+  background: linear-gradient(135deg, #7beeff 0%, #b98bff 50%, #7beeff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 8px rgba(201, 169, 110, 0.3));
+  filter: drop-shadow(0 2px 10px rgba(45, 226, 255, .35));
 }
 
 .site-subtitle {
   font-size: 14px;
-  color: rgba(214, 232, 228, 0.85);
+  color: rgba(157, 178, 212, 0.9);
   text-align: center;
   margin-bottom: 30px;
   letter-spacing: 4px;
@@ -606,10 +622,10 @@ function resetRegister() {
   font-size: 13px; color: rgba(220, 236, 232, 0.85); cursor: pointer;
 }
 .remember-check {
-  width: 16px; height: 16px; accent-color: var(--color-gold);
+  width: 16px; height: 16px; accent-color: var(--tc-cyan, #2de2ff);
   cursor: pointer;
 }
-.remember-hint { font-size: 12px; color: rgba(220, 236, 232, 0.5); }
+.remember-hint { font-size: 12px; color: rgba(157, 178, 212, 0.5); }
 
 .password-toggle {
   cursor: pointer;
@@ -620,14 +636,14 @@ function resetRegister() {
 }
 
 .password-toggle:hover {
-  color: var(--color-gold);
+  color: var(--tc-cyan, #2de2ff);
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(24, 32, 41, 0.72) !important;
+  background: rgba(13, 20, 33, 0.7) !important;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(127, 168, 163, 0.3) !important;
+  border: 1px solid rgba(120, 180, 255, 0.28) !important;
   border-radius: 10px !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
@@ -635,13 +651,13 @@ function resetRegister() {
 
 :deep(.el-input__wrapper:hover),
 :deep(.el-input__wrapper.is-focus) {
-  border-color: rgba(127, 168, 163, 0.65) !important;
+  border-color: rgba(45, 226, 255, 0.7) !important;
 }
 
 :deep(.el-input__inner) {
-  color: #f2f8f6 !important;
-  -webkit-text-fill-color: #f2f8f6;
-  caret-color: #f2f8f6;
+  color: #e6f0ff !important;
+  -webkit-text-fill-color: #e6f0ff;
+  caret-color: #e6f0ff;
 }
 
 /* 浏览器自动填充（记住我 / 密码管理器）：Chrome 会强制给 input 刷
@@ -654,40 +670,41 @@ function resetRegister() {
 :deep(input:autofill),
 :deep(input:autofill:hover),
 :deep(input:autofill:focus) {
-  -webkit-text-fill-color: #f2f8f6 !important;
-  color: #f2f8f6 !important;
-  -webkit-box-shadow: 0 0 0 1000px rgba(24, 32, 41, 0.96) inset !important;
-  box-shadow: 0 0 0 1000px rgba(24, 32, 41, 0.96) inset !important;
-  background-color: rgba(24, 32, 41, 0.96) !important;
+  -webkit-text-fill-color: #e6f0ff !important;
+  color: #e6f0ff !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(13, 20, 33, 0.96) inset !important;
+  box-shadow: 0 0 0 1000px rgba(13, 20, 33, 0.96) inset !important;
+  background-color: rgba(13, 20, 33, 0.96) !important;
   transition: background-color 9999s ease-out 0s;
   filter: none !important;
-  caret-color: #f2f8f6;
+  caret-color: #e6f0ff;
 }
-/* 自动填充时同步把外框描边维持雨青 */
+/* 自动填充时同步把外框描边维持霓虹青 */
 :deep(.el-input__wrapper:has(input:-webkit-autofill)),
 :deep(.el-input__wrapper:has(input:autofill)) {
-  background: rgba(24, 32, 41, 0.96) !important;
-  border-color: rgba(127, 168, 163, 0.45) !important;
+  background: rgba(13, 20, 33, 0.96) !important;
+  border-color: rgba(45, 226, 255, 0.5) !important;
 }
 
 :deep(.el-input__inner::placeholder) {
-  color: rgba(200, 214, 208, 0.66) !important;
+  color: rgba(157, 178, 212, 0.66) !important;
 }
 
 :deep(.el-input__suffix .el-icon),
 :deep(.el-input__clear),
 :deep(.el-input__password) {
-  color: rgba(200, 214, 208, 0.75) !important;
+  color: rgba(157, 178, 212, 0.75) !important;
 }
 
 :deep(.el-button--primary) {
-  background: linear-gradient(135deg, var(--color-qi-primary) 0%, #3DB8B0 100%) !important;
-  border: 1px solid rgba(78, 205, 196, 0.4) !important;
-  box-shadow: 0 4px 15px rgba(78, 205, 196, 0.2) !important;
+  background: linear-gradient(135deg, var(--tc-cyan, #2de2ff) 0%, var(--tc-blue, #6a8bff) 100%) !important;
+  border: 1px solid rgba(45, 226, 255, 0.4) !important;
+  color: #04121f !important;
+  box-shadow: 0 4px 15px rgba(45, 226, 255, 0.3) !important;
 }
 
 :deep(.el-button--primary:hover) {
-  background: linear-gradient(135deg, #5DE0D8 0%, var(--color-qi-primary) 100%) !important;
+  background: linear-gradient(135deg, var(--tc-cyan-bright, #7beeff) 0%, var(--tc-violet, #b98bff) 100%) !important;
 }
 
 .register-link {
@@ -700,7 +717,7 @@ function resetRegister() {
 }
 
 .register-link:hover {
-  color: var(--color-gold);
+  color: var(--tc-cyan, #2de2ff);
 }
 
 /* 注册流程 */
@@ -742,14 +759,14 @@ function resetRegister() {
   width: 60px;
   height: 60px;
   margin: 0 auto 20px;
-  background: linear-gradient(135deg, rgba(78, 205, 196, 0.3) 0%, rgba(26, 58, 74, 0.6) 100%);
-  border: 2px solid rgba(78, 205, 196, 0.4);
+  background: linear-gradient(135deg, rgba(45, 226, 255, 0.3) 0%, rgba(26, 30, 74, 0.6) 100%);
+  border: 2px solid rgba(45, 226, 255, 0.45);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 30px;
-  color: var(--color-qi-primary);
+  color: var(--tc-cyan, #2de2ff);
 }
 
 /* 登录加载特效（克制：仅中央呼吸光 + 旋转细环） */
@@ -772,7 +789,7 @@ function resetRegister() {
   position: absolute;
   width: 110px;
   height: 110px;
-  background: radial-gradient(circle, rgba(127, 168, 163, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(45, 226, 255, 0.3) 0%, transparent 70%);
   border-radius: 50%;
   animation: glow-pulse 2.2s ease-in-out infinite;
 }
@@ -786,9 +803,9 @@ function resetRegister() {
   position: absolute;
   width: 76px;
   height: 76px;
-  border: 1.5px solid rgba(127, 168, 163, 0.45);
+  border: 1.5px solid rgba(45, 226, 255, 0.45);
   border-radius: 50%;
-  border-top-color: rgba(199, 169, 107, 0.7);
+  border-top-color: rgba(185, 139, 255, 0.85);
   animation: ring-rotate 1.1s linear infinite;
 }
 
@@ -806,7 +823,7 @@ function resetRegister() {
   z-index: 50;
   background: rgba(10, 16, 28, 0.9);
   backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(78, 205, 196, 0.15);
+  border-top: 1px solid rgba(45, 226, 255, 0.18);
   padding: 10px 20px;
 }
 

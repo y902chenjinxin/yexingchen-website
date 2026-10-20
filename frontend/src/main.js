@@ -47,6 +47,9 @@ import './assets/styles/desktop-product.css'
 import './assets/styles/tool-mobile.css'
 // 棋牌三件套（掼蛋/麻将/大富翁）独立牌桌皮肤：仅 .gt- 前缀，退出游戏即恢复全站主题
 import './assets/styles/game-table.css'
+// 全站科技风重构层（TECH_OVERHAUL 2026-10-20）：必须最后引入，以更高优先级覆盖
+// 雨青玻璃 / 紫罗兰 Flux / 昼夜双套的 token 与 Element Plus 变量，组件用 var() 引用即自动跟随
+import './assets/styles/tech-theme.css'
 
 // 主题应用统一收口在 stores/prefs.js（data-theme + meta theme-color，#32）
 import { applyTheme } from '@/stores/prefs'

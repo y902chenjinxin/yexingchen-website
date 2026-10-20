@@ -1,5 +1,7 @@
 <template>
   <div id="app" :class="{ 'is-mobile': isMobile, 'is-immersive': immersive }">
+    <!-- 全站科技风 · 画布粒子/网格背景（固定层，置于内容之下，pointer-events:none） -->
+    <TechBackdrop />
     <el-config-provider :locale="zhCn">
     <!-- Skip Link键盘导航 -->
     <a href="#main-content" class="skip-link">跳转到内容</a>
@@ -74,6 +76,7 @@ import { ElNotification } from 'element-plus'
 import { useGameInvites } from '@/composables/useGameInvites'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useImmersive } from '@/composables/useImmersive'
+import TechBackdrop from '@/components/effects/TechBackdrop.vue'
 
 // WhaleCompanion 较大（视频背景 + 动画控制），按需异步加载以减小首屏 bundle
 const WhaleCompanion = defineAsyncComponent(() => import('@/components/effects/WhaleCompanion.vue'))

@@ -1,3 +1,39 @@
+## [v2.46.126] - 2026-10-20
+
+### 全站视觉体系重构：水墨/雨青苹果/紫罗兰 Flux → 科技霓虹 HUD（TECH_OVERHAUL）
+
+- **需求**：夜星「将整个项目所有的地方一起改，不单单图片，还有 UI、卡片动效、排版，不用考虑玄黄，不用考虑之前的设计，怎么酷炫怎么来」——即放弃既有四套设计语言（墨色宣纸 / 雨青苹果玻璃 / 紫罗兰 Flux / 玄黄鎏金），全站统一成科技感 HUD。
+- **架构决策（关键）**：**不逐文件改 129 个 `.vue`**（硬编码深底多、易漏、风险高），改为**单一 token 覆盖层**。新建 `frontend/src/assets/styles/tech-theme.css`，在 `main.js` **最后一行**引入（CSS 层叠顺序 = 后引入者优先），以同等特异性重声明 `:root` / `:root[data-theme="night"]` / `:root[data-theme="day"]` 的全部核心 token。组件只要用 `var()` 引用就自动跟随，**一行不动即换肤**。
+- **覆盖范围**（token 层）：背景/文字/主辅色、玻璃、阴影、圆角、`--lj-*`、`--ls-*`、`--xiu-*`、`--dp-*` 及 Element Plus 的 `--el-*`；另覆写 `.el-button` / `--primary` / `.el-input__wrapper` / `.el-card` / `.el-dialog` / `.el-table` / `.el-tag` / `.el-progress` 等组件视觉，通用 `.tech-panel` / `.glass-card` / `.ls-card` / `.jade-card` 改渐变描边（`::before` + `mask-composite`）。
+- **调色板**：主霓虹青 `#2de2ff`、亮青 `#7beeff`、深青 `#1aa9c9`、蓝 `#6a8bff`、紫 `#b98bff`、品红 `#ff45a0`；底 `#05080f` / `#0a0f1c` / `#0f1726`（`--tc-*` 命名空间）。
+- **全局动效背景**：`#app::before` 三处径向霓虹辉光（青左上 / 紫右下 / 蓝中心），`#app::after` 漂移网格 + 径向 mask 淡出（`tech-grid-drift` 26s 线性循环）。`position:fixed` + `z-index:-2/-1`，不占布局、不拦事件。
+- **新增 `components/effects/TechBackdrop.vue`**：轻量 canvas 粒子/近邻连线背景，粒子数按面积收敛（28~90），青/紫/蓝三色系；`prefers-reduced-motion` 退化为静态帧；resize 防抖。挂载于 `App.vue` 的 `#app` 首个子节点。
+- **新增 `components/common/TechButton.vue`**：青→紫渐变描边 + hover 提亮 + 扫光（`tech-sweep`）+ `:active` 下压 + loading spinner；`variant`(primary/ghost/danger) / `block` / `disabled` / `loading` / `nativeType`。
+- **新增 `components/common/TechCard.vue`**：渐变描边 + 四角霓虹角标 + hover 上浮 + glow 脉冲。
+- **登录页（首屏第一印象）定点改造** `LoginView.vue`：粒子色由白改青/紫（`COL_LINE/CORE/HALO/POINTER`）；`.login-page` 背景改青紫双 radial + `#05080f`；`.login-card` 改科技渐变玻璃 + 青紫渐变描边 + 顶部青色扫描高光；标题改青紫渐变文字、副标题冷白；input 边框/autofill 遮蔽底色、`accent-color`、注册链接、成功图标、`.fairy-glow` / `.fairy-ring`、备案页脚边框全部改霓虹青；主 CTA 由 `el-button` 换 `TechButton`。
+- **day 模式处理**：第 7 节强制科技暗覆盖（login-page / island-page / 各类硬编码浅色块），避免白天切回来一片惨白与霓虹底打架。
+- **克制**：全局 `@media (prefers-reduced-motion: reduce)` 关闭所有新增动画。
+- 版本 SW v439→v440、APP_VERSION v2.46.125→v2.46.126。
+- 验收：现网 <https://yexingchen.cn/> 登录页 → 进主站任意模块看卡片/按钮/表格是否统一青紫霓虹。
+
+---
+
+## [v2.46.125] - 2026-10-20
+
+### 记账页图标重建：emoji 预设 → 线性图标集（无色）
+
+- **问题**：记账页的分类 / 资金池图标全是 emoji（`🍜 🚇 🛍️ …`）——字形随系统字体漂移、笔画粗细与页面衬线水墨语汇不搭、且无法继承主题色。
+- **做法（渲染层替换，数据零改动）**：新增 `frontend/src/utils/finance/ledgerIcons.js`（38 枚线性图标，24×24 网格 / 1.6 描边 / 圆头圆角，key 仍是 emoji）+ `frontend/src/components/LedgerIcon.vue`（命中就画 SVG，未命中回落原字符）。**不动 DB、不改 `ICON_PRESETS` 的 emoji 值**——库里 icon 字段照旧存 emoji，老流水 / 老自定义分类照常显示，用户自己从输入法挑的 emoji 自动回落，新增 / 改名分类无需任何配置。
+- **emoji 变体选择符归一**：查表前先剥离 `U+FE0E / U+FE0F`，`🛍️` 与 `🛍` 都能命中，不会因一个不可见字符退回 emoji。
+- **无色**：图标 `fill:none` + `stroke:currentColor`，自身不携带颜色、完全继承容器文字色；选中态的鎏金 / 雨青来自站点既有文字色语义，白天 / 黑夜自动跟随。
+- **覆盖面**：30 枚 `ICON_PRESETS` + 后端内置收入额外用到的 `💼 工资 / 🏅 奖金 / 🧑‍💻 兼职` + 自定义分类兜底 `🏷️` + 资金池 `🏦 存款 / 🏛️ 公款 / 👛 个人零花 / 🚫 未归类`（同类元素不统一会更割裂，故一并换）。
+- **改动点**（`FinanceView.vue` 12 处）：记账表单分类按钮、资金池按钮、资金池卡片图标、hero 图标、图表图例行、流水行图标（3 处列表）、详情页分类、分类管理两个图标下拉 + 内置 / 已隐藏分类 chip。分类管理下拉的列表项与选中显示均已改为图标（走 el-select 的 `#label` 插槽）。
+- **一处判断**：`🚫 未归类` 改绘为「圆圈问号」（禁止符读作"禁止"，与"未归类"语义不符）；要保留禁止符改 1 条 path 即可。
+- 版本 SW v438→v439、APP_VERSION v2.46.124→v2.46.125。
+- 验收：现网 <https://yexingchen.cn/> → 记账 `/finance/book`。
+
+---
+
 ## [v2.46.124] - 2026-10-20
 
 ### 爬虫/小说下载从侧边栏撤下，只归工具模块（夜星：不放侧边栏，放工具模块里）

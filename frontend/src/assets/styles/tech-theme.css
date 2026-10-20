@@ -1,0 +1,613 @@
+/* =====================================================================
+ * 玄黄 · 全站科技风重构层（TECH_OVERHAUL 2026-10-20）
+ * ---------------------------------------------------------------------
+ * 设计意图：抛弃旧的「水墨国风 / 雨青玻璃 / 紫罗兰 Flux」体系，统一为
+ * 暗色太空 + 霓虹青/紫双主色的「科技 HUD」视觉。本层在 main.js 最后引入，
+ * 以同等/更高优先级覆盖 :root 与 [data-theme="day"|"night"] 的全部核心
+ * token 与 Element Plus 变量，组件只要用 var() 引用即自动跟随，无需逐页改。
+ *
+ * 调色板（核心）
+ *   --tc-cyan    #2de2ff  主霓虹（品牌辉光 / 主操作）
+ *   --tc-violet  #b98bff  次霓虹（描边 / 点缀）
+ *   --tc-blue    #6a8bff  过渡蓝紫
+ *   --tc-magenta #ff45a0  高亮点缀（危险/特殊）
+ * ===================================================================== */
+
+/* ============ 0. 科技调色板（供本层与组件复用） ============ */
+:root {
+  --tc-cyan: #2de2ff;
+  --tc-cyan-bright: #7beeff;
+  --tc-cyan-deep: #1aa9c9;
+  --tc-blue: #6a8bff;
+  --tc-violet: #b98bff;
+  --tc-violet-bright: #d9c2ff;
+  --tc-magenta: #ff45a0;
+  --tc-bg-0: #05080f;
+  --tc-bg-1: #0a0f1c;
+  --tc-bg-2: #0f1726;
+  --tc-surface: #121b2e;
+  --tc-line: rgba(120, 180, 255, .16);
+  --tc-line-strong: rgba(120, 180, 255, .30);
+  --tc-text: #e6f0ff;
+  --tc-text-2: #9db2d4;
+  --tc-text-3: #5e7396;
+  --tc-glow-cyan: rgba(45, 226, 255, .35);
+  --tc-glow-violet: rgba(185, 139, 255, .30);
+}
+
+/* ============ 1. 全模式核心 token 覆盖（夜/昼/默认 全部走科技暗色） ============ */
+:root,
+:root[data-theme="night"],
+:root[data-theme="day"] {
+  /* ---- 背景：暗色太空阶梯 ---- */
+  --color-bg-dark: var(--tc-bg-0);
+  --color-bg: var(--tc-bg-1);
+  --color-bg-elevated: var(--tc-bg-2);
+  --color-bg-glass: rgba(15, 23, 38, .55);
+  --ink-black: var(--tc-bg-0);
+  --ink-dark: var(--tc-bg-1);
+  --ink-medium: var(--tc-bg-2);
+  --ink-light: #162034;
+  --bg-deep: var(--tc-bg-0);
+  --bg-indigo: var(--tc-bg-1);
+  --bg-night: var(--tc-bg-2);
+
+  /* ---- 文字：冷白三阶梯 ---- */
+  --color-text: var(--tc-text);
+  --color-text-dark: var(--tc-bg-0);
+  --color-text-secondary: var(--tc-text-2);
+  --color-text-muted: var(--tc-text-3);
+  --color-text-light: rgba(230, 240, 255, .92);
+
+  /* ---- 霓虹主色 ---- */
+  --color-primary: var(--tc-cyan);
+  --color-secondary: var(--tc-blue);
+  --color-accent: var(--tc-violet);
+  --color-qi-primary: var(--tc-cyan);
+  --color-qi-green: var(--tc-cyan-deep);
+  --color-qi-glow: var(--tc-glow-cyan);
+  --island-glow-color: var(--tc-glow-cyan);
+  --color-gold: var(--tc-violet);
+  --color-gold-bright: var(--tc-violet-bright);
+  --color-gold-dark: var(--tc-cyan-deep);
+  --color-jade: var(--tc-cyan);
+  --yq-rain: var(--tc-cyan);
+  --yq-rain-bright: var(--tc-cyan-bright);
+  --yq-rain-deep: var(--tc-cyan-deep);
+  --yq-gold: var(--tc-violet);
+  --yq-gold-bright: var(--tc-violet-bright);
+  --yq-gold-fg: var(--tc-bg-0);
+  --yq-gold-faint: rgba(185, 139, 255, .18);
+  --yq-gold-glow: rgba(185, 139, 255, .4);
+  --yq-gold-glow-strong: rgba(185, 139, 255, .55);
+  --yq-rain-faint: rgba(45, 226, 255, .14);
+  --yq-rain-glow: rgba(45, 226, 255, .6);
+  --xiu-primary: var(--tc-cyan);
+  --xiu-primary-bright: var(--tc-cyan-bright);
+  --xiu-gold: var(--tc-violet);
+  --xiu-gold-bright: var(--tc-violet-bright);
+  --xiu-text: var(--tc-text);
+  --xiu-text-2: var(--tc-text-2);
+  --xiu-text-3: var(--tc-text-3);
+
+  /* ---- 语义色：红涨绿跌改为霓虹（国内惯例保留 红=涨） ---- */
+  --color-danger: #ff4d6d;
+  --color-success: #2ee6a0;
+  --color-warning: #ffd166;
+  --dp-danger: #ff4d6d;
+  --dp-up: #ff4d6d;
+  --dp-down: #2ee6a0;
+  --dp-warning: #ffd166;
+
+  /* ---- 岛屿特色色（霓虹化） ---- */
+  --color-music: var(--tc-blue);
+  --color-novel: var(--tc-violet);
+  --color-video: var(--tc-magenta);
+  --color-log: #2ee6a0;
+  --color-tool: var(--tc-cyan);
+  --color-novel: var(--tc-violet);
+  --island-music: var(--tc-blue);
+  --island-novel: var(--tc-violet);
+  --island-video: var(--tc-magenta);
+  --island-log: #2ee6a0;
+  --island-tool: var(--tc-cyan);
+
+  /* ---- 玻璃系统：暗色霓虹玻璃 ---- */
+  --glass-blur: blur(22px) saturate(165%);
+  --glass-border: var(--tc-line-strong);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .08);
+  --glass-shadow:
+    0 1px 1px rgba(0, 0, 0, .5),
+    0 8px 24px rgba(0, 0, 0, .4),
+    0 24px 60px rgba(0, 0, 0, .5),
+    0 0 0 1px rgba(45, 226, 255, .06) inset;
+  --glow-rain: rgba(45, 226, 255, .14);
+  --glow-gold: rgba(185, 139, 255, .10);
+
+  /* ---- 阴影 ---- */
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, .4);
+  --shadow: var(--glass-shadow);
+  --shadow-lg: 0 18px 50px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .35);
+  --shadow-glow: 0 0 40px var(--tc-glow-cyan);
+  --shadow-ink: 0 0 24px var(--tc-glow-cyan), 0 0 48px rgba(45, 226, 255, .15);
+  --shadow-jade: 0 0 16px var(--tc-glow-cyan);
+  --shadow-xl: 0 24px 60px rgba(0, 0, 0, .55);
+
+  /* ---- 圆角 ---- */
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+
+  /* ---- 工作台 --lj-* → 科技暗 ---- */
+  --lj-bg: var(--tc-bg-1);
+  --lj-bg-deep: var(--tc-bg-0);
+  --lj-paper: rgba(18, 27, 46, .66);
+  --lj-paper-2: var(--tc-bg-2);
+  --lj-glass: rgba(13, 20, 33, .6);
+  --lj-glass-blur: saturate(165%) blur(20px);
+  --lj-panel: rgba(10, 16, 28, .96);
+  --lj-ink: var(--tc-text);
+  --lj-mist: var(--tc-text-2);
+  --lj-dai: var(--tc-cyan);
+  --lj-dai-deep: var(--tc-cyan-deep);
+  --lj-ochre: var(--tc-violet);
+  --lj-gold: var(--tc-violet);
+  --lj-vermilion: var(--tc-magenta);
+  --lj-cinnabar: var(--tc-magenta);
+  --lj-seal: var(--tc-violet);
+  --lj-seal-hover: var(--tc-violet-bright);
+  --lj-seal-soft: rgba(185, 139, 255, .16);
+  --lj-line: var(--tc-line);
+  --lj-line-strong: var(--tc-line-strong);
+  --lj-text: var(--tc-text);
+  --lj-text-2: var(--tc-text-2);
+  --lj-text-3: var(--tc-text-3);
+  --lj-shadow: 0 6px 24px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .05);
+
+  /* ---- 岛屿深色 --ls-* → 科技暗 ---- */
+  --ls-bg0: var(--tc-bg-0);
+  --ls-bg1: var(--tc-bg-1);
+  --ls-bg-glow: rgba(45, 226, 255, .10);
+  --ls-paper: var(--tc-bg-2);
+  --ls-paper-2: #142033;
+  --ls-glass: rgba(13, 20, 33, .66);
+  --ls-line: rgba(120, 180, 255, .14);
+  --ls-line-strong: rgba(120, 180, 255, .26);
+  --ls-highlight: rgba(255, 255, 255, .06);
+  --ls-shadow: 0 18px 46px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .35);
+  --ls-dai: var(--tc-cyan);
+  --ls-dai-deep: var(--tc-cyan-deep);
+  --ls-ochre: var(--tc-violet);
+  --ls-jade: var(--tc-cyan-bright);
+  --ls-text: #eaf2ff;
+  --ls-text-2: #a9bcdc;
+  --ls-text-3: #5e7396;
+
+  /* ---- 修仙风/玄素 --xiu-* 卡面 ---- */
+  --xiu-card: rgba(18, 27, 46, .7);
+  --xiu-card-strong: rgba(10, 16, 28, .9);
+  --xiu-line: var(--tc-line);
+  --xiu-line-strong: var(--tc-line-strong);
+  --xiu-glow: var(--tc-glow-cyan);
+  --xiu-danger: var(--tc-magenta);
+
+  /* ---- 岛屿内页背景（IslandInnerBase 壳） ---- */
+  --li-sky: #0f1726;
+  --li-sky-mid: #0a0f1c;
+  --li-sky-deep: #05080f;
+  --li-title-a: #f2f6ff;
+  --ls-bg-glow: rgba(45, 226, 255, .10);
+
+  /* ---- 桌面紫罗兰 Flux 体系强行转科技（desktop-theme-night 的 --dp-* 映射源） ---- */
+  --dp-bg: var(--tc-bg-0);
+  --dp-bg2: var(--tc-bg-1);
+  --dp-surface: var(--tc-bg-2);
+  --dp-surface2: #142033;
+  --dp-line: var(--tc-line);
+  --dp-line-strong: var(--tc-line-strong);
+  --dp-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px rgba(45, 226, 255, .16);
+  --dp-glow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px rgba(45, 226, 255, .26);
+  --dp-raised: 0 2px 6px rgba(0, 0, 0, .5), 0 20px 48px rgba(45, 226, 255, .30);
+  --dp-text: var(--tc-text);
+  --dp-text2: var(--tc-text-2);
+  --dp-text3: var(--tc-text-3);
+  --dp-accent: var(--tc-cyan);
+  --dp-accent-hover: var(--tc-cyan-deep);
+  --dp-accent-strong: var(--tc-cyan-deep);
+  --dp-accent-faint: rgba(45, 226, 255, .16);
+  --dp-warning: #ffd166;
+
+  /* ============ Element Plus 变量（全模式） ============ */
+  --el-color-primary: var(--tc-cyan);
+  --el-color-primary-light-3: var(--tc-cyan-deep);
+  --el-color-primary-light-5: #1796b4;
+  --el-color-primary-light-7: #0e6b85;
+  --el-color-primary-light-8: #0a4f63;
+  --el-color-primary-light-9: #07303d;
+  --el-color-primary-dark-2: var(--tc-cyan-deep);
+  --el-color-success: #2ee6a0;
+  --el-color-warning: #ffd166;
+  --el-color-danger: #ff4d6d;
+  --el-color-error: #ff4d6d;
+  --el-color-info: var(--tc-text-2);
+
+  --el-bg-color: #0f1726;
+  --el-bg-color-overlay: #142033;
+  --el-bg-color-page: #05080f;
+  --el-fill-color-blank: #0f1726;
+  --el-fill-color: #142033;
+  --el-fill-color-light: #18263b;
+  --el-fill-color-lighter: #101a2b;
+  --el-fill-color-extra-light: #0c1422;
+
+  --el-text-color-primary: #e6f0ff;
+  --el-text-color-regular: #c6d6ee;
+  --el-text-color-secondary: #9db2d4;
+  --el-text-color-placeholder: #5e7396;
+  --el-text-color-disabled: #3a4a63;
+
+  --el-border-color: #21304a;
+  --el-border-color-light: #1c283d;
+  --el-border-color-lighter: #182233;
+  --el-border-color-extra-light: #142031;
+  --el-border-color-hover: var(--tc-cyan);
+  --el-border-color-dark: #2a3c5a;
+
+  --el-box-shadow:
+    0 1px 2px rgba(0, 0, 0, .5),
+    0 8px 24px rgba(0, 0, 0, .4),
+    0 0 0 1px rgba(45, 226, 255, .08) inset;
+  --el-box-shadow-light:
+    0 2px 8px rgba(0, 0, 0, .5),
+    0 12px 32px rgba(45, 226, 255, .22);
+
+  /* 涨跌语义（国内：红涨绿跌） */
+  --pnl-up: #ff5c7a;
+  --pnl-down: #2ee6a0;
+  --pnl-up-soft: rgba(255, 92, 122, .16);
+  --pnl-down-soft: rgba(46, 230, 160, .16);
+  --pnl-up-line: rgba(255, 92, 122, .35);
+  --pnl-down-line: rgba(46, 230, 160, .35);
+}
+
+/* ============ 2. 全局动效背景（固定层，置于内容之下） ============ */
+#app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(58% 48% at 12% 6%, rgba(45, 226, 255, .14), transparent 60%),
+    radial-gradient(52% 44% at 90% 94%, rgba(185, 139, 255, .14), transparent 62%),
+    radial-gradient(46% 40% at 50% 52%, rgba(106, 139, 255, .07), transparent 70%),
+    var(--tc-bg-1);
+}
+#app::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(120, 180, 255, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 180, 255, .045) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(circle at 50% 38%, #000 0%, transparent 78%);
+  mask-image: radial-gradient(circle at 50% 38%, #000 0%, transparent 78%);
+  opacity: .55;
+  animation: tech-grid-drift 26s linear infinite;
+}
+body { background: var(--tc-bg-1); }
+
+/* 🔴 关键：#app 自己带 `background: var(--color-bg)`（不透明），而上面两个伪元素是
+ * fixed + 负 z-index —— 负 z-index 子层画在「最近层叠上下文的背景之上、普通流后代
+ * 的背景之下」，结果会被 #app 自己的不透明底整片盖住，辉光和网格全看不见。
+ * 所以这里必须把 #app 底色置空，由 body 兜底同一颜色（视觉无差别）。
+ * 同理 TechBackdrop 的 canvas 也是 fixed + z-index:-1，靠这条才能露出来。 */
+#app { background: transparent; }
+
+/* ============ 3. Element Plus 组件 · 科技视觉 ============ */
+.el-button {
+  --el-button-bg-color: rgba(15, 23, 38, .6);
+  --el-button-border-color: var(--tc-line-strong);
+  --el-button-text-color: #cfe6ff;
+  --el-button-hover-bg-color: rgba(45, 226, 255, .10);
+  --el-button-hover-border-color: var(--tc-cyan);
+  --el-button-hover-text-color: #fff;
+  --el-button-active-bg-color: rgba(45, 226, 255, .16);
+  --el-button-active-border-color: var(--tc-cyan);
+  border-radius: var(--radius);
+  backdrop-filter: blur(8px);
+  letter-spacing: .02em;
+  transition: color .2s, border-color .2s, background-color .2s, box-shadow .2s, transform .12s;
+  box-shadow: 0 0 0 1px rgba(120, 180, 255, .05) inset;
+}
+.el-button:hover {
+  box-shadow: 0 0 18px rgba(45, 226, 255, .28), 0 0 0 1px rgba(45, 226, 255, .25) inset;
+}
+.el-button:active { transform: translateY(1px) scale(.99); }
+
+.el-button--primary {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: transparent;
+  --el-button-text-color: #04121f;
+  background:
+    linear-gradient(135deg, var(--tc-cyan), var(--tc-blue)) padding-box,
+    linear-gradient(135deg, var(--tc-cyan-bright), var(--tc-violet)) border-box;
+  border: 1px solid transparent;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px rgba(45, 226, 255, .35),
+    0 8px 24px rgba(45, 226, 255, .35);
+}
+.el-button--primary:hover {
+  background:
+    linear-gradient(135deg, var(--tc-cyan-bright), var(--tc-violet)) padding-box,
+    linear-gradient(135deg, var(--tc-cyan-bright), var(--tc-violet-bright)) border-box;
+  box-shadow:
+    0 0 0 1px rgba(45, 226, 255, .55),
+    0 10px 30px rgba(45, 226, 255, .5);
+}
+.el-button.is-link,
+.el-button.is-text { color: var(--tc-cyan); }
+
+/* 输入框：暗色 + 霓虹聚焦 */
+.el-input__wrapper,
+.el-textarea__inner {
+  background: rgba(13, 20, 33, .7) !important;
+  box-shadow: inset 0 0 0 1px var(--tc-line) !important;
+  border-radius: var(--radius) !important;
+  color: var(--tc-text);
+}
+.el-input__wrapper.is-focus,
+.el-input__wrapper:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--tc-cyan) !important,
+    0 0 0 3px rgba(45, 226, 255, .18) !important;
+}
+.el-input__inner { color: var(--tc-text); }
+.el-input__inner::placeholder { color: var(--tc-text-3); }
+
+/* 卡片：科技玻璃 + 渐变描边 */
+.el-card {
+  background: rgba(15, 23, 38, .55) !important;
+  border: 1px solid var(--tc-line) !important;
+  border-radius: var(--radius-lg) !important;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  transition: border-color .25s, box-shadow .25s, transform .25s;
+}
+.el-card:hover {
+  border-color: var(--tc-line-strong) !important;
+  box-shadow: var(--glass-shadow), 0 0 28px rgba(45, 226, 255, .14);
+}
+
+/* 对话框 / 抽屉：霓虹玻璃 */
+.el-dialog,
+.el-drawer {
+  background: rgba(12, 18, 30, .92) !important;
+  border: 1px solid var(--tc-line-strong) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .6), 0 0 40px rgba(45, 226, 255, .12) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+.el-overlay-dialog .el-dialog,
+.el-dialog { color: var(--tc-text); }
+.el-dialog__title { color: var(--tc-text); }
+
+/* 表格：弱化分隔线，行 hover 霓虹 */
+.el-table, .el-table__inner-wrapper { background: transparent; }
+.el-table tr, .el-table th.el-table__cell, .el-table td.el-table__cell {
+  background: transparent !important;
+}
+.el-table td.el-table__cell, .el-table th.el-table__cell {
+  border-bottom: 1px solid rgba(120, 180, 255, .08) !important;
+}
+.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
+  background: rgba(45, 226, 255, .07) !important;
+}
+.el-table .el-table__header th.el-table__cell { color: var(--tc-text-2); }
+
+/* 标签 */
+.el-tag {
+  background: rgba(45, 226, 255, .12) !important;
+  border: 1px solid rgba(45, 226, 255, .3) !important;
+  color: var(--tc-cyan-bright) !important;
+  border-radius: 999px;
+}
+
+/* 进度条 / 滑块 主色 */
+.el-progress-bar__inner { background: linear-gradient(90deg, var(--tc-cyan), var(--tc-violet)); }
+.el-slider__bar { background: linear-gradient(90deg, var(--tc-cyan), var(--tc-violet)); }
+.el-slider__button { border-color: var(--tc-cyan); }
+
+/* ============ 4. 通用卡片 / 面板 · 科技渐变描边 ============ */
+/* 渐变描边工具：用 ::before + mask 实现圆角渐变边 */
+.tech-panel,
+.glass-card,
+.ls-card {
+  position: relative;
+  background:
+    linear-gradient(160deg, rgba(20, 30, 48, .72), rgba(10, 16, 28, .86));
+  border: 1px solid var(--tc-line);
+  border-radius: var(--radius-lg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+.tech-panel::before,
+.glass-card::before,
+.ls-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(45, 226, 255, .65), rgba(185, 139, 255, .5), rgba(45, 226, 255, .12));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: .9;
+  transition: opacity .25s;
+}
+.tech-panel:hover::before,
+.glass-card:hover::before,
+.ls-card:hover::before { opacity: 1; }
+
+/* 玉简卡片：保留结构，换科技材质 */
+.jade-card {
+  background:
+    linear-gradient(160deg, rgba(20, 30, 48, .72), rgba(10, 16, 28, .86)) !important;
+  border: 1px solid var(--tc-line) !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+.jade-card.is-active {
+  border-color: var(--tc-cyan) !important;
+  box-shadow: var(--glass-shadow), 0 0 26px rgba(45, 226, 255, .25) !important;
+}
+
+/* ============ 5. 工具类 ============ */
+.text-gold,
+.text-gold-premium {
+  background: linear-gradient(90deg, var(--tc-cyan-bright), var(--tc-violet-bright));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(45, 226, 255, .25));
+}
+.tech-gradient-text {
+  background: linear-gradient(90deg, var(--tc-cyan-bright), var(--tc-violet-bright));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.tech-glow { text-shadow: 0 0 12px rgba(45, 226, 255, .55); }
+.tech-divider {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(90deg, transparent, rgba(120, 180, 255, .45), transparent);
+}
+
+/* ============ 6. keyframes ============ */
+@keyframes tech-grid-drift {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 46px 46px, 46px 46px; }
+}
+@keyframes tech-glow-pulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(45, 226, 255, .25); }
+  50% { box-shadow: 0 0 34px rgba(45, 226, 255, .55); }
+}
+@keyframes tech-sweep {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+@keyframes tech-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ============ 7. 白天模式残留 · 强制科技暗（覆盖 variables.css 的 day 段） ============ */
+html:root[data-theme="day"] .login-card,
+:root[data-theme="day"] .login-card {
+  background: rgba(12, 18, 30, .92) !important;
+  border-color: var(--tc-line-strong) !important;
+}
+html:root[data-theme="day"] .login-page,
+:root[data-theme="day"] .login-page {
+  background:
+    radial-gradient(70% 50% at 20% 12%, rgba(45, 226, 255, .12), transparent 60%),
+    radial-gradient(60% 45% at 82% 78%, rgba(185, 139, 255, .10), transparent 60%),
+    linear-gradient(180deg, #0a0f1c 0%, #05080f 100%) !important;
+}
+html:root[data-theme="day"] .el-input__wrapper,
+:root[data-theme="day"] .el-input__wrapper {
+  background: rgba(13, 20, 33, .7) !important;
+  box-shadow: inset 0 0 0 1px var(--tc-line) !important;
+}
+html:root[data-theme="day"] .el-input__inner::placeholder { color: var(--tc-text-3) !important; }
+:root[data-theme="day"] .glass-card {
+  background:
+    linear-gradient(160deg, rgba(20, 30, 48, .6), rgba(10, 16, 28, .8)) !important;
+  border-color: var(--tc-line) !important;
+}
+:root[data-theme="day"] .jade-card {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .4), 0 0 22px rgba(45, 226, 255, .1) !important;
+}
+:root[data-theme="day"] .island-page {
+  background: linear-gradient(180deg, #0f1726 0%, #05080f 100%) !important;
+}
+:root[data-theme="day"] .island-header {
+  background: rgba(12, 18, 30, .7) !important;
+  border-bottom: 1px solid var(--tc-line) !important;
+}
+:root[data-theme="day"] .tb-search .el-input__wrapper {
+  background: rgba(13, 20, 33, .7) !important;
+  box-shadow: inset 0 0 0 1px var(--tc-line) !important;
+}
+:root[data-theme="day"] .jade-carousel .carousel-dots {
+  background: rgba(13, 20, 33, .7) !important;
+}
+:root[data-theme="day"] .login-page .site-subtitle,
+:root[data-theme="day"] .login-page .back-link,
+:root[data-theme="day"] .login-page .text-secondary { color: var(--tc-text-2) !important; }
+:root[data-theme="day"] .filing-footer {
+  background: rgba(12, 18, 30, .7) !important;
+  border-top-color: var(--tc-line) !important;
+}
+:root[data-theme="day"] .filing-links a { color: var(--tc-text-2) !important; }
+:root[data-theme="day"] .filing-links a:hover { color: var(--tc-cyan) !important; }
+/* 其余 day 段硬编码浅块 → 科技暗（批量收口） */
+:root[data-theme="day"] .note-select-input,
+:root[data-theme="day"] .note-select-list,
+:root[data-theme="day"] .spirit-quiz,
+:root[data-theme="day"] .kc-tip,
+:root[data-theme="day"] .tm-mini,
+:root[data-theme="day"] .tm-card,
+:root[data-theme="day"] .inner-footer,
+:root[data-theme="day"] .asset-preview,
+:root[data-theme="day"] .chat-save-body,
+:root[data-theme="day"] .fd-input,
+:root[data-theme="day"] .fd-search,
+:root[data-theme="day"] .fd-select,
+:root[data-theme="day"] .fin-note-input,
+:root[data-theme="day"] .fin-filter-input,
+:root[data-theme="day"] .st-input,
+:root[data-theme="day"] .st-sug-item,
+:root[data-theme="day"] .st-cell-input,
+:root[data-theme="day"] .sd-input,
+:root[data-theme="day"] .idp-num,
+:root[data-theme="day"] .idp-crop,
+:root[data-theme="day"] .ne-color-panel .ne-hex-input,
+:root[data-theme="day"] .ne-color-panel .ne-color-rgb input,
+:root[data-theme="day"] .detail-frame-wrap,
+:root[data-theme="day"] .ai-scope {
+  background: rgba(13, 20, 33, .7) !important;
+  color: var(--tc-text) !important;
+}
+:root[data-theme="day"] .fd-rich pre,
+:root[data-theme="day"] .ne-content pre {
+  background: rgba(13, 20, 33, .8) !important;
+}
+
+/* ============ 8. 内容壳透明化（让全局辉光/网格透上来） ============ */
+/* mobile-deink.css / mobile-native-glass.css 里给移动端子页壳写了
+ * `background: var(--color-bg) !important`（旧设计要整屏不透明宣纸面）。
+ * 科技风下整屏平涂会把背景层全挡住，故用同等 !important + 更高特异性反向覆盖成透明，
+ * 底色由 body 与 #app::before 提供，视觉仍是 #0a0f1c，只是多了氛围光与网格。 */
+#app.is-mobile :is(.fin-page, .st-page, .tv-page, .idp-page, .ct-page, .notes-page),
+#app.is-mobile .island-inner {
+  background: transparent !important;
+}
+
+/* 尊重减少动态效果偏好 */
+@media (prefers-reduced-motion: reduce) {
+  #app::after { animation: none; }
+  .el-button, .el-card, .tech-panel, .glass-card, .ls-card { transition: none; }
+}
