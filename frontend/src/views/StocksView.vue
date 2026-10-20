@@ -15,8 +15,8 @@
           <p class="st-sub">自选股 · 持仓盈亏 · 实时报价</p>
         </div>
         <div class="st-head-right">
-          <button class="st-btn ghost" :disabled="refreshing" @click="loadAll(true)">{{ refreshing ? '刷新中…' : '⟳ 刷新' }}</button>
-          <button class="st-btn primary" @click="openAdd">{{ adding ? '关闭' : '＋ 加自选' }}</button>
+          <IconButton icon="refresh" label="刷新" :disabled="refreshing" @click="loadAll(true)" />
+          <IconButton :icon="adding ? 'close' : 'plus'" :label="adding ? '关闭' : '加自选'" variant="primary" @click="openAdd" />
         </div>
       </header>
 
@@ -116,7 +116,7 @@
 
           <div class="st-form-actions">
             <span class="st-save-tip">模糊搜索「腾讯」「贵州」或代码均可自动匹配</span>
-            <button class="st-btn primary" :disabled="addingSave" @click="doAdd">{{ addingSave ? '加入中…' : '加入自选' }}</button>
+            <IconButton icon="plus" label="加入自选" variant="primary" :disabled="addingSave" @click="doAdd" />
           </div>
         </section>
       </transition>
@@ -152,7 +152,7 @@
                     <input v-model.number="editQty" class="st-cell-input" type="number" min="0" placeholder="股数" />
                     <input v-model.number="editCost" class="st-cell-input" type="number" min="0" step="0.01" placeholder="成本" />
                     <input v-model.number="editTarget" class="st-cell-input" type="number" min="0" step="0.01" placeholder="目标价" title="设目标价后，触达时顶部会出现提醒" />
-                    <button class="st-btn tiny" @click="saveEdit(it)">保存</button>
+                    <IconButton icon="check" size="sm" label="保存" @click="saveEdit(it)" />
                   </template>
                   <template v-else>{{ it.quantity ? `${it.quantity}股` : '—' }}</template>
                 </td>
@@ -164,7 +164,7 @@
                   <template v-else>—</template>
                 </td>
                 <td class="r">
-                  <button class="st-btn ghost tiny danger" @click="remove(it)">删除</button>
+                  <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="remove(it)" />
                 </td>
               </tr>
             </tbody>
@@ -176,7 +176,7 @@
           <div v-for="it in list" :key="'c'+it.id" class="st-card glass-inner">
             <div class="st-card-h">
               <div class="st-card-name" @click="goDetail(it)">{{ it.name }}<span class="st-card-code">{{ it.market.toUpperCase() }} {{ it.code }}</span></div>
-              <button class="st-btn ghost tiny danger" @click="remove(it)">删除</button>
+              <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="remove(it)" />
             </div>
             <div class="st-card-row">
               <span>现价 <b>{{ fmt(it.price) }}</b></span>
@@ -223,6 +223,7 @@ import PortfolioPanel from '@/components/stocks/PortfolioPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import countUp from '@/utils/games/countUp'
 import { stocksApi } from '@/api/stocks'
 

@@ -8,7 +8,7 @@
           <p class="sb-sub">会员 · 云服务 · 宽带 · 保险，到期前自动提醒</p>
         </div>
         <div class="sb-head-right">
-          <button class="sb-btn primary" @click="openCreate"><AppIcon icon="＋" :size="14" /> 新增订阅</button>
+          <IconButton icon="plus" label="新增订阅" variant="primary" @click="openCreate" />
         </div>
       </header>
 
@@ -115,9 +115,9 @@
                   <span v-else class="sb-muted">—</span>
                 </td>
                 <td class="r sb-actions">
-                  <button v-if="s.is_active" class="sb-btn ghost tiny" @click="pay(s)">已缴费</button>
-                  <button class="sb-btn ghost tiny" @click="openEdit(s)">编辑</button>
-                  <button class="sb-btn ghost tiny danger" @click="remove(s)">删除</button>
+                  <IconButton v-if="s.is_active" icon="check" size="sm" label="已缴费" @click="pay(s)" />
+                  <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(s)" />
+                  <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="remove(s)" />
                 </td>
               </tr>
             </tbody>
@@ -195,6 +195,7 @@ import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { subscriptionsApi, CYCLE_OPTIONS } from '@/api/family'
 
 const CATEGORY_OPTIONS = ['影音', '软件', '云服务', '会员', '宽带通讯', '保险', '教育', '其他']

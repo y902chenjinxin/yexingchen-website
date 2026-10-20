@@ -17,7 +17,7 @@
           <p class="fin-sub">流水明账 · 家人共享</p>
         </div>
         <div class="fin-head-right">
-          <button class="fin-btn primary" @click="openNew"><AppIcon icon="＋" /> 记一笔</button>
+          <IconButton icon="plus" label="记一笔" variant="primary" @click="openNew" />
         </div>
       </header>
 
@@ -61,7 +61,7 @@
           <button class="fin-nav" @click="shift(1)">›</button>
         </div>
         <div class="fin-io">
-          <button class="fin-btn ghost small" @click="exportCsv">导出 CSV</button>
+          <IconButton icon="download" size="sm" label="导出 CSV" @click="exportCsv" />
           <label class="fin-btn ghost small fin-import">
             导入账本
             <input type="file" accept=".csv,.xlsx,.xlsm,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="fin-import-file" @change="onImportFile" />
@@ -241,7 +241,7 @@
             <div v-if="form.type !== 'transfer'" class="fin-f-field">
               <div class="fin-f-label-row">
                 <label class="fin-f-label">分类</label>
-                <button class="fin-cat-manage" @click="openCatDialog">管理分类</button>
+                <IconButton icon="settings" size="sm" label="管理分类" @click="openCatDialog" />
               </div>
               <div class="fin-cats">
                 <button
@@ -308,7 +308,7 @@
       <!-- 待归类提醒条：只统计 2026-10 之后的流水，历史数据不在此列 -->
       <div v-if="funds.unclassified > 0 && activeTab !== 'ledger'" class="fin-todo glass">
         <span class="fin-todo-text">有 <b>{{ funds.unclassified }}</b> 笔流水还没归到任何池子，池子数字暂不含它们。</span>
-        <button class="fin-btn ghost small" @click="showUnclassified">去归类</button>
+        <IconButton icon="tag" size="sm" label="去归类" @click="showUnclassified" />
       </div>
 
       <!-- 分栏 Tab：滑动指示条带弹簧超调（#5），切换轻触觉（#13） -->
@@ -880,6 +880,7 @@ import DonutChart from '@/components/finance/DonutChart.vue'
 import TrendChart from '@/components/finance/TrendChart.vue'
 import FundMatrix from '@/components/finance/FundMatrix.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import StateButton from '@/components/common/StateButton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Stepper from '@/components/common/Stepper.vue'

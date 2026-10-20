@@ -1,5 +1,5 @@
 <template>
-  <el-button :icon="ArrowLeft" size="default" class="app-back-btn" @click="goBack">
+  <el-button :icon="ArrowLeft" size="default" class="app-back-btn" aria-label="返回" @click="goBack">
     返回
   </el-button>
 </template>
@@ -28,3 +28,9 @@ function goBack() {
   }
 }
 </script>
+
+<style scoped>
+/* 手机端：返回只留图标（v2.46.135）。文字隐藏但 aria-label="返回" 仍可被读屏识别 */
+:global(#app.is-mobile .app-back-btn) { width: 38px; height: 38px; padding: 0; border-radius: 12px; }
+:global(#app.is-mobile .app-back-btn span) { display: none; }
+</style>

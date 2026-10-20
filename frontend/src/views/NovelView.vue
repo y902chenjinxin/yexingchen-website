@@ -1,8 +1,8 @@
 <template>
   <IslandInnerBase type="novel" title="小说" subtitle="书卷悠长">
     <template #toolbar>
-      <el-button type="primary" size="small" @click="openUpload">上传小说</el-button>
-      <el-button size="small" plain @click="openBatch">批量导入</el-button>
+      <IconButton icon="upload" label="上传小说" variant="primary" @click="openUpload" />
+      <IconButton icon="folder" label="批量导入" @click="openBatch" />
     </template>
 
     <div class="manage-pane">
@@ -10,7 +10,7 @@
         <el-input v-model="keyword" size="small" clearable placeholder="搜索标题/作者" style="width: 260px">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
+        <IconButton icon="search" label="查询" @click="doSearch" />
         <span v-if="keyword" class="search-count">匹配 {{ novelStore.list.length }} 条</span>
         <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
@@ -39,8 +39,8 @@
         </el-table-column>
         <el-table-column label="操作" :width="isMobile ? 132 : 150" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(row)" />
+            <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="handleDelete(row)" />
           </template>
         </el-table-column>
       </el-table>
@@ -264,6 +264,7 @@ import { Search } from '@element-plus/icons-vue'
 import { useNovelStore } from '@/stores/novel'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { downloadNovelTemplate } from '@/api/novel'
 import { useIsMobile } from '@/composables/useIsMobile'
 

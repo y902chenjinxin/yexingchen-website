@@ -12,7 +12,7 @@
             <button class="ct-seg-btn" :class="{ on: view === 'list' }" @click="view = 'list'">列表</button>
             <button class="ct-seg-btn" :class="{ on: view === 'calendar' }" @click="view = 'calendar'">日历</button>
           </div>
-          <button class="ct-btn primary" @click="openCreate"><AppIcon icon="＋" :size="14" /> 新增</button>
+          <IconButton icon="plus" label="新增" variant="primary" @click="openCreate" />
         </div>
       </header>
 
@@ -24,9 +24,12 @@
         </select>
         <span class="ct-count">共 {{ filtered.length }} 位{{ upcomingCount ? ` · 近 30 天生日 ${upcomingCount} 位` : '' }}</span>
         <!-- v2.40.18：人脉图谱归属通讯录（原先藏在工具岛里，找不到） -->
-        <button class="ct-btn ghost ct-btn-map" title="按关系聚簇的关系网络图，可拖拽节点" @click="goContactsMap">
-          <span class="ct-map-ic" aria-hidden="true"><AppIcon icon="🕸" :size="14" /></span> 人脉图谱
-        </button>
+        <IconButton
+          icon="graph"
+          label="人脉图谱"
+          title="按关系聚簇的关系网络图，可拖拽节点"
+          @click="goContactsMap"
+        />
       </div>
 
       <!-- ============ 列表视图 ============ -->
@@ -83,13 +86,21 @@
             </div>
           </div>
           <div class="ct-card-actions">
-            <button class="ct-btn ghost tiny" @click="triggerAvatarUpload(c)">
-              {{ c.avatar_url ? '更换头像' : '上传头像' }}
-            </button>
-            <button v-if="c.avatar_url" class="ct-btn ghost tiny" @click="clearAvatar(c)">清除头像</button>
-            <button class="ct-btn ghost tiny" @click="togglePin(c)">{{ c.is_pinned ? '取消置顶' : '置顶' }}</button>
-            <button class="ct-btn ghost tiny" @click="openEdit(c)">编辑</button>
-            <button class="ct-btn ghost tiny danger" @click="remove(c)">删除</button>
+            <IconButton
+              icon="camera"
+              size="sm"
+              :label="c.avatar_url ? '更换头像' : '上传头像'"
+              @click="triggerAvatarUpload(c)"
+            />
+            <IconButton v-if="c.avatar_url" icon="close" size="sm" label="清除头像" @click="clearAvatar(c)" />
+            <IconButton
+              :icon="c.is_pinned ? 'unpin' : 'pin'"
+              size="sm"
+              :label="c.is_pinned ? '取消置顶' : '置顶'"
+              @click="togglePin(c)"
+            />
+            <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(c)" />
+            <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="remove(c)" />
           </div>
         </article>
         <EmptyState
@@ -108,10 +119,10 @@
       <!-- ============ 日历视图 ============ -->
       <section v-else class="ct-card glass ct-cal-card">
         <div class="ct-cal-head">
-          <button class="ct-btn ghost tiny" @click="shiftMonth(-1)">‹ 上月</button>
+          <IconButton icon="prev" size="sm" label="上月" @click="shiftMonth(-1)" />
           <span class="ct-cal-title">{{ calYear }} 年 {{ calMonth + 1 }} 月</span>
-          <button class="ct-btn ghost tiny" @click="shiftMonth(1)">下月 ›</button>
-          <button class="ct-btn ghost tiny" @click="resetMonth">回到本月</button>
+          <IconButton icon="next" size="sm" label="下月" @click="shiftMonth(1)" />
+          <IconButton icon="refresh" size="sm" label="回到本月" @click="resetMonth" />
         </div>
         <div class="ct-cal-week">
           <span v-for="w in WEEK" :key="w">{{ w }}</span>
@@ -225,6 +236,7 @@ import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { contactsApi, RELATION_OPTIONS } from '@/api/family'
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']

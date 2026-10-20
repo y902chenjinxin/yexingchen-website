@@ -3,8 +3,8 @@
     <template #toolbar>
       <!-- v2.46.69：手机端纯播放列表，上传/导入是管理动作，只在桌面展示 -->
       <template v-if="!isMobile">
-        <el-button type="primary" size="small" @click="openUpload">上传音乐</el-button>
-        <el-button size="small" plain @click="openBatch">批量导入</el-button>
+        <IconButton icon="upload" label="上传音乐" variant="primary" @click="openUpload" />
+        <IconButton icon="folder" label="批量导入" @click="openBatch" />
       </template>
     </template>
 
@@ -122,11 +122,11 @@
           <template #default="{ row }">
             <div class="row-ops">
               <el-tag v-if="isCurBgm(row)" size="small" type="primary" effect="dark" class="bgm-on">背景乐</el-tag>
-              <el-button v-else size="small" @click="setAsBg(row)">设为背景乐</el-button>
+              <IconButton v-else icon="star" label="设为背景乐" @click="setAsBg(row)" />
 
               <template v-if="!isMobile">
-                <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
-                <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
+                <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(row)" />
+                <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="handleDelete(row)" />
               </template>
             </div>
           </template>
@@ -325,6 +325,7 @@ import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useIsMobile'

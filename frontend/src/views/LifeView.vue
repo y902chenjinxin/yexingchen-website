@@ -20,9 +20,9 @@
           <el-radio-button value="90">90 天</el-radio-button>
           <el-radio-button value="all">全部</el-radio-button>
         </el-radio-group>
-        <el-button v-if="!isMeals" type="primary" size="small" @click="openWeightDialog"><AppIcon icon="＋" /> 记体重</el-button>
-        <el-button v-else type="primary" size="small" @click="openMealDialog"><AppIcon icon="📷" :size="12" /> 记一顿</el-button>
-        <el-button size="small" plain @click="openMembersDialog">家人</el-button>
+        <IconButton v-if="!isMeals" icon="plus" label="记体重" variant="primary" @click="openWeightDialog" />
+        <IconButton v-else icon="camera" label="记一顿" variant="primary" @click="openMealDialog" />
+        <IconButton icon="user" label="家人" @click="openMembersDialog" />
       </div>
     </template>
 
@@ -223,7 +223,7 @@
                 <div class="wt-row-title">{{ w.member_name }} <span class="wt-row-w">{{ w.weight_kg }} kg</span></div>
                 <div v-if="w.note" class="wt-row-note">{{ w.note }}</div>
               </div>
-              <el-button link size="small" type="danger" @click="onDeleteWeight(w)">删除</el-button>
+              <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="onDeleteWeight(w)" />
             </div>
           </div>
         </div>
@@ -267,9 +267,9 @@
               </div>
               <p v-if="m.note" class="meal-note">{{ m.note }}</p>
               <div class="meal-ops">
-                <button type="button" class="meal-op" @click="openPreview(m)">预览</button>
-                <button type="button" class="meal-op" @click="openMealEdit(m)">编辑</button>
-                <button type="button" class="meal-op danger" @click="onDeleteMeal(m)">删除</button>
+                <IconButton icon="eye" size="sm" label="预览" @click="openPreview(m)" />
+                <IconButton icon="edit" size="sm" label="编辑" @click="openMealEdit(m)" />
+                <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="onDeleteMeal(m)" />
               </div>
             </figcaption>
           </figure>
@@ -424,6 +424,7 @@ import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import ChartTip from '@/components/charts/ChartTip.vue'
 import { useChartHover } from '@/composables/useChartHover'
 import { ElMessage, ElMessageBox } from 'element-plus'

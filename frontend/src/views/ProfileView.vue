@@ -32,8 +32,8 @@
           </div>
         </div>
         <div class="card-footer">
-          <el-button type="primary" @click="showEditDialog = true">编辑信息</el-button>
-          <el-button @click="showPasswordDialog = true">修改密码</el-button>
+          <IconButton icon="user" label="编辑信息" variant="primary" @click="showEditDialog = true" />
+          <IconButton icon="settings" label="修改密码" @click="showPasswordDialog = true" />
         </div>
       </div>
 
@@ -155,8 +155,8 @@
           </p>
           <p class="pref-hint">换个人用这台设备，或退出登录。切换账号会清掉本机登录状态并回到登录页。</p>
           <div class="account-ops">
-            <button class="acc-btn" @click="switchAccount">切换账号</button>
-            <button class="acc-btn danger" @click="doLogout">退出登录</button>
+            <IconButton icon="sync" label="切换账号" @click="switchAccount" />
+            <IconButton icon="close" label="退出登录" variant="danger" @click="doLogout" />
           </div>
         </div>
       </div>
@@ -240,6 +240,7 @@
 
 <script setup>
 defineOptions({ name: 'ProfileView' })
+import IconButton from '@/components/common/IconButton.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ElMessageBox } from 'element-plus'

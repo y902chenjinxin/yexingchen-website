@@ -2,7 +2,7 @@
   <IslandInnerBase type="tool" title="工具" subtitle="机关百变">
     <template #toolbar>
       <span class="tl-admin-tools">
-        <el-button type="primary" size="small" @click="openDialog()">添加工具</el-button>
+        <IconButton icon="plus" label="添加工具" variant="primary" @click="openDialog()" />
       </span>
     </template>
 
@@ -18,7 +18,7 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
+        <IconButton icon="search" label="查询" @click="doSearch" />
         <span v-if="keyword" class="search-count">匹配 {{ filteredRows.length }} 条</span>
         <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
         <!-- v2.40.18：下架的工具默认不显示（如已归入通讯录的「人脉图谱」），
@@ -72,9 +72,9 @@
             <!-- 使用＝打开工具本体（内置走模块路由 / 外链走站内详情内嵌页），
                  与「编辑」区分开：以前只有编辑删除，没有任何使用入口 -->
             <div class="row-ops">
-              <el-button size="small" type="primary" plain @click="go(row)">使用</el-button>
-              <el-button size="small" plain @click="openDialog(row)">编辑</el-button>
-              <el-button size="small" type="danger" plain :disabled="row.kind === 'builtin'" @click="handleDelete(row)">删除</el-button>
+              <IconButton icon="play" size="sm" label="使用" @click="go(row)" />
+              <IconButton icon="edit" size="sm" label="编辑" @click="openDialog(row)" />
+              <IconButton icon="trash" size="sm" label="删除" variant="danger" :disabled="row.kind === 'builtin'" @click="handleDelete(row)" />
             </div>
           </template>
         </el-table-column>
@@ -137,6 +137,7 @@ import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useToolStore } from '@/stores/tool'

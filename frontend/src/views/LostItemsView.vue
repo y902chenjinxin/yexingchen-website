@@ -8,7 +8,7 @@
           <p class="li-sub">丢过什么、在哪丢的、当时什么情形 —— 记下来，以后翻着回忆</p>
         </div>
         <div class="li-head-right">
-          <button class="li-btn primary" @click="openCreate"><AppIcon icon="＋" /> 记一笔</button>
+          <IconButton icon="plus" label="记一笔" variant="primary" @click="openCreate" />
         </div>
       </header>
 
@@ -34,7 +34,7 @@
           <option v-for="y in years" :key="y" :value="y">{{ y }} 年</option>
         </select>
         <input v-model="filters.q" class="li-input" placeholder="搜物品 / 地点 / 经过" @keyup.enter="reload">
-        <button class="li-btn" @click="resetFilters">重置</button>
+        <IconButton icon="refresh" label="重置" @click="resetFilters" />
       </div>
 
       <div v-if="loading" class="li-empty">加载中…</div>
@@ -72,8 +72,8 @@
               <!-- 卡片上直接给操作入口（桌面悬停显现 / 触屏常显）：
                    只靠「点卡片看详情」太隐蔽，夜星找不到编辑与删除（V2438-001） -->
               <div class="li-acts">
-                <button class="li-act" title="编辑这条" @click.stop="openEdit(it)">编辑</button>
-                <button class="li-act danger" title="删除这条" @click.stop="remove(it)">删除</button>
+                <IconButton icon="edit" size="sm" label="编辑" @click.stop="openEdit(it)" />
+                <IconButton icon="trash" size="sm" label="删除" variant="danger" @click.stop="remove(it)" />
               </div>
             </article>
           </div>
@@ -153,6 +153,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { lostApi, uploadLifeImage } from '@/api/lifeExtra'
 
 const list = ref([])

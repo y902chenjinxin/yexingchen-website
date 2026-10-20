@@ -8,7 +8,7 @@
           <p class="va-sub">全家共享的密码便签本 —— 记下来就不会忘</p>
         </div>
         <div class="va-head-right">
-          <button class="va-btn primary" @click="openCreate"><AppIcon icon="＋" :size="14" /> 存一条</button>
+          <IconButton icon="plus" label="存一条" variant="primary" @click="openCreate" />
         </div>
       </header>
 
@@ -29,7 +29,7 @@
           <option value="">全部分类</option>
           <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
         </select>
-        <button class="va-btn" @click="resetFilters">重置</button>
+        <IconButton icon="refresh" label="重置" @click="resetFilters" />
       </div>
 
       <div v-if="loading" class="va-empty">加载中…</div>
@@ -49,13 +49,13 @@
             <div class="va-fields">
               <span v-if="e.username" class="va-field">
                 <i>账号</i>{{ e.username }}
-                <button class="va-mini" @click="copy(e.username, '账号')">复制</button>
+                <IconButton icon="copy" size="sm" label="复制账号" @click="copy(e.username, '账号')" />
               </span>
               <span v-if="e.password" class="va-field">
                 <i>密码</i>
                 <code class="va-pwd">{{ shown.has(e.id) ? e.password : '••••••' }}</code>
-                <button class="va-mini" @click="toggle(e.id)">{{ shown.has(e.id) ? '隐藏' : '显示' }}</button>
-                <button class="va-mini" @click="copy(e.password, '密码')">复制</button>
+                <IconButton :icon="shown.has(e.id) ? 'hide' : 'eye'" size="sm" :label="shown.has(e.id) ? '隐藏' : '显示'" @click="toggle(e.id)" />
+                <IconButton icon="copy" size="sm" label="复制密码" @click="copy(e.password, '密码')" />
               </span>
               <span v-if="e.url" class="va-field">
                 <i>网址</i>
@@ -65,8 +65,8 @@
             <p v-if="e.note" class="va-note">{{ e.note }}</p>
           </div>
           <div class="va-card-actions">
-            <button class="va-btn tiny" @click="openEdit(e)">编辑</button>
-            <button class="va-btn tiny danger" @click="remove(e)">删除</button>
+            <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(e)" />
+            <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="remove(e)" />
           </div>
         </article>
       </div>
@@ -105,6 +105,7 @@ import BackButton from '@/components/BackButton.vue'
 import { vaultApi } from '@/api/lifeExtra'
 import { copyText } from '@/utils/clipboard'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 
 const list = ref([])
 const uploaders = ref([])

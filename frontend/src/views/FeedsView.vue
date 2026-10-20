@@ -17,8 +17,8 @@
           <p class="fd-sub">订阅源 · 智能摘要 · 一键收藏 · 上次更新 {{ lastSynced }}</p>
         </div>
         <div class="fd-head-right">
-          <button class="fd-btn ghost" :disabled="refreshing" @click="refreshAll">{{ refreshing ? '刷新中…' : '⟳ 刷新全部' }}</button>
-          <button class="fd-btn primary" @click="openAdd">{{ adding ? '关闭' : '＋ 添加订阅' }}</button>
+          <IconButton icon="refresh" label="刷新全部" :disabled="refreshing" @click="refreshAll" />
+          <IconButton :icon="adding ? 'close' : 'plus'" :label="adding ? '关闭' : '添加订阅'" variant="primary" @click="openAdd" />
         </div>
       </header>
 
@@ -47,7 +47,7 @@
           </div>
           <div class="fd-form-actions">
             <span class="fd-save-tip">保存后会自动抓取一次该源的最新文章</span>
-            <button class="fd-btn primary" :disabled="saving" @click="saveSource">{{ saving ? '保存中…' : '保存并抓取' }}</button>
+            <IconButton icon="save" label="保存并抓取" variant="primary" :disabled="saving" @click="saveSource" />
           </div>
         </section>
       </transition>
@@ -74,8 +74,8 @@
                 <span class="fd-si-cat">{{ s.category }} · {{ s.article_count }} 篇</span>
               </span>
               <span class="fd-si-ops">
-                <button class="fd-op" title="抓取" @click.stop="fetchOne(s)"><AppIcon icon="⟳" /></button>
-                <button class="fd-op" title="编辑" @click.stop="openEdit(s)"><AppIcon icon="✎" :size="14" /></button>
+                <IconButton icon="sync" size="sm" label="抓取" @click.stop="fetchOne(s)" />
+                <IconButton icon="edit" size="sm" label="编辑" @click.stop="openEdit(s)" />
                 <el-popconfirm
                   title="确认删除这个订阅源？"
                   confirm-button-text="删除"
@@ -264,6 +264,7 @@ import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { feedsApi } from '@/api/feeds'
 
 const sources = ref([])

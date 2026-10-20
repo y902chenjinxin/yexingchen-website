@@ -1,8 +1,8 @@
 <template>
   <IslandInnerBase type="video" title="视频" subtitle="光影流转">
     <template #toolbar>
-      <el-button type="primary" size="small" @click="openUpload">上传视频</el-button>
-      <el-button size="small" plain @click="openBatch">批量导入</el-button>
+      <IconButton icon="upload" label="上传视频" variant="primary" @click="openUpload" />
+      <IconButton icon="folder" label="批量导入" @click="openBatch" />
     </template>
 
     <div class="manage-pane">
@@ -21,7 +21,7 @@
         >
           <el-option v-for="u in uploaders" :key="u.id" :label="u.name" :value="u.id" />
         </el-select>
-        <el-button type="primary" size="small" plain @click="doSearch">查询</el-button>
+        <IconButton icon="search" label="查询" @click="doSearch" />
         <span v-if="hasFilter" class="search-count">匹配 {{ videoStore.list.length }} 条</span>
         <el-button v-if="hasFilter" size="small" plain @click="resetSearch">清空筛选</el-button>
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
@@ -62,8 +62,8 @@
         </el-table-column>
         <el-table-column label="操作" :width="isMobile ? 132 : 150" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(row)" />
+            <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="handleDelete(row)" />
           </template>
         </el-table-column>
       </el-table>
@@ -277,6 +277,7 @@ import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { downloadVideoTemplate, getVideoUploaders } from '@/api/video'
 import { useIsMobile } from '@/composables/useIsMobile'
 

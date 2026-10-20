@@ -12,9 +12,7 @@
         <BackButton fallback="/workbench" />
         <h1 class="notes-title">笔记</h1>
       </div>
-      <button class="nt-btn nt-btn-primary" @click="createNew">
-        新建笔记
-      </button>
+      <IconButton icon="plus" label="新建笔记" variant="primary" @click="createNew" />
     </header>
 
     <section class="notes-toolbar">
@@ -62,7 +60,7 @@
           </div>
         </div>
         <div class="notes-actions">
-          <button class="nt-mini nt-mini-danger" @click="remove(n)">删除</button>
+          <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="remove(n)" />
         </div>
       </li>
     </ul>
@@ -80,6 +78,7 @@
 </template>
 
 <script setup>
+import IconButton from '@/components/common/IconButton.vue'
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

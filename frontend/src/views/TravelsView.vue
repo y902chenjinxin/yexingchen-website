@@ -15,8 +15,8 @@
           <p class="tv-sub">走遍山河，把到过的地方都点亮</p>
         </div>
         <div class="tv-head-right">
-          <button v-if="canEdit" class="tv-btn ghost" :disabled="loading" @click="reload">{{ loading ? '加载中…' : '⟳ 刷新' }}</button>
-          <button v-if="canEdit" class="tv-btn primary" @click="openCreate">{{ editorOpen ? '关闭' : '＋ 记下旅程' }}</button>
+          <IconButton v-if="canEdit" icon="refresh" label="刷新" :disabled="loading" @click="reload" />
+          <IconButton v-if="canEdit" :icon="editorOpen ? 'close' : 'plus'" :label="editorOpen ? '关闭' : '记下旅程'" variant="primary" @click="openCreate" />
         </div>
       </header>
 
@@ -80,6 +80,7 @@
 </template>
 
 <script setup>
+import IconButton from '@/components/common/IconButton.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'

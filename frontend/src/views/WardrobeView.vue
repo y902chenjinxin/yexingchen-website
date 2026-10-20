@@ -8,7 +8,7 @@
           <p class="wd-sub">衣服拍下来存好 · 按人分开推荐 · 再也不忘衣柜里有什么</p>
         </div>
         <div class="wd-head-right">
-          <button class="wd-btn primary" @click="openItemCreate"><AppIcon icon="＋" /> 加一件</button>
+          <IconButton icon="plus" label="加一件" variant="primary" @click="openItemCreate" />
         </div>
       </header>
 
@@ -45,7 +45,7 @@
                 <option value="">不限场合</option>
                 <option v-for="o in ['通勤', '居家', '运动', '正式', '约会', '户外']" :key="o" :value="o">{{ o }}</option>
               </select>
-              <button class="wd-btn tiny" :disabled="suggesting" @click="loadSuggest">换一套</button>
+              <IconButton icon="refresh" size="sm" label="换一套" :disabled="suggesting" @click="loadSuggest" />
             </div>
           </div>
 
@@ -62,9 +62,9 @@
                 {{ opt.items.map(x => x.name).join(' + ') }}
               </div>
               <div class="wd-option-actions">
-                <button class="wd-btn tiny primary" @click="wearAll(opt)">就穿这套</button>
-                <button class="wd-btn tiny" @click="saveOutfit(opt)">存搭配</button>
-                <button class="wd-btn tiny" @click="collage(opt)">拼成图</button>
+                <IconButton icon="check" size="sm" label="就穿这套" variant="primary" @click="wearAll(opt)" />
+                <IconButton icon="save" size="sm" label="存搭配" @click="saveOutfit(opt)" />
+                <IconButton icon="grid" size="sm" label="拼成图" @click="collage(opt)" />
               </div>
             </div>
           </div>
@@ -303,6 +303,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { wardrobeApi, uploadLifeImage } from '@/api/lifeExtra'
 
 const tabs = [
