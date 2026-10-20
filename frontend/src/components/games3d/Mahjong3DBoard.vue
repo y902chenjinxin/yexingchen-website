@@ -187,6 +187,8 @@ import {
   VIEW_RX, boxVars, pieceBox, wallTF, handTF, centerTF, seatTF, SEAT_SLOT, screenPos,
 } from '@/components/games3d/use3dTable.js'
 import AppIcon from '@/components/common/AppIcon.vue'
+/* v2.46.154：接 2D 麻将那套音效（摸牌 pick / 打牌 tileDown / 碰 / 杠 / 胡），此前 3D 版全静音 */
+import { sfx, panOf } from '@/utils/games/sfx'
 
 defineEmits(['exit'])
 
@@ -405,7 +407,7 @@ function dealRound() {
   // 发牌动画：先收拢到中央，下一帧展开
   dealt.value = false
   clearTimeout(dealTimer)
-  dealTimer = setTimeout(() => { dealt.value = true }, 32)
+  dealTimer = setTimeout(() => { dealt.value = true; sfx.deal() }, 32)
   if (!isHuman(dealerSeat)) scheduleAI()
 }
 
@@ -432,6 +434,7 @@ function drawOne(seat) {
   if (wall.value.length === 0) return endRound('liuju')
   turn.value = seat
   drawn.value = wall.value.pop()
+  sfx.pick()
   selId.value = null
   if (isHuman(seat)) return
   scheduleAI()
@@ -459,6 +462,7 @@ function discardTile(seat, tile) {
     if (drawn.value) { h.push(drawn.value); drawn.value = null }
     hands.value[seat] = M.sortHand(h)
   }
+  sfx.tileDown(panOf(seat, 0))
   discards.value[seat].push(tile)
   lastDiscard.value = { seat, tile }
   selId.value = null
@@ -540,6 +544,7 @@ function doPong(seat, tile, from) {
     if (h[i].suit === tile.suit && h[i].rank === tile.rank) { h.splice(i, 1); removed++ }
   }
   hands.value[seat] = M.sortHand(h)
+  sfx.pong(panOf(seat, 0))
   melds.value[seat].push({ type: 'pong', tile, from })
   takeFromDiscard(from)
   drawn.value = null
@@ -557,6 +562,7 @@ function doKongFromDiscard(seat, tile, from) {
     if (h[i].suit === tile.suit && h[i].rank === tile.rank) { h.splice(i, 1); removed++ }
   }
   hands.value[seat] = M.sortHand(h)
+  sfx.kong(panOf(seat, 0))
   melds.value[seat].push({ type: 'kong', tile, from })
   takeFromDiscard(from)
   showToast(`${seatName(seat)} 杠 ${tileText(tile)}`)
@@ -625,6 +631,7 @@ function doBugang(tileInfo) {
 function drawReplacement(seat) {
   if (wall.value.length === 0) return endRound('liuju')
   drawn.value = wall.value.pop()
+  sfx.pick()
   turn.value = seat
   selId.value = null
   if (isHuman(seat)) return
@@ -755,7 +762,10 @@ function endRound(reason) {
 }
 
 /* ---------- 生命周期 ---------- */
-onMounted(() => { startGame() })
+onMounted(() => {
+  sfx.preload()   // 预热采样
+  startGame()
+})
 onBeforeUnmount(() => {
   clearTimeout(aiTimer)
   clearTimeout(dealTimer)

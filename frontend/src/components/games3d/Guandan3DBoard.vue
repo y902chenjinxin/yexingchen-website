@@ -39,8 +39,9 @@
         </div>
 
         <!-- 座位铭牌：头像 / 名字 / 积分 分栏 -->
+        <!-- v2.46.154：自己的铭牌不再走 3D 世界（手牌占满底部，它必然压牌），改到左下角 HUD -->
         <div
-          v-for="s in SEATS"
+          v-for="s in OPP_SEATS"
           :key="s"
           class="gt3-seat"
           :class="{ 'is-turn': isTurn(s) }"
@@ -79,7 +80,7 @@
           :key="c.id"
           class="pc3d gd-hand"
           :class="{ sel: sel.includes(c.id), wild: isWildCard(c) }"
-          :style="pieceBox(dealt, 46, 64, 11, handTF(i, hands[0].length, false, 324, sel.includes(c.id) ? 31 : 0), i, true, false)"
+          :style="pieceBox(dealt, 42, 58, 11, handTF(i, hands[0].length, false, 292, sel.includes(c.id) ? 29 : 0), i, true, false)"
           @click="toggleSel(c)"
         >
           <div class="pc-face pc-front card-front" :class="isRed(c) ? 'red' : 'blk'">
@@ -100,7 +101,7 @@
             :key="c.id"
             class="pc3d gd-hand mj-center"
             :class="{ wild: isWildCard(c) }"
-            :style="pieceBox(dealt, 46, 64, 11, centerTF(i, 40, CENTER_OFF[screenPos(seat, 0)]), i, false, false)"
+            :style="pieceBox(dealt, 42, 58, 11, centerTF(i, 40, CENTER_OFF[screenPos(seat, 0)]), i, false, false)"
           >
             <div class="pc-face pc-front card-front" :class="isRed(c) ? 'red' : 'blk'">
               <span class="cf-rank">{{ cardText(c) }}</span>
@@ -117,10 +118,22 @@
     </div>
 
     <!-- 操作条 -->
-    <div class="g3d-ctl">
+    <div class="g3d-ctl right">
       <button class="g3d-btn ghost" :disabled="!canAct" @click="doHint">提示</button>
       <button class="g3d-btn" :disabled="!canAct || !target" @click="doPass">不要</button>
       <button class="g3d-btn primary" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
+    </div>
+
+    <!-- 我：左下角 HUD（屏幕坐标系，不参与 3D 变换） -->
+    <div class="gt3-seat gt3-self" :class="{ 'is-turn': isTurn(0) }">
+      <div class="gt3-ava" :style="{ background: seatColors[0] }"><AppIcon :icon="seatAvatar(0)" /></div>
+      <div class="gt3-meta">
+        <b>{{ seatName(0) }}</b>
+        <i :class="{ turn: isTurn(0) }">{{ seatSub(0) }}</i>
+      </div>
+      <div class="gt3-score is-you">
+        <span class="snum">{{ G.levelText(scores[0]) }}</span><span class="slbl">级</span>
+      </div>
     </div>
 
     <!-- 提示条 -->
@@ -150,12 +163,16 @@ import {
   VIEW_RX, boxVars, pieceBox, handTF, oppTF, centerTF, seatTF, SEAT_SLOT, screenPos,
 } from '@/components/games3d/use3dTable.js'
 import AppIcon from '@/components/common/AppIcon.vue'
+/* v2.46.154：3D 牌桌此前**完全没接音效**（2D 板有），所以出牌/不要/发牌都是静的。
+   这里直接复用 2D 掼蛋那套采样 + 声像，听感一致。 */
+import { sfx, panOf } from '@/utils/games/sfx'
 
 defineEmits(['exit'])
 
 /* ---------- 常量 ---------- */
 const HUMAN_SEATS = [0]
-const SEATS = [0, 1, 2, 3]
+/** 对手座位（自己的铭牌走左下角 HUD，不再参与 3D 座位循环） */
+const OPP_SEATS = [1, 2, 3]
 const AI_AVATARS = { 1: '🐯', 2: '🦊', 3: '🐼' }
 const seatColors = [
   'linear-gradient(160deg,#e9c877,#a9812f)', // 0 你
@@ -250,7 +267,7 @@ function newRound() {
   // 发牌动画：先收拢到中央，下一帧展开
   dealt.value = false
   clearTimeout(dealTimer)
-  dealTimer = setTimeout(() => { dealt.value = true }, 32)
+  dealTimer = setTimeout(() => { dealt.value = true; sfx.deal() }, 32)
   scheduleAI()
 }
 
@@ -295,6 +312,7 @@ function advance() {
 function applyPlay(seat, cards) {
   const pat = G.detectPattern(cards, roundLevel.value)
   if (!pat) return
+  sfx.play(panOf(seat, 0))
   const ids = new Set(cards.map(c => c.id))
   hands.value[seat] = hands.value[seat].filter(c => !ids.has(c.id))
   // 领出者再次领出 = 新一圈，先清掉上一圈的牌
@@ -313,6 +331,7 @@ function applyPlay(seat, cards) {
 }
 
 function applyPass(seat) {
+  sfx.pass(panOf(seat, 0))
   passCount.value++
   pushHistory({ kind: 'pass', seat })
   sel.value = []
@@ -327,6 +346,8 @@ function endRound() {
   teamLevel.value[winTeam] = G.nextLevel(teamLevel.value[winTeam], up)
   roundResult.value = { up, winTeam, order }
   matchOver.value = teamLevel.value[winTeam] > G.MAX_LEVEL
+  if (winTeam === G.TEAM_OF[0]) sfx.win()
+  else sfx.lose()
   phase.value = 'settled'
 }
 
@@ -372,6 +393,7 @@ function aiTurn() {
 /* ---------- 交互 ---------- */
 function toggleSel(c) {
   if (!canAct.value) return
+  sfx.pick()
   const i = sel.value.indexOf(c.id)
   if (i >= 0) sel.value = sel.value.filter(x => x !== c.id)
   else sel.value = [...sel.value, c.id]
@@ -413,7 +435,10 @@ function restart() {
 }
 
 /* ---------- 生命周期 ---------- */
-onMounted(() => { newRound() })
+onMounted(() => {
+  sfx.preload()   // 预热采样，消掉第一手出牌的取包延迟
+  newRound()
+})
 onBeforeUnmount(() => {
   clearTimeout(aiTimer)
   clearTimeout(dealTimer)

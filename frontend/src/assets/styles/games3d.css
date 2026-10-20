@@ -192,6 +192,15 @@
 .gt3-score .slbl { font-size: 8.5px; color: var(--tc-text-3, #8299b2); margin-top: 2px; letter-spacing: .5px; }
 .gt3-score.is-you { background: linear-gradient(160deg, rgba(242, 216, 154, .22), rgba(201, 164, 78, .1)); border-color: rgba(233, 200, 119, .45); }
 .gt3-score.is-you .snum { color: #fff6dd; }
+/* 自己的铭牌：固定屏幕左下角（手牌占满底部，放 3D 世界必然压牌） */
+.gt3-self {
+  position: absolute; left: 18px; bottom: 18px; z-index: 21;
+  /* 🔴 .gt3-seat 自带 top:0，不显式置 auto 的话 bottom 不生效（铭牌会跑到页面顶部） */
+  top: auto;
+  transform: none;
+}
+@media (max-width: 640px) { .gt3-self { left: 12px; bottom: 12px; } }
+
 .gt3-seat.is-turn { border-color: rgba(233, 200, 119, .6); box-shadow: 0 12px 26px -12px rgba(0, 0, 0, .85), 0 0 0 1px rgba(233, 200, 119, .35); }
 
 /* ================= 通用 3D 块 ================= */
@@ -259,6 +268,14 @@
 }
 
 /* ================= 操作条 / 提示 / 结算 ================= */
+/* 操作条靠右下（掼蛋用，v2.46.154）：原来居中 bottom:20 正好压在手牌和「你」的铭牌上 */
+.g3d-ctl.right {
+  left: auto; right: 22px; bottom: 18px; transform: none;
+}
+@media (max-width: 640px) {
+  .g3d-ctl.right { right: 12px; bottom: 12px; }
+}
+
 .g3d-ctl {
   position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 22;
   display: flex; gap: 10px; align-items: center;
