@@ -784,6 +784,17 @@ html[data-theme="day"].m-app {
   color: var(--tc-btn-fg) !important;
 }
 
+/* 窄屏 KPI：手机 390px 下 .fin-kpi-val 实际被算到 ~31px，「+ ¥ 13554.00」超出卡片
+ * （scrollWidth 182 > 可用 142）被省略号截断。用 !important 压到 17px 并保持等宽数字。 */
+@media (max-width: 430px) {
+  #app.is-mobile :is(.fin-kpi-val, .fin-pool-val, .fin-pcard-val) {
+    font-size: 17px !important;
+    letter-spacing: 0 !important;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
 /* 尊重减少动态效果偏好 */
 @media (prefers-reduced-motion: reduce) {
   #app::after { animation: none; }
