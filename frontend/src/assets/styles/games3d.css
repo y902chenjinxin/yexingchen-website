@@ -16,8 +16,10 @@
     radial-gradient(120% 80% at 50% -18%, rgba(92, 152, 255, .20), transparent 56%),
     radial-gradient(90% 70% at 12% 6%, rgba(126, 96, 255, .15), transparent 62%),
     radial-gradient(100% 80% at 88% 96%, rgba(0, 208, 196, .13), transparent 60%),
-    radial-gradient(120% 90% at 50% 118%, rgba(0, 0, 0, .66), transparent 62%),
-    linear-gradient(165deg, #0d1a31 0%, #0a1226 46%, #060a16 100%);
+    radial-gradient(120% 90% at 50% 118%, rgba(0, 0, 0, .42), transparent 62%),
+    /* v2.46.151：整条底色提亮一档（夜星反馈「看着有点暗」）——
+       原来最深压到 #060a16，卡片又是半透明的，叠起来就是一团黑。 */
+    linear-gradient(165deg, #14273f 0%, #101c33 48%, #0c1526 100%);
 }
 
 /* 装饰层：点阵 + 光斑 + 桌沿光带 */
@@ -54,17 +56,22 @@
 .g3d-lobby-head { text-align: center; }
 .g3d-lobby-head h1 {
   margin: 0 0 10px; font-size: 30px; letter-spacing: 3px; font-weight: 800;
-  background: linear-gradient(160deg, var(--tc-cyan-bright, #7beeff), var(--tc-cyan, #2de2ff) 55%, var(--tc-cyan-deep, #1aa9c9));
+  background: linear-gradient(160deg, #d9fbff 0%, #8beeff 38%, #2de2ff 72%, #22c6e4 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 18px rgba(45, 226, 255, .28));
 }
-.g3d-lobby-head p { margin: 0; color: var(--tc-text-2, #a6bcd6); font-size: 13px; letter-spacing: .5px; }
+.g3d-lobby-head p { margin: 0; color: #c6d7ee; font-size: 13.5px; letter-spacing: .5px; }
 .g3d-lobby-cards { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
 .g3d-lobby-card {
   width: 252px; padding: 26px 22px 22px; border-radius: 20px; cursor: pointer;
   text-align: center;
-  background: linear-gradient(165deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .028));
-  border: 1px solid rgba(255, 255, 255, .16);
-  box-shadow: 0 24px 52px -26px rgba(0, 0, 0, .85), inset 0 1px 0 rgba(255, 255, 255, .16);
+  /* 🔴 color 必须显式给：卡片是 <button>，UA 样式会把按钮文字设成黑色（buttontext），
+     子元素 .lc-name 又没写 color → 直接继承成纯黑，在深色卡上几乎看不见（v2.46.151 修） */
+  color: #eaf1ff;
+  background: linear-gradient(165deg, rgba(255, 255, 255, .17), rgba(255, 255, 255, .055));
+  border: 1px solid rgba(255, 255, 255, .22);
+  box-shadow: 0 24px 52px -26px rgba(0, 0, 0, .75), inset 0 1px 0 rgba(255, 255, 255, .22),
+    inset 0 0 42px -18px rgba(45, 226, 255, .55);
   backdrop-filter: blur(14px);
   transition: transform .25s, border-color .25s, box-shadow .25s;
 }
@@ -74,8 +81,8 @@
   box-shadow: 0 32px 64px -26px rgba(0, 0, 0, .88), 0 0 0 1px rgba(233, 200, 119, .25), inset 0 1px 0 rgba(255, 255, 255, .22);
 }
 .g3d-lobby-card .lc-icon { font-size: 46px; line-height: 1; }
-.g3d-lobby-card .lc-name { display: block; font-size: 19px; font-weight: 700; margin: 14px 0 6px; letter-spacing: 1px; }
-.g3d-lobby-card .lc-desc { font-size: 12.5px; color: var(--tc-text-2, #a6bcd6); line-height: 1.55; min-height: 40px; }
+.g3d-lobby-card .lc-name { display: block; font-size: 19px; font-weight: 700; margin: 14px 0 6px; letter-spacing: 1px; color: #f2f8ff; }
+.g3d-lobby-card .lc-desc { font-size: 13px; color: #c2d3ea; line-height: 1.6; min-height: 40px; }
 .g3d-lobby-card .lc-go {
   margin-top: 14px; display: inline-block; padding: 9px 26px; border-radius: 11px;
   background: var(--tc-btn-grad, linear-gradient(135deg,#8b5cff,#2de2ff)); color: var(--tc-btn-fg, #04121c);
