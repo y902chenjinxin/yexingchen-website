@@ -21,14 +21,12 @@
 
       <div class="va-toolbar">
         <input v-model="filters.q" class="va-input" placeholder="搜名称 / 账号 / 网址 / 备注" @keyup.enter="reload">
-        <select v-model="filters.uploader_id" class="va-input va-select" @change="reload">
-          <option value="">谁存的（全部）</option>
-          <option v-for="u in uploaders" :key="u.user_id" :value="u.user_id">{{ u.name }}</option>
-        </select>
-        <select v-model="filters.category" class="va-input va-select" @change="reload">
-          <option value="">全部分类</option>
-          <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
-        </select>
+        <FilterSelect v-model="filters.uploader_id" placeholder="谁存的（全部）" width="150px" @change="reload">
+          <el-option v-for="u in uploaders" :key="u.user_id" :value="u.user_id" :label="u.name" />
+        </FilterSelect>
+        <FilterSelect v-model="filters.category" placeholder="全部分类" width="140px" @change="reload">
+          <el-option v-for="c in categories" :key="c" :value="c" :label="c" />
+        </FilterSelect>
         <IconButton icon="refresh" label="重置" @click="resetFilters" />
       </div>
 
@@ -100,6 +98,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { vaultApi } from '@/api/lifeExtra'

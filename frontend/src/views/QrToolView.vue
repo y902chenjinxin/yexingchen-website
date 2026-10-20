@@ -24,12 +24,12 @@
             <input v-model.number="genSize" type="range" min="180" max="520" step="20">
           </label>
           <label class="qt-opt">纠错级别
-            <select v-model="genLevel">
-              <option value="L">L（7%）</option>
-              <option value="M">M（15%）</option>
-              <option value="Q">Q（25%）</option>
-              <option value="H">H（30%，最抗遮挡）</option>
-            </select>
+            <FilterSelect
+              v-model="genLevel"
+              width="210px"
+              :clearable="false"
+              :options="[{ value: 'L', label: 'L（7%）' }, { value: 'M', label: 'M（15%）' }, { value: 'Q', label: 'Q（25%）' }, { value: 'H', label: 'H（30%，最抗遮挡）' }]"
+            />
           </label>
         </div>
         <div v-if="genError" class="qt-err">{{ genError }}</div>
@@ -71,6 +71,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import QRCode from 'qrcode'
 import jsQR from 'jsqr'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'

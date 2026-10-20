@@ -1,11 +1,5 @@
 <template>
   <IslandInnerBase type="tool" title="工具" subtitle="机关百变">
-    <template #toolbar>
-      <span class="tl-admin-tools">
-        <IconButton icon="plus" label="添加工具" variant="primary" @click="openDialog()" />
-      </span>
-    </template>
-
     <!-- 管理表格（默认进入即管理页） -->
     <div class="manage-pane">
       <div class="manage-toolbar">
@@ -27,6 +21,9 @@
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
+        <!-- v2.46.148：主操作挪进工具栏，用掉批量删除右边的空白（原来在标题下单独占一行） -->
+        <span class="tl-toolbar-spacer"></span>
+        <IconButton icon="plus" label="添加工具" variant="primary" @click="openDialog()" />
       </div>
       <el-table
         ref="tableRef"
@@ -387,6 +384,7 @@ function formatTime(timeStr) {
 .name-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 迷你标识：不换行、不吃行高，只占一点宽度 */
+.tl-toolbar-spacer { flex: 1 1 auto; min-width: 8px; }
 .kind-tag {
   flex: none;
   height: 17px;

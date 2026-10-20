@@ -40,24 +40,28 @@
 
           <div class="opt-grid">
             <label class="opt">页面尺寸
-              <select v-model="aOpt.pageSize">
-                <option value="a4">A4</option>
-                <option value="original">原图自适应</option>
-              </select>
+              <FilterSelect
+                v-model="aOpt.pageSize"
+                width="150px"
+                :clearable="false"
+                :options="[{ value: 'a4', label: 'A4' }, { value: 'original', label: '原图自适应' }]"
+              />
             </label>
             <label class="opt">方向
-              <select v-model="aOpt.orientation">
-                <option value="auto">自动</option>
-                <option value="portrait">纵向</option>
-                <option value="landscape">横向</option>
-              </select>
+              <FilterSelect
+                v-model="aOpt.orientation"
+                width="130px"
+                :clearable="false"
+                :options="[{ value: 'auto', label: '自动' }, { value: 'portrait', label: '纵向' }, { value: 'landscape', label: '横向' }]"
+              />
             </label>
             <label class="opt">边距
-              <select v-model="aOpt.margin">
-                <option value="none">无</option>
-                <option value="narrow">窄</option>
-                <option value="wide">宽</option>
-              </select>
+              <FilterSelect
+                v-model="aOpt.margin"
+                width="110px"
+                :clearable="false"
+                :options="[{ value: 'none', label: '无' }, { value: 'narrow', label: '窄' }, { value: 'wide', label: '宽' }]"
+              />
             </label>
           </div>
         </div>
@@ -77,10 +81,12 @@
           />
           <div class="opt-grid">
             <label class="opt">分辨率
-              <select v-model="bOpt.dpi">
-                <option :value="150">标准 150 DPI</option>
-                <option :value="300">高清 300 DPI</option>
-              </select>
+              <FilterSelect
+                v-model="bOpt.dpi"
+                width="170px"
+                :clearable="false"
+                :options="[{ value: 150, label: '标准 150 DPI' }, { value: 300, label: '高清 300 DPI' }]"
+              />
             </label>
           </div>
         </div>
@@ -139,6 +145,7 @@
 
 <script setup>
 import { ref, reactive, computed, onBeforeUnmount, onMounted } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import PdfFileList from './pdftool/PdfFileList.vue'

@@ -102,11 +102,13 @@
             <h2 class="fd-col-title">{{ listTitle }}</h2>
             <div class="fd-list-filters">
               <span v-if="unreadTotal > 0" class="fd-unread-badge">未读 {{ unreadTotal }}</span>
-              <select v-model="filter" class="fd-select" @change="reload(1)">
-                <option value="all">全部</option>
-                <option value="unread">未读</option>
-                <option value="bookmarked">已收藏</option>
-              </select>
+              <FilterSelect
+                v-model="filter"
+                width="110px"
+                :clearable="false"
+                :options="[{ value: 'all', label: '全部' }, { value: 'unread', label: '未读' }, { value: 'bookmarked', label: '已收藏' }]"
+                @change="reload(1)"
+              />
               <input v-model="q" class="fd-search" placeholder="搜索标题…"
                      spellcheck="false" @keyup.enter="reload(1)" />
             </div>
@@ -261,6 +263,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'

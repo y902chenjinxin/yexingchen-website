@@ -84,12 +84,12 @@
           <div class="st-form-row">
             <div class="st-f-field">
               <label class="st-f-label">市场</label>
-              <select v-model="addMarket" class="st-input st-select">
-                <option value="sh">沪 A</option>
-                <option value="sz">深 A</option>
-                <option value="hk">港股</option>
-                <option value="us">美股</option>
-              </select>
+              <FilterSelect
+                v-model="addMarket"
+                width="110px"
+                :clearable="false"
+                :options="[{ value: 'sh', label: '沪 A' }, { value: 'sz', label: '深 A' }, { value: 'hk', label: '港股' }, { value: 'us', label: '美股' }]"
+              />
             </div>
             <div class="st-f-field grow">
               <label class="st-f-label">代码</label>
@@ -216,6 +216,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'

@@ -41,10 +41,15 @@
               <div class="wd-today-weather">{{ suggest.weather_note || '—' }}</div>
             </div>
             <div class="wd-today-actions">
-              <select v-model="occasion" class="wd-mini-select" @change="loadSuggest">
-                <option value="">不限场合</option>
-                <option v-for="o in ['通勤', '居家', '运动', '正式', '约会', '户外']" :key="o" :value="o">{{ o }}</option>
-              </select>
+              <FilterSelect
+                v-model="occasion"
+                placeholder="不限场合"
+                width="118px"
+                size="sm"
+                @change="loadSuggest"
+              >
+                <el-option v-for="o in ['通勤', '居家', '运动', '正式', '约会', '户外']" :key="o" :value="o" :label="o" />
+              </FilterSelect>
               <IconButton icon="refresh" size="sm" label="换一套" :disabled="suggesting" @click="loadSuggest" />
             </div>
           </div>
@@ -76,18 +81,15 @@
       <section v-else-if="tab === 'items'" class="wd-pane">
         <div class="wd-toolbar">
           <input v-model="itemFilters.q" class="wd-input" placeholder="搜名称 / 品牌 / 备注" @keyup.enter="loadItems">
-          <select v-model="itemFilters.category" class="wd-input wd-select" @change="loadItems">
-            <option value="">全部品类</option>
-            <option v-for="c in metas.categories" :key="c" :value="c">{{ c }}</option>
-          </select>
-          <select v-model="itemFilters.tag" class="wd-input wd-select" @change="loadItems">
-            <option value="">全部标签</option>
-            <option v-for="t in metas.style_tags" :key="t" :value="t">{{ t }}</option>
-          </select>
-          <select v-model="itemFilters.status" class="wd-input wd-select" @change="loadItems">
-            <option value="">全部状态</option>
-            <option v-for="s in metas.statuses" :key="s" :value="s">{{ s }}</option>
-          </select>
+          <FilterSelect v-model="itemFilters.category" placeholder="全部品类" width="130px" @change="loadItems">
+            <el-option v-for="c in metas.categories" :key="c" :value="c" :label="c" />
+          </FilterSelect>
+          <FilterSelect v-model="itemFilters.tag" placeholder="全部标签" width="130px" @change="loadItems">
+            <el-option v-for="t in metas.style_tags" :key="t" :value="t" :label="t" />
+          </FilterSelect>
+          <FilterSelect v-model="itemFilters.status" placeholder="全部状态" width="130px" @change="loadItems">
+            <el-option v-for="s in metas.statuses" :key="s" :value="s" :label="s" />
+          </FilterSelect>
           <label class="wd-check">
             <input v-model="staleOnly" type="checkbox" @change="toggleStale"> 90 天没穿过
           </label>
@@ -224,10 +226,9 @@
         </el-form-item>
         <el-form-item label="主色">
           <div class="wd-color-row">
-            <select v-model="form.color_name" class="wd-input">
-              <option value="">未填</option>
-              <option v-for="c in metas.color_presets" :key="c" :value="c">{{ c }}</option>
-            </select>
+            <FilterSelect v-model="form.color_name" placeholder="未填" width="140px">
+              <el-option v-for="c in metas.color_presets" :key="c" :value="c" :label="c" />
+            </FilterSelect>
             <input v-model="form.color_hex" type="color" class="wd-color-picker" title="取色（选填）">
           </div>
         </el-form-item>
@@ -300,6 +301,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'

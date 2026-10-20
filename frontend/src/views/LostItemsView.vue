@@ -21,14 +21,12 @@
       </div>
 
       <div class="li-toolbar">
-        <select v-model="filters.uploader_id" class="li-input li-select" @change="reload">
-          <option value="">谁记的（全部）</option>
-          <option v-for="u in uploaders" :key="u.user_id" :value="u.user_id">{{ u.name }}</option>
-        </select>
-        <select v-model="filters.category" class="li-input li-select" @change="reload">
-          <option value="">全部分类</option>
-          <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
-        </select>
+        <FilterSelect v-model="filters.uploader_id" placeholder="谁记的（全部）" width="150px" @change="reload">
+          <el-option v-for="u in uploaders" :key="u.user_id" :value="u.user_id" :label="u.name" />
+        </FilterSelect>
+        <FilterSelect v-model="filters.category" placeholder="全部分类" width="140px" @change="reload">
+          <el-option v-for="c in categories" :key="c" :value="c" :label="c" />
+        </FilterSelect>
         <!-- v2.46.146：原来是「全部年份」下拉，只能按年筛；换成日期范围，年月日都能选，清空即全部 -->
         <el-date-picker
           v-model="dateRange"
@@ -162,6 +160,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { thumb } from '@/utils/img'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import { lostApi, uploadLifeImage } from '@/api/lifeExtra'
 

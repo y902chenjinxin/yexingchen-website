@@ -55,14 +55,13 @@
             ></textarea>
             <div class="aid-row">
               <label class="aid-label">风格</label>
-              <select v-model="rw.style" class="aid-select">
-                <option value="casual">更口语</option>
-                <option value="formal">更正式</option>
-                <option value="concise">更短</option>
-                <option value="emoji">加 emoji</option>
-                <option value="polish">润色</option>
-                <option value="critical">批判审视</option>
-              </select>
+              <FilterSelect
+                v-model="rw.style"
+                width="120px"
+                size="sm"
+                :clearable="false"
+                :options="[{ value: 'casual', label: '更口语' }, { value: 'formal', label: '更正式' }, { value: 'concise', label: '更短' }, { value: 'emoji', label: '加 emoji' }, { value: 'polish', label: '润色' }, { value: 'critical', label: '批判审视' }]"
+              />
               <button class="aid-btn" :disabled="rw.busy || !rw.text" @click="runRewrite">
                 {{ rw.busy ? '改写中…' : '改写' }}
               </button>
@@ -141,14 +140,13 @@
                 ></textarea>
                 <div class="aid-row">
                   <label class="aid-label">类别</label>
-                  <select v-model="mem.addCategory" class="aid-select">
-                    <option value="identity">身份 identity</option>
-                    <option value="habit">习惯 habit</option>
-                    <option value="preference">偏好 preference</option>
-                    <option value="relationship">人际关系 relationship</option>
-                    <option value="project">项目 project</option>
-                    <option value="other">其它 other</option>
-                  </select>
+                  <FilterSelect
+                    v-model="mem.addCategory"
+                    width="180px"
+                    size="sm"
+                    :clearable="false"
+                    :options="[{ value: 'identity', label: '身份 identity' }, { value: 'habit', label: '习惯 habit' }, { value: 'preference', label: '偏好 preference' }, { value: 'relationship', label: '人际关系 relationship' }, { value: 'project', label: '项目 project' }, { value: 'other', label: '其它 other' }]"
+                  />
                   <button class="aid-btn" :disabled="mem.adding || !mem.addPrompt.trim()" @click="addMemory">
                     {{ mem.adding ? '添加中…' : '添加' }}
                   </button>
@@ -242,6 +240,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { workbenchApi } from '@/api/workbench'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { ElMessage } from 'element-plus'

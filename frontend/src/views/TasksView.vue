@@ -62,11 +62,14 @@
             </div>
           </div>
           <div class="tk-actions">
-            <select class="tk-select" :value="t.priority" @change="(e) => setPriority(t, e.target.value)">
-              <option value="low">低</option>
-              <option value="medium">中</option>
-              <option value="high">高</option>
-            </select>
+            <FilterSelect
+              :model-value="t.priority"
+              width="84px"
+              size="sm"
+              :clearable="false"
+              :options="[{ value: 'low', label: '低' }, { value: 'medium', label: '中' }, { value: 'high', label: '高' }]"
+              @change="(v) => setPriority(t, v)"
+            />
             <button class="tk-btn ghost tiny" @click="remove(t)">删除</button>
           </div>
         </article>
@@ -116,6 +119,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'

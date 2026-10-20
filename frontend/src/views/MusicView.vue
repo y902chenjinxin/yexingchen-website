@@ -1,13 +1,5 @@
 <template>
   <IslandInnerBase type="music" title="音乐" subtitle="音律飘渺 · 曲库管理">
-    <template #toolbar>
-      <!-- v2.46.69：手机端纯播放列表，上传/导入是管理动作，只在桌面展示 -->
-      <template v-if="!isMobile">
-        <IconButton icon="upload" label="上传音乐" variant="primary" @click="openUpload" />
-        <IconButton icon="folder" label="批量导入" @click="openBatch" />
-      </template>
-    </template>
-
     <!-- 管理表格（默认进入即管理页） -->
     <div class="manage-pane">
       <!-- 工具条：搜索 / 筛选 / 批量 -->
@@ -53,6 +45,12 @@
           >
             批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
           </el-button>
+          <!-- v2.46.148：主操作从标题下挪进工具栏（手机端是纯播放列表，不显示） -->
+          <span class="mg-toolbar-spacer"></span>
+          <template v-if="!isMobile">
+            <IconButton icon="upload" label="上传音乐" variant="primary" @click="openUpload" />
+            <IconButton icon="folder" label="批量导入" @click="openBatch" />
+          </template>
         </div>
       </div>
 
@@ -719,6 +717,7 @@ function formatDuration(sec) {
 }
 
 /* 工具条：左右两端分布，中间自动留白 */
+.mg-toolbar-spacer { flex: 1 1 auto; min-width: 8px; }
 .manage-toolbar {
   display: flex;
   align-items: center;

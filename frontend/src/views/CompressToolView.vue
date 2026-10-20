@@ -26,10 +26,12 @@
       <!-- 自定义配置区（仅自定义模式） -->
       <div v-if="mode === 'custom'" class="ct-options">
         <label class="opt">目标方式
-          <select v-model="custom.targetType">
-            <option value="size">按目标大小</option>
-            <option value="quality">按压缩质量</option>
-          </select>
+          <FilterSelect
+            v-model="custom.targetType"
+            width="150px"
+            :clearable="false"
+            :options="[{ value: 'size', label: '按目标大小' }, { value: 'quality', label: '按压缩质量' }]"
+          />
         </label>
         <label v-if="custom.targetType === 'size'" class="opt">
           目标大小 ≤ <b class="hl">{{ custom.targetKb }}</b> KB
@@ -44,10 +46,12 @@
       <!-- 缩放配置区（仅缩放模式） -->
       <div v-else-if="mode === 'resize'" class="ct-options">
         <label class="opt">缩放方式
-          <select v-model="resize.scaleBy">
-            <option value="long">按最长边宽度</option>
-            <option value="percent">按比例</option>
-          </select>
+          <FilterSelect
+            v-model="resize.scaleBy"
+            width="170px"
+            :clearable="false"
+            :options="[{ value: 'long', label: '按最长边宽度' }, { value: 'percent', label: '按比例' }]"
+          />
         </label>
         <label v-if="resize.scaleBy === 'long'" class="opt">最长边
           <b class="hl">{{ resize.longEdge }}</b> px
@@ -134,6 +138,7 @@
 
 <script setup>
 import { ref, reactive, computed, onBeforeUnmount, onMounted } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import StepIndicator from '@/components/common/StepIndicator.vue'

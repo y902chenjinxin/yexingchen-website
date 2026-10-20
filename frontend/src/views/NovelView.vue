@@ -1,10 +1,5 @@
 <template>
   <IslandInnerBase type="novel" title="小说" subtitle="书卷悠长">
-    <template #toolbar>
-      <IconButton icon="upload" label="上传小说" variant="primary" @click="openUpload" />
-      <IconButton icon="folder" label="批量导入" @click="openBatch" />
-    </template>
-
     <div class="manage-pane">
       <div class="manage-toolbar">
         <el-input v-model="keyword" size="small" clearable placeholder="搜索标题/作者" style="width: 260px">
@@ -16,6 +11,9 @@
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
+        <span class="mg-toolbar-spacer"></span>
+        <IconButton icon="upload" label="上传小说" variant="primary" @click="openUpload" />
+        <IconButton icon="folder" label="批量导入" @click="openBatch" />
       </div>
       <!-- 加载中：鎏金光扫骨架行，替代默认旋转圈 -->
       <div v-if="novelStore.loading" class="sk-skeleton-rows">
@@ -617,6 +615,7 @@ function formatTime(timeStr) {
   box-shadow: inset 0 1px 0 var(--ls-highlight), var(--ls-shadow);
 }
 
+.mg-toolbar-spacer { flex: 1 1 auto; min-width: 8px; }
 .manage-toolbar {
   display: flex;
   align-items: center;

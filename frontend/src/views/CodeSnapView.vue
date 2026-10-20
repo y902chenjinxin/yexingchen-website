@@ -3,18 +3,20 @@
     <div class="cs-tool">
       <div class="cs-opts">
         <label class="cs-opt">语言
-          <select v-model="lang">
-            <option value="js">JavaScript</option>
-            <option value="python">Python</option>
-            <option value="json">JSON</option>
-            <option value="sql">SQL</option>
-          </select>
+          <FilterSelect
+            v-model="lang"
+            width="150px"
+            :clearable="false"
+            :options="[{ value: 'js', label: 'JavaScript' }, { value: 'python', label: 'Python' }, { value: 'json', label: 'JSON' }, { value: 'sql', label: 'SQL' }]"
+          />
         </label>
         <label class="cs-opt">主题
-          <select v-model="theme">
-            <option value="dark">玄夜（深）</option>
-            <option value="light">宣纸（浅）</option>
-          </select>
+          <FilterSelect
+            v-model="theme"
+            width="150px"
+            :clearable="false"
+            :options="[{ value: 'dark', label: '玄夜（深）' }, { value: 'light', label: '宣纸（浅）' }]"
+          />
         </label>
         <label class="cs-opt">标题
           <input v-model="title" class="cs-title-input" placeholder="文件名（选填）">
@@ -44,6 +46,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { ElMessage } from 'element-plus'
 

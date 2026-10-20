@@ -18,10 +18,9 @@
 
       <div class="ct-toolbar">
         <input v-model="keyword" class="ct-input" placeholder="搜索姓名 / 关系 / 电话 / 住址" spellcheck="false" />
-        <select v-model="relationFilter" class="ct-input ct-select">
-          <option value="">全部关系</option>
-          <option v-for="r in usedRelations" :key="r" :value="r">{{ r }}</option>
-        </select>
+        <FilterSelect v-model="relationFilter" placeholder="全部关系" width="140px">
+          <el-option v-for="r in usedRelations" :key="r" :value="r" :label="r" />
+        </FilterSelect>
         <span class="ct-count">共 {{ filtered.length }} 位{{ upcomingCount ? ` · 近 30 天生日 ${upcomingCount} 位` : '' }}</span>
         <!-- v2.40.18：人脉图谱归属通讯录（原先藏在工具岛里，找不到） -->
         <IconButton
@@ -239,6 +238,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import { contactsApi, RELATION_OPTIONS } from '@/api/family'
 import { thumb } from '@/utils/img'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']
 

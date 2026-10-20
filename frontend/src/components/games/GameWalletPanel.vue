@@ -86,12 +86,15 @@
         <div class="gw-inline-body">
           <label class="gw-field">
             <span>选择家人</span>
-            <select v-model.number="giftTo" aria-label="选择要赠送的家人">
-              <option :value="0" disabled>请选择</option>
-              <option v-for="m in others" :key="m.user_id" :value="m.user_id">
-                {{ m.avatar }} {{ m.name }}
-              </option>
-            </select>
+            <!-- v2.46.148：原生 select → 统一下拉；枚举值不再带头像 emoji -->
+            <FilterSelect
+              v-model="giftTo"
+              placeholder="请选择"
+              width="140px"
+              :clearable="false"
+            >
+              <el-option v-for="m in others" :key="m.user_id" :value="m.user_id" :label="m.name" />
+            </FilterSelect>
           </label>
           <label class="gw-field">
             <span>赠送豆数</span>
@@ -204,6 +207,7 @@
  * 家庭共享：排行榜按 household_id 汇总，能看到所有家人的战绩与豆子。
  */
 import { ref, computed, onMounted } from 'vue'
+import FilterSelect from '@/components/common/FilterSelect.vue'
 import { gameEconomyApi } from '@/api/gameEconomy'
 import { listMembers } from '@/api/life'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -412,8 +416,8 @@ onMounted(() => {
   background: rgba(127, 168, 163, .12);
 }
 .gw-btn.relief {
-  color: #fff; border-color: rgba(251, 113, 133, .5);
-  background: linear-gradient(180deg, #e06a7c, #b8445a);
+  color: #1a0605; border-color: rgba(255, 83, 71, .5);
+  background: linear-gradient(180deg, #ff8a6f, #e0442f);
 }
 
 .gw-tip { margin: 14px 0 0; font-size: 12px; line-height: 1.7; color: var(--color-text-secondary); opacity: .85; }
