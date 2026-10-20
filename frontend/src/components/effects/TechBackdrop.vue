@@ -22,10 +22,15 @@ function resize() {
   const el = cv.value
   if (!el) return
   dpr = Math.min(window.devicePixelRatio || 1, 2)
-  w = el.clientWidth = window.innerWidth
-  h = el.clientHeight = window.innerHeight
-  el.width = w * dpr
-  el.height = h * dpr
+  // 🔴 clientWidth / clientHeight 是**只读**的计算值：给它们赋值会在严格模式（ES module）
+  // 直接抛 TypeError —— 而这里在 onMounted 里调用，异常会中断后续渲染，表现为**整页空白**
+  // （v2.46.126 引入，v2.46.135 巡检移动端时才发现：/contacts?m=1 全页空、控制台
+  //  "Cannot set property clientWidth of #<Element> which has only a getter"）。
+  // 画布尺寸要写 canvas.width / canvas.height（这两个才是可写的）。
+  w = window.innerWidth
+  h = window.innerHeight
+  el.width = Math.round(w * dpr)
+  el.height = Math.round(h * dpr)
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   seed()
 }
@@ -89,9 +94,12 @@ function start() {
     running = true
     step()
   } else {
-    // 减少动态效果：仅静态画一帧
-    running = false
+    // 减少动态效果：只画一帧静态图，不排下一帧。
+    // （原写法 running=false 后再 step()，会被开头的 `if (!running) return` 直接吃掉 → 一帧都没有）
+    running = true
     step()
+    running = false
+    if (raf) { cancelAnimationFrame(raf); raf = 0 }
   }
 }
 
