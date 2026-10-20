@@ -41,6 +41,7 @@ import {
   MagicStick,
   Aim,
   Clock,
+  Sunrise,
 } from '@element-plus/icons-vue'
 
 export const NAV_GROUPS = [
@@ -48,6 +49,7 @@ export const NAV_GROUPS = [
     label: '',
     items: [
       { path: '/workbench', title: '工作台', icon: House },
+      { path: '/habits', title: '今天', icon: Sunrise },  // v2.46.140 每日打卡（后端 habits 接口一直没有界面）
     ],
   },
   {

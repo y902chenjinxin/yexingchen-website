@@ -41,6 +41,9 @@
       </div>
     </div>
 
+    <!-- 今天要做（v2.46.140） -->
+    <TodayHabitsCard class="abb-today" />
+
     <!-- 快捷入口（精选）＋ 全部模块目录入口 -->
     <div class="abb-sec">
       <div class="abb-sec__head">
@@ -70,6 +73,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { financeApi } from '@/api/finance'
+import TodayHabitsCard from '@/components/workbench/TodayHabitsCard.vue'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'
@@ -179,6 +183,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 今天要做：与上下卡片同间距（v2.46.140） */
+.abb-today { display: block; margin: 12px 0; }
 .abb {
   position: relative;
   min-height: 100svh;

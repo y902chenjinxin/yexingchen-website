@@ -10,6 +10,9 @@
       <p class="wb-subtitle">今日 · 本月 · 累计，一目了然。</p>
     </header>
 
+    <!-- 今天要做（v2.46.140）：工作台原来全是回顾性数字，缺「向前看」的一块 -->
+    <TodayHabitsCard class="wb-today" />
+
     <!-- ============ Bento S1：核心数字 + 记账趋势（不对称大块） ============ -->
     <section class="bento-s1">
       <!-- 左列：净流入（大块）+ 足迹 + 自选股
@@ -98,6 +101,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import MobileWorkbenchHome from '@/components/mobile/MobileWorkbenchHome.vue'
+import TodayHabitsCard from '@/components/workbench/TodayHabitsCard.vue'
 import TrendBars from '@/components/dashboard/TrendBars.vue'
 import WeatherCard from '@/components/workbench/WeatherCard.vue'
 import DailyQuoteCard from '@/components/workbench/DailyQuoteCard.vue'
@@ -158,6 +162,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* 今天要做（v2.46.140） */
+.wb-today { display: block; margin: 0 0 16px; }
 /* ============ Bento Grid 2.0 数据驾驶舱（v2.38 精简版） ============ */
 .workbench-page {
   position: relative;

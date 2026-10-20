@@ -62,6 +62,9 @@ export const workbenchApi = {
   habits: {
     list: () => api.get('/habits'),
     create: (data) => api.post('/habits', data),
+    // 后端早有 PATCH / DELETE（重命名 / 改目标 / 归档），之前 api 层没包，页面没法用
+    update: (id, data) => api.patch(`/habits/${id}`, data),
+    remove: (id) => api.delete(`/habits/${id}`),
     toggle: (id, data) => api.post(`/habits/${id}/toggle`, data),
   },
 
