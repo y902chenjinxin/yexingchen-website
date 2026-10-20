@@ -676,3 +676,38 @@ html[data-theme="day"] #app.is-mobile {
   background: #0a708c !important;
   border-color: #0a708c !important;
 }
+
+/* ============ 12. 白天：下拉 / 日期面板 ============
+ * 原生 select 弹层只能靠 color-scheme 切明暗；白天要显式给白底深字。 */
+/* 🔴 必须带 :root[data-theme="day"] 前缀：写成裸 `select` 会**无条件覆盖**夜间的
+   `select { color-scheme: dark }`，导致夜间弹层也是白底（v2.46.146 踩过）。 */
+:root[data-theme="day"] select { color-scheme: light; }
+:root[data-theme="day"] select option {
+  background-color: #ffffff;
+  color: #0b1622;
+}
+:root[data-theme="day"] select option:checked {
+  background-color: #e8f6fa;
+  color: #0a708c;
+}
+
+:root[data-theme="day"] .el-select-dropdown { background: #ffffff; }
+:root[data-theme="day"] .el-select-dropdown__item { color: var(--tc-text-2); }
+:root[data-theme="day"] .el-select-dropdown__item.is-hovering {
+  background: rgba(14, 147, 184, .08);
+  color: var(--tc-text);
+}
+:root[data-theme="day"] .el-select-dropdown__item.is-selected {
+  color: var(--tc-cyan-deep);
+  font-weight: 600;
+  background: rgba(14, 147, 184, .06);
+}
+:root[data-theme="day"] .el-picker-panel { background: #ffffff; color: var(--tc-text); }
+:root[data-theme="day"] .el-date-table td.current:not(.disabled) .el-date-table-cell__text {
+  background: var(--tc-cyan);
+  color: #ffffff;
+  font-weight: 700;
+}
+:root[data-theme="day"] .el-date-table td.in-range .el-date-table-cell { background: rgba(14, 147, 184, .10); }
+:root[data-theme="day"] .el-date-table td.available:hover { color: var(--tc-cyan-deep); }
+:root[data-theme="day"] .el-date-table td.today .el-date-table-cell__text { color: var(--tc-cyan-deep); }

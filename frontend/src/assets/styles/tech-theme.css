@@ -795,6 +795,64 @@ html[data-theme="day"].m-app {
   }
 }
 
+
+/* ============ 11. 下拉/日期弹层统一（v2.46.146） ============
+ * 夜星：「枚举值背景框颜色很怪异」—— 那几张筛选下拉是**原生 `<select>`**，
+ * 弹层由浏览器渲染（白/灰底 + 系统蓝高亮），CSS 主题根本管不到。
+ * 能控制的只有两处：`color-scheme`（决定弹层整体明暗）+ `option` 的背景/文字。
+ * Element Plus 的下拉与日期面板另走 .el-* 覆盖。 */
+select { color-scheme: dark; }
+select option {
+  background-color: #121a26;
+  color: #e6f2ff;
+}
+select option:checked {
+  background-color: #17384a;
+  color: #7beeff;
+}
+
+/* Element Plus 下拉面板：统一成卡面 + 青高亮，替换默认的浅蓝选中条 */
+.el-select-dropdown {
+  background: var(--tc-bg-2);
+  border-color: var(--tc-line-strong) !important;
+}
+.el-select-dropdown__item { color: var(--tc-text-2); }
+.el-select-dropdown__item.is-hovering {
+  background: rgba(45, 226, 255, .10);
+  color: var(--tc-text);
+}
+.el-select-dropdown__item.is-selected {
+  color: var(--tc-cyan);
+  font-weight: 600;
+  background: rgba(45, 226, 255, .06);
+}
+.el-select-dropdown__empty { color: var(--tc-text-3); }
+.el-popper.is-light .el-popper__arrow::before {
+  background: var(--tc-bg-2) !important;
+  border-color: var(--tc-line-strong) !important;
+}
+
+/* 日期/时间面板：和下拉同一套底色，当前日期用青色实心 */
+.el-picker-panel {
+  background: var(--tc-bg-2);
+  border-color: var(--tc-line-strong);
+  color: var(--tc-text);
+}
+.el-picker-panel__icon-btn,
+.el-date-picker__header-label { color: var(--tc-text-2); }
+.el-picker-panel__icon-btn:hover,
+.el-date-picker__header-label:hover { color: var(--tc-cyan); }
+.el-date-table th { color: var(--tc-text-3); border-bottom-color: var(--tc-line); }
+.el-date-table td.available:hover { color: var(--tc-cyan); }
+.el-date-table td.today .el-date-table-cell__text { color: var(--tc-cyan); font-weight: 700; }
+.el-date-table td.current:not(.disabled) .el-date-table-cell__text {
+  background: var(--tc-cyan);
+  color: #04121c;
+  font-weight: 700;
+}
+.el-date-table td.in-range .el-date-table-cell { background: rgba(45, 226, 255, .12); }
+.el-date-range-picker__content.is-left { border-right-color: var(--tc-line); }
+
 /* 尊重减少动态效果偏好 */
 @media (prefers-reduced-motion: reduce) {
   #app::after { animation: none; }

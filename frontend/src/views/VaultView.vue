@@ -23,7 +23,7 @@
         <input v-model="filters.q" class="va-input" placeholder="搜名称 / 账号 / 网址 / 备注" @keyup.enter="reload">
         <select v-model="filters.uploader_id" class="va-input va-select" @change="reload">
           <option value="">谁存的（全部）</option>
-          <option v-for="u in uploaders" :key="u.user_id" :value="u.user_id">{{ u.avatar }} {{ u.name }}</option>
+          <option v-for="u in uploaders" :key="u.user_id" :value="u.user_id">{{ u.name }}</option>
         </select>
         <select v-model="filters.category" class="va-input va-select" @change="reload">
           <option value="">全部分类</option>

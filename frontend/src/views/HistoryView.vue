@@ -22,24 +22,17 @@
       <!-- ============ 日历（左 / 约 1/3） — 复用 vue-cal（antoniandre/vue-cal） ============ -->
       <section class="ht-cal glass">
         <div class="ht-cal-head">
-          <el-select
-            class="ht-sel ht-sel-y"
-            :model-value="viewDate.y"
+          <!-- v2.46.146：原来是「年 + 月」两个下拉，只能按年月跳；换成一个日历选择器，
+               年月日都能直接选（选完跳到那一天并加载当月数据） -->
+          <el-date-picker
+            class="ht-date"
+            :model-value="selectedDate"
+            type="date"
             size="small"
-            :teleported="false"
-            @change="jumpYear"
-          >
-            <el-option v-for="y in yearOptions" :key="y" :value="y" :label="`${y} 年`" />
-          </el-select>
-          <el-select
-            class="ht-sel ht-sel-m"
-            :model-value="viewDate.m + 1"
-            size="small"
-            :teleported="false"
-            @change="jumpMonth"
-          >
-            <el-option v-for="m in 12" :key="m" :value="m" :label="`${m} 月`" />
-          </el-select>
+            format="YYYY-MM-DD"
+            :clearable="false"
+            @update:model-value="jumpDate"
+          />
           <div class="ht-cal-nav">
             <button class="ht-nav-btn" @click="prevMonth" aria-label="上个月">‹</button>
             <button class="ht-nav-btn" @click="nextMonth" aria-label="下个月">›</button>
@@ -100,7 +93,6 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElSelect, ElOption } from 'element-plus'
 import { VueCal } from 'vue-cal'
 import 'vue-cal/style'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
@@ -114,16 +106,8 @@ today.setHours(0, 0, 0, 0)
 const selectedDate = ref(new Date(today))
 const calView = ref('month')
 
-/* 用于顶部 select 显示当前年（vue-cal 暴露 viewDateDate.getFullYear 不直观，用 selectedDate 推） */
-const viewDate = computed(() => ({ y: selectedDate.value.getFullYear(), m: selectedDate.value.getMonth() }))
 
 /* 年下拉：1900 ~ 当前年 + 50 */
-const yearOptions = computed(() => {
-  const cur = today.getFullYear()
-  const arr = []
-  for (let y = 1900; y <= cur + 50; y++) arr.push(y)
-  return arr
-})
 
 /* zh-CN locale（vue-cal 内置） */
 const zhLocale = 'zh-CN'
@@ -151,21 +135,13 @@ function onCellClick(payload) {
 /* 收口：把日期变更 + 触发加载放在一起（避免双绑引发的多次触发） */
 const calRef = ref(null)
 let _loadToken = 0
-function jumpYear(y) {
-  const newY = Number(y)
-  const cur = selectedDate.value
-  const dim = new Date(newY, cur.getMonth() + 1, 0).getDate()
-  const nextSel = new Date(newY, cur.getMonth(), Math.min(cur.getDate(), dim))
-  selectedDate.value = nextSel
-  /* selected-date prop 改变后 vue-cal 自己会跳月视图，goToDate 不再手动调 */
-  load(false)
-}
-function jumpMonth(m) {
-  const newM = Number(m) - 1
-  const cur = selectedDate.value
-  const dim = new Date(cur.getFullYear(), newM + 1, 0).getDate()
-  const nextSel = new Date(cur.getFullYear(), newM, Math.min(cur.getDate(), dim))
-  selectedDate.value = nextSel
+function jumpDate(v) {
+  if (!v) return
+  // 没有 value-format 时 el-date-picker 直接给 Date；兼容一下字符串（手动填入等场景）
+  const d0 = v instanceof Date ? v : new Date(String(v).replace(/-/g, '/'))
+  if (Number.isNaN(d0.getTime())) return
+  selectedDate.value = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate())
+  /* selected-date prop 改变后 vue-cal 自己会跳月视图，不用手动 goToDate */
   load(false)
 }
 function prevMonth() {
@@ -264,26 +240,16 @@ onMounted(() => load())
 }
 .ht-nav-btn:focus-visible { outline: 2px solid var(--yq-gold, #c7a96b); outline-offset: 1px; }
 
-.ht-sel-y :deep(.el-select__wrapper) { min-width: 96px; }
-.ht-sel-m :deep(.el-select__wrapper) { min-width: 84px; }
-.ht-sel :deep(.el-select__wrapper),
-.ht-sel :deep(.el-select__wrapper.is-default),
-.ht-sel :deep(.el-select__wrapper.is-hovering) {
+.ht-date { width: 132px; }
+.ht-date :deep(.el-input__wrapper) {
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--dp-line, rgba(127,127,127,0.2));
+  box-shadow: inset 0 0 0 1px var(--dp-line, rgba(127, 127, 127, .2));
   font-family: var(--font-serif, serif);
   min-height: 26px;
-  padding-left: 10px; padding-right: 26px;
+  padding-left: 10px;
 }
-.ht-sel :deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
-  box-shadow: inset 0 0 0 1px var(--dp-line-strong, rgba(127,127,127,0.35));
-}
-.ht-sel :deep(.el-select__wrapper.is-focused) {
-  box-shadow: inset 0 0 0 1px var(--yq-gold, #c7a96b) !important;
-}
-.ht-sel :deep(.el-select__placeholder),
-.ht-sel :deep(.el-select__selected-item) { color: var(--lj-text); font-size: 13px; }
-.ht-sel :deep(.el-select__suffix) { color: var(--lj-text-2); }
+.ht-date :deep(.el-input__inner) { color: var(--lj-text); font-size: 13px; }
+.ht-date :deep(.el-input__prefix) { color: var(--lj-text-2); }
 
 /* vue-cal 主题覆盖 — 玄黄暗调，与项目卡片融合 */
 .ht-vuecal.vuecal {

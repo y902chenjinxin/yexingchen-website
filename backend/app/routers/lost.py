@@ -95,6 +95,10 @@ def list_lost(
     uploader_id: Optional[int] = Query(None),
     category: str = Query(""),
     year: Optional[int] = Query(None),
+    # v2.46.146：日期范围筛选（前端从「全部年份」下拉换成日期范围选择器）。
+    # 保留 year 参数不删：老链接/老前端还能用，属于向后兼容。
+    date_from: str = Query(""),
+    date_to: str = Query(""),
     q: str = Query(""),
     page: int = Query(1, ge=1),
     size: int = Query(50, ge=1, le=200),
@@ -110,6 +114,17 @@ def list_lost(
         query = query.filter(LostItem.category == category)
     if year:
         query = query.filter(func.strftime("%Y", LostItem.lost_at) == str(year))
+    if date_from:
+        query = query.filter(LostItem.lost_at >= date_from)
+    if date_to:
+        # 传进来是 YYYY-MM-DD，含当天：用 < 次日 更稳（避免丢当天 00:00 之后的数据）
+        try:
+            from datetime import date as _date, timedelta as _td
+
+            d = _date.fromisoformat(date_to[:10]) + _td(days=1)
+            query = query.filter(LostItem.lost_at < d.isoformat())
+        except ValueError:
+            query = query.filter(LostItem.lost_at <= date_to)
     if q:
         like = f"%{q}%"
         query = query.filter(

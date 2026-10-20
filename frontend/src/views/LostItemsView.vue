@@ -23,16 +23,24 @@
       <div class="li-toolbar">
         <select v-model="filters.uploader_id" class="li-input li-select" @change="reload">
           <option value="">谁记的（全部）</option>
-          <option v-for="u in uploaders" :key="u.user_id" :value="u.user_id">{{ u.avatar }} {{ u.name }}</option>
+          <option v-for="u in uploaders" :key="u.user_id" :value="u.user_id">{{ u.name }}</option>
         </select>
         <select v-model="filters.category" class="li-input li-select" @change="reload">
           <option value="">全部分类</option>
           <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
         </select>
-        <select v-model="filters.year" class="li-input li-select" @change="reload">
-          <option value="">全部年份</option>
-          <option v-for="y in years" :key="y" :value="y">{{ y }} 年</option>
-        </select>
+        <!-- v2.46.146：原来是「全部年份」下拉，只能按年筛；换成日期范围，年月日都能选，清空即全部 -->
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          value-format="YYYY-MM-DD"
+          range-separator="~"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          size="default"
+          class="li-date"
+          @change="reload"
+        />
         <input v-model="filters.q" class="li-input" placeholder="搜物品 / 地点 / 经过" @keyup.enter="reload">
         <IconButton icon="refresh" label="重置" @click="resetFilters" />
       </div>
@@ -161,7 +169,9 @@ const list = ref([])
 const uploaders = ref([])
 const stats = reactive({ count: 0, total_value: 0, by_year: [], by_category: [], categories: [] })
 const categories = ref(['证件', '电子', '穿戴', '随身', '其他'])
-const filters = reactive({ uploader_id: '', category: '', year: '', q: '' })
+const filters = reactive({ uploader_id: '', category: '', q: '' })
+/** 日期范围（空数组 = 全部）。以前是 year 字符串，只能按年筛 */
+const dateRange = ref([])
 const loading = ref(true)
 const saving = ref(false)
 const uploading = ref(false)
@@ -174,7 +184,6 @@ const form = reactive({
   mood: '', value: 0, photos: [], tagText: '',
 })
 
-const years = computed(() => (stats.by_year || []).map((x) => x.year).filter((y) => y !== '未填日期'))
 const latestDate = computed(() => (list.value[0]?.lost_at || ''))
 
 /** 按年倒序分组（后端已按日期倒序返回，这里只做分组） */
@@ -199,7 +208,11 @@ async function reload() {
     const params = { size: 200 }
     if (filters.uploader_id) params.uploader_id = filters.uploader_id
     if (filters.category) params.category = filters.category
-    if (filters.year) params.year = filters.year
+
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.date_from = dateRange.value[0]
+      params.date_to = dateRange.value[1]
+    }
     if (filters.q) params.q = filters.q
     const [res, st] = await Promise.all([lostApi.list(params), lostApi.stats()])
     list.value = res?.data?.list || []
@@ -214,7 +227,8 @@ async function reload() {
 }
 
 function resetFilters() {
-  Object.assign(filters, { uploader_id: '', category: '', year: '', q: '' })
+  Object.assign(filters, { uploader_id: '', category: '', q: '' })
+  dateRange.value = []
   reload()
 }
 
@@ -343,6 +357,8 @@ onMounted(async () => {
 .li-stats-hint { color: var(--lj-text-3); }
 
 .li-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.li-date { width: 260px; }
+.li-date :deep(.el-input__wrapper) { border-radius: 10px; }
 .li-input { background: rgba(74,95,99,.08); border: 1px solid var(--lj-line); color: var(--lj-text);
   border-radius: 8px; padding: 8px 11px; font-size: 13px; font-family: inherit; min-width: 200px; flex: 1 1 200px; }
 .li-input:focus { outline: none; border-color: var(--lj-seal); }
