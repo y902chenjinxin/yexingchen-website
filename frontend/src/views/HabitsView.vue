@@ -322,7 +322,8 @@ onMounted(() => {
 }
 .hb-cells { display: flex; gap: 3px; flex: 1; min-width: 0; }
 .hb-cells i {
-  flex: 1; aspect-ratio: 1; min-width: 6px; border-radius: 2.5px;
+  /* 30 格排一行：给明确高度，别靠 aspect-ratio（flex 里宽度先定，高度会被算成 0，看着像虚线） */
+  flex: 1 1 0; height: 9px; min-width: 4px; border-radius: 2.5px;
   background: var(--tc-line, rgba(15, 60, 110, .14));
 }
 .hb-cells i.on { background: var(--tc-cyan, #0e93b8); }
@@ -342,9 +343,9 @@ onMounted(() => {
 .hb-icon-btn.on { border-color: var(--tc-cyan, #0e93b8); color: var(--tc-cyan, #0e93b8); background: rgba(14, 147, 184, .08); }
 
 /* 手机端 */
-:global(#app.is-mobile) .hb-page { padding: 14px 14px 90px; }
-:global(#app.is-mobile) .hb-title { font-size: 30px; }
-:global(#app.is-mobile) .hb-progress { padding: 14px; gap: 12px; }
-:global(#app.is-mobile) .hb-heat-name { width: 68px; }
-:global(#app.is-mobile) .hb-cells i { min-width: 4px; border-radius: 2px; }
+:global(#app.is-mobile .hb-page) { padding: 14px 14px 90px; }
+:global(#app.is-mobile .hb-title) { font-size: 30px; }
+:global(#app.is-mobile .hb-progress) { padding: 14px; gap: 12px; }
+:global(#app.is-mobile .hb-heat-name) { width: 68px; }
+:global(#app.is-mobile .hb-cells i) { height: 8px; min-width: 3px; border-radius: 2px; }
 </style>
