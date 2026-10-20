@@ -19,8 +19,11 @@
   --tc-cyan-bright: #7beeff;
   --tc-cyan-deep: #1aa9c9;
   --tc-blue: #6a8bff;
-  --tc-violet: #b98bff;
-  --tc-violet-bright: #d9c2ff;
+  /* v2.46.127：原 #b98bff 明度过高，做正文/数字色时看着「发淡、发灰」（夜星：好多颜色较淡，
+   * 如淡紫色）。压到 #8b5cff —— 同色相、饱和度拉满、明度降一档，暗底上才是「亮紫」而非「淡紫」。
+   * 需要柔和光晕的地方仍用硬编码 rgba(185,139,255,...)，不受此改动影响。 */
+  --tc-violet: #8b5cff;
+  --tc-violet-bright: #b69cff;
   --tc-magenta: #ff45a0;
   --tc-bg-0: #05080f;
   --tc-bg-1: #0a0f1c;
@@ -472,9 +475,11 @@ body { background: var(--tc-bg-1); }
 }
 
 /* ============ 5. 工具类 ============ */
+/* v2.46.127：渐变尾色原为 --tc-violet-bright(#d9c2ff)，一半字变成淡紫、发灰发飘。
+ * 改成「亮青 → 青 → 电蓝」同色相区间，全程高饱和，不再有淡紫尾巴。 */
 .text-gold,
 .text-gold-premium {
-  background: linear-gradient(90deg, var(--tc-cyan-bright), var(--tc-violet-bright));
+  background: linear-gradient(92deg, var(--tc-cyan-bright), var(--tc-cyan) 52%, var(--tc-blue));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -482,7 +487,7 @@ body { background: var(--tc-bg-1); }
   filter: drop-shadow(0 2px 8px rgba(45, 226, 255, .25));
 }
 .tech-gradient-text {
-  background: linear-gradient(90deg, var(--tc-cyan-bright), var(--tc-violet-bright));
+  background: linear-gradient(92deg, var(--tc-cyan), var(--tc-blue));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -605,6 +610,188 @@ html:root[data-theme="day"] .el-input__inner::placeholder { color: var(--tc-text
 #app.is-mobile .island-inner {
   background: transparent !important;
 }
+
+/* ============ 9. 移动端令牌桥（--m-* / --xz-*） ============
+ * 为什么单独一节（v2.46.127）：
+ * 手机端**不读** --color-* 那套，它有自己两套独立色板，且选择器是 `#app.is-mobile`
+ * （id+class，特异性 1,1,0），比本层第 1 节的 `:root`（0,1,0）高 —— 于是第 1 节全站换肤
+ * 对移动端**一点没生效**，手机里还是「墨夜手账 / 宣纸手账」的暖褐纸色 + 旧鎏金，
+ * 和暗冷科技底撞在一起：暖褐卡配冷黑底、宣纸白配黑胶囊、旧金 #c9a45c 发脏。
+ * 两套色板的位置：
+ *   --m-*  → mobile-product.css（基础面）→ mobile-paper.css（宣纸皮肤，后加载者赢）
+ *   --xz-* → mobile-paper.css 三块（夜 / 日 / html.m-app 浮层兜底）
+ * 本文件在 main.js 里最后引入，所以只要把选择器写成同等特异性，顺序就能赢。
+ * ================================================================= */
+/* 日间模式：移动端同样走科技暗。
+ * 原来日间是「宣纸底 #f7f3ea + 墨黑胶囊 #2b2b26」，放在暗色科技底上就是夜星说的
+ * 「颜色冲突、如黑色」——白纸块、黑按钮与冷黑背景三方打架。所以两个模式共用同一份值，
+ * 写在同一条规则的选择器列表里（白天不会再有另一套纸色）。 */
+#app.is-mobile,
+html[data-theme="day"] #app.is-mobile {
+  /* mobile-product.css 给 #app.is-mobile 写了 `background: var(--m-bg) !important`，
+   * 不透明底色会把第 2 节的辉光层与 TechBackdrop 粒子层整片盖死（同 #app 那次坑）。
+   * 置空后由 body + #app::before 供底色，氛围光才能透上来。 */
+  background: transparent !important;
+  /* 基础面 */
+  --m-bg: #070c16;
+  --m-bg-elevated: #0c1422;
+  --m-surface: rgba(18, 28, 46, .84);
+  --m-surface-2: #101a2b;
+  --m-line: rgba(45, 226, 255, .14);
+  --m-line-strong: rgba(45, 226, 255, .30);
+  --m-text: #e6f2ff;
+  --m-text-2: #a6bcd6;
+  --m-text-3: #8299b2;          /* 对 #070c16 约 6:1，保留原「对比度修复 #29」的初衷 */
+  --m-accent: #2de2ff;
+  --m-accent-strong: #1aa9c9;
+  --m-positive: #2ee6a0;
+  --m-negative: #ff4d6d;
+  --m-warning: #ffd166;
+  --m-radius: 14px;
+  --m-radius-sm: 10px;
+  --m-shadow: 0 10px 30px rgba(0, 0, 0, .55), 0 0 0 1px rgba(45, 226, 255, .05);
+
+  /* 宣纸皮肤 → 霓虹卡片 */
+  --xz-ink: #e6f2ff;
+  --xz-paper: #070c16;
+  --xz-card: rgba(18, 28, 46, .86);
+  --xz-card-2: #101a2b;
+  --xz-card-border: rgba(45, 226, 255, .24);
+  --xz-card-shadow: 3px 3px 0 rgba(45, 226, 255, .18);   /* 保留 Neo-Brutalism 硬偏移，改青调 */
+  --xz-card-shadow-press: 1px 1px 0 rgba(45, 226, 255, .18);
+  --xz-head-line: rgba(45, 226, 255, .35);
+  --xz-teal: #0d2b3f;            /* 大色块（记账首 KPI）= 深青 */
+  --xz-teal-ink: #d6f4ff;
+  --xz-ochre: #6a8bff;           /* 赭石 → 电蓝，留住「第三种色」不至全站单青 */
+  --xz-gold: #2de2ff;            /* 鎏金 → 霓虹青 */
+  --xz-btn-bg: linear-gradient(135deg, #2de2ff, #5aa8ff);
+  --xz-btn-fg: #04121c;
+  --xz-grain: none;              /* 纸纹噪点关掉，纯冷面 */
+
+  /* mobile-native-glass.css 在 #app.is-mobile 上把 EP 主色改成靛紫 #5b6ae0 + 一串淡紫白
+   * light-3~9（弹层/下拉/按钮 hover 全用它）= 夜星说的「淡紫色」来源之一。同特异性覆盖回青。 */
+  --el-color-primary: #2de2ff;
+  --el-color-primary-light-3: #1aa9c9;
+  --el-color-primary-light-5: #1796b4;
+  --el-color-primary-light-7: #0e6b85;
+  --el-color-primary-light-8: #0a4f63;
+  --el-color-primary-light-9: #07303d;
+  --el-color-primary-dark-2: #1aa9c9;
+
+  /* mobile-ab-theme.css 在 #app.is-mobile 上把 --lj-* / --ls-* / 玻璃令牌整体重映射成
+   * 「深空靛紫」（--lj-paper #13141d、--ls-paper #10111a、--glass-border 白 7%），
+   * 特异性同样压过第 1 节的 :root。这里按同一套科技面重新给值：冷黑底 + 青蓝细线。 */
+  --lj-bg: var(--tc-bg-1);
+  --lj-bg-deep: var(--tc-bg-0);
+  --lj-paper: rgba(18, 28, 46, .66);
+  --lj-glass: rgba(13, 20, 33, .66);
+  --lj-line: rgba(120, 180, 255, .16);
+  --lj-line-strong: rgba(120, 180, 255, .30);
+  --lj-ochre: #6a8bff;
+  --lj-seal: var(--tc-cyan);
+  --lj-seal-hover: var(--tc-cyan-bright);
+  --ls-paper: #0f1726;
+  --ls-paper-2: #142033;
+  --ls-glass: rgba(13, 20, 33, .66);
+  --ls-line: rgba(120, 180, 255, .16);
+  --ls-line-strong: rgba(120, 180, 255, .30);
+  --ls-bg-glow: rgba(45, 226, 255, .10);
+  --ls-ochre: #6a8bff;
+  --ls-dai: var(--tc-cyan);
+  --glass-border: rgba(120, 180, 255, .22);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .07);
+  --glass-blur: blur(22px) saturate(165%);
+}
+
+/* teleport 浮层（dialog / popper / select 下拉挂在 body 下，逃出 #app.is-mobile） */
+html.m-app {
+  --xz-ink: #e6f2ff;
+  --xz-card: rgba(18, 28, 46, .96);
+  --xz-card-2: #101a2b;
+  --xz-card-border: rgba(45, 226, 255, .26);
+  --xz-gold: #2de2ff;
+  --xz-btn-bg: linear-gradient(135deg, #2de2ff, #5aa8ff);
+  --xz-btn-fg: #04121c;
+  --xz-line: rgba(45, 226, 255, .16);
+}
+html[data-theme="day"].m-app {
+  --xz-ink: #e6f2ff;
+  --xz-card: rgba(18, 28, 46, .96);
+  --xz-card-2: #101a2b;
+  --xz-card-border: rgba(45, 226, 255, .26);
+  --xz-btn-bg: linear-gradient(135deg, #2de2ff, #5aa8ff);
+  --xz-btn-fg: #04121c;
+  --xz-line: rgba(45, 226, 255, .16);
+}
+
+/* ---- 9b. 令牌盖不到的硬编码（逐条对照 mobile-paper.css / mobile-ab-theme.css / mobile-deink.css 原文） ---- */
+/* 移动端玻璃卡：mobile-ab-theme.css 把 .glass-card/.ls-card/.glass 的底写死成 #10111a（带紫的
+ * 近黑）+ 白 4% 高光，特异性 #app.is-mobile .glass-card 压过第 4 节的 .glass-card，
+ * 所以手机里玻璃卡是「平涂紫黑」，跟旁边的科技卡对不上。这里换回冷黑 + 青色发丝边。 */
+#app.is-mobile :is(.glass-card, .ls-card, .glass) {
+  background:
+    linear-gradient(165deg, rgba(45, 226, 255, .05), rgba(255, 255, 255, 0) 46%),
+    rgba(13, 20, 33, .82) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+/* 我的页「主题」分段按钮选中态：写死的靛蓝→紫渐变 → 青→蓝 */
+#app.is-mobile .profile-page .theme-seg-btn.active {
+  background: linear-gradient(135deg, #2de2ff, #5aa8ff) !important;
+  box-shadow: 0 4px 14px rgba(45, 226, 255, .30) !important;
+  color: #04121c !important;
+}
+/* 底部 TabBar：夜=暖褐黑、日=宣纸白+墨顶线 → 统一冷黑 + 青色细线 */
+#app.is-mobile .mt-tabbar {
+  background: rgba(7, 12, 22, .96) !important;
+  border-top: 1px solid rgba(45, 226, 255, .30) !important;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, .5) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  backdrop-filter: blur(18px) !important;
+}
+html[data-theme="day"] #app.is-mobile .mt-tabbar {
+  background: rgba(7, 12, 22, .96) !important;
+  border-top: 1px solid rgba(45, 226, 255, .30) !important;
+}
+#app.is-mobile .mt-tab.active { color: var(--tc-cyan) !important; }
+html[data-theme="day"] #app.is-mobile .mt-tab.active { color: var(--tc-cyan) !important; }
+
+/* 记账左滑删除：旧砖红 #c14b3a 在冷底上发暗 → 霓虹红 */
+#app.is-mobile .fin-row-swipe {
+  background: linear-gradient(90deg, transparent, rgba(255, 77, 109, .18) 40%);
+  color: #ff4d6d;
+}
+#app.is-mobile .fin-row-swipe button { border-color: #ff4d6d; color: #ff4d6d; }
+
+/* 拼图/贴纸日间浅纸卡 + 深棕字 → 科技暗卡 */
+html[data-theme="day"] #app.is-mobile .pt-paper {
+  background: linear-gradient(160deg, rgba(18, 28, 46, .95), rgba(12, 20, 34, .95)) !important;
+  border-color: var(--tc-line-strong) !important;
+}
+html[data-theme="day"] #app.is-mobile .pt-text { color: var(--tc-text) !important; }
+html[data-theme="day"] #app.is-mobile :is(.pt-date, .pt-loading) { color: var(--tc-text-3) !important; }
+
+/* 手机端登录卡主按钮：旧鎏金渐变 → 青蓝渐变（这条曾被专门写死回金，最容易撞车） */
+#app.is-mobile .login-card .el-button--primary {
+  background: linear-gradient(135deg, #2de2ff, #5aa8ff) !important;
+  color: #04121c !important;
+  border: 1px solid rgba(45, 226, 255, .50) !important;
+  font-weight: 700;
+}
+#app.is-mobile .login-card .el-input__wrapper {
+  background: rgba(10, 16, 28, .90) !important;
+  border: 1px solid rgba(45, 226, 255, .22) !important;
+}
+
+/* 笔记代码块：奶油字 #e8dcc0 → 冷白 */
+#app.is-mobile .note-editor .ne-content pre {
+  background: rgba(6, 11, 20, .92) !important;
+  color: #cfe6ff !important;
+}
+
+/* --xz-btn-bg 改成了渐变：mobile-paper.css 里 `.fin-quick-tag.on / .fin-fund.active`
+ * 拿它去填 `border-color`，而 border-color 不接受渐变 → 该声明在计算值时非法、退成
+ * currentColor（= 深墨按钮字色），胶囊看起来没有边框。这里显式补回青边。 */
+#app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) { border-color: #2de2ff !important; }
 
 /* 尊重减少动态效果偏好 */
 @media (prefers-reduced-motion: reduce) {

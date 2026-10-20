@@ -7,8 +7,24 @@
 
 ---
 
-## v2.46.126 全站科技霓虹换肤 TECH_OVERHAUL（2026-10-20）
+## v2.46.127 移动端换肤失效修复（2026-10-20）
 
+- **V246127-001 换肤层写 `:root` 等于没管手机端**：手机端所有样式挂在 `#app.is-mobile`（特异性 1,1,0），远高于 `:root`（0,1,0）。它们在各自文件里**重新声明了一整套餐牌**，所以 v2.46.126 的 `:root` 覆盖对移动端零效果。**教训：换肤先 grep「谁在更高特异性上重声明了同名 token」，别只看 `:root`。**
+- **V246127-002 移动端有 3 套并行色板，改色要三套一起改**：
+  - `--m-*`：`mobile-product.css`（基础面）→ 被 `mobile-paper.css` 二次覆盖
+  - `--xz-*`：`mobile-paper.css` 三块（夜 `#app.is-mobile` / 日 `html[data-theme="day"] #app.is-mobile` / 浮层 `html.m-app`）
+  - `--lj-*`+`--ls-*`+玻璃：`mobile-ab-theme.css` 整体重映射成「深空靛紫」
+  只改其中一套 → 出现「同一屏里冷底配暖卡」的拼盘。
+- **V246127-003 选择器列表要带上日间变体**：写 `#app.is-mobile` 单条能压过夜块，但压不过 `html[data-theme="day"] #app.is-mobile`（1,2,1）。用 `#app.is-mobile, html[data-theme="day"] #app.is-mobile { ... }` 一条规则覆盖两模式，值只维护一份——比抄两份可靠（抄两份必有一天漏改一处）。
+- **V246127-004 改 token 成渐变会打瞎拿它填 `border-color` 的地方**：`--xz-btn-bg` 原来是纯色，被 `.fin-quick-tag.on` 用作 `border-color`；改成 `linear-gradient()` 后该声明在计算值时非法、退成 `currentColor`（看着像没边框）。**动 token 的类型（色值→渐变）前，先 grep 它被用在哪些属性上。**
+- **V246127-005 「淡」和「黑」是两个不同病**：
+  - 淡 = 明度过高（`--tc-violet:#b98bff`、`--tc-violet-bright:#d9c2ff`、EP `light-3~9` 那串 `#a8b1f7/#cfd3ff/#e4e6ff`）。修法是**降明度提饱和**（`#8b5cff`），不是换色相。
+  - 黑 = 旧设计为了「黑胶囊」故意写死的深色底（`--xz-btn-bg:#2b2b26`、`--m-accent:#2b2b26`、`.mt-tabbar` 的 `border-top:2px solid #2b2b26`）。科技风下这些必须跟底色一起换，否则就是「暗底上的黑块」。
+- **V246127-006 浮层要单独管**：el-dialog/popover/select 下拉 `append-to-body`，逃出 `#app.is-mobile`，靠 `html.m-app` 那套令牌兜底。移动端换肤漏了 `html.m-app` 的话，站内是新的、一弹窗就回旧色。
+
+---
+
+## v2.46.126 全站科技霓虹换肤 TECH_OVERHAUL（2026-10-20）
 - **V246126-001 换肤别逐文件改，走 token 覆盖层**：项目 129 个 `.vue`，硬编码深底（`#0d1421`、`rgba(...)`）大量散布在 scoped 里，逐个改既漏又易破布局。**正解**：新建一个全站 `tech-theme.css`，在 `main.js` **最后一行** import —— CSS 层叠里后引入者优先，只要选择器特异性不低（`:root` / `:root[data-theme="night"]` / `:root[data-theme="day"]` 三条并列）就能整层覆盖，所有 `var()` 引用自动跟随。**代价**：对硬编码字面量颜色无效，需单独定点补刀（本次登录页 + day 模式浅块已补）。
 - **V246126-002 覆盖 `:root[data-theme="day"]` 必须显式写**：只覆盖 `:root` 会被属性选择器（特异性 0,2,0 > 0,1,0）压回去，白天主题纹丝不动。三条选择器缺一不可。
 - **V246126-003 全局背景伪元素挂 `#app` 不挂 `body`**：`body` 上有主题自带背景色，伪元素挂 `#app` + `z-index:-2`（鸿光）/`-1`（粒子 canvas）才能叠在 body 底色之上、内容之下；必须 `pointer-events:none`，否则整站点不动。

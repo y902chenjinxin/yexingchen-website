@@ -1,3 +1,21 @@
+## [v2.46.127] - 2026-10-20
+
+### 修手机端换肤失效：三套移动端色板接入科技层（夜星：手机端好多颜色冲突，如黑色，好多颜色较淡，如淡紫色）
+
+- **根因**：v2.46.126 的换肤层写的是 `:root`（特异性 0,1,0），而手机端样式全挂在 `#app.is-mobile`（1,1,0）上，并各自重声明了一整套令牌——**特异性更高 → 第 1 节对移动端一点没生效**。手机里仍是旧「墨夜手账 / 宣纸手账」暖褐纸色 + 旧鎏金，压在冷黑科技底上，于是暖褐卡配冷黑底、宣纸白配黑胶囊、旧金 `#c9a45c` 发脏。
+- **三套漏掉的色板**（全部有自己的一份值）：
+  - `--m-*` → `mobile-product.css`（基础面）再被 `mobile-paper.css` 覆盖（宣纸皮肤）
+  - `--xz-*` → `mobile-paper.css` 三块（夜 / 日 / `html.m-app` teleport 浮层兜底）
+  - `--lj-*` / `--ls-*` / 玻璃令牌 → `mobile-ab-theme.css` 整体重映射成「深空靛紫」（`--lj-paper #13141d`、`--ls-paper #10111a`、`--glass-border` 白 7%）
+- **修法**：新增第 9 节「移动端令牌桥」，用 `#app.is-mobile, html[data-theme="day"] #app.is-mobile` 一条规则（选择器列表里带上日间变体，才能同时压过 `html[data-theme="day"] #app.is-mobile` 那块）把上述三套令牌统一给成科技值；并补 `--el-color-primary-light-3~9`（原来 `mobile-native-glass.css` 给的是 `#5b6ae0` + 一串淡紫白）。
+- **「黑色」的直接来源**：日间模式 `--xz-btn-bg:#2b2b26`（黑胶囊）、`--m-accent:#2b2b26`、`.mt-tabbar` 的 `border-top: 2px solid #2b2b26`。移动端现在**昼夜共用一套暗色值**，白天不再有纸白块与黑胶囊。
+- **「淡紫色」的直接来源**：① `.text-gold` 渐变尾色是 `--tc-violet-bright:#d9c2ff`（一半字变淡紫）；② `--tc-violet:#b98bff` 明度偏高，做文字/数字色发灰；③ `mobile-native-glass` 那串 `#a8b1f7/#cfd3ff/#e4e6ff`。修：渐变改成「亮青→青→电蓝」全程高饱和、`--tc-violet` 压到 `#8b5cff`、EP 主色阶梯全部换青。
+- **令牌化不到的硬编码逐条补**（对照原文，均带 `!important` 压过原规则）：移动端玻璃卡被写死 `#10111a` 平涂底 → 换冷黑 + 青色发丝边；我的页主题分段选中态靛紫渐变 → 青蓝；`.mt-tabbar` 昼夜两版；记账左滑删除砖红 `#c14b3a` → 霓虹红 `#ff4d6d`；拼图/贴纸日间浅纸卡 + 深棕字；手机端登录卡主按钮被写死回旧鎏金渐变 → 青蓝；笔记代码块奶油字 `#e8dcc0` → 冷白。
+- **顺带修掉的连带坑**：`--xz-btn-bg` 改成渐变后，`mobile-paper.css` 里 `.fin-quick-tag.on/.fin-fund.active` 拿它去填 `border-color`（不接受渐变）会非法退成 `currentColor`，已显式补回青边；`#app.is-mobile` 自带的 `background: var(--m-bg) !important` 会把辉光/粒子层整片盖死（同 v2.46.126 的 `#app` 坑），已置 `transparent`。
+- 版本 SW v440→v441、APP_VERSION v2.46.126→v2.46.127。
+
+---
+
 ## [v2.46.126] - 2026-10-20
 
 ### 全站视觉体系重构：水墨/雨青苹果/紫罗兰 Flux → 科技霓虹 HUD（TECH_OVERHAUL）
