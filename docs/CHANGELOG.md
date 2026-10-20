@@ -45,6 +45,44 @@
 
 ---
 
+## [v2.46.139] - 2026-10-20
+
+### 手机端文字按钮 → 图标按钮（v2.46.135~139 合并，夜星：比如通讯录，全盘看下）
+
+#### 基建：一套代码两种形态
+- **`utils/icons/uiIcons.js`（新）**：语义图标表。之前的 `appIcons.js` 是按 **emoji 键**查表（服务数据里的 emoji 字符），动作按钮需要的是「这个动作叫什么」，所以另起一张语义表：`plus / edit / trash / pin / unpin / refresh / back / prev / next / search / filter / close / check / calendar / list / graph / upload / download / save / camera / sync / copy / eye / hide / tag / grid / play …`（24×24、1.6 描边、`currentColor` 无色）。
+- **`components/common/IconButton.vue`（新）**：图标按钮。桌面显示「图标 + 文字」，`#app.is-mobile` 下隐藏 `.ibtn__label` 只留图标；`title` 与 `aria-label` 都取 `label`，图标化不掉可读性；`md 36 / sm 30`（手机 38 / 32，触控区达标）；`variant = default/ghost/primary/danger`，primary 走全站主按钮令牌 `--tc-btn-grad`。
+- **`BackButton.vue`**：手机端只留箭头，补 `aria-label="返回"`。
+
+#### 覆盖范围（约 60 个按钮）
+通讯录（新增 / 人脉图谱 / 上传头像 / 清除头像 / 置顶 / 编辑 / 删除 / 上月 / 下月 / 回本月）、生活（记体重 / 记一顿 / 家人 / 删除 / 预览 / 编辑）、订阅（新增 / 已缴费 / 编辑 / 删除）、时光（刷新 / 记下旅程）、遗失物（记一笔 / 重置 / 编辑 / 删除）、穿搭（加一件 / 换一套 / 就穿这套 / 存搭配 / 拼成图）、保险箱（存一条 / 重置 / 复制账号 / 显示隐藏 / 复制密码 / 编辑 / 删除）、音乐 / 小说 / 视频（上传 / 批量导入 / 查询 / 设为背景乐 / 编辑 / 删除）、工具（添加 / 查询 / 使用 / 编辑 / 删除）、行情（刷新 / 加自选 / 加入自选 / 保存 / 删除）、资讯（刷新全部 / 添加订阅 / 保存并抓取 / 抓取 / 编辑）、个人中心（编辑信息 / 修改密码 / 切换账号 / 退出登录）、记账（记一笔 / 导出 CSV / 管理分类 / 去归类）、笔记（新建笔记 / 删除）。
+
+**有意保留文字**：弹窗里的「取消 / 确定 / 保存 / 选择文件」、日/月/年 分段切换、以及穿搭/记账的页签（`wd-tab` / `fin-tab-item`）——这些是「状态选择」不是「动作」，图标化反而降低可读性。
+
+#### 两个必须记下的坑
+1. **`:global()` 写法把手机端整个 App 隐藏了**（v2.46.135 引入，v2.46.137 修）。`IconButton.vue` 里写 `:global(#app.is-mobile) .ibtn {…}`，Vue 的 scoped 编译会把**后代丢掉**，产出裸的 `#app.is-mobile{display:none;width:38px}` → 手机端整页空白。正解：**整条选择器包进 `:global()`**，即 `:global(#app.is-mobile .ibtn) {…}`。顺带修掉装饰加载器里 4 处同写法（会把 box-shadow / 渐变错误地施加到 `<html data-theme="day">` 上）。
+2. **`TechBackdrop.vue` 给只读 `clientWidth` 赋值**（v2.46.126 引入，v2.46.136 修）。`w = el.clientWidth = window.innerWidth` 在严格模式抛 `TypeError`，而它在 `onMounted` 里调用 → 中断渲染、整页空白。画布尺寸只能写 `canvas.width/height`。顺带修 `prefers-reduced-motion` 分支一帧都不画的问题。
+
+#### 顺带修
+记账 KPI `+ ¥ 13554.00` 在 390px 屏被省略号截断（实测计算字号 31.2px、scrollWidth 182 > 可用 142）。窄屏 17px + 等宽数字，写在全局层用 `!important`（scoped 里的 `@media` 会被更高特异性规则压住）。
+
+#### 验证（现网实测）
+自建探针 `artifacts/_probe/audit/probe-icon-buttons.cjs`：390×844 + `?m=1`，登录后逐页统计「按钮总数 / 图标按钮数 / 纯文字按钮数 / 文字标签是否隐藏」并截图。结果：
+| 页面 | 按钮 | 图标按钮 | 纯文字 |
+|---|---|---|---|
+| 通讯录 | 24 | 21 | 0 |
+| 生活·体重 | 10 | 4 | 0 |
+| 生活·美食 | 13 | 5 | 0 |
+| 订阅 | 10 | 7 | 0 |
+| 时光 | 7 | 2 | 0 |
+| 遗失物 | 9 | 6 | 0 |
+| 保险箱 | 5 | 2 | 0 |
+| 资讯 | 52 | 22 | 0 |
+
+版本 SW v448→v453、APP_VERSION v2.46.134→v2.46.139。
+
+---
+
 ## [v2.46.134] - 2026-10-20
 
 ### 夜星五条视觉问题统修 + 昼夜双模式现网实测（v2.46.130~134 合并）

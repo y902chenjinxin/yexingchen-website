@@ -29,6 +29,17 @@
 
 ---
 
+## v2.46.135~139 手机端图标按钮 + 两个致命坑（2026-10-20）
+
+- **V246135-001 scoped CSS 里 `:global(A) .b {}` 会退化成 `A{}`**：`IconButton.vue` 写了 `:global(#app.is-mobile) .ibtn {…}`，Vue 编译后成了裸的 `#app.is-mobile{display:none;width:38px}` —— **手机端整个 App 被 display:none**（整页空白）。正解：整条选择器包进去 `:global(#app.is-mobile .ibtn)`。装饰加载器里有 4 处同写法（把 box-shadow/渐变施加到 `<html data-theme=day>`），已一并修。**规矩：`:global()` 内部必须包含完整的「祖先 + 后代」。**
+- **V246136-001 只读 DOM 属性不能赋值**：`TechBackdrop.vue` 写过 `w = el.clientWidth = window.innerWidth`。`clientWidth/clientHeight` 是只读计算值，ES module 严格模式直接抛 TypeError；又在 `onMounted` 里 → 渲染中断、整页空白。画布尺寸只能写 `canvas.width/height`。
+- **V246136-002 定位「整页空白」的高效手法**：CDP `CSS.getMatchedStylesForNode` 查 `#app` 命中的规则，一眼看到 `#app.is-mobile{display:none}` 及其来源 sheet。比逐条 `grep display:none` 快得多。
+- **V246139-001 scoped `@media` 打不过全局高特异性**：`FinanceView` 里加 `@media (max-width:430px){ .fin-kpi-val{font-size:17px} }` 完全没生效（实测仍 31.2px）。原因是有 `#app.is-mobile :is(.fin-kpi-val…)` 这类 (1,3,0) 规则。**要压这种，必须写进全局层 + `!important`。**
+- **V246137-001 发版后旧 `index.html` 会指向已删资源**：SW 缓存了 HTML，新版本上线后首次访问可能 404 → 空白。探针里先 `unregister()` + `caches.delete()` 再导航；用户侧提示「强刷一次」。
+- **V246135-002 图标体系是两套**：`appIcons.js` 按 emoji 键（数据里的字符），动作按钮用 `uiIcons.js` 的语义键。别往 emoji 表里塞 `plus/edit`。
+
+---
+
 ## v2.46.130~134 视觉巡检五条 + 现网双模式实测（2026-10-20）
 
 - **V246130-001 CSS 注释里的「星号＋斜杠」会吞掉下一条规则**：`tech-theme-day.css` 头注释写了 `--tc-*/核心 token`，`*/` 提前闭合注释，中文成了非法选择器，紧随其后的**昼间调色板块被当成假规则的 body**。编译不报错、构建不报错，只是白天一半 token 是夜间值。**规矩：注释里写 `--tc-*` 后面必须跟空格。** 排查手法写进 CHANGELOG ①。
