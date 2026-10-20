@@ -650,3 +650,29 @@ html[data-theme="day"] #app.is-mobile {
   background: #cf2540 !important;
   border-color: #cf2540 !important;
 }
+
+/* ============ 11. 白天「朴素主按钮」：压掉旧琥珀 ============
+ * desktop-product.css 里 `:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary.is-plain`
+ * 是 (1,4,0)，把按钮写成「淡琥珀底 + #92400e 深棕字」（音乐页「编辑」、工具页「使用/查询」
+ * 这些表格行内按钮全是它）。第 9 节那条只覆盖了 `:not(.is-plain)`，所以这些仍是黄字。
+ * 这里用同等特异性(1,4,0) + !important 换成「青描边 + 青字」。 */
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary.is-plain {
+  --el-button-text-color: #0a708c;
+  --el-button-bg-color: rgba(10, 112, 140, .08);
+  --el-button-border-color: rgba(10, 112, 140, .42);
+  --el-button-hover-text-color: #ffffff;
+  --el-button-hover-bg-color: #0a708c;
+  --el-button-hover-border-color: #0a708c;
+  --el-button-active-text-color: #ffffff;
+  --el-button-active-bg-color: #0a5f78;
+  --el-button-active-border-color: #0a5f78;
+  color: #0a708c !important;
+  background: rgba(10, 112, 140, .08) !important;
+  border-color: rgba(10, 112, 140, .42) !important;
+  box-shadow: none !important;
+}
+:root[data-theme="day"] #app:not(.is-mobile) .el-button--primary.is-plain:hover {
+  color: #ffffff !important;
+  background: #0a708c !important;
+  border-color: #0a708c !important;
+}
