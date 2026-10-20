@@ -69,6 +69,11 @@ export const workbenchApi = {
     // v2.46.143：断链自罚结算（幂等，进「今天」页调用一次）+ 本周复盘
     settle: () => api.post('/habits/settle'),
     weekly: () => api.get('/habits/weekly'),
+    // v2.46.144（P2）：六账户雷达 / 家人概览 / 周复盘快照
+    radar: () => api.get('/habits/radar'),
+    household: () => api.get('/habits/household'),
+    reviews: (limit = 12) => api.get('/habits/reviews', { params: { limit } }),
+    makeReview: () => api.post('/habits/reviews'),
   },
 
   // 服务器资源监测（PC 工作台，仅超管）：内存 / 磁盘 / 模块存储占用 / 进程内存

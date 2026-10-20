@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.finance import FinanceTransaction
-from app.models.habits import Habit, HabitCheckin, HabitPenalty
+from app.models.habits import Habit, HabitCheckin, HabitPenalty, HabitReview
 from app.utils.security import get_current_user
 from app.routers.workbench._common import ok, raise_http
 
@@ -28,6 +28,17 @@ HOUSEHOLD_ID = 1
 PENALTY_CATEGORY = "断链罚金"
 # 结算最多回溯多少天：避免某习惯停用半年后进站一次性刷出 180 笔罚单
 SETTLE_MAX_DAYS = 60
+
+# 复利六账户（「人生复利」那张图的落地）。顺序即雷达图的绘制顺序。
+ACCOUNTS = [
+    ("health", "身体"),
+    ("mind", "认知"),
+    ("wealth", "财富"),
+    ("social", "信用人脉"),
+    ("emotion", "情绪关系"),
+    ("work", "作品"),
+]
+ACCOUNT_KEYS = {k for k, _ in ACCOUNTS}
 
 
 def _today_int() -> int:
@@ -54,6 +65,8 @@ class HabitIn(BaseModel):
     # 断链自罚：单位分，0 = 关闭；penalty_grace = 连续漏掉时前 N 天不罚
     penalty_cents: int = Field(default=0, ge=0, le=100000)
     penalty_grace: int = Field(default=0, ge=0, le=7)
+    # 复利账户（空串 = 未归类）
+    account: Optional[str] = None
 
 
 class CheckinResult(BaseModel):
@@ -146,6 +159,7 @@ def list_habits(
             "checked_today": checked_today,
             "penalty_cents": h.penalty_cents or 0,
             "penalty_grace": h.penalty_grace or 0,
+            "account": h.account or "",
             "penalty_total_cents": penalty_totals.get(h.id, 0),
             **stats,
         })
@@ -168,6 +182,7 @@ def create_habit(
         sort_order=body.sort_order,
         penalty_cents=body.penalty_cents,
         penalty_grace=body.penalty_grace,
+        account=(body.account if body.account in ACCOUNT_KEYS else ""),
     )
     db.add(h)
     db.commit()
@@ -239,6 +254,7 @@ def update_habit(
     h.sort_order = body.sort_order
     h.penalty_cents = body.penalty_cents
     h.penalty_grace = body.penalty_grace
+    h.account = body.account if body.account in ACCOUNT_KEYS else ""
     db.commit()
     return ok({"id": h.id})
 
@@ -372,14 +388,11 @@ def settle_penalties(
     )
 
 
-@router.get("/weekly")
-def weekly_review(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """本周复盘（周一起算）：打卡率 / 断链 / 罚金 / 下周只做一件。"""
-    uid = current_user["user_id"]
-    today = date.today()
+def _compute_weekly(db: Session, uid: int, today: date) -> dict:
+    """本周复盘（周一起算）：打卡率 / 断链 / 罚金 / 下周只做一件。**纯计算，不写库。**
+
+    /weekly（现算）和 /reviews（存快照）共用这一份，避免两处口径不一致。
+    """
     monday = today - timedelta(days=today.weekday())
     days_elapsed = (today - monday).days + 1
     week_ints = [_to_int(monday + timedelta(days=i)) for i in range(days_elapsed)]
@@ -455,8 +468,7 @@ def weekly_review(
         )
         suggestion = f"下周别追完成率，只要求「每天点一下」，就从「{worst['name']}」开始。"
 
-    return ok(
-        {
+    return {
             "week_start": monday.isoformat(),
             "days_elapsed": days_elapsed,
             "items": items,
@@ -470,5 +482,209 @@ def weekly_review(
             "text": text,
             "suggestion": suggestion,
             "rows": rows,
+        }
+
+
+@router.get("/weekly")
+def weekly_review(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """本周复盘（现算，不落库）。"""
+    return ok(_compute_weekly(db, current_user["user_id"], date.today()))
+
+
+@router.get("/radar")
+def account_radar(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """六账户雷达：每个复利账户本周的完成率（有习惯的账户才算，没建的给 0 并带 items=0）。"""
+    uid = current_user["user_id"]
+    today = date.today()
+    weekly = _compute_weekly(db, uid, today)
+    by_id = {r["id"]: r for r in weekly["rows"]}
+
+    habits = (
+        db.query(Habit)
+        .filter(Habit.user_id == uid, Habit.archived == False, Habit.deleted_at.is_(None))  # noqa: E712
+        .all()
+    )
+    acc_map = {h.id: (h.account or "") for h in habits}
+
+    buckets = {k: {"checked": 0, "possible": 0, "items": 0} for k, _ in ACCOUNTS}
+    for hid, row in by_id.items():
+        key = acc_map.get(hid) or ""
+        if key not in buckets:
+            continue
+        buckets[key]["checked"] += row["checked"]
+        buckets[key]["possible"] += row["days"]
+        buckets[key]["items"] += 1
+
+    items = []
+    for key, label in ACCOUNTS:
+        b = buckets[key]
+        items.append(
+            {
+                "key": key,
+                "label": label,
+                "checked": b["checked"],
+                "possible": b["possible"],
+                "items": b["items"],
+                "rate": round(b["checked"] / b["possible"] * 100) if b["possible"] else 0,
+            }
+        )
+    return ok(
+        {
+            "week_start": weekly["week_start"],
+            "days_elapsed": weekly["days_elapsed"],
+            "accounts": items,
+            "unclassified": sum(1 for hid, key in acc_map.items() if key not in ACCOUNT_KEYS),
+            "overall": weekly["rate"],
+        }
+    )
+
+
+@router.get("/household")
+def household_overview(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """家人今日/本周概览（只读，不含罚金金额）。
+
+    夜星要「被看见才更有约束」：这条链同步给家里人，比自罚更有用。
+    只给汇总数字（今天几件、连续几天、本周完成率），**不给明细与罚金** —— 够监督，不越界。
+    """
+    from app.services.member_naming import member_map
+
+    today = date.today()
+    today_int = _today_int()
+    monday = today - timedelta(days=today.weekday())
+    week_ints = [_to_int(monday + timedelta(days=i)) for i in range((today - monday).days + 1)]
+
+    mmap = member_map(db, HOUSEHOLD_ID)
+    out = []
+    for uid, info in mmap.items():
+        habits = (
+            db.query(Habit)
+            .filter(Habit.user_id == uid, Habit.archived == False, Habit.deleted_at.is_(None))  # noqa: E712
+            .all()
+        )
+        if not habits:
+            continue
+        ids = [h.id for h in habits]
+        done_today = (
+            db.query(HabitCheckin)
+            .filter(HabitCheckin.habit_id.in_(ids), HabitCheckin.checkin_date == today_int)
+            .count()
+        )
+        week_checked = (
+            db.query(HabitCheckin)
+            .filter(HabitCheckin.habit_id.in_(ids), HabitCheckin.checkin_date.in_(week_ints))
+            .count()
+        )
+        best = 0
+        for h in habits:
+            best = max(best, _compute_stats(db, h, uid)["streak"])
+        possible = len(ids) * len(week_ints)
+        out.append(
+            {
+                "user_id": uid,
+                "name": info["name"],
+                "avatar": info["avatar"],
+                "is_me": uid == current_user["user_id"],
+                "items": len(ids),
+                "today_done": done_today,
+                "today_total": len(ids),
+                "week_rate": round(week_checked / possible * 100) if possible else 0,
+                "best_streak": best,
+            }
+        )
+    out.sort(key=lambda r: (not r["is_me"], -r["today_done"], -r["best_streak"]))
+    return ok({"today": today.isoformat(), "members": out})
+
+
+@router.get("/reviews")
+def list_reviews(
+    limit: int = 12,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """历史周复盘（新→旧）。"""
+    uid = current_user["user_id"]
+    rows = (
+        db.query(HabitReview)
+        .filter(HabitReview.user_id == uid)
+        .order_by(HabitReview.week_start.desc())
+        .limit(max(1, min(limit, 52)))
+        .all()
+    )
+    return ok(
+        {
+            "reviews": [
+                {
+                    "week_start": f"{str(r.week_start)[:4]}-{str(r.week_start)[4:6]}-{str(r.week_start)[6:]}",
+                    "rate": r.rate,
+                    "checked": r.checked,
+                    "possible": r.possible,
+                    "items": r.items,
+                    "penalty_count": r.penalty_count,
+                    "penalty_cents": r.penalty_cents,
+                    "text": r.text,
+                    "suggestion": r.suggestion,
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
+@router.post("/reviews")
+def make_review(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """生成本周复盘快照（幂等：同一周只存一份，重复调用返回已有那份）。
+
+    周日/周一前端会主动调一次，用来做「这周怎么样」的提醒；
+    存下来之后即使习惯被删改，历史周的数字也不会变。
+    """
+    uid = current_user["user_id"]
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    week_start = _to_int(monday)
+
+    exist = (
+        db.query(HabitReview)
+        .filter(HabitReview.user_id == uid, HabitReview.week_start == week_start)
+        .first()
+    )
+    if exist:
+        return ok({"created": False, "review": {"week_start": monday.isoformat(), "rate": exist.rate, "text": exist.text}})
+
+    data = _compute_weekly(db, uid, today)
+    row = HabitReview(
+        user_id=uid,
+        week_start=week_start,
+        rate=data["rate"],
+        checked=data["checked"],
+        possible=data["possible"],
+        items=data["items"],
+        penalty_count=data["penalty_count"],
+        penalty_cents=data["penalty_cents"],
+        text=data["text"][:255],
+        suggestion=data["suggestion"][:255],
+    )
+    db.add(row)
+    db.commit()
+    return ok(
+        {
+            "created": True,
+            "review": {
+                "week_start": monday.isoformat(),
+                "rate": data["rate"],
+                "text": data["text"],
+                "suggestion": data["suggestion"],
+            },
         }
     )

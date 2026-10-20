@@ -28,6 +28,12 @@ export const useHabitsStore = defineStore('habits', () => {
   const weekly = ref(null)
   /** 最近一次结算结果（有新罚单时用来弹提示） */
   const lastSettle = ref(null)
+  /** 六账户雷达（/habits/radar） */
+  const radar = ref(null)
+  /** 家人概览（/habits/household） */
+  const household = ref(null)
+  /** 历史周复盘（/habits/reviews） */
+  const reviews = ref([])
   const loading = ref(false)
   const error = ref('')
   /** 这批数据属于哪一天（判断跨天） */
@@ -119,6 +125,51 @@ export const useHabitsStore = defineStore('habits', () => {
     }
   }
 
+  async function loadRadar() {
+    try {
+      const res = await workbenchApi.habits.radar()
+      radar.value = res?.data || res || null
+      return radar.value
+    } catch {
+      radar.value = null
+      return null
+    }
+  }
+
+  async function loadHousehold() {
+    try {
+      const res = await workbenchApi.habits.household()
+      household.value = res?.data || res || null
+      return household.value
+    } catch {
+      household.value = null
+      return null
+    }
+  }
+
+  async function loadReviews() {
+    try {
+      const res = await workbenchApi.habits.reviews()
+      reviews.value = res?.data?.reviews || []
+      return reviews.value
+    } catch {
+      reviews.value = []
+      return []
+    }
+  }
+
+  /** 生成本周复盘快照（幂等）。返回 created / review */
+  async function makeReview() {
+    try {
+      const res = await workbenchApi.habits.makeReview()
+      const data = res?.data || res || {}
+      if (data?.created) await loadReviews()
+      return data
+    } catch {
+      return null
+    }
+  }
+
   async function create(payload) {
     const res = await workbenchApi.habits.create(payload)
     await load(true)
@@ -136,8 +187,9 @@ export const useHabitsStore = defineStore('habits', () => {
   }
 
   return {
-    list, weekly, lastSettle, loading, error, day,
+    list, weekly, radar, household, reviews, lastSettle, loading, error, day,
     doneCount, total, progress, pending, bestStreak, allDone,
     load, toggle, create, update, remove, settle, loadWeekly,
+    loadRadar, loadHousehold, loadReviews, makeReview,
   }
 })

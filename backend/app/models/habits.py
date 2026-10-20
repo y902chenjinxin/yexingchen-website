@@ -37,6 +37,9 @@ class Habit(Base):
     penalty_cents = Column(Integer, nullable=False, default=0, server_default="0")
     # 宽限：允许漏几天不罚（0 = 漏一天就罚）。给「一周只能做 3 次」这类习惯用。
     penalty_grace = Column(Integer, nullable=False, default=0, server_default="0")
+    # 复利账户（v2.46.144）：health/mind/wealth/social/emotion/work，空串 = 未归类。
+    # 六个账户就是「人生复利」那张图的落地：雷达图按账户汇总本周完成率。
+    account = Column(String(16), nullable=False, default="", server_default="")
     sort_order = Column(Integer, nullable=False, default=0)
     archived = Column(Boolean, nullable=False, default=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -104,4 +107,31 @@ class HabitPenalty(Base):
     __table_args__ = (
         UniqueConstraint("habit_id", "miss_date", name="uq_hbh_penalty_day"),
         Index("ix_hbh_penalty_user", "user_id", "miss_date"),
+    )
+
+class HabitReview(Base):
+    """周复盘快照（v2.46.144）。
+
+    为什么要存下来而不是每次现算：
+      1) 「历史上每周是什么样」需要固定快照（习惯被删/改名后，旧周数据仍应可读）；
+      2) 周日主动提醒需要知道「这周是否已经生成过」，靠 (user_id, week_start) 唯一约束判断。
+    """
+
+    __tablename__ = "xuanhuang_habit_reviews"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    week_start = Column(Integer, nullable=False)  # YYYYMMDD（周一）
+    rate = Column(Integer, nullable=False, default=0)
+    checked = Column(Integer, nullable=False, default=0)
+    possible = Column(Integer, nullable=False, default=0)
+    items = Column(Integer, nullable=False, default=0)
+    penalty_count = Column(Integer, nullable=False, default=0)
+    penalty_cents = Column(Integer, nullable=False, default=0)
+    text = Column(String(255), nullable=False, default="")
+    suggestion = Column(String(255), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "week_start", name="uq_hbh_review_week"),
     )

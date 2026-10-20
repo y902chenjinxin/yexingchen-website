@@ -46,6 +46,65 @@
         </div>
       </section>
 
+      <!-- 六账户雷达（P2） -->
+      <section v-if="radar && total" class="hb-card glass-card">
+        <div class="hb-card-head">
+          <h2 class="hb-card-title">复利六账户</h2>
+          <span class="hb-card-sub">本周至今 · 总 {{ radar.overall }}%</span>
+        </div>
+        <div class="hb-radar-wrap">
+          <svg class="hb-radar" viewBox="0 0 120 120" role="img" aria-label="六账户完成率雷达图">
+            <g class="hb-radar-grid">
+              <polygon v-for="g in RADAR_GRID" :key="g.key" :points="g.points" />
+              <line
+                v-for="(p, i) in RADAR_AXIS"
+                :key="'ax' + i"
+                :x1="60" :y1="60" :x2="p.x" :y2="p.y"
+              />
+            </g>
+            <polygon class="hb-radar-area" :points="radarPoints" />
+            <circle
+              v-for="(p, i) in radarDots"
+              :key="'d' + i"
+              :cx="p.x" :cy="p.y" :r="1.6"
+              class="hb-radar-dot"
+            />
+            <text
+              v-for="(l, i) in radarLabels"
+              :key="'l' + i"
+              :x="l.x" :y="l.y"
+              :text-anchor="l.anchor"
+              dominant-baseline="middle"
+              class="hb-radar-label"
+              :class="{ empty: l.empty }"
+            >{{ l.label }}</text>
+          </svg>
+        </div>
+        <p v-if="radar.unclassified" class="hb-radar-tip">
+          有 {{ radar.unclassified }} 个习惯没归账户，点「管理 → 编辑」给它选一个，雷达才画得全。
+        </p>
+      </section>
+
+      <!-- 家人（P2）：被看见才有约束，只给汇总不给明细 -->
+      <section v-if="household && household.members && household.members.length > 1" class="hb-card glass-card">
+        <div class="hb-card-head">
+          <h2 class="hb-card-title">家人</h2>
+          <span class="hb-card-sub">今天打卡情况</span>
+        </div>
+        <ul class="hb-fam">
+          <li v-for="m in household.members" :key="m.user_id" class="hb-fam-item">
+            <span class="hb-fam-ava" aria-hidden="true">{{ m.avatar }}</span>
+            <span class="hb-fam-name">
+              {{ m.name }}<em v-if="m.is_me">（我）</em>
+            </span>
+            <span class="hb-fam-today" :class="{ all: m.today_done === m.today_total }">
+              {{ m.today_done }}/{{ m.today_total }}
+            </span>
+            <span class="hb-fam-meta">本周 {{ m.week_rate }}% · 连续 {{ m.best_streak }} 天</span>
+          </li>
+        </ul>
+      </section>
+
       <!-- 今日清单 -->
       <section v-if="total" class="hb-card glass-card">
         <ul class="hb-list">
@@ -65,6 +124,7 @@
                 <span class="hb-meta">
                   连续 {{ h.streak }} 天 · 本周 {{ h.week_count }}<template v-if="h.weekly_goal">/{{ h.weekly_goal }}</template>
                   · 累计 {{ h.total_count }}
+                  <template v-if="h.account"> · {{ accountLabel(h.account) }}</template>
                   <template v-if="h.penalty_cents"> · 罚 ¥{{ (h.penalty_cents / 100).toFixed(0) }}/天</template>
                 </span>
               </span>
@@ -125,6 +185,24 @@
         <p class="hb-wk-advice"><span>小玄</span>{{ weekly.suggestion }}</p>
       </section>
 
+      <!-- 历史复盘（P2） -->
+      <section v-if="reviews.length" class="hb-card glass-card">
+        <div class="hb-card-head">
+          <h2 class="hb-card-title">历史复盘</h2>
+          <button class="hb-link" @click="showHistory = !showHistory">
+            {{ showHistory ? '收起' : `展开 ${reviews.length} 周` }}
+          </button>
+        </div>
+        <ul v-if="showHistory" class="hb-hist">
+          <li v-for="r in reviews" :key="r.week_start" class="hb-hist-item">
+            <span class="hb-hist-week">{{ r.week_start.slice(5) }} 周</span>
+            <span class="hb-hist-rate" :class="{ low: r.rate < 60 }">{{ r.rate }}%</span>
+            <span class="hb-hist-n">{{ r.checked }}/{{ r.possible }}<template v-if="r.penalty_count"> · 罚 {{ r.penalty_count }} 次</template></span>
+            <span class="hb-hist-text">{{ r.text }}</span>
+          </li>
+        </ul>
+      </section>
+
       <!-- 最近 30 天记录 -->
       <section v-if="total" class="hb-card glass-card">
         <div class="hb-card-head">
@@ -180,6 +258,21 @@
           <span>宽限天数（连续漏的前 N 天不罚）</span>
           <el-input-number v-model="form.penalty_grace" :min="0" :max="7" controls-position="right" />
         </label>
+        <div class="hb-field">
+          <span>复利账户（雷达图按账户汇总）</span>
+          <div class="hb-acc-pick">
+            <button
+              v-for="a in ACCOUNT_OPTIONS"
+              :key="a.key"
+              type="button"
+              class="hb-acc-btn"
+              :class="{ on: form.account === a.key }"
+              @click="form.account = form.account === a.key ? '' : a.key"
+            >
+              {{ a.label }}
+            </button>
+          </div>
+        </div>
         <p class="hb-form-tip">开了自罚后，漏一天会自动在账本记一笔「断链罚金」支出（个人零花池），漏几天记几笔。</p>
       </div>
       <template #footer>
@@ -213,7 +306,72 @@ import IconButton from '@/components/common/IconButton.vue'
 import { useHabitsStore } from '@/stores/habits'
 
 const store = useHabitsStore()
-const { list, weekly, loading, doneCount, total, progress, pending, bestStreak, allDone } = storeToRefs(store)
+const {
+  list, weekly, radar, household, reviews,
+  loading, doneCount, total, progress, pending, bestStreak, allDone,
+} = storeToRefs(store)
+
+/** 六账户（顺序与后端 ACCOUNTS 一致，雷达图按这个顺序画） */
+const ACCOUNT_OPTIONS = [
+  { key: 'health', label: '身体' },
+  { key: 'mind', label: '认知' },
+  { key: 'wealth', label: '财富' },
+  { key: 'social', label: '人脉' },
+  { key: 'emotion', label: '关系' },
+  { key: 'work', label: '作品' },
+]
+
+const showHistory = ref(false)
+
+/* ---------- 雷达图几何（自绘，不引图表库） ---------- */
+const RD_C = 60      // 圆心
+const RD_R = 40      // 满值半径
+const pointAt = (i, ratio) => {
+  const ang = -Math.PI / 2 + (i * Math.PI * 2) / 6
+  return {
+    x: +(RD_C + Math.cos(ang) * RD_R * ratio).toFixed(2),
+    y: +(RD_C + Math.sin(ang) * RD_R * ratio).toFixed(2),
+  }
+}
+const ringPoints = (ratio) =>
+  Array.from({ length: 6 }, (_, i) => pointAt(i, ratio)).map((p) => `${p.x},${p.y}`).join(' ')
+
+const RADAR_GRID = [
+  { key: 'r1', points: ringPoints(1) },
+  { key: 'r2', points: ringPoints(0.66) },
+  { key: 'r3', points: ringPoints(0.33) },
+]
+const RADAR_AXIS = Array.from({ length: 6 }, (_, i) => pointAt(i, 1))
+
+const radarPoints = computed(() => {
+  const accs = radar.value?.accounts || []
+  if (!accs.length) return ''
+  return accs
+    .map((a, i) => {
+      const p = pointAt(i, Math.max(0, Math.min(100, a.rate)) / 100)
+      return `${p.x},${p.y}`
+    })
+    .join(' ')
+})
+
+const radarDots = computed(() => {
+  const accs = radar.value?.accounts || []
+  return accs.map((a, i) => pointAt(i, Math.max(0, Math.min(100, a.rate)) / 100))
+})
+
+const radarLabels = computed(() => {
+  const accs = radar.value?.accounts || []
+  return accs.map((a, i) => {
+    const p = pointAt(i, 1.26)
+    return {
+      label: a.label,
+      x: +p.x.toFixed(1),
+      y: +p.y.toFixed(1),
+      anchor: p.x > RD_C + 2 ? 'start' : p.x < RD_C - 2 ? 'end' : 'middle',
+      empty: !a.items,
+    }
+  })
+})
 
 const managing = ref(false)
 const dialog = ref(false)
@@ -225,6 +383,7 @@ const form = reactive({
   weekly_goal: 0,
   penalty_yuan: 0,   // 存「元」，提交时转分
   penalty_grace: 0,
+  account: '',
 })
 
 /** 图标候选：走 AppIcon 的 emoji 查表，命中就画线性图标；没命中的原样显示也不难看 */
@@ -246,7 +405,10 @@ async function onToggle(h) {
 }
 
 function openCreate() {
-  Object.assign(form, { id: 0, name: '', icon: ICON_CHOICES[0], weekly_goal: 0, penalty_yuan: 0, penalty_grace: 0 })
+  Object.assign(form, {
+    id: 0, name: '', icon: ICON_CHOICES[0], weekly_goal: 0,
+    penalty_yuan: 0, penalty_grace: 0, account: ACCOUNT_OPTIONS[0].key,
+  })
   dialog.value = true
 }
 
@@ -258,6 +420,7 @@ function openEdit(h) {
     weekly_goal: h.weekly_goal || 0,
     penalty_yuan: (h.penalty_cents || 0) / 100,
     penalty_grace: h.penalty_grace || 0,
+    account: h.account || '',
   })
   dialog.value = true
 }
@@ -274,6 +437,7 @@ async function submit() {
       // 元 → 分（后端只认分，避免浮点误差）
       penalty_cents: Math.round((Number(form.penalty_yuan) || 0) * 100),
       penalty_grace: form.penalty_grace || 0,
+      account: form.account || '',
     }
     if (form.id) await store.update(form.id, payload)
     else await store.create(payload)
@@ -324,7 +488,32 @@ onMounted(async () => {
   }
   await bootSettle()
   await store.loadWeekly()
+  await Promise.all([store.loadRadar(), store.loadHousehold(), store.loadReviews()])
+  await maybeWeekendReview()
 })
+
+/** 账户 key → 中文（行内展示用） */
+function accountLabel(key) {
+  return ACCOUNT_OPTIONS.find((a) => a.key === key)?.label || ''
+}
+
+/**
+ * 周日 / 周一首次进站时，把上周（周一快照里是本周）的复盘存一份并弹一条。
+ * 幂等由后端 (user_id, week_start) 唯一约束保证，所以不需要前端记「今天推过了」。
+ */
+async function maybeWeekendReview() {
+  const dow = new Date().getDay() // 0=周日 1=周一
+  if (dow !== 0 && dow !== 1) return
+  const r = await store.makeReview()
+  if (!r?.created) return
+  ElNotification({
+    title: '这周的复盘已经存下来了',
+    message: `${r.review?.text || ''} ${r.review?.suggestion || ''}`.trim(),
+    type: r.review?.rate >= 60 ? 'success' : 'warning',
+    duration: 8000,
+    position: 'bottom-right',
+  })
+}
 </script>
 
 <style scoped>
@@ -445,7 +634,73 @@ onMounted(async () => {
 .hb-icon-btn.on { border-color: var(--tc-cyan, #0e93b8); color: var(--tc-cyan, #0e93b8); background: rgba(14, 147, 184, .08); }
 .hb-form-tip { margin: -4px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--tc-text-3, #5b6f8a); }
 
+/* 账户选择 */
+.hb-acc-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.hb-acc-btn {
+  padding: 5px 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14));
+  background: transparent; color: var(--tc-text-2, #46586e);
+  font: inherit; font-size: 12.5px; line-height: 1.4;
+}
+.hb-acc-btn.on {
+  border-color: var(--tc-cyan, #0e93b8);
+  color: var(--tc-cyan-deep, #0a708c);
+  background: rgba(14, 147, 184, .10);
+  font-weight: 600;
+}
+
+/* 雷达 */
+.hb-radar-wrap { display: flex; justify-content: center; padding: 4px 8px 2px; }
+.hb-radar { width: 100%; max-width: 320px; height: auto; }
+.hb-radar-grid polygon { fill: none; stroke: var(--tc-line, rgba(15, 60, 110, .14)); stroke-width: .6; }
+.hb-radar-grid line { stroke: var(--tc-line, rgba(15, 60, 110, .12)); stroke-width: .5; }
+.hb-radar-area {
+  fill: rgba(14, 147, 184, .18);
+  stroke: var(--tc-cyan, #0e93b8);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+.hb-radar-dot { fill: var(--tc-cyan, #0e93b8); }
+.hb-radar-label { font-size: 6px; fill: var(--tc-text-2, #46586e); }
+.hb-radar-label.empty { fill: var(--tc-text-3, #5b6f8a); opacity: .55; }
+.hb-radar-tip { margin: 6px 12px 8px; font-size: 11.5px; color: var(--tc-text-3, #5b6f8a); line-height: 1.6; }
+
+/* 家人 */
+.hb-fam { list-style: none; margin: 0; padding: 0 6px 4px; }
+.hb-fam-item {
+  display: grid; grid-template-columns: 26px 1fr auto; grid-template-rows: auto auto;
+  align-items: center; gap: 2px 8px; padding: 9px 6px;
+}
+.hb-fam-item + .hb-fam-item { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .12)); }
+.hb-fam-ava { grid-row: span 2; font-size: 18px; text-align: center; }
+.hb-fam-name { font-size: 13.5px; font-weight: 600; color: var(--tc-text, #0b1622); }
+.hb-fam-name em { font-style: normal; font-weight: 400; color: var(--tc-text-3, #5b6f8a); font-size: 11.5px; }
+.hb-fam-today {
+  grid-row: span 2; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--tc-text-2, #46586e);
+}
+.hb-fam-today.all { color: var(--color-success, #0f7a56); }
+.hb-fam-meta { font-size: 11px; color: var(--tc-text-3, #5b6f8a); }
+
+/* 历史复盘 */
+.hb-link {
+  border: 0; background: transparent; padding: 2px 4px; cursor: pointer;
+  font: inherit; font-size: 11.5px; color: var(--tc-cyan-deep, #0a708c);
+}
+.hb-hist { list-style: none; margin: 0; padding: 0 10px 6px; }
+.hb-hist-item {
+  display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: 2px 8px;
+  padding: 8px 2px; font-size: 12px;
+}
+.hb-hist-item + .hb-hist-item { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .12)); }
+.hb-hist-week { color: var(--tc-text-3, #5b6f8a); font-variant-numeric: tabular-nums; }
+.hb-hist-rate { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-success, #0f7a56); }
+.hb-hist-rate.low { color: var(--color-danger, #cf2540); }
+.hb-hist-n { color: var(--tc-text-2, #46586e); font-variant-numeric: tabular-nums; }
+.hb-hist-text { grid-column: 1 / -1; color: var(--tc-text-3, #5b6f8a); font-size: 11.5px; line-height: 1.5; }
+
 /* 手机端 */
+
 :global(#app.is-mobile .hb-page) { padding: 14px 14px 90px; }
 :global(#app.is-mobile .hb-title) { font-size: 30px; }
 :global(#app.is-mobile .hb-progress) { padding: 14px; gap: 12px; }
