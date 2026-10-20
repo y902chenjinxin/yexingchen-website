@@ -114,10 +114,14 @@ const icoSize = computed(() => (props.size === 'sm' ? 15 : 17))
 .ibtn--danger { color: var(--color-danger, #ff4d6d); border-color: rgba(255, 77, 109, .38); }
 .ibtn--danger:hover { color: #fff; background: var(--color-danger, #ff4d6d); border-color: var(--color-danger, #ff4d6d); }
 
-/* —— 手机端：只留图标 —— */
-:global(#app.is-mobile) .ibtn__label { display: none; }
-:global(#app.is-mobile) .ibtn { width: 38px; height: 38px; padding: 0; border-radius: 12px; }
-:global(#app.is-mobile) .ibtn--sm { width: 32px; height: 32px; border-radius: 10px; }
+/* —— 手机端：只留图标 ——
+ * 🔴 必须把**整条选择器**包进 :global()，不能写成 `:global(#app.is-mobile) .ibtn {}`。
+ * Vue 的 scoped 编译遇到「:global() 在前 + 后代」时会把后代丢掉，产出裸的
+ * `#app.is-mobile { display:none; width:38px }` —— 后果是**手机端整个 App 被隐藏**
+ * （v2.46.135 引入，表现为整页空白，CDP 查匹配规则才定位到）。 */
+:global(#app.is-mobile .ibtn__label) { display: none; }
+:global(#app.is-mobile .ibtn) { width: 38px; height: 38px; padding: 0; border-radius: 12px; }
+:global(#app.is-mobile .ibtn--sm) { width: 32px; height: 32px; border-radius: 10px; }
 /* 桌面强制图标模式 */
 .ibtn.is-icon-only { width: 36px; padding: 0; }
 .ibtn.is-icon-only .ibtn__label { display: none; }

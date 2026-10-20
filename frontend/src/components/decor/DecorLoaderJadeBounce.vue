@@ -69,12 +69,12 @@
   50% { transform: scale(1.2, 1); }
 }
 /* 日间主题：双色更鲜明，投影更深 */
-:global(html[data-theme="day"]) .dloader__ball {
+:global(html[data-theme="day"] .dloader__ball) {
   background: linear-gradient(135deg,
     var(--yq-gold, #a9804f) 0%,
     var(--yq-rain-deep, #22665f) 100%);
 }
-:global(html[data-theme="day"]) .dloader__shadow {
+:global(html[data-theme="day"] .dloader__shadow) {
   background: rgba(34, 102, 95, 0.3);
 }
 @media (prefers-reduced-motion: reduce) {

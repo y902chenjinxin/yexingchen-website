@@ -69,7 +69,7 @@
 .dloader__box:nth-child(9) { animation: dloader-mb-9 4s infinite; }
 
 /* 日间主题加深雨青 + 投影收敛 */
-:global(html[data-theme="day"]) .dloader__box::before {
+:global(html[data-theme="day"] .dloader__box::before) {
   background: var(--yq-rain-deep, #22665f);
   box-shadow: 0 0 6px rgba(34, 102, 95, 0.5);
 }

@@ -71,13 +71,13 @@ const sizeStyle = computed(() => ({ fontSize: `${Number(props.size) / 16}px` }))
   100% { transform: translate(0, -1em) rotate(-225deg) }
 }
 /* 日间（亮底）下，骰子投影偏深、bar 渐变更稳重 */
-:global(html[data-theme="day"]) .dloader--gold-rocker .dloader__rock {
+:global(html[data-theme="day"] .dloader--gold-rocker .dloader__rock) {
   box-shadow:
     inset -2px -2px 4px rgba(0, 0, 0, 0.3),
     inset 2px 2px 4px rgba(240, 230, 200, 0.7),
     0 4px 10px rgba(169, 128, 79, 0.4);
 }
-:global(html[data-theme="day"]) .dloader--gold-rocker .dloader__bar {
+:global(html[data-theme="day"] .dloader--gold-rocker .dloader__bar) {
   opacity: 0.85;
 }
 @media (prefers-reduced-motion: reduce) {
