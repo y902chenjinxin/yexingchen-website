@@ -111,6 +111,8 @@
               />
               <input v-model="q" class="fd-search" placeholder="搜索标题…"
                      spellcheck="false" @keyup.enter="reload(1)" />
+              <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
+              <IconButton icon="search" size="sm" label="查询" @click="reload(1)" />
             </div>
           </div>
 

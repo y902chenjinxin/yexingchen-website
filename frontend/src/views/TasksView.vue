@@ -23,6 +23,8 @@
           </button>
         </div>
         <input v-model="keyword" class="tk-input" placeholder="搜索待办" spellcheck="false" @keyup.enter="reload" />
+        <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
+        <IconButton icon="search" label="查询" @click="reload" />
       </div>
 
       <section v-for="g in groups" :key="g.key" class="tk-group">
@@ -119,6 +121,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import IconButton from '@/components/common/IconButton.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

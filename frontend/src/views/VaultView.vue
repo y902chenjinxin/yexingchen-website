@@ -21,6 +21,8 @@
 
       <div class="va-toolbar">
         <input v-model="filters.q" class="va-input" placeholder="搜名称 / 账号 / 网址 / 备注" @keyup.enter="reload">
+        <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
+        <IconButton icon="search" label="查询" @click="reload" />
         <FilterSelect v-model="filters.uploader_id" placeholder="谁存的（全部）" width="150px" @change="reload">
           <el-option v-for="u in uploaders" :key="u.user_id" :value="u.user_id" :label="u.name" />
         </FilterSelect>

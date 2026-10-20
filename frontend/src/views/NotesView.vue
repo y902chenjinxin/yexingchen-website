@@ -24,6 +24,8 @@
           clearable
           @keyup.enter="reload"
         />
+        <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
+        <IconButton icon="search" label="查询" @click="reload" />
         <el-select
           v-model="statusFilter"
           class="nt-select"

@@ -81,6 +81,8 @@
       <section v-else-if="tab === 'items'" class="wd-pane">
         <div class="wd-toolbar">
           <input v-model="itemFilters.q" class="wd-input" placeholder="搜名称 / 品牌 / 备注" @keyup.enter="loadItems">
+          <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
+          <IconButton icon="search" size="sm" label="查询" @click="loadItems" />
           <FilterSelect v-model="itemFilters.category" placeholder="全部品类" width="130px" @change="loadItems">
             <el-option v-for="c in metas.categories" :key="c" :value="c" :label="c" />
           </FilterSelect>

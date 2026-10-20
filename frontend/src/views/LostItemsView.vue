@@ -40,6 +40,8 @@
           @change="reload"
         />
         <input v-model="filters.q" class="li-input" placeholder="搜物品 / 地点 / 经过" @keyup.enter="reload">
+        <!-- v2.46.149：搜索框光靠回车太隐蔽，补一个「查询」按钮 -->
+        <IconButton icon="search" label="查询" @click="reload" />
         <IconButton icon="refresh" label="重置" @click="resetFilters" />
       </div>
 
