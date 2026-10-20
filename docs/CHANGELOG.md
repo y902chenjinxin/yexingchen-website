@@ -15,6 +15,7 @@
 - **克制**：全局 `@media (prefers-reduced-motion: reduce)` 关闭所有新增动画。
 - 版本 SW v439→v440、APP_VERSION v2.46.125→v2.46.126。
 - 验收：现网 <https://yexingchen.cn/> 登录页 → 进主站任意模块看卡片/按钮/表格是否统一青紫霓虹。
+- **已部署**（commit `7afa2dd`，dist-deploy126）：uploaded files 341、sw=xuanhuang-v440、home=200；生产入口 `assets/index-BZSgU8cK.css` / `index-DZqD-EhE.js` 与本地构建一致，生产 CSS 已命中 `#app{background:transparent}` 与 `tech-grid-drift`，`/health`=200。
 
 ---
 
