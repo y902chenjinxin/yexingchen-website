@@ -393,9 +393,20 @@ def weekly_review(
 
     rows = []
     for h in habits:
+        # 本周「应该做几天」要按习惯自己的创建日算：
+        # 周三新建的习惯不该被算成周一就开始欠账，否则复盘完成率永远偏低。
+        h_start = monday
+        if h.created_at:
+            created_day = h.created_at.date() if isinstance(h.created_at, datetime) else h.created_at
+            if created_day > h_start:
+                h_start = created_day
+        h_days = (today - h_start).days + 1
+        if h_days < 1:
+            h_days = 1
+        h_ints = [_to_int(h_start + timedelta(days=i)) for i in range(h_days)]
         checked = (
             db.query(HabitCheckin)
-            .filter(HabitCheckin.habit_id == h.id, HabitCheckin.checkin_date.in_(week_ints))
+            .filter(HabitCheckin.habit_id == h.id, HabitCheckin.checkin_date.in_(h_ints))
             .count()
         )
         penalties = (
@@ -409,7 +420,7 @@ def weekly_review(
                 "name": h.name,
                 "icon": h.icon or "✓",
                 "checked": checked,
-                "days": days_elapsed,
+                "days": h_days,
                 "streak": _compute_stats(db, h, uid)["streak"],
                 "penalty_count": len(penalties),
                 "penalty_cents": sum(p.amount_cents for p in penalties),
@@ -418,7 +429,7 @@ def weekly_review(
 
     items = len(rows)
     checked_total = sum(r["checked"] for r in rows)
-    possible = items * days_elapsed
+    possible = sum(r["days"] for r in rows)
     rate = round(checked_total / possible * 100) if possible else 0
     penalty_count = sum(r["penalty_count"] for r in rows)
     penalty_cents = sum(r["penalty_cents"] for r in rows)
