@@ -38,10 +38,11 @@
   --tc-glow-violet: rgba(185, 139, 255, .30);
 }
 
-/* ============ 1. 全模式核心 token 覆盖（夜/昼/默认 全部走科技暗色） ============ */
+/* ============ 1. 夜间核心 token（夜/默认；白天由 tech-theme-day.css 接管） ============
+ * ⚠️ 这里**不能再带 `:root[data-theme="day"]`**：v2.46.126 曾把白天也写进这条列表里，
+ * 结果昼夜一个样（夜星：「不应该是两种嘛」）。白天皮肤已独立到 tech-theme-day.css。 */
 :root,
-:root[data-theme="night"],
-:root[data-theme="day"] {
+:root[data-theme="night"] {
   /* ---- 背景：暗色太空阶梯 ---- */
   --color-bg-dark: var(--tc-bg-0);
   --color-bg: var(--tc-bg-1);
@@ -518,88 +519,9 @@ body { background: var(--tc-bg-1); }
   50% { transform: translateY(-8px); }
 }
 
-/* ============ 7. 白天模式残留 · 强制科技暗（覆盖 variables.css 的 day 段） ============ */
-html:root[data-theme="day"] .login-card,
-:root[data-theme="day"] .login-card {
-  background: rgba(12, 18, 30, .92) !important;
-  border-color: var(--tc-line-strong) !important;
-}
-html:root[data-theme="day"] .login-page,
-:root[data-theme="day"] .login-page {
-  background:
-    radial-gradient(70% 50% at 20% 12%, rgba(45, 226, 255, .12), transparent 60%),
-    radial-gradient(60% 45% at 82% 78%, rgba(185, 139, 255, .10), transparent 60%),
-    linear-gradient(180deg, #0a0f1c 0%, #05080f 100%) !important;
-}
-html:root[data-theme="day"] .el-input__wrapper,
-:root[data-theme="day"] .el-input__wrapper {
-  background: rgba(13, 20, 33, .7) !important;
-  box-shadow: inset 0 0 0 1px var(--tc-line) !important;
-}
-html:root[data-theme="day"] .el-input__inner::placeholder { color: var(--tc-text-3) !important; }
-:root[data-theme="day"] .glass-card {
-  background:
-    linear-gradient(160deg, rgba(20, 30, 48, .6), rgba(10, 16, 28, .8)) !important;
-  border-color: var(--tc-line) !important;
-}
-:root[data-theme="day"] .jade-card {
-  box-shadow: 0 8px 22px rgba(0, 0, 0, .4), 0 0 22px rgba(45, 226, 255, .1) !important;
-}
-:root[data-theme="day"] .island-page {
-  background: linear-gradient(180deg, #0f1726 0%, #05080f 100%) !important;
-}
-:root[data-theme="day"] .island-header {
-  background: rgba(12, 18, 30, .7) !important;
-  border-bottom: 1px solid var(--tc-line) !important;
-}
-:root[data-theme="day"] .tb-search .el-input__wrapper {
-  background: rgba(13, 20, 33, .7) !important;
-  box-shadow: inset 0 0 0 1px var(--tc-line) !important;
-}
-:root[data-theme="day"] .jade-carousel .carousel-dots {
-  background: rgba(13, 20, 33, .7) !important;
-}
-:root[data-theme="day"] .login-page .site-subtitle,
-:root[data-theme="day"] .login-page .back-link,
-:root[data-theme="day"] .login-page .text-secondary { color: var(--tc-text-2) !important; }
-:root[data-theme="day"] .filing-footer {
-  background: rgba(12, 18, 30, .7) !important;
-  border-top-color: var(--tc-line) !important;
-}
-:root[data-theme="day"] .filing-links a { color: var(--tc-text-2) !important; }
-:root[data-theme="day"] .filing-links a:hover { color: var(--tc-cyan) !important; }
-/* 其余 day 段硬编码浅块 → 科技暗（批量收口） */
-:root[data-theme="day"] .note-select-input,
-:root[data-theme="day"] .note-select-list,
-:root[data-theme="day"] .spirit-quiz,
-:root[data-theme="day"] .kc-tip,
-:root[data-theme="day"] .tm-mini,
-:root[data-theme="day"] .tm-card,
-:root[data-theme="day"] .inner-footer,
-:root[data-theme="day"] .asset-preview,
-:root[data-theme="day"] .chat-save-body,
-:root[data-theme="day"] .fd-input,
-:root[data-theme="day"] .fd-search,
-:root[data-theme="day"] .fd-select,
-:root[data-theme="day"] .fin-note-input,
-:root[data-theme="day"] .fin-filter-input,
-:root[data-theme="day"] .st-input,
-:root[data-theme="day"] .st-sug-item,
-:root[data-theme="day"] .st-cell-input,
-:root[data-theme="day"] .sd-input,
-:root[data-theme="day"] .idp-num,
-:root[data-theme="day"] .idp-crop,
-:root[data-theme="day"] .ne-color-panel .ne-hex-input,
-:root[data-theme="day"] .ne-color-panel .ne-color-rgb input,
-:root[data-theme="day"] .detail-frame-wrap,
-:root[data-theme="day"] .ai-scope {
-  background: rgba(13, 20, 33, .7) !important;
-  color: var(--tc-text) !important;
-}
-:root[data-theme="day"] .fd-rich pre,
-:root[data-theme="day"] .ne-content pre {
-  background: rgba(13, 20, 33, .8) !important;
-}
+/* ============ 7.（已移出）白天皮肤改到 tech-theme-day.css ============
+ * v2.46.128：原第 7 节是「白天强制科技暗」——把昼间也压成夜色，导致昼夜同款。
+ * 白天现在有独立亮色皮肤（冷白底+深青墨），本节所有规则已迁走并改写，不再需要。 */
 
 /* ============ 8. 内容壳透明化（让全局辉光/网格透上来） ============ */
 /* mobile-deink.css / mobile-native-glass.css 里给移动端子页壳写了
@@ -748,12 +670,7 @@ html[data-theme="day"].m-app {
   -webkit-backdrop-filter: blur(18px) !important;
   backdrop-filter: blur(18px) !important;
 }
-html[data-theme="day"] #app.is-mobile .mt-tabbar {
-  background: rgba(7, 12, 22, .96) !important;
-  border-top: 1px solid rgba(45, 226, 255, .30) !important;
-}
 #app.is-mobile .mt-tab.active { color: var(--tc-cyan) !important; }
-html[data-theme="day"] #app.is-mobile .mt-tab.active { color: var(--tc-cyan) !important; }
 
 /* 记账左滑删除：旧砖红 #c14b3a 在冷底上发暗 → 霓虹红 */
 #app.is-mobile .fin-row-swipe {
@@ -762,13 +679,7 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: var(--tc-cyan) !im
 }
 #app.is-mobile .fin-row-swipe button { border-color: #ff4d6d; color: #ff4d6d; }
 
-/* 拼图/贴纸日间浅纸卡 + 深棕字 → 科技暗卡 */
-html[data-theme="day"] #app.is-mobile .pt-paper {
-  background: linear-gradient(160deg, rgba(18, 28, 46, .95), rgba(12, 20, 34, .95)) !important;
-  border-color: var(--tc-line-strong) !important;
-}
-html[data-theme="day"] #app.is-mobile .pt-text { color: var(--tc-text) !important; }
-html[data-theme="day"] #app.is-mobile :is(.pt-date, .pt-loading) { color: var(--tc-text-3) !important; }
+/* 拼图/贴纸的白天版本在 tech-theme-day.css（这里只留夜间） */
 
 /* 手机端登录卡主按钮：旧鎏金渐变 → 青蓝渐变（这条曾被专门写死回金，最容易撞车） */
 #app.is-mobile .login-card .el-button--primary {

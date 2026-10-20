@@ -50,6 +50,9 @@ import './assets/styles/game-table.css'
 // 全站科技风重构层（TECH_OVERHAUL 2026-10-20）：必须最后引入，以更高优先级覆盖
 // 雨青玻璃 / 紫罗兰 Flux / 昼夜双套的 token 与 Element Plus 变量，组件用 var() 引用即自动跟随
 import './assets/styles/tech-theme.css'
+// 昼间（亮色）皮肤（TECH_DAY 2026-10-20）：夜里是「深空底+亮霓虹」，白天是「冷白底+深青墨」，
+// 两套是不同配色关系而非明暗缩放。必须排在 tech-theme.css 之后，才能按 :root[data-theme="day"] 覆盖
+import './assets/styles/tech-theme-day.css'
 
 // 主题应用统一收口在 stores/prefs.js（data-theme + meta theme-color，#32）
 import { applyTheme } from '@/stores/prefs'

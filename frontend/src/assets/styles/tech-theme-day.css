@@ -1,0 +1,521 @@
+/* =====================================================================
+ * 玄黄 · 科技风「白天」皮肤（TECH_DAY 2026-10-20）
+ * ---------------------------------------------------------------------
+ * 为什么单独一个文件：v2.46.126 当初为了省事，把白天也按暗色铺（第 7 节「强制科技暗」），
+ * 结果昼夜两套模式长得一模一样 —— 夜星：「你白天和晚上是同一种风格UI嘛，不应该是两种嘛」。
+ * 白天正确做法不是「暗色整体调亮」，而是另一套配色关系：
+ *   夜 = 深空底 + 亮霓虹（发光体压在暗背景上）
+ *   昼 = 冷白底 + 深青墨（描边与实色块压在亮背景上，靠对比度而不是发光）
+ * 所以这里独立定义一套 --tc-*/核心 token，并把「靠发光表达层次」的地方换成「靠描边+浅投影」。
+ *
+ * 加载顺序：main.js 里紧跟 tech-theme.css 之后（必须是最后一个 CSS 层）。
+ * 覆盖策略：全部用 `:root[data-theme="day"]`（0,2,0）或 `html[data-theme="day"] ...`
+ * 前缀，特异性高于 tech-theme.css 里的 `:root` / `#app.is-mobile`，且更靠后 —— 稳赢。
+ * ===================================================================== */
+
+/* ============ 1. 白天调色板（覆盖 tech-theme.css 第 0 节的 --tc-*） ============ */
+:root[data-theme="day"] {
+  --tc-cyan: #0e93b8;          /* 青：压深，白底才够对比（原 #2de2ff 白底几乎看不见） */
+  --tc-cyan-bright: #12a8cf;
+  --tc-cyan-deep: #0a7492;
+  --tc-blue: #3358d4;
+  --tc-violet: #6d4aff;        /* 紫：白底上要更深更饱和，否则发粉发淡 */
+  --tc-violet-bright: #8a6bff;
+  --tc-magenta: #d1318b;
+  --tc-bg-0: #e4ebf5;          /* 最深：外壳/页脚 */
+  --tc-bg-1: #f2f6fb;          /* 页底：冷白 */
+  --tc-bg-2: #ffffff;          /* 卡面 */
+  --tc-surface: #ffffff;
+  --tc-line: rgba(15, 60, 110, .14);
+  --tc-line-strong: rgba(15, 60, 110, .26);
+  --tc-text: #0b1622;
+  --tc-text-2: #46586e;
+  --tc-text-3: #7285a0;
+  --tc-glow-cyan: rgba(14, 147, 184, .22);
+  --tc-glow-violet: rgba(109, 74, 255, .18);
+}
+
+/* ============ 2. 核心 token（覆盖 tech-theme.css 第 1 节） ============ */
+:root[data-theme="day"] {
+  /* 背景 */
+  --color-bg-dark: var(--tc-bg-0);
+  --color-bg: var(--tc-bg-1);
+  --color-bg-elevated: var(--tc-bg-2);
+  --color-bg-glass: rgba(255, 255, 255, .78);
+  --ink-black: #0b1622;        /* 白天这组是「深墨」，按钮/描边用 */
+  --ink-dark: #16273a;
+  --ink-medium: #46586e;
+  --ink-light: #7285a0;
+  --bg-deep: var(--tc-bg-0);
+  --bg-indigo: var(--tc-bg-1);
+  --bg-night: var(--tc-bg-2);
+
+  /* 文字 */
+  --color-text: var(--tc-text);
+  --color-text-dark: #0b1622;  /* 浅底深字（原 #1a1a1a，改冷墨） */
+  --color-text-secondary: var(--tc-text-2);
+  --color-text-muted: var(--tc-text-3);
+  --color-text-light: #f2f6fb; /* 深底上的浅字 */
+
+  /* 主色 */
+  --color-primary: var(--tc-cyan);
+  --color-secondary: var(--tc-blue);
+  --color-accent: var(--tc-violet);
+  --color-qi-primary: var(--tc-cyan);
+  --color-qi-green: var(--tc-cyan-deep);
+  --color-qi-glow: var(--tc-glow-cyan);
+  --island-glow-color: var(--tc-glow-cyan);
+  --color-gold: var(--tc-cyan);
+  --color-gold-bright: var(--tc-cyan-bright);
+  --color-gold-dark: var(--tc-cyan-deep);
+  --color-jade: var(--tc-cyan);
+  --yq-rain: var(--tc-cyan);
+  --yq-rain-bright: var(--tc-cyan-bright);
+  --yq-rain-deep: var(--tc-cyan-deep);
+  --yq-gold: var(--tc-cyan);
+  --yq-gold-bright: var(--tc-cyan-bright);
+  --yq-gold-fg: #ffffff;
+  --yq-gold-faint: rgba(14, 147, 184, .12);
+  --yq-gold-glow: rgba(14, 147, 184, .26);
+  --yq-gold-glow-strong: rgba(14, 147, 184, .38);
+  --yq-rain-faint: rgba(14, 147, 184, .10);
+  --yq-rain-glow: rgba(14, 147, 184, .32);
+  --xiu-primary: var(--tc-cyan);
+  --xiu-primary-bright: var(--tc-cyan-bright);
+  --xiu-gold: var(--tc-cyan);
+  --xiu-gold-bright: var(--tc-cyan-bright);
+  --xiu-text: var(--tc-text);
+  --xiu-text-2: var(--tc-text-2);
+  --xiu-text-3: var(--tc-text-3);
+
+  /* 语义色：白底要压深（红涨绿跌保留国内惯例） */
+  --color-danger: #cf2540;
+  --color-success: #0f7a56;
+  --color-warning: #a86400;
+  --dp-danger: #cf2540;
+  --dp-up: #cf2540;
+  --dp-down: #0f7a56;
+  --dp-warning: #a86400;
+  --pnl-up: #cf2540;
+  --pnl-down: #0f7a56;
+  --pnl-up-soft: rgba(207, 37, 64, .10);
+  --pnl-down-soft: rgba(15, 122, 86, .10);
+  --pnl-up-line: rgba(207, 37, 64, .28);
+  --pnl-down-line: rgba(15, 122, 86, .28);
+
+  /* 岛屿语义色 */
+  --color-music: var(--tc-blue);
+  --color-novel: var(--tc-violet);
+  --color-video: var(--tc-magenta);
+  --color-log: #0f7a56;
+  --color-tool: var(--tc-cyan);
+  --island-music: var(--tc-blue);
+  --island-novel: var(--tc-violet);
+  --island-video: var(--tc-magenta);
+  --island-log: #0f7a56;
+  --island-tool: var(--tc-cyan);
+
+  /* 玻璃 / 阴影：白天靠「浅投影 + 发丝边」，不靠发光 */
+  --glass-blur: blur(18px) saturate(150%);
+  --glass-border: rgba(15, 60, 110, .14);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .9);
+  --glass-shadow:
+    0 1px 2px rgba(15, 60, 110, .06),
+    0 10px 28px rgba(15, 60, 110, .08);
+  --glow-rain: rgba(14, 147, 184, .10);
+  --glow-gold: rgba(14, 147, 184, .08);
+  --shadow-sm: 0 1px 3px rgba(15, 60, 110, .08);
+  --shadow: var(--glass-shadow);
+  --shadow-lg: 0 18px 44px rgba(15, 60, 110, .12);
+  --shadow-glow: 0 0 24px rgba(14, 147, 184, .18);
+  --shadow-ink: 0 8px 22px rgba(15, 60, 110, .14);
+  --shadow-jade: 0 0 14px rgba(14, 147, 184, .16);
+  --shadow-xl: 0 24px 52px rgba(15, 60, 110, .16);
+
+  /* 圆角：沿用暗色一套 */
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+
+  /* 工作台 --lj-* */
+  --lj-bg: var(--tc-bg-1);
+  --lj-bg-deep: var(--tc-bg-0);
+  --lj-paper: rgba(255, 255, 255, .80);
+  --lj-paper-2: var(--tc-bg-2);
+  --lj-glass: rgba(255, 255, 255, .72);
+  --lj-glass-blur: saturate(150%) blur(18px);
+  --lj-panel: rgba(255, 255, 255, .96);
+  --lj-ink: var(--tc-text);
+  --lj-mist: var(--tc-text-2);
+  --lj-dai: var(--tc-cyan);
+  --lj-dai-deep: var(--tc-cyan-deep);
+  --lj-ochre: var(--tc-blue);
+  --lj-gold: var(--tc-cyan);
+  --lj-vermilion: var(--tc-magenta);
+  --lj-cinnabar: var(--tc-magenta);
+
+  /* 桌面产品 --dp-* */
+  --dp-bg: var(--tc-bg-1);
+  --dp-bg2: var(--tc-bg-0);
+  --dp-surface: #ffffff;
+  --dp-surface2: #f6f9fd;
+  --dp-line: rgba(15, 60, 110, .12);
+  --dp-line-strong: rgba(15, 60, 110, .22);
+  --dp-text: var(--tc-text);
+  --dp-text2: var(--tc-text-2);
+  --dp-text3: var(--tc-text-3);
+  --dp-accent: var(--tc-cyan);
+  --dp-accent-hover: var(--tc-cyan-deep);
+  --dp-accent-strong: var(--tc-cyan-deep);
+  --dp-accent-faint: rgba(14, 147, 184, .10);
+  --dp-shadow: 0 1px 2px rgba(15, 60, 110, .05), 0 8px 24px rgba(15, 60, 110, .07);
+  --dp-glow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 1px 2px rgba(15, 60, 110, .05), 0 12px 30px rgba(15, 60, 110, .08);
+  --dp-raised: 0 2px 6px rgba(15, 60, 110, .06), 0 20px 48px rgba(15, 60, 110, .10);
+
+  /* Element Plus：白底深字 + 青主色 */
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: var(--tc-bg-1);
+  --el-bg-color-overlay: #ffffff;
+  --el-text-color-primary: var(--tc-text);
+  --el-text-color-regular: #34445a;
+  --el-text-color-secondary: var(--tc-text-2);
+  --el-text-color-placeholder: var(--tc-text-3);
+  --el-border-color: rgba(15, 60, 110, .18);
+  --el-border-color-light: rgba(15, 60, 110, .12);
+  --el-border-color-lighter: rgba(15, 60, 110, .09);
+  --el-border-color-extra-light: rgba(15, 60, 110, .06);
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f4f8fd;
+  --el-fill-color-lighter: #f8fbfe;
+  --el-mask-color: rgba(228, 235, 245, .72);
+  --el-color-primary: #0e93b8;
+  --el-color-primary-light-3: #3fb0cd;
+  --el-color-primary-light-5: #74c8dd;
+  --el-color-primary-light-7: #a8dcea;
+  --el-color-primary-light-8: #c7e8f2;
+  --el-color-primary-light-9: #e8f6fa;
+  --el-color-primary-dark-2: #0a7492;
+  --el-color-success: #0f7a56;
+  --el-color-danger: #cf2540;
+  --el-color-warning: #a86400;
+  --el-color-info: #46586e;
+}
+
+/* ============ 3. 全局动效背景（覆盖第 2 节） ============
+ * 白天不做「发光」，改成「冷白底 + 极淡的青/蓝染色 + 浅网格」，
+ * 否则在亮底上打径向光只会糊成一片灰。 */
+#app::before {
+  background:
+    radial-gradient(58% 48% at 12% 6%, rgba(14, 147, 184, .10), transparent 62%),
+    radial-gradient(52% 44% at 90% 94%, rgba(51, 88, 212, .08), transparent 64%),
+    radial-gradient(46% 40% at 50% 52%, rgba(109, 74, 255, .05), transparent 72%),
+    var(--tc-bg-1);
+}
+#app::after {
+  background-image:
+    linear-gradient(rgba(15, 60, 110, .055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 60, 110, .055) 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: .6;
+}
+
+/* ============ 4. Element Plus 组件（白底版） ============ */
+:root[data-theme="day"] .el-button {
+  --el-button-bg-color: #ffffff;
+  --el-button-border-color: var(--tc-line-strong);
+  --el-button-text-color: #22344a;
+  --el-button-hover-bg-color: rgba(14, 147, 184, .08);
+  --el-button-hover-border-color: var(--tc-cyan);
+  --el-button-hover-text-color: var(--tc-cyan-deep);
+  --el-button-active-bg-color: rgba(14, 147, 184, .14);
+  --el-button-active-border-color: var(--tc-cyan-deep);
+  box-shadow: 0 1px 2px rgba(15, 60, 110, .06);
+  backdrop-filter: none;
+}
+:root[data-theme="day"] .el-button:hover {
+  box-shadow: 0 4px 14px rgba(14, 147, 184, .18);
+}
+/* 主按钮：亮青→蓝实色 + 深字，白底上更「硬」，不靠外发光 */
+:root[data-theme="day"] .el-button--primary {
+  --el-button-text-color: #04121f;
+  background:
+    linear-gradient(135deg, var(--tc-cyan-bright), var(--tc-blue)) padding-box,
+    linear-gradient(135deg, var(--tc-cyan-bright), var(--tc-violet)) border-box;
+  box-shadow: 0 6px 18px rgba(14, 147, 184, .28);
+}
+:root[data-theme="day"] .el-button--primary:hover {
+  background:
+    linear-gradient(135deg, #17b6dd, #3d63e0) padding-box,
+    linear-gradient(135deg, #17b6dd, var(--tc-violet-bright)) border-box;
+  box-shadow: 0 8px 24px rgba(14, 147, 184, .36);
+}
+:root[data-theme="day"] .el-button.is-link,
+:root[data-theme="day"] .el-button.is-text { color: var(--tc-cyan-deep); }
+
+:root[data-theme="day"] .el-input__wrapper,
+:root[data-theme="day"] .el-textarea__inner {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px var(--tc-line-strong);
+}
+:root[data-theme="day"] .el-input__wrapper:hover,
+:root[data-theme="day"] .el-textarea__inner:hover {
+  box-shadow: inset 0 0 0 1px rgba(14, 147, 184, .45);
+}
+:root[data-theme="day"] .el-input__wrapper.is-focus,
+:root[data-theme="day"] .el-textarea__inner:focus {
+  box-shadow: inset 0 0 0 1px var(--tc-cyan), 0 0 0 3px rgba(14, 147, 184, .14);
+}
+:root[data-theme="day"] .el-input__inner::placeholder { color: var(--tc-text-3); }
+
+:root[data-theme="day"] .el-card {
+  background: #ffffff;
+  border-color: var(--tc-line);
+  box-shadow: 0 1px 2px rgba(15, 60, 110, .05), 0 8px 22px rgba(15, 60, 110, .07);
+}
+:root[data-theme="day"] .el-dialog,
+:root[data-theme="day"] .el-drawer,
+:root[data-theme="day"] .el-popover,
+:root[data-theme="day"] .el-popper {
+  background: #ffffff;
+  border: 1px solid var(--tc-line);
+  color: var(--tc-text);
+  box-shadow: 0 24px 60px rgba(15, 60, 110, .18);
+}
+:root[data-theme="day"] .el-dialog__title,
+:root[data-theme="day"] .el-drawer__title { color: var(--tc-text); }
+:root[data-theme="day"] .el-select-dropdown__item.is-hovering { background: rgba(14, 147, 184, .08); }
+:root[data-theme="day"] .el-select-dropdown__item.is-selected { color: var(--tc-cyan-deep); }
+
+:root[data-theme="day"] .el-table {
+  --el-table-bg-color: #ffffff;
+  --el-table-tr-bg-color: #ffffff;
+  --el-table-header-bg-color: #f4f8fd;
+  --el-table-border-color: rgba(15, 60, 110, .10);
+  --el-table-row-hover-bg-color: rgba(14, 147, 184, .06);
+  color: var(--tc-text);
+}
+:root[data-theme="day"] .el-table th.el-table__cell { color: #22344a; font-weight: 700; }
+
+:root[data-theme="day"] .el-tag {
+  background: rgba(14, 147, 184, .10);
+  border-color: rgba(14, 147, 184, .28);
+  color: var(--tc-cyan-deep);
+}
+:root[data-theme="day"] .el-progress-bar__outer { background: rgba(15, 60, 110, .10); }
+:root[data-theme="day"] .el-pagination { color: var(--tc-text-2); }
+
+/* ============ 5. 通用卡片 / 工具类（白底版） ============ */
+:root[data-theme="day"] :is(.tech-panel, .glass-card, .ls-card, .jade-card) {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .96), rgba(246, 249, 253, .92)) padding-box,
+    linear-gradient(140deg, rgba(14, 147, 184, .38), rgba(51, 88, 212, .16) 55%, rgba(15, 60, 110, .10)) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(15, 60, 110, .05), 0 10px 26px rgba(15, 60, 110, .08);
+}
+/* 文字渐变：白底上必须压深，否则「亮青」几乎等于无字 */
+:root[data-theme="day"] :is(.text-gold, .text-gold-premium) {
+  background: linear-gradient(92deg, #0a7492, #0e93b8 48%, #3358d4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: none;
+}
+:root[data-theme="day"] .tech-gradient-text {
+  background: linear-gradient(92deg, #0e93b8, #3358d4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+:root[data-theme="day"] .tech-glow { text-shadow: none; }
+:root[data-theme="day"] .tech-divider {
+  background: linear-gradient(90deg, transparent, rgba(15, 60, 110, .22), transparent);
+}
+
+/* ============ 6. 页面级：暗色写死的块改成冷白 ============ */
+:root[data-theme="day"] .login-page {
+  background:
+    radial-gradient(70% 52% at 20% 10%, rgba(14, 147, 184, .16), transparent 62%),
+    radial-gradient(60% 46% at 82% 80%, rgba(51, 88, 212, .12), transparent 62%),
+    linear-gradient(180deg, #f7fafd 0%, #e8eff8 100%) !important;
+}
+:root[data-theme="day"] .login-card {
+  background: rgba(255, 255, 255, .88) !important;
+  border-color: var(--tc-line-strong) !important;
+  box-shadow: 0 2px 6px rgba(15, 60, 110, .06), 0 24px 56px rgba(15, 60, 110, .12) !important;
+}
+:root[data-theme="day"] .login-page .site-subtitle,
+:root[data-theme="day"] .login-page .back-link,
+:root[data-theme="day"] .login-page .text-secondary { color: var(--tc-text-2) !important; }
+:root[data-theme="day"] .filing-footer {
+  background: rgba(255, 255, 255, .80) !important;
+  border-top-color: var(--tc-line) !important;
+}
+:root[data-theme="day"] .filing-links a { color: var(--tc-text-2) !important; }
+:root[data-theme="day"] .filing-links a:hover { color: var(--tc-cyan-deep) !important; }
+
+:root[data-theme="day"] .island-page {
+  background: linear-gradient(180deg, #f7fafd 0%, #e9f0f9 100%) !important;
+}
+:root[data-theme="day"] .island-header {
+  background: rgba(255, 255, 255, .82) !important;
+  border-bottom: 1px solid var(--tc-line) !important;
+}
+:root[data-theme="day"] .tb-search .el-input__wrapper { background: #ffffff !important; }
+:root[data-theme="day"] .jade-carousel .carousel-dots { background: rgba(255, 255, 255, .82) !important; }
+
+/* variables.css day 段那批硬编码浅块：统一成冷白卡面 + 深墨字 */
+:root[data-theme="day"] .note-select-input,
+:root[data-theme="day"] .note-select-list,
+:root[data-theme="day"] .spirit-quiz,
+:root[data-theme="day"] .kc-tip,
+:root[data-theme="day"] .tm-mini,
+:root[data-theme="day"] .tm-card,
+:root[data-theme="day"] .inner-footer,
+:root[data-theme="day"] .asset-preview,
+:root[data-theme="day"] .chat-save-body,
+:root[data-theme="day"] .fd-input,
+:root[data-theme="day"] .fd-search,
+:root[data-theme="day"] .fd-select,
+:root[data-theme="day"] .fin-note-input,
+:root[data-theme="day"] .fin-filter-input,
+:root[data-theme="day"] .st-input,
+:root[data-theme="day"] .st-sug-item,
+:root[data-theme="day"] .st-cell-input,
+:root[data-theme="day"] .sd-input,
+:root[data-theme="day"] .idp-num,
+:root[data-theme="day"] .idp-crop,
+:root[data-theme="day"] .ne-color-panel .ne-hex-input,
+:root[data-theme="day"] .ne-color-panel .ne-color-rgb input,
+:root[data-theme="day"] .detail-frame-wrap,
+:root[data-theme="day"] .ai-scope {
+  background: #ffffff !important;
+  color: var(--tc-text) !important;
+}
+/* 代码块：白底页面上用浅灰纸 + 深墨字（暗色那种深底块在白天太跳） */
+:root[data-theme="day"] .fd-rich pre,
+:root[data-theme="day"] .ne-content pre {
+  background: #eef4fb !important;
+  color: #16273a !important;
+  border: 1px solid var(--tc-line) !important;
+}
+
+/* ============ 7. 移动端（白天的「亮科技」令牌，覆盖 tech-theme.css 第 9 节） ============ */
+html[data-theme="day"] #app.is-mobile {
+  --m-bg: #eef3fa;
+  --m-bg-elevated: #ffffff;
+  --m-surface: rgba(255, 255, 255, .94);
+  --m-surface-2: #f4f8fd;
+  --m-line: rgba(15, 60, 110, .12);
+  --m-line-strong: rgba(15, 60, 110, .24);
+  --m-text: #0b1622;
+  --m-text-2: #46586e;
+  --m-text-3: #64789a;
+  --m-accent: #0e93b8;
+  --m-accent-strong: #0a7492;
+  --m-positive: #0f7a56;
+  --m-negative: #cf2540;
+  --m-warning: #a86400;
+  --m-shadow: 0 8px 22px rgba(15, 60, 110, .10);
+
+  --xz-ink: #0b1622;
+  --xz-paper: #eef3fa;
+  --xz-card: rgba(255, 255, 255, .96);
+  --xz-card-2: #f4f8fd;
+  --xz-card-border: rgba(14, 147, 184, .30);
+  --xz-card-shadow: 3px 3px 0 rgba(11, 22, 34, .82);   /* 白天保留 Neo-Brutalism 墨色硬偏移 */
+  --xz-card-shadow-press: 1px 1px 0 rgba(11, 22, 34, .82);
+  --xz-head-line: rgba(11, 22, 34, .38);
+  --xz-teal: #0e93b8;           /* 大色块：白底上的实色青 */
+  --xz-teal-ink: #ffffff;
+  --xz-ochre: #3358d4;
+  --xz-gold: #0e93b8;
+  --xz-btn-bg: linear-gradient(135deg, #12a8cf, #3358d4);
+  --xz-btn-fg: #ffffff;
+  --xz-grain: none;
+
+  --el-color-primary: #0e93b8;
+  --el-color-primary-light-3: #3fb0cd;
+  --el-color-primary-light-5: #74c8dd;
+  --el-color-primary-light-7: #a8dcea;
+  --el-color-primary-light-8: #c7e8f2;
+  --el-color-primary-light-9: #e8f6fa;
+  --el-color-primary-dark-2: #0a7492;
+
+  --lj-paper: rgba(255, 255, 255, .86);
+  --lj-glass: rgba(255, 255, 255, .80);
+  --lj-line: rgba(15, 60, 110, .14);
+  --lj-line-strong: rgba(15, 60, 110, .26);
+  --lj-ochre: #3358d4;
+  --lj-seal: #0e93b8;
+  --lj-seal-hover: #12a8cf;
+  --ls-paper: #ffffff;
+  --ls-paper-2: #f6f9fd;
+  --ls-glass: rgba(255, 255, 255, .80);
+  --ls-line: rgba(15, 60, 110, .14);
+  --ls-line-strong: rgba(15, 60, 110, .26);
+  --ls-bg-glow: rgba(14, 147, 184, .10);
+  --ls-ochre: #3358d4;
+  --ls-dai: #0e93b8;
+  --glass-border: rgba(15, 60, 110, .18);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+/* 移动端 teleport 浮层（白天） */
+html[data-theme="day"].m-app {
+  --xz-ink: #0b1622;
+  --xz-card: #ffffff;
+  --xz-card-2: #f4f8fd;
+  --xz-card-border: rgba(15, 60, 110, .20);
+  --xz-gold: #0e93b8;
+  --xz-btn-bg: linear-gradient(135deg, #12a8cf, #3358d4);
+  --xz-btn-fg: #ffffff;
+  --xz-line: rgba(15, 60, 110, .16);
+}
+
+/* 移动端硬编码（对应 tech-theme.css 9b 的白天版） */
+html[data-theme="day"] #app.is-mobile .mt-tabbar {
+  background: rgba(255, 255, 255, .94) !important;
+  border-top: 1px solid rgba(15, 60, 110, .14) !important;
+  box-shadow: 0 -8px 22px rgba(15, 60, 110, .10) !important;
+}
+html[data-theme="day"] #app.is-mobile .mt-tab.active { color: var(--tc-cyan-deep) !important; }
+
+html[data-theme="day"] #app.is-mobile :is(.glass-card, .ls-card, .glass) {
+  background:
+    linear-gradient(165deg, rgba(14, 147, 184, .06), rgba(255, 255, 255, 0) 46%),
+    rgba(255, 255, 255, .94) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+html[data-theme="day"] #app.is-mobile .profile-page .theme-seg-btn.active {
+  background: linear-gradient(135deg, #12a8cf, #3358d4) !important;
+  box-shadow: 0 4px 14px rgba(14, 147, 184, .26) !important;
+  color: #ffffff !important;
+}
+html[data-theme="day"] #app.is-mobile .fin-row-swipe {
+  background: linear-gradient(90deg, transparent, rgba(207, 37, 64, .12) 40%);
+  color: #cf2540;
+}
+html[data-theme="day"] #app.is-mobile .fin-row-swipe button { border-color: #cf2540; color: #cf2540; }
+html[data-theme="day"] #app.is-mobile .pt-paper {
+  background: linear-gradient(160deg, #ffffff, #f4f8fd) !important;
+  border-color: var(--tc-line-strong) !important;
+}
+html[data-theme="day"] #app.is-mobile :is(.pt-text, .pt-date, .pt-loading) { color: var(--tc-text) !important; }
+html[data-theme="day"] #app.is-mobile .note-editor .ne-content pre {
+  background: #eef4fb !important;
+  color: #16273a !important;
+}
+/* 手机登录卡主按钮（mobile-paper.css 曾写死回旧鎏金） */
+html[data-theme="day"] #app.is-mobile .login-card .el-button--primary {
+  background: linear-gradient(135deg, #12a8cf, #3358d4) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(14, 147, 184, .45) !important;
+}
+html[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 60, 110, .18) !important;
+}
+html[data-theme="day"] #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
+  border-color: #0e93b8 !important;
+}

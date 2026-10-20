@@ -126,9 +126,11 @@ export const usePrefsStore = defineStore('prefs', () => {
   return { petVisible, themeOverride, fontScale, moduleVisible, boundUid, bindUser, setPetVisible, togglePet, setTheme, setFontScale, setModuleVisible }
 })
 
-/* 主题 → 系统状态栏/浏览器 chrome 颜色（APP_design.md #32 · v2.46.33）。
-   与 mobile-paper.css 的 --xz-paper 两套底色严格同源，改底色必须同步这里。 */
-const THEME_STATUSBAR_COLOR = { day: '#f7f3ea', night: '#211f1b' }
+/* 主题 → 系统状态栏/浏览器 chrome 颜色。
+   v2.46.128：科技风两套皮肤各自的兜底色 —— 昼=冷白 #eef3fa、夜=深空 #070c16。
+   ⚠️ 改 tech-theme.css / tech-theme-day.css 里的 --tc-bg-1、--m-bg 时必须同步这里，
+   否则安卓状态栏会和页面底色错开一条。 */
+const THEME_STATUSBAR_COLOR = { day: '#eef3fa', night: '#070c16' }
 
 function syncThemeColor(theme) {
   try {
