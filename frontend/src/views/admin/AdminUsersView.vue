@@ -54,7 +54,7 @@
         </el-table-column>
       </el-table>
       <div v-if="!loading && filteredUsers.length === 0" class="empty-placeholder">
-        <div class="empty-icon">👥</div>
+        <div class="empty-icon"><AppIcon icon="👥" :size="36" /></div>
         <div class="empty-text">暂无用户</div>
       </div>
     </section>
@@ -133,6 +133,7 @@ import {
 } from '@/api/admin'
 import { getRoleList } from '@/api/admin'
 import AdminLayout from './AdminLayout.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const users = ref([])
 const roles = ref([])

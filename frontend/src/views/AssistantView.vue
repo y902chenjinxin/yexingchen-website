@@ -6,7 +6,7 @@
         <span class="header-sub">独立对话 · 流式回答 · 可总结 / 生成笔记</span>
       </div>
       <div class="header-actions">
-        <el-button class="assistant-mobile-new-chat" type="primary" @click="newConversation">＋ 新对话</el-button>
+        <el-button class="assistant-mobile-new-chat" type="primary" @click="newConversation"><AppIcon icon="＋" :size="14" /> 新对话</el-button>
         <span class="kb-toggle">
           <el-switch v-model="knowledgeEnabled" size="small" style="--el-switch-on-color:#d98a76; --el-switch-off-color:#8a9aa0" />
           <span class="kb-label">知识库</span>
@@ -47,7 +47,7 @@
             @click="open(c.id)"
           >
             <span class="conv-title">{{ c.title || '新对话' }}</span>
-            <button class="del-btn" @click.stop="del(c.id)">×</button>
+            <button class="del-btn" @click.stop="del(c.id)"><AppIcon icon="×" :size="16" /></button>
           </li>
           <li v-if="!conversations.length" class="empty">还没有对话</li>
         </ul>
@@ -86,7 +86,8 @@
                           :disabled="m.save.saved"
                           @click="saveNoteToNotebook(i)"
                         >
-                          {{ m.save.saved ? '已保存 ✓' : '创建笔记' }}
+                          <template v-if="m.save.saved">已保存 <AppIcon icon="✓" :size="14" /></template>
+                          <template v-else>创建笔记</template>
                         </el-button>
                       </div>
                     </div>
@@ -216,6 +217,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { workbenchApi } from '@/api/workbench'
 import BackButton from '@/components/BackButton.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const conversations = ref([])
 const activeId = ref(null)

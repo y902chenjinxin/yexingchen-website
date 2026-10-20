@@ -23,11 +23,11 @@
       <div class="aid-panel">
         <header class="aid-head">
           <div class="aid-title">
-            <span class="aid-mark">✺</span>
+            <span class="aid-mark"><AppIcon icon="✺" :size="16" /></span>
             <span>AI 高级工具</span>
             <span class="aid-tag">v2.39</span>
           </div>
-          <button class="aid-close" @click="close" title="关闭（Esc）">✕ 关闭</button>
+          <button class="aid-close" @click="close" title="关闭（Esc）"><AppIcon icon="✕" :size="14" /> 关闭</button>
         </header>
 
         <nav class="aid-tabs">
@@ -38,7 +38,7 @@
             :class="{ on: active === t.key }"
             @click="active = t.key"
           >
-            <span class="aid-tab-ic">{{ t.icon }}</span>
+            <span class="aid-tab-ic"><AppIcon :icon="t.icon" :size="14" /></span>
             <span>{{ t.label }}</span>
           </button>
         </nav>
@@ -153,7 +153,7 @@
                     {{ mem.adding ? '添加中…' : '添加' }}
                   </button>
                 </div>
-                <p class="aid-meta">⚡ 填进 prompt 框时，点「添加」会先保存原文；点下方「AI 整理」会调用模型蒸馏出稳定事实。</p>
+                <p class="aid-meta"><AppIcon icon="⚡" :size="13" /> 填进 prompt 框时，点「添加」会先保存原文；点下方「AI 整理」会调用模型蒸馏出稳定事实。</p>
                 <div class="aid-row">
                   <button class="aid-btn ghost" :disabled="mem.adding || !mem.addPrompt.trim()" @click="addMemoryAi">
                     {{ mem.adding ? 'AI 整理中…' : 'AI 整理成事实' }}
@@ -243,6 +243,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { workbenchApi } from '@/api/workbench'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { ElMessage } from 'element-plus'
 
 const props = defineProps({

@@ -63,7 +63,7 @@
             <article v-for="item in g.items" :key="item.id" class="qk-item glass">
               <div class="qk-item-time">{{ fmtTime(item.created_at) }}</div>
               <p class="qk-item-text">{{ item.content }}</p>
-              <button class="qk-item-del" title="删除" @click="del(item)">🗑</button>
+              <button class="qk-item-del" title="删除" @click="del(item)"><AppIcon icon="🗑" :size="14" /></button>
             </article>
           </div>
         </div>
@@ -85,6 +85,7 @@ import { ref, onMounted } from 'vue'
 import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { quickApi } from '@/api/quick'
 
 const draft = ref('')

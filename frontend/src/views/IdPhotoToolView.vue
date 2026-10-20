@@ -31,7 +31,7 @@
           @drop.prevent="onDrop"
           @click="trigPick"
         >
-          <div class="idp-drop-icon">📷</div>
+          <div class="idp-drop-icon"><AppIcon icon="📷" :size="44" /></div>
           <div class="idp-drop-text">拖拽人像照片到这里，或点击选择</div>
           <div class="idp-drop-hint">正面免冠 · 光线均匀 · JPG/PNG ≤ 20MB</div>
         </div>
@@ -60,7 +60,7 @@
               <input class="idp-range" type="range" min="1" max="3" step="0.05" v-model.number="zoom" />
               <span class="idp-crop-ctl-val">{{ zoom.toFixed(2) }}x</span>
             </div>
-            <button class="idp-text-btn" @click="resetUpload">↺ 换一张</button>
+            <button class="idp-text-btn" @click="resetUpload"><AppIcon icon="↺" :size="14" /> 换一张</button>
           </section>
 
           <!-- 参数 -->
@@ -180,6 +180,7 @@ import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import StepIndicator from '@/components/common/StepIndicator.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import api from '@/api/index'
 
 const sizeOptions = [

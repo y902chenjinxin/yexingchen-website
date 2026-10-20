@@ -163,8 +163,8 @@
             <span class="dh-card-sub">把沉淀留一份在本地</span>
           </div>
           <div class="dh-export-actions">
-            <button class="dh-exp" @click="exportNotes">🗒️ 笔记导出 Markdown</button>
-            <button class="dh-exp" @click="exportFinance">💰 记账导出 CSV</button>
+            <button class="dh-exp" @click="exportNotes"><AppIcon icon="🗒️" :size="14" /> 笔记导出 Markdown</button>
+            <button class="dh-exp" @click="exportFinance"><AppIcon icon="💰" :size="14" /> 记账导出 CSV</button>
           </div>
         </section>
       </template>
@@ -178,6 +178,7 @@ import BackButton from '@/components/BackButton.vue'
 import ChartTip from '@/components/charts/ChartTip.vue'
 import { useChartHover } from '@/composables/useChartHover'
 import { datahubApi } from '@/api/datahub'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const loading = ref(true)
 const finance = ref(null)

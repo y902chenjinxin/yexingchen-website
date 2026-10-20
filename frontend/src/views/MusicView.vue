@@ -79,7 +79,7 @@
                 :class="{ playing: isCurPlaying(row) }"
                 :title="isCurPlaying(row) ? '暂停' : '播放'"
                 @click="handlePlay(row)"
-              >{{ isCurPlaying(row) ? '❚❚' : '▶' }}</button>
+              ><template v-if="isCurPlaying(row)"><AppIcon icon="❚" :size="12" /><AppIcon icon="❚" :size="12" /></template><AppIcon v-else icon="▶" :size="12" /></button>
               <span class="tt">{{ row.title || '未知曲目' }}</span>
               <el-tag v-if="Number(row.is_default) === 1" size="small" type="warning">内置</el-tag>
             </div>
@@ -233,7 +233,7 @@
         class="batch-upload"
       >
         <div class="batch-drop">
-          <div class="batch-drop-icon">📥</div>
+          <div class="batch-drop-icon"><AppIcon icon="📥" :size="28" /></div>
           <div class="batch-drop-text">拖拽文件到这里，或<em>点击选择</em></div>
           <div class="batch-drop-hint">MP3 / FLAC / WAV，单次最多 20 个</div>
         </div>
@@ -324,6 +324,7 @@
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useIsMobile'

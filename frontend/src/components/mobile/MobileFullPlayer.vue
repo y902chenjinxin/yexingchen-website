@@ -17,7 +17,7 @@
           <!-- 封面旋钮 -->
           <div class="mfp-art" :class="{ spin: player.isPlaying }">
             <div class="mfp-art-inner">
-              <span class="mfp-note" aria-hidden="true">♪</span>
+              <span class="mfp-note" aria-hidden="true"><AppIcon icon="♪" :size="30" /></span>
               <div class="mfp-art-glint"></div>
             </div>
           </div>
@@ -147,6 +147,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { usePlayerStore } from '@/stores/player'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const player = usePlayerStore()
 

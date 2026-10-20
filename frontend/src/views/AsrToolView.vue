@@ -3,7 +3,7 @@
     <div class="asr-tool">
       <div class="at-head">
         <span class="at-badge" :class="{ ok: engineReady === true, warn: engineReady === false }">
-          {{ engineText }}
+          <AppIcon v-if="engineIcon" :icon="engineIcon" :size="14" /> {{ engineText }}
         </span>
       </div>
 
@@ -49,13 +49,18 @@ import { ElMessage } from 'element-plus'
 import { asrStatus, asrTranscribe } from '@/api/toolkit'
 import { copyText as copyToClipboard } from '@/utils/clipboard'
 import { quickApi } from '@/api/quick'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const engineReady = ref(null)   // null=查询中 true/false
+const engineIcon = computed(() => {
+  if (engineReady.value === null) return ''
+  return engineReady.value ? '🟢' : '🟡'
+})
 const engineText = computed(() => {
   if (engineReady.value === null) return '正在检查服务端引擎…'
   return engineReady.value
-    ? '🟢 服务端引擎就绪（SenseVoice · 纯 CPU 本地推理，音频不经过第三方）'
-    : '🟡 服务端未部署识别模型，暂不可用 —— 请联系管理员部署（backend/models/sherpa-onnx-sense-voice）'
+    ? '服务端引擎就绪（SenseVoice · 纯 CPU 本地推理，音频不经过第三方）'
+    : '服务端未部署识别模型，暂不可用 —— 请联系管理员部署（backend/models/sherpa-onnx-sense-voice）'
 })
 
 const recording = ref(false)

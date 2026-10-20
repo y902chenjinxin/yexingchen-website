@@ -126,7 +126,7 @@
 
         <!-- Step 3: 注册完成 -->
         <div v-if="registerStep === 3" class="step-content text-center">
-          <div class="success-icon">✓</div>
+          <div class="success-icon"><AppIcon icon="✓" :size="30" /></div>
           <p class="step-title">注册申请已提交</p>
           <p class="text-secondary">请等待管理员审批后登录</p>
           <p class="back-link" @click="resetRegister">返回登录</p>
@@ -159,6 +159,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { register as registerApi, verifyCode as verifyCodeApi } from '@/api/auth'
 import TechButton from '@/components/common/TechButton.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 /** ============ 雨青粒子网背景（原始实现，保留用户偏好的绿色调） ============ */
 const particleCanvas = ref(null)

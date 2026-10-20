@@ -11,7 +11,7 @@
               <i>{{ subOf(0) }}</i>
             </div>
           </div>
-          <span class="jq-vs">⚔</span>
+          <span class="jq-vs"><AppIcon icon="⚔" /></span>
           <div class="jq-player" :class="{ active: !over && turnIdx === 1 }">
             <span class="jq-dot" :class="dotClass(1)"></span>
             <div class="jq-player-txt">
@@ -33,7 +33,7 @@
         </div>
 
         <div v-if="mode !== 'online'" class="jq-status">
-          <span v-if="over" class="jq-result">{{ resultText }}</span>
+          <span v-if="over" class="jq-result"><AppIcon v-if="resultIcon" :icon="resultIcon" /> {{ resultText }}</span>
           <span v-else-if="isFlip" class="jq-quota">{{ flippedCount }} / {{ PIECE_N }} 已翻</span>
           <button class="jq-btn" @click="restart">重开</button>
           <button class="jq-btn" :disabled="!canUndo" @click="undoLocal">悔棋</button>
@@ -51,7 +51,7 @@
             <button class="jq-btn" @click="askExit">退出对局（认输）</button>
           </template>
           <template v-else-if="gRoom.status.value === 'finished'">
-            <span class="jq-result">{{ onlineResultText }}</span>
+            <span class="jq-result"><AppIcon v-if="onlineResultIcon" :icon="onlineResultIcon" /> {{ onlineResultText }}</span>
             <button class="jq-btn primary" @click="reinviteSame">再来一局</button>
             <button class="jq-btn" @click="exitOnline">退出</button>
           </template>
@@ -73,7 +73,7 @@
       </div>
 
       <div v-if="mode === 'online' && !gRoom.room.value" class="jq-online">
-        <div class="jq-online-title">🎯 在线邀请对战</div>
+        <div class="jq-online-title"><AppIcon icon="🎯" /> 在线邀请对战</div>
         <p class="jq-online-desc">
           {{ isFlip ? '翻棋：50 枚棋子随机背面撒盘，先翻定色；吃掉对方三颗地雷后才能拔旗。'
                     : '明棋：双方布阵全明，铁路快行、行营免攻、大本营内的子不可再动。' }}
@@ -112,7 +112,7 @@
           @click="tap(i)"
         >
           <span v-if="!p" class="jq-slot"></span>
-          <span v-else-if="!p.up" class="jq-back" :class="{ fresh: freshIdx === i }"><i>❖</i></span>
+          <span v-else-if="!p.up" class="jq-back" :class="{ fresh: freshIdx === i }"><i><AppIcon icon="❖" :size="14" /></i></span>
           <span
             v-else
             class="jq-piece"
@@ -146,6 +146,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
 import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 import { sfx } from '@/utils/games/sfx'
@@ -728,12 +729,19 @@ function dotClass(k) {
   return col === RED ? 'red' : 'black'
 }
 const resultText = computed(() => {
-  if (!winnerColor.value) return over.value ? '🤝 平局' : ''
-  if (mode.value === 'pvp') return winnerColor.value === RED ? '🎉 红方胜' : '🎉 黑方胜'
-  return winnerColor.value === colorOf(aiIdx) ? '电脑赢了，再来' : '🎉 你赢了'
+  if (!winnerColor.value) return over.value ? '平局' : ''
+  if (mode.value === 'pvp') return winnerColor.value === RED ? '红方胜' : '黑方胜'
+  return winnerColor.value === colorOf(aiIdx) ? '电脑赢了，再来' : '你赢了'
+})
+const resultIcon = computed(() => {
+  if (!winnerColor.value) return over.value ? '🤝' : ''
+  if (mode.value === 'pvp') return '🎉'
+  return winnerColor.value === colorOf(aiIdx) ? '' : '🎉'
 })
 const onlineResultText = computed(() =>
-  onlineWinner.value === 'me' ? '🎉 你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '🤝 平局')
+  onlineWinner.value === 'me' ? '你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '平局')
+const onlineResultIcon = computed(() =>
+  onlineWinner.value === 'me' ? '🎉' : onlineWinner.value === 'opp' ? '' : '🤝')
 
 watch(roomActive, (v) => { emit(v ? 'room-lock' : 'room-unlock') })
 watch(() => props.big, () => nextTick(measureCell))

@@ -2,7 +2,7 @@
   <IslandInnerBase type="tool" title="二维码" subtitle="生成 · 解析 · 纯本地处理">
     <div class="qr-tool">
       <div class="qt-head">
-        <span class="qt-badge">🔒 全部在浏览器本地完成，内容不经过服务器。</span>
+        <span class="qt-badge"><AppIcon icon="🔒" :size="14" /> 全部在浏览器本地完成，内容不经过服务器。</span>
       </div>
 
       <div class="qt-tabs">
@@ -77,6 +77,7 @@ import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { ElMessage } from 'element-plus'
 // 复制统一走 utils（含降级 + 失败提示），别再用各页自己的 catch 忽略
 import { copyText as copyToClipboard, copyImage as copyImageToClipboard } from '@/utils/clipboard'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const tab = ref('gen')
 

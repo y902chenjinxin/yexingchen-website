@@ -10,7 +10,7 @@
   >
     <span class="xz-sbtn-layer" :class="{ on: state === 'idle' }">{{ label }}</span>
     <span class="xz-sbtn-layer" :class="{ on: state === 'loading' }"><i class="xz-sbtn-dot"></i>{{ loadingLabel }}<em v-if="elapsed" class="xz-sbtn-eta">{{ elapsed }}s</em></span>
-    <span class="xz-sbtn-layer" :class="{ on: state === 'success' }">✓ {{ doneLabel }}</span>
+    <span class="xz-sbtn-layer" :class="{ on: state === 'success' }"><AppIcon icon="✓" :size="14" /> {{ doneLabel }}</span>
     <span class="xz-sbtn-layer" :class="{ on: state === 'error' }">{{ errorLabel }}</span>
   </button>
 </template>
@@ -18,6 +18,7 @@
 <script setup>
 import { ref, onBeforeUnmount } from 'vue'
 import { haptic } from '@/utils/haptic'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   /** async 动作：resolve → 成功态；reject → 失败态 */

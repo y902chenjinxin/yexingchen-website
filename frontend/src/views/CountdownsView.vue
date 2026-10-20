@@ -9,7 +9,7 @@
 
     <!-- 空状态 -->
     <div v-if="!loading && items.length === 0" class="cd-empty">
-      <span class="cd-empty-icon">⏳</span>
+      <span class="cd-empty-icon"><AppIcon icon="⏳" :size="48" /></span>
       <span class="cd-empty-text">还没有任何时光痕迹</span>
       <el-button type="primary" size="small" @click="openDialog()">新建第一个</el-button>
     </div>
@@ -66,10 +66,10 @@
               <!-- 操作按钮 -->
               <div class="cd-card-actions" @click.stop>
                 <el-button size="small" circle title="编辑" @click.stop="openDialog(item)">
-                  ✏️
+                  <AppIcon icon="✏️" :size="14" />
                 </el-button>
                 <el-button size="small" circle type="danger" title="删除" @click.stop="doDelete(item)">
-                  🗑️
+                  <AppIcon icon="🗑️" :size="14" />
                 </el-button>
               </div>
             </div>
@@ -213,6 +213,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import LunarDatePicker from '@/components/common/LunarDatePicker.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import {
   listCountdowns,
   createCountdown,

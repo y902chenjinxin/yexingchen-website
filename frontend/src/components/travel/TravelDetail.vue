@@ -1,12 +1,15 @@
 <template>
   <article v-if="t" class="tdet">
-    <div class="tdet-close" @click="emit('close')">✕</div>
+    <div class="tdet-close" @click="emit('close')"><AppIcon icon="✕" :size="14" /></div>
     <div v-if="t.cover || t.photos" class="tdet-hero" :style="{ backgroundImage: `url(${t.cover || t.photos[0]})` }"></div>
 
     <div class="tdet-body">
       <h3 class="tdet-title">{{ t.title }}</h3>
       <div class="tdet-meta">
-        <span class="tdet-star">{{ "★".repeat(t.star || 0) || '—' }}</span>
+        <span class="tdet-star">
+          <template v-if="t.star"><AppIcon v-for="n in t.star" :key="n" icon="★" :size="13" /></template>
+          <template v-else>—</template>
+        </span>
         <span class="tdet-date">{{ dateRange(t) }}</span>
         <span v-for="(g, i) in t.tags" :key="i" class="tdet-tag">{{ g }}</span>
       </div>
@@ -39,6 +42,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { renderMarkdown } from '@/utils/markdown'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   t: { type: Object, required: true },

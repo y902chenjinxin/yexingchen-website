@@ -9,7 +9,7 @@
     </div>
     <div class="parse-area">
       <div class="parse-head">
-        <span class="parse-title">🎬 视频去水印</span>
+        <span class="parse-title"><AppIcon icon="🎬" :size="17" /> 视频去水印</span>
         <span class="parse-sub">支持抖音 / 快手 / 小红书等平台分享链接</span>
       </div>
       <div class="parse-input-row">
@@ -40,11 +40,11 @@
             <img v-for="(img, i) in result.images" :key="i" :src="img.url || img" class="parse-thumb" alt="图集图片" />
           </div>
           <div class="parse-actions">
-            <a v-if="result.video_url" class="parse-dl" :href="result.video_url" target="_blank" rel="noopener noreferrer" @click.prevent="download($event, result.video_url)">⬇ 下载视频</a>
+            <a v-if="result.video_url" class="parse-dl" :href="result.video_url" target="_blank" rel="noopener noreferrer" @click.prevent="download($event, result.video_url)"><AppIcon icon="⬇" :size="14" /> 下载视频</a>
             <button class="parse-dl btn-dl" :disabled="audioing" @click="downloadAudio">
-              {{ audioing ? '抽取中…' : '🎵 下载音频' }}
+              <AppIcon v-if="!audioing" icon="🎵" :size="14" /> {{ audioing ? '抽取中…' : '下载音频' }}
             </button>
-            <a v-if="result.cover_url" class="parse-dl" :href="result.cover_url" target="_blank" rel="noopener noreferrer" @click.prevent="download($event, result.cover_url)">🖼 下载封面</a>
+            <a v-if="result.cover_url" class="parse-dl" :href="result.cover_url" target="_blank" rel="noopener noreferrer" @click.prevent="download($event, result.cover_url)"><AppIcon icon="🖼" :size="14" /> 下载封面</a>
           </div>
           <div v-if="audioErr" class="audio-err">{{ audioErr }}</div>
           <div class="parse-note">请在权利允许范围内使用，仅供个人学习参考。预览为内联播放，不会跳转外部。</div>
@@ -58,6 +58,7 @@
 import { ref } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import StepIndicator from '@/components/common/StepIndicator.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { parseVideoUrl, parseErrorMsg } from '@/api/videoParse'
 import axios from 'axios'
 

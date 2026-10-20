@@ -13,10 +13,10 @@
         <span class="gt-pill gold">主级 {{ G.levelText(roundLevel) }}</span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
-          {{ muted ? '🔇' : '🔊' }}
+          <AppIcon :icon="muted ? '🔇' : '🔊'" />
         </button>
         <button class="gt-btn sm ghost" :class="{ 'is-off': !hapticsOn }" :title="hapticsOn ? '关闭震动反馈' : '开启震动反馈'" @click="toggleHaptics">
-          📳
+          <AppIcon icon="📳" />
         </button>
         <button class="gt-btn sm ghost" @click="doExit">退出对局</button>
       </header>
@@ -29,7 +29,7 @@
         <!-- 顶部：对家 + 全局「轮到谁出牌」提示条（先手提示从右家头上移到顶部中央，夜星） -->
         <div class="gd-zone gd-zone-top">
           <div class="gt-seat" :class="seatCls(topSeat)">
-            <span class="gt-seat-av">{{ seatAvatar(topSeat) }}</span>
+            <span class="gt-seat-av"><AppIcon :icon="seatAvatar(topSeat)" /></span>
             <span class="gt-seat-tx">
               <b class="gt-seat-name">{{ seatName(topSeat) }}</b>
               <i class="gt-seat-sub">{{ seatSub(topSeat) }}</i>
@@ -60,7 +60,7 @@
           </span>
           <span class="gd-round-info">第 {{ roundNo }} 局</span>
           <div class="gt-seat gd-seat-side" :class="seatCls(leftSeat)">
-            <span class="gt-seat-av">{{ seatAvatar(leftSeat) }}</span>
+            <span class="gt-seat-av"><AppIcon :icon="seatAvatar(leftSeat)" /></span>
             <span class="gt-seat-tx">
               <b class="gt-seat-name">{{ seatName(leftSeat) }}</b>
               <i class="gt-seat-sub">{{ seatSub(leftSeat) }}</i>
@@ -122,7 +122,7 @@
         <!-- 右区：右家（v2.46.76：记录入口已移左上角） -->
         <div class="gd-zone gd-zone-right">
           <div class="gt-seat gd-seat-side" :class="seatCls(rightSeat)">
-            <span class="gt-seat-av">{{ seatAvatar(rightSeat) }}</span>
+            <span class="gt-seat-av"><AppIcon :icon="seatAvatar(rightSeat)" /></span>
             <span class="gt-seat-tx">
               <b class="gt-seat-name">{{ seatName(rightSeat) }}</b>
               <i class="gt-seat-sub">{{ seatSub(rightSeat) }}</i>
@@ -199,7 +199,7 @@
             <!-- v2.46.72：级牌/比分移到左区常驻，这里不再重复（全屏顶栏收起也不丢信息） -->
           <span class="gt-spacer"></span>
           <span v-if="showCountdown" class="gd-mini gd-timer" :class="{ urgent: leftSec <= 60 }">
-            ⏳ 贡牌剩余 {{ mmss(leftSec) }}
+            <AppIcon icon="⏳" :size="14" /> 贡牌剩余 {{ mmss(leftSec) }}
           </span>
           <!-- v2.46.76：「可出 N」删（夜星：与选牌识别/轮次条重合）；statusLine 为空时不占位 -->
           <span v-if="sel.length" class="gd-mini" :class="{ on: sel.length }">已选 {{ sel.length }}</span>
@@ -413,6 +413,7 @@ import confettiPieces from '@/utils/games/confetti'
 import countUp from '@/utils/games/countUp'
 import { speak, speakPass } from '@/utils/games/tts'
 import { loadGame, saveGame } from '@/utils/gameSave'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useRootHeight } from '@/composables/useRootHeight'
 
 const props = defineProps({

@@ -9,7 +9,7 @@
   <IslandInnerBase type="tool" title="音色克隆" subtitle="上传一段录音，复刻专属音色 · 输入文字即可开口说话">
     <!-- 未就绪：无 MiniMax Provider -->
     <div v-if="ready === false" class="vc-empty">
-      <div class="vc-empty-icon">🎙️</div>
+      <div class="vc-empty-icon"><AppIcon icon="🎙️" :size="48" /></div>
       <p>音色克隆需要 MiniMax Provider 支持</p>
       <p class="vc-empty-sub">请先到「AI 对话 → 配置 AI Provider」切换或配置 MiniMax（超管共享配置即可用）</p>
     </div>
@@ -46,18 +46,18 @@
                 @change="onFile"
               />
               <template v-if="!sampleFile">
-                <div class="vc-drop-icon" aria-hidden="true">↑</div>
+                <div class="vc-drop-icon" aria-hidden="true"><AppIcon icon="↑" :size="18" /></div>
                 <div class="vc-drop-text">点击选择音频文件 / 拖到此处</div>
                 <div class="vc-drop-hint">支持 mp3 / m4a / wav</div>
               </template>
               <template v-else>
                 <div class="vc-file-info">
-                  <span class="vc-file-icon" aria-hidden="true">♪</span>
+                  <span class="vc-file-icon" aria-hidden="true"><AppIcon icon="♪" :size="18" /></span>
                   <div class="vc-file-meta">
                     <span class="vc-file-name">{{ sampleFile.name }}</span>
                     <span class="vc-file-size">{{ formatSize(sampleFile.size) }} · 时长待识别</span>
                   </div>
-                  <button class="vc-file-remove" type="button" @click.stop="clearFile" aria-label="移除文件">×</button>
+                  <button class="vc-file-remove" type="button" @click.stop="clearFile" aria-label="移除文件"><AppIcon icon="×" :size="16" /></button>
                 </div>
               </template>
             </div>
@@ -164,7 +164,7 @@
           </header>
 
           <div v-if="!voices.length" class="vc-side-empty">
-            <div class="vc-side-empty-icon" aria-hidden="true">🎙️</div>
+            <div class="vc-side-empty-icon" aria-hidden="true"><AppIcon icon="🎙️" :size="32" /></div>
             <p>还没有克隆过音色</p>
             <p class="vc-empty-sub">上传一段录音，几秒即可生成</p>
           </div>
@@ -199,6 +199,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { getVoiceStatus, cloneVoice, deleteVoice, speakVoice, voiceErrorMsg } from '@/api/voiceClone'
 
 const ready = ref(null)

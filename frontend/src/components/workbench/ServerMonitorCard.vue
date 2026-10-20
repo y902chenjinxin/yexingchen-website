@@ -17,7 +17,7 @@
       </div>
       <div class="sv-head-right">
         <span v-if="data" class="sv-time">{{ data.collected_at }} 采集</span>
-        <button class="sv-refresh" :disabled="loading" title="重新采集" @click="load(true)">↻</button>
+        <button class="sv-refresh" :disabled="loading" title="重新采集" @click="load(true)"><AppIcon icon="↻" :size="16" /></button>
       </div>
     </div>
 
@@ -101,6 +101,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { workbenchApi } from '@/api/workbench'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const data = ref(null)
 const loading = ref(false)

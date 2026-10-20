@@ -111,9 +111,9 @@ function onInviteArrivals(list) {
   if (!first) return
   const extra = list.length > 1 ? `（另有 ${list.length - 1} 条）` : ''
   const mobile = isMobile.value
-  const hint = mobile ? '点右上角「对局邀请」查看' : '点右上角 🔔 查看'
+  const hint = mobile ? '点右上角「对局邀请」查看' : '点右上角「提醒」查看'
   ElNotification({
-    title: '🎮 收到对局邀请',
+    title: '收到对局邀请',
     message: `「${first.fromName}」邀你来一局${first.gameName}${extra} · ${hint}`,
     type: 'info',
     duration: 6000,

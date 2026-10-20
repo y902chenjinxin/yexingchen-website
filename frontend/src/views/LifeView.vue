@@ -20,8 +20,8 @@
           <el-radio-button value="90">90 天</el-radio-button>
           <el-radio-button value="all">全部</el-radio-button>
         </el-radio-group>
-        <el-button v-if="!isMeals" type="primary" size="small" @click="openWeightDialog">＋ 记体重</el-button>
-        <el-button v-else type="primary" size="small" @click="openMealDialog">📷 记一顿</el-button>
+        <el-button v-if="!isMeals" type="primary" size="small" @click="openWeightDialog"><AppIcon icon="＋" /> 记体重</el-button>
+        <el-button v-else type="primary" size="small" @click="openMealDialog"><AppIcon icon="📷" :size="12" /> 记一顿</el-button>
         <el-button size="small" plain @click="openMembersDialog">家人</el-button>
       </div>
     </template>
@@ -29,13 +29,13 @@
     <!-- 人员标签 + 家人汇总：数据全家共享，按成员切片查看 -->
     <section class="life-members">
       <div class="life-members-head">
-        <h3>👨‍👩‍👧 家人</h3>
+        <h3><AppIcon icon="👨‍👩‍👧" :size="15" /> 家人</h3>
         <span class="life-col-meta">{{ rangeLabel }} · 点标签看各自的，汇总为全家</span>
       </div>
 
       <div class="life-mtags">
         <button class="life-mtag" :class="{ on: !filterMember }" @click="pickMember('')">
-          <span class="life-mtag-avatar">🏠</span>
+          <span class="life-mtag-avatar"><AppIcon icon="🏠" :size="15" /></span>
           <span class="life-mtag-name">全部家人</span>
           <span class="life-mtag-meta">{{ allCountText }}</span>
         </button>
@@ -46,7 +46,7 @@
           :class="{ on: String(filterMember) === String(m.id) }"
           @click="pickMember(m.id)"
         >
-          <span class="life-mtag-avatar">{{ m.avatar || '🌿' }}</span>
+          <span class="life-mtag-avatar"><AppIcon :icon="m.avatar || '🌿'" :size="15" /></span>
           <span class="life-mtag-name">{{ m.display_name }}</span>
           <span class="life-mtag-meta">{{ memberCountText(m.id) }}</span>
         </button>
@@ -55,7 +55,7 @@
       <div class="life-sum-grid">
         <!-- 体重汇总 -->
         <div v-if="!isMeals" class="life-sum-card">
-          <div class="life-sum-title">⚖️ 体重汇总</div>
+          <div class="life-sum-title"><AppIcon icon="⚖️" :size="13" /> 体重汇总</div>
           <div class="life-sum-table-wrap" v-if="weightSummary.length">
           <table class="life-sum-table">
             <thead>
@@ -69,7 +69,7 @@
                 :class="{ on: String(filterMember) === String(s.memberId) }"
                 @click="pickMember(s.memberId)"
               >
-                <td class="c-name"><span class="life-sum-avatar">{{ s.avatar }}</span>{{ s.name }}</td>
+                <td class="c-name"><span class="life-sum-avatar"><AppIcon :icon="s.avatar" :size="13" /></span>{{ s.name }}</td>
                 <td>{{ s.count }}</td>
                 <td class="life-sum-strong">{{ s.latest }} kg</td>
                 <td :class="s.deltaClass">{{ s.deltaText }}</td>
@@ -83,7 +83,7 @@
 
         <!-- 美食记忆汇总：按「场合」统计，帮家人回看这些值得记的饭 -->
         <div v-else class="life-sum-card">
-          <div class="life-sum-title">🍱 美食汇总</div>
+          <div class="life-sum-title"><AppIcon icon="🍱" :size="13" /> 美食汇总</div>
           <div class="life-sum-table-wrap" v-if="mealSummary.length">
           <table class="life-sum-table">
             <thead>
@@ -97,7 +97,7 @@
                 :class="{ on: String(filterMember) === String(s.memberId) }"
                 @click="pickMember(s.memberId)"
               >
-                <td class="c-name"><span class="life-sum-avatar">{{ s.avatar }}</span>{{ s.name }}</td>
+                <td class="c-name"><span class="life-sum-avatar"><AppIcon :icon="s.avatar" :size="13" /></span>{{ s.name }}</td>
                 <td class="life-sum-strong">{{ s.count }}</td>
                 <td>{{ s.feast }}</td>
                 <td>{{ s.memory }}</td>
@@ -116,7 +116,7 @@
     <div v-if="!isMeals" class="life-layout">
       <section class="life-col">
         <div class="life-col-head">
-          <h3>⚖️ 体重趋势</h3>
+          <h3><AppIcon icon="⚖️" :size="15" /> 体重趋势</h3>
           <span class="life-col-meta" v-if="weightList.length">
             <template v-if="filterMember">仅看 {{ activeMemberName }} · </template>{{ weightFiltered.length }} 条记录
           </span>
@@ -208,7 +208,7 @@
 
       <section class="life-col">
         <div class="life-col-head">
-          <h3>📋 体重明细</h3>
+          <h3><AppIcon icon="📋" :size="15" /> 体重明细</h3>
           <span class="life-col-meta" v-if="weightGroups.length">按日期倒序 · {{ weightFiltered.length }} 条</span>
         </div>
         <div v-if="weightGroups.length" class="wt-list">
@@ -218,7 +218,7 @@
               <span class="wt-day-n">{{ g.items.length }} 条</span>
             </div>
             <div v-for="w in g.items" :key="w.id" class="wt-row">
-              <span class="wt-row-avatar">{{ w.member_avatar || '🌿' }}</span>
+              <span class="wt-row-avatar"><AppIcon :icon="w.member_avatar || '🌿'" :size="18" /></span>
               <div class="wt-row-main">
                 <div class="wt-row-title">{{ w.member_name }} <span class="wt-row-w">{{ w.weight_kg }} kg</span></div>
                 <div v-if="w.note" class="wt-row-note">{{ w.note }}</div>
@@ -241,7 +241,7 @@
     <div v-else class="life-layout life-layout-single">
       <section class="life-col life-meal">
         <div class="life-col-head">
-          <h3>🍱 美食记忆</h3>
+          <h3><AppIcon icon="🍱" :size="15" /> 美食记忆</h3>
           <span class="life-col-meta" v-if="mealList.length">
             <template v-if="filterMember">仅看 {{ activeMemberName }} · </template>{{ mealFiltered.length }} 张
           </span>
@@ -257,11 +257,11 @@
             <button class="meal-img-wrap" type="button" :aria-label="`预览 ${m.note || m.member_name} 的照片`" @click="openPreview(m)">
               <img :src="mealPhotoUrl(m.photo_path)" :alt="m.note || m.member_name" class="meal-img" loading="lazy" />
               <span class="meal-type-tag" :class="mealKindClass(m.meal_type)">{{ mealLabel(m.meal_type) }}</span>
-              <span class="meal-zoom">🔍</span>
+              <span class="meal-zoom"><AppIcon icon="🔍" :size="12" /></span>
             </button>
             <figcaption class="meal-info">
               <div class="meal-meta">
-                <span class="meal-avatar">{{ m.member_avatar || '🌿' }}</span>
+                <span class="meal-avatar"><AppIcon :icon="m.member_avatar || '🌿'" :size="14" /></span>
                 <span class="meal-name">{{ m.member_name }}</span>
                 <span class="meal-date">{{ shortDateTime(m.taken_at) }}</span>
               </div>
@@ -280,7 +280,7 @@
           tone="generic"
           size="sm"
           :title="filterMember ? `${activeMemberName} 还没有美食记忆` : '还没有美食记忆'"
-          :description="filterMember ? '切回「全部家人」看其他家人的记录' : '点「📷 记一顿」上传大餐或纪念餐的照片，按家人自动归类'"
+          :description="filterMember ? '切回「全部家人」看其他家人的记录' : '点「记一顿」上传大餐或纪念餐的照片，按家人自动归类'"
         />
       </section>
     </div>
@@ -290,7 +290,10 @@
       <el-form :model="weightForm" label-width="80px">
         <el-form-item label="家人">
           <el-select v-model="weightForm.member_id" placeholder="选家人" style="width:100%">
-            <el-option v-for="m in members" :key="m.id" :label="`${m.avatar} ${m.display_name}`" :value="m.id" />
+            <el-option v-for="m in members" :key="m.id" :value="m.id" :label="m.display_name">
+              <AppIcon :icon="m.avatar || '🌿'" /> {{ m.display_name }}
+              <template #label><AppIcon :icon="m.avatar || '🌿'" /> {{ m.display_name }}</template>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="体重 (kg)">
@@ -315,13 +318,16 @@
       <el-form :model="mealForm" label-width="80px">
         <el-form-item label="家人">
           <el-select v-model="mealForm.member_id" placeholder="选家人" style="width:100%">
-            <el-option v-for="m in members" :key="m.id" :label="`${m.avatar} ${m.display_name}`" :value="m.id" />
+            <el-option v-for="m in members" :key="m.id" :value="m.id" :label="m.display_name">
+              <AppIcon :icon="m.avatar || '🌿'" /> {{ m.display_name }}
+              <template #label><AppIcon :icon="m.avatar || '🌿'" /> {{ m.display_name }}</template>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="场合">
           <el-radio-group v-model="mealForm.meal_type">
             <el-radio-button v-if="legacyKind" :value="mealForm.meal_type">{{ legacyKind }}</el-radio-button>
-            <el-radio-button v-for="k in MEAL_KINDS" :key="k.value" :value="k.value">{{ k.icon }} {{ k.label }}</el-radio-button>
+            <el-radio-button v-for="k in MEAL_KINDS" :key="k.value" :value="k.value"><AppIcon :icon="k.icon" :size="14" /> {{ k.label }}</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="时间">
@@ -332,16 +338,16 @@
           <!-- v2.40.24：手机上新增「拍照」直接调起后置相机（capture），原「从相册选」保留 -->
           <div class="meal-photo-row">
             <label class="meal-photo-btn">
-              📸 拍照
+              <AppIcon icon="📸" :size="14" /> 拍照
               <input type="file" accept="image/*" capture="environment" hidden @change="onMealPick($event)">
             </label>
             <label class="meal-photo-btn">
-              🖼 从相册选
+              <AppIcon icon="🖼" :size="14" /> 从相册选
               <input type="file" accept="image/*" hidden @change="onMealPick($event)">
             </label>
             <div v-if="mealPhotoShown" class="meal-photo-preview">
               <img :src="mealPhotoShown" alt="已选照片">
-              <button type="button" class="meal-photo-del" aria-label="移除照片" @click="clearMealPhoto">×</button>
+              <button type="button" class="meal-photo-del" aria-label="移除照片" @click="clearMealPhoto"><AppIcon icon="×" /></button>
             </div>
           </div>
         </el-form-item>
@@ -365,7 +371,7 @@
       <div v-if="!members.length" class="life-empty">还没有家人档案</div>
       <div v-else class="members-grid">
         <div v-for="m in members" :key="m.id" class="member-card">
-          <span class="member-card-avatar">{{ m.avatar || '🌿' }}</span>
+          <span class="member-card-avatar"><AppIcon :icon="m.avatar || '🌿'" :size="26" /></span>
           <div class="member-card-main">
             <div class="member-card-name">
               {{ m.display_name }}
@@ -395,7 +401,7 @@
           <figcaption class="meal-lb-bar">
             <div class="meal-lb-meta">
               <span class="meal-type-tag" :class="mealKindClass(previewMeal.meal_type)">{{ mealLabel(previewMeal.meal_type) }}</span>
-              <span class="meal-lb-name">{{ previewMeal.member_avatar || '🌿' }} {{ previewMeal.member_name }}</span>
+              <span class="meal-lb-name"><AppIcon :icon="previewMeal.member_avatar || '🌿'" :size="13" /> {{ previewMeal.member_name }}</span>
               <span class="meal-lb-date">{{ longDateTime(previewMeal.taken_at) }}</span>
             </div>
             <p v-if="previewMeal.note" class="meal-lb-note">{{ previewMeal.note }}</p>
@@ -405,7 +411,7 @@
               <button type="button" class="meal-lb-btn" @click="closePreview">关闭</button>
             </div>
           </figcaption>
-          <button type="button" class="meal-lb-x" aria-label="关闭预览" @click="closePreview">✕</button>
+          <button type="button" class="meal-lb-x" aria-label="关闭预览" @click="closePreview"><AppIcon icon="✕" :size="14" /></button>
         </figure>
       </div>
     </Teleport>
@@ -417,6 +423,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import ChartTip from '@/components/charts/ChartTip.vue'
 import { useChartHover } from '@/composables/useChartHover'
 import { ElMessage, ElMessageBox } from 'element-plus'

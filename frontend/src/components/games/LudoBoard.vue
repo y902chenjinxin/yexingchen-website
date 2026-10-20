@@ -13,7 +13,7 @@
           <span class="lb-chip"></span>
           <div class="lb-ptxt">
             <b>{{ playerLabel(c) }}</b>
-            <i>{{ seatStatus(c) }}</i>
+            <i><AppIcon v-if="seatIcon(c)" :icon="seatIcon(c)" :size="13" /> {{ seatStatus(c) }}</i>
           </div>
           <span class="lb-mini">
             <em v-for="k in 4" :key="k" :class="{ done: pieces[c][k - 1].prog === FINISH }"></em>
@@ -44,7 +44,7 @@
           <button class="lb-btn" @click="askExit">退出对局（认输）</button>
         </template>
         <template v-else-if="gRoom.status.value === 'finished'">
-          <span class="lb-result">{{ onlineResultText }}</span>
+          <span class="lb-result"><AppIcon v-if="onlineResultIcon" :icon="onlineResultIcon" :size="16" /> {{ onlineResultText }}</span>
           <button class="lb-btn primary" @click="reinviteSame">再来一局</button>
           <button class="lb-btn" @click="exitOnline">退出</button>
         </template>
@@ -52,7 +52,7 @@
 
       <!-- 本地对局操作 -->
       <div v-if="mode !== 'online'" class="lb-status">
-        <span v-if="over" class="lb-result">{{ resultText }}</span>
+        <span v-if="over" class="lb-result"><AppIcon v-if="resultIcon" :icon="resultIcon" :size="16" /> {{ resultText }}</span>
         <button class="lb-btn" @click="restart">重开一局</button>
         <span class="lb-quota">归航 {{ finishedTotal }}/{{ activeColors.length * 4 }}</span>
       </div>
@@ -60,7 +60,7 @@
 
     <!-- 在线：邀请面板 -->
     <div v-if="mode === 'online' && !gRoom.room.value" class="lb-online">
-      <div class="lb-online-title">🎯 在线邀请对战</div>
+      <div class="lb-online-title"><AppIcon icon="🎯" /> 在线邀请对战</div>
       <p class="lb-online-desc">选一位家人发出邀请，对方接受后开局；你执红先手，掷骰与走子约 2 秒内同步。</p>
       <div class="lb-online-row">
         <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
@@ -95,7 +95,7 @@
 
         <!-- 中心归航区 -->
         <div class="lb-center" :style="centerStyle">
-          <span class="lb-center-star">✦</span>
+          <span class="lb-center-star"><AppIcon icon="✦" :size="15" /></span>
         </div>
 
         <!-- 外圈轨道 -->
@@ -112,7 +112,7 @@
           :style="cellStyle(rc)"
         >
           <template v-if="EVENT_CELLS[i]">
-            <span class="lb-evt-ico">{{ EVENT_META[EVENT_CELLS[i]].icon }}</span>
+            <span class="lb-evt-ico"><AppIcon :icon="EVENT_META[EVENT_CELLS[i]].icon" :size="15" /></span>
             <span class="lb-evt-tag">{{ EVENT_META[EVENT_CELLS[i]].short }}</span>
           </template>
         </div>
@@ -156,7 +156,7 @@
         <button class="lb-btn" @click="emit('exit')">返回列表</button>
       </div>
       <ul class="lb-log">
-        <li v-for="(l, i) in log" :key="i" :class="{ fresh: i === log.length - 1 }">{{ l }}</li>
+        <li v-for="(l, i) in log" :key="i" :class="{ fresh: i === log.length - 1 }"><AppIcon v-if="l.icon" :icon="l.icon" :size="13" /> {{ l.text }}</li>
       </ul>
     </div>
 
@@ -172,7 +172,7 @@
         :key="k"
         class="lb-lg"
         :class="'lg-' + k"
-      ><i>{{ m.icon }}</i>{{ m.name }} · {{ m.tip }}</span>
+      ><i><AppIcon :icon="m.icon" :size="15" /></i>{{ m.name }} · {{ m.tip }}</span>
     </div>
   </div>
 </template>
@@ -202,6 +202,7 @@ import MemberPicker from '@/components/games/MemberPicker.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 import { sfx } from '@/utils/games/sfx'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   initialMode: { type: String, default: '' },   // 模式由页面第一步选定
@@ -353,8 +354,12 @@ const lockHint = computed(() => {
   return ''
 })
 const onlineResultText = computed(() => {
-  if (!winnerColor.value) return '🤝 平局'
-  return winnerColor.value === myColor.value ? '🎉 你赢了' : '对方赢了'
+  if (!winnerColor.value) return '平局'
+  return winnerColor.value === myColor.value ? '你赢了' : '对方赢了'
+})
+const onlineResultIcon = computed(() => {
+  if (!winnerColor.value) return '🤝'
+  return winnerColor.value === myColor.value ? '🎉' : ''
 })
 watch(roomActive, (v) => emit(v ? 'room-lock' : 'room-unlock'))
 
@@ -490,14 +495,14 @@ function applyEvent(ev) {
   if (ev.np === FINISH) sfx.coin()             // 归航进账（v2.46.20）
   dice.value = ev.v || dice.value
   let msg = from === -1 ? `${label(ev.c)} 起飞` : `${label(ev.c)} 掷出 ${ev.v} 点`
-  if (ev.fly === 'shortcut') msg += ' · 触发飞行通道 ✈️'
-  else if (ev.fly === 'color') msg += ' · 踩到自己颜色，飞跃 ✈️'
+  if (ev.fly === 'shortcut') msg += ' · 触发飞行通道'
+  else if (ev.fly === 'color') msg += ' · 踩到自己颜色，飞跃'
   if (ev.evt && EVENT_META[ev.evt]) {
     const m = EVENT_META[ev.evt]
     msg += ` · ${m.icon} ${m.name}（${m.tip}）`
   }
   if ((ev.cap || []).length) msg += ` · 击落 ${ev.cap.map(([oc]) => label(oc)).join('、')}`
-  if (ev.np === FINISH) msg += ' · 一架归航 🎉'
+  if (ev.np === FINISH) msg += ' · 一架归航'
   addLog(msg)
 
   if (arr.every(p => p.prog === FINISH)) {
@@ -515,7 +520,7 @@ function applyEvent(ev) {
     phase.value = 'roll'
     if (ev.v === 6) addLog(`${label(ev.c)} 掷出 6 点，再掷一次`)
     else if ((ev.cap || []).length) addLog(`${label(ev.c)} 击落对方，再掷一次`)
-    else if (ev.evt === 'chest') addLog(`${label(ev.c)} 宝箱奖励，再掷一次 🎁`)
+    else if (ev.evt === 'chest') addLog(`${label(ev.c)} 宝箱奖励，再掷一次`)
     else addLog(`${label(ev.c)} 再掷一次`)
   } else {
     endTurn(ev.c)
@@ -595,8 +600,14 @@ function onPieceClick(p) {
   doMove(p.i)
 }
 
+/** 战报文案开头的 emoji 提成 icon 字段（模板用 AppIcon 渲染），命中不了就原样保留。 */
+const LEAD_ICON = /^([\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1FAFF}][\uFE0F\u200D\u{1F3FB}-\u{1F3FF}]*)\s+/u
+function splitIcon(msg) {
+  const m = LEAD_ICON.exec(msg)
+  return m ? { icon: m[1], text: msg.slice(m[0].length) } : { icon: '', text: msg }
+}
 function addLog(s) {
-  log.value.push(s)
+  log.value.push(splitIcon(s))
   if (log.value.length > 6) log.value.shift()
 }
 function label(c) { return META[c]?.name || c }
@@ -608,14 +619,21 @@ function playerLabel(c) {
   return label(c)
 }
 function seatStatus(c) {
-  if (over.value) return winnerColor.value === c ? '获胜 🎉' : '已结束'
+  if (over.value) return winnerColor.value === c ? '获胜' : '已结束'
   if (turnColor.value !== c) return '等待'
   if (mode.value === 'online') return turnColor.value === myColor.value ? '你的回合' : '对方回合'
   return phase.value === 'move' ? '选择棋子' : '请掷骰'
 }
+function seatIcon(c) {
+  return over.value && winnerColor.value === c ? '🎉' : ''
+}
 const resultText = computed(() => {
-  if (!winnerColor.value) return '🤝 平局'
-  return `🎊 ${label(winnerColor.value)} 获胜`
+  if (!winnerColor.value) return '平局'
+  return `${label(winnerColor.value)} 获胜`
+})
+const resultIcon = computed(() => {
+  if (!winnerColor.value) return '🤝'
+  return '🎊'
 })
 
 /* ================= 棋盘渲染 ================= */

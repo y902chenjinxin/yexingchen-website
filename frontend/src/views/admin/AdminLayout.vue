@@ -2,7 +2,7 @@
   <div class="admin-page">
     <header class="admin-header">
       <div class="header-left">
-        <span class="admin-title">🔧 管理后台</span>
+        <span class="admin-title"><AppIcon icon="🔧" :size="20" /> 管理后台</span>
       </div>
       <div class="header-right">
         <slot name="actions" />
@@ -32,6 +32,7 @@
 <script setup>
 import { useRoute, RouterLink } from 'vue-router'
 import { User, Lock, Menu as MenuIcon } from '@element-plus/icons-vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const route = useRoute()
 

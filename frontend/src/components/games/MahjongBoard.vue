@@ -11,10 +11,10 @@
         <span class="gt-pill">余牌 {{ wall.length }}</span>
         <span class="gt-spacer"></span>
         <button class="gt-btn sm ghost" :title="muted ? '取消静音' : '静音'" @click="toggleMute">
-          {{ muted ? '🔇' : '🔊' }}
+          <AppIcon :icon="muted ? '🔇' : '🔊'" />
         </button>
         <button class="gt-btn sm ghost" :class="{ 'is-off': !hapticsOn }" :title="hapticsOn ? '关闭震动反馈' : '开启震动反馈'" @click="toggleHaptics">
-          📳
+          <AppIcon icon="📳" />
         </button>
         <button class="gt-btn sm ghost" @click="doExit">退出对局</button>
       </header>
@@ -29,7 +29,7 @@
           :class="p.cls"
         >
           <div class="gt-seat" :class="seatCls(p.seat)">
-            <span class="gt-seat-av">{{ seatAvatar(p.seat) }}</span>
+            <span class="gt-seat-av"><AppIcon :icon="seatAvatar(p.seat)" /></span>
             <span class="gt-seat-tx">
               <b class="gt-seat-name">{{ seatName(p.seat) }}</b>
             </span>
@@ -356,6 +356,7 @@ import { speak, tileSpeech } from '@/utils/games/tts'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import { reportSettle } from '@/api/gameEconomy'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useRootHeight } from '@/composables/useRootHeight'
 
 const props = defineProps({

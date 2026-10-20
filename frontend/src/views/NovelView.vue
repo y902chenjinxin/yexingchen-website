@@ -158,7 +158,7 @@
         class="batch-upload"
       >
         <div class="batch-drop">
-          <div class="batch-drop-icon">📚</div>
+          <div class="batch-drop-icon"><AppIcon icon="📚" :size="28" /></div>
           <div class="batch-drop-text">拖拽文件到这里，或<em>点击选择</em></div>
           <div class="batch-drop-hint">EPUB / PDF / TXT，单次最多 30 个</div>
         </div>
@@ -263,6 +263,7 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useNovelStore } from '@/stores/novel'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { downloadNovelTemplate } from '@/api/novel'
 import { useIsMobile } from '@/composables/useIsMobile'
 

@@ -5,13 +5,13 @@
       <header class="inner-header">
         <!-- 桌面端：侧栏已接管返回导航，不再显示「返回工作台」按钮；手机端保留（手机端无侧栏，靠此按钮返回） -->
         <button v-if="isMobile" class="back-btn" @click="goBack">
-          <span class="back-icon">←</span>
+          <span class="back-icon"><AppIcon icon="←" :size="16" /></span>
           <span class="back-text">返回工作台</span>
         </button>
         <!-- 从「工具」列表进来的，手机上再给一个直回列表的入口（C4）：
              历史返回只能回上一页，想继续逛别的工具就得一路退出去 -->
         <button v-if="isMobile && fromToolList" class="tool-list-btn" @click="goToolList">
-          <span aria-hidden="true">⚒</span> 工具箱
+          <AppIcon icon="⚒" :size="14" /> 工具箱
         </button>
         <h1 class="island-title">{{ title }}</h1>
         <p class="island-subtitle">{{ subtitle }}</p>
@@ -32,6 +32,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIsMobile } from '@/composables/useIsMobile'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const router = useRouter()
 const { isMobile } = useIsMobile()

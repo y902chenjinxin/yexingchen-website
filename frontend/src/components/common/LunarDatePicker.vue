@@ -6,7 +6,7 @@
       <span v-if="lunarText" class="lp-field-lunar">{{ lunarText }}</span>
       <i class="lp-caret">▾</i>
     </button>
-    <button v-if="modelValue" type="button" class="lp-clear" title="清除" @click.stop="pick('')">✕</button>
+    <button v-if="modelValue" type="button" class="lp-clear" title="清除" @click.stop="pick('')"><AppIcon icon="✕" :size="13" /></button>
 
     <Teleport to="body">
       <div v-if="open" class="lp-mask" @click.self="open = false">
@@ -28,6 +28,7 @@
 /** 农历日历日期选择器（v2.40.36；v2.40.37 抽出 LunarCalendar 复用）。 */
 import { ref, watch, onMounted } from 'vue'
 import LunarCalendar from '@/components/common/LunarCalendar.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { getDayInfo } from '@/utils/lunarCache'
 
 const props = defineProps({

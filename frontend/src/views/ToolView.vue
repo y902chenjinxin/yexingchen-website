@@ -40,7 +40,7 @@
         <el-table-column type="selection" width="48" />
         <el-table-column label="名称" min-width="150">
           <template #default="{ row }">
-            <span class="icon-cell">{{ row.icon || '🔧' }}</span>{{ row.title }}
+            <span class="icon-cell"><AppIcon :icon="row.icon || '🔧'" :size="16" /></span>{{ row.title }}
             <el-tag v-if="row.kind === 'builtin'" size="small" type="warning" effect="plain" class="kind-tag">内置</el-tag>
             <el-tag v-if="!row.is_enabled" size="small" type="info" effect="plain" class="kind-tag">下架</el-tag>
           </template>
@@ -55,8 +55,8 @@
         </el-table-column>
         <el-table-column label="排序" width="120" align="center">
           <template #default="{ row }">
-            <el-button size="small" text :disabled="isFirst(row)" @click="move(row, -1)">↑</el-button>
-            <el-button size="small" text :disabled="isLast(row)" @click="move(row, 1)">↓</el-button>
+            <el-button size="small" text :disabled="isFirst(row)" @click="move(row, -1)"><AppIcon icon="↑" :size="14" /></el-button>
+            <el-button size="small" text :disabled="isLast(row)" @click="move(row, 1)"><AppIcon icon="↓" :size="14" /></el-button>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="96" align="center">
@@ -136,6 +136,7 @@ import { onMounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useToolStore } from '@/stores/tool'

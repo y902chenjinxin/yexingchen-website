@@ -22,9 +22,9 @@
                 :class="{ on: invitees.includes(m.user_id) }"
                 @click="toggleInvitee(m.user_id)"
               >
-                <span class="gtv-ava">{{ m.avatar || '🌿' }}</span>
+                <span class="gtv-ava"><AppIcon :icon="m.avatar || '🌿'" :size="15" /></span>
                 <span class="gtv-name">{{ m.display_name || '家人' }}</span>
-                <span v-if="invitees.includes(m.user_id)" class="gtv-check">✓</span>
+                <span v-if="invitees.includes(m.user_id)" class="gtv-check"><AppIcon icon="✓" :size="14" /></span>
               </button>
               <p v-if="!families.length" class="gtv-empty">家庭里还没有其他账号可以邀请。</p>
             </div>
@@ -110,7 +110,7 @@
               class="gtv-seat"
               :class="{ empty: !s.user_id, me: s.seat === room.my_seat, ai: s.is_ai, offline: s.autopilot }"
             >
-              <span class="gtv-seat-av">{{ seatAvatar(s) }}</span>
+              <span class="gtv-seat-av"><AppIcon :icon="seatAvatar(s)" :size="26" /></span>
               <b class="gtv-seat-name">{{ s.name || '空位' }}</b>
               <i class="gtv-seat-tag">
                 <template v-if="s.is_ai">机器人</template>
@@ -131,7 +131,7 @@
                 class="gtv-kick"
                 title="移出该席位"
                 @click="kick(s.seat)"
-              >✕</button>
+              ><AppIcon icon="✕" :size="12" :weight="1.8" /></button>
             </div>
           </div>
 
@@ -200,7 +200,7 @@
               :aria-expanded="menuOpen ? 'true' : 'false'"
               aria-label="牌桌菜单"
               @click="menuOpen = !menuOpen"
-            >{{ menuOpen ? '✕' : '☰' }}</button>
+            ><AppIcon :icon="menuOpen ? '✕' : '☰'" :size="17" /></button>
 
             <transition name="gtv-pop">
               <div v-if="menuOpen" class="gtv-fsmenu-panel">
@@ -211,19 +211,19 @@
                   <span>第 {{ room.round_no }} 局</span>
                 </div>
                 <button class="gtv-fsmenu-item" @click="menuOpen = false; showHelp = true">
-                  <i aria-hidden="true">📖</i><span>游戏说明</span>
+                  <i aria-hidden="true"><AppIcon icon="📖" :size="15" /></i><span>游戏说明</span>
                 </button>
                 <button class="gtv-fsmenu-item" @click="menuOpen = false; exitFullscreen()">
-                  <i aria-hidden="true">⤡</i><span>退出全屏</span>
+                  <i aria-hidden="true"><AppIcon icon="⤡" :size="15" /></i><span>退出全屏</span>
                 </button>
                 <button class="gtv-fsmenu-item" title="退出＝认输，本局立即按当前名次结算" @click="menuOpen = false; leaveRoom()">
-                  <i aria-hidden="true">🚪</i><span>退出对局（认输）</span>
+                  <i aria-hidden="true"><AppIcon icon="🚪" :size="15" /></i><span>退出对局（认输）</span>
                 </button>
                 <button class="gtv-fsmenu-item danger" @click="menuOpen = false; dissolveRoom()">
-                  <i aria-hidden="true">⛔</i><span>解散牌桌</span>
+                  <i aria-hidden="true"><AppIcon icon="⛔" :size="15" /></i><span>解散牌桌</span>
                 </button>
                 <button class="gtv-fsmenu-item" @click="goBack">
-                  <i aria-hidden="true">↩</i><span>返回列表</span>
+                  <i aria-hidden="true"><AppIcon icon="↩" :size="15" /></i><span>返回列表</span>
                 </button>
               </div>
             </transition>
@@ -235,7 +235,7 @@
               <aside class="gtv-help-panel" role="dialog" aria-label="游戏说明">
                 <header class="gtv-help-head">
                   <b>{{ gameLabel }} · 玩法说明</b>
-                  <button class="gtv-help-x" aria-label="关闭说明" @click="showHelp = false">✕</button>
+                  <button class="gtv-help-x" aria-label="关闭说明" @click="showHelp = false"><AppIcon icon="✕" :size="14" /></button>
                 </header>
                 <ol class="gtv-help-list">
                   <li v-for="(r, i) in helpRules" :key="i">{{ r }}</li>
@@ -278,6 +278,7 @@ import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, defineAsync
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useGameTable } from '@/composables/useGameTable'
 import { usePinchZoom } from '@/composables/usePinchZoom'
 import { familyMembers } from '@/api/lifeExtra'

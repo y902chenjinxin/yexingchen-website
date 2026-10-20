@@ -12,7 +12,7 @@
             <button class="ct-seg-btn" :class="{ on: view === 'list' }" @click="view = 'list'">列表</button>
             <button class="ct-seg-btn" :class="{ on: view === 'calendar' }" @click="view = 'calendar'">日历</button>
           </div>
-          <button class="ct-btn primary" @click="openCreate">＋ 新增</button>
+          <button class="ct-btn primary" @click="openCreate"><AppIcon icon="＋" :size="14" /> 新增</button>
         </div>
       </header>
 
@@ -25,7 +25,7 @@
         <span class="ct-count">共 {{ filtered.length }} 位{{ upcomingCount ? ` · 近 30 天生日 ${upcomingCount} 位` : '' }}</span>
         <!-- v2.40.18：人脉图谱归属通讯录（原先藏在工具岛里，找不到） -->
         <button class="ct-btn ghost ct-btn-map" title="按关系聚簇的关系网络图，可拖拽节点" @click="goContactsMap">
-          <span class="ct-map-ic" aria-hidden="true">🕸</span> 人脉图谱
+          <span class="ct-map-ic" aria-hidden="true"><AppIcon icon="🕸" :size="14" /></span> 人脉图谱
         </button>
       </div>
 
@@ -77,7 +77,7 @@
                 </span>
                 <span v-if="c.address">住址 {{ c.address }}</span>
                 <span v-if="c.identity_no">身份照号 {{ c.identity_no }}</span>
-                <span v-if="c.creator_name" class="ct-creator">{{ c.creator_avatar || '👤' }} {{ c.creator_name }} 录入</span>
+                <span v-if="c.creator_name" class="ct-creator"><AppIcon :icon="c.creator_avatar || '👤'" :size="14" /> {{ c.creator_name }} 录入</span>
               </div>
               <p v-if="c.notes" class="ct-notes">{{ c.notes }}</p>
             </div>
@@ -224,6 +224,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { contactsApi, RELATION_OPTIONS } from '@/api/family'
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']

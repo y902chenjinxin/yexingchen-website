@@ -17,7 +17,7 @@
           <p class="fin-sub">流水明账 · 家人共享</p>
         </div>
         <div class="fin-head-right">
-          <button class="fin-btn primary" @click="openNew">＋ 记一笔</button>
+          <button class="fin-btn primary" @click="openNew"><AppIcon icon="＋" /> 记一笔</button>
         </div>
       </header>
 
@@ -85,10 +85,10 @@
       <transition name="fd">
         <section v-if="importing.analyzing || importing.rows.length || importing.skipped || importing.errors.length" class="fin-import-panel glass">
           <div class="fin-import-panel-head">
-            <span class="fin-import-panel-title">🤖 智能导入预览</span>
+            <span class="fin-import-panel-title"><AppIcon icon="🤖" /> 智能导入预览</span>
             <span v-if="importing.analyzing" class="fin-import-loading">AI 正在识别并精简数据…<em class="fin-import-eta">已用 {{ importElapsed }}s · 预计 ~6s</em></span>
             <span v-else class="fin-import-done">识别完成</span>
-            <button class="fin-form-close" @click="cancelImport">✕</button>
+            <button class="fin-form-close" @click="cancelImport"><AppIcon icon="✕" :size="14" /></button>
           </div>
 
           <div v-if="importing.analyzing" class="fin-import-empty">正在读取并识别文件，请稍候…</div>
@@ -137,7 +137,7 @@
           <div class="fin-form-head">
             <span class="fin-form-title">{{ form.editing ? '编辑流水' : '记一笔' }}</span>
             <span v-if="form.editing" class="fin-form-edit-tag">正在编辑 #{{ form.editingId }}</span>
-            <button class="fin-form-close" @click="form.show = false">✕</button>
+            <button class="fin-form-close" @click="form.show = false"><AppIcon icon="✕" :size="14" /></button>
           </div>
 
           <div class="fin-form-body">
@@ -213,14 +213,14 @@
               </template>
 
               <div v-else class="fin-funds">
-                <button class="fin-fund" :class="{ active: form.fund === 'none' }" @click="pickFund('none')">🚫 未归类</button>
+                <button class="fin-fund" :class="{ active: form.fund === 'none' }" @click="pickFund('none')"><LedgerIcon icon="🚫" :size="15" /> 未归类</button>
                 <button
                   v-for="f in FUND_ORDER"
                   :key="f"
                   class="fin-fund"
                   :class="[{ active: form.fund === f }, f]"
                   @click="pickFund(f)"
-                >{{ FUND_META[f].icon }} {{ FUND_META[f].label }}</button>
+                ><LedgerIcon :icon="FUND_META[f].icon" :size="15" /> {{ FUND_META[f].label }}</button>
               </div>
             </div>
 
@@ -234,7 +234,7 @@
                   class="fin-fund"
                   :class="{ active: String(form.member) === String(m.user_id) }"
                   @click="form.member = m.user_id"
-                >{{ m.avatar }} {{ m.name }}</button>
+                ><AppIcon :icon="m.avatar" /> {{ m.name }}</button>
               </div>
             </div>
 
@@ -250,7 +250,7 @@
                   class="fin-cat"
                   :class="{ active: form.category === c.key }"
                   @click="form.category = c.key"
-                >{{ c.icon }} {{ c.key }}</button>
+                ><LedgerIcon :icon="c.icon" :size="14" /> {{ c.key }}</button>
               </div>
             </div>
 
@@ -293,7 +293,7 @@
           @click="openPool(p.fund)"
         >
           <span class="fin-pool-top">
-            <span class="fin-pool-icon">{{ FUND_META[p.fund].icon }}</span>
+            <span class="fin-pool-icon"><LedgerIcon :icon="FUND_META[p.fund].icon" :size="17" /></span>
             <span class="fin-pool-name">{{ p.label }}</span>
           </span>
           <span class="fin-pool-val" :class="{ neg: p.balance < 0 }">¥ {{ money(p.balance) }}</span>
@@ -361,7 +361,7 @@
 
         <div class="fin-mtags">
           <button class="fin-mtag" :class="{ on: !memberFilter }" @click="pickMember('')">
-            <span class="fin-mtag-avatar">🏠</span>
+            <span class="fin-mtag-avatar"><AppIcon icon="🏠" :size="15" /></span>
             <span class="fin-mtag-name">全部家人</span>
             <span class="fin-mtag-amt">¥ {{ money(breakdown.total?.expense) }}</span>
           </button>
@@ -372,7 +372,7 @@
             :class="{ on: String(memberFilter) === String(m.user_id) }"
             @click="pickMember(m.user_id)"
           >
-            <span class="fin-mtag-avatar">{{ m.avatar }}</span>
+            <span class="fin-mtag-avatar"><AppIcon :icon="m.avatar" :size="15" /></span>
             <span class="fin-mtag-name">{{ m.name }}</span>
             <span class="fin-mtag-amt">¥ {{ money(m.expense) }}</span>
           </button>
@@ -397,7 +397,7 @@
                 :class="{ on: String(memberFilter) === String(m.user_id) }"
                 @click="pickMember(m.user_id)"
               >
-                <td class="c-name"><span class="fin-mtd-avatar">{{ m.avatar }}</span>{{ m.name }}</td>
+                <td class="c-name"><span class="fin-mtd-avatar"><AppIcon :icon="m.avatar" /></span>{{ m.name }}</td>
                 <td class="c-num income">+ ¥ {{ money(m.income) }}</td>
                 <td class="c-num expense">− ¥ {{ money(m.expense) }}</td>
                 <td class="c-num">{{ m.count }}</td>
@@ -429,7 +429,7 @@
             <ul class="fin-legend">
               <li v-for="c in summary.categories" :key="c.category" class="fin-legend-item">
                 <i class="fin-dot" :style="{ background: c.color }"></i>
-                <span class="fin-legend-name">{{ c.icon }} {{ c.category }}</span>
+                <span class="fin-legend-name"><LedgerIcon :icon="c.icon" :size="14" /> {{ c.category }}</span>
                 <span class="fin-legend-pct">{{ pct(c.amount) }}%</span>
                 <span class="fin-legend-amt">¥ {{ money(c.amount) }}</span>
               </li>
@@ -453,7 +453,7 @@
         <section class="fin-panel">
           <div class="fin-pool-hero glass" :class="activeTab">
             <div class="fin-pool-hero-left">
-              <span class="fin-pool-hero-icon">{{ FUND_META[activeTab].icon }}</span>
+              <span class="fin-pool-hero-icon"><LedgerIcon :icon="FUND_META[activeTab].icon" :size="30" /></span>
               <div>
                 <h2 class="fin-panel-title">{{ FUND_META[activeTab].label }}</h2>
                 <p class="fin-panel-sub">累计转入 ¥ {{ money(activePool.inflow) }} · 累计已用 ¥ {{ money(activePool.outflow) }}</p>
@@ -479,14 +479,14 @@
                 <!-- v2.46.87：补 fin-row-body 层——v2.46.33 把 .fin-row 改 display:block
                      （布局职责移交给滑动删除载体），池子列表当时没跟这层，PC 端整行竖着堆 -->
                 <div class="fin-row-body">
-                  <div class="fin-row-icon">{{ row.category_icon }}</div>
+                  <div class="fin-row-icon"><LedgerIcon :icon="row.category_icon" :size="21" /></div>
                   <div class="fin-row-main">
                     <div class="fin-row-top">
                       <span class="fin-row-cat">{{ row.category }}</span>
                       <span class="fin-row-note">{{ row.note }}</span>
                     </div>
                     <div class="fin-row-date">
-                      <span v-if="row.member" class="fin-row-member">{{ row.member.avatar }} {{ row.member.name }}</span>
+                      <span v-if="row.member" class="fin-row-member"><AppIcon :icon="row.member.avatar" /> {{ row.member.name }}</span>
                       {{ fmtDay(row.occurred_at) }}
                     </div>
                   </div>
@@ -494,7 +494,7 @@
                     {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
                   </div>
                   <div class="fin-row-ops">
-                    <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                    <button class="fin-op" title="编辑" @click="openEdit(row)"><AppIcon icon="✎" :size="14" /></button>
                     <el-popconfirm
                       title="确认删除这条流水？"
                       confirm-button-text="删除"
@@ -503,7 +503,7 @@
                       @confirm="del(row)"
                     >
                       <template #reference>
-                        <button class="fin-op danger" title="删除">🗑</button>
+                        <button class="fin-op danger" title="删除"><AppIcon icon="🗑" :size="14" /></button>
                       </template>
                     </el-popconfirm>
                   </div>
@@ -532,7 +532,7 @@
               @keydown.enter.prevent="togglePcard(p)"
               @keydown.space.prevent="togglePcard(p)"
             >
-              <span class="fin-pcard-avatar">{{ p.avatar }}</span>
+              <span class="fin-pcard-avatar"><AppIcon :icon="p.avatar" :size="20" /></span>
               <span class="fin-pcard-name">{{ p.name }}</span>
               <span class="fin-pcard-val" :class="{ neg: p.balance < 0 }">¥ {{ money(p.balance) }}</span>
               <span v-if="p.balance < 0" class="fin-pool-over">已透支</span>
@@ -557,7 +557,7 @@
                 <div v-for="row in pcardTxns" :key="row.id" class="fin-row">
                   <!-- v2.46.87：同池子列表，补 fin-row-body 层恢复横排 -->
                   <div class="fin-row-body">
-                    <div class="fin-row-icon">{{ row.category_icon }}</div>
+                    <div class="fin-row-icon"><LedgerIcon :icon="row.category_icon" :size="21" /></div>
                     <div class="fin-row-main">
                       <div class="fin-row-top">
                         <span class="fin-row-cat">{{ row.category }}</span>
@@ -577,7 +577,7 @@
                       {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
                     </div>
                     <div class="fin-row-ops">
-                      <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                      <button class="fin-op" title="编辑" @click="openEdit(row)"><AppIcon icon="✎" :size="14" /></button>
                       <el-popconfirm
                         title="确认删除这条流水？"
                         confirm-button-text="删除"
@@ -586,7 +586,7 @@
                         @confirm="del(row)"
                       >
                         <template #reference>
-                          <button class="fin-op danger" title="删除">🗑</button>
+                          <button class="fin-op danger" title="删除"><AppIcon icon="🗑" :size="14" /></button>
                         </template>
                       </el-popconfirm>
                     </div>
@@ -624,7 +624,7 @@
           <div class="fin-filters">
             <span v-if="memberFilter" class="fin-filter-chip">
               仅看 {{ activeMemberName }}
-              <button class="fin-filter-chip-x" @click="pickMember('')">✕</button>
+              <button class="fin-filter-chip-x" @click="pickMember('')"><AppIcon icon="✕" :size="12" /></button>
             </span>
             <el-select v-model="filters.type" placeholder="全部类型" clearable class="fin-filter" @change="onFilterChange">
               <el-option label="支出" value="expense" />
@@ -658,7 +658,7 @@
         <div class="fin-list">
           <div v-if="!list.length" class="fin-list-empty">
             <EmptyState title="还没有符合条件的流水" sub="换个筛选条件，或现在记第一笔">
-              <button class="fin-btn primary small" @click="openNew">＋ 记一笔</button>
+              <button class="fin-btn primary small" @click="openNew"><AppIcon icon="＋" /> 记一笔</button>
             </EmptyState>
           </div>
           <!-- FLIP（#8）：删除/筛选/翻页时剩余行平滑补位 -->
@@ -690,7 +690,7 @@
                 <label class="fin-row-check">
                   <input type="checkbox" :checked="checkedIds.includes(row.id)" @change="toggleCheck(row.id)" />
                 </label>
-                <div class="fin-row-icon">{{ row.category_icon }}</div>
+                <div class="fin-row-icon"><LedgerIcon :icon="row.category_icon" :size="21" /></div>
                 <div class="fin-row-main" @click="toggleExpand(row.id)">
                   <div class="fin-row-top">
                     <span class="fin-row-cat">{{ row.category }}</span>
@@ -707,7 +707,7 @@
                     <span class="fin-row-note">{{ row.note }}</span>
                   </div>
                   <div class="fin-row-date">
-                    <span v-if="row.member" class="fin-row-member">{{ row.member.avatar }} {{ row.member.name }}</span>
+                    <span v-if="row.member" class="fin-row-member"><AppIcon :icon="row.member.avatar" /> {{ row.member.name }}</span>
                     {{ fmtDay(row.occurred_at) }}
                   </div>
                 </div>
@@ -715,7 +715,7 @@
                   {{ row.type === 'income' ? '+' : (row.type === 'transfer' ? '⇄' : '−') }} ¥ {{ money(row.amount) }}
                 </div>
                 <div class="fin-row-ops">
-                  <button class="fin-op" title="编辑" @click="openEdit(row)">✎</button>
+                  <button class="fin-op" title="编辑" @click="openEdit(row)"><AppIcon icon="✎" :size="14" /></button>
                   <el-popconfirm
                     title="确认删除这条流水？"
                     confirm-button-text="删除"
@@ -724,7 +724,7 @@
                     @confirm="del(row)"
                   >
                     <template #reference>
-                      <button class="fin-op danger" title="删除">🗑</button>
+                      <button class="fin-op danger" title="删除"><AppIcon icon="🗑" :size="14" /></button>
                     </template>
                   </el-popconfirm>
                 </div>
@@ -732,9 +732,9 @@
                 <div class="fin-row-x" :class="{ open: expandedId === row.id }">
                   <div>
                     <div class="fin-row-x-inner">
-                      <span>分类 <b>{{ row.category_icon }} {{ row.category }}</b> · 类型 <b>{{ typeLabel(row.type) }}</b></span>
+                      <span>分类 <b><LedgerIcon :icon="row.category_icon" :size="13" /> {{ row.category }}</b> · 类型 <b>{{ typeLabel(row.type) }}</b></span>
                       <span>归属 <b>{{ row.type === 'transfer' ? `${row.fund_label} → ${row.fund_to_label}` : (row.fund === 'none' ? '未归类' : row.fund_label) }}</b></span>
-                      <span v-if="row.member">经办 <b>{{ row.member.avatar }} {{ row.member.name }}</b></span>
+                      <span v-if="row.member">经办 <b><AppIcon :icon="row.member.avatar" /> {{ row.member.name }}</b></span>
                       <span v-if="row.note" class="fin-row-x-note">备注 <b>{{ row.note }}</b></span>
                       <span>发生时间 <b>{{ fmtDay(row.occurred_at) }}</b> · 流水号 <b>#{{ row.id }}</b></span>
                     </div>
@@ -762,7 +762,7 @@
 
     <!-- FAB 原位展开（#2）：移动端常驻记一笔，展开快选收支类型 -->
     <div v-if="isMobileLayout" class="xz-fab" :class="{ open: fabOpen }">
-      <button class="xz-fab-main" :class="{ open: fabOpen }" aria-label="记一笔" @click.stop="toggleFab">＋</button>
+      <button class="xz-fab-main" :class="{ open: fabOpen }" aria-label="记一笔" @click.stop="toggleFab"><AppIcon icon="＋" /></button>
       <button class="xz-fab-act" aria-label="记一笔支出" @click.stop="quickNew('expense')">支</button>
       <button class="xz-fab-act" aria-label="记一笔收入" @click.stop="quickNew('income')">收</button>
     </div>
@@ -785,7 +785,10 @@
           <div v-if="customCats.length" class="fin-cd-list">
             <div v-for="c in customCats" :key="c.id" class="fin-cd-row">
               <el-select v-model="c.icon" class="fin-cd-icon" @change="(v) => saveCat(c, c.key, v)">
-                <el-option v-for="e in ICON_PRESETS" :key="e" :label="e" :value="e" />
+                <template #label="{ value }"><LedgerIcon :icon="value" :size="16" /></template>
+                <el-option v-for="e in ICON_PRESETS" :key="e" :label="e" :value="e">
+                  <LedgerIcon :icon="e" :size="16" />
+                </el-option>
               </el-select>
               <el-input
                 :model-value="c.key"
@@ -811,7 +814,10 @@
 
           <div class="fin-cd-add">
             <el-select v-model="newCat.icon" class="fin-cd-icon">
-              <el-option v-for="e in ICON_PRESETS" :key="e" :label="e" :value="e" />
+              <template #label="{ value }"><LedgerIcon :icon="value" :size="16" /></template>
+              <el-option v-for="e in ICON_PRESETS" :key="e" :label="e" :value="e">
+                <LedgerIcon :icon="e" :size="16" />
+              </el-option>
             </el-select>
             <el-input
               v-model="newCat.name"
@@ -832,7 +838,7 @@
           </div>
           <div class="fin-cd-builtin">
             <span v-for="c in builtinCats" :key="c.key" class="fin-cd-chip">
-              {{ c.icon }} {{ c.key }}
+              <LedgerIcon :icon="c.icon" :size="14" /> {{ c.key }}
               <el-popconfirm
                 v-if="c.key !== '其他'"
                 title="删除后不再出现在选择列表；历史流水仍显示原名原图标"
@@ -842,7 +848,7 @@
                 @confirm="hideBuiltin(c)"
               >
                 <template #reference>
-                  <i class="fin-cd-x" title="删除">×</i>
+                  <i class="fin-cd-x" title="删除"><AppIcon icon="×" :size="14" /></i>
                 </template>
               </el-popconfirm>
             </span>
@@ -850,8 +856,8 @@
           <div v-if="hiddenBuiltins.length" class="fin-cd-hidden">
             <span class="fin-cd-hidden-label">已删除：</span>
             <span v-for="c in hiddenBuiltins" :key="c.key" class="fin-cd-chip is-hidden">
-              {{ c.icon }} {{ c.key }}
-              <i class="fin-cd-restore" title="恢复" @click="restoreBuiltin(c)">↩</i>
+              <LedgerIcon :icon="c.icon" :size="14" /> {{ c.key }}
+              <i class="fin-cd-restore" title="恢复" @click="restoreBuiltin(c)"><AppIcon icon="↩" :size="14" /></i>
             </span>
           </div>
         </div>
@@ -868,10 +874,12 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import LedgerIcon from '@/components/LedgerIcon.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
 import TrendChart from '@/components/finance/TrendChart.vue'
 import FundMatrix from '@/components/finance/FundMatrix.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import StateButton from '@/components/common/StateButton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Stepper from '@/components/common/Stepper.vue'

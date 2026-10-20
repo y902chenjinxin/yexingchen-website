@@ -8,7 +8,7 @@
           <p class="li-sub">丢过什么、在哪丢的、当时什么情形 —— 记下来，以后翻着回忆</p>
         </div>
         <div class="li-head-right">
-          <button class="li-btn primary" @click="openCreate">＋ 记一笔</button>
+          <button class="li-btn primary" @click="openCreate"><AppIcon icon="＋" /> 记一笔</button>
         </div>
       </header>
 
@@ -51,7 +51,7 @@
                 <img :src="it.photos[0]" :alt="it.name" loading="lazy">
                 <span v-if="it.photos.length > 1" class="li-thumb-more">+{{ it.photos.length - 1 }}</span>
               </div>
-              <div v-else class="li-thumb li-thumb-plain">{{ categoryEmoji(it.category) }}</div>
+              <div v-else class="li-thumb li-thumb-plain"><AppIcon :icon="categoryEmoji(it.category)" :size="28" /></div>
               <div class="li-card-main">
                 <div class="li-name-row">
                   <span class="li-name">{{ it.name }}</span>
@@ -59,8 +59,8 @@
                   <span v-if="it.value" class="li-value">¥{{ it.value }}</span>
                 </div>
                 <div class="li-meta">
-                  <span v-if="it.lost_at">📅 {{ it.lost_at }}</span>
-                  <span v-if="it.place">📍 {{ it.place }}</span>
+                  <span v-if="it.lost_at"><AppIcon icon="📅" :size="12" /> {{ it.lost_at }}</span>
+                  <span v-if="it.place"><AppIcon icon="📍" :size="12" /> {{ it.place }}</span>
                   <span class="li-owner">{{ it.uploader_name }} 记的</span>
                 </div>
                 <p v-if="it.scene" class="li-scene">{{ it.scene }}</p>
@@ -130,7 +130,7 @@
           <div class="li-uploader">
             <div v-for="(p, i) in form.photos" :key="i" class="li-upload-item">
               <img :src="p" alt="已上传图片">
-              <button class="li-upload-del" @click.prevent="form.photos.splice(i, 1)">×</button>
+              <button class="li-upload-del" @click.prevent="form.photos.splice(i, 1)"><AppIcon icon="×" /></button>
             </div>
             <label class="li-upload-add" :class="{ busy: uploading }">
               <input type="file" accept="image/*" multiple hidden @change="onPick">
@@ -152,6 +152,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { lostApi, uploadLifeImage } from '@/api/lifeExtra'
 
 const list = ref([])

@@ -37,7 +37,7 @@
 
         <!-- 调休补班提醒 -->
         <div v-if="data.makeup && data.makeup.length" class="ft-makeup glass-card">
-          <div class="ft-makeup-icon">⏰</div>
+          <div class="ft-makeup-icon"><AppIcon icon="⏰" :size="20" /></div>
           <div class="ft-makeup-body">
             <div class="ft-makeup-title">
               下一补班：{{ data.makeup[0].date }}（周{{ data.makeup[0].weekday }}）
@@ -108,6 +108,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import LunarCalendar from '@/components/common/LunarCalendar.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { fishCalendar } from '@/api/toolkit'
 import {
   noticeEnabled, setNoticeEnabled, requestNoticePermission, noticeStatusText,
@@ -126,7 +127,7 @@ const heroMain = computed(() => {
   if (!d) return ''
   const t = d.today || {}
   if (t.kind === 'holiday') return `${t.name} 假期中 · 第 ${t.day_index}/${t.days} 天`
-  if (t.kind === 'makeup') return '今天调休补班 😮‍💨'
+  if (t.kind === 'makeup') return '今天调休补班'
   const nh = d.next_holiday
   if (nh) return `${nh.name} 还有 ${nh.days_left} 天`
   if (d.next_pending) return `距 ${d.next_pending.name} 还有 ${d.next_pending.days_left} 天`

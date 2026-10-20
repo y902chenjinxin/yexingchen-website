@@ -2,13 +2,13 @@
   <IslandInnerBase type="tool" title="随机密码" subtitle="本地生成 · 即时复制 · 不落库">
     <div class="pw-tool">
       <div class="pw-head">
-        <span class="pw-badge">🔒 在浏览器本地生成，不经过服务器、不落库、不上传。</span>
+        <span class="pw-badge"><AppIcon icon="🔒" :size="14" /> 在浏览器本地生成，不经过服务器、不落库、不上传。</span>
       </div>
 
       <!-- 结果展示 -->
       <div class="pw-result">
         <code class="pw-value" :class="{ weak: strength.level <= 1 }">{{ password || '—' }}</code>
-        <button class="pw-icon-btn" title="重新生成" aria-label="重新生成" @click="generate">↻</button>
+        <button class="pw-icon-btn" title="重新生成" aria-label="重新生成" @click="generate"><AppIcon icon="↻" :size="16" /></button>
         <button class="pw-icon-btn" title="复制" aria-label="复制密码" @click="copy">⧉</button>
       </div>
       <div class="pw-strength">
@@ -44,7 +44,7 @@
           <input v-model.number="count" type="number" min="1" max="50" step="1" class="pw-count-input" aria-label="生成数量">
         </label>
         <button class="pw-generate" :disabled="!!error" @click="generateBatch">
-          <span aria-hidden="true">↻</span> 生成
+          <AppIcon icon="↻" :size="14" /> 生成
         </button>
         <div v-if="error" class="pw-err">{{ error }}</div>
       </div>
@@ -52,7 +52,7 @@
       <!-- 批量结果列表 -->
       <div v-if="batch.length" class="pw-batch">
         <div class="pw-batch-head">
-          <span class="pw-batch-title">🔒 生成结果</span>
+          <span class="pw-batch-title"><AppIcon icon="🔒" :size="14" /> 生成结果</span>
           <button class="pw-copy-all" @click="copyBatch">复制全部</button>
         </div>
         <div class="pw-batch-list">
@@ -72,6 +72,7 @@ import { ref, computed, onMounted } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { copyText as copyToClipboard } from '@/utils/clipboard'
 import { haptic } from '@/utils/haptic'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const classes = ref([
   { key: 'lower', label: '小写字母', sample: 'a-z', on: true, chars: 'abcdefghijklmnopqrstuvwxyz' },

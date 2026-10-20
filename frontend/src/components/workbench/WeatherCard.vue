@@ -19,7 +19,7 @@
     <template v-if="current">
       <!-- 今日 -->
       <div class="wx-now">
-        <span class="wx-icon" aria-hidden="true">{{ iconFor(current.weather) }}</span>
+        <span class="wx-icon" aria-hidden="true"><AppIcon :icon="iconFor(current.weather)" :size="34" /></span>
         <span class="wx-temp">{{ current.temperature }}°</span>
         <span class="wx-desc">{{ current.weather }}</span>
       </div>
@@ -32,7 +32,7 @@
       <div class="wx-days">
         <div v-for="d in forecast" :key="d.date" class="wx-day">
           <span class="wx-day-name">{{ dayName(d.date, d.week) }}</span>
-          <span class="wx-day-icon" aria-hidden="true">{{ iconFor(d.weather) }}</span>
+          <span class="wx-day-icon" aria-hidden="true"><AppIcon :icon="iconFor(d.weather)" :size="18" /></span>
           <span class="wx-day-hi">{{ d.temp_max }}°</span>
           <span class="wx-day-lo">{{ d.temp_min }}°</span>
         </div>
@@ -65,6 +65,7 @@
 import { ref, onMounted } from 'vue'
 import { Location, Setting } from '@element-plus/icons-vue'
 import { workbenchApi } from '@/api/workbench'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const CACHE_KEY = 'yx_weather_v1'
 const CITY_KEY = 'yx_weather_city_v1'

@@ -13,7 +13,7 @@
             :style="cellStyle(c)"
           >
             <div class="mp-cell-top" :style="c.owner != null ? { background: COLORS[c.owner] } : {}">
-              <span v-if="c.level > 0" class="mp-houses">{{ '🏠'.repeat(c.level) }}</span>
+              <span v-if="c.level > 0" class="mp-houses"><AppIcon v-for="n in c.level" :key="n" icon="🏠" :size="7" /></span>
             </div>
             <div class="mp-cell-body">
               <b class="mp-cname">{{ c.name }}</b>
@@ -28,7 +28,7 @@
                 :class="{ 'is-now': p.id === cur.id && !game.over }"
                 :style="{ background: COLORS[p.id] }"
                 :title="p.name"
-              >{{ p.avatar }}</span>
+              ><AppIcon :icon="p.avatar" :size="11" /></span>
             </div>
             <!-- 落点反馈气泡：谁在这块地上花了 / 赚了多少，落在棋盘上直接可见 -->
             <span
@@ -36,7 +36,7 @@
               :key="f.id"
               class="mp-float"
               :class="'k-' + f.kind"
-            >{{ f.text }}</span>
+            ><AppIcon v-if="f.icon" :icon="f.icon" :size="12" /> {{ f.text }}</span>
           </div>
 
           <!-- 中央信息区：当前行动者 + 玩家一排 + 骰子 + 行动流水 -->
@@ -47,7 +47,7 @@
             </div>
             <!-- 当前行动者：谁在动、什么颜色，一眼可见 -->
             <div v-if="!game.over" class="mp-turn">
-              <span class="mp-turn-av" :style="{ background: COLORS[cur.id] }">{{ cur.avatar }}</span>
+              <span class="mp-turn-av" :style="{ background: COLORS[cur.id] }"><AppIcon :icon="cur.avatar" :size="15" /></span>
               <b class="mp-turn-name">{{ cur.name }}</b>
             </div>
 
@@ -61,7 +61,7 @@
                 :class="{ on: p.id === cur.id && !game.over, out: !p.alive }"
                 :title="`${p.name} · 现金 ${fmt(p.cash)} · 地产 ${ownedCount(p)} · 道具 ${p.items.length}`"
               >
-                <span class="mp-pav" :style="{ background: COLORS[p.id] }">{{ p.avatar }}</span>
+                <span class="mp-pav" :style="{ background: COLORS[p.id] }"><AppIcon :icon="p.avatar" :size="12" /></span>
                 <span class="mp-ptx">
                   <b>{{ p.name }}<em v-if="p.skill"> · {{ SKILLS[p.skill].name }}</em></b>
                   <i :class="cashDir[p.id]">{{ fmt(cashShown[p.id] ?? p.cash) }} · 地{{ ownedCount(p) }} · 具{{ p.items.length }}</i>
@@ -80,7 +80,7 @@
             </div>
 
             <div class="mp-log">
-              <div v-for="(l, i) in game.log.slice(-4)" :key="i" class="mp-log-row">{{ l }}</div>
+              <div v-for="(l, i) in game.log.slice(-4)" :key="i" class="mp-log-row"><AppIcon v-if="l.icon" :icon="l.icon" :size="13" /> {{ l.text }}</div>
             </div>
           </div>
         </div>
@@ -101,7 +101,7 @@
         <div class="mp-here">
           <div class="mp-here-row">
             <b>{{ hereCell.name }}</b>
-            <span class="gt-beans">🪙 {{ fmt(wallet.beans) }}</span>
+            <span class="gt-beans"><AppIcon icon="🪙" :size="14" /> {{ fmt(wallet.beans) }}</span>
           </div>
           <i v-if="hereCell.price">地价 {{ fmt(hereCell.price) }} · 租金 {{ fmt(rentOf(hereCell)) }}</i>
           <i v-else>{{ hereHint }}</i>
@@ -114,7 +114,7 @@
               class="gt-btn"
               :disabled="rollDisabled"
               @click="rollAndMove"
-            >🎲 掷骰前进</button>
+            ><AppIcon icon="🎲" :size="16" /> 掷骰前进</button>
             <button
               v-if="canBuy"
               class="gt-btn"
@@ -132,7 +132,7 @@
               class="gt-btn ghost"
               :disabled="isOnline ? acting : (busy || cur.isAI)"
               @click="useSkill"
-            >✨ {{ SKILLS[cur.skill].name }}</button>
+            ><AppIcon icon="✨" :size="16" /> {{ SKILLS[cur.skill].name }}</button>
             <button
               v-for="g in itemGroups"
               :key="g.key"
@@ -140,7 +140,7 @@
               :disabled="itemDisabled"
               :title="ITEMS[g.key].desc"
               @click="useItem(g.key)"
-            >{{ ITEMS[g.key].icon }} {{ ITEMS[g.key].name }}<em v-if="g.n > 1" class="mp-item-n">×{{ g.n }}</em></button>
+            ><AppIcon :icon="ITEMS[g.key].icon" :size="16" /> {{ ITEMS[g.key].name }}<em v-if="g.n > 1" class="mp-item-n">×{{ g.n }}</em></button>
             <!-- 在线专属：服务端驱动回合的补充操作 -->
             <template v-if="isOnline">
               <button v-if="oOpts.buy" class="gt-btn ghost" :disabled="acting" @click="skipBuy">放弃 · 拍卖</button>
@@ -150,7 +150,7 @@
             </template>
           </template>
           <template v-else>
-            <button class="gt-btn" @click="restart">🔁 再来一局</button>
+            <button class="gt-btn" @click="restart"><AppIcon icon="🔁" :size="16" /> 再来一局</button>
           </template>
         </div>
 
@@ -212,7 +212,7 @@
       <!-- 结算（页内，不弹窗） -->
       <div v-if="game.over" class="gt-over">
         <div class="gt-over-card">
-          <h3>{{ game.over.win ? '🏆 你赢了！' : '本局结束' }}</h3>
+          <h3><AppIcon v-if="game.over.win" icon="🏆" :size="20" /> {{ game.over.win ? '你赢了！' : '本局结束' }}</h3>
           <p>
             {{ game.over.title }}<br />
             本局豆子：<b :style="{ color: game.over.delta >= 0 ? '#8fe3a8' : '#ff9b9b' }">
@@ -242,6 +242,7 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { reportSettle, gameEconomyApi } from '@/api/gameEconomy'
 import { sfx } from '@/utils/games/sfx'
 import MonopolyDice from '@/components/games/MonopolyDice.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   gameKey: { type: String, default: 'monopoly' },
@@ -422,7 +423,16 @@ function say(msg) {
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { toast.value = '' }, 1800)
 }
-function log(msg) { game.log.push(msg); if (game.log.length > 120) game.log.splice(0, 40) }
+/** 把日志/气泡文案开头的 emoji（+ 其后空格）提成 icon 字段，模板里用 <AppIcon> 渲染；命中不了就原样保留。 */
+const LEAD_ICON = /^([\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1FAFF}][\uFE0F\u200D\u{1F3FB}-\u{1F3FF}]*)\s+/u
+function splitIcon(msg) {
+  const m = LEAD_ICON.exec(msg)
+  return m ? { icon: m[1], text: msg.slice(m[0].length) } : { icon: '', text: msg }
+}
+function log(msg) {
+  game.log.push(splitIcon(msg))
+  if (game.log.length > 120) game.log.splice(0, 40)
+}
 
 /* ---------------- 在线：派生（服务端投影） ---------------- */
 const isOnline = computed(() => props.online)
@@ -594,7 +604,7 @@ function newGame() {
   game.round = 1
   game.dice = [1, 1]
   game.over = null
-  game.log = ['开局：每人 ' + fmt(START_CASH) + ' 豆，最后存活者获胜']
+  game.log = [splitIcon('开局：每人 ' + fmt(START_CASH) + ' 豆，最后存活者获胜')]
   busy.value = false
 }
 
@@ -660,7 +670,7 @@ let floatSeq = 0
 const FLOAT_MS = 1500
 function floatAt(idx, text, kind = 'info') {
   const id = ++floatSeq
-  floaters.value.push({ id, idx, text, kind })
+  floaters.value.push({ id, idx, kind, ...splitIcon(text) })
   setTimeout(() => { floaters.value = floaters.value.filter((f) => f.id !== id) }, FLOAT_MS)
 }
 function floatersAt(idx) { return floaters.value.filter((f) => f.idx === idx) }

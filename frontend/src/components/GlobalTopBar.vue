@@ -163,7 +163,7 @@
                 <button v-if="alertUnread > 0" class="tb-alert-clear" @click="markAllRead">全部已读</button>
               </div>
               <div v-if="!alertItems.length" class="tb-alert-empty">
-                <EmptyState title="暂无预警" sub="在「行情」→ 点自选股的「✎」即可设置目标价" />
+                <EmptyState title="暂无预警" sub="在「行情」点开自选股的编辑按钮即可设置目标价" />
               </div>
               <div
                 v-for="a in alertItems"
@@ -378,7 +378,7 @@ async function loadAlerts(showNotifications = false) {
         lastSeenIds.add(it.id)
         const isUp = it.kind === 'up'
         ElNotification({
-          title: isUp ? '🎯 涨破目标价' : '🔻 跌破目标价',
+          title: isUp ? '涨破目标价' : '跌破目标价',
           message: `${it.name || it.code} 触达目标价：现价 ¥${fmtPrice(it.hit_price)}（目标 ¥${fmtPrice(it.target_price)}）`,
           type: isUp ? 'success' : 'warning',
           duration: 6000,
@@ -430,7 +430,7 @@ async function loadTasks() {
       if (lastSeenTaskIds.has(it.id)) continue
       lastSeenTaskIds.add(it.id)
       ElNotification({
-        title: '⏰ 待办已逾期',
+        title: '待办已逾期',
         message: `${it.title}（截止 ${shortDate(it.due_date)}）`,
         type: 'warning',
         duration: 5000,

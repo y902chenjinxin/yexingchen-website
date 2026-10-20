@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8" />
+<title>玄黄 · emoji 图标线性化设计稿</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root{
+  --gold:#c9a961; --rain:#5a8b8b; --ink:#1b1a17; --paper:#f4f1ea;
+  --muted:rgba(27,26,23,.5); --line:rgba(27,26,23,.12); --card:#fffdf8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.6 "Source Han Serif SC","Songti SC",Georgia,serif;
+  padding:56px 40px 120px}
+h1{margin:0 0 6px;font-size:30px;letter-spacing:.04em}
+h2{margin:56px 0 18px;font-size:19px;letter-spacing:.06em;
+  padding-bottom:10px;border-bottom:1px solid var(--line)}
+h3.sec{margin:34px 0 14px;font-size:15px;font-weight:600;letter-spacing:.05em;color:#4a4840}
+h3.sec span{font-weight:400;font-size:12px;color:var(--muted);margin-left:8px}
+.lead{color:var(--muted);margin:0 0 8px;max-width:70ch}
+.meta{color:var(--muted);font-size:13px;margin-bottom:40px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:14px 6px 9px;display:flex;flex-direction:column;align-items:center;gap:2px;
+  transition:transform .12s ease,box-shadow .12s ease}
+.cell:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(27,26,23,.09)}
+.ico{width:34px;height:34px;color:var(--ink);display:flex;align-items:center;justify-content:center}
+.ico svg{width:28px;height:28px}
+.raw{font-size:11px;color:var(--muted);min-height:16px;line-height:1.3}
+.code{font:10px/1.4 ui-monospace,Menlo,Consolas,monospace;color:rgba(27,26,23,.32)}
+.note{background:var(--card);border-left:2px solid var(--gold);border-radius:0 10px 10px 0;
+  padding:14px 18px;margin:22px 0;font-size:14px;color:#3c3a34}
+.note b{color:var(--ink)}
+.swatch{display:flex;gap:26px;flex-wrap:wrap;margin:18px 0 8px}
+.sw{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted)}
+.sw i{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);display:block}
+@media (prefers-color-scheme: dark){
+  :root{--ink:#e8e4da;--paper:#111417;--card:#171b1f;--line:rgba(232,228,218,.13);
+    --muted:rgba(232,228,218,.52)}
+  .note{color:#cfcabc}
+}
+</style></head><body>
+
+<h1>emoji 图标线性化 · 设计稿</h1>
+<p class="lead">把全站「拿 emoji 当图标用」的地方统一换成同一套线性图标：24×24 网格、1.6 描边、圆头圆角、<b>无色</b>（stroke 走 currentColor，完全继承容器文字色）。</p>
+<p class="meta">2026-10-20 · 共 188 枚 · 规格与记账页 v2.46.125 一致 · 左侧为线性图标，下方小字是该位置原本的 emoji</p>
+
+<div class="note">
+  <b>三条原则</b><br />
+  1. <b>渲染层替换，数据零改动</b> —— 库里 / 常量里照旧存 emoji，前端按 emoji 查表换画；表里没有的（用户自己从输入法挑的、历史怪数据）继续渲染原字符，不会变空白。<br />
+  2. <b>无色</b> —— 图标不携带任何颜色，选中态的鎏金 / 雨青来自站点既有的文字色语义，白天 / 黑夜自动跟随。<br />
+  3. <b>变体选择符归一</b> —— 查表前先剥离 U+FE0E / U+FE0F，<code>🛍️</code> 与 <code>🛍</code> 命中同一枚。
+</div>
+
+<div class="swatch">
+  <span class="sw"><i style="background:#c9a961"></i>鎏金 --yq-gold</span>
+  <span class="sw"><i style="background:#5a8b8b"></i>雨青 --yq-rain</span>
+  <span class="sw"><i style="background:#1b1a17"></i>墨（默认跟随文字色）</span>
+</div>
+
+<h2>全套图标</h2>
+<h3 class="sec">记账页 · 已上线验收（v2.46.125） <span>38 枚</span></h3>
+<div class="grid"><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11.5a7 7 0 0 0 14 0Z"/><path d="M3.2 11.5h17.6"/><path d="M10 8.6c1.1-1 1.1-2.3 0-3.3"/><path d="M14 8.6c1.1-1 1.1-2.3 0-3.3"/></svg></div>
+  <div class="raw">🍜</div>
+  <div class="code">1F35C</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11.5a7 7 0 0 0 14 0Z"/><path d="M3.2 11.5h17.6"/><path d="M8.6 11.5a3.4 3.4 0 0 1 6.8 0"/></svg></div>
+  <div class="raw">🍚</div>
+  <div class="code">1F35A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Z"/><path d="M16 11h1.6a2.6 2.6 0 0 1 0 5.2H16"/><path d="M8.6 6.6c1-1 1-2.2 0-3.1"/><path d="M12.4 6.6c1-1 1-2.2 0-3.1"/></svg></div>
+  <div class="raw">☕</div>
+  <div class="code">2615</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h2.2l2.3 10a1.6 1.6 0 0 0 1.6 1.3h7.3a1.6 1.6 0 0 0 1.6-1.2l1.5-6.6H6"/><circle cx="9.2" cy="19.4" r="1.4"/><circle cx="17" cy="19.4" r="1.4"/></svg></div>
+  <div class="raw">🛒</div>
+  <div class="code">1F6D2</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.6 8.2h12.8l-.9 11a1.6 1.6 0 0 1-1.6 1.5H8.1a1.6 1.6 0 0 1-1.6-1.5Z"/><path d="M9 8.2V6.6a3 3 0 0 1 6 0v1.6"/></svg></div>
+  <div class="raw">🛍️</div>
+  <div class="code">1F6CD FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="3.5" width="13" height="14" rx="3"/><rect x="8" y="6.6" width="8" height="4.8" rx="1"/><circle cx="9.2" cy="19.6" r="1.4"/><circle cx="14.8" cy="19.6" r="1.4"/></svg></div>
+  <div class="raw">🚇</div>
+  <div class="code">1F687</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.2V13l2-4.3a2 2 0 0 1 1.8-1.2h8.4A2 2 0 0 1 18 8.7l2 4.3v3.2"/><path d="M4.6 13h14.8"/><circle cx="7.6" cy="17.6" r="1.6"/><circle cx="16.4" cy="17.6" r="1.6"/></svg></div>
+  <div class="raw">🚗</div>
+  <div class="code">1F697</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2c.9 0 1.6 1 1.6 2.2v4.2l7.4 4.4v2.4l-7.4-2.3v4.3l2.3 1.8v1.6L12 20.6l-3.9 1.2v-1.6l2.3-1.8v-4.3L3 16.4v-2.4l7.4-4.4V5.4c0-1.2.7-2.2 1.6-2.2Z"/></svg></div>
+  <div class="raw">✈️</div>
+  <div class="code">2708 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 10.6 12 3.4l8.6 7.2"/><path d="M5.6 12.2v7.4a1.4 1.4 0 0 0 1.4 1.4h10a1.4 1.4 0 0 0 1.4-1.4v-7.4"/><path d="M9.8 21v-5.4h4.4V21"/></svg></div>
+  <div class="raw">🏠</div>
+  <div class="code">1F3E0</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.4"/><path d="M9.8 14.2v2h4.4v-2"/><path d="M10.2 18h3.6"/><path d="M11.2 20.2h1.6"/></svg></div>
+  <div class="raw">💡</div>
+  <div class="code">1F4A1</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.2 8.4h7.6a5.4 5.4 0 0 1 5.3 6.4l-.5 2.3a2.1 2.1 0 0 1-3.7 1l-1.5-1.8H8.6l-1.5 1.8a2.1 2.1 0 0 1-3.7-1l-.5-2.3a5.4 5.4 0 0 1 5.3-6.4Z"/><path d="M7 11.6h2.6M8.3 10.3v2.6"/><circle cx="15.4" cy="11" r=".9"/><circle cx="17.6" cy="13.2" r=".9"/></svg></div>
+  <div class="raw">🎮</div>
+  <div class="code">1F3AE</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 19Z"/><path d="M3.5 9 5.9 4.4h14l-2.4 4.6Z"/><path d="M8.4 9 10.8 4.4M13.4 9 15.8 4.4"/></svg></div>
+  <div class="raw">🎬</div>
+  <div class="code">1F3AC</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17.5V5.8l9-2v9.6"/><ellipse cx="6.6" cy="17.5" rx="2.6" ry="2.2"/><ellipse cx="15.4" cy="13.4" rx="2.6" ry="2.2"/></svg></div>
+  <div class="raw">🎵</div>
+  <div class="code">1F3B5</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7.4C10.4 6 8.2 5.4 5.4 5.4v11.2c2.8 0 5 .6 6.6 2 1.6-1.4 3.8-2 6.6-2V5.4c-2.8 0-5 .6-6.6 2Z"/><path d="M12 7.4v11.2"/></svg></div>
+  <div class="raw">📚</div>
+  <div class="code">1F4DA</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.6 2.6 8.9 12 13.2l9.4-4.3Z"/><path d="M6.4 10.8v4.4c0 1.6 2.5 2.8 5.6 2.8s5.6-1.2 5.6-2.8v-4.4"/><path d="M20.6 9.6v5.6"/></svg></div>
+  <div class="raw">🎓</div>
+  <div class="code">1F393</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="9" width="14" height="6.4" rx="3.2" transform="rotate(-45 12 12)"/><path d="M9.8 9.8 14.2 14.2"/></svg></div>
+  <div class="raw">💊</div>
+  <div class="code">1F48A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6.5" width="16" height="14" rx="2"/><path d="M12 10.4v6.2M8.9 13.5h6.2"/><path d="M9.6 20.5v-3.4h4.8v3.4"/></svg></div>
+  <div class="raw">🏥</div>
+  <div class="code">1F3E5</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 9.6v4.8M6.4 7.4v9.2M17.6 7.4v9.2M21.4 9.6v4.8"/><path d="M6.4 12h11.2"/></svg></div>
+  <div class="raw">🏋️</div>
+  <div class="code">1F3CB FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.6" r="6.6"/><path d="M5.4 10.5 4.6 4.4l4.6 3.1"/><path d="M18.6 10.5 19.4 4.4l-4.6 3.1"/><circle cx="9.6" cy="12.4" r=".85"/><circle cx="14.4" cy="12.4" r=".85"/><path d="M12 15.4v1.4M10.6 17h2.8"/></svg></div>
+  <div class="raw">🐱</div>
+  <div class="code">1F431</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="16.6" rx="4.4" ry="3.4"/><ellipse cx="6.4" cy="10.8" rx="1.9" ry="2.3"/><ellipse cx="10.3" cy="8.2" rx="1.9" ry="2.4"/><ellipse cx="13.7" cy="8.2" rx="1.9" ry="2.4"/><ellipse cx="17.6" cy="10.8" rx="1.9" ry="2.3"/></svg></div>
+  <div class="raw">🐾</div>
+  <div class="code">1F43E</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.4 9.2h5.2v9.6a2.6 2.6 0 0 1-2.6 2.6 2.6 2.6 0 0 1-2.6-2.6Z"/><path d="M10.4 9.2V7.6h3.2v1.6"/><path d="M10.9 7.6V6a1.1 1.1 0 0 1 2.2 0v1.6"/><path d="M9.4 13.4h5.2"/></svg></div>
+  <div class="raw">👶</div>
+  <div class="code">1F476</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.4" y="9.4" width="15.2" height="10.4" rx="1.4"/><path d="M12 9.4v10.4"/><path d="M4.4 13.2h15.2"/><path d="M12 9.4 8.8 6.3a1.9 1.9 0 1 0-1 3.1M12 9.4l3.2-3.1a1.9 1.9 0 1 1 1 3.1"/></svg></div>
+  <div class="raw">🎁</div>
+  <div class="code">1F381</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.4" y="2.4" width="15.2" height="19.2" rx="2.2"/><path d="M4.4 6.6c2.4 2.3 5 3.4 7.6 3.4s5.2-1.1 7.6-3.4"/><circle cx="12" cy="13.6" r="2.8"/></svg></div>
+  <div class="raw">🧧</div>
+  <div class="code">1F9E7</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.4" r="3.3"/><path d="M12 11.7v9.5"/><path d="M12 15.2c0-1.9 1.5-3.4 3.4-3.4 0 1.9-1.5 3.4-3.4 3.4Z"/><path d="M12 18.6c0 1.9-1.5 3.4-3.4 3.4 0-1.9 1.5-3.4 3.4-3.4Z"/></svg></div>
+  <div class="raw">💐</div>
+  <div class="code">1F490</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9.2h6v9.4a2.6 2.6 0 0 1-2.6 2.6h-.8A2.6 2.6 0 0 1 9 18.6Z"/><path d="M11.4 9.2V6.6h2.6"/><path d="M11.4 6.6h6.2"/><path d="M17.6 6.6v2.2"/></svg></div>
+  <div class="raw">🧴</div>
+  <div class="code">1F9F4</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="8.6" width="17.6" height="11" rx="2"/><path d="M3.2 12.6h17.6"/><path d="M9.4 8.6V6.6a1.6 1.6 0 0 1 1.6-1.6h2a1.6 1.6 0 0 1 1.6 1.6v2"/><path d="M12 14.6v1.8"/></svg></div>
+  <div class="raw">🛠️</div>
+  <div class="code">1F6E0 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.4" y="2.6" width="11.2" height="18.8" rx="2.6"/><path d="M10.4 5.4h3.2"/><circle cx="12" cy="18.4" r=".7"/></svg></div>
+  <div class="raw">📱</div>
+  <div class="code">1F4F1</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M9 8.6 12 12.4l3-3.8M12 12.4v4M9.8 13.4h4.4M9.8 15.4h4.4"/></svg></div>
+  <div class="raw">💰</div>
+  <div class="code">1F4B0</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6v15h15.4"/><path d="M7.4 16 11.2 11.4l2.8 2.9 5-6.5"/></svg></div>
+  <div class="raw">📈</div>
+  <div class="code">1F4C8</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 3.2h11.2v17.6l-2.8-1.8-2.8 1.8-2.8-1.8-2.8 1.8Z"/><path d="M9.6 7.8h4.8M9.6 11.8h4.8"/></svg></div>
+  <div class="raw">🧾</div>
+  <div class="code">1F9FE</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7.6" width="18" height="12.4" rx="2"/><path d="M8.8 7.6V5.8a1.8 1.8 0 0 1 1.8-1.8h2.8a1.8 1.8 0 0 1 1.8 1.8v1.8"/><path d="M3 12.8h18"/></svg></div>
+  <div class="raw">💼</div>
+  <div class="code">1F4BC</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14.6" r="5.2"/><circle cx="12" cy="14.6" r="1.8"/><path d="M8.6 10.2 7 3.2h10l-1.6 7"/></svg></div>
+  <div class="raw">🏅</div>
+  <div class="code">1F3C5</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5.6" width="14" height="9.4" rx="1.4"/><path d="M3.2 17.6 4.6 15h14.8l1.4 2.6Z"/></svg></div>
+  <div class="raw">🧑‍💻</div>
+  <div class="code">1F9D1 200D 1F4BB</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11.4 3.4H5.2a1.6 1.6 0 0 0-1.6 1.6v6.2a1.6 1.6 0 0 0 .5 1.2l7.9 7.9a1.6 1.6 0 0 0 2.3 0l5.8-5.8a1.6 1.6 0 0 0 0-2.3L12.6 3.9a1.6 1.6 0 0 0-1.2-.5Z"/><circle cx="8" cy="8" r="1.4"/></svg></div>
+  <div class="raw">🏷️</div>
+  <div class="code">1F3F7 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5" width="15.6" height="14" rx="2"/><circle cx="11" cy="12" r="3.6"/><path d="M11 12h4"/><path d="M18.8 9.4v5.2"/></svg></div>
+  <div class="raw">🏦</div>
+  <div class="code">1F3E6</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.6 12 3.4l9 5.2"/><path d="M4.8 8.6h14.4"/><path d="M7.4 9.8v6.6M12 9.8v6.6M16.6 9.8v6.6"/><path d="M4.2 16.4h15.6M2.6 19.6h18.8"/></svg></div>
+  <div class="raw">🏛️</div>
+  <div class="code">1F3DB FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 11.8a7.4 7.4 0 0 0 14.8 0Z"/><path d="M4.1 11.8h15.8"/><circle cx="12" cy="11.8" r="1.7"/><path d="M10.4 11.8 12 8.6l1.6 3.2"/></svg></div>
+  <div class="raw">👛</div>
+  <div class="code">1F45B</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M9.6 9.4a2.6 2.6 0 0 1 4.9.9c0 1.7-2.5 1.9-2.5 3.4"/><circle cx="12" cy="17" r=".7"/></svg></div>
+  <div class="raw">🚫</div>
+  <div class="code">1F6AB</div>
+</div></div>
+<h3 class="sec">全站通用 <span>116 枚</span></h3>
+<div class="grid"><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6 7.2 7.2M16.8 16.8l1.6 1.6M18.4 5.6 16.8 7.2M7.2 16.8 5.6 18.4"/></svg></div>
+  <div class="raw">☀️</div>
+  <div class="code">2600 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.4" cy="7.8" r="2.8"/><path d="M8.4 2.6v1.8M2.8 7.8h1.8M4.4 3.8l1.3 1.3M12.4 3.8l-1.3 1.3"/><path d="M7 17.8h9.4a3.3 3.3 0 0 0 .2-6.6 4.5 4.5 0 0 0-8.6-.9A3.5 3.5 0 0 0 7 17.8Z"/></svg></div>
+  <div class="raw">🌤️</div>
+  <div class="code">1F324 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15.6h9.4a3.3 3.3 0 0 0 .2-6.6 4.5 4.5 0 0 0-8.6-.9A3.5 3.5 0 0 0 7 15.6Z"/><path d="M12.8 17.2 10.6 20.4h3.2l-2 3"/></svg></div>
+  <div class="raw">⛈️</div>
+  <div class="code">26C8 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15.6h9.4a3.3 3.3 0 0 0 .2-6.6 4.5 4.5 0 0 0-8.6-.9A3.5 3.5 0 0 0 7 15.6Z"/><path d="M8.6 18.6h3.2M10.2 17.2l-.6 3M15.8 18.6h3.2M17.4 17.2l-.6 3"/></svg></div>
+  <div class="raw">🌨️</div>
+  <div class="code">1F328 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15.4h9.4a3.3 3.3 0 0 0 .2-6.6 4.5 4.5 0 0 0-8.6-.9A3.5 3.5 0 0 0 7 15.4Z"/><path d="M8.8 17.4 7.6 20.6M12.6 17.4 11.4 20.6M16.4 17.4 15.2 20.6"/></svg></div>
+  <div class="raw">🌧️</div>
+  <div class="code">1F327 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.2h13.2M3.4 13h16.2M7 16.6h13M9.8 20.2h8"/></svg></div>
+  <div class="raw">🌫️</div>
+  <div class="code">1F32B FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.8 17.4h9.6a3.5 3.5 0 0 0 .2-7 4.7 4.7 0 0 0-9-.9 3.7 3.7 0 0 0-.8 7.9Z"/></svg></div>
+  <div class="raw">☁️</div>
+  <div class="code">2601 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4v17.2M4.6 7.6l14.8 8.8M19.4 7.6 4.6 16.4"/></svg></div>
+  <div class="raw">❄️</div>
+  <div class="code">2744 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 19.6C4.6 11.4 9.8 5.4 19.6 4.2c.4 8.8-4.6 14.6-15 15.4Z"/><path d="M4.6 19.6 13.4 11"/></svg></div>
+  <div class="raw">🌿</div>
+  <div class="code">1F33F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6"/><path d="M5.4 20.4c0-3.7 3-6.6 6.6-6.6s6.6 2.9 6.6 6.6"/></svg></div>
+  <div class="raw">👤</div>
+  <div class="code">1F464</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.4" cy="7.4" r="2.6"/><circle cx="16.6" cy="7.4" r="2.6"/><circle cx="12" cy="13.6" r="1.9"/><path d="M3.4 17a4 4 0 0 1 8 0"/><path d="M12.6 17a4 4 0 0 1 8 0"/><path d="M9 20.6a3 3 0 0 1 6 0"/></svg></div>
+  <div class="raw">👨‍👩‍👧</div>
+  <div class="code">1F468 200D 1F469 200D 1F467</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.2" r="3.2"/><path d="M3.4 19.4c0-3.1 2.5-5.6 5.6-5.6s5.6 2.5 5.6 5.6"/><path d="M15.6 5.6a3.2 3.2 0 0 1 0 6.4"/><path d="M16.8 13.8c2.3.6 3.8 2.7 3.8 5.2"/></svg></div>
+  <div class="raw">👥</div>
+  <div class="code">1F465</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><circle cx="9.2" cy="10" r=".9"/><circle cx="14.8" cy="10" r=".9"/><path d="M8.8 14.4c.9 1.3 2 2 3.2 2s2.3-.7 3.2-2"/></svg></div>
+  <div class="raw">🙂</div>
+  <div class="code">1F642</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><circle cx="9.2" cy="14.6" r=".9"/><circle cx="14.8" cy="14.6" r=".9"/><path d="M8.8 9.6c.9-1.3 2-2 3.2-2s2.3.7 3.2 2"/></svg></div>
+  <div class="raw">🙃</div>
+  <div class="code">1F643</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M5.2 10.4h13.6"/><path d="M5.2 10.4h4.6v1.6a2.3 2.3 0 0 1-4.6 0Z"/><path d="M18.8 10.4h-4.6v1.6a2.3 2.3 0 0 0 4.6 0Z"/><path d="M8.8 15.6c.9 1.2 2 1.8 3.2 1.8s2.3-.6 3.2-1.8"/></svg></div>
+  <div class="raw">😎</div>
+  <div class="code">1F60E</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.2" y="7.8" width="15.6" height="10" rx="2.4"/><circle cx="9.4" cy="12.8" r="1.4"/><circle cx="14.6" cy="12.8" r="1.4"/><path d="M12 7.8V5"/><circle cx="12" cy="3.8" r="1.2"/><path d="M4.4 11.4H2.6M21.4 11.4h-1.8"/></svg></div>
+  <div class="raw">🤖</div>
+  <div class="code">1F916</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4" stroke-dasharray="2.6 2.8"/><path d="M12 8.4v7.2M8.4 12h7.2"/></svg></div>
+  <div class="raw">➕</div>
+  <div class="code">2795</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="6.8"/><circle cx="6.6" cy="7.4" r="2.4"/><circle cx="17.4" cy="7.4" r="2.4"/><ellipse cx="9.4" cy="12" rx="1.9" ry="2.5"/><ellipse cx="14.6" cy="12" rx="1.9" ry="2.5"/><circle cx="12" cy="16.2" r=".9"/></svg></div>
+  <div class="raw">🐼</div>
+  <div class="code">1F43C</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.4" r="6.6"/><circle cx="6.8" cy="7.8" r="2.4"/><circle cx="17.2" cy="7.8" r="2.4"/><path d="M12 6.8v2.6M9 8.8l1.2 1.8M15 8.8l-1.2 1.8"/><circle cx="9.6" cy="14" r=".9"/><circle cx="14.4" cy="14" r=".9"/><path d="M12 16.6v1.2M11.2 18.4h1.6"/></svg></div>
+  <div class="raw">🐯</div>
+  <div class="code">1F42F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 4.4 6.6 11h10.8L19.4 4.4l-3.6 2.8H8.2Z"/><path d="M6.6 11c0 4.4 2.4 7.6 5.4 7.6s5.4-3.2 5.4-7.6"/><circle cx="12" cy="15.6" r="1"/></svg></div>
+  <div class="raw">🦊</div>
+  <div class="code">1F98A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="6.8"/><circle cx="6.4" cy="7.2" r="2.6"/><circle cx="17.6" cy="7.2" r="2.6"/><ellipse cx="12" cy="15.6" rx="2.5" ry="1.9"/><circle cx="12" cy="14.9" r=".9"/><circle cx="9.2" cy="11.4" r=".9"/><circle cx="14.8" cy="11.4" r=".9"/></svg></div>
+  <div class="raw">🐨</div>
+  <div class="code">1F428</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14.4" r="5.8"/><ellipse cx="9.4" cy="6.2" rx="1.7" ry="3.8"/><ellipse cx="14.6" cy="6.2" rx="1.7" ry="3.8"/><circle cx="9.8" cy="13.6" r=".9"/><circle cx="14.2" cy="13.6" r=".9"/><path d="M12 16.2v1M11.4 17.8h1.2"/></svg></div>
+  <div class="raw">🐰</div>
+  <div class="code">1F430</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.2" r="6.4"/><circle cx="6" cy="9.6" r="2.4"/><circle cx="18" cy="9.6" r="2.4"/><ellipse cx="12" cy="14.8" rx="3.3" ry="2.6"/><circle cx="9.6" cy="11.2" r=".9"/><circle cx="14.4" cy="11.2" r=".9"/></svg></div>
+  <div class="raw">🐵</div>
+  <div class="code">1F435</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 13.6a7.2 7.2 0 0 1 14.4 0v2.6a2 2 0 0 1-2 2H6.8a2 2 0 0 1-2-2Z"/><circle cx="8.2" cy="7.6" r="2.3"/><circle cx="15.8" cy="7.6" r="2.3"/><circle cx="8.2" cy="7.6" r=".9"/><circle cx="15.8" cy="7.6" r=".9"/></svg></div>
+  <div class="raw">🐸</div>
+  <div class="code">1F438</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/></svg></div>
+  <div class="raw">✕</div>
+  <div class="code">2715</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6 10 17.6 19.4 6.8"/></svg></div>
+  <div class="raw">✔</div>
+  <div class="code">2714</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6 10 17.6 19.4 6.8"/></svg></div>
+  <div class="raw">✓</div>
+  <div class="code">2713</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div>
+  <div class="raw">☰</div>
+  <div class="code">2630</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 15.4H5.9a2.3 2.3 0 1 0 2.3 2.3v-9a2.3 2.3 0 1 0-2.3 2.3h11.2a2.3 2.3 0 1 0-2.3-2.3v9a2.3 2.3 0 1 0 2.3-2.3Z"/></svg></div>
+  <div class="raw">⌘</div>
+  <div class="code">2318</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="6.6" width="18.8" height="10.8" rx="2"/><path d="M6.4 10h1.2M10.4 10h1.2M14.4 10h1.2M8.4 13.6h7.2"/></svg></div>
+  <div class="raw">⌨</div>
+  <div class="code">2328</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 5.4h11.2a1.6 1.6 0 0 1 1.6 1.6v10a1.6 1.6 0 0 1-1.6 1.6H8.6L2.6 12Z"/><path d="M11.6 9.6 16 14.4M16 9.6l-4.4 4.8"/></svg></div>
+  <div class="raw">⌫</div>
+  <div class="code">232B</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.6" cy="10.6" r="6"/><path d="M15 15 20.4 20.4"/></svg></div>
+  <div class="raw">⌕</div>
+  <div class="code">2315</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.4 4.4 7.6 19.6M16.4 4.4 14.6 19.6M4.6 9.2h14.8M4 14.8h14.8"/></svg></div>
+  <div class="raw">⌗</div>
+  <div class="code">2317</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.6" y="4.6" width="14.8" height="14.8" rx="2.4"/></svg></div>
+  <div class="raw">☐</div>
+  <div class="code">2610</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.4 3.6h3.6l1.8 4.4-2.2 1.6a11.4 11.4 0 0 0 5.8 5.8l1.6-2.2 4.4 1.8v3.6a1.6 1.6 0 0 1-1.6 1.6C10 20.2 3.8 14 3.8 5.2a1.6 1.6 0 0 1 1.6-1.6Z"/></svg></div>
+  <div class="raw">☎</div>
+  <div class="code">260E</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.6A8.6 8.6 0 0 1 9.4 4a8.6 8.6 0 1 0 10.6 10.6Z"/></svg></div>
+  <div class="raw">☾</div>
+  <div class="code">263E</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 6.6h15.2M4.4 12h15.2M4.4 17.4h15.2"/></svg></div>
+  <div class="raw">☷</div>
+  <div class="code">2637</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 10l6-.8Z"/></svg></div>
+  <div class="raw">★</div>
+  <div class="code">2605</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 10l6-.8Z"/></svg></div>
+  <div class="raw">☆</div>
+  <div class="code">2606</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17.5V5.8l9-2v9.6"/><ellipse cx="6.6" cy="17.5" rx="2.6" ry="2.2"/><ellipse cx="15.4" cy="13.4" rx="2.6" ry="2.2"/></svg></div>
+  <div class="raw">♪</div>
+  <div class="code">266A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6v7.8"/><path d="M7.4 6.4a6.8 6.8 0 1 0 9.2 0"/></svg></div>
+  <div class="raw">⏻</div>
+  <div class="code">23FB</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.6 10.4 5.4 18.6a2.2 2.2 0 1 0 3.1 3.1l8.2-8.2"/><path d="M13.6 10.4a4.8 4.8 0 0 0 6.4-6.2l-3.1 3.1-2.4-.8-.8-2.4 3.1-3.1a4.8 4.8 0 0 0-6.2 6.4Z"/></svg></div>
+  <div class="raw">⚒</div>
+  <div class="code">2692</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 19.6l1.2-4.4L16 4.6a1.9 1.9 0 0 1 2.7 0l.7.7a1.9 1.9 0 0 1 0 2.7L8.8 18.4Z"/><path d="M4.4 19.6l4.4-1.2"/></svg></div>
+  <div class="raw">✐</div>
+  <div class="code">2710</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.4 4.2 10.6 8l3.8 1.2-3.8 1.2-1.2 3.8-1.2-3.8L4.4 9.2 8.2 8Z"/><path d="M17 13.4l.8 2.4 2.4.8-2.4.8-.8 2.4-.8-2.4-2.4-.8 2.4-.8Z"/><path d="M16.4 3.4l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5Z"/></svg></div>
+  <div class="raw">✨</div>
+  <div class="code">2728</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4c.8 3.6 2.1 5.9 5.6 6.8-3.5.9-4.8 3.2-5.6 6.8-.8-3.6-2.1-5.9-5.6-6.8 3.5-.9 4.8-3.2 5.6-6.8Z"/><path d="M18.4 15.4c.4 1.6 1 2.6 2.4 3-1.4.4-2 1.4-2.4 3-.4-1.6-1-2.6-2.4-3 1.4-.4 2-1.4 2.4-3Z"/></svg></div>
+  <div class="raw">✺</div>
+  <div class="code">273A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c.9 3.9 2.3 6.4 6 7.4-3.7 1-5.1 3.5-6 7.4-.9-3.9-2.3-6.4-6-7.4 3.7-1 5.1-3.5 6-7.4Z"/></svg></div>
+  <div class="raw">✦</div>
+  <div class="code">2726</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c.9 3.9 2.3 6.4 6 7.4-3.7 1-5.1 3.5-6 7.4-.9-3.9-2.3-6.4-6-7.4 3.7-1 5.1-3.5 6-7.4Z"/></svg></div>
+  <div class="raw">✧</div>
+  <div class="code">2727</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6 20.4 12 12 20.4 3.6 12Z"/><path d="M12 8.4 15.6 12 12 15.6 8.4 12Z"/></svg></div>
+  <div class="raw">❖</div>
+  <div class="code">2756</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"/></svg></div>
+  <div class="raw">❚</div>
+  <div class="code">275A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.4v15.2"/><path d="M6.6 14.4 12 19.8l5.4-5.4"/></svg></div>
+  <div class="raw">⬇</div>
+  <div class="code">2B07</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.6 9.4 4.4v13L3.6 19.6Z"/><path d="M9.4 4.4l5.2 2.2v13l-5.2-2.2Z"/><path d="M14.6 6.6 20.4 4.4v13l-5.8 2.2Z"/></svg></div>
+  <div class="raw">🗺</div>
+  <div class="code">1F5FA</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M14.8 9.2 13.2 13.2 9.2 14.8 10.8 10.8Z"/></svg></div>
+  <div class="raw">🧭</div>
+  <div class="code">1F9ED</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 9.4h3.2L12 6v12l-4.4-3.4H4.4Z"/><path d="M16.4 9.6 20.4 14.4M20.4 9.6 16.4 14.4"/></svg></div>
+  <div class="raw">🔇</div>
+  <div class="code">1F507</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 9.4h3.2L12 6v12l-4.4-3.4H4.4Z"/><path d="M15.6 9.4a3.6 3.6 0 0 1 0 5.2"/><path d="M18.2 7a7.2 7.2 0 0 1 0 10"/></svg></div>
+  <div class="raw">🔊</div>
+  <div class="code">1F50A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.6" y="2.8" width="10.8" height="18.4" rx="2.4"/><path d="M3 8.6c-.8 2.2-.8 4.6 0 6.8M21 8.6c.8 2.2.8 4.6 0 6.8"/></svg></div>
+  <div class="raw">📳</div>
+  <div class="code">1F4F3</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.6" r="6.6"/><path d="M12 10.2v3.4l2.4 1.4"/><path d="M12 3.4v2.4M9.4 3.4h5.2"/></svg></div>
+  <div class="raw">⏱</div>
+  <div class="code">23F1</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4c3.4 3.4 6.4 5.6 6.4 8.6a3.6 3.6 0 0 1-6.4 2.2c0 1.9-.6 3.4-1.6 4.6h3.2v1.8H10.4v-1.8h3.2"/></svg></div>
+  <div class="raw">♠</div>
+  <div class="code">2660</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.4c-4.8-3.4-7.6-6.2-7.6-9.4a4.2 4.2 0 0 1 7.6-2.5 4.2 4.2 0 0 1 7.6 2.5c0 3.2-2.8 6-7.6 9.4Z"/></svg></div>
+  <div class="raw">♥</div>
+  <div class="code">2665</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6a3.4 3.4 0 0 1 2.6 5.6 3.4 3.4 0 1 1 1.4 6.4 3.4 3.4 0 0 1-2.4-1c0 1.9-.6 3.4-1.6 4.6h-1.2c-1-1.2-1.6-2.7-1.6-4.6a3.4 3.4 0 0 1-2.4 1A3.4 3.4 0 1 1 9.4 9.2 3.4 3.4 0 0 1 12 3.6Z"/></svg></div>
+  <div class="raw">♣</div>
+  <div class="code">2663</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 20.6 12 12 20.6 3.4 12Z"/></svg></div>
+  <div class="raw">♦</div>
+  <div class="code">2666</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.8" y="10.4" width="14.4" height="10" rx="2.2"/><path d="M8.2 10.4V7.8a3.8 3.8 0 0 1 7.6 0v2.6"/><circle cx="12" cy="15.4" r="1.3"/></svg></div>
+  <div class="raw">🔒</div>
+  <div class="code">1F512</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.6" cy="16.4" r="3.4"/><path d="M10 14 18.4 5.6"/><path d="M15.2 8.8 17.4 11M17 7l2.2 2.2"/></svg></div>
+  <div class="raw">🔑</div>
+  <div class="code">1F511</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 5.2 6v5.4c0 4.1 2.8 7.7 6.8 8.8 4-1.1 6.8-4.7 6.8-8.8V6Z"/><path d="M9.2 11.6 11.4 14l3.8-4.4"/></svg></div>
+  <div class="raw">🛡️</div>
+  <div class="code">1F6E1 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8"/><ellipse cx="12" cy="12" rx="4.2" ry="8.4"/></svg></div>
+  <div class="raw">🌐</div>
+  <div class="code">1F310</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 9.2a13.2 13.2 0 0 1 17.2 0"/><path d="M6.6 12.6a8.6 8.6 0 0 1 10.8 0"/><path d="M9.8 16a4.2 4.2 0 0 1 4.4 0"/><circle cx="12" cy="19.4" r="1"/></svg></div>
+  <div class="raw">📶</div>
+  <div class="code">1F4F6</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="6.4" width="17.2" height="11.2" rx="2"/><path d="M7.4 10.2h3.6M7.4 13.4h6.8M14.8 10.2h2.2M17 10.2v3.2"/></svg></div>
+  <div class="raw">📟</div>
+  <div class="code">1F4DF</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 7.6a2 2 0 0 1 2-2h3.6l2 2.4h7.2a2 2 0 0 1 2 2v8.4a2 2 0 0 1-2 2H5.6a2 2 0 0 1-2-2Z"/><path d="M3.6 11.4h16.8"/></svg></div>
+  <div class="raw">🗂</div>
+  <div class="code">1F5C2</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 3.6h7l4.4 4.4v12.4H6.6Z"/><path d="M13.4 3.6v4.6h4.6"/><path d="M9.6 12.6h6"/></svg></div>
+  <div class="raw">📄</div>
+  <div class="code">1F4C4</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.6h6.8l4.4 4.4v12.4H6.2Z"/><path d="M12.8 3.6v4.6h4.6"/><path d="M9.2 12.2h5.6M9.2 15.4h6"/></svg></div>
+  <div class="raw">📝</div>
+  <div class="code">1F4DD</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="5" width="16.8" height="14" rx="2.2"/><circle cx="8.4" cy="10" r="1.6"/><path d="M4.6 17.6 9.6 13l3.4 3 2.6-2.2 3.8 3.8"/></svg></div>
+  <div class="raw">🖼️</div>
+  <div class="code">1F5BC FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="6.6" width="17.6" height="12.4" rx="2.2"/><path d="M9 6.6 10.4 4.4h3.2l1.4 2.2"/><circle cx="12" cy="12.6" r="3.4"/></svg></div>
+  <div class="raw">📷</div>
+  <div class="code">1F4F7</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9.2" y="3.4" width="5.6" height="10.4" rx="2.8"/><path d="M5.6 11.4a6.4 6.4 0 0 0 12.8 0"/><path d="M12 17.8v2.8M8.6 20.6h6.8"/></svg></div>
+  <div class="raw">🎙️</div>
+  <div class="code">1F399 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="4.6" width="16.8" height="14.8" rx="2.2"/><path d="M12 8.4v5.6M9.4 11.6 12 14.2l2.6-2.6"/></svg></div>
+  <div class="raw">📥</div>
+  <div class="code">1F4E5</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.4 3.6h9.2M7.4 20.4h9.2"/><path d="M9 3.6c0 3.4 3.4 4.8 3.4 8.4s-3.4 5-3.4 8.4"/><path d="M15 3.6c0 3.4-3.4 4.8-3.4 8.4s3.4 5 3.4 8.4"/></svg></div>
+  <div class="raw">⏳</div>
+  <div class="code">23F3</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.8" r="6.4"/><path d="M12 10.4v3.4l2.2 1.3"/><path d="M6.2 7.8 8.6 4.8M17.8 7.8 15.4 4.8"/></svg></div>
+  <div class="raw">⏰</div>
+  <div class="code">23F0</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 7.4h14.8"/><path d="M6.6 7.4l.9 12a1.6 1.6 0 0 0 1.6 1.5h5.8a1.6 1.6 0 0 0 1.6-1.5l.9-12"/><path d="M9.6 7.4V5.8A1.6 1.6 0 0 1 11.2 4.2h1.6A1.6 1.6 0 0 1 14.4 5.8v1.6"/><path d="M10.6 11v6.2M13.4 11v6.2"/></svg></div>
+  <div class="raw">🗑️</div>
+  <div class="code">1F5D1 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 19.6l1.2-4.4L16 4.6a1.9 1.9 0 0 1 2.7 0l.7.7a1.9 1.9 0 0 1 0 2.7L8.8 18.4Z"/><path d="M4.4 19.6l4.4-1.2"/></svg></div>
+  <div class="raw">✏️</div>
+  <div class="code">270F FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 19.6l1.2-4.4L16 4.6a1.9 1.9 0 0 1 2.7 0l.7.7a1.9 1.9 0 0 1 0 2.7L8.8 18.4Z"/><path d="M4.4 19.6l4.4-1.2"/></svg></div>
+  <div class="raw">✎</div>
+  <div class="code">270E</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.6a3 3 0 0 0-5.4 1.4 2.9 2.9 0 0 0-1.2 4.6 3.1 3.1 0 0 0 1.4 4.4A3.1 3.1 0 0 0 12 18.6Z"/><path d="M12 5.6a3 3 0 0 1 5.4 1.4 2.9 2.9 0 0 1 1.2 4.6 3.1 3.1 0 0 1-1.4 4.4A3.1 3.1 0 0 1 12 18.6Z"/><path d="M12 5.6v13"/></svg></div>
+  <div class="raw">🧠</div>
+  <div class="code">1F9E0</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.4v2.6M12 18v2.6M3.4 12h2.6M18 12h2.6M6 6l1.9 1.9M16.1 16.1 18 18M18 6l-1.9 1.9M7.9 16.1 6 18"/></svg></div>
+  <div class="raw">⚙️</div>
+  <div class="code">2699 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 19.6h15.2L12 4.4Z"/><path d="M8.8 13.6h3.4M12 6.6v3.4"/></svg></div>
+  <div class="raw">📐</div>
+  <div class="code">1F4D0</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.6" width="18" height="11.8" rx="2"/><path d="M8.6 20.4h6.8M12 16.4v4"/></svg></div>
+  <div class="raw">🖥</div>
+  <div class="code">1F5A5</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.6 10.4 5.4 18.6a2.2 2.2 0 1 0 3.1 3.1l8.2-8.2"/><path d="M13.6 10.4a4.8 4.8 0 0 0 6.4-6.2l-3.1 3.1-2.4-.8-.8-2.4 3.1-3.1a4.8 4.8 0 0 0-6.2 6.4Z"/></svg></div>
+  <div class="raw">🔧</div>
+  <div class="code">1F527</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="5.4" width="16.8" height="15" rx="2.2"/><path d="M3.6 10h16.8M8.4 3.6v3.6M15.6 3.6v3.6"/><circle cx="12" cy="15" r="1.2"/></svg></div>
+  <div class="raw">📅</div>
+  <div class="code">1F4C5</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.2c4-4.6 6.2-7.5 6.2-10.3A6.2 6.2 0 0 0 5.8 10.9c0 2.8 2.2 5.7 6.2 10.3Z"/><circle cx="12" cy="10.6" r="2.4"/></svg></div>
+  <div class="raw">📍</div>
+  <div class="code">1F4CD</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.4 3.6h3.6l1.8 4.4-2.2 1.6a11.4 11.4 0 0 0 5.8 5.8l1.6-2.2 4.4 1.8v3.6a1.6 1.6 0 0 1-1.6 1.6C10 20.2 3.8 14 3.8 5.2a1.6 1.6 0 0 1 1.6-1.6Z"/></svg></div>
+  <div class="raw">📞</div>
+  <div class="code">1F4DE</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4a4.6 4.6 0 0 1 4.6 4.6v4.6H7.4V8A4.6 4.6 0 0 1 12 3.4Z"/><path d="M7.4 12.6h9.2"/><path d="M12 12.6v8"/></svg></div>
+  <div class="raw">📌</div>
+  <div class="code">1F4CC</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 16.4V11a5.4 5.4 0 0 1 10.8 0v5.4l1.4 2.2H5.2Z"/><path d="M9.8 18.6a2.2 2.2 0 0 0 4.4 0"/><path d="M12 5.6V3.4"/></svg></div>
+  <div class="raw">🔔</div>
+  <div class="code">1F514</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.6" width="14" height="16" rx="2"/><path d="M9 3.2h6v2.8H9Z"/><path d="M8.6 11.6h6.8M8.6 15.4h4.4"/></svg></div>
+  <div class="raw">📋</div>
+  <div class="code">1F4CB</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.6" cy="10.6" r="6"/><path d="M15 15 20.4 20.4"/></svg></div>
+  <div class="raw">🔍</div>
+  <div class="code">1F50D</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="6.6" width="17.6" height="12.4" rx="2.2"/><path d="M9 6.6 10.4 4.4h3.2l1.4 2.2"/><circle cx="12" cy="12.6" r="3.4"/><path d="M18.6 3.4 16.8 5.2"/></svg></div>
+  <div class="raw">📸</div>
+  <div class="code">1F4F8</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 20.4 7.6v8.8L12 20.6 3.6 16.4V7.6Z"/><path d="M3.6 7.6 12 11.8l8.4-4.2M12 11.8v8.8"/></svg></div>
+  <div class="raw">📦</div>
+  <div class="code">1F4E6</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 12a7.6 7.6 0 0 1 13-5.4"/><path d="M17.6 4v4.4h-4.4"/><path d="M19.6 12a7.6 7.6 0 0 1-13 5.4"/><path d="M6.4 20v-4.4h4.4"/></svg></div>
+  <div class="raw">🔁</div>
+  <div class="code">1F501</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 12a7.6 7.6 0 0 1 13-5.4"/><path d="M17.6 4v4.4h-4.4"/><path d="M19.6 12a7.6 7.6 0 0 1-13 5.4"/><path d="M6.4 20v-4.4h4.4"/></svg></div>
+  <div class="raw">🔄</div>
+  <div class="code">1F504</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="4.4"/><path d="M12 8.6v6.8"/></svg></div>
+  <div class="raw">🪙</div>
+  <div class="code">1FA99</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20.4v-5.6a1.8 1.8 0 0 1 1.8-1.8h10.4a1.8 1.8 0 0 1 1.8 1.8v5.6Z"/><path d="M3.6 20.4h16.8"/><path d="M9 13V10.4M12 13V10.4M15 13V10.4"/><circle cx="9" cy="9.4" r="1"/><circle cx="12" cy="9.4" r="1"/><circle cx="15" cy="9.4" r="1"/></svg></div>
+  <div class="raw">🎂</div>
+  <div class="code">1F382</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.2v15.6M4.2 12h15.6M6.6 6.6 17.4 17.4M17.4 6.6 6.6 17.4"/><path d="M12 8.4c1.9 1.9 1.9 5.3 0 7.2-1.9-1.9-1.9-5.3 0-7.2Z"/></svg></div>
+  <div class="raw">🕸</div>
+  <div class="code">1F578</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="5.4" width="16.8" height="13.2" rx="2"/><path d="M8.6 5.4v13.2M3.6 12h16.8"/><circle cx="6.2" cy="9" r="1"/><circle cx="15" cy="9" r="1"/></svg></div>
+  <div class="raw">🍱</div>
+  <div class="code">1F371</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.4 3.6v5.4a2.4 2.4 0 0 0 4.8 0V3.6"/><path d="M7.8 9.2v11.2"/><path d="M18.4 3.6c-1.6 2-2.4 3.8-2.4 6.2 0 1.8.8 2.8 2.4 3.8v6.8"/></svg></div>
+  <div class="raw">🍽</div>
+  <div class="code">1F37D</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6v16.8M7.4 20.4h9.2M5 7.6h14"/><path d="M5 7.6 2.6 13.4h4.8Z"/><path d="M19 7.6l-2.4 5.8h4.8Z"/></svg></div>
+  <div class="raw">⚖️</div>
+  <div class="code">2696 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 4.4h13.6v15.2H5.2Z"/><path d="M8.6 9h6.8M8.6 12.4h6.8M8.6 15.8h4"/></svg></div>
+  <div class="raw">🗒️</div>
+  <div class="code">1F5D2 FE0F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 13.4 9l5-2.4-1.8 5.4 5.2 1-4.6 3.6 3 4.4-5.6-1.6-1.4 5.6-1.8-5.4-4.8 2.2 1.6-5.2-5.4-1.2 4.6-3.4-2.8-4.6 5.4 1.4Z"/></svg></div>
+  <div class="raw">💥</div>
+  <div class="code">1F4A5</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 20.4 3.8 16l-1.2-5.6 4.2 1 3.4 4Z"/><path d="M3.8 16 2.6 20.6"/><path d="M14.4 7.2l1.2 1.6M18.6 5.6l.8 2M20 11.6l1.8 1.2M13.6 3.4l-.4 1.8"/></svg></div>
+  <div class="raw">🎉</div>
+  <div class="code">1F389</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.8 3.6h10.4v5.4a5.2 5.2 0 0 1-10.4 0Z"/><path d="M6.8 5.4H4.4v2.2a2.6 2.6 0 0 0 2.6 2.6M17.2 5.4h2.4v2.2a2.6 2.6 0 0 1-2.6 2.6"/><path d="M12 14.4v3.4M8.6 20.4h6.8M9.6 17.8h4.8"/></svg></div>
+  <div class="raw">🏆</div>
+  <div class="code">1F3C6</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 20.6V3.6"/><path d="M5.2 4.6h12.4l-2 3.4 2 3.4H5.2"/></svg></div>
+  <div class="raw">🏁</div>
+  <div class="code">1F3C1</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.4 20.6V3.6"/><path d="M5.4 4.6h11.2l-1.8 3.4 1.8 3.4H5.4"/></svg></div>
+  <div class="raw">🚩</div>
+  <div class="code">1F6A9</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="7.4" width="12" height="7" rx="1.6"/><circle cx="9.4" cy="10.9" r="1.8"/><path d="M15.6 15.4 20.4 10.6M15.6 10.6l4.8 4.8"/></svg></div>
+  <div class="raw">💸</div>
+  <div class="code">1F4B8</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="5.4" width="16.8" height="13.2" rx="2"/><circle cx="9" cy="11.2" r="2.2"/><path d="M5.6 16.4a3.4 3.4 0 0 1 6.8 0"/><path d="M14.4 10.6h4.2M14.4 14h3"/></svg></div>
+  <div class="raw">🪪</div>
+  <div class="code">1FAAA</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.8" y="6.6" width="10.4" height="10.8" rx="3"/><path d="M9.2 6.6 9.8 3.4h4.4l.6 3.2M9.2 17.4l.6 3.2h4.4l.6-3.2"/><path d="M12 10.4v2.4h2"/></svg></div>
+  <div class="raw">⌚</div>
+  <div class="code">231A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.6 20.4V11a6.4 6.4 0 0 1 12.8 0v9.4Z"/><path d="M9 6.6a3 3 0 0 1 6 0"/><path d="M9.4 12.4h5.2v4.2H9.4Z"/></svg></div>
+  <div class="raw">🎒</div>
+  <div class="code">1F392</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.8 4.4 6 6.4 3.4 9.6l3.2 2.6 1.4-1.4v9.6h8V10.8l1.4 1.4 3.2-2.6-2.6-3.2-2.6-2Z"/></svg></div>
+  <div class="raw">👕</div>
+  <div class="code">1F455</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.4 3.6h9.2v7l-1 9.8h-3.4l-.2-7.6-.2 7.6H8.4l-1-9.8Z"/></svg></div>
+  <div class="raw">👖</div>
+  <div class="code">1F456</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 4.4 4 8.4v11.6h16V8.4l-4.6-4"/></svg></div>
+  <div class="raw">🧥</div>
+  <div class="code">1F9E5</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.6h6l1.4 3.4 5.4 8-1.6 5.4H3.8L2.2 15l5.4-8Z"/></svg></div>
+  <div class="raw">👗</div>
+  <div class="code">1F457</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 17.4v-3l3.4-1.6 2.6 1.6h3.2l2.4 1.4h6.6v1.6Z"/></svg></div>
+  <div class="raw">👟</div>
+  <div class="code">1F45F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.6h11.6l-1 3.6H7.2Z"/><path d="M9.4 7.2h5.2l-.6 13.2h-4Z"/></svg></div>
+  <div class="raw">🧣</div>
+  <div class="code">1F9E3</div>
+</div></div>
+<h3 class="sec">游戏模块 <span>34 枚</span></h3>
+<div class="grid"><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7.4C10.4 6 8.2 5.4 5.4 5.4v11.2c2.8 0 5 .6 6.6 2 1.6-1.4 3.8-2 6.6-2V5.4c-2.8 0-5 .6-6.6 2Z"/><path d="M12 7.4v11.2"/></svg></div>
+  <div class="raw">📖</div>
+  <div class="code">1F4D6</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 3.6h9v16.8h-9Z"/><path d="M15.4 3.6h2.2v16.8h-2.2"/><circle cx="13.2" cy="12" r="1"/></svg></div>
+  <div class="raw">🚪</div>
+  <div class="code">1F6AA</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M6.2 6.2 17.8 17.8"/></svg></div>
+  <div class="raw">⛔</div>
+  <div class="code">26D4</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.8" r="4.8"/><path d="M9.2 10.2 7.2 3.6h9.6l-2 6.6"/><path d="M12 11.6v4.4M10 13.8h4"/></svg></div>
+  <div class="raw">🎖</div>
+  <div class="code">1F396</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.6" r="2.6"/><path d="M9 17.4h6c0-3-1.2-4.6-3-7.2-1.8 2.6-3 4.2-3 7.2Z"/><path d="M7 20.4h10"/></svg></div>
+  <div class="raw">♟</div>
+  <div class="code">265F</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3.4"/><circle cx="8.4" cy="8.4" r="1.2"/><circle cx="15.6" cy="15.6" r="1.2"/><circle cx="12" cy="12" r="1.2"/></svg></div>
+  <div class="raw">🎲</div>
+  <div class="code">1F3B2</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.8" y="5.4" width="11.4" height="16.4" rx="2"/><path d="M9.5 9.6l1.3 2.6 2.8.4-2 1.9.5 2.8-2.6-1.4-2.6 1.4.5-2.8-2-1.9 2.8-.4Z"/></svg></div>
+  <div class="raw">🃏</div>
+  <div class="code">1F0CF</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.6" y="4.4" width="10.8" height="15.2" rx="2"/><path d="M12 8v8M8.6 12h6.8"/></svg></div>
+  <div class="raw">🀄</div>
+  <div class="code">1F004</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.8" y="5.4" width="11.4" height="16.4" rx="2"/><circle cx="9.5" cy="11.6" r="1.5"/><circle cx="9.5" cy="8.4" r="1.5"/><circle cx="6.7" cy="10.2" r="1.5"/><circle cx="12.3" cy="10.2" r="1.5"/><circle cx="9.5" cy="13.4" r="1.5"/></svg></div>
+  <div class="raw">🎴</div>
+  <div class="code">1F3B4</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6.4" fill="currentColor" stroke="none"/></svg></div>
+  <div class="raw">⚫</div>
+  <div class="code">26AB</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6.4"/></svg></div>
+  <div class="raw">⚪</div>
+  <div class="code">26AA</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 3.4 17.2 14.2M17.6 3.4 6.8 14.2"/><path d="M4.6 16.4 7.4 19.2M19.4 16.4 16.6 19.2"/></svg></div>
+  <div class="raw">⚔</div>
+  <div class="code">2694</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.3"/></svg></div>
+  <div class="raw">🎯</div>
+  <div class="code">1F3AF</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.4 20.4 3.6 16.6l-1-5 3.8.8 3 3.8Z"/><path d="M3.6 16.6 2.6 20.6"/><path d="M13.6 6.6l1.4 1.8M17.6 5l1 2.2M19.4 10.4l2 1.2M12.8 2.8l-.6 2"/></svg></div>
+  <div class="raw">🎊</div>
+  <div class="code">1F38A</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12.6 6 10l3 2.6"/><path d="M21.4 12.6 18 10l-3 2.6"/><path d="M9 12.6 12 15.2l3-2.6"/><path d="M6 10v4.4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10"/></svg></div>
+  <div class="raw">🤝</div>
+  <div class="code">1F91D</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12.6" r="7.4"/><circle cx="9.2" cy="11.6" r=".9"/><circle cx="14.8" cy="11.6" r=".9"/><path d="M9 15c.9 1.1 1.8 1.6 3 1.6s2.1-.5 3-1.6"/><ellipse cx="12" cy="3.6" rx="4" ry="1.4"/></svg></div>
+  <div class="raw">😇</div>
+  <div class="code">1F607</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><ellipse cx="12" cy="15.4" rx="1.9" ry="2.4"/></svg></div>
+  <div class="raw">😮</div>
+  <div class="code">1F62E</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 11.4a5.8 5.8 0 0 1 11.6 0v3.4l-1.6 1.6v2.6H7.8v-2.6l-1.6-1.6Z"/><circle cx="9.6" cy="11.6" r="1.4"/><circle cx="14.4" cy="11.6" r="1.4"/><path d="M12 14.6v1.6"/></svg></div>
+  <div class="raw">💀</div>
+  <div class="code">1F480</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 3.4 5.6 13.6h5.2l-1.2 7 7.8-10.2h-5.2Z"/></svg></div>
+  <div class="raw">⚡</div>
+  <div class="code">26A1</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1.2"/></svg></div>
+  <div class="raw">🌀</div>
+  <div class="code">1F300</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="8" ry="6.4"/><ellipse cx="12" cy="12" rx="4.4" ry="3.2"/></svg></div>
+  <div class="raw">🕳</div>
+  <div class="code">1F573</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 8.4a1.6 1.6 0 0 1 1.6-1.6h14a1.6 1.6 0 0 1 1.6 1.6v1.8a2.2 2.2 0 0 0 0 3.6v1.8a1.6 1.6 0 0 1-1.6 1.6H5a1.6 1.6 0 0 1-1.6-1.6v-1.8a2.2 2.2 0 0 0 0-3.6Z"/></svg></div>
+  <div class="raw">🎫</div>
+  <div class="code">1F3AB</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 4.4h11.2v13a2.8 2.8 0 0 1-2.8 2.8"/><path d="M6.4 4.4a2.8 2.8 0 0 0 0 5.6h11.2"/><path d="M9.2 12.6h5.6M9.2 15.6h3.6"/></svg></div>
+  <div class="raw">📜</div>
+  <div class="code">1F4DC</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18.4V11a7 7 0 0 1 14 0v7.4l-2.6 1.6-.8-2.4h-2.2l-.8 2.4h-2.2l-.8-2.4H8.4l-.8 2.4Z"/><circle cx="9.4" cy="11.4" r="1"/><circle cx="14.6" cy="11.4" r="1"/></svg></div>
+  <div class="raw">👾</div>
+  <div class="code">1F47E</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 19.6h16.8"/><rect x="4.6" y="10.4" width="14.8" height="5.6" rx="1"/><path d="M8 10.4v5.6M12 10.4v5.6M16 10.4v5.6"/></svg></div>
+  <div class="raw">🚧</div>
+  <div class="code">1F6A7</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.2V13l2-4.3a2 2 0 0 1 1.8-1.2h8.4A2 2 0 0 1 18 8.7l2 4.3v3.2"/><path d="M4.6 13h14.8"/><circle cx="7.6" cy="17.6" r="1.6"/><circle cx="16.4" cy="17.6" r="1.6"/><path d="M10 5.6h4v2.2h-4Z"/></svg></div>
+  <div class="raw">🚔</div>
+  <div class="code">1F694</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 20.4V9.6h6v10.8"/><path d="M9.4 20.4V5.4h7.2v15"/><path d="M16.6 20.4v-7.6h4v7.6"/><path d="M12 8.4h1.2M12 11.4h1.2"/></svg></div>
+  <div class="raw">🏙</div>
+  <div class="code">1F3D9</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8" opacity=".35"/></svg></div>
+  <div class="raw">🟢</div>
+  <div class="code">1F7E2</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8" opacity=".35"/></svg></div>
+  <div class="raw">🟡</div>
+  <div class="code">1F7E1</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8" opacity=".35"/></svg></div>
+  <div class="raw">🔴</div>
+  <div class="code">1F534</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 9.4h9.4M3.6 12.6h12.8M3.6 15.8h6.4"/></svg></div>
+  <div class="raw">💨</div>
+  <div class="code">1F4A8</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.4v14.2"/><path d="M6.6 13 12 18.6 17.4 13"/></svg></div>
+  <div class="raw">🔻</div>
+  <div class="code">1F53B</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.8 21.2 19.6H2.8Z"/><path d="M12 9.6v4.4"/><circle cx="12" cy="16.8" r=".9"/></svg></div>
+  <div class="raw">⚠</div>
+  <div class="code">26A0</div>
+</div><div class="cell">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 5.4h12v14H4.4Z"/><path d="M16.4 8.4h3.2v11h-3.2Z"/><path d="M7 9.4h6M7 12.4h6M7 15.4h3.6"/></svg></div>
+  <div class="raw">📰</div>
+  <div class="code">1F4F0</div>
+</div></div>
+
+</body></html>

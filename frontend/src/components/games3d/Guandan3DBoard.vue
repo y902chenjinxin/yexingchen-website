@@ -46,7 +46,7 @@
           :class="{ 'is-turn': isTurn(s) }"
           :style="seatTF(SEAT_SLOT[screenPos(s, 0)])"
         >
-          <div class="gt3-ava" :style="{ background: seatColors[s] }">{{ seatAvatar(s) }}</div>
+          <div class="gt3-ava" :style="{ background: seatColors[s] }"><AppIcon :icon="seatAvatar(s)" /></div>
           <div class="gt3-meta">
             <b>{{ seatName(s) }}</b>
             <i :class="{ turn: isTurn(s) }">{{ seatSub(s) }}</i>
@@ -149,6 +149,7 @@ import * as G from '@/utils/games/guandan.js'
 import {
   VIEW_RX, boxVars, pieceBox, handTF, oppTF, centerTF, seatTF, SEAT_SLOT, screenPos,
 } from '@/components/games3d/use3dTable.js'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 defineEmits(['exit'])
 

@@ -8,7 +8,7 @@
     <div class="log-timeline">
       <div v-if="loading" class="log-placeholder">加载中…</div>
       <div v-else-if="logs.length === 0" class="log-placeholder">
-        <div class="log-empty-icon">📝</div>
+        <div class="log-empty-icon"><AppIcon icon="📝" :size="48" /></div>
         <div class="log-empty-text">暂无操作日志</div>
       </div>
       <template v-else>
@@ -48,6 +48,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { ElMessage } from 'element-plus'
 import { getLogs, clearLogs } from '@/api/log'
 

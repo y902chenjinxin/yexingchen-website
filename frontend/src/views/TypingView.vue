@@ -49,7 +49,7 @@
 
       <div v-if="finished" class="ty-result glass-card">
         {{ mode === 'en' ? 'WPM' : '字/分' }} <b>{{ stats.wpm }}</b> · 正确率 <b>{{ stats.acc }}%</b> · 共 {{ stats.chars }} 字符
-        <span v-if="isNewBest" class="ty-newbest">🎉 新纪录</span>
+        <span v-if="isNewBest" class="ty-newbest"><AppIcon icon="🎉" :size="14" /> 新纪录</span>
         <button class="ty-btn primary" @click="start">再来一次</button>
       </div>
     </div>
@@ -59,6 +59,7 @@
 <script setup>
 import { ref, reactive, computed, onBeforeUnmount, nextTick } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const EN_WORDS = ('the be to of and a in that have i it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us is are was were been has had did said each tell does set three still small large point end read need land home hand large must big high such follow act why ask men change went light kind off need house picture try us again animal mother world near build self earth father head stand own page should country found answer school grow study still learn plant cover food sun four state keep eye never last let thought city tree cross farm hard start might story saw far sea draw left late run press close night real life few north open seem together next white children begin got walk example ease paper often always music those both mark book letter until mile river car feet care second group carry took rain eat room friend began idea fish mountain stop once base hear horse cut sure watch color face wood main enough plain girl usual young ready above ever red list though feel talk bird soon body dog family direct leave song measure door product black short numeral class wind question happen complete ship area half rock order fire south problem piece told knew pass since top whole king space heard best hour better true during hundred five remember step early hold west ground interest reach fast verb sing listen table travel less morning ten simple several vowel toward war lay against pattern slow center love person money serve appear road map science rule govern pull cold notice voice fall power town fine certain fly unit lead cry dark machine note wait plan figure star box noun field rest correct able pound done beauty drive stood contain front teach week final gave green oh quick develop sleep warm free minute strong special mind behind clear tail produce fact street inch lot nothing course stay wheel full force blue object decide surface deep moon island foot yet busy test record boat common gold possible plane age dry wonder laugh thousand ago ran check game shape yes hot miss brought heat snow bed bring sit perhaps fill east weight language among').split(' ')
 const ZH_SENTS = [

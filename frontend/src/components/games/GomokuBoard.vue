@@ -12,7 +12,7 @@
             <i>{{ activeColor === HUMAN && !over ? (modeLabel === '在线' ? '行棋中' : '你的回合') : '黑' }}</i>
           </div>
         </div>
-        <span class="gk-vs">⚔</span>
+        <span class="gk-vs"><AppIcon icon="⚔" /></span>
         <div class="gk-player" :class="{ active: activeColor === AI }">
           <span class="gk-stone-sm white"></span>
           <div class="gk-player-txt">
@@ -37,7 +37,7 @@
 
       <!-- 本地对局操作：重开 / 悔棋（含配额） -->
       <div v-if="mode !== 'online'" class="gk-status">
-        <span v-if="over" class="gk-result">{{ resultText }}</span>
+        <span v-if="over" class="gk-result"><AppIcon v-if="resultIcon" :icon="resultIcon" /> {{ resultText }}</span>
         <button class="gk-btn" @click="restart">重开</button>
         <button class="gk-btn" :disabled="!canUndoLocal" @click="undoLocal">悔棋</button>
         <span class="gk-quota">{{ localQuotaText }}</span>
@@ -59,7 +59,7 @@
           <button class="gk-btn" @click="askExit">退出对局（认输）</button>
         </template>
         <template v-else-if="gRoom.status.value === 'finished'">
-          <span class="gk-result">{{ onlineResultText }}</span>
+          <span class="gk-result"><AppIcon v-if="onlineResultIcon" :icon="onlineResultIcon" /> {{ onlineResultText }}</span>
           <button v-if="canUndoOnline" class="gk-btn" @click="undoOnline">悔棋翻盘{{ gRoom.undoPlies.value === 2 ? ' · 撤 2 手' : '' }}（余 {{ gRoom.undoLeft.value }}）</button>
           <button class="gk-btn primary" @click="reinviteSame">再来一局</button>
           <button class="gk-btn" @click="exitOnline">退出</button>
@@ -69,7 +69,7 @@
 
     <!-- 在线：邀请面板（尚未建房时） -->
     <div v-if="mode === 'online' && !gRoom.room.value" class="gk-online">
-      <div class="gk-online-title">🎯 在线邀请对战</div>
+      <div class="gk-online-title"><AppIcon icon="🎯" /> 在线邀请对战</div>
       <p class="gk-online-desc">选一位家人发出邀请，对方接受后进入对局；落子自动同步，约 2 秒内可见。</p>
       <div class="gk-online-row">
         <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
@@ -147,6 +147,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
 import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 import { sfx } from '@/utils/games/sfx'
@@ -347,7 +348,9 @@ const whiteName = computed(() => {
 const activeColor = computed(() => (over.value ? 0 : turn.value))
 const modeLabel = computed(() => (mode.value === 'online' ? '在线' : '本地'))
 const onlineResultText = computed(() =>
-  onlineWinner.value === 'me' ? '🎉 你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '🤝 平局')
+  onlineWinner.value === 'me' ? '你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '平局')
+const onlineResultIcon = computed(() =>
+  onlineWinner.value === 'me' ? '🎉' : onlineWinner.value === 'opp' ? '' : '🤝')
 
 /* ---------- 悔棋 ---------- */
 /** 最后一手是谁下的（本地模式扣谁的配额） */
@@ -442,9 +445,14 @@ async function resumeMine() {
 }
 
 const resultText = computed(() => {
-  if (winner.value === HUMAN) return mode.value === 'pvp' ? '🎉 黑方胜' : '🎉 你赢了'
-  if (winner.value === AI) return mode.value === 'pvp' ? '🎉 白方胜' : 'AI 赢了，再来'
-  return '🤝 平局'
+  if (winner.value === HUMAN) return mode.value === 'pvp' ? '黑方胜' : '你赢了'
+  if (winner.value === AI) return mode.value === 'pvp' ? '白方胜' : 'AI 赢了，再来'
+  return '平局'
+})
+const resultIcon = computed(() => {
+  if (winner.value === HUMAN) return '🎉'
+  if (winner.value === AI) return mode.value === 'pvp' ? '🎉' : ''
+  return '🤝'
 })
 
 function clearLocal() {

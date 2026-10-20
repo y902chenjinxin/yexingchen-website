@@ -37,7 +37,7 @@
         <div class="ted-field">
           <label class="ted-label">评价星级</label>
           <div class="ted-stars">
-            <button v-for="n in 5" :key="n" type="button" class="ted-star" :class="{ on: d.star >= n }" @click="d.star = n">★</button>
+            <button v-for="n in 5" :key="n" type="button" class="ted-star" :class="{ on: d.star >= n }" @click="d.star = n"><AppIcon icon="★" :size="20" /></button>
             <span class="ted-star-empty">{{ makeStars(d.star) }}</span>
           </div>
         </div>
@@ -66,7 +66,7 @@
               <span class="ted-city-ops">
                 <button type="button" class="ted-city-btn" :disabled="i === 0" @click="move(i, -1)">↑</button>
                 <button type="button" class="ted-city-btn" :disabled="i === d.cities.length - 1" @click="move(i, 1)">↓</button>
-                <button type="button" class="ted-city-btn danger" @click="d.cities.splice(i, 1)">✕</button>
+                <button type="button" class="ted-city-btn danger" @click="d.cities.splice(i, 1)"><AppIcon icon="✕" :size="14" /></button>
               </span>
             </div>
             <TravelCityPicker @add="onCityAdd" :cities="d.cities" />
@@ -81,7 +81,7 @@
       <div class="ted-photos">
         <div v-for="(p, i) in d.photos" :key="i" class="ted-photo">
           <img :src="p" alt="" />
-          <button type="button" class="ted-photo-del" @click="d.photos.splice(i, 1)">✕</button>
+          <button type="button" class="ted-photo-del" @click="d.photos.splice(i, 1)"><AppIcon icon="✕" :size="12" /></button>
         </div>
         <label class="ted-photo-add">
           <input type="file" accept="image/*" multiple hidden @change="onPhotos" />
@@ -123,6 +123,7 @@
 <script setup>
 import { reactive } from 'vue'
 import LunarDatePicker from '@/components/common/LunarDatePicker.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import TravelCityPicker from './TravelCityPicker.vue'
 import { uploadMedia } from '@/api/travels'
 

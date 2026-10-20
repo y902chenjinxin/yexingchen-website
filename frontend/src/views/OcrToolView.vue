@@ -2,7 +2,7 @@
   <IslandInnerBase type="tool" title="OCR 文字识别" subtitle="本地推理 · 中文优先 · 无需外部服务">
     <div class="ocr-tool">
       <div class="ot-head">
-        <span class="ot-badge">🖥 图片上传到服务器后由本地引擎识别（不调用第三方 API），识别完即刻释放。</span>
+        <span class="ot-badge"><AppIcon icon="🖥" :size="14" /> 图片上传到服务器后由本地引擎识别（不调用第三方 API），识别完即刻释放。</span>
       </div>
 
       <div
@@ -39,6 +39,7 @@ import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { ElMessage } from 'element-plus'
 import { ocrImage } from '@/api/toolkit'
 import { copyText as copyToClipboard } from '@/utils/clipboard'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const fileInput = ref(null)
 const srcUrl = ref('')

@@ -170,7 +170,7 @@
         class="batch-upload"
       >
         <div class="batch-drop">
-          <div class="batch-drop-icon">🎬</div>
+          <div class="batch-drop-icon"><AppIcon icon="🎬" :size="28" /></div>
           <div class="batch-drop-text">拖拽文件到这里，或<em>点击选择</em></div>
           <div class="batch-drop-hint">MP4 / WEBM，单次最多 5 个</div>
         </div>
@@ -276,6 +276,7 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { downloadVideoTemplate, getVideoUploaders } from '@/api/video'
 import { useIsMobile } from '@/composables/useIsMobile'
 

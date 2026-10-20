@@ -8,13 +8,13 @@
           <p class="va-sub">全家共享的密码便签本 —— 记下来就不会忘</p>
         </div>
         <div class="va-head-right">
-          <button class="va-btn primary" @click="openCreate">＋ 存一条</button>
+          <button class="va-btn primary" @click="openCreate"><AppIcon icon="＋" :size="14" /> 存一条</button>
         </div>
       </header>
 
       <!-- 用途边界写清楚，避免把重要密码放这里 -->
       <div class="va-notice">
-        <span class="va-notice-ic" aria-hidden="true">🔒</span>
+        <span class="va-notice-ic" aria-hidden="true"><AppIcon icon="🔒" :size="15" /></span>
         <span>这里只放<b>不重要、丢了也不致命</b>的密码（网站会员 / WiFi / 门禁 / 旧设备）。
           银行、支付、邮箱、主账号请用专业工具（Vaultwarden / KeePassXC / 系统钥匙串）。</span>
       </div>
@@ -39,7 +39,7 @@
 
       <div v-else class="va-list">
         <article v-for="e in list" :key="e.id" class="va-card glass">
-          <div class="va-card-ic">{{ categoryEmoji(e.category) }}</div>
+          <div class="va-card-ic"><AppIcon :icon="categoryEmoji(e.category)" :size="19" /></div>
           <div class="va-card-main">
             <div class="va-name-row">
               <span class="va-name">{{ e.title }}</span>
@@ -104,6 +104,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { vaultApi } from '@/api/lifeExtra'
 import { copyText } from '@/utils/clipboard'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const list = ref([])
 const uploaders = ref([])

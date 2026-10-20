@@ -97,7 +97,7 @@
       <!-- 省份筛选 chip -->
       <div v-if="drillProvince" class="tm-chip">
         <span>已聚焦「{{ drillProvince }}」</span>
-        <button type="button" @click.stop="emit('province-click', null)">✕ 清除</button>
+        <button type="button" @click.stop="emit('province-click', null)"><AppIcon icon="✕" :size="14" /> 清除</button>
       </div>
       <div v-else-if="!isFit" class="tm-chip ghost">
         <span>拖动平移 · 滚轮缩放 · 双击复位</span>
@@ -127,6 +127,7 @@
 
 <script setup>
 import { ref, reactive, computed, onBeforeUnmount, watch } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   points: { type: Array, default: () => [] },

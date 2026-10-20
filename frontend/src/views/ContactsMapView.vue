@@ -18,9 +18,9 @@
       <div v-if="selected" class="mt-detail glass-card">
         <b>{{ selected.name }}</b>
         <span class="mt-rel">{{ selected.relation || '未标注关系' }}</span>
-        <span v-if="selected.phone">📞 {{ selected.phone }}</span>
-        <span v-if="selected.birthday">🎂 {{ selected.birthday }}</span>
-        <span v-if="selected.address">📍 {{ selected.address }}</span>
+        <span v-if="selected.phone"><AppIcon icon="📞" :size="14" /> {{ selected.phone }}</span>
+        <span v-if="selected.birthday"><AppIcon icon="🎂" :size="14" /> {{ selected.birthday }}</span>
+        <span v-if="selected.address"><AppIcon icon="📍" :size="14" /> {{ selected.address }}</span>
         <button class="mt-close" @click="selected = null">关闭</button>
       </div>
 
@@ -37,6 +37,7 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import api from '@/api/index'
 
 const W = 900, H = 620

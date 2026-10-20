@@ -3,7 +3,7 @@
     <div class="pdf-tool">
       <!-- 头部：隐私徽章 + Tab -->
       <div class="pt-head">
-        <span class="pt-badge">🔒 隐私保护：文件本地处理，即时销毁</span>
+        <span class="pt-badge"><AppIcon icon="🔒" :size="14" /> 隐私保护：文件本地处理，即时销毁</span>
       </div>
 
       <!-- 步骤指示器：上文件 → 设置参数 → 处理下载 -->
@@ -19,14 +19,14 @@
           :class="{ active: tab === t.key }"
           :disabled="processing"
           @click="switchTab(t.key)"
-        >{{ t.label }}</button>
+        ><AppIcon :icon="t.icon" :size="14" /> {{ t.label }}</button>
       </div>
 
       <div v-show="!processing" class="pt-body">
         <!-- Tab A：图片转 PDF -->
         <div v-show="tab === 'a'">
           <div class="dropzone" :class="{ dragging }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop($event, 'a')" @click="trigUpload('a')">
-            <div class="dz-icon">🖼️</div>
+            <div class="dz-icon"><AppIcon icon="🖼️" :size="40" /></div>
             <div class="dz-text">拖拽图片到这里，或点击选择文件</div>
             <div class="dz-hint">支持格式：JPG、PNG、BMP、WEBP（单文件≤10MB，最多20个）</div>
           </div>
@@ -65,7 +65,7 @@
         <!-- Tab B：PDF 转图片 -->
         <div v-show="tab === 'b'">
           <div class="dropzone" :class="{ dragging }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop($event, 'b')" @click="trigUpload('b')">
-            <div class="dz-icon">📄</div>
+            <div class="dz-icon"><AppIcon icon="📄" :size="40" /></div>
             <div class="dz-text">拖拽 PDF 到这里，或点击选择文件</div>
             <div class="dz-hint">提取每一页为高清 JPG；多页自动打包为 ZIP（单文件≤10MB）</div>
           </div>
@@ -88,7 +88,7 @@
         <!-- Tab C：PDF 合并与拆分 -->
         <div v-show="tab === 'c'">
           <div class="dropzone" :class="{ dragging }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop($event, 'c')" @click="trigUpload('c')">
-            <div class="dz-icon">📚</div>
+            <div class="dz-icon"><AppIcon icon="📚" :size="40" /></div>
             <div class="dz-text">拖拽 PDF 到这里，或点击选择文件</div>
             <div class="dz-hint">合并：调整顺序合并为一个 PDF；拆分：按页码范围提取（单文件≤10MB）</div>
           </div>
@@ -143,6 +143,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import PdfFileList from './pdftool/PdfFileList.vue'
 import StepIndicator from '@/components/common/StepIndicator.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 /* 底部操作栏：固定在滚动容底，滚动后浮现（顶部时隐藏） */
 const actionbar = ref(null)
@@ -157,9 +158,9 @@ onMounted(() => {
 })
 
 const tabs = [
-  { key: 'a', label: '🖼 图片转 PDF' },
-  { key: 'b', label: '📄 PDF 转图片' },
-  { key: 'c', label: '📚 合并与拆分' }
+  { key: 'a', icon: '🖼', label: '图片转 PDF' },
+  { key: 'b', icon: '📄', label: 'PDF 转图片' },
+  { key: 'c', icon: '📚', label: '合并与拆分' }
 ]
 const tab = ref('a')
 const dragging = ref(false)

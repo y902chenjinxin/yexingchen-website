@@ -76,8 +76,8 @@
       PDF
       <input type="file" accept="application/pdf" hidden @change="$emit('pick-pdf', $event)" />
     </label>
-    <button v-mouse-light="{ tilt: 0 }" type="button" title="撤销" @click="$emit('exec', 'undo')">↶</button>
-    <button v-mouse-light="{ tilt: 0 }" type="button" title="重做" @click="$emit('exec', 'redo')">↷</button>
+    <button v-mouse-light="{ tilt: 0 }" type="button" title="撤销" @click="$emit('exec', 'undo')"><AppIcon icon="↶" :size="14" /></button>
+    <button v-mouse-light="{ tilt: 0 }" type="button" title="重做" @click="$emit('exec', 'redo')"><AppIcon icon="↷" :size="14" /></button>
   </div>
 </template>
 
@@ -89,6 +89,7 @@
  * 颜色面板自身管理 HEX / RGB / panel 状态，避免污染容器。
  */
 import { inject, onBeforeUnmount, ref } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { ElMessage } from 'element-plus'
 
 defineProps({

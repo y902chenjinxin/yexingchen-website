@@ -14,10 +14,10 @@
           <span class="state-dot" aria-hidden="true"></span>保存中…
         </span>
         <span v-else-if="saveState === 'saved'" key="saved" class="state saved">
-          <span class="state-check" aria-hidden="true">✓</span>已保存
+          <span class="state-check" aria-hidden="true"><AppIcon icon="✓" :size="10" :weight="1.8" /></span>已保存
         </span>
         <span v-else-if="saveState === 'error'" key="error" class="state error">
-          <span aria-hidden="true">⚠</span>保存失败：{{ saveError }}
+          <AppIcon icon="⚠" :size="12" />保存失败：{{ saveError }}
         </span>
       </transition>
       <el-button
@@ -38,6 +38,7 @@
 
 <script setup>
 import BackButton from '@/components/BackButton.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
 
 defineProps({

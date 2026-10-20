@@ -8,7 +8,7 @@
           <p class="wd-sub">衣服拍下来存好 · 按人分开推荐 · 再也不忘衣柜里有什么</p>
         </div>
         <div class="wd-head-right">
-          <button class="wd-btn primary" @click="openItemCreate">＋ 加一件</button>
+          <button class="wd-btn primary" @click="openItemCreate"><AppIcon icon="＋" /> 加一件</button>
         </div>
       </header>
 
@@ -21,7 +21,7 @@
           :class="{ on: activeMemberId === p.member_id }"
           @click="switchPerson(p.member_id)"
         >
-          <span class="wd-person-avatar">{{ p.avatar || '🌿' }}</span>
+          <span class="wd-person-avatar"><AppIcon :icon="p.avatar || '🌿'" :size="15" /></span>
           <span class="wd-person-name">{{ p.name }}</span>
           <span class="wd-person-count">{{ p.item_count }}</span>
         </button>
@@ -55,7 +55,7 @@
               <div class="wd-option-imgs">
                 <div v-for="it in opt.items" :key="it.id" class="wd-option-img" :title="`${it.name} · ${it.category}`">
                   <img v-if="it.photos && it.photos.length" :src="it.photos[0]" :alt="it.name">
-                  <span v-else class="wd-option-ph">{{ categoryEmoji(it.category) }}</span>
+                  <span v-else class="wd-option-ph"><AppIcon :icon="categoryEmoji(it.category)" :size="24" /></span>
                 </div>
               </div>
               <div class="wd-option-names">
@@ -99,7 +99,7 @@
           <article v-for="it in items" :key="it.id" class="wd-card glass" @click="openItemDetail(it)">
             <div class="wd-card-img">
               <img v-if="it.photos && it.photos.length" :src="it.photos[0]" :alt="it.name" loading="lazy">
-              <span v-else class="wd-card-ph">{{ categoryEmoji(it.category) }}</span>
+              <span v-else class="wd-card-ph"><AppIcon :icon="categoryEmoji(it.category)" :size="34" /></span>
               <span v-if="it.status !== '在穿'" class="wd-badge">{{ it.status }}</span>
               <!-- 卡片上直接给操作入口（桌面悬停显现 / 触屏常显）：与遗失物件一致，
                    只靠「点卡片看详情」太隐蔽（V2438-001） -->
@@ -137,7 +137,7 @@
             <div class="wd-outfit-imgs">
               <div v-for="it in o.items" :key="it.id" class="wd-option-img">
                 <img v-if="it.photos && it.photos.length" :src="it.photos[0]" :alt="it.name">
-                <span v-else class="wd-option-ph">{{ categoryEmoji(it.category) }}</span>
+                <span v-else class="wd-option-ph"><AppIcon :icon="categoryEmoji(it.category)" :size="24" /></span>
               </div>
             </div>
           </article>
@@ -149,7 +149,7 @@
         <div class="wd-persons-grid">
           <article v-for="p in persons" :key="p.member_id" class="wd-person-card glass">
             <div class="wd-person-card-head">
-              <span class="wd-person-avatar lg">{{ p.avatar || '🌿' }}</span>
+              <span class="wd-person-avatar lg"><AppIcon :icon="p.avatar || '🌿'" :size="26" /></span>
               <div>
                 <div class="wd-person-card-name">{{ p.name }}</div>
                 <div class="wd-person-card-sub">已入库 {{ p.item_count }} 件</div>
@@ -177,7 +177,7 @@
       <div v-if="detail" class="wd-detail">
         <div class="wd-detail-imgs">
           <img v-for="(p, i) in (detail.photos || [])" :key="i" :src="p" :alt="detail.name" @click="preview(p)">
-          <div v-if="!(detail.photos || []).length" class="wd-detail-noimg">{{ categoryEmoji(detail.category) }} 没传图片</div>
+          <div v-if="!(detail.photos || []).length" class="wd-detail-noimg"><AppIcon :icon="categoryEmoji(detail.category)" :size="14" /> 没传图片</div>
         </div>
         <div class="wd-detail-rows">
           <div><span class="k">归属人</span>{{ detail.owner_name || '未指定' }}</div>
@@ -210,7 +210,10 @@
       <el-form label-width="76px" label-position="left">
         <el-form-item label="归属人">
           <el-select v-model="form.owner_member_id" placeholder="这是谁的衣服" style="width: 100%">
-            <el-option v-for="p in persons" :key="p.member_id" :value="p.member_id" :label="`${p.avatar} ${p.name}`" />
+            <el-option v-for="p in persons" :key="p.member_id" :value="p.member_id" :label="p.name">
+              <AppIcon :icon="p.avatar || '🌿'" /> {{ p.name }}
+              <template #label><AppIcon :icon="p.avatar || '🌿'" /> {{ p.name }}</template>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="名称"><el-input v-model="form.name" placeholder="藏青西装外套 / 白色帆布鞋" maxlength="120" /></el-form-item>
@@ -261,7 +264,7 @@
           <div class="wd-uploader">
             <div v-for="(p, i) in form.photos" :key="i" class="wd-upload-item">
               <img :src="p" alt="已上传">
-              <button class="wd-upload-del" @click.prevent="form.photos.splice(i, 1)">×</button>
+              <button class="wd-upload-del" @click.prevent="form.photos.splice(i, 1)"><AppIcon icon="×" /></button>
             </div>
             <label class="wd-upload-add" :class="{ busy: uploading }">
               <input type="file" accept="image/*" multiple hidden @change="onPickItem">
@@ -282,7 +285,7 @@
       <div v-if="outfit" class="wd-option-imgs lg">
         <div v-for="it in outfit.items" :key="it.id" class="wd-option-img" :title="it.name">
           <img v-if="it.photos && it.photos.length" :src="it.photos[0]" :alt="it.name">
-          <span v-else class="wd-option-ph">{{ categoryEmoji(it.category) }}</span>
+          <span v-else class="wd-option-ph"><AppIcon :icon="categoryEmoji(it.category)" :size="24" /></span>
         </div>
       </div>
       <p v-if="outfit" class="wd-detail-note">{{ outfit.items.map((x) => `${x.name}（${x.category}）`).join(' · ') }}</p>
@@ -299,6 +302,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { wardrobeApi, uploadLifeImage } from '@/api/lifeExtra'
 
 const tabs = [

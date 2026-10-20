@@ -14,12 +14,12 @@
     <!-- 顶部操作栏 -->
     <div class="cdd-topbar">
       <button class="cdd-back" @click="router.back()">
-        <span class="cdd-back-icon">←</span>
+        <span class="cdd-back-icon"><AppIcon icon="←" :size="16" /></span>
         <span>返回</span>
       </button>
       <div class="cdd-top-actions">
-        <el-button size="small" circle @click="openEdit" title="编辑">✏️</el-button>
-        <el-button size="small" circle type="danger" @click="doDelete" title="删除">🗑️</el-button>
+        <el-button size="small" circle @click="openEdit" title="编辑"><AppIcon icon="✏️" :size="14" /></el-button>
+        <el-button size="small" circle type="danger" @click="doDelete" title="删除"><AppIcon icon="🗑️" :size="14" /></el-button>
       </div>
     </div>
 
@@ -50,7 +50,7 @@
         <span v-if="item.direction === 'count_up'" class="cdd-tag cdd-up">纪念日</span>
         <span v-else class="cdd-tag cdd-down">倒计时</span>
         <span v-if="item.repeat_type !== 'none'" class="cdd-tag cdd-repeat">
-          🔁 {{ repeatLabel(item.repeat_type) }}
+          <AppIcon icon="🔁" :size="14" /> {{ repeatLabel(item.repeat_type) }}
         </span>
         <span v-if="item.pinned" class="cdd-tag cdd-pin">置顶</span>
       </div>
@@ -71,7 +71,7 @@
 
       <!-- 周年里程碑（count_up 模式） -->
       <div v-if="item.direction === 'count_up' && item.days_left >= 365" class="cdd-history">
-        <div class="cdd-history-label">🎉 周年里程碑</div>
+        <div class="cdd-history-label"><AppIcon icon="🎉" :size="14" /> 周年里程碑</div>
         <div class="cdd-history-num">已共同走过 {{ Math.floor(item.days_left / 365) }} 个整年</div>
       </div>
     </div>
@@ -162,6 +162,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCountdown, updateCountdown, deleteCountdown, uploadImage } from '@/api/countdown'
 import LunarDatePicker from '@/components/common/LunarDatePicker.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const route = useRoute()
 const router = useRouter()

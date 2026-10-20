@@ -5,7 +5,7 @@
         <button v-for="m in modes" :key="m.key" class="sd-mode" :class="{ on: diff === m.key }" @click="setDiff(m.key)">{{ m.label }}</button>
       </div>
       <div class="sd-status">
-        <span>⏱ {{ fmtTime(elapsed) }}</span>
+        <span><AppIcon icon="⏱" :size="14" /> {{ fmtTime(elapsed) }}</span>
         <span>剩余 <b>{{ remain }}</b></span>
         <button class="sd-btn" @click="newGame">新开一局</button>
         <button class="sd-btn" :disabled="!selected || done" @click="hint">提示一格</button>
@@ -30,9 +30,9 @@
 
     <div class="sd-pad">
       <button v-for="n in 9" :key="n" class="sd-num" :disabled="done" @click="input(n)">{{ n }}</button>
-      <button class="sd-num sd-erase" :disabled="!selected || given[selected]" @click="input(0)">⌫</button>
+      <button class="sd-num sd-erase" :disabled="!selected || given[selected]" @click="input(0)"><AppIcon icon="⌫" /></button>
     </div>
-    <div v-if="done" class="sd-done">🎉 完成！用时 {{ fmtTime(elapsed) }}<button class="sd-btn" @click="newGame">再来一局</button></div>
+    <div v-if="done" class="sd-done"><AppIcon icon="🎉" /> 完成！用时 {{ fmtTime(elapsed) }}<button class="sd-btn" @click="newGame">再来一局</button></div>
     <p class="sd-hint">点格子再点数字填入 · 填错的数字会标红（同行/列/宫重复）· 卡住就点「提示一格」</p>
   </div>
 </template>
@@ -44,6 +44,7 @@
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   initialMode: { type: String, default: '' },   // 难度由页面「第一步」选定

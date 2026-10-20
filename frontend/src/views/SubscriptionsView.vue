@@ -8,7 +8,7 @@
           <p class="sb-sub">会员 · 云服务 · 宽带 · 保险，到期前自动提醒</p>
         </div>
         <div class="sb-head-right">
-          <button class="sb-btn primary" @click="openCreate">＋ 新增订阅</button>
+          <button class="sb-btn primary" @click="openCreate"><AppIcon icon="＋" :size="14" /> 新增订阅</button>
         </div>
       </header>
 
@@ -111,7 +111,7 @@
                   <span v-else class="sb-muted">未设</span>
                 </td>
                 <td class="sb-creator">
-                  <span v-if="s.creator_name">{{ s.creator_avatar || '👤' }} {{ s.creator_name }}</span>
+                  <span v-if="s.creator_name"><AppIcon :icon="s.creator_avatar || '👤'" :size="14" /> {{ s.creator_name }}</span>
                   <span v-else class="sb-muted">—</span>
                 </td>
                 <td class="r sb-actions">
@@ -194,6 +194,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import DonutChart from '@/components/finance/DonutChart.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { subscriptionsApi, CYCLE_OPTIONS } from '@/api/family'
 
 const CATEGORY_OPTIONS = ['影音', '软件', '云服务', '会员', '宽带通讯', '保险', '教育', '其他']

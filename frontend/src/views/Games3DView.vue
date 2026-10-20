@@ -16,14 +16,14 @@
 
       <div class="g3d-lobby-cards">
         <button class="g3d-lobby-card" @click="start('mahjong')">
-          <div class="lc-icon">🀄</div>
+          <div class="lc-icon"><AppIcon icon="🀄" :size="46" /></div>
           <span class="lc-name">3D 麻将</span>
           <div class="lc-desc">四川麻将 · 胡牌即结束<br />四人一桌 · 碰杠胡听牌</div>
           <span class="lc-go">开局</span>
         </button>
 
         <button class="g3d-lobby-card" @click="start('guandan')">
-          <div class="lc-icon">🎴</div>
+          <div class="lc-icon"><AppIcon icon="🎴" :size="46" /></div>
           <span class="lc-name">3D 掼蛋</span>
           <div class="lc-desc">两副牌 · 四人两队<br />牌型升级 · 逢人配</div>
           <span class="lc-go">开局</span>
@@ -45,6 +45,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useImmersive } from '@/composables/useImmersive'
 import Guandan3DBoard from '@/components/games3d/Guandan3DBoard.vue'
 import Mahjong3DBoard from '@/components/games3d/Mahjong3DBoard.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import '@/assets/styles/games3d.css'
 
 /* ---------- 横屏沉浸态（v2.46.114 起）----------

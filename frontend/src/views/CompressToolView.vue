@@ -3,7 +3,7 @@
     <div class="compress-tool">
       <!-- 顶部：隐私提示 -->
       <div class="ct-head">
-        <span class="ct-badge">🔒 图片仅在浏览器本地处理，绝不经过服务器，处理完即刻销毁，请放心使用。</span>
+        <span class="ct-badge"><AppIcon icon="🔒" :size="14" /> 图片仅在浏览器本地处理，绝不经过服务器，处理完即刻销毁，请放心使用。</span>
       </div>
 
       <!-- 步骤指示器：选模式/上文件 → 设置参数 → 压缩下载 -->
@@ -20,7 +20,7 @@
           :class="{ active: mode === m.key }"
           :disabled="processing"
           @click="switchMode(m.key)"
-        >{{ m.label }}</button>
+        ><AppIcon :icon="m.icon" :size="14" /> {{ m.label }}</button>
       </div>
 
       <!-- 自定义配置区（仅自定义模式） -->
@@ -61,7 +61,7 @@
 
       <!-- 上传区 -->
       <div class="dropzone" :class="{ dragging, locked: processing }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop" @click="!processing && trigUpload()">
-        <div class="dz-icon">🖼️</div>
+        <div class="dz-icon"><AppIcon icon="🖼️" :size="40" /></div>
         <div class="dz-text">拖拽图片到这里，或点击选择文件</div>
         <div class="dz-hint">支持 JPG / PNG / WEBP（GIF 转静态首帧）· 多文件 · 单文件 ≤ 10MB</div>
       </div>
@@ -137,6 +137,7 @@ import { ref, reactive, computed, onBeforeUnmount, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import StepIndicator from '@/components/common/StepIndicator.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 /* 底部操作栏：固定在滚动容底，滚动后浮现（顶部时隐藏） */
 const actionbar = ref(null)
@@ -152,9 +153,9 @@ onMounted(() => {
 
 /* ========== 模式 ========== */
 const modes = [
-  { key: 'smart', label: '🧠 智能压缩' },
-  { key: 'custom', label: '⚙️ 自定义压缩' },
-  { key: 'resize', label: '📐 仅缩放尺寸' }
+  { key: 'smart', icon: '🧠', label: '智能压缩' },
+  { key: 'custom', icon: '⚙️', label: '自定义压缩' },
+  { key: 'resize', icon: '📐', label: '仅缩放尺寸' }
 ]
 const mode = ref('smart')
 const custom = reactive({ targetType: 'size', targetKb: 250, quality: 80 })

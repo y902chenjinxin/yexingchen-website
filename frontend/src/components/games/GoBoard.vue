@@ -12,7 +12,7 @@
           </div>
           <span class="go-score">{{ over ? score.black + " 目" : "提 " + captured.black }}</span>
         </div>
-        <span class="go-vs">⚔</span>
+        <span class="go-vs"><AppIcon icon="⚔" /></span>
         <div class="go-player" :class="{ active: !over && turn === WHITE }">
           <span class="go-stone-sm white"></span>
           <div class="go-player-txt">
@@ -46,7 +46,7 @@
           <button class="go-btn" @click="askExit">退出对局（认输）</button>
         </template>
         <template v-else-if="gRoom.status.value === 'finished'">
-          <span class="go-result">{{ onlineResultText }}</span>
+          <span class="go-result"><AppIcon v-if="onlineResultIcon" :icon="onlineResultIcon" /> {{ onlineResultText }}</span>
           <button class="go-btn primary" @click="reinviteSame">再来一局</button>
           <button class="go-btn" @click="exitOnline">退出</button>
         </template>
@@ -54,7 +54,7 @@
 
       <!-- 在线：邀请面板 -->
       <div v-if="isOnline && !gRoom.room.value" class="go-online">
-        <div class="go-online-title">🎯 在线邀请对战</div>
+        <div class="go-online-title"><AppIcon icon="🎯" /> 在线邀请对战</div>
         <p class="go-online-desc">
           选一位家人发出邀请，对方接受后进入对局；落子自动同步，约 2 秒内可见。
           本局 {{ size }} 路（按你开局选的棋盘大小）。
@@ -75,7 +75,7 @@
         <p v-if="!families.length" class="go-online-desc">家庭里还没有其他账号可以邀请。</p>
       </div>
 
-      <div v-if="resultText" class="go-result">{{ resultText }}</div>
+      <div v-if="resultText" class="go-result"><AppIcon v-if="resultIcon" :icon="resultIcon" /> {{ resultText }}</div>
     </div>
     </div><!-- /.go-side -->
 
@@ -131,6 +131,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
 import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { gameRoomsApi } from '@/api/gameRooms'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
@@ -187,7 +188,9 @@ const canMoveNow = computed(() => {
   return turn.value !== aiColor
 })
 const onlineResultText = computed(() =>
-  onlineWinner.value === 'me' ? '🎉 你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '🤝 和棋')
+  onlineWinner.value === 'me' ? '你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '和棋')
+const onlineResultIcon = computed(() =>
+  onlineWinner.value === 'me' ? '🎉' : onlineWinner.value === 'opp' ? '' : '🤝')
 const blackLabel = computed(() => {
   if (isOnline.value && gRoom.room.value) return gRoom.room.value.black_name || '对方'
   return mode.value === 'pvp' ? '黑方' : '你'
@@ -325,8 +328,13 @@ const score = computed(() => {
 })
 const resultText = computed(() => {
   if (!over.value) return ''
-  if (winner.value === 3) return `🤝 和棋 · ${scoreLine.value}`
-  return `${winner.value === BLACK ? '⚫ 黑胜' : '⚪ 白胜'} · ${scoreLine.value}`
+  if (winner.value === 3) return `和棋 · ${scoreLine.value}`
+  return `${winner.value === BLACK ? '黑胜' : '白胜'} · ${scoreLine.value}`
+})
+const resultIcon = computed(() => {
+  if (!over.value) return ''
+  if (winner.value === 3) return '🤝'
+  return winner.value === BLACK ? '⚫' : '⚪'
 })
 /** v2.44.3 防连悔：同一方悔棋后须等对手落子才能再悔（本地由 useUndoGuard 维护） */
 const undoGuard = useUndoGuard()

@@ -3,7 +3,7 @@
     <div class="tool-detail">
       <template v-if="tool">
         <div class="detail-head">
-          <div class="detail-icon">{{ tool.icon || '🔧' }}</div>
+          <div class="detail-icon"><AppIcon :icon="tool.icon || '🔧'" :size="28" /></div>
           <div class="detail-info">
             <span class="detail-name">{{ tool.title || '无名工具' }}</span>
             <span class="detail-desc">{{ tool.description || '暂无描述' }}</span>
@@ -23,7 +23,7 @@
       </template>
 
       <div v-else class="not-found">
-        <span class="nf-icon">🔧</span>
+        <span class="nf-icon"><AppIcon icon="🔧" :size="56" /></span>
         <span class="nf-text">工具不存在或不开放</span>
       </div>
     </div>
@@ -34,6 +34,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useToolStore } from '@/stores/tool'
 import { getToolList } from '@/api/tool'
 

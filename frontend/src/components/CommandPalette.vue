@@ -14,7 +14,7 @@
     <div v-if="open" class="cp-mask" @click.self="close" role="dialog" aria-modal="true" aria-label="命令面板">
       <div class="cp-panel" @keydown.stop @keydown.esc="close" ref="panelRef">
         <div class="cp-search">
-          <span class="cp-search-icon" aria-hidden="true">⌘</span>
+          <span class="cp-search-icon" aria-hidden="true"><AppIcon icon="⌘" :size="14" /></span>
           <input
             ref="inputRef"
             v-model="query"
@@ -44,7 +44,7 @@
               @mouseenter="activeIndex = i"
               @click="run(it)"
             >
-              <span v-if="it.group !== '分组'" class="cp-item-icon" aria-hidden="true">{{ it.icon || '·' }}</span>
+              <span v-if="it.group !== '分组'" class="cp-item-icon" aria-hidden="true"><AppIcon :icon="it.icon || '·'" :size="16" /></span>
               <span class="cp-item-name">{{ it.name }}</span>
               <span v-if="it.desc" class="cp-item-desc">{{ it.desc }}</span>
               <span v-if="it.kbd" class="cp-item-kbd">{{ it.kbd }}</span>
@@ -66,6 +66,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const router = useRouter()
 

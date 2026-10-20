@@ -28,7 +28,7 @@
           <div class="fd-form-head">
             <span class="fd-form-title">{{ form.id ? '编辑订阅源' : '添加订阅源' }}</span>
             <span class="fd-form-hint">填入公开的 RSS 地址，抓取后自动入库</span>
-            <button class="fd-form-close" @click="closeForm">✕</button>
+            <button class="fd-form-close" @click="closeForm"><AppIcon icon="✕" :size="16" /></button>
           </div>
           <div class="fd-form-row">
             <div class="fd-f-field grow">
@@ -74,8 +74,8 @@
                 <span class="fd-si-cat">{{ s.category }} · {{ s.article_count }} 篇</span>
               </span>
               <span class="fd-si-ops">
-                <button class="fd-op" title="抓取" @click.stop="fetchOne(s)">⟳</button>
-                <button class="fd-op" title="编辑" @click.stop="openEdit(s)">✎</button>
+                <button class="fd-op" title="抓取" @click.stop="fetchOne(s)"><AppIcon icon="⟳" /></button>
+                <button class="fd-op" title="编辑" @click.stop="openEdit(s)"><AppIcon icon="✎" :size="14" /></button>
                 <el-popconfirm
                   title="确认删除这个订阅源？"
                   confirm-button-text="删除"
@@ -84,7 +84,7 @@
                   @confirm="delSource(s)"
                 >
                   <template #reference>
-                    <button class="fd-op danger" title="删除">🗑</button>
+                    <button class="fd-op danger" title="删除"><AppIcon icon="🗑" :size="14" /></button>
                   </template>
                 </el-popconfirm>
               </span>
@@ -128,7 +128,7 @@
                   <span class="fd-a-time">· {{ fmtTime(a.published_at) }}</span>
                   <span v-if="a.is_foreign && a.title_zh" class="fd-a-badge">已翻译</span>
                   <span v-if="a.ai_summary" class="fd-a-badge">AI 摘要</span>
-                  <span v-if="a.bookmarked" class="fd-a-star">★</span>
+                  <span v-if="a.bookmarked" class="fd-a-star"><AppIcon icon="★" :size="12" /></span>
                 </span>
                 <span v-if="a.summary_zh || a.summary" class="fd-a-excerpt">{{ a.summary_zh || a.summary }}</span>
               </span>
@@ -177,7 +177,7 @@
                 v-if="!translating"
                 class="fd-btn ghost small"
                 @click="toggleZh"
-              >{{ zhMode ? '查看原文' : '🌐 中文译文' }}</button>
+              ><template v-if="zhMode">查看原文</template><template v-else><AppIcon icon="🌐" :size="14" /> 中文译文</template></button>
               <button
                 v-if="!translating && !active.content_zh"
                 class="fd-btn ghost small"
@@ -214,17 +214,17 @@
                 <p v-else-if="active.content" class="fd-body">{{ active.content }}</p>
               </template>
               <div class="fd-body-actions">
-                <a v-if="active.link" class="fd-body-orig" :href="active.link" target="_blank" rel="noopener noreferrer">阅读原文 ↗</a>
+                <a v-if="active.link" class="fd-body-orig" :href="active.link" target="_blank" rel="noopener noreferrer">阅读原文 <AppIcon icon="↗" :size="13" /></a>
               </div>
             </div>
 
             <!-- 操作栏（收藏到笔记 / 收藏 / 删除） -->
             <div class="fd-reader-ops">
               <button class="fd-btn primary" :disabled="noteSaving" @click="toNote">
-                {{ noteSaving ? '保存中…' : '📌 收藏为笔记' }}
+                <template v-if="noteSaving">保存中…</template><template v-else><AppIcon icon="📌" :size="14" /> 收藏为笔记</template>
               </button>
               <button class="fd-btn ghost" :class="{ starred: active.bookmarked }" @click="toggleBook">
-                {{ active.bookmarked ? '★ 已收藏' : '☆ 收藏文章' }}
+                <template v-if="active.bookmarked"><AppIcon icon="★" :size="14" /> 已收藏</template><template v-else><AppIcon icon="☆" :size="14" /> 收藏文章</template>
               </button>
               <el-popconfirm
                 title="删除这篇文章？"
@@ -234,13 +234,13 @@
                 @confirm="delArticle"
               >
                 <template #reference>
-                  <button class="fd-btn ghost danger">🗑 删除</button>
+                  <button class="fd-btn ghost danger"><AppIcon icon="🗑" :size="14" /> 删除</button>
                 </template>
               </el-popconfirm>
             </div>
           </template>
           <div v-else class="fd-col-empty reader-placeholder">
-            <span class="fd-rp-icon">📰</span>
+            <span class="fd-rp-icon"><AppIcon icon="📰" :size="40" /></span>
             <b class="fd-rp-title">资讯馆</b>
             <p class="fd-rp-line">从左侧选择一篇文章开始阅读</p>
             <div class="fd-rp-stats">
@@ -263,6 +263,7 @@
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { feedsApi } from '@/api/feeds'
 
 const sources = ref([])

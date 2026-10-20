@@ -138,7 +138,7 @@
 
         <!-- 已聚合的相关资讯 -->
         <div v-if="relatedNews.length" class="sd-news-group">
-          <div class="sd-news-group-title">📌 工作台已收录（按名称匹配）</div>
+          <div class="sd-news-group-title"><AppIcon icon="📌" :size="13" /> 工作台已收录（按名称匹配）</div>
           <div class="sd-news-list">
             <a v-for="n in relatedNews" :key="'r-' + n.url + n.title" class="sd-news-item" :href="n.url || '#'" target="_blank" rel="noopener noreferrer">
               <span class="sd-news-dot">→</span>
@@ -173,6 +173,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import BackButton from '@/components/BackButton.vue'
 import KlineChart from '@/components/stocks/KlineChart.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { stocksApi } from '@/api/stocks'
 import { ElMessage } from 'element-plus'
 

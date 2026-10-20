@@ -24,7 +24,7 @@
           <div class="menu-cell menu-actions">操作</div>
         </div>
         <div v-if="!loading && menus.length === 0" class="empty-placeholder">
-          <div class="empty-icon">🧭</div>
+          <div class="empty-icon"><AppIcon icon="🧭" :size="36" /></div>
           <div class="empty-text">暂无菜单</div>
         </div>
 
@@ -160,6 +160,7 @@ import { FolderOpened, HomeFilled, Collection, TrendCharts, MapLocation, Tools,
 import { ElMessage } from 'element-plus'
 import { getMenuList, addMenu, updateMenu, deleteMenu } from '@/api/admin'
 import AdminLayout from './AdminLayout.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const menus = ref([])
 const loading = ref(false)

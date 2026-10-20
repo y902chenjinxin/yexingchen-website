@@ -12,7 +12,7 @@
       @keydown.esc="open = false"
     >
       <template v-if="selected">
-        <span class="mp-ava">{{ selected.avatar || '🌿' }}</span>
+        <span class="mp-ava"><AppIcon :icon="selected.avatar || '🌿'" :size="15" /></span>
         <span class="mp-name">{{ selected.display_name || '家人' }}</span>
       </template>
       <span v-else class="mp-ph">{{ placeholder }}</span>
@@ -39,9 +39,9 @@
             @click="pick(m)"
             @mousemove="hi = i"
           >
-            <span class="mp-ava">{{ m.avatar || '🌿' }}</span>
+            <span class="mp-ava"><AppIcon :icon="m.avatar || '🌿'" :size="15" /></span>
             <span class="mp-name">{{ m.display_name || '家人' }}</span>
-            <span v-if="m.user_id === modelValue" class="mp-check" aria-hidden="true">✓</span>
+            <span v-if="m.user_id === modelValue" class="mp-check" aria-hidden="true"><AppIcon icon="✓" :size="13" /></span>
           </li>
           <li v-if="!members.length" class="mp-empty">家庭里还没有其他账号可以邀请</li>
         </ul>
@@ -58,6 +58,7 @@
  * overflow-y:auto 的滚动容器，留在原地会被裁掉下半截。
  */
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   modelValue: { type: [Number, null], default: null },

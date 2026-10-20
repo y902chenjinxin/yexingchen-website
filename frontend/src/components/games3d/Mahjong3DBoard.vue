@@ -46,7 +46,7 @@
           :class="{ 'is-turn': isTurn(s) }"
           :style="seatTF(SEAT_SLOT[screenPos(s, 0)])"
         >
-          <div class="gt3-ava" :style="{ background: seatColors[s] }">{{ seatAvatar(s) }}</div>
+          <div class="gt3-ava" :style="{ background: seatColors[s] }"><AppIcon :icon="seatAvatar(s)" /></div>
           <div class="gt3-meta"><b>{{ seatName(s) }}</b><i :class="{ turn: isTurn(s) }">{{ seatSub(s) }}</i></div>
           <div class="gt3-score" :class="{ 'is-you': s === 0 }"><span class="snum">{{ scores[s] }}</span><span class="slbl">分</span></div>
         </div>
@@ -186,6 +186,7 @@ import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
 import {
   VIEW_RX, boxVars, pieceBox, wallTF, handTF, centerTF, seatTF, SEAT_SLOT, screenPos,
 } from '@/components/games3d/use3dTable.js'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 defineEmits(['exit'])
 

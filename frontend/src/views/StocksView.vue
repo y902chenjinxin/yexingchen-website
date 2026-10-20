@@ -58,7 +58,7 @@
               {{ readyTargets }} 只已设目标价 · 触达后自动提醒
             </template>
             <template v-else>
-              暂无触达（点自选股 ✎ 设置目标价）
+              暂无触达（点自选股 <AppIcon icon="✎" :size="12" /> 设置目标价）
             </template>
           </span>
         </div>
@@ -79,7 +79,7 @@
           <div class="st-form-head">
             <span class="st-form-title">加自选股</span>
             <span class="st-form-hint">输入代码查询，加入后自动识别名称</span>
-            <button class="st-form-close" @click="closeAdd">✕</button>
+            <button class="st-form-close" @click="closeAdd"><AppIcon icon="✕" :size="16" /></button>
           </div>
           <div class="st-form-row">
             <div class="st-f-field">
@@ -143,7 +143,7 @@
                   <span class="st-td-name" @click="goDetail(it)">{{ it.name }}</span>
                   <span v-if="it.target_price" class="st-alert" :class="it.target_alert ? 'a-' + it.target_alert : 'a-set'">{{ it.target_alert === 'up' ? '涨破目标' : it.target_alert === 'down' ? '跌破目标' : '目标' }} {{ fmt(it.target_price) }}</span>
                   <span class="st-td-code">{{ it.market.toUpperCase() }} {{ it.code }}</span>
-                  <span @click="toggleEdit(it)" class="st-td-edit">{{ editingId === it.id ? '收起' : '✎' }}</span>
+                  <span @click="toggleEdit(it)" class="st-td-edit"><template v-if="editingId === it.id">收起</template><template v-else><AppIcon icon="✎" :size="12" /></template></span>
                 </td>
                 <td class="r st-num">{{ fmt(it.price) }}</td>
                 <td class="r" :class="pnlCls(it.pct)">{{ sign(it.pct) }}{{ fmt(it.pct, 2) }}%</td>
@@ -151,7 +151,7 @@
                   <template v-if="editingId === it.id">
                     <input v-model.number="editQty" class="st-cell-input" type="number" min="0" placeholder="股数" />
                     <input v-model.number="editCost" class="st-cell-input" type="number" min="0" step="0.01" placeholder="成本" />
-                    <input v-model.number="editTarget" class="st-cell-input" type="number" min="0" step="0.01" placeholder="目标价" title="设目标价后，触达时顶部会出现 🔔 提醒" />
+                    <input v-model.number="editTarget" class="st-cell-input" type="number" min="0" step="0.01" placeholder="目标价" title="设目标价后，触达时顶部会出现提醒" />
                     <button class="st-btn tiny" @click="saveEdit(it)">保存</button>
                   </template>
                   <template v-else>{{ it.quantity ? `${it.quantity}股` : '—' }}</template>
@@ -222,6 +222,7 @@ import BackButton from '@/components/BackButton.vue'
 import PortfolioPanel from '@/components/stocks/PortfolioPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import countUp from '@/utils/games/countUp'
 import { stocksApi } from '@/api/stocks'
 
@@ -382,7 +383,7 @@ function goDetail(it) {
 }
 function goStocksAlerts() {
   // 当前页就是 StocksView：滚动到目标价预警 KPI 区并触发一次刷新；可考虑后续弹浮层
-  ElMessage.info('顶部"🔔 目标价预警"按钮可查看全部预警与一键已读')
+  ElMessage.info('顶部「目标价预警」按钮可查看全部预警与一键已读')
 }
 
 onMounted(async () => {

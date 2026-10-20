@@ -13,7 +13,7 @@
               :disabled="!!busyKey"
               @click="clearFinished"
             >清空已结束（{{ finishedCount }}）</button>
-            <button class="mr-x" aria-label="关闭" @click="close">✕</button>
+            <button class="mr-x" aria-label="关闭" @click="close"><AppIcon icon="✕" :size="14" /></button>
           </header>
 
           <p class="mr-tip">
@@ -35,7 +35,7 @@
                 @click="onTap(it)"
                 @contextmenu.prevent
               >
-                <span class="mr-ic">{{ iconOf(it.gameKey) }}</span>
+                <span class="mr-ic"><AppIcon :icon="iconOf(it.gameKey)" :size="17" /></span>
                 <div class="mr-tx">
                   <div class="mr-line1">
                     <b>{{ it.gameName }}</b>
@@ -75,6 +75,7 @@ import { ElMessage } from 'element-plus'
 import { gameRoomsApi } from '@/api/gameRooms'
 import { gameTablesApi } from '@/api/gameTables'
 import { useAuthStore } from '@/stores/auth'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },

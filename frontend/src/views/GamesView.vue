@@ -84,7 +84,7 @@
 
         <!-- 空态：默认什么都不摆，避免一屏平铺（仅桌面端；手机端走上方全屏网格） -->
         <div v-if="!tab && !isMobile" class="gm-empty">
-          <div class="gm-empty-ic">♟</div>
+          <div class="gm-empty-ic"><AppIcon icon="♟" :size="36" /></div>
           <b>从左边挑一个游戏</b>
           <p>选中后先选模式，再进对局。想看得舒服一点，进去后可点「放大」全屏玩，随时能退出或续上进度。</p>
         </div>
@@ -96,7 +96,7 @@
               <i>{{ cur.desc }}</i>
             </div>
             <div class="gm-head-ops">
-              <span v-if="roomLocked" class="gm-locktip">🔒 对局进行中</span>
+              <span v-if="roomLocked" class="gm-locktip"><AppIcon icon="🔒" :size="13" /> 对局进行中</span>
               <button v-if="phase === 'play' && cur.rules?.length" class="gm-op" @click="showRules = !showRules">
                 {{ showRules ? '收起说明' : '游戏说明' }}
               </button>
@@ -142,7 +142,7 @@
               <span class="gm-size-hint">开局定好就不再变（在线对战固定 15×15）</span>
             </div>
             <button v-if="saves[tab]" class="gm-resume" @click="resumeGame">
-              ▶ 继续上一局 · {{ saves[tab].summary }}
+              <AppIcon icon="▶" :size="13" /> 继续上一局 · {{ saves[tab].summary }}
               <em>{{ age(saves[tab].ts) }}</em>
             </button>
           </div>
@@ -181,17 +181,17 @@
                     :aria-expanded="fsMenuOpen ? 'true' : 'false'"
                     aria-label="牌桌菜单"
                     @click="fsMenuOpen = !fsMenuOpen"
-                  >{{ fsMenuOpen ? '✕' : '☰' }}</button>
+                  ><AppIcon :icon="fsMenuOpen ? '✕' : '☰'" :size="17" /></button>
                   <transition name="gtv-pop">
                     <div v-if="fsMenuOpen" class="gtv-fsmenu-panel">
                       <button class="gtv-fsmenu-item" @click="fsMenuOpen = false; showRules = !showRules">
-                        <i aria-hidden="true">📖</i><span>{{ showRules ? '收起说明' : '游戏说明' }}</span>
+                        <i aria-hidden="true"><AppIcon icon="📖" :size="15" /></i><span>{{ showRules ? '收起说明' : '游戏说明' }}</span>
                       </button>
                       <button class="gtv-fsmenu-item" @click="fsMenuOpen = false; toggleBig()">
-                        <i aria-hidden="true">⤡</i><span>退出全屏</span>
+                        <i aria-hidden="true"><AppIcon icon="⤡" :size="15" /></i><span>退出全屏</span>
                       </button>
                       <button class="gtv-fsmenu-item" @click="backToList">
-                        <i aria-hidden="true">↩</i><span>返回列表</span>
+                        <i aria-hidden="true"><AppIcon icon="↩" :size="15" /></i><span>返回列表</span>
                       </button>
                     </div>
                   </transition>
@@ -201,7 +201,7 @@
                 <aside class="gm-help-panel" role="dialog" aria-label="游戏说明">
                   <header class="gm-help-head">
                     <b>{{ cur.label }} · 玩法说明</b>
-                    <button class="gtv-help-x" aria-label="关闭说明" @click="showRules = false">✕</button>
+                    <button class="gtv-help-x" aria-label="关闭说明" @click="showRules = false"><AppIcon icon="✕" :size="14" /></button>
                   </header>
                   <ol class="gm-help-list">
                     <li v-for="(r, ri) in cur.rules" :key="ri">{{ r }}</li>
@@ -239,17 +239,17 @@
                     :aria-expanded="fsMenuOpen ? 'true' : 'false'"
                     aria-label="牌桌菜单"
                     @click="fsMenuOpen = !fsMenuOpen"
-                  >{{ fsMenuOpen ? '✕' : '☰' }}</button>
+                  ><AppIcon :icon="fsMenuOpen ? '✕' : '☰'" :size="17" /></button>
                   <transition name="gtv-pop">
                     <div v-if="fsMenuOpen" class="gtv-fsmenu-panel">
                       <button class="gtv-fsmenu-item" @click="fsMenuOpen = false; showRules = true">
-                        <i aria-hidden="true">📖</i><span>游戏说明</span>
+                        <i aria-hidden="true"><AppIcon icon="📖" :size="15" /></i><span>游戏说明</span>
                       </button>
                       <button class="gtv-fsmenu-item" @click="fsMenuOpen = false; toggleBig()">
-                        <i aria-hidden="true">⤡</i><span>退出全屏</span>
+                        <i aria-hidden="true"><AppIcon icon="⤡" :size="15" /></i><span>退出全屏</span>
                       </button>
                       <button class="gtv-fsmenu-item" @click="fsMenuOpen = false; backToList()">
-                        <i aria-hidden="true">↩</i><span>返回列表</span>
+                        <i aria-hidden="true"><AppIcon icon="↩" :size="15" /></i><span>返回列表</span>
                       </button>
                     </div>
                   </transition>
@@ -258,7 +258,7 @@
                   <aside class="gm-help-panel" role="dialog" aria-label="游戏说明">
                     <header class="gm-help-head">
                       <b>{{ cur.label }} · 玩法说明</b>
-                      <button class="gtv-help-x" aria-label="关闭说明" @click="showRules = false">✕</button>
+                      <button class="gtv-help-x" aria-label="关闭说明" @click="showRules = false"><AppIcon icon="✕" :size="14" /></button>
                     </header>
                     <ol class="gm-help-list">
                       <li v-for="(r, ri) in cur.rules" :key="ri">{{ r }}</li>
@@ -300,6 +300,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount, d
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import MyRoomsDrawer from '@/components/games/MyRoomsDrawer.vue'
 import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
 import { usePinchZoom } from '@/composables/usePinchZoom'
@@ -467,7 +468,7 @@ const gamelist = [
       '飞行通道：走到第 18 格会触发飞行通道，直接向前飞 12 格。',
       '归航：超出终点直接归航，不再弹回（加快残局）。',
       '击落：落到对方飞机所在格，把它送回基地。',
-      '事件格：⚡加速带前进 3 格 · 🕳陷阱后退 3 格 · 🌀虫洞与最领先的对手交换位置 · 🎁宝箱额外再掷一次。',
+      '事件格：加速带前进 3 格 · 陷阱后退 3 格 · 虫洞与最领先的对手交换位置 · 宝箱额外再掷一次。',
       '操作：点「掷骰」→ 点要走的飞机；模式支持双人/三人/四人同屏，或在线邀请家人（2 人）。',
     ],
     modes: [
@@ -532,7 +533,7 @@ const gamelist = [
       '目标：掷骰前进、买地收租，让对手全部破产，最后存活者获胜。',
       '开局：每人 50000 豆启动资金；棋盘 52 格，含地产、机会、命运、监狱、起点等格子。',
       '买地：停在无主地块可选择买下；停在他人地块需付租金，地块等级越高租金越贵。',
-      '建设：在自己成组的地块上可以升级建筑（🏠），提高租金。',
+      '建设：在自己成组的地块上可以升级建筑，提高租金。',
       '角色技能：8 位角色各有一次性绝技，如掷骰加成、免租一次、七折强买、均富等。',
       '道具卡：8 种道具（路障 / 传送 / 免费卡 / 均富卡 / 购地卡 / 转向卡 / 怪兽卡 / 天使卡），关键时刻扭转局势。',
       '破产保护：现金不足时进入清算，全部地产变卖后仍不足即破产出局。',
@@ -554,7 +555,7 @@ const gamelist = [
     component: defineAsyncComponent(() => import('@/components/games/SudokuBoard.vue')),
     rules: [
       '目标：在 9×9 格中填入 1–9，使每行、每列、每个 3×3 宫内的数字都不重复。',
-      '操作：先点一个空格选中，再点下方数字键填入；点 ⌫ 清除已填的数字。',
+      '操作：先点一个空格选中，再点下方数字键填入；点退格键清除已填的数字。',
       '提示：填错（同行/列/宫重复）会标红；同一数字会淡色联动高亮，方便定位。',
       '卡住：点「提示一格」帮你填一个正确的格子（该格会永久固定）。',
       '难度：入门挖 38 洞、进阶 45 洞、困难 52 洞，每局都保证唯一解。',

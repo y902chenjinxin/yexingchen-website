@@ -11,7 +11,7 @@
               <i>{{ blackSub }}</i>
             </div>
           </div>
-          <span class="xq-vs">⚔</span>
+          <span class="xq-vs"><AppIcon icon="⚔" /></span>
           <div class="xq-player" :class="{ active: !over && turn === 'r' }">
             <span class="xq-dot red"></span>
             <div class="xq-player-txt">
@@ -35,7 +35,7 @@
 
         <!-- 本地对局操作 -->
         <div v-if="mode !== 'online'" class="xq-status">
-          <span v-if="over" class="xq-result">{{ resultText }}</span>
+          <span v-if="over" class="xq-result"><AppIcon v-if="resultIcon" :icon="resultIcon" /> {{ resultText }}</span>
           <span v-else-if="checkSide" class="xq-check">将军！</span>
           <button class="xq-btn" @click="restart">重开</button>
           <button
@@ -66,7 +66,7 @@
             <button class="xq-btn" @click="askExit">退出对局（认输）</button>
           </template>
           <template v-else-if="gRoom.status.value === 'finished'">
-            <span class="xq-result">{{ onlineResultText }}</span>
+            <span class="xq-result"><AppIcon v-if="onlineResultIcon" :icon="onlineResultIcon" /> {{ onlineResultText }}</span>
             <button class="xq-btn primary" @click="reinviteSame">再来一局</button>
             <button class="xq-btn" @click="exitOnline">退出</button>
           </template>
@@ -75,7 +75,7 @@
 
       <!-- 在线邀请面板 -->
       <div v-if="mode === 'online' && !gRoom.room.value" class="xq-online">
-        <div class="xq-online-title">🎯 在线邀请对战</div>
+        <div class="xq-online-title"><AppIcon icon="🎯" /> 在线邀请对战</div>
         <p class="xq-online-desc">选一位家人发出邀请，对方接受后进入对局；走子自动同步，约 2 秒内可见。</p>
         <div class="xq-online-row">
           <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
@@ -161,6 +161,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
 import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 import { sfx } from '@/utils/games/sfx'
@@ -588,12 +589,19 @@ const redName = computed(() => {
 const blackSub = computed(() => (over.value ? '' : (turn.value === BLACK ? '行棋中' : '待走')))
 const redSub = computed(() => (over.value ? '' : (turn.value === RED ? '行棋中' : '待走')))
 const resultText = computed(() => {
-  if (winner.value === RED) return mode.value === 'pvp' ? '🎉 红方胜' : (mySide.value === RED ? '🎉 你赢了' : 'AI 赢了，再来')
-  if (winner.value === BLACK) return mode.value === 'pvp' ? '🎉 黑方胜' : (mySide.value === BLACK ? '🎉 你赢了' : 'AI 赢了，再来')
+  if (winner.value === RED) return mode.value === 'pvp' ? '红方胜' : (mySide.value === RED ? '你赢了' : 'AI 赢了，再来')
+  if (winner.value === BLACK) return mode.value === 'pvp' ? '黑方胜' : (mySide.value === BLACK ? '你赢了' : 'AI 赢了，再来')
+  return ''
+})
+const resultIcon = computed(() => {
+  if (winner.value === RED) return mode.value === 'pvp' || mySide.value === RED ? '🎉' : ''
+  if (winner.value === BLACK) return mode.value === 'pvp' || mySide.value === BLACK ? '🎉' : ''
   return ''
 })
 const onlineResultText = computed(() =>
-  onlineWinner.value === 'me' ? '🎉 你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '🤝 平局')
+  onlineWinner.value === 'me' ? '你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '平局')
+const onlineResultIcon = computed(() =>
+  onlineWinner.value === 'me' ? '🎉' : onlineWinner.value === 'opp' ? '' : '🤝')
 
 watch(roomActive, (v) => { emit(v ? 'room-lock' : 'room-unlock') })
 watch(() => props.big, () => nextTick(measureCell))

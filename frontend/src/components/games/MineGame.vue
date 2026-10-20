@@ -12,13 +12,13 @@
         :class="{ revealed: cell.revealed, boom: cell.boom, flagged: cell.flagged }"
         @click="digCell(cell)"
         @contextmenu.prevent="flagCell(cell)"
-      >{{ cellText(cell) }}</div>
+      ><AppIcon :icon="String(cellText(cell))" /></div>
     </div>
     <div class="mn-toggle">
       <label class="mn-flagmode"><input v-model="mine.flagMode" type="checkbox"> 旗子模式（手机用）</label>
     </div>
     <div v-if="!mine.started" class="mn-idle">按「开始游戏」后可翻开格子</div>
-    <div v-if="mine.result" class="mn-msg">{{ mine.result }}</div>
+    <div v-if="mine.result" class="mn-msg"><AppIcon v-if="mine.resultIcon" :icon="mine.resultIcon" /> {{ mine.result }}</div>
   </div>
 </template>
 
@@ -26,19 +26,20 @@
 /** 扫雷：从旧 GamesView 原样迁移。 */
 import { reactive, watch, onMounted } from 'vue'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({ resume: { type: Boolean, default: false } })
 const SAVE_KEY = 'mine'
 
 const SIZE = 10, MINES = 15
-const mine = reactive({ cells: [], flagsLeft: MINES, flagMode: false, result: '', started: false })
+const mine = reactive({ cells: [], flagsLeft: MINES, flagMode: false, result: '', resultIcon: '', started: false })
 
 /** 只铺盘、不开局 —— 等玩家点「开始游戏」才接受点击 */
 function buildBoard() {
   mine.cells = Array.from({ length: SIZE * SIZE }, (_, i) => ({
     i, x: i % SIZE, y: Math.floor(i / SIZE), mine: false, revealed: false, flagged: false, boom: false, n: 0,
   }))
-  mine.flagsLeft = MINES; mine.result = ''
+  mine.flagsLeft = MINES; mine.result = ''; mine.resultIcon = ''
   let placed = 0
   while (placed < MINES) {
     const c = mine.cells[Math.floor(Math.random() * SIZE * SIZE)]
@@ -71,7 +72,7 @@ function digCell(c) {
   if (!mine.started) return
   if (mine.flagMode) { flagCell(c); return }
   if (c.revealed || c.flagged || mine.result) return
-  if (c.mine) { c.revealed = c.boom = true; revealAll(); mine.result = '💥 踩雷了，重开一局？'; return }
+  if (c.mine) { c.revealed = c.boom = true; revealAll(); mine.resultIcon = '💥'; mine.result = '踩雷了，重开一局？'; return }
   flood(c)
   checkWin()
 }
@@ -88,7 +89,7 @@ function flood(c) {
 function revealAll() { mine.cells.forEach(c => { if (c.mine) c.revealed = true }) }
 function checkWin() {
   const hidden = mine.cells.filter(c => !c.revealed).length
-  if (hidden === MINES) mine.result = '🎉 通关！排雷成功'
+  if (hidden === MINES) { mine.resultIcon = '🎉'; mine.result = '通关！排雷成功' }
 }
 /* ---------- 本地存档：返回列表后可「继续上一局」 ---------- */
 let saveTimer = null

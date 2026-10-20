@@ -56,7 +56,7 @@
       <div v-if="panel === 'exchange'" class="gw-inline">
         <div class="gw-inline-head">
           <b>积分兑换欢乐豆</b>
-          <button class="gw-x" aria-label="收起兑换面板" @click="panel = ''">✕</button>
+          <button class="gw-x" aria-label="收起兑换面板" @click="panel = ''"><AppIcon icon="✕" :size="14" /></button>
         </div>
         <div class="gw-inline-body">
           <label class="gw-field">
@@ -81,7 +81,7 @@
       <div v-if="panel === 'gift'" class="gw-inline">
         <div class="gw-inline-head">
           <b>赠送欢乐豆给家人</b>
-          <button class="gw-x" aria-label="收起赠送面板" @click="panel = ''">✕</button>
+          <button class="gw-x" aria-label="收起赠送面板" @click="panel = ''"><AppIcon icon="✕" :size="14" /></button>
         </div>
         <div class="gw-inline-body">
           <label class="gw-field">
@@ -177,7 +177,7 @@
       <ol v-if="rankTab === 'beans'" class="gw-rank">
         <li v-for="(r, i) in leaderboard.beans" :key="r.user_id">
           <span class="gw-medal" :class="'m' + (i + 1)">{{ i + 1 }}</span>
-          <span class="gw-rank-av">{{ r.avatar }}</span>
+          <span class="gw-rank-av"><AppIcon :icon="r.avatar" :size="17" /></span>
           <b class="gw-rank-name">{{ r.name }}</b>
           <span class="gw-rank-val">{{ fmt(r.beans) }} 豆</span>
           <span class="gw-rank-sub">{{ r.points }} 积分</span>
@@ -186,7 +186,7 @@
       <ol v-else class="gw-rank">
         <li v-for="(r, i) in currentRank" :key="r.user_id">
           <span class="gw-medal" :class="'m' + (i + 1)">{{ i + 1 }}</span>
-          <span class="gw-rank-av">{{ r.avatar }}</span>
+          <span class="gw-rank-av"><AppIcon :icon="r.avatar" :size="17" /></span>
           <b class="gw-rank-name">{{ r.name }}</b>
           <span class="gw-rank-val">{{ r.wins }} 胜</span>
           <span class="gw-rank-sub">{{ r.win_rate }}% · {{ r.plays }} 局</span>
@@ -206,6 +206,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { gameEconomyApi } from '@/api/gameEconomy'
 import { listMembers } from '@/api/life'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const busy = ref(false)
 const msg = ref('')

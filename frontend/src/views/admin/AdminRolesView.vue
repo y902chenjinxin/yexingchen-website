@@ -42,7 +42,7 @@
         </el-table-column>
       </el-table>
       <div v-if="!loading && roles.length === 0" class="empty-placeholder">
-        <div class="empty-icon">🛡️</div>
+        <div class="empty-icon"><AppIcon icon="🛡️" :size="36" /></div>
         <div class="empty-text">暂无角色</div>
       </div>
     </section>
@@ -105,6 +105,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getRoleList, addRole, updateRole, deleteRole, getMenuList } from '@/api/admin'
 import AdminLayout from './AdminLayout.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const roles = ref([])
 const menus = ref([])

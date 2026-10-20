@@ -1,7 +1,7 @@
 <template>
   <div class="tt">
     <div v-if="!travels.length" class="tt-empty">
-      <span class="tt-e-icon">🗺️</span>
+      <span class="tt-e-icon"><AppIcon icon="🗺️" :size="34" /></span>
       <span class="tt-e-text">还没有旅行足迹</span>
       <span v-if="canEdit" class="tt-e-hint">点击右上角「记下旅程」，标记走过的地方</span>
       <span v-else class="tt-e-hint">等主人记下第一段旅程</span>
@@ -17,14 +17,17 @@
       <div class="tt-body">
         <div class="tt-top">
           <span class="tt-title">{{ t.title }}</span>
-          <span class="tt-star">{{ "★".repeat(t.star || 0) || '—' }}</span>
+          <span class="tt-star">
+            <template v-if="t.star"><AppIcon v-for="n in t.star" :key="n" icon="★" :size="12" /></template>
+            <template v-else>—</template>
+          </span>
         </div>
         <div class="tt-cities">
           <span v-for="(c, i) in t.cities" :key="i" class="tt-city">{{ i > 0 ? ' · ' : '' }}{{ c.city }}</span>
         </div>
         <div class="tt-foot">
           <span class="tt-date">{{ dateRange(t) }}</span>
-          <span v-if="t.video" class="tt-badge">🎬</span>
+          <span v-if="t.video" class="tt-badge"><AppIcon icon="🎬" :size="14" /></span>
         </div>
       </div>
     </button>
@@ -32,6 +35,8 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/common/AppIcon.vue'
+
 defineProps({
   travels: { type: Array, default: () => [] },
   activeId: { type: Number, default: null },

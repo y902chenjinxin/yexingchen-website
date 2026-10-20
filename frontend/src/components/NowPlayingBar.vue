@@ -10,7 +10,7 @@
       <!-- 曲目信息（点击展开全屏播放器，仅移动端生效） -->
       <div class="np-info" @click="onInfoClick">
         <div class="np-cover">
-          <span class="np-note">♪</span>
+          <span class="np-note"><AppIcon icon="♪" :size="18" /></span>
           <span class="np-badge" :class="{ live: player.isPlaying }"></span>
         </div>
         <div class="np-meta">
@@ -160,7 +160,7 @@
     @keydown.enter.prevent="expand"
     @keydown.space.prevent="expand"
   >
-    <span class="np-mini-note" aria-hidden="true">♪</span>
+    <span class="np-mini-note" aria-hidden="true"><AppIcon icon="♪" :size="19" /></span>
     <span class="np-mini-dot" aria-hidden="true"></span>
   </div>
 </template>
@@ -168,6 +168,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { VideoPause, VideoPlay } from '@element-plus/icons-vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 

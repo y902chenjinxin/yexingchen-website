@@ -11,7 +11,7 @@
               <i>{{ subOf(0) }}</i>
             </div>
           </div>
-          <span class="xf-vs">⚔</span>
+          <span class="xf-vs"><AppIcon icon="⚔" /></span>
           <div class="xf-player" :class="{ active: !over && turnIdx === 1 }">
             <span class="xf-dot" :class="dotClass(1)"></span>
             <div class="xf-player-txt">
@@ -35,7 +35,7 @@
 
         <!-- 本地对局操作 -->
         <div v-if="mode !== 'online'" class="xf-status">
-          <span v-if="over" class="xf-result">{{ resultText }}</span>
+          <span v-if="over" class="xf-result"><AppIcon v-if="resultIcon" :icon="resultIcon" /> {{ resultText }}</span>
           <span v-else class="xf-quota">{{ flippedCount }} / {{ PIECE_N }} 已翻</span>
           <button class="xf-btn" @click="restart">重开</button>
           <button
@@ -66,7 +66,7 @@
             <button class="xf-btn" @click="askExit">退出对局（认输）</button>
           </template>
           <template v-else-if="gRoom.status.value === 'finished'">
-            <span class="xf-result">{{ onlineResultText }}</span>
+            <span class="xf-result"><AppIcon v-if="onlineResultIcon" :icon="onlineResultIcon" /> {{ onlineResultText }}</span>
             <button class="xf-btn primary" @click="reinviteSame">再来一局</button>
             <button class="xf-btn" @click="exitOnline">退出</button>
           </template>
@@ -75,7 +75,7 @@
 
       <!-- 在线邀请面板 -->
       <div v-if="mode === 'online' && !gRoom.room.value" class="xf-online">
-        <div class="xf-online-title">🎯 在线邀请对战</div>
+        <div class="xf-online-title"><AppIcon icon="🎯" /> 在线邀请对战</div>
         <p class="xf-online-desc">按标准开局布局摆好 32 子后全部翻面洗牌，双方都看不到；先手翻出的颜色即为自己的阵营，明子按棋子自身的真实走法行动。</p>
         <div class="xf-online-row">
           <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
@@ -119,7 +119,7 @@
           >
             <span v-if="!p" class="xf-hole"></span>
             <span v-else-if="!p.up" class="xf-back" :class="{ fresh: flipIdx === i }">
-              <i class="xf-back-mark">❖</i>
+              <i class="xf-back-mark"><AppIcon icon="❖" :size="14" /></i>
             </span>
             <span
               v-else
@@ -173,6 +173,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameRoom } from '@/composables/useGameRoom'
 import { useUndoGuard } from '@/composables/useUndoGuard'
 import MemberPicker from '@/components/games/MemberPicker.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 import { sfx } from '@/utils/games/sfx'
@@ -677,12 +678,19 @@ function dotClass(k) {
   return col === RED ? 'red' : 'black'
 }
 const resultText = computed(() => {
-  if (!winnerColor.value) return over.value ? '🤝 平局' : ''
-  if (mode.value === 'pvp') return winnerColor.value === RED ? '🎉 红方胜' : '🎉 黑方胜'
-  return winnerColor.value === colorOf(localAiIdx) ? '🎉 你赢了' : '电脑赢了，再来'
+  if (!winnerColor.value) return over.value ? '平局' : ''
+  if (mode.value === 'pvp') return winnerColor.value === RED ? '红方胜' : '黑方胜'
+  return winnerColor.value === colorOf(localAiIdx) ? '你赢了' : '电脑赢了，再来'
+})
+const resultIcon = computed(() => {
+  if (!winnerColor.value) return over.value ? '🤝' : ''
+  if (mode.value === 'pvp') return '🎉'
+  return winnerColor.value === colorOf(localAiIdx) ? '🎉' : ''
 })
 const onlineResultText = computed(() =>
-  onlineWinner.value === 'me' ? '🎉 你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '🤝 平局')
+  onlineWinner.value === 'me' ? '你赢了' : onlineWinner.value === 'opp' ? '对方赢了' : '平局')
+const onlineResultIcon = computed(() =>
+  onlineWinner.value === 'me' ? '🎉' : onlineWinner.value === 'opp' ? '' : '🤝')
 
 watch(roomActive, (v) => { emit(v ? 'room-lock' : 'room-unlock') })
 watch(() => props.big, () => nextTick(measureCell))

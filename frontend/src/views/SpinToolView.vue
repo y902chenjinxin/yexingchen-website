@@ -4,7 +4,7 @@
     <div v-if="mode === 'play'" class="sp-play">
       <div class="sp-top">
         <span class="sp-top-lab">我的签组</span>
-        <button class="sp-icon-btn" aria-label="编辑当前配置" title="编辑当前配置" @click="mode = 'edit'">✏️</button>
+        <button class="sp-icon-btn" aria-label="编辑当前配置" title="编辑当前配置" @click="mode = 'edit'"><AppIcon icon="✏️" :size="16" /></button>
       </div>
 
       <!-- 配置卡片条：多套签组并列常驻（v2.46.78 夜星：多个任务一起存在，切换不丢数据），
@@ -24,7 +24,7 @@
           </span>
           <span class="sp-cfg-card-num">{{ c.options.length }} 项</span>
         </button>
-        <button class="sp-cfg-card sp-cfg-add" aria-label="新建签组" title="新建签组" @click="createCfg">＋</button>
+        <button class="sp-cfg-card sp-cfg-add" aria-label="新建签组" title="新建签组" @click="createCfg"><AppIcon icon="＋" :size="20" /></button>
       </div>
 
       <!-- 转盘：conic-gradient 依权重分段，标签沿径向排布 -->
@@ -54,7 +54,7 @@
       </div>
 
       <button class="sp-reset" :disabled="!result" @click="resetRound">
-        <span aria-hidden="true">↻</span> 重置
+        <AppIcon icon="↻" :size="14" /> 重置
       </button>
     </div>
 
@@ -70,10 +70,10 @@
           <span class="sp-opt-idx">选项 {{ i + 1 }}</span>
           <div class="sp-opt-row">
             <input v-model="o.label" class="sp-input sp-opt-label" type="text" maxlength="12" :placeholder="`选项 ${i + 1}`" />
-            <button class="sp-opt-del" aria-label="删除选项" @click="draft.options.splice(i, 1)">×</button>
+            <button class="sp-opt-del" aria-label="删除选项" @click="draft.options.splice(i, 1)"><AppIcon icon="×" :size="14" /></button>
           </div>
           <div class="sp-opt-weight">
-            <span class="sp-weight-ico" aria-hidden="true">◑</span>
+            <span class="sp-weight-ico" aria-hidden="true"><AppIcon icon="◑" :size="14" /></span>
             <input v-model.number="o.weight" class="sp-weight-num" type="number" min="1" max="10" aria-label="权重" />
             <input v-model.number="o.weight" class="sp-weight-range" type="range" min="1" max="10" step="1" aria-label="权重滑杆" />
             <i class="sp-opt-stat" v-if="activeStats[o.label]">{{ activeStats[o.label] }} 次</i>
@@ -83,7 +83,7 @@
       </div>
 
       <div class="sp-edit-actions">
-        <button class="sp-btn ghost" :disabled="draft.options.length >= 12" @click="draft.options.push({ label: '', weight: 1 })">＋ 添加选项</button>
+        <button class="sp-btn ghost" :disabled="draft.options.length >= 12" @click="draft.options.push({ label: '', weight: 1 })"><AppIcon icon="＋" :size="14" /> 添加选项</button>
         <button class="sp-btn primary" :disabled="!canSave" @click="saveDraft">保存</button>
         <button class="sp-btn ghost" @click="cancelEdit">返回</button>
       </div>
@@ -96,6 +96,7 @@
 import { ref, computed, watch } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { haptic } from '@/utils/haptic'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 /* ---------- 数据模型（localStorage，多套配置 + 抽中统计） ---------- */
 const KEY = 'xuanhuang-spin-v1'

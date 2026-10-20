@@ -17,7 +17,7 @@
             maxlength="200"
             @keydown.enter="show"
           />
-          <button v-if="text" class="dm-clear" aria-label="清空内容" @click="text = ''">×</button>
+          <button v-if="text" class="dm-clear" aria-label="清空内容" @click="text = ''"><AppIcon icon="×" :size="14" /></button>
         </div>
       </div>
 
@@ -144,7 +144,7 @@
       </div>
 
       <button class="dm-show-btn" :disabled="!text.trim()" @click="show">
-        <span aria-hidden="true">📱</span> 显示弹幕
+        <AppIcon icon="📱" :size="16" /> 显示弹幕
       </button>
       <p class="dm-hint">展示模式下：双击屏幕或点右上角 × 退出；横屏时把手机横持观看</p>
     </div>
@@ -162,7 +162,7 @@
         @dblclick="stop"
         @pointerdown="onStagePointer"
       >
-        <button class="dm-exit" aria-label="退出展示" @click.stop="stop">×</button>
+        <button class="dm-exit" aria-label="退出展示" @click.stop="stop"><AppIcon icon="×" :size="20" /></button>
         <!-- 静止：正中常亮；滚动：右缘进左缘出，时长 = 距离 / 速度 -->
         <div
           ref="marqueeRef"
@@ -179,6 +179,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { haptic } from '@/utils/haptic'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 /* ---------- 配置态（本地记忆，不落库） ---------- */
 const KEY = 'xuanhuang-danmu-v2'
