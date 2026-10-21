@@ -13,7 +13,7 @@
       <div class="ls-empty-glow" />
     </div>
     <p class="ls-empty-title">{{ title }}</p>
-    <p v-if="description" class="ls-empty-desc">{{ description }}</p>
+    <p v-if="description || sub" class="ls-empty-desc">{{ description || sub }}</p>
     <div v-if="actionLabel" class="ls-empty-actions">
       <button type="button" class="ls-empty-btn ls-empty-btn--primary" @click="onAction">
         <slot name="icon"></slot>
@@ -31,6 +31,8 @@ import { computed, h } from 'vue'
 const props = defineProps({
   title: { type: String, default: '这里还什么都没有' },
   description: { type: String, default: '' },
+  /** v2.46.167：`description` 的别名，兼容 components/common/EmptyState 那套旧写法（那边叫 sub） */
+  sub: { type: String, default: '' },
   actionLabel: { type: String, default: '' },
   size: { type: String, default: 'md' }, // sm / md / lg
   tone: { type: String, default: 'data' }, // data / search / net / deny / time / generic

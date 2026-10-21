@@ -243,7 +243,7 @@ import { listHomeCountdowns } from '@/api/countdown'
 import { stocksApi } from '@/api/stocks'
 import { workbenchApi } from '@/api/workbench'
 import { useGameInvites, agoLabel } from '@/composables/useGameInvites'
-import EmptyState from '@/components/common/EmptyState.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 /* ---- 顶栏滚动收起（#9 · 移动端）：下滑隐藏、上滑浮现 ----
    桌面右上角悬浮按钮组无碍；移动端长列表阅读时挡内容，收起让位。

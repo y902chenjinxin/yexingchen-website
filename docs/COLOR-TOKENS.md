@@ -328,3 +328,41 @@ eslint 报 `vue/no-undef-properties`。与本次颜色替换无关，是既有�
 
 同一功能两份实现，样式与 API 都不同。**本轮未合并**（涉及 25+ 处引用），
 建议单独立项：以功能更全的那份为准，收敛成一个。
+
+---
+
+## 十一、EmptyState 合并（2026-10-21，v2.46.167）
+
+上一节发现的两个 EmptyState 已合并。
+
+### 做法
+- **以功能全的那份为准**：`components/EmptyState.vue`（6 种插画 data/search/net/deny/time/generic、
+  `size` sm/md/lg、内置 `actionLabel` 按钮、主题感知）。
+- **轻量版退场**：`components/common/EmptyState.vue` 删除。
+- **兼容处理**：给功能全版加了 `sub` prop，作为 `description` 的别名 ——
+  这样 `GlobalTopBar` / `FinanceView` 里十几处 `title="…" sub="…"` 的旧写法不用改一行。
+- 我此前改写的那 5 处，CTA 从「外部塞 IconButton」改成组件自带的 `action-label` + `@action`，
+  视觉与插画更协调。
+
+### 改动清单
+| 文件 | 改动 |
+|---|---|
+| `components/EmptyState.vue` | 新增 `sub` 别名；模板回落 `description \|\| sub` |
+| `components/common/EmptyState.vue` | **删除** |
+| `GlobalTopBar.vue` / `FinanceView.vue` | import 指向新位置（模板不动） |
+| `LostItemsView` / `VaultView` / `WardrobeView`×2 / `HistoryView` | import + CTA 改 `action-label` |
+
+### 验证（现网实测）
+| 页面 | 组件类 | 标题 | 按钮 | 是否溢出父容器 |
+|---|---|---|---|---|
+| 遗失物 | `ls-empty` | 还没有记录 | 记一笔 | 否 |
+| 保险箱 | `ls-empty` | 保险箱还是空的 | 存一条 | 否 |
+| 衣柜·搭配库 | `ls-empty` | 还没有存过搭配 | 去今日推荐 | 否 |
+| 记账（3 处） | `ls-empty` | — | — | **0 处溢出** |
+
+无残留引用（`common/EmptyState` 仅出现在一行注释里）、无 JS 错误。
+
+### 视觉变化说明
+5 处空态从「手账风简笔便签（84px）」换成「鎏金线条插画（140px + 光斑）」。
+这是**真正统一**的代价，也是此前"空态统一"名不副实的修正。
+插画描边走 `var(--yq-gold)`，因此当前是**青色线条**（与方案 B 一致）。

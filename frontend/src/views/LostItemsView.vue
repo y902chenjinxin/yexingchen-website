@@ -49,10 +49,10 @@
       <EmptyState
         v-else-if="!list.length"
         title="还没有记录"
-        sub="第一次想记的时候点下面这个按钮 —— 图片可以不传，写几个字也算。"
-      >
-        <IconButton icon="plus" label="记一笔" variant="primary" @click="openCreate" />
-      </EmptyState>
+        description="第一次想记的时候点下面这个按钮 —— 图片可以不传，写几个字也算。"
+        action-label="记一笔"
+        @action="openCreate"
+      />
 
       <template v-else>
         <section v-for="grp in grouped" :key="grp.year" class="li-year">
@@ -162,7 +162,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import EmptyState from '@/components/common/EmptyState.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'

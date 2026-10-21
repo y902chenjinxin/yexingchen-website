@@ -23,6 +23,40 @@
 
 ---
 
+## [v2.46.167] - 2026-10-21
+
+### 合并两个 EmptyState 组件（消除"假统一"）
+
+项目里长期并存两份空态组件：
+- `components/EmptyState.vue`（7.7KB，6 种插画 + size + 内置 actionLabel，11 处引用）
+- `components/common/EmptyState.vue`（2KB，只有 title/sub，6 处引用）
+
+此前几次"空态统一"其实只动了后者，视觉并未真正统一。
+
+#### 做法
+- 以**功能全的那份**为唯一实现；轻量版删除。
+- 加 `sub` prop 作为 `description` 别名 —— `GlobalTopBar` / `FinanceView` 里十几处
+  `title + sub` 的旧写法**一行都不用改**。
+- 我那 5 处空态的 CTA 从「外部塞 IconButton」改成组件内置 `action-label` + `@action`。
+
+#### 验证
+| 页面 | 类名 | 标题 | 按钮 | 溢出 |
+|---|---|---|---|---|
+| 遗失物 | `ls-empty` | 还没有记录 | 记一笔 | 否 |
+| 保险箱 | `ls-empty` | 保险箱还是空的 | 存一条 | 否 |
+| 衣柜·搭配库 | `ls-empty` | 还没有存过搭配 | 去今日推荐 | 否 |
+| 记账（3 处） | `ls-empty` | — | — | 0 处 |
+
+无残留引用、无 JS 错误。
+
+#### 视觉变化
+5 处空态由「84px 简笔便签」变为「140px 鎏金线条插画 + 光斑」。
+插画描边走 `var(--yq-gold)`，当前为青色（与方案 B 一致）。
+
+版本 SW v480→v481、APP_VERSION v2.46.166→v2.46.167。
+
+---
+
 ## [v2.46.166] - 2026-10-21
 
 ### 颜色 token 化 · 阶段 1 方案 B：删除 216 处失效 fallback
@@ -291,6 +325,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - 击倒对手、命中、摔车都接上了音效与火花。
 
 版本 SW v472→v473、APP_VERSION v2.46.158→v2.46.159。
+
+---
+
+## [v2.46.167] - 2026-10-21
+
+### 合并两个 EmptyState 组件（消除"假统一"）
+
+项目里长期并存两份空态组件：
+- `components/EmptyState.vue`（7.7KB，6 种插画 + size + 内置 actionLabel，11 处引用）
+- `components/common/EmptyState.vue`（2KB，只有 title/sub，6 处引用）
+
+此前几次"空态统一"其实只动了后者，视觉并未真正统一。
+
+#### 做法
+- 以**功能全的那份**为唯一实现；轻量版删除。
+- 加 `sub` prop 作为 `description` 别名 —— `GlobalTopBar` / `FinanceView` 里十几处
+  `title + sub` 的旧写法**一行都不用改**。
+- 我那 5 处空态的 CTA 从「外部塞 IconButton」改成组件内置 `action-label` + `@action`。
+
+#### 验证
+| 页面 | 类名 | 标题 | 按钮 | 溢出 |
+|---|---|---|---|---|
+| 遗失物 | `ls-empty` | 还没有记录 | 记一笔 | 否 |
+| 保险箱 | `ls-empty` | 保险箱还是空的 | 存一条 | 否 |
+| 衣柜·搭配库 | `ls-empty` | 还没有存过搭配 | 去今日推荐 | 否 |
+| 记账（3 处） | `ls-empty` | — | — | 0 处 |
+
+无残留引用、无 JS 错误。
+
+#### 视觉变化
+5 处空态由「84px 简笔便签」变为「140px 鎏金线条插画 + 光斑」。
+插画描边走 `var(--yq-gold)`，当前为青色（与方案 B 一致）。
+
+版本 SW v480→v481、APP_VERSION v2.46.166→v2.46.167。
 
 ---
 
@@ -784,6 +852,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 
 ---
 
+## [v2.46.167] - 2026-10-21
+
+### 合并两个 EmptyState 组件（消除"假统一"）
+
+项目里长期并存两份空态组件：
+- `components/EmptyState.vue`（7.7KB，6 种插画 + size + 内置 actionLabel，11 处引用）
+- `components/common/EmptyState.vue`（2KB，只有 title/sub，6 处引用）
+
+此前几次"空态统一"其实只动了后者，视觉并未真正统一。
+
+#### 做法
+- 以**功能全的那份**为唯一实现；轻量版删除。
+- 加 `sub` prop 作为 `description` 别名 —— `GlobalTopBar` / `FinanceView` 里十几处
+  `title + sub` 的旧写法**一行都不用改**。
+- 我那 5 处空态的 CTA 从「外部塞 IconButton」改成组件内置 `action-label` + `@action`。
+
+#### 验证
+| 页面 | 类名 | 标题 | 按钮 | 溢出 |
+|---|---|---|---|---|
+| 遗失物 | `ls-empty` | 还没有记录 | 记一笔 | 否 |
+| 保险箱 | `ls-empty` | 保险箱还是空的 | 存一条 | 否 |
+| 衣柜·搭配库 | `ls-empty` | 还没有存过搭配 | 去今日推荐 | 否 |
+| 记账（3 处） | `ls-empty` | — | — | 0 处 |
+
+无残留引用、无 JS 错误。
+
+#### 视觉变化
+5 处空态由「84px 简笔便签」变为「140px 鎏金线条插画 + 光斑」。
+插画描边走 `var(--yq-gold)`，当前为青色（与方案 B 一致）。
+
+版本 SW v480→v481、APP_VERSION v2.46.166→v2.46.167。
+
+---
+
 ## [v2.46.166] - 2026-10-21
 
 ### 颜色 token 化 · 阶段 1 方案 B：删除 216 处失效 fallback
@@ -1222,6 +1324,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - 顺手把 `GamesView` 里暴力摩托的规则文案补上赛道与车辆两条。
 
 版本 SW v459→v460、APP_VERSION v2.46.145→v2.46.146。
+
+---
+
+## [v2.46.167] - 2026-10-21
+
+### 合并两个 EmptyState 组件（消除"假统一"）
+
+项目里长期并存两份空态组件：
+- `components/EmptyState.vue`（7.7KB，6 种插画 + size + 内置 actionLabel，11 处引用）
+- `components/common/EmptyState.vue`（2KB，只有 title/sub，6 处引用）
+
+此前几次"空态统一"其实只动了后者，视觉并未真正统一。
+
+#### 做法
+- 以**功能全的那份**为唯一实现；轻量版删除。
+- 加 `sub` prop 作为 `description` 别名 —— `GlobalTopBar` / `FinanceView` 里十几处
+  `title + sub` 的旧写法**一行都不用改**。
+- 我那 5 处空态的 CTA 从「外部塞 IconButton」改成组件内置 `action-label` + `@action`。
+
+#### 验证
+| 页面 | 类名 | 标题 | 按钮 | 溢出 |
+|---|---|---|---|---|
+| 遗失物 | `ls-empty` | 还没有记录 | 记一笔 | 否 |
+| 保险箱 | `ls-empty` | 保险箱还是空的 | 存一条 | 否 |
+| 衣柜·搭配库 | `ls-empty` | 还没有存过搭配 | 去今日推荐 | 否 |
+| 记账（3 处） | `ls-empty` | — | — | 0 处 |
+
+无残留引用、无 JS 错误。
+
+#### 视觉变化
+5 处空态由「84px 简笔便签」变为「140px 鎏金线条插画 + 光斑」。
+插画描边走 `var(--yq-gold)`，当前为青色（与方案 B 一致）。
+
+版本 SW v480→v481、APP_VERSION v2.46.166→v2.46.167。
 
 ---
 
@@ -1719,6 +1855,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 `App.vue`：把排除清单提成常量 `ISLAND_FOOTER_PREFIXES = ['music','novel','video','log','tool','history','life','play']`，`showGlobalFooter` 改为 `!ISLAND_FOOTER_PREFIXES.includes(p.split('/')[1] || '')`。只加两个前缀 + 换精确比对，不动任何页面渲染逻辑（岛屿页脚仍在 `IslandInnerBase` 里，非岛屿页仍由 App 兜底）。
 
 版本 SW v458→v459、APP_VERSION v2.46.144→v2.46.145。
+
+---
+
+## [v2.46.167] - 2026-10-21
+
+### 合并两个 EmptyState 组件（消除"假统一"）
+
+项目里长期并存两份空态组件：
+- `components/EmptyState.vue`（7.7KB，6 种插画 + size + 内置 actionLabel，11 处引用）
+- `components/common/EmptyState.vue`（2KB，只有 title/sub，6 处引用）
+
+此前几次"空态统一"其实只动了后者，视觉并未真正统一。
+
+#### 做法
+- 以**功能全的那份**为唯一实现；轻量版删除。
+- 加 `sub` prop 作为 `description` 别名 —— `GlobalTopBar` / `FinanceView` 里十几处
+  `title + sub` 的旧写法**一行都不用改**。
+- 我那 5 处空态的 CTA 从「外部塞 IconButton」改成组件内置 `action-label` + `@action`。
+
+#### 验证
+| 页面 | 类名 | 标题 | 按钮 | 溢出 |
+|---|---|---|---|---|
+| 遗失物 | `ls-empty` | 还没有记录 | 记一笔 | 否 |
+| 保险箱 | `ls-empty` | 保险箱还是空的 | 存一条 | 否 |
+| 衣柜·搭配库 | `ls-empty` | 还没有存过搭配 | 去今日推荐 | 否 |
+| 记账（3 处） | `ls-empty` | — | — | 0 处 |
+
+无残留引用、无 JS 错误。
+
+#### 视觉变化
+5 处空态由「84px 简笔便签」变为「140px 鎏金线条插画 + 光斑」。
+插画描边走 `var(--yq-gold)`，当前为青色（与方案 B 一致）。
+
+版本 SW v480→v481、APP_VERSION v2.46.166→v2.46.167。
 
 ---
 
@@ -2317,6 +2487,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - **覆盖范围**：外壳（顶栏 / 命令面板 / AI 抽屉）→ 工作台（天气 / 服务器监测 / 此刻）→ 记账 / 资讯 / 生活 / 通讯录 / 足迹 → 工具集（PDF / 压缩 / 证件照 / 水印 / 音色克隆 / 弹幕 / 密码 / ASR / 倒计时等）→ 棋牌三件套 + 大富翁 + 五子棋 / 围棋 / 象棋 / 军棋 / 飞行棋，**90+ 文件**；通知标题、tooltip、规则说明里当装饰用的 emoji 一并去掉。
 - **保留（有意不改）**：`♠♥♣♦` 牌面花色、`⌘ ⇧` 键盘记号、CSS `content:'✈'` 之类版面排版字符 —— 属字体排版而非图标，且散落在卡片角标与 CSS 伪元素里，替换会改变牌面版式；`→ ↑ ↓ ‹ › ▾` 等句中分隔符同样保留。
 - 版本 SW v442→v443、APP_VERSION v2.46.128→v2.46.129。
+
+---
+
+## [v2.46.167] - 2026-10-21
+
+### 合并两个 EmptyState 组件（消除"假统一"）
+
+项目里长期并存两份空态组件：
+- `components/EmptyState.vue`（7.7KB，6 种插画 + size + 内置 actionLabel，11 处引用）
+- `components/common/EmptyState.vue`（2KB，只有 title/sub，6 处引用）
+
+此前几次"空态统一"其实只动了后者，视觉并未真正统一。
+
+#### 做法
+- 以**功能全的那份**为唯一实现；轻量版删除。
+- 加 `sub` prop 作为 `description` 别名 —— `GlobalTopBar` / `FinanceView` 里十几处
+  `title + sub` 的旧写法**一行都不用改**。
+- 我那 5 处空态的 CTA 从「外部塞 IconButton」改成组件内置 `action-label` + `@action`。
+
+#### 验证
+| 页面 | 类名 | 标题 | 按钮 | 溢出 |
+|---|---|---|---|---|
+| 遗失物 | `ls-empty` | 还没有记录 | 记一笔 | 否 |
+| 保险箱 | `ls-empty` | 保险箱还是空的 | 存一条 | 否 |
+| 衣柜·搭配库 | `ls-empty` | 还没有存过搭配 | 去今日推荐 | 否 |
+| 记账（3 处） | `ls-empty` | — | — | 0 处 |
+
+无残留引用、无 JS 错误。
+
+#### 视觉变化
+5 处空态由「84px 简笔便签」变为「140px 鎏金线条插画 + 光斑」。
+插画描边走 `var(--yq-gold)`，当前为青色（与方案 B 一致）。
+
+版本 SW v480→v481、APP_VERSION v2.46.166→v2.46.167。
 
 ---
 
