@@ -259,7 +259,7 @@ const TRACKS = {
     peaks: [[0, -40], [200, -96], [420, -52], [640, -110], [900, -60], [1100, -88], [1200, -44]],
     farPeaks: '#8a9c96', nearPeaks: '#5c7360',
     ground: '#5c7a4a', groundShade: '#3f5a36',
-    road: '#585a5e', roadDark: '#4a4c50', roadLight: '#686a6e',
+    road: '#4c4e54', roadDark: '#35373d', roadLight: '#5e6068', tyre: '#2a2c32',
     shoulder: '#a8723c', shoulderDark: '#8a5a2c',
     dash: '#e2c22f', edge: '#d9d3bd', prop: 'palm', rail: false,
   },
@@ -269,7 +269,7 @@ const TRACKS = {
     peaks: [[0, -30], [240, -54], [520, -34], [760, -62], [1000, -38], [1200, -50]],
     farPeaks: '#9a6a62', nearPeaks: '#7a4e4a',
     ground: '#c0925e', groundShade: '#9a6c3c',
-    road: '#6a625a', roadDark: '#58524a', roadLight: '#7a7268',
+    road: '#5c564f', roadDark: '#3f3b35', roadLight: '#736b60', tyre: '#332f2a',
     shoulder: '#c8a070', shoulderDark: '#a07c50',
     dash: '#f0d060', edge: '#e8dcc0',
     prop: 'cactus', rail: false,
@@ -281,7 +281,7 @@ const TRACKS = {
     peaks: [[0, -70], [180, -170], [380, -96], [560, -190], [760, -120], [960, -176], [1200, -92]],
     farPeaks: '#6c8090', nearPeaks: '#465a4e',
     ground: '#4a6a3a', groundShade: '#334c2a',
-    road: '#55575c', roadDark: '#45474c', roadLight: '#65676c',
+    road: '#484a50', roadDark: '#32343a', roadLight: '#5a5c62', tyre: '#272930',
     shoulder: '#8a7a58', shoulderDark: '#6a5c40',
     dash: '#e8d868', edge: '#d8d8c8', prop: 'pine', rail: true,
   },
@@ -291,7 +291,7 @@ const TRACKS = {
     peaks: [[0, -90], [140, -150], [260, -110], [400, -190], [520, -130], [660, -170], [800, -120], [940, -185], [1080, -140], [1200, -100]],
     farPeaks: '#16233c', nearPeaks: '#0e1729',
     ground: '#1b2432', groundShade: '#0c1220',
-    road: '#2e3138', roadDark: '#24272e', roadLight: '#3a3d44',
+    road: '#25282e', roadDark: '#161920', roadLight: '#32353d', tyre: '#0e1116',
     shoulder: '#3a3a40', shoulderDark: '#2a2a30',
     dash: '#e8e0a0', edge: '#a8b0c0',
     prop: 'lamp', stars: true, rail: false,
@@ -1434,6 +1434,15 @@ function drawCliff(ctx, t) {
     // 顶部受光亮边
     ctx.fillStyle = t.cliff[2]
     ctx.fillRect(0, py, edge, py < hz + 2 ? 1 : 0)
+    // v2.46.179：水平分层色带 —— 大片纯色崖壁看起来像贴图，加几道沉积层才有土石感
+    const layer = py % 26
+    if (layer < 3) {
+      ctx.fillStyle = t.cliff[1]
+      ctx.fillRect(0, py, edge, 1)
+    } else if (layer === 13) {
+      ctx.fillStyle = t.cliff[2]
+      ctx.fillRect(0, py, edge, 1)
+    }
     // 斜纹：按行推进，形成连续斜线
     for (let s = 0; s < 6; s++) {
       const period = 24 + s * 13
@@ -1444,9 +1453,12 @@ function drawCliff(ctx, t) {
         ctx.fillRect(sx, py, w, 1)
       }
     }
-    if (hash(py * 31) > 0.87) {
+    // 碎石：密度 0.87 → 0.72，让崖面不再是平涂
+    if (hash(py * 31) > 0.72) {
       ctx.fillStyle = t.cliff[1]
-      ctx.fillRect(Math.floor(hash(py * 17) * edge), py, 2, 1)
+      const rx = Math.floor(hash(py * 17) * Math.max(1, edge - 3))
+      ctx.fillRect(rx, py, 2, 1)
+      if (hash(py * 53) > 0.6) ctx.fillRect(Math.max(0, rx - 4), py, 1, 1)
     }
   }
 }
@@ -1500,22 +1512,26 @@ function drawRoad(ctx, t) {
     ctx.fillStyle = t.road
     ctx.fillRect(l, py, Math.max(1, r - l), 1)
     // 轮胎压痕：两条更暗的纵向带
-    const tw = Math.max(1, Math.round((r - l) * 0.16))
-    ctx.fillStyle = t.roadDark
-    ctx.fillRect(Math.round(l + (r - l) * 0.18), py, tw, 1)
-    ctx.fillRect(Math.round(l + (r - l) * 0.66), py, tw, 1)
+    const tw = Math.max(1, Math.round((r - l) * 0.19))
+    ctx.fillStyle = t.tyre ?? t.roadDark
+    ctx.fillRect(Math.round(l + (r - l) * 0.17), py, tw, 1)
+    ctx.fillRect(Math.round(l + (r - l) * 0.64), py, tw, 1)
     // 沥青颗粒：确定性噪点 + 里程滚动
-    for (let i = 0; i < 3; i++) {
+    // v2.46.179：原来每行只撒 3 个点、命中率 30%，缩放到 3 倍后完全看不出颗粒感；
+    // 加密到 9 个点 / 命中率 50%，路面才有粗糙的沥青质感。
+    const grain = Math.min(9, Math.max(4, Math.round((r - l) / 12)))
+    for (let i = 0; i < grain; i++) {
       const n = hash(py * 131 + i * 977 + Math.floor(scroll / 40))
-      if (n > 0.7) {
-        ctx.fillStyle = n > 0.88 ? t.roadLight : t.roadDark
+      if (n > 0.5) {
+        ctx.fillStyle = n > 0.82 ? t.roadLight : t.roadDark
         ctx.fillRect(l + Math.floor(hash(py * 37 + i * 7) * (r - l)), py, 1, 1)
       }
     }
-    // 白色边线
+    // 白色边线（v2.46.179：1px 在 3 倍缩放下几乎消失，加粗到 2px）
     ctx.fillStyle = t.edge
-    ctx.fillRect(l + Math.max(1, Math.round(2 * e.k)), py, 1, 1)
-    ctx.fillRect(r - Math.max(1, Math.round(2 * e.k)) - 1, py, 1, 1)
+    const ew = Math.max(1, Math.round(2.4 * e.k))
+    ctx.fillRect(l + Math.max(1, Math.round(2 * e.k)), py, ew, 1)
+    ctx.fillRect(r - Math.max(1, Math.round(2 * e.k)) - ew, py, ew, 1)
     // 沥青补丁：每 900 像素一处不规则暗斑，路面不再是一条平涂
     const linePos = (player ? player.roadPos : 0) + (PLAYER_Y - py * PIX) / 0.32
     const patch = Math.floor(linePos / 900)
@@ -1532,8 +1548,9 @@ function drawRoad(ctx, t) {
     // 双黄线：原版公路的中心线，两条线中间留 1px
     const cx1 = Math.round((l + r) / 2)
     ctx.fillStyle = t.dash
-    ctx.fillRect(cx1 - 2, py, 1, 1)
-    ctx.fillRect(cx1 + 1, py, 1, 1)
+    const lw = Math.max(1, Math.round(1.6 * e.k))
+    ctx.fillRect(cx1 - 2 - lw, py, lw, 1)
+    ctx.fillRect(cx1 + 2, py, lw, 1)
   }
   // 路面接缝：每 1400 像素一条暗横带
   const jointStep = 1400
@@ -1544,8 +1561,8 @@ function drawRoad(ctx, t) {
     const py = pu(objY(rel))
     const e = roadEdgeAt(py)
     if (e.r <= e.l) continue
-    ctx.fillStyle = 'rgba(22,22,26,.55)'
-    ctx.fillRect(Math.round(e.l), py, Math.max(1, Math.round(e.r - e.l)), 1)
+    ctx.fillStyle = 'rgba(18,18,22,.62)'
+    ctx.fillRect(Math.round(e.l), py, Math.max(1, Math.round(e.r - e.l)), 2)
   }
 }
 
@@ -1789,8 +1806,30 @@ function riderSprite(color, bucket, pose, police) {
     R(19, 41, 3, 2, pal.g)
   }
 
-  riderCache.set(key, c)
-  return c
+  // ---- v2.46.179：给精灵加 1px 深色描边 ----
+  // 低分辨率像素画（60×68）在 3 倍缩放下，相邻色块容易糊成一坨「红方块」，
+  // 分不清头盔 / 手臂 / 车胎。描边是把轮廓勾出来的最有效手段：
+  // 先把原图做成纯色剪影，向 8 个方向各偏移 1px 垫底，最后把原图盖回去。
+  const OUT = 1
+  const outlined = document.createElement('canvas')
+  outlined.width = RIDER_W + OUT * 2
+  outlined.height = RIDER_H + OUT * 2
+  const og = outlined.getContext('2d')
+  const sil = document.createElement('canvas')
+  sil.width = RIDER_W
+  sil.height = RIDER_H
+  const sg = sil.getContext('2d')
+  sg.drawImage(c, 0, 0)
+  sg.globalCompositeOperation = 'source-in'
+  sg.fillStyle = '#101318'
+  sg.fillRect(0, 0, RIDER_W, RIDER_H)
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    og.drawImage(sil, OUT + dx, OUT + dy)
+  }
+  og.drawImage(c, OUT, OUT)
+
+  riderCache.set(key, outlined)
+  return outlined
 }
 
 /** 攻击进度 → 精灵姿势帧（0 骑乘 / 1 蓄力 / 2 前击 / 3 后击 / 4 收招） */
@@ -1831,6 +1870,19 @@ function drawBike(ctx, x, y, k, b, dead) {
   const yp = Math.round(y / PIX)
   const crashK = !dead && b.crash ? 1 - b.crash / CRASH_FRAMES : 0
   const recoil = !dead && b.hitT > 0 ? (b.hitDir || 1) * 2 : 0
+  // v2.46.179：地面投影 —— 之前没有任何影子，车看起来是「贴」在路面上的。
+  // 用 3 条宽度递减的横线拼一个压扁的像素椭圆（与低分辨率像素画风一致，不用 ellipse 抗锯齿）。
+  if (!dead && crashK <= 0) {
+    const halfW = Math.max(3, Math.round(w * 0.36))
+    ctx.save()
+    ctx.globalAlpha = 0.32
+    ctx.fillStyle = '#080a0e'
+    for (let i = 0; i < 3; i++) {
+      const ww = Math.max(2, Math.round(halfW * (1 - i * 0.26)))
+      ctx.fillRect(Math.round(xp + recoil - ww / 2), Math.round(yp - 2 + i), ww, 1)
+    }
+    ctx.restore()
+  }
   ctx.save()
   if (crashK > 0 || dead) {
     ctx.translate(xp, yp - h * 0.42)
