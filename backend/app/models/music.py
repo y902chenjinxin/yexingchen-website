@@ -21,6 +21,8 @@ class Music(Base):
     is_test_data = Column(Integer, default=0)  # 1=测试数据, 0=真实数据
     is_default = Column(Integer, default=0)     # 1=系统内置默认曲, 0=用户上传
     file_size = Column(Integer, default=0)
+    # v2.46.188：管理列表拖拽排序用；值越小越靠前
+    sort_order = Column(Integer, nullable=False, default=0, index=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

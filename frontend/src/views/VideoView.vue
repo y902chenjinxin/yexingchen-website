@@ -278,6 +278,8 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import { downloadVideoTemplate, getVideoUploaders } from '@/api/video'
+import { reorderVideo } from '@/api/video'
+import { useRowDragSort } from '@/composables/useRowDragSort'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 const videoStore = useVideoStore()
@@ -304,6 +306,15 @@ const { page, pageSize, total, paged: pagedRows, sizes, onPageChange, onSizeChan
   computed(() => videoStore.list),
   { defaultSize: 10 }
 )
+
+/* v2.46.188：PC 端按住左键上下拖拽调顺序（手机端不启用，避免和滚动冲突） */
+useRowDragSort({
+  getTableEl: () => tableRef.value?.$el,
+  getRows: () => videoStore.list,
+  getOffset: () => (isMobile.value ? 0 : (page.value - 1) * pageSize.value),
+  enabled: () => !isMobile.value,
+  onCommit: () => reorderVideo(videoStore.list.map((r) => r.id)),
+})
 
 const showEdit = ref(false)
 const saving = ref(false)

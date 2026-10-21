@@ -38,7 +38,7 @@ async def list_novels(
             query = query.filter(Novel.tags.contains(tag.strip()))
 
     total = query.count()
-    items = query.order_by(Novel.created_at.desc()).offset((page - 1) * size).limit(size).all()
+    items = query.order_by(Novel.sort_order.asc(), Novel.created_at.desc()).offset((page - 1) * size).limit(size).all()
 
     return ResponseBase(data={
         "list": [
@@ -108,6 +108,27 @@ async def upload_novel(
                detail=f"上传小说：{title}", ip_address="")
 
     return ResponseBase(msg="上传成功", data={"id": novel.id})
+
+
+@router.put("/reorder", response_model=ResponseBase)
+async def reorder_novel_list(payload: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """拖拽排序（v2.46.188）：按传入的 id 顺序重写 sort_order。
+    只处理确实存在的 id，前端传多/传错不会 500。"""
+    ids = payload.get("ids") or []
+    if not isinstance(ids, list) or not ids:
+        raise_error(ErrCode.INVALID_PARAM, "缺少 ids")
+    try:
+        id_list = [int(i) for i in ids]
+    except (TypeError, ValueError):
+        raise_error(ErrCode.INVALID_PARAM, "ids 必须是整数数组")
+    rows = db.query(Novel).filter(Novel.id.in_(id_list)).all()
+    found = {row.id: row for row in rows}
+    for pos, mid in enumerate(id_list):
+        target = found.get(mid)
+        if target is not None:
+            target.sort_order = pos
+    db.commit()
+    return ResponseBase(msg="已保存顺序")
 
 
 @router.put("/{novel_id}", response_model=ResponseBase)
@@ -302,5 +323,3 @@ async def download_novel_template(current_user: dict = Depends(get_current_user)
             "Cache-Control": "no-cache",
         },
     )
-
-

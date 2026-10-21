@@ -55,6 +55,7 @@
 
       <el-table
         ref="tableRef"
+       
         :data="pagedRows"
         v-loading="musicStore.loading"
         stripe
@@ -330,6 +331,8 @@ import { useMusicStore } from '@/stores/music'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { downloadMusicTemplate, getMusicUploaders } from '@/api/music'
+import { reorderMusic } from '@/api/music'
+import { useRowDragSort } from '@/composables/useRowDragSort'
 
 const { isMobile } = useIsMobile()
 const musicStore = useMusicStore()
@@ -355,6 +358,14 @@ const pagedRows = computed(() => {
   const size = isMobile.value ? Math.max(musicStore.list.length, 1) : pageSize.value
   const start = isMobile.value ? 0 : (page.value - 1) * size
   return musicStore.list.slice(start, start + size)
+})
+/* v2.46.188：PC 端按住左键上下拖拽调顺序（手机端不启用，避免和滚动冲突） */
+useRowDragSort({
+  getTableEl: () => tableRef.value?.$el,
+  getRows: () => musicStore.list,
+  getOffset: () => (isMobile.value ? 0 : (page.value - 1) * pageSize.value),
+  enabled: () => !isMobile.value,
+  onCommit: () => reorderMusic(musicStore.list.map((r) => r.id)),
 })
 function onSizeChange(sz) { pageSize.value = sz; page.value = 1 }
 function onPageChange(p) { page.value = p }

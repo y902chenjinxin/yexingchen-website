@@ -38,3 +38,6 @@ export const downloadMusicTemplate = async () => {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+/** 拖拽排序（v2.46.188）：按传入的 id 顺序保存 */
+export const reorderMusic = (ids) => api.put('/music/reorder', { ids })

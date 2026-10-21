@@ -23,6 +23,57 @@
 
 ---
 
+## [v2.46.189] - 2026-10-21
+
+### 管理列表支持 PC 端拖拽排序（按住左键上下拖）
+
+夜星：「所有的管理列表，在 pc 端都支持一种交互，鼠标左键点击不放，可上下拖拽摆放位置」
+
+#### 范围
+| 页面 | 表 | 状态 |
+|---|---|---|
+| 音乐 | `music` | ✅ 已接 |
+| 小说 | `novels` | ✅ 已接（表为空） |
+| 视频 | `videos` | ✅ 已接（表为空） |
+| 工具 / 爬虫 | `tool` | 本来就有 `sort_order`，**未接**（见下） |
+
+#### 实现
+1. **后端**：三张表加 `sort_order`，列表查询改 `order_by(sort_order.asc(), created_at.desc())`，
+   各自新增 `PUT /api/{module}/reorder`（body `{ids:[...]}`，按数组顺序重写 `sort_order`）。
+2. **前端**：新增 `composables/useRowDragSort.js` —— **实时重排**（不画跟随浮层），
+   拖动时数组元素跟着 swap，视觉上就是「把这一行挪到了那儿」，和 iOS 列表拖拽一致。
+   分页场景用 `getOffset()` 把页内索引换算成源数组全局索引；`enabled: () => !isMobile.value` 让手机端不启用（避免抢滚动）。
+3. 全局 CSS：拖动时 `body.is-row-dragging` 锁 `user-select` / `cursor: grabbing`，并关掉行的 transition（否则行会"飘"）。
+
+#### 🔴 踩了两个大坑，值得记下来
+**坑 1：模板上 `@mousedown` 收不到事件。** 绑在 `<el-table>` 根元素上，实测完全不触发
+（el-table 内部拦了一部分鼠标事件）。改成 composable 里 **`document.addEventListener('mousedown')`**
++ `root.contains(e.target)` 判断范围，一次就通了。
+
+**坑 2：alembic 迁移环境本身是坏的。** 第一次跑 `upgrade` 报
+`Multiple head revisions` → 我用的 revision id `b7c8d9e0f1a2` **与已有的 habit_penalty 重号**，
+且 `down_revision` 错接。改名成 `e1f2a3b4c5d6` 并接到 `c8d9e0f1a2b3` 之后，又报
+**`Cycle is detected in revisions`** —— 服务器上的迁移链本身存在循环引用（历史遗留）。
+
+后果：`alembic upgrade head` 根本跑不了，**三张表都没有 `sort_order` 列，导致
+`/api/music`、`/api/novels`、`/api/videos` 全部 500，三个页面打不开**。
+
+处置：绕开 alembic，直接在服务器上用 SQL `ALTER TABLE` 加列 + 按 `created_at DESC` 回填
+（music 51 行，novels/videos 空表），接口立刻恢复 200。
+仓库里的 migration 文件保留（带 `if not in cols` 幂等保护），等 alembic 链修好后仍可用。
+
+> **待办**：alembic 的循环引用必须单独修（`docs/ISSUES.md` V2444-002），否则以后所有
+> schema 变更都跑不了自动迁移，只能手工 SQL。
+
+#### 验证
+- 后端：`PUT /api/music/reorder` 交换前两条 → 再查列表顺序确实变了（`orderChanged: true`），已恢复原位。
+- 前端：模拟按住第一行下拖两行 → 顺序变为 `[烟火里的尘埃, New Born, 武家坡2021, ...]`，
+  并发出 `PUT /music/reorder`，无 JS 错误。测试后已按 `created_at` 重排恢复原始顺序。
+
+版本 SW v502→v503、APP_VERSION v2.46.188→v2.46.189。
+
+---
+
 ## [v2.46.187] - 2026-10-21
 
 ### ① 暴力摩托：接入 AI 生成的骑手精灵（替换手绘方块）

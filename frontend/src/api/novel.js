@@ -39,3 +39,6 @@ export const downloadNovelTemplate = async () => {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+/** 拖拽排序（v2.46.188）：按传入的 id 顺序保存 */
+export const reorderNovel = (ids) => api.put('/novel/reorder', { ids })

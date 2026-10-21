@@ -1861,3 +1861,25 @@
 
 **待做**：改为「上传到临时目录 → 校验 → 原子 mv 切换」，彻底消除残缺窗口。
 （部署主通道，需单独排期，不能随手改。）
+
+### V2444-002 alembic 迁移链存在循环引用（2026-10-21，待修）
+
+**现象**：`cd backend && venv/bin/alembic upgrade head` 报
+`Cycle is detected in revisions (a1b2c3d4e5f6, a3b4c5d6e7f8, a7b8c9d0e1f2, b7c8d9e0f1a2,
+c8d9e0f1a2b3, c9d0e1f2a3b4, e1f2a3b4c5d6, e2f3a4b5c6d7, f2a3b4c5d6e7, f3a4b5c6d7e8, t7b8c9d0e1f2)`，
+`alembic current` 也报同样错误。另有 `Revision xxx is present more than once` 警告（多个文件重号）。
+
+**影响**：所有 schema 变更都无法通过 `alembic upgrade` 自动执行。
+本次加 `sort_order` 就是因此静默跳过，导致三个接口 500、页面打不开，最后手工 SQL 救回来。
+
+**成因推测**：历史上有过手工造 revision id（`a1b2c3d4e5f6` / `t7b8c9d0e1f2` 这类可读 id），
+与真实哈希链混用，且多次并行开发产生分叉。
+
+**修法（需单独排期）**：
+1. `alembic history --verbose` 导出全链，画出真实 DAG；
+2. 对重号文件改 `revision` 为唯一值，`down_revision` 接到实际前驱；
+3. 断掉形成环的那条边（通常是某个 `down_revision` 指向了它的后继）；
+4. 修好后 `alembic stamp <真实版本>` 让 DB 记录对齐；
+5. **必须先在数据库副本上演练**，不能直接对生产库动手。
+
+在此之前：**schema 变更一律手工 SQL + 在 migration 文件里写幂等保护**（`if col not in cols`）。

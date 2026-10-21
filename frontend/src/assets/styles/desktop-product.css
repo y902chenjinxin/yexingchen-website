@@ -171,6 +171,20 @@
   border-radius: 4px;
 }
 
+/* v2.46.188 列表拖拽排序：拖动过程中锁定手势与文本选择，并关掉行的过渡动画
+   （实时重排时如果还有 transition，行会"飘"着走，看起来像卡顿） */
+body.is-row-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+body.is-row-dragging .el-table__body tr {
+  transition: none !important;
+}
+body.is-row-dragging .el-table__body tr:hover > td.el-table__cell {
+  background: inherit !important;
+}
+
 /* =====================================================================
  * F. 玉简：只改视觉（底色/描边/标签/指示器聚焦），尺寸/位姿/拖拽一律不动
  * ===================================================================== */
