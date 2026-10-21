@@ -1007,7 +1007,7 @@ async function applyBatchFund(fund) {
   } catch { /* 错误已由 api 拦截器提示 */ }
 }
 
-const PALETTE = ['#7FA8A3', '#C7A96B', '#6E8BA6', '#B98BA6', '#8BB07A', '#C98B6B', '#6FA6C9', '#A98BC9', '#7F8FA3']
+const PALETTE = ['var(--c-jade)', 'var(--c-gold)', '#6E8BA6', '#B98BA6', '#8BB07A', '#C98B6B', '#6FA6C9', '#A98BC9', '#7F8FA3']
 
 const now = new Date()
 const pad = (n) => String(n).padStart(2, '0')

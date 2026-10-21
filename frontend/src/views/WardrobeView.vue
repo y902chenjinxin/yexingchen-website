@@ -617,7 +617,7 @@ function collage(opt) {
   ctx.fillStyle = '#18202A'
   ctx.font = '700 44px "PingFang SC", "Microsoft YaHei", sans-serif'
   ctx.fillText(`${activePerson.value?.name || ''} 今天穿这套`, 60, 96)
-  ctx.fillStyle = '#C7A96B'
+  ctx.fillStyle = 'var(--c-gold)'
   ctx.font = '400 24px "PingFang SC", "Microsoft YaHei", sans-serif'
   ctx.fillText(new Date().toLocaleDateString('zh-CN'), 60, 138)
 

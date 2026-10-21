@@ -44,7 +44,7 @@
   --el-border-color-light: #22313d;
   --el-border-color-lighter: #1f2d37;
   --el-border-color-extra-light: #1b2933;
-  --el-border-color-hover: #7fa8a3;
+  --el-border-color-hover: var(--c-jade);
   --el-border-color-dark: #33444f;
 
   /* ---- 柔和多层阴影 ---- */

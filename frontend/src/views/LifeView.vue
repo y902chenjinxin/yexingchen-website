@@ -537,7 +537,7 @@ const CHART_PAD_T = 28
 const CHART_PAD_B = 24
 
 // 每位成员一条折线
-const PALETTE = ['#c7a96b', '#7fa8a3', '#d97706', '#4f5ed1', '#16a34a', '#dc2626', '#a855f7']
+const PALETTE = ['var(--c-gold)', 'var(--c-jade)', '#d97706', '#4f5ed1', '#16a34a', '#dc2626', '#a855f7']
 const weightLines = computed(() => {
   const lines = []
   const byMember = new Map()
@@ -1195,14 +1195,14 @@ onBeforeUnmount(() => {
 .meal-lb-bar { padding: 12px 16px 14px; }
 .meal-lb-meta { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .meal-lb-meta .meal-type-tag { position: static; }
-.meal-lb-name { font-size: 13px; color: #f2eee4; font-weight: 600; }
+.meal-lb-name { font-size: 13px; color: var(--c-paper); font-weight: 600; }
 .meal-lb-date { font-size: 11.5px; color: rgba(242,238,228,.62); font-variant-numeric: tabular-nums; }
 .meal-lb-note { margin: 7px 0 0; font-size: 13px; line-height: 1.6; color: rgba(242,238,228,.86); }
 .meal-lb-ops { display: flex; gap: 8px; margin-top: 12px; }
 .meal-lb-btn {
   padding: 6px 16px; border-radius: 8px; cursor: pointer;
   border: 1px solid rgba(255,255,255,.22);
-  background: rgba(255,255,255,.07); color: #f2eee4;
+  background: rgba(255,255,255,.07); color: var(--c-paper);
   font-family: inherit; font-size: 12.5px;
   transition: border-color .16s, background .16s, color .16s;
 }

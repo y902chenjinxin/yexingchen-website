@@ -123,7 +123,7 @@ let W = 720
 let H = props.height
 
 const padT = 16, padB = 20, padL = 10, padR = 56, volH = 62, volGap = 8
-const RISE = '#d8504f', FALL = '#3f968e', PREY = '#c7a96b'
+const RISE = '#d8504f', FALL = '#3f968e', PREY = 'var(--c-gold)'
 const preyColor = PREY
 const MA_C = { 5: '#f0aa3c', 10: '#4f9dde', 20: '#c07be0' }
 const MIN_COUNT = 15
@@ -488,7 +488,7 @@ onBeforeUnmount(() => { ro && ro.disconnect() })
 .kc-grid line { stroke: rgba(74, 95, 99, 0.10); stroke-dasharray: 2 4; }
 .kc-lbl { font-size: 10px; fill: rgba(111, 138, 138, 0.75); }
 .kc-prev line { stroke-dasharray: 3 3; stroke-width: 1; }
-.kc-prev-txt { font-size: 10px; fill: #c7a96b; }
+.kc-prev-txt { font-size: 10px; fill: var(--c-gold); }
 .kc-ref line { stroke: #e5944e; stroke-dasharray: 5 4; stroke-width: 1.2; }
 .kc-ref-txt { font-size: 10px; fill: #e5944e; font-weight: 600; }
 .kc-wick { stroke-linecap: round; }
@@ -499,14 +499,14 @@ onBeforeUnmount(() => { ro && ro.disconnect() })
 .kc-leg-k { font-size: 11px; fill: var(--lj-text-2, #8a9499); font-weight: 600; }
 .kc-leg-t { font-size: 10px; fill: var(--lj-text-3, #9aa3a6); }
 .kc-cross-line { stroke: rgba(120, 150, 150, 0.4); stroke-dasharray: 2 3; }
-.kc-cross-dot { fill: #c7a96b; stroke: #fff; stroke-width: 1; }
+.kc-cross-dot { fill: var(--c-gold); stroke: #fff; stroke-width: 1; }
 
 /* 底部时间轴 */
 .kc-strip { margin-top: 12px; padding: 0 0 2px; }
 .kc-strip-track { position: relative; height: 18px; border-radius: 9px; background: rgba(120, 150, 150, 0.14); }
 .kc-strip-window { position: absolute; top: 0; height: 18px; border-radius: 9px; background: rgba(199, 169, 107, 0.35); cursor: grab; }
 .kc-strip-window:active { cursor: grabbing; }
-.kc-thumb { position: absolute; top: -3px; width: 9px; height: 24px; border-radius: 5px; background: #c7a96b; cursor: ew-resize; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.kc-thumb { position: absolute; top: -3px; width: 9px; height: 24px; border-radius: 5px; background: var(--c-gold); cursor: ew-resize; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .kc-thumb.left { left: -3px; }
 .kc-thumb.right { right: -3px; }
 .kc-strip-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--lj-text-3); }
@@ -521,7 +521,7 @@ onBeforeUnmount(() => { ro && ro.disconnect() })
 }
 .kc-tip.right { left: 12px; }
 .kc-tip.left { right: 12px; }
-.kc-tip-date { color: #c7a96b; margin-bottom: 3px; letter-spacing: .02em; }
+.kc-tip-date { color: var(--c-gold); margin-bottom: 3px; letter-spacing: .02em; }
 .kc-tip-row { display: flex; justify-content: space-between; gap: 12px; color: rgba(219, 228, 226, 0.55); }
 .kc-tip-row b { font-weight: 600; color: #e8eef0; font-variant-numeric: tabular-nums; }
 .kc-tip-meta { margin-top: 3px; color: rgba(219, 228, 226, 0.55); font-size: 10.5px; }

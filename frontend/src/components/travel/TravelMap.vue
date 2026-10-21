@@ -446,7 +446,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 .tc-title { font-size: 13px; font-weight: 600; color: #e4cd9a; margin-bottom: 4px; }
 .tc-line { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--lj-text-2); flex-wrap: wrap; }
 .tc-cities { opacity: .85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.tc-badge { color: #7fa8a3; }
+.tc-badge { color: var(--c-jade); }
 .tc-list { display: flex; flex-direction: column; gap: 5px; }
 .tc-trip { display: flex; align-items: center; gap: 6px; color: var(--lj-text-2); font-size: 12px; cursor: pointer;
   background: none; border: none; padding: 3px 2px; text-align: left; border-radius: 6px; }

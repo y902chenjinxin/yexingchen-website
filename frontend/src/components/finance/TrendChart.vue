@@ -173,7 +173,7 @@ function fmt(v) { return Number(v || 0).toFixed(1).replace(/\.0$/, '') }
 .tc-peak-dot { opacity: 0; animation: tc-fade .4s ease forwards; }
 .tc-peak-txt { font-size: 10px; fill: var(--lj-text-3); letter-spacing: .03em; }
 .tc-peak-txt-exp { fill: #C05C4E; opacity: .95; }
-.tc-peak-txt-inc { fill: #C7A96B; opacity: .95; }
+.tc-peak-txt-inc { fill: var(--c-gold); opacity: .95; }
 
 .tc-cross { stroke: rgba(127,168,163,.4); stroke-width: 1; stroke-dasharray: 3 3; }
 .tc-hover-dot { opacity: 0; animation: tc-fade .15s ease forwards; }
@@ -198,7 +198,7 @@ function fmt(v) { return Number(v || 0).toFixed(1).replace(/\.0$/, '') }
 .tc-tip-day { font-size: 11px; color: var(--lj-text-2); letter-spacing: .05em; margin-bottom: 2px; }
 .tc-tip-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .tc-tip-row b { font-variant-numeric: tabular-nums; font-weight: 600; }
-.tc-tip-row.inc b { color: #C7A96B; }
+.tc-tip-row.inc b { color: var(--c-gold); }
 .tc-tip-row.exp b { color: #C05C4E; }
 @media (prefers-reduced-motion: reduce) { .tc-line,.tc-area { opacity: 1; animation: none; } .tc-peak-dot,.tc-hover-dot { opacity: 1; animation: none; } }
 </style>

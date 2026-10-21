@@ -23,6 +23,36 @@
 
 ---
 
+## [v2.46.165] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1（安全部分）：24 处纯硬编码换 `--c-*`
+
+只做**等值替换**（视觉零变化），共 24 处 CSS 声明 / 12 个文件：
+`#c7a96b → var(--c-gold)` 21 处、`#7fa8a3 → var(--c-jade)` 7 处、`#f2eee4 → var(--c-paper)` 2 处。
+
+**跳过 6 处 SVG 属性**（`TrendChart.vue` 的 `fill="#C7A96B"` / `stop-color=`）：
+SVG 属性里用 `var()` 虽可行，但将来若走 canvas 导出会解析失败，先不动。
+
+**验证**：构建产物实测 `.kc-prev-txt{fill:var(--c-gold)}`、`.kc-cross-dot{fill:var(--c-gold)}`；
+`--c-gold` 解析为 `#c7a96b`（原值），等值替换、无视觉变化；夜/日两主题一致。
+
+#### 统计上的重要修正（推翻了原计划假设）
+`#c7a96b` 那 210 处里，**只有 21 处是纯硬编码，167 处是 `var(--yq-gold, #c7a96b)` 的 fallback**
+（另有 20 处 `--color-accent`、6 处 `--lj-ochre`）。
+
+含义：这些地方**本来就在用 token，问题是 token 指错了**（`--yq-gold` 在技术主题下是青色）。
+修它们不是"替换色值"，而是「`var(--yq-gold, #c7a96b)` → `var(--c-gold)`」——
+**会把青变成金，是可见变化**。抽样看语义（标题/按钮/描边/渐变）确实都是"鎏金装饰"，
+但要不要改属于产品决策，本轮不做，等夜星拍板。
+
+#### 顺带发现（未修）
+`KlineChart.vue:32` 模板用了未定义的 `tagW`（`:width="tagW"`），eslint `vue/no-undef-properties`。
+与本次颜色替换无关，属既有缺陷；没有依据推断期望宽度，未擅改。
+
+版本 SW v478→v479、APP_VERSION v2.46.164→v2.46.165。
+
+---
+
 ## [v2.46.164] - 2026-10-21
 
 ### 颜色 token 化 · 阶段 0：固定色 token 族 `--c-*`（9 个）
@@ -225,6 +255,36 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - 击倒对手、命中、摔车都接上了音效与火花。
 
 版本 SW v472→v473、APP_VERSION v2.46.158→v2.46.159。
+
+---
+
+## [v2.46.165] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1（安全部分）：24 处纯硬编码换 `--c-*`
+
+只做**等值替换**（视觉零变化），共 24 处 CSS 声明 / 12 个文件：
+`#c7a96b → var(--c-gold)` 21 处、`#7fa8a3 → var(--c-jade)` 7 处、`#f2eee4 → var(--c-paper)` 2 处。
+
+**跳过 6 处 SVG 属性**（`TrendChart.vue` 的 `fill="#C7A96B"` / `stop-color=`）：
+SVG 属性里用 `var()` 虽可行，但将来若走 canvas 导出会解析失败，先不动。
+
+**验证**：构建产物实测 `.kc-prev-txt{fill:var(--c-gold)}`、`.kc-cross-dot{fill:var(--c-gold)}`；
+`--c-gold` 解析为 `#c7a96b`（原值），等值替换、无视觉变化；夜/日两主题一致。
+
+#### 统计上的重要修正（推翻了原计划假设）
+`#c7a96b` 那 210 处里，**只有 21 处是纯硬编码，167 处是 `var(--yq-gold, #c7a96b)` 的 fallback**
+（另有 20 处 `--color-accent`、6 处 `--lj-ochre`）。
+
+含义：这些地方**本来就在用 token，问题是 token 指错了**（`--yq-gold` 在技术主题下是青色）。
+修它们不是"替换色值"，而是「`var(--yq-gold, #c7a96b)` → `var(--c-gold)`」——
+**会把青变成金，是可见变化**。抽样看语义（标题/按钮/描边/渐变）确实都是"鎏金装饰"，
+但要不要改属于产品决策，本轮不做，等夜星拍板。
+
+#### 顺带发现（未修）
+`KlineChart.vue:32` 模板用了未定义的 `tagW`（`:width="tagW"`），eslint `vue/no-undef-properties`。
+与本次颜色替换无关，属既有缺陷；没有依据推断期望宽度，未擅改。
+
+版本 SW v478→v479、APP_VERSION v2.46.164→v2.46.165。
 
 ---
 
@@ -652,6 +712,36 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 
 ---
 
+## [v2.46.165] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1（安全部分）：24 处纯硬编码换 `--c-*`
+
+只做**等值替换**（视觉零变化），共 24 处 CSS 声明 / 12 个文件：
+`#c7a96b → var(--c-gold)` 21 处、`#7fa8a3 → var(--c-jade)` 7 处、`#f2eee4 → var(--c-paper)` 2 处。
+
+**跳过 6 处 SVG 属性**（`TrendChart.vue` 的 `fill="#C7A96B"` / `stop-color=`）：
+SVG 属性里用 `var()` 虽可行，但将来若走 canvas 导出会解析失败，先不动。
+
+**验证**：构建产物实测 `.kc-prev-txt{fill:var(--c-gold)}`、`.kc-cross-dot{fill:var(--c-gold)}`；
+`--c-gold` 解析为 `#c7a96b`（原值），等值替换、无视觉变化；夜/日两主题一致。
+
+#### 统计上的重要修正（推翻了原计划假设）
+`#c7a96b` 那 210 处里，**只有 21 处是纯硬编码，167 处是 `var(--yq-gold, #c7a96b)` 的 fallback**
+（另有 20 处 `--color-accent`、6 处 `--lj-ochre`）。
+
+含义：这些地方**本来就在用 token，问题是 token 指错了**（`--yq-gold` 在技术主题下是青色）。
+修它们不是"替换色值"，而是「`var(--yq-gold, #c7a96b)` → `var(--c-gold)`」——
+**会把青变成金，是可见变化**。抽样看语义（标题/按钮/描边/渐变）确实都是"鎏金装饰"，
+但要不要改属于产品决策，本轮不做，等夜星拍板。
+
+#### 顺带发现（未修）
+`KlineChart.vue:32` 模板用了未定义的 `tagW`（`:width="tagW"`），eslint `vue/no-undef-properties`。
+与本次颜色替换无关，属既有缺陷；没有依据推断期望宽度，未擅改。
+
+版本 SW v478→v479、APP_VERSION v2.46.164→v2.46.165。
+
+---
+
 ## [v2.46.164] - 2026-10-21
 
 ### 颜色 token 化 · 阶段 0：固定色 token 族 `--c-*`（9 个）
@@ -1024,6 +1114,36 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - 顺手把 `GamesView` 里暴力摩托的规则文案补上赛道与车辆两条。
 
 版本 SW v459→v460、APP_VERSION v2.46.145→v2.46.146。
+
+---
+
+## [v2.46.165] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1（安全部分）：24 处纯硬编码换 `--c-*`
+
+只做**等值替换**（视觉零变化），共 24 处 CSS 声明 / 12 个文件：
+`#c7a96b → var(--c-gold)` 21 处、`#7fa8a3 → var(--c-jade)` 7 处、`#f2eee4 → var(--c-paper)` 2 处。
+
+**跳过 6 处 SVG 属性**（`TrendChart.vue` 的 `fill="#C7A96B"` / `stop-color=`）：
+SVG 属性里用 `var()` 虽可行，但将来若走 canvas 导出会解析失败，先不动。
+
+**验证**：构建产物实测 `.kc-prev-txt{fill:var(--c-gold)}`、`.kc-cross-dot{fill:var(--c-gold)}`；
+`--c-gold` 解析为 `#c7a96b`（原值），等值替换、无视觉变化；夜/日两主题一致。
+
+#### 统计上的重要修正（推翻了原计划假设）
+`#c7a96b` 那 210 处里，**只有 21 处是纯硬编码，167 处是 `var(--yq-gold, #c7a96b)` 的 fallback**
+（另有 20 处 `--color-accent`、6 处 `--lj-ochre`）。
+
+含义：这些地方**本来就在用 token，问题是 token 指错了**（`--yq-gold` 在技术主题下是青色）。
+修它们不是"替换色值"，而是「`var(--yq-gold, #c7a96b)` → `var(--c-gold)`」——
+**会把青变成金，是可见变化**。抽样看语义（标题/按钮/描边/渐变）确实都是"鎏金装饰"，
+但要不要改属于产品决策，本轮不做，等夜星拍板。
+
+#### 顺带发现（未修）
+`KlineChart.vue:32` 模板用了未定义的 `tagW`（`:width="tagW"`），eslint `vue/no-undef-properties`。
+与本次颜色替换无关，属既有缺陷；没有依据推断期望宽度，未擅改。
+
+版本 SW v478→v479、APP_VERSION v2.46.164→v2.46.165。
 
 ---
 
@@ -1455,6 +1575,36 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 `App.vue`：把排除清单提成常量 `ISLAND_FOOTER_PREFIXES = ['music','novel','video','log','tool','history','life','play']`，`showGlobalFooter` 改为 `!ISLAND_FOOTER_PREFIXES.includes(p.split('/')[1] || '')`。只加两个前缀 + 换精确比对，不动任何页面渲染逻辑（岛屿页脚仍在 `IslandInnerBase` 里，非岛屿页仍由 App 兜底）。
 
 版本 SW v458→v459、APP_VERSION v2.46.144→v2.46.145。
+
+---
+
+## [v2.46.165] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1（安全部分）：24 处纯硬编码换 `--c-*`
+
+只做**等值替换**（视觉零变化），共 24 处 CSS 声明 / 12 个文件：
+`#c7a96b → var(--c-gold)` 21 处、`#7fa8a3 → var(--c-jade)` 7 处、`#f2eee4 → var(--c-paper)` 2 处。
+
+**跳过 6 处 SVG 属性**（`TrendChart.vue` 的 `fill="#C7A96B"` / `stop-color=`）：
+SVG 属性里用 `var()` 虽可行，但将来若走 canvas 导出会解析失败，先不动。
+
+**验证**：构建产物实测 `.kc-prev-txt{fill:var(--c-gold)}`、`.kc-cross-dot{fill:var(--c-gold)}`；
+`--c-gold` 解析为 `#c7a96b`（原值），等值替换、无视觉变化；夜/日两主题一致。
+
+#### 统计上的重要修正（推翻了原计划假设）
+`#c7a96b` 那 210 处里，**只有 21 处是纯硬编码，167 处是 `var(--yq-gold, #c7a96b)` 的 fallback**
+（另有 20 处 `--color-accent`、6 处 `--lj-ochre`）。
+
+含义：这些地方**本来就在用 token，问题是 token 指错了**（`--yq-gold` 在技术主题下是青色）。
+修它们不是"替换色值"，而是「`var(--yq-gold, #c7a96b)` → `var(--c-gold)`」——
+**会把青变成金，是可见变化**。抽样看语义（标题/按钮/描边/渐变）确实都是"鎏金装饰"，
+但要不要改属于产品决策，本轮不做，等夜星拍板。
+
+#### 顺带发现（未修）
+`KlineChart.vue:32` 模板用了未定义的 `tagW`（`:width="tagW"`），eslint `vue/no-undef-properties`。
+与本次颜色替换无关，属既有缺陷；没有依据推断期望宽度，未擅改。
+
+版本 SW v478→v479、APP_VERSION v2.46.164→v2.46.165。
 
 ---
 
@@ -1987,6 +2137,36 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - **覆盖范围**：外壳（顶栏 / 命令面板 / AI 抽屉）→ 工作台（天气 / 服务器监测 / 此刻）→ 记账 / 资讯 / 生活 / 通讯录 / 足迹 → 工具集（PDF / 压缩 / 证件照 / 水印 / 音色克隆 / 弹幕 / 密码 / ASR / 倒计时等）→ 棋牌三件套 + 大富翁 + 五子棋 / 围棋 / 象棋 / 军棋 / 飞行棋，**90+ 文件**；通知标题、tooltip、规则说明里当装饰用的 emoji 一并去掉。
 - **保留（有意不改）**：`♠♥♣♦` 牌面花色、`⌘ ⇧` 键盘记号、CSS `content:'✈'` 之类版面排版字符 —— 属字体排版而非图标，且散落在卡片角标与 CSS 伪元素里，替换会改变牌面版式；`→ ↑ ↓ ‹ › ▾` 等句中分隔符同样保留。
 - 版本 SW v442→v443、APP_VERSION v2.46.128→v2.46.129。
+
+---
+
+## [v2.46.165] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1（安全部分）：24 处纯硬编码换 `--c-*`
+
+只做**等值替换**（视觉零变化），共 24 处 CSS 声明 / 12 个文件：
+`#c7a96b → var(--c-gold)` 21 处、`#7fa8a3 → var(--c-jade)` 7 处、`#f2eee4 → var(--c-paper)` 2 处。
+
+**跳过 6 处 SVG 属性**（`TrendChart.vue` 的 `fill="#C7A96B"` / `stop-color=`）：
+SVG 属性里用 `var()` 虽可行，但将来若走 canvas 导出会解析失败，先不动。
+
+**验证**：构建产物实测 `.kc-prev-txt{fill:var(--c-gold)}`、`.kc-cross-dot{fill:var(--c-gold)}`；
+`--c-gold` 解析为 `#c7a96b`（原值），等值替换、无视觉变化；夜/日两主题一致。
+
+#### 统计上的重要修正（推翻了原计划假设）
+`#c7a96b` 那 210 处里，**只有 21 处是纯硬编码，167 处是 `var(--yq-gold, #c7a96b)` 的 fallback**
+（另有 20 处 `--color-accent`、6 处 `--lj-ochre`）。
+
+含义：这些地方**本来就在用 token，问题是 token 指错了**（`--yq-gold` 在技术主题下是青色）。
+修它们不是"替换色值"，而是「`var(--yq-gold, #c7a96b)` → `var(--c-gold)`」——
+**会把青变成金，是可见变化**。抽样看语义（标题/按钮/描边/渐变）确实都是"鎏金装饰"，
+但要不要改属于产品决策，本轮不做，等夜星拍板。
+
+#### 顺带发现（未修）
+`KlineChart.vue:32` 模板用了未定义的 `tagW`（`:width="tagW"`），eslint `vue/no-undef-properties`。
+与本次颜色替换无关，属既有缺陷；没有依据推断期望宽度，未擅改。
+
+版本 SW v478→v479、APP_VERSION v2.46.164→v2.46.165。
 
 ---
 

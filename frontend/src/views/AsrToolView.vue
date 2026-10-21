@@ -195,7 +195,7 @@ onBeforeUnmount(() => {
 .at-record {
   display: inline-flex; align-items: center; gap: 10px; padding: 12px 26px; border-radius: 999px;
   border: none; cursor: pointer; font-size: 14.5px; font-weight: 600; color: #fff;
-  background: linear-gradient(135deg, #c7a96b, #b08d4f);
+  background: linear-gradient(135deg, var(--c-gold), #b08d4f);
 }
 .at-record:disabled { opacity: .55; cursor: not-allowed; }
 .at-record.recording { background: linear-gradient(135deg, #e5484d, #c93a3f); }

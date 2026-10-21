@@ -172,8 +172,8 @@ async function onDecline(inv) {
   padding: 2px 7px; border-radius: 999px;
   font-size: 10.5px; font-weight: 600;
 }
-.mid-tag.chess { background: rgba(127, 168, 163, .18); color: #7fa8a3; }
-.mid-tag.table { background: rgba(199, 169, 107, .18); color: #c7a96b; }
+.mid-tag.chess { background: rgba(127, 168, 163, .18); color: var(--c-jade); }
+.mid-tag.table { background: rgba(199, 169, 107, .18); color: var(--c-gold); }
 .mid-row__txt {
   min-width: 0; font-size: 12.5px; line-height: 1.45;
   color: var(--lj-text, #e8eaee);

@@ -256,12 +256,12 @@ onMounted(() => load())
 /* vue-cal 主题覆盖 — 玄黄暗调，与项目卡片融合 */
 .ht-vuecal.vuecal {
   /* 主色统一为玄灰，主色不参与装饰（self title-bar 已关闭） */
-  --vuecal-primary-color: #c7a96b;
+  --vuecal-primary-color: var(--c-gold);
   --vuecal-secondary-color: transparent;
   --vuecal-base-color: transparent;
   --vuecal-cell-border-color: var(--dp-line, rgba(127,127,127,0.1));
   --vuecal-heading-color: rgba(127,127,127,0.45);
-  --vuecal-today-color: #c7a96b;
+  --vuecal-today-color: var(--c-gold);
   --vuecal-time-color: var(--lj-text-2);
   /* 全局自检：去掉默认主题黄/绿色块 */
   --vuecal-header-color: transparent;

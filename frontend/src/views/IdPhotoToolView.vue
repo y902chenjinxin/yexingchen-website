@@ -700,7 +700,7 @@ drawCrop()
 .idp-color.active { border-color: var(--lj-ochre); transform: scale(1.08); }
 .idp-color-pick { position: relative; width: 26px; height: 26px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 2px solid transparent; }
 .idp-rainbow { position: absolute; inset: 0;
-  background: conic-gradient(#fff,#e23a3a,#ffd34d,#3b73c6,#7fa8a3,#fff); }
+  background: conic-gradient(#fff,#e23a3a,#ffd34d,#3b73c6,var(--c-jade),#fff); }
 .idp-color-input { position: absolute; inset: -10px; width: 46px; height: 46px; opacity: 0; cursor: pointer; }
 .idp-color-name { font-size: 12px; color: var(--lj-text-3); }
 

@@ -89,9 +89,9 @@ const ROLE_ANCHOR = {
 }
 
 const ROLE_COLOR = {
-  self: '#c7a96b',
+  self: 'var(--c-gold)',
   spouse: '#d9a94f',
-  parent: '#7fa8a3',
+  parent: 'var(--c-jade)',
   sibling: '#5f8fb4',
   child: '#5fa07f',
   inlaw_parent: '#8e6a9e',
