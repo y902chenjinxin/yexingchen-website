@@ -24,6 +24,7 @@ from app.models.wardrobe import WardrobeItem, WardrobeOutfit, WardrobePersonProf
 from app.schemas.common import ResponseBase
 from app.schemas.errors import ErrCode, raise_error
 from app.services.household import HOUSEHOLD_ID, household_members, member_options, name_map
+from app.utils.query import in_house, scoped
 from app.services.member_naming import member_name
 from app.utils.security import get_current_user
 
@@ -437,8 +438,10 @@ def create_outfit(
     names, up = _member_name_map(db), name_map(db)
     items = {
         it.id: _item_to_out(it, names, up)
+        # v2.46.169：ids 来自请求参数，必须加家庭隔离（原来只过滤软删，
+        # 传入别人家的 item id 会把它们渲染进自己的搭配 —— 单家庭下无影响，多家庭即数据泄露）
         for it in db.query(WardrobeItem)
-        .filter(WardrobeItem.id.in_([int(i) for i in ids]), WardrobeItem.deleted_at.is_(None))
+        .filter(WardrobeItem.id.in_([int(i) for i in ids]), scoped(WardrobeItem))
         .all()
     }
     return ResponseBase(msg="已存入搭配库", data=_outfit_to_out(o, names, items))

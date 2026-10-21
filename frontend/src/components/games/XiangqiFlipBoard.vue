@@ -900,7 +900,7 @@ onBeforeUnmount(() => {
 }
 .xf-players { display: flex; align-items: center; justify-content: center; gap: 14px; }
 .xf-player { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; transition: all .2s; }
-.xf-player.active { background: var(--yq-gold-faint, rgba(199,169,107,.16)); box-shadow: inset 0 0 0 1px var(--yq-gold, #c7a96b); }
+.xf-player.active { background: var(--yq-accent-faint, rgba(199,169,107,.16)); box-shadow: inset 0 0 0 1px var(--yq-accent, #c7a96b); }
 .xf-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .xf-dot.red { background: radial-gradient(circle at 34% 30%, #f6b3a5, #c0392b 70%); }
 .xf-dot.black { background: radial-gradient(circle at 34% 30%, #7b8494, #1f2630 70%); }
@@ -908,7 +908,7 @@ onBeforeUnmount(() => {
 .xf-player-txt { display: flex; flex-direction: column; line-height: 1.25; }
 .xf-player-txt b { font-size: 13px; color: var(--dp-text, #18202a); }
 .xf-player-txt i { font-style: normal; font-size: 11px; color: var(--dp-text3, #8a8f98); }
-.xf-vs { color: var(--yq-gold, #c7a96b); font-size: 13px; }
+.xf-vs { color: var(--yq-accent, #c7a96b); font-size: 13px; }
 
 .xf-modes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .xf-mode {
@@ -916,12 +916,12 @@ onBeforeUnmount(() => {
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: transparent;
   color: var(--dp-text2, #45505b); transition: all .18s;
 }
-.xf-mode:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.xf-mode:hover { border-color: var(--yq-accent, #c7a96b); color: var(--yq-accent, #c7a96b); }
 .xf-mode.on {
-  background: var(--yq-gold-faint, rgba(199,169,107,.16));
-  border-color: var(--yq-gold, #c7a96b);
-  color: var(--yq-gold-deep, var(--yq-gold, #c7a96b));
-  box-shadow: 0 6px 18px var(--yq-gold-glow, rgba(199,169,107,.16));
+  background: var(--yq-accent-faint, rgba(199,169,107,.16));
+  border-color: var(--yq-accent, #c7a96b);
+  color: var(--yq-accent-deep, var(--yq-accent, #c7a96b));
+  box-shadow: 0 6px 18px var(--yq-accent-glow, rgba(199,169,107,.16));
 }
 .xf-mode:disabled { opacity: .4; cursor: not-allowed; }
 
@@ -931,13 +931,13 @@ onBeforeUnmount(() => {
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff);
   color: var(--dp-text2, #45505b); transition: all .18s;
 }
-.xf-btn:hover:not(:disabled) { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.xf-btn:hover:not(:disabled) { border-color: var(--yq-accent, #c7a96b); color: var(--yq-accent, #c7a96b); }
 .xf-btn:not(:disabled):hover { transform: scale(1.05); }
 .xf-btn:not(:disabled):active { transform: scale(.94); }
 .xf-btn:disabled { opacity: .4; cursor: not-allowed; }
-.xf-btn.primary { background: var(--yq-gold, #c7a96b); color: #fff; border-color: transparent; }
+.xf-btn.primary { background: var(--yq-accent, #c7a96b); color: #fff; border-color: transparent; }
 .xf-quota { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
-.xf-result { font-size: 13px; font-weight: 600; color: var(--yq-gold-deep, var(--yq-gold, #c7a96b)); }
+.xf-result { font-size: 13px; font-weight: 600; color: var(--yq-accent-deep, var(--yq-accent, #c7a96b)); }
 
 .xf-banner {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
@@ -945,7 +945,7 @@ onBeforeUnmount(() => {
 }
 .xf-firstnote { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .xf-pulse {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--yq-gold, #c7a96b);
+  width: 8px; height: 8px; border-radius: 50%; background: var(--yq-accent, #c7a96b);
   animation: xfPulse 1.4s ease-in-out infinite;
 }
 @keyframes xfPulse { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
@@ -963,7 +963,7 @@ onBeforeUnmount(() => {
   margin: 0; font-size: 12px; color: var(--dp-text2, #8a8f98);
   display: flex; align-items: center; gap: 6px; justify-content: center;
 }
-.xf-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: var(--yq-gold, #c7a96b); }
+.xf-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: var(--yq-accent, #c7a96b); }
 
 /* ===== 棋盘：冷调石板 + 立体盘厚（与象棋明棋同一套材质语言） ===== */
 .xf-board {
@@ -1156,12 +1156,12 @@ html[data-theme="night"] .xf-piece.black { color: #f2f6fc; text-shadow: 0 1px 3p
 /* 飞行期间先藏住落点上的真子，落定那一刻才显形（否则一子两影） */
 .xf-cell.incoming .xf-piece { opacity: 0; }
 
-.xf-cell.sel { box-shadow: 0 0 0 3px var(--yq-gold, #c7a96b), 0 0 14px rgba(199,169,107,.55); }
+.xf-cell.sel { box-shadow: 0 0 0 3px var(--yq-accent, #c7a96b), 0 0 14px rgba(199,169,107,.55); }
 .xf-cell.last { box-shadow: 0 0 0 2px rgba(80, 140, 200, .75); }
 .xf-cell.target { box-shadow: inset 0 0 0 3px rgba(199, 169, 107, .8); }
 .xf-cell.target::after {
   content: ''; position: absolute; width: 26%; height: 26%; border-radius: 50%;
-  background: var(--yq-gold, #c7a96b); opacity: .8;
+  background: var(--yq-accent, #c7a96b); opacity: .8;
 }
 .xf-cell.target:has(.xf-piece)::after, .xf-cell.target:has(.xf-back)::after { display: none; }
 

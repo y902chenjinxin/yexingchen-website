@@ -778,14 +778,14 @@ onBeforeUnmount(() => {
 }
 .xq-players { display: flex; align-items: center; justify-content: center; gap: 14px; }
 .xq-player { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; transition: all .2s; }
-.xq-player.active { background: var(--yq-gold-faint, rgba(199,169,107,.16)); box-shadow: inset 0 0 0 1px var(--yq-gold, #c7a96b); }
+.xq-player.active { background: var(--yq-accent-faint, rgba(199,169,107,.16)); box-shadow: inset 0 0 0 1px var(--yq-accent, #c7a96b); }
 .xq-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .xq-dot.red { background: radial-gradient(circle at 34% 30%, #f6b3a5, #c0392b 70%); }
 .xq-dot.black { background: radial-gradient(circle at 34% 30%, #7b8494, #1f2630 70%); }
 .xq-player-txt { display: flex; flex-direction: column; line-height: 1.25; }
 .xq-player-txt b { font-size: 13px; color: var(--dp-text, #18202a); }
 .xq-player-txt i { font-style: normal; font-size: 11px; color: var(--dp-text3, #8a8f98); }
-.xq-vs { color: var(--yq-gold, #c7a96b); font-size: 13px; }
+.xq-vs { color: var(--yq-accent, #c7a96b); font-size: 13px; }
 
 .xq-modes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .xq-mode {
@@ -793,12 +793,12 @@ onBeforeUnmount(() => {
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: transparent;
   color: var(--dp-text2, #45505b); transition: all .18s;
 }
-.xq-mode:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.xq-mode:hover { border-color: var(--yq-accent, #c7a96b); color: var(--yq-accent, #c7a96b); }
 .xq-mode.on {
-  background: var(--yq-gold-faint, rgba(199,169,107,.16));
-  border-color: var(--yq-gold, #c7a96b);
-  color: var(--yq-gold-deep, var(--yq-gold, #c7a96b));
-  box-shadow: 0 6px 18px var(--yq-gold-glow, rgba(199,169,107,.16));
+  background: var(--yq-accent-faint, rgba(199,169,107,.16));
+  border-color: var(--yq-accent, #c7a96b);
+  color: var(--yq-accent-deep, var(--yq-accent, #c7a96b));
+  box-shadow: 0 6px 18px var(--yq-accent-glow, rgba(199,169,107,.16));
 }
 .xq-mode:disabled { opacity: .4; cursor: not-allowed; }
 
@@ -808,11 +808,11 @@ onBeforeUnmount(() => {
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff);
   color: var(--dp-text2, #45505b); transition: all .18s;
 }
-.xq-btn:hover:not(:disabled) { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.xq-btn:hover:not(:disabled) { border-color: var(--yq-accent, #c7a96b); color: var(--yq-accent, #c7a96b); }
 .xq-btn:disabled { opacity: .4; cursor: not-allowed; }
-.xq-btn.primary { background: var(--yq-gold, #c7a96b); color: #fff; border-color: transparent; }
+.xq-btn.primary { background: var(--yq-accent, #c7a96b); color: #fff; border-color: transparent; }
 .xq-quota { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
-.xq-result { font-size: 13px; font-weight: 600; color: var(--yq-gold-deep, var(--yq-gold, #c7a96b)); }
+.xq-result { font-size: 13px; font-weight: 600; color: var(--yq-accent-deep, var(--yq-accent, #c7a96b)); }
 .xq-check { font-size: 12.5px; color: #c0392b; font-weight: 600; }
 
 .xq-banner {
@@ -821,7 +821,7 @@ onBeforeUnmount(() => {
 }
 .xq-firstnote { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .xq-pulse {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--yq-gold, #c7a96b);
+  width: 8px; height: 8px; border-radius: 50%; background: var(--yq-accent, #c7a96b);
   animation: xqPulse 1.4s ease-in-out infinite;
 }
 @keyframes xqPulse { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
@@ -839,7 +839,7 @@ onBeforeUnmount(() => {
   margin: 0; font-size: 12px; color: var(--dp-text2, #8a8f98);
   display: flex; align-items: center; gap: 6px; justify-content: center;
 }
-.xq-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: var(--yq-gold, #c7a96b); }
+.xq-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: var(--yq-accent, #c7a96b); }
 
 /* ===== 棋盘：冷调石板 + 立体盘厚（与冷调水晶棋子同色系，不再是青玉盘配冷玻璃） ===== */
 .xq-board {
@@ -919,11 +919,11 @@ html[data-theme="night"] .xq-svg :deep(text.xq-river) { fill: rgba(206, 226, 255
 }
 .xq-cell.target::after {
   content: ''; width: 26%; height: 26%; border-radius: 50%;
-  background: var(--yq-gold, #c7a96b); opacity: .75;
+  background: var(--yq-accent, #c7a96b); opacity: .75;
 }
 .xq-cell.target.has-piece::after { display: none; }
 .xq-cell.target.has-piece { box-shadow: 0 0 0 3px rgba(199, 169, 107, .85); }
-.xq-cell.sel { box-shadow: 0 0 0 3px var(--yq-gold, #c7a96b), 0 0 14px rgba(199,169,107,.55); }
+.xq-cell.sel { box-shadow: 0 0 0 3px var(--yq-accent, #c7a96b), 0 0 14px rgba(199,169,107,.55); }
 .xq-cell.last { box-shadow: 0 0 0 2px rgba(80, 140, 200, .75); }
 .xq-cell.check { animation: xqCheck 1.1s ease-in-out infinite; }
 @keyframes xqCheck {

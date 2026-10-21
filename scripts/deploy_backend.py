@@ -173,6 +173,8 @@ BACKEND_FILES = [
     (os.path.join(ROOT, "backend", "app", "games", "mahjong.py"),       f"{REMOTE_BASE}/backend/app/games/mahjong.py"),
     (os.path.join(ROOT, "backend", "app", "games", "monopoly.py"),      f"{REMOTE_BASE}/backend/app/games/monopoly.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "game_tables.py"), f"{REMOTE_BASE}/backend/app/routers/game_tables.py"),
+    # ---- v2.46.150 暴力摩托在线一起玩（房号 + 轮询，进程内房态，无迁移）----
+    (os.path.join(ROOT, "backend", "app", "routers", "roadrash_rooms.py"), f"{REMOTE_BASE}/backend/app/routers/roadrash_rooms.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "f3a4b5c6d7e8_game_tables.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/f3a4b5c6d7e8_game_tables.py"),
 ]

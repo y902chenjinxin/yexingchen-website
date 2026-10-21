@@ -727,7 +727,6 @@ onMounted(async () => {
 .wd-today-reason { margin-top: 14px; font-size: 12.5px; color: var(--lj-text-3); }
 .wd-empty-inline { margin-top: 14px; font-size: 13px; color: var(--lj-text-3); }
 
-.wd-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
 .wd-input { background: rgba(74,95,99,.08); border: 1px solid var(--lj-line); color: var(--lj-text);
   border-radius: 8px; padding: 8px 11px; font-size: 13px; font-family: inherit; min-width: 180px; flex: 1 1 180px; }
 .wd-input:focus { outline: none; border-color: var(--lj-seal); }

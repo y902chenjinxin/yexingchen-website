@@ -2028,7 +2028,7 @@ watch(phase, (p, old) => {
   box-shadow: 0 0 0 2px rgba(199, 169, 107, .55), 0 0 22px rgba(199, 169, 107, .35);
   animation: gd-pulse 1.6s ease-in-out infinite;
 }
-.gd .gt-seat.is-me .gt-seat-name { color: var(--yq-gold, #c7a96b); }
+.gd .gt-seat.is-me .gt-seat-name { color: var(--yq-accent, #c7a96b); }
 @keyframes gd-pulse {
   0%, 100% { box-shadow: 0 0 0 2px rgba(199, 169, 107, .5), 0 0 16px rgba(199, 169, 107, .28); }
   50% { box-shadow: 0 0 0 3px rgba(199, 169, 107, .8), 0 0 30px rgba(199, 169, 107, .5); }

@@ -355,15 +355,11 @@ onMounted(async () => {
 .tk-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
 .tk-btn.tiny { padding: 3px 9px; font-size: 12px; }
 
-.tk-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
 .tk-seg { display: flex; border: 1px solid var(--lj-line); border-radius: 10px; overflow: hidden; }
 .tk-seg-btn { padding: 7px 14px; font-size: 13px; cursor: pointer; background: transparent;
   color: var(--lj-text-2); border: none; transition: all .2s; font-family: inherit; }
 .tk-seg-btn.on { background: var(--lj-seal-soft); color: var(--lj-seal); }
 .tk-seg-n { margin-left: 5px; font-size: 11px; opacity: .8; }
-.tk-input { flex: 1 1 180px; min-width: 160px; background: rgba(74,95,99,.08); border: 1px solid var(--lj-line);
-  color: var(--lj-text); border-radius: 8px; padding: 8px 11px; font-size: 13px; font-family: inherit; }
-.tk-input:focus { outline: none; border-color: var(--lj-seal); }
 
 .tk-group { margin-bottom: 18px; }
 .tk-group-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; padding-left: 2px; }
@@ -380,16 +376,16 @@ onMounted(async () => {
 .tk-item.done { opacity: .6; }
 /* 自动定位高亮：来自顶栏提醒点击时短暂闪烁鎏金描边 */
 .tk-item.is-focused {
-  border: 1px solid var(--yq-gold);
-  box-shadow: 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, .22)),
-              0 6px 20px var(--yq-gold-glow, rgba(199, 169, 107, .28));
+  border: 1px solid var(--yq-accent);
+  box-shadow: 0 0 0 3px var(--yq-accent-faint, rgba(199, 169, 107, .22)),
+              0 6px 20px var(--yq-accent-glow, rgba(199, 169, 107, .28));
   transform: translateY(-1px);
 }
 @keyframes tk-focus-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, .22)),
-                       0 6px 20px var(--yq-gold-glow, rgba(199, 169, 107, .28)); }
-  50%      { box-shadow: 0 0 0 6px var(--yq-gold-faint, rgba(199, 169, 107, .35)),
-                       0 10px 28px var(--yq-gold-glow-strong, rgba(199, 169, 107, .45)); }
+  0%, 100% { box-shadow: 0 0 0 3px var(--yq-accent-faint, rgba(199, 169, 107, .22)),
+                       0 6px 20px var(--yq-accent-glow, rgba(199, 169, 107, .28)); }
+  50%      { box-shadow: 0 0 0 6px var(--yq-accent-faint, rgba(199, 169, 107, .35)),
+                       0 10px 28px var(--yq-accent-glow-strong, rgba(199, 169, 107, .45)); }
 }
 .tk-item.is-focused { animation: tk-focus-pulse 1.2s var(--ease-standard, ease) 3; }
 .tk-check { width: 22px; height: 22px; flex: none; margin-top: 1px; border-radius: 7px; cursor: pointer;

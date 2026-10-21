@@ -34,7 +34,6 @@
           <span v-if="!isMobile && hasFilter" class="search-count">匹配 {{ musicStore.list.length }} 条</span>
         </div>
         <div class="mt-right">
-          <span class="mt-count">共 {{ musicStore.list.length }} 首</span>
           <el-button
             v-if="!isMobile"
             type="danger"
@@ -742,11 +741,6 @@ function formatDuration(sec) {
 .mt-search { width: 240px; }
 /* 上传人筛选下拉（与搜索框同排，窄一些） */
 .mt-uploader { width: 132px; }
-.mt-count {
-  font-size: 12px;
-  color: var(--dp-text3);
-  font-variant-numeric: tabular-nums;
-}
 .search-count {
   font-size: 12px;
   color: var(--dp-text3);
@@ -868,7 +862,7 @@ function formatDuration(sec) {
   gap: 12px;
   padding: 10px 14px;
   margin-bottom: 14px;
-  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.10));
+  background: var(--yq-accent-faint, rgba(199, 169, 107, 0.10));
   border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.2));
   border-radius: 8px;
   color: var(--dp-text2);
@@ -897,14 +891,14 @@ function formatDuration(sec) {
 }
 .batch-upload :deep(.el-upload-dragger:hover),
 .batch-upload :deep(.el-upload.is-dragover .el-upload-dragger) {
-  border-color: var(--yq-gold, #c7a96b);
-  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
-  box-shadow: 0 4px 16px var(--yq-gold-glow, rgba(199, 169, 107, 0.18));
+  border-color: var(--yq-accent, #c7a96b);
+  background: var(--yq-accent-faint, rgba(199, 169, 107, 0.08));
+  box-shadow: 0 4px 16px var(--yq-accent-glow, rgba(199, 169, 107, 0.18));
 }
 .batch-drop { text-align: center; color: var(--dp-text2); }
 .batch-drop-icon { font-size: 28px; line-height: 1; margin-bottom: 6px; }
 .batch-drop-text { font-size: 13px; }
-.batch-drop-text em { color: var(--yq-gold, #c7a96b); font-style: normal; margin: 0 4px; }
+.batch-drop-text em { color: var(--yq-accent, #c7a96b); font-style: normal; margin: 0 4px; }
 .batch-drop-hint { font-size: 11.5px; color: var(--dp-text3); margin-top: 4px; }
 
 .batch-table-wrap {

@@ -80,12 +80,12 @@
   --yq-rain: var(--tc-cyan);
   --yq-rain-bright: var(--tc-cyan-bright);
   --yq-rain-deep: var(--tc-cyan-deep);
-  --yq-gold: var(--tc-cyan);
-  --yq-gold-bright: var(--tc-cyan-bright);
-  --yq-gold-fg: #ffffff;
-  --yq-gold-faint: rgba(14, 147, 184, .12);
-  --yq-gold-glow: rgba(14, 147, 184, .26);
-  --yq-gold-glow-strong: rgba(14, 147, 184, .38);
+  --yq-accent: var(--tc-cyan);
+  --yq-accent-bright: var(--tc-cyan-bright);
+  --yq-accent-fg: #ffffff;
+  --yq-accent-faint: rgba(14, 147, 184, .12);
+  --yq-accent-glow: rgba(14, 147, 184, .26);
+  --yq-accent-glow-strong: rgba(14, 147, 184, .38);
   --yq-rain-faint: rgba(14, 147, 184, .10);
   --yq-rain-glow: rgba(14, 147, 184, .32);
   --xiu-primary: var(--tc-cyan);
@@ -461,10 +461,10 @@ html[data-theme="day"] #app.is-mobile {
   --yq-rain-deep: #0a7492;
   --yq-rain-faint: rgba(14, 147, 184, .12);
   --yq-rain-glow: rgba(14, 147, 184, .30);
-  --yq-gold: #0a708c;
-  --yq-gold-bright: #12a8cf;
-  --yq-gold-fg: #ffffff;
-  --yq-gold-glow: rgba(14, 147, 184, .26);
+  --yq-accent: #0a708c;
+  --yq-accent-bright: #12a8cf;
+  --yq-accent-fg: #ffffff;
+  --yq-accent-glow: rgba(14, 147, 184, .26);
   --color-primary: #0a708c;
   --color-secondary: #3358d4;
   --color-accent: #6d4aff;
@@ -649,6 +649,18 @@ html[data-theme="day"] #app.is-mobile {
   color: #fff !important;
   background: #cf2540 !important;
   border-color: #cf2540 !important;
+}
+/* 白天禁用态（v2.46.148）：tech-theme.css 的夜间禁用规则是无主题前缀的，
+ * 白底上会变成「浅红玻璃 + 45% 红字」——这里用深红压回去，保证仍能看出是危险操作。 */
+:root[data-theme="day"] .el-button--danger.is-disabled,
+:root[data-theme="day"] .el-button--danger.is-disabled:hover {
+  --el-button-disabled-bg-color: rgba(207, 37, 64, .06);
+  --el-button-disabled-border-color: rgba(207, 37, 64, .22);
+  --el-button-disabled-text-color: rgba(176, 26, 50, .60);
+  color: rgba(176, 26, 50, .60) !important;
+  background: rgba(207, 37, 64, .06) !important;
+  border-color: rgba(207, 37, 64, .22) !important;
+  box-shadow: none !important;
 }
 
 /* ============ 11. 白天「朴素主按钮」：压掉旧琥珀 ============

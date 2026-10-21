@@ -81,7 +81,7 @@ function onTitleInput(e) {
 }
 .ne-title-input:focus {
   background: var(--dp-glass, rgba(255, 255, 255, 0.04));
-  box-shadow: inset 0 0 0 1px var(--yq-gold-glow, rgba(199, 169, 107, 0.4));
+  box-shadow: inset 0 0 0 1px var(--yq-accent-glow, rgba(199, 169, 107, 0.4));
 }
 .ne-voice { margin-right: 4px; }
 .ne-status { display: flex; gap: 6px; align-items: center; }
@@ -99,9 +99,9 @@ function onTitleInput(e) {
   border-color: var(--yq-rain-glow, rgba(127, 168, 163, 0.4));
 }
 .state.saved {
-  color: var(--yq-gold);
-  border-color: var(--yq-gold-glow, rgba(199, 169, 107, 0.4));
-  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.1));
+  color: var(--yq-accent);
+  border-color: var(--yq-accent-glow, rgba(199, 169, 107, 0.4));
+  background: var(--yq-accent-faint, rgba(199, 169, 107, 0.1));
 }
 .state.error {
   color: var(--dp-danger, #fb7185);
@@ -126,8 +126,8 @@ function onTitleInput(e) {
 .state-check {
   display: inline-flex; align-items: center; justify-content: center;
   width: 14px; height: 14px; border-radius: 50%;
-  background: var(--yq-gold);
-  color: var(--yq-gold-fg, #0b0f14);
+  background: var(--yq-accent);
+  color: var(--yq-accent-fg, #0b0f14);
   font-size: 9px; font-weight: 700;
   animation: ne-state-check .35s cubic-bezier(.2,.8,.2,1.4);
 }

@@ -259,7 +259,6 @@ onMounted(async () => {
 .va-notice b { color: var(--lj-seal); }
 .va-notice-ic { font-size: 15px; line-height: 1.4; }
 
-.va-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
 .va-input { background: rgba(74,95,99,.08); border: 1px solid var(--lj-line); color: var(--lj-text);
   border-radius: 8px; padding: 8px 11px; font-size: 13px; font-family: inherit; min-width: 200px; flex: 1 1 200px; }
 .va-input:focus { outline: none; border-color: var(--lj-seal); }

@@ -22,7 +22,7 @@ from app.utils.security import get_current_user
 router = APIRouter(prefix="/api", tags=["工具岛-倒计时"])
 
 # v2.16：财经模块家庭共享
-HOUSEHOLD_ID = 1
+from app.services.household import HOUSEHOLD_ID  # v2.46.169：统一来源，勿再本地定义
 
 # ---- 上传：通用图片（jpg/png/webp/gif）----
 # 注意：save_upload_file 的 allowed_file 取的是「不带点」的扩展名（"jpg"），

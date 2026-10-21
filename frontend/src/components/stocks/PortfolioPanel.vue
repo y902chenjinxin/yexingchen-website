@@ -136,7 +136,7 @@ defineEmits(['record'])
 /* 配色全部取设计 token，避免硬编码 hex（项目 CSS 门控要求） */
 const PALETTE = [
   'var(--lj-seal)', 'var(--lj-dai)', 'var(--lj-ochre)', 'var(--yq-rain)',
-  'var(--yq-gold)', 'var(--ls-jade)', 'var(--lj-vermilion)', 'var(--lj-mist)',
+  'var(--yq-accent)', 'var(--ls-jade)', 'var(--lj-vermilion)', 'var(--lj-mist)',
 ]
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']

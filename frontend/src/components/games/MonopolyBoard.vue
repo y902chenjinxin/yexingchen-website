@@ -1421,7 +1421,8 @@ onBeforeUnmount(() => {
 .mp-ptx i { font-style: normal; font-size: 9.5px; color: var(--gt-ink-dim); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 现金 count-up 闪色（v2.46.20）：收钱鎏金、付钱砖红，900ms 后回落 */
 .mp-ptx i.up { color: var(--gt-gold, #d4a24a); transition: color .5s; }
-.mp-ptx i.down { color: #e05a5a; transition: color .5s; }
+/* v2.46.169：下跌应为绿（原来是红） */
+.mp-ptx i.down { color: var(--pnl-down, #1aa86a); transition: color .5s; }
 @media (prefers-reduced-motion: reduce) {
   .mp-ptx i.up, .mp-ptx i.down { transition: none; }
 }

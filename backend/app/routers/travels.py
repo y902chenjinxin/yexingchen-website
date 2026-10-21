@@ -23,7 +23,7 @@ from app.utils.file_utils import save_upload_file
 router = APIRouter(prefix="/api/travels", tags=["旅游足迹"])
 
 # v2.16：财经模块家庭共享
-HOUSEHOLD_ID = 1
+from app.services.household import HOUSEHOLD_ID  # v2.46.169：统一来源，勿再本地定义
 
 # 可选鉴权：无/失效 token 也放行（公开读），返回 None
 _security_opt = HTTPBearer(auto_error=False)

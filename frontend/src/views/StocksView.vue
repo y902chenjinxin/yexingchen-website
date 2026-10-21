@@ -446,11 +446,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-f-field.grow { flex: 1 1 180px; }
 .st-f-label { display: block; font-size: 11px; color: var(--lj-text-2); margin-bottom: 5px; }
 .st-input { width: 100%; background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); border-radius: 8px; padding: 7px 10px; box-sizing: border-box; }
-.st-input:focus { outline: none; border-color: var(--yq-gold); }
+.st-input:focus { outline: none; border-color: var(--yq-accent); }
 .st-select { appearance: none; }
 .st-sug { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .st-sug-item { display: flex; align-items: baseline; gap: 8px; background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); border-radius: 9px; padding: 6px 12px; cursor: pointer; color: var(--lj-text); }
-.st-sug-item:hover { border-color: var(--yq-gold); }
+.st-sug-item:hover { border-color: var(--yq-accent); }
 .st-sug-name { font-size: 13px; }
 .st-sug-code { font-size: 11px; color: var(--lj-text-3); }
 .st-form-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }

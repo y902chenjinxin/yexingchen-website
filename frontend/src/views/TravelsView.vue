@@ -9,7 +9,6 @@
     <div class="tv-inner">
       <!-- 页头 -->
       <header class="tv-head">
-        <div class="tv-head-left"><BackButton class="tv-back" /></div>
         <div class="tv-titles">
           <h1 class="tv-title">旅行足迹</h1>
           <p class="tv-sub">走遍山河，把到过的地方都点亮</p>
@@ -83,7 +82,6 @@
 import IconButton from '@/components/common/IconButton.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import BackButton from '@/components/BackButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import TravelMap from '@/components/travel/TravelMap.vue'
 import TravelTimeline from '@/components/travel/TravelTimeline.vue'
@@ -220,8 +218,6 @@ onMounted(reload)
 .tv-inner { max-width: 1180px; margin: 0 auto; padding: 86px 20px 60px; position: relative; z-index: 1; }
 
 .tv-head { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
-.tv-head-left { flex: none; }
-.tv-back { flex: none; }
 .tv-titles { flex: 1; min-width: 0; }
 .tv-title { margin: 0; font-size: 26px; letter-spacing: .12em; color: var(--lj-text); }
 .tv-sub { margin: 4px 0 0; font-size: 13px; color: var(--lj-text-3); }

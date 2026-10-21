@@ -23,6 +23,77 @@
 
 ---
 
+## [v2.46.171] - 2026-10-21
+
+### 一次性处理 5 项（接手并行会话任务）
+
+夜星：「并行会话暂停了，任务都交给你了」「全部做完告诉我」。
+
+#### ① 涨跌色修正（红涨绿跌）
+根因：`mobile-product.css` 用 `--m-positive`(绿)/`--m-negative`(红) 表示涨跌 ——
+那是「正/负」语义，不是「涨/跌」语义；而组件自身（`MobileWorkbenchHome.vue`）写的是
+`--pnl-up` 红 / `--pnl-down` 绿，被 `#app.is-mobile` 的高特异性**覆盖成了反的**。
+
+修正 4 处（手机端涨跌 + 盈亏卡），另修 3 处同类：
+`GameWalletPanel`（up=绿 down=红，完全反）、`MonopolyBoard.down`（红）、`LifeView` 汇总表（up/down 都是暖红）。
+
+现网实测：`.up` → `rgb(207,37,64)` 红、`.down` → `rgb(15,122,86)` 绿 ✓
+记账的「收入绿/支出红」按记账惯例保留，未动。
+
+#### ② B 站去水印（原本 100% 失败）
+定位：解析服务 `parse-service`（127.0.0.1:8070）返回 `HTTP 412`。
+实测确认根因：B 站风控要求请求带 `buvid3` Cookie，
+仅 UA+Referer → 412；加 Cookie → 200。
+`parse-video-py 0.0.3` 的 `BiliBili.get_default_headers()` 恰好把 Cookie 那行注释掉了。
+
+修法：新增 `backend/parse-service/bili_patch.py`，给 `get_default_headers` 打补丁注入 buvid3
+（从官方 `x/frontend/finger/spi` 取，6h 缓存，取不到用格式合法固定值兜底）；
+`main.py` startup 预热。已部署并 pm2 restart。
+
+顺带确认：B 站 CDN 直链只校验 **User-Agent**（裸请求 403、带 UA 206），
+浏览器天然带 UA，所以前端下载不受影响。
+
+端到端实测：粘贴你给的链接 → 标题「2026网络最好听100首热门歌曲…」、作者、
+内联预览 video、下载按钮齐全，无失败提示 ✓
+
+#### ③ `--yq-gold` 改名（消除「叫 gold 却是青」）
+593 处 / 66 个文件：`--yq-gold*` → `--yq-accent*`（9 个变体）。
+纯重命名、零视觉变化。校验：残留 0 处，新名总数与改前完全一致。
+现网实测 `--yq-accent = #0a708c`（日间）、`--yq-gold` 已不存在。
+（`--yq-accent-dark` 有 1 处引用但从未定义，靠自带 fallback `#8a6d3f` 工作，保留原样并记录。）
+
+#### ④ 死 CSS 清理
+前几轮重构留下的：`.ht-empty` `.tl-toolbar-spacer` `.li-toolbar` `.va-toolbar`
+`.tk-toolbar` `.wd-toolbar` `.tk-input` `.fd-search`（模板引用均为 0）。
+只删页面 scoped 定义；全局 `:is()` 列表里的类名保留（多选择器规则误删风险大、收益小）。
+
+#### ⑤ 查询条件收口（后端）
+- **更根本的发现**：`HOUSEHOLD_ID = 1` 在 **8 个 router 里各写了一遍**，
+  另有 6 个从 `services.household` import。将来支持多家庭，改一处必漏八处。
+  → 8 处全部改为从 `services.household` import，残留本地定义 **0**。
+- 新增 `app/utils/query.py`：`in_house()` / `alive()` / `scoped()`
+  （`scoped` 自动判断模型有无 `deleted_at`，无则只做家庭隔离）。
+- 新增 `backend/scripts/audit_household_scope.py`：静态扫描「查了带 household_id 的表
+  但没带家庭条件」的地方，带白名单（每条白名单必须写原因），可挂 CI。
+  **首跑就抓到一个真漏洞**：`wardrobe.py` 存搭配时用请求里的 `item_ids` 查单品，
+  只过滤了软删、没做家庭隔离 —— 单家庭下无影响，多家庭即数据泄露。已修。
+- 审计结果：**111 处已过滤 / 0 处疑似漏过滤**，退出码 0。
+
+#### ⑥ 暴力摩托：接手并修正构图（前一会话因积分不足中断）
+读代码确认前一会话已完成：分层像素精灵（5 种出拳姿态 + 压弯形变）、
+4 条赛道、4 台车、3 档难度、在线房间同步、音效。视觉评测 FAIL 的真因不是"没画"，
+而是**构图比例失衡 + 精灵太小**：
+
+| 问题 | 原值 | 改为 |
+|---|---|---|
+| 海面从路缘一路铺到画面右缘（占约 45%） | `e.r + 14*k` 无上限 | 上限 30%（`PW*0.70`） |
+| 左侧土崖吃掉路面（约 30%） | `e.l - 16*k` 无上限 | 上限 24%（`PW*0.24`） |
+| 骑手 49×56 逻辑像素，400px 画布上糊成一坨 | 玩家 0.82 / 对手 0.74 | **1.12 / 1.0**（下限 0.42） |
+
+版本 SW v483→v485、APP_VERSION v2.46.168→v2.46.171。
+
+---
+
 ## [v2.46.168] - 2026-10-21
 
 ### 修 K 线图「昨收」标签的未定义变量（tagW）

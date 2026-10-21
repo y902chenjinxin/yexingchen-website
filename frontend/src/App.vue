@@ -130,12 +130,17 @@ watch(
   { immediate: true },
 )
 
-// 工作台与岛屿/工具内容页在页面内部各自渲染页脚，无需全站级重复页脚
+// 工作台与岛屿/工具内容页在页面内部各自渲染页脚（IslandInnerBase 内置 SiteFooter），
+// 全站级这里就不能再贴一个，否则同一页会并排出现两条网安/备案标识。
+// ⚠️ 这串前缀必须与真正用了 IslandInnerBase 的路由前缀保持同步 —— 新增岛屿页面时记得补进来。
+//    v2.46.145 修：/play（两款单机游戏直达页）与 /life（体重管理 / 美食记忆）漏登记，
+//    这两页是「页面内一个 + App 底一个」的双页脚。改用「取路径首段精确比对」，
+//    避免旧正则 `^/(log|tool…)` 那种写法顺手把 /toolxxx 这类同前缀异路由也误判。
+const ISLAND_FOOTER_PREFIXES = ['music', 'novel', 'video', 'log', 'tool', 'history', 'life', 'play']
 const showGlobalFooter = computed(() => {
   const p = route.path
   if (p === '/workbench') return false
-  if (/^\/(music|novel|video|log|tool|history)/.test(p)) return false
-  return true
+  return !ISLAND_FOOTER_PREFIXES.includes(p.split('/')[1] || '')
 })
 
 // 音乐岛内容列表页隐藏桌宠：桌宠固定右下(z-index:1800)会压住音乐列表行及最后一张卡片，造成"错位/按钮消失"观感

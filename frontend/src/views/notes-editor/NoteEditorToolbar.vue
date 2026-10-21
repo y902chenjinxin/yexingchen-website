@@ -189,11 +189,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
 }
 .ne-toolbar button:hover, .ne-toolbar .ne-upload-btn:hover {
-  color: var(--yq-gold);
-  border-color: var(--yq-gold-glow, rgba(199, 169, 107, 0.5));
-  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
+  color: var(--yq-accent);
+  border-color: var(--yq-accent-glow, rgba(199, 169, 107, 0.5));
+  background: var(--yq-accent-faint, rgba(199, 169, 107, 0.08));
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px var(--yq-gold-glow, rgba(199, 169, 107, 0.15));
+  box-shadow: 0 4px 10px var(--yq-accent-glow, rgba(199, 169, 107, 0.15));
 }
 .ne-toolbar button:active, .ne-toolbar .ne-upload-btn:active {
   transform: translateY(0);
@@ -209,10 +209,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
 /* 颜色按钮 active */
 .ne-color-wrap { position: relative; display: inline-block; }
 .ne-color-btn.active {
-  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.18));
-  color: var(--yq-gold);
-  border-color: var(--yq-gold);
-  box-shadow: 0 0 0 2px var(--yq-gold-glow, rgba(199, 169, 107, 0.18));
+  background: var(--yq-accent-faint, rgba(199, 169, 107, 0.18));
+  color: var(--yq-accent);
+  border-color: var(--yq-accent);
+  box-shadow: 0 0 0 2px var(--yq-accent-glow, rgba(199, 169, 107, 0.18));
 }
 
 /* 颜色面板：主题感知玻璃 */
@@ -222,7 +222,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
   background: var(--color-bg-glass, rgba(10, 16, 26, 0.92));
   border: 1px solid var(--dp-line-strong, rgba(199, 169, 107, 0.3));
   border-radius: 12px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, .4), 0 0 0 1px var(--yq-gold-glow, rgba(199, 169, 107, 0.12));
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .4), 0 0 0 1px var(--yq-accent-glow, rgba(199, 169, 107, 0.12));
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   /* 入场动效 */
@@ -241,7 +241,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
 }
 .ne-color-swatch:hover {
   transform: scale(1.18) rotate(-4deg);
-  border-color: var(--yq-gold);
+  border-color: var(--yq-accent);
   box-shadow: 0 4px 10px rgba(0, 0, 0, .35);
 }
 
@@ -258,7 +258,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
   border-radius: 6px; color: var(--lj-text); font-size: 12px;
   transition: border-color .15s;
 }
-.ne-hex-input:focus { outline: none; border-color: var(--yq-gold); }
+.ne-hex-input:focus { outline: none; border-color: var(--yq-accent); }
 
 .ne-color-rgb { display: inline-flex; gap: 3px; }
 .ne-color-rgb input {

@@ -364,7 +364,6 @@ onMounted(async () => {
 .li-stats b { color: var(--lj-seal); font-size: 15px; }
 .li-stats-hint { color: var(--lj-text-3); }
 
-.li-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
 .li-date { width: 260px; }
 .li-date :deep(.el-input__wrapper) { border-radius: 10px; }
 .li-input { background: rgba(74,95,99,.08); border: 1px solid var(--lj-line); color: var(--lj-text);

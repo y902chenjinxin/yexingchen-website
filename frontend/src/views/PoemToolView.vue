@@ -73,7 +73,7 @@ onMounted(() => draw(false))
   padding: 9px 22px; border-radius: 10px; font-size: 13.5px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text, #18202a);
 }
-.pt-btn.primary { background: var(--yq-gold); border-color: var(--yq-gold); color: #fff; font-weight: 600; }
+.pt-btn.primary { background: var(--yq-accent); border-color: var(--yq-accent); color: #fff; font-weight: 600; }
 .pt-btn:disabled { opacity: .55; }
 .pt-note { margin-top: 12px; text-align: center; font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 </style>

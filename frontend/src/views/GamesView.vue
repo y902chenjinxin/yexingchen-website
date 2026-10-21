@@ -1,5 +1,5 @@
 <template>
-  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇">
+  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇 · 暴力摩托 · 植物大战僵尸">
     <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill, 'is-fsfit': fitActive, 'is-card': isCardGame }">
       <!-- ===== 左：游戏类型 ===== -->
       <!-- 手机端：未选游戏时铺开手账网格；选中后收起（对局区占满，切游戏走「返回列表」）。
@@ -321,6 +321,8 @@ const ICON = {
   monopoly: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4"/><rect x="6.4" y="6.4" width="11.2" height="11.2" rx="1.6"/><path d="M6.4 10.4h11.2M10.4 6.4v11.2"/><circle cx="17.2" cy="17.2" r="1.5" fill="currentColor" stroke="none"/></svg>',
   junqi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 21V3.4"/><path d="M6.2 4.4h11.2l-2.5 3.3 2.5 3.3H6.2"/></svg>',
   junqi_flip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="4.6" width="8" height="14.8" rx="2"/><path d="M5.9 9.2h2.6M5.9 12h2.6M5.9 14.8h2.6"/><path d="M15.4 9a4.4 4.4 0 0 1 0 6"/><path d="M15.2 7.2l.5 2-2 .4"/></svg>',
+  pvz: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.8" cy="9.4" r="4.4"/><path d="M14.2 9.4h3.6"/><path d="M9.8 13.8v6.6"/><path d="M9.8 16.8c-2.4 0-3.9-1.5-3.9-3.3"/></svg>',
+  roadrash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.2" cy="17" r="3.4"/><circle cx="17.8" cy="17" r="3.4"/><path d="M6.2 17l3.3-5.2h5.1l1.3 5.2"/><path d="M9.5 11.8h4.6"/><path d="M14.6 11.8l2.7-3.1"/><path d="M15.4 7.6h3"/></svg>',
 }
 
 const gamelist = [
@@ -591,6 +593,41 @@ const gamelist = [
       '操作：用键盘方向键转向；电脑端无需先点棋盘，按方向键即可控制。',
       '结束：撞到自己的身体即结束（走到边缘会从另一侧穿出，不会撞墙）。',
       '记录：本机最高分会自动保存，下次进入仍会显示。',
+    ],
+    modes: null,
+  },
+  {
+    key: 'roadrash', label: '暴力摩托', tag: '伪 3D 公路 · 近身格斗', group: '休闲',
+    desc: '一边飙车一边动手：换道躲开路障与车流，挥棍击倒对手、躲开追你的警车，跑满全程即通关。',
+    icon: ICON.roadrash,
+    component: defineAsyncComponent(() => import('@/components/games/RoadRashGame.vue')),
+    rules: [
+      '目标：在耐久清零前跑完全程 —— 路程按难度分为 6000 / 12000 / 18000 米。',
+      '开局先选赛道与车辆：4 张赛道（平原 / 沙地 / 丘谷 / 夜道，只换景观不改数值）、4 台车（极速 / 加速 / 灵活 / 耐久 / 伤害各不相同），选择会记住，局中可点「换车 / 换赛道」重选。',
+      '操作：W 加速 · S 刹车 · A / D 换道（一次只换一根道，有短暂冷却）· 空格向前挥击 · Shift 向后挥击 · R 重开。',
+      '格斗：前击打前方的车、后击打从后追上来的车；命中普通对手 +200 分，命中警车 +500 分。',
+      '警车：开局在远处，会贴着你的车道追上来，撞上双方一起掉耐久。',
+      '危险：路障（路边汽车 / 交通锥）撞上 −15 耐久；与车手相撞双方各 −5 耐久；同一次接触有 0.3 秒冷却，不会被连扣。',
+      '计分：每超过一名普通对手 +50 分；最高分按赛道分别保存在本机。',
+      '结束：耐久归零即翻车失败，跑满全程即通关。手机端可用画面下方的触控键操作。',
+    ],
+    modes: [
+      { key: 'easy', label: '休闲 · 短途', hint: '6000 米 · 3 名对手 · 1 辆警车' },
+      { key: 'classic', label: '经典 · 单程', hint: '12000 米 · 5 名对手 · 2 辆警车' },
+      { key: 'hard', label: '硬核 · 长途', hint: '18000 米 · 6 名对手 · 3 辆警车' },
+    ],
+  },
+  {
+    key: 'pvz', label: '植物大战僵尸', tag: '开源同人版 · 塔防', group: '休闲',
+    desc: '经典塔防：种植物、收阳光、挡住一波波僵尸；冒险关卡、副本、图鉴、商店与设置一应俱全。',
+    icon: ICON.pvz,
+    component: defineAsyncComponent(() => import('@/components/games/PvzEmbed.vue')),
+    rules: [
+      '目标：在草坪上布防，别让僵尸闯进房子；阳光是通用货币，靠向日葵与天降阳光积攒。',
+      '操作：点卡片选植物 → 点草坪种下；点铲子可铲除；每关开局先挑本关要带的植物。',
+      '内容：冒险模式按关卡推进，另有副本、图鉴（植物与僵尸资料）、商店与设置。',
+      '来源：本作是「江南游戏开发社」开源的《植物大战僵尸：旅行》同人版，按《长江开源协议》非商业使用，版权与素材归原作者。',
+      '加载：整包资源约 130MB，首次进入要等一会儿；之后的资源由浏览器缓存托管，二次进入很快。',
     ],
     modes: null,
   },
@@ -883,27 +920,27 @@ watch(() => route.query.room, (v) => {
   border-color: var(--glass-border, var(--dp-line, rgba(0,0,0,.14)));
 }
 .gm-item.on {
-  background: var(--yq-gold-faint, rgba(199,169,107,.16));
-  border-color: var(--yq-gold, #c7a96b);
-  box-shadow: 0 6px 18px var(--yq-gold-glow, rgba(199,169,107,.16));
+  background: var(--yq-accent-faint, rgba(199,169,107,.16));
+  border-color: var(--yq-accent, #c7a96b);
+  box-shadow: 0 6px 18px var(--yq-accent-glow, rgba(199,169,107,.16));
 }
 /* 左侧鎏金竖条：比整块底色更醒目，且不依赖主题亮度 */
 .gm-item.on::before {
   content: ''; position: absolute; left: 0; top: 50%; width: 3px; height: 22px;
-  margin-top: -11px; border-radius: 0 3px 3px 0; background: var(--yq-gold, #c7a96b);
+  margin-top: -11px; border-radius: 0 3px 3px 0; background: var(--yq-accent, #c7a96b);
 }
-/* 鎏金字：白天用 --yq-gold-deep(#92400e, 7:1)，夜间回落到 --yq-gold-bright(#FDE68A) */
-.gm-item.on .gm-item-tx b { color: var(--yq-gold-deep, var(--yq-gold-bright, var(--yq-gold, #c7a96b))); }
+/* 鎏金字：白天用 --yq-accent-deep(#92400e, 7:1)，夜间回落到 --yq-accent-bright(#FDE68A) */
+.gm-item.on .gm-item-tx b { color: var(--yq-accent-deep, var(--yq-accent-bright, var(--yq-accent, #c7a96b))); }
 .gm-item.on .gm-item-tx i { color: var(--dp-text2, #8a8f98); }
 .gm-item.dim { opacity: .38; cursor: not-allowed; }
-.gm-item-ic { width: 22px; height: 22px; flex: none; color: var(--yq-gold, #c7a96b); }
+.gm-item-ic { width: 22px; height: 22px; flex: none; color: var(--yq-accent, #c7a96b); }
 .gm-item-ic :deep(svg) { width: 22px; height: 22px; display: block; }
 .gm-item-tx { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .gm-item-tx b { font-size: 13.5px; color: var(--dp-text, #18202a); font-weight: 600; }
 .gm-item-tx i { font-style: normal; font-size: 11px; color: var(--dp-text3, #8a8f98); }
 .gm-item-dot {
   position: absolute; right: 10px; top: 50%; margin-top: -3px; width: 6px; height: 6px;
-  border-radius: 50%; background: var(--yq-gold, #c7a96b);
+  border-radius: 50%; background: var(--yq-accent, #c7a96b);
 }
 
 /* 「我的对局」入口：与其它游戏项同构，只是多一枚房间数角标 */
@@ -938,12 +975,12 @@ watch(() => route.query.room, (v) => {
   transition: border-color .18s ease, background-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
 .gm-mp-item:hover {
-  border-color: var(--yq-gold, #c7a96b);
-  background: var(--yq-gold-faint, rgba(199,169,107,.14));
+  border-color: var(--yq-accent, #c7a96b);
+  background: var(--yq-accent-faint, rgba(199,169,107,.14));
   transform: translateY(-1px);
 }
 .gm-mp-item.dim { opacity: .38; cursor: not-allowed; }
-.gm-mp-ic { width: 22px; height: 22px; flex: none; color: var(--yq-gold, #c7a96b); }
+.gm-mp-ic { width: 22px; height: 22px; flex: none; color: var(--yq-accent, #c7a96b); }
 .gm-mp-ic :deep(svg) { width: 22px; height: 22px; display: block; }
 .gm-mp-tx { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .gm-mp-tx b { font-size: 13.5px; color: var(--dp-text, #18202a); font-weight: 600; }
@@ -965,7 +1002,7 @@ watch(() => route.query.room, (v) => {
 .gm-empty::before {
   content: ''; position: absolute; left: 50%; top: 36%; width: 440px; height: 280px;
   transform: translate(-50%, -50%);
-  background: radial-gradient(closest-side, var(--yq-gold-faint, rgba(199,169,107,.16)), transparent 72%);
+  background: radial-gradient(closest-side, var(--yq-accent-faint, rgba(199,169,107,.16)), transparent 72%);
 }
 .gm-empty::after {
   content: ''; position: absolute; inset: 0; z-index: 0; opacity: .55;
@@ -979,7 +1016,7 @@ watch(() => route.query.room, (v) => {
 .gm-empty-ic {
   width: 76px; height: 76px; display: grid; place-items: center;
   border-radius: 24px; font-size: 36px; line-height: 1;
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-accent, #c7a96b);
   border: 1px solid var(--glass-border, var(--dp-line, rgba(0,0,0,.14)));
   background: var(--color-bg-glass, rgba(255,255,255,.5));
   box-shadow: var(--glass-highlight, inset 0 1px 0 rgba(255,255,255,.6));
@@ -1005,7 +1042,7 @@ watch(() => route.query.room, (v) => {
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff);
   color: var(--dp-text2, #45505b); transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.gm-op:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold, #c7a96b); }
+.gm-op:hover { border-color: var(--yq-accent, #c7a96b); color: var(--yq-accent, #c7a96b); }
 .gm-op.ghost { background: transparent; }
 .gm-locktip {
   font-size: 11.5px; color: var(--dp-text3, #8a8f98); background: rgba(199,169,107,.14);
@@ -1022,16 +1059,16 @@ watch(() => route.query.room, (v) => {
   display: inline-flex; align-items: center; gap: 6px; flex: none;
   padding: 5px 12px; border-radius: 999px; cursor: pointer; font-family: inherit;
   font-size: 12px; font-weight: 600;
-  border: 1px solid var(--yq-gold, #c7a96b);
-  background: var(--yq-gold-faint, rgba(199,169,107,.14));
-  color: var(--yq-gold-deep, var(--yq-gold-bright, var(--yq-gold, #c7a96b)));
+  border: 1px solid var(--yq-accent, #c7a96b);
+  background: var(--yq-accent-faint, rgba(199,169,107,.14));
+  color: var(--yq-accent-deep, var(--yq-accent-bright, var(--yq-accent, #c7a96b)));
   transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 .gm-rulesbtn:hover { background: rgba(199,169,107,.24); transform: translateY(-1px); }
 .gm-rulesbtn-ic {
   width: 15px; height: 15px; flex: none; display: grid; place-items: center;
   border-radius: 50%; font-size: 11px; line-height: 1;
-  background: var(--yq-gold, #c7a96b); color: #fff;
+  background: var(--yq-accent, #c7a96b); color: #fff;
 }
 /* 说明面板：玻璃底 + 鎏金细边，昼夜都成立 */
 .gm-rules {
@@ -1049,7 +1086,7 @@ watch(() => route.query.room, (v) => {
 }
 .gm-rule-dot {
   width: 5px; height: 5px; flex: none; margin-top: 8px; border-radius: 50%;
-  background: var(--yq-gold, #c7a96b);
+  background: var(--yq-accent, #c7a96b);
 }
 
 .gm-modecards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
@@ -1066,10 +1103,10 @@ watch(() => route.query.room, (v) => {
   transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 .gm-modecard:hover {
-  border-color: var(--yq-gold, #c7a96b);
-  background: var(--yq-gold-faint, rgba(199,169,107,.14));
+  border-color: var(--yq-accent, #c7a96b);
+  background: var(--yq-accent-faint, rgba(199,169,107,.14));
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px var(--yq-gold-glow, rgba(199,169,107,.16));
+  box-shadow: 0 10px 24px var(--yq-accent-glow, rgba(199,169,107,.16));
 }
 .gm-modecard b { font-size: 14px; color: var(--dp-text, #18202a); }
 .gm-modecard i { font-style: normal; font-size: 11.5px; line-height: 1.6; color: var(--dp-text2, #8a8f98); }
@@ -1080,13 +1117,13 @@ watch(() => route.query.room, (v) => {
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: transparent; color: var(--dp-text2, #45505b);
   transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.gm-sizebtn.on { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
+.gm-sizebtn.on { background: var(--yq-accent, #c7a96b); border-color: var(--yq-accent, #c7a96b); color: #fff; font-weight: 600; }
 .gm-size-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .gm-resume {
   align-self: flex-start; display: flex; align-items: center; gap: 8px;
   padding: 9px 16px; border-radius: 999px; cursor: pointer; font-family: inherit; font-size: 12.5px;
-  border: 1px dashed var(--yq-gold, #c7a96b); background: rgba(199,169,107,.08);
-  color: var(--yq-gold, #c7a96b); font-weight: 600;
+  border: 1px dashed var(--yq-accent, #c7a96b); background: rgba(199,169,107,.08);
+  color: var(--yq-accent, #c7a96b); font-weight: 600;
 }
 .gm-resume em { font-style: normal; font-weight: 400; opacity: .75; }
 
@@ -1169,7 +1206,7 @@ watch(() => route.query.room, (v) => {
   opacity: .5; transition: opacity .22s, border-color .22s, transform .15s;
 }
 .gtv-fsmenu:hover .gtv-fsmenu-btn,
-.gtv-fsmenu.is-open .gtv-fsmenu-btn { opacity: 1; border-color: var(--yq-gold, #c7a96b); }
+.gtv-fsmenu.is-open .gtv-fsmenu-btn { opacity: 1; border-color: var(--yq-accent, #c7a96b); }
 .gtv-fsmenu-btn:active { transform: scale(.94); }
 .gtv-fsmenu-panel {
   display: flex; flex-direction: column; gap: 6px;
@@ -1205,13 +1242,13 @@ watch(() => route.query.room, (v) => {
   box-shadow: -20px 0 50px -20px rgba(0,0,0,.95);
 }
 .gm-help-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.gm-help-head b { font-size: 15px; color: var(--yq-gold, #c7a96b); }
+.gm-help-head b { font-size: 15px; color: var(--yq-accent, #c7a96b); }
 .gtv-help-x {
   width: 30px; height: 30px; flex: none; border-radius: 50%; cursor: pointer;
   font-family: inherit; font-size: 13px; line-height: 1; color: #f2eee4;
   border: 1px solid rgba(233, 200, 119, .34); background: rgba(255, 255, 255, .08);
 }
-.gtv-help-x:hover { border-color: var(--yq-gold, #c7a96b); }
+.gtv-help-x:hover { border-color: var(--yq-accent, #c7a96b); }
 .gm-help-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
 .gm-help-list li { font-size: 12.5px; line-height: 1.7; color: #e6e2d6; }
 .gm-help-panel .gm-op { align-self: flex-start; }

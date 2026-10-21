@@ -152,7 +152,7 @@ onBeforeUnmount(() => {
   transition: border-color .2s, box-shadow .2s, background .2s;
 }
 .mp-trigger:hover { border-color: rgba(199,169,107,.6); box-shadow: 0 2px 10px rgba(199,169,107,.16); }
-.mp-trigger.open { border-color: var(--yq-gold, #c7a96b); box-shadow: 0 0 0 3px rgba(199,169,107,.18); }
+.mp-trigger.open { border-color: var(--yq-accent, #c7a96b); box-shadow: 0 0 0 3px rgba(199,169,107,.18); }
 .mp-trigger.empty .mp-ph { color: var(--dp-text3, #8a8f98); }
 .mp-ava {
   width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center;
@@ -184,7 +184,7 @@ onBeforeUnmount(() => {
 }
 .mp-item.hi { background: rgba(199,169,107,.12); }
 .mp-item.on { background: rgba(199,169,107,.18); border-color: rgba(199,169,107,.55); font-weight: 600; }
-.mp-check { flex: none; font-size: 12px; color: var(--yq-gold, #c7a96b); }
+.mp-check { flex: none; font-size: 12px; color: var(--yq-accent, #c7a96b); }
 .mp-empty { padding: 10px; font-size: 12.5px; color: var(--dp-text3, #8a8f98); text-align: center; }
 
 /* ===== 夜间主题 ===== */

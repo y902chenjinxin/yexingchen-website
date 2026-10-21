@@ -494,7 +494,7 @@ onMounted(load)
   box-shadow: var(--shadow-lg);
 }
 .cd-card.cd-pinned {
-  outline: 2px solid var(--yq-gold);
+  outline: 2px solid var(--yq-accent);
   outline-offset: 2px;
 }
 
@@ -583,7 +583,7 @@ onMounted(load)
 }
 .cd-down { background: rgba(61,184,176,0.3); color: #a8d3ce; }
 .cd-up { background: rgba(199,169,107,0.3); color: #e4d9bd; }
-.cd-pin { background: rgba(199,169,107,0.3); color: var(--yq-gold); }
+.cd-pin { background: rgba(199,169,107,0.3); color: var(--yq-accent); }
 .cd-arch { background: rgba(150,150,150,0.2); color: rgba(255,255,255,0.5); }
 
 .cd-card-actions {

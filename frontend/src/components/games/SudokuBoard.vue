@@ -225,9 +225,9 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(saveTimer) })
 .sd-modes { display: flex; gap: 6px; }
 .sd-mode { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--dp-line, rgba(0,0,0,.12));
   background: transparent; color: var(--dp-text2, #45505b); cursor: pointer; font-size: 12.5px; font-family: inherit; }
-.sd-mode.on { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
+.sd-mode.on { background: var(--yq-accent, #c7a96b); border-color: var(--yq-accent, #c7a96b); color: #fff; font-weight: 600; }
 .sd-status { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--dp-text2, #45505b); }
-.sd-status b { color: var(--yq-gold, #c7a96b); }
+.sd-status b { color: var(--yq-accent, #c7a96b); }
 .sd-btn { padding: 4px 13px; border-radius: 8px; font-size: 12px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b); font-family: inherit; }
 .sd-btn:disabled { opacity: .5; cursor: default; }
@@ -249,7 +249,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(saveTimer) })
 .sd-cell.given { color: var(--dp-text2, #45505b); background: rgba(74,95,99,.07); cursor: default; }
 .sd-cell.peer { background: rgba(127,168,163,.14); }
 .sd-cell.same { background: rgba(199,169,107,.3); }
-.sd-cell.sel { outline: 2px solid var(--yq-gold, #c7a96b); outline-offset: -2px; }
+.sd-cell.sel { outline: 2px solid var(--yq-accent, #c7a96b); outline-offset: -2px; }
 .sd-cell.bad { color: #e5484d !important; }
 .sd-board.done .sd-cell { background: rgba(127,168,163,.2); }
 
@@ -259,10 +259,10 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(saveTimer) })
   background: var(--dp-surface, #fff); color: var(--dp-text, #18202a); font-size: 15px; font-weight: 600;
   cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums;
 }
-.sd-num:hover { border-color: var(--yq-gold, #c7a96b); }
+.sd-num:hover { border-color: var(--yq-accent, #c7a96b); }
 .sd-num:disabled { opacity: .5; cursor: default; }
 .sd-erase { font-size: 13px; }
-.sd-done { font-size: 15px; font-weight: 700; color: var(--yq-gold, #c7a96b); display: flex; gap: 12px; align-items: center; }
+.sd-done { font-size: 15px; font-weight: 700; color: var(--yq-accent, #c7a96b); display: flex; gap: 12px; align-items: center; }
 .sd-hint { font-size: 11.5px; color: var(--dp-text3, #8a8f98); text-align: center; max-width: 460px; }
 
 @media (max-width: 480px) {

@@ -737,11 +737,11 @@ onBeforeUnmount(() => {
   flex: 1; display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 13px;
   border: 1px solid transparent; transition: all .25s; max-width: 220px;
 }
-.go-player.active { border-color: var(--yq-gold, #c7a96b); background: rgba(199,169,107,.1); box-shadow: 0 0 0 3px rgba(199,169,107,.15); }
+.go-player.active { border-color: var(--yq-accent, #c7a96b); background: rgba(199,169,107,.1); box-shadow: 0 0 0 3px rgba(199,169,107,.15); }
 .go-player-txt { min-width: 0; }
 .go-player-txt b { display: block; font-size: 13.5px; color: var(--dp-text, #18202a); }
 .go-player-txt i { font-style: normal; font-size: 11px; color: var(--dp-text3, #8a8f98); }
-.go-score { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--yq-gold, #c7a96b); }
+.go-score { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--yq-accent, #c7a96b); }
 .go-score em { font-style: normal; font-weight: 400; font-size: 10.5px; opacity: .8; }
 .go-stone-sm { width: 20px; height: 20px; border-radius: 50%; flex: none; box-shadow: 0 2px 5px rgba(0,0,0,.25); }
 .go-stone-sm.black { background: radial-gradient(circle at 34% 30%, #555, #111); }
@@ -755,7 +755,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b);
 }
 .go-btn:disabled { opacity: .45; cursor: default; }
-.go-result { text-align: center; font-size: 13.5px; font-weight: 700; color: var(--yq-gold, #c7a96b); }
+.go-result { text-align: center; font-size: 13.5px; font-weight: 700; color: var(--yq-accent, #c7a96b); }
 
 /* 棋盘：木色底 + 交叉点网格；棋子落在**交叉点**上 */
 .go-boardwrap {

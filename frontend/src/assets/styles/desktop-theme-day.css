@@ -57,16 +57,16 @@
   --yq-rain-bright: #6f7ce0;
   --yq-rain-deep: var(--dp-accent-strong);
   /* 白天鎏金：极浅琥珀（amber-100），用于"主按钮底色 / 选中态底色 / 微光" */
-  --yq-gold: #fbbf24;            /* 主按钮描边 / 实色鎏金 */
-  --yq-gold-bright: #f59e0b;
-  --yq-gold-deep: #92400e;        /* 主按钮字色（amber-800，对比度 > 7:1） */
+  --yq-accent: #fbbf24;            /* 主按钮描边 / 实色鎏金 */
+  --yq-accent-bright: #f59e0b;
+  --yq-accent-deep: #92400e;        /* 主按钮字色（amber-800，对比度 > 7:1） */
   /* 白天鎏金面上的字用深棕琥珀，才能在浅金底上清晰 */
-  --yq-gold-fg: #92400e;
-  --yq-gold-fg-faint: rgba(146, 64, 14, .55);
+  --yq-accent-fg: #92400e;
+  --yq-accent-fg-faint: rgba(146, 64, 14, .55);
   /* 聚光底色：白天极浅极淡（amber-100/40），仅够看出鎏金在白底卡片上"亮了" */
-  --yq-gold-faint: rgba(251, 191, 36, .14);
-  --yq-gold-glow: rgba(217, 119, 6, .18);
-  --yq-gold-glow-strong: rgba(217, 119, 6, .32);
+  --yq-accent-faint: rgba(251, 191, 36, .14);
+  --yq-accent-glow: rgba(217, 119, 6, .18);
+  --yq-accent-glow-strong: rgba(217, 119, 6, .32);
   --yq-rain-faint: rgba(79, 94, 209, .14);
   --yq-rain-glow: rgba(79, 94, 209, .55);
   --dp-danger-faint: rgba(229, 90, 105, .14);
@@ -85,13 +85,13 @@
   --lj-mist: var(--dp-text2);
   --lj-dai: var(--yq-rain, var(--dp-accent));
   --lj-dai-deep: var(--yq-rain-deep, var(--dp-accent-strong));
-  --lj-ochre: var(--yq-gold, var(--dp-warning));
-  --lj-gold: var(--yq-gold, var(--dp-warning));
+  --lj-ochre: var(--yq-accent, var(--dp-warning));
+  --lj-gold: var(--yq-accent, var(--dp-warning));
   --lj-vermilion: var(--dp-danger);
   --lj-cinnabar: var(--dp-danger);
-  --lj-seal: var(--yq-gold, var(--dp-accent));
-  --lj-seal-hover: var(--yq-gold-bright, var(--dp-accent-hover));
-  --lj-seal-soft: var(--yq-gold-faint, var(--dp-accent-faint));
+  --lj-seal: var(--yq-accent, var(--dp-accent));
+  --lj-seal-hover: var(--yq-accent-bright, var(--dp-accent-hover));
+  --lj-seal-soft: var(--yq-accent-faint, var(--dp-accent-faint));
   --lj-line: var(--dp-line);
   --lj-line-strong: var(--dp-line-strong);
   --lj-text: var(--dp-text);

@@ -380,7 +380,6 @@ function formatTime(timeStr) {
 .name-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 迷你标识：不换行、不吃行高，只占一点宽度 */
-.tl-toolbar-spacer { flex: 1 1 auto; min-width: 8px; }
 .kind-tag {
   flex: none;
   height: 17px;

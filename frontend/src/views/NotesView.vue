@@ -1,7 +1,7 @@
 <!--
   NotesView.vue
   玄黄・笔记列表页
-  - 顶部：返回 + 标题 + 新建笔记
+  - 顶部：标题 + 新建笔记
   - 工具栏：搜索 + 状态 + 标签（主题感知 el-input / el-select）
   - 列表：玻璃卡片，鎏金顶光线
 -->
@@ -9,7 +9,6 @@
   <div class="notes-page">
     <header class="notes-header">
       <div class="notes-header-left">
-        <BackButton fallback="/workbench" />
         <h1 class="notes-title">笔记</h1>
       </div>
       <IconButton icon="plus" label="新建笔记" variant="primary" @click="createNew" />
@@ -85,7 +84,6 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
-import BackButton from '@/components/BackButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -186,9 +184,9 @@ onMounted(() => { reload(); loadTags() })
   letter-spacing: .08em;
   font-weight: 700;
   background: linear-gradient(135deg,
-    var(--yq-gold, #c7a96b),
-    var(--yq-gold-bright, #f0e6c8) 48%,
-    var(--yq-gold, #c7a96b));
+    var(--yq-accent, #c7a96b),
+    var(--yq-accent-bright, #f0e6c8) 48%,
+    var(--yq-accent, #c7a96b));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -218,7 +216,7 @@ onMounted(() => { reload(); loadTags() })
 }
 .nt-toolbar-row :deep(.el-input__wrapper.is-focus),
 .nt-toolbar-row :deep(.el-select__wrapper.is-focused) {
-  box-shadow: 0 0 0 1px var(--yq-gold) inset, 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, 0.18)) !important;
+  box-shadow: 0 0 0 1px var(--yq-accent) inset, 0 0 0 3px var(--yq-accent-faint, rgba(199, 169, 107, 0.18)) !important;
 }
 .nt-toolbar-row :deep(.el-input__inner),
 .nt-toolbar-row :deep(.el-select__placeholder),
@@ -254,12 +252,12 @@ onMounted(() => { reload(); loadTags() })
   position: absolute;
   top: 0; left: 14%; right: 14%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--yq-gold, #c7a96b), transparent);
+  background: linear-gradient(90deg, transparent, var(--yq-accent, #c7a96b), transparent);
   opacity: .55;
 }
 .notes-item:hover {
   transform: translateY(-1px);
-  border-color: var(--yq-gold-glow, rgba(199, 169, 107, 0.4));
+  border-color: var(--yq-accent-glow, rgba(199, 169, 107, 0.4));
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
 }
 .notes-item-main { flex: 1; min-width: 0; }
@@ -275,7 +273,7 @@ onMounted(() => { reload(); loadTags() })
   flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.notes-item-link:hover { color: var(--yq-gold, #c7a96b); }
+.notes-item-link:hover { color: var(--yq-accent, #c7a96b); }
 .notes-status {
   flex: none;
   font-size: 11px;
@@ -287,9 +285,9 @@ onMounted(() => { reload(); loadTags() })
   border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.18));
 }
 .notes-status.completed {
-  background: var(--yq-gold-faint, rgba(199, 169, 107, 0.18));
-  color: var(--yq-gold, #c7a96b);
-  border-color: var(--yq-gold-glow, rgba(199, 169, 107, 0.35));
+  background: var(--yq-accent-faint, rgba(199, 169, 107, 0.18));
+  color: var(--yq-accent, #c7a96b);
+  border-color: var(--yq-accent-glow, rgba(199, 169, 107, 0.35));
 }
 
 .notes-snippet {
@@ -306,7 +304,7 @@ onMounted(() => { reload(); loadTags() })
   align-items: center;
 }
 .notes-tag {
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-accent, #c7a96b);
   font-size: 12px;
   letter-spacing: .04em;
 }
@@ -337,14 +335,14 @@ onMounted(() => { reload(); loadTags() })
   font-family: inherit;
 }
 .nt-btn-primary {
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
-  color: var(--yq-gold-fg, #0b0f14);
+  background: linear-gradient(135deg, var(--yq-accent, #c7a96b), var(--yq-rain, #7fa8a3));
+  color: var(--yq-accent-fg, #0b0f14);
   font-weight: 600;
-  box-shadow: 0 4px 14px var(--yq-gold-glow, rgba(199, 169, 107, 0.28));
+  box-shadow: 0 4px 14px var(--yq-accent-glow, rgba(199, 169, 107, 0.28));
 }
 .nt-btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 22px var(--yq-gold-glow-strong, rgba(199, 169, 107, 0.42));
+  box-shadow: 0 8px 22px var(--yq-accent-glow-strong, rgba(199, 169, 107, 0.42));
 }
 .nt-btn-primary:active { transform: translateY(0); }
 
@@ -360,7 +358,7 @@ onMounted(() => { reload(); loadTags() })
   transition: all .15s;
   font-family: inherit;
 }
-.nt-mini:hover { color: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); }
+.nt-mini:hover { color: var(--yq-accent, #c7a96b); border-color: var(--yq-accent, #c7a96b); }
 .nt-mini-danger:hover { color: var(--dp-danger, #fb7185); border-color: var(--dp-danger, #fb7185); }
 
 /* ============ 空 / 分页 ============ */
@@ -379,8 +377,8 @@ onMounted(() => { reload(); loadTags() })
   color: var(--lj-text-2) !important;
 }
 .notes-pager :deep(.el-pager li.is-active) {
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3)) !important;
-  color: var(--yq-gold-fg, #0b0f14) !important;
+  background: linear-gradient(135deg, var(--yq-accent, #c7a96b), var(--yq-rain, #7fa8a3)) !important;
+  color: var(--yq-accent-fg, #0b0f14) !important;
   font-weight: 600;
 }
 

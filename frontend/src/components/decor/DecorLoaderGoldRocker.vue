@@ -2,7 +2,7 @@
   DecorLoaderGoldRocker.vue
   来源：uiverse.io/Shoh2008/cold-walrus-85（MIT License）
   玄黄改造：
-    - 颜色全走 --yq-gold（鎏金）与 --yq-rain（雨青）变量
+    - 颜色全走 --yq-accent（鎏金）与 --yq-rain（雨青）变量
     - 昼夜双套自动跟随 data-theme 切换
     - prefers-reduced-motion 收敛动画
   用途：节日级加载 / 大区块（如工作台驾驶舱 / 股票详情卡）
@@ -37,9 +37,9 @@ const sizeStyle = computed(() => ({ fontSize: `${Number(props.size) / 16}px` }))
   left: 50%;
   top: 50%;
   background: linear-gradient(180deg,
-    var(--yq-gold-bright, #f0e6c8),
-    var(--yq-gold),
-    var(--yq-gold-dark, #8a6d3f));
+    var(--yq-accent-bright, #f0e6c8),
+    var(--yq-accent),
+    var(--yq-accent-dark, #8a6d3f));
   border-radius: 2px;
 }
 /* 跳跃骰子（原 orange）— 玄黄：鎏金 */
@@ -49,7 +49,7 @@ const sizeStyle = computed(() => ({ fontSize: `${Number(props.size) / 16}px` }))
   bottom: 0.18em;
   width: 1em;
   height: 1em;
-  background-color: var(--yq-gold);
+  background-color: var(--yq-accent);
   box-shadow:
     inset -2px -2px 4px rgba(0, 0, 0, 0.25),
     inset 2px 2px 4px rgba(240, 230, 200, 0.6),

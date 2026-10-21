@@ -208,23 +208,23 @@ onBeforeUnmount(() => clearInterval(timerId))
 .ty-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
 /* 本机最佳成绩行 */
 .ty-best { margin: 10px 0 4px; font-size: 12px; color: var(--dp-text3, #8a8f98); }
-.ty-best b { color: var(--yq-gold); font-size: 13.5px; }
-.ty-newbest { margin: 0 6px; font-size: 12.5px; font-weight: 700; color: var(--yq-gold); }
+.ty-best b { color: var(--yq-accent); font-size: 13.5px; }
+.ty-newbest { margin: 0 6px; font-size: 12.5px; font-weight: 700; color: var(--yq-accent); }
 .ty-tab {
   padding: 8px 22px; border-radius: 999px; border: 1px solid var(--dp-line, rgba(0,0,0,.1));
   background: transparent; color: var(--dp-text2, #45505b); cursor: pointer; font-size: 13.5px;
 }
-.ty-tab.active { background: var(--yq-gold); border-color: var(--yq-gold); color: #fff; font-weight: 600; }
+.ty-tab.active { background: var(--yq-accent); border-color: var(--yq-accent); color: #fff; font-weight: 600; }
 .ty-stats { display: flex; gap: 30px; margin-bottom: 16px; }
 .ty-stat { text-align: center; }
-.ty-stat b { font-size: 26px; color: var(--yq-gold); font-variant-numeric: tabular-nums; }
+.ty-stat b { font-size: 26px; color: var(--yq-accent); font-variant-numeric: tabular-nums; }
 .ty-stat span { display: block; font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .ty-ready { text-align: center; padding: 30px 0; display: flex; flex-direction: column; gap: 12px; align-items: center; }
 .ty-btn {
   padding: 10px 26px; border-radius: 10px; font-size: 14px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text, #18202a);
 }
-.ty-btn.primary { background: var(--yq-gold); border-color: var(--yq-gold); color: #fff; font-weight: 600; }
+.ty-btn.primary { background: var(--yq-accent); border-color: var(--yq-accent); color: #fff; font-weight: 600; }
 .ty-hint { font-size: 12px; color: var(--dp-text3, #8a8f98); }
 .ty-board { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .ty-target { font-size: 20px; line-height: 2; letter-spacing: .02em; word-break: break-all; color: var(--dp-text3, #8a8f98); min-height: 96px; }
@@ -235,5 +235,5 @@ onBeforeUnmount(() => clearInterval(timerId))
   border: 1px solid var(--dp-line, rgba(0,0,0,.12)); background: var(--dp-surface, #fff); color: var(--dp-text, #18202a);
 }
 .ty-result { padding: 16px 20px; font-size: 14.5px; color: var(--dp-text, #18202a); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.ty-result b { color: var(--yq-gold); font-size: 18px; }
+.ty-result b { color: var(--yq-accent); font-size: 18px; }
 </style>

@@ -110,9 +110,11 @@ const icoSize = computed(() => (props.size === 'sm' ? 15 : 17))
   color: var(--tc-btn-fg, #04121c);
   border-color: transparent;
 }
-/* 危险：只在 hover/长按才红，平时保持中性，避免列表里一片红 */
-.ibtn--danger { color: var(--color-danger, #ff4d6d); border-color: rgba(255, 77, 109, .38); }
-.ibtn--danger:hover { color: #fff; background: var(--color-danger, #ff4d6d); border-color: var(--color-danger, #ff4d6d); }
+/* 危险：只在 hover/长按才红，平时保持中性，避免列表里一片红
+ * v2.46.148：边框不再写死品红 rgba，跟随 --color-danger（朱红）；hover 底色偏亮，
+ * 文字改深墨（白字在 #ff5347 上对比度只有 ~2.6:1） */
+.ibtn--danger { color: var(--color-danger, #ff5347); border-color: rgba(255, 83, 71, .38); }
+.ibtn--danger:hover { color: #1a0605; background: var(--color-danger, #ff5347); border-color: var(--color-danger, #ff5347); }
 
 /* —— 手机端：只留图标 ——
  * 🔴 必须把**整条选择器**包进 :global()，不能写成 `:global(#app.is-mobile) .ibtn {}`。

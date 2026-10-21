@@ -482,7 +482,7 @@ onMounted(load)
 .cdd-down { background: rgba(61,184,176,0.25); color: #a8d3ce; border: 1px solid rgba(61,184,176,0.3); }
 .cdd-up { background: rgba(199,169,107,0.25); color: #e4d9bd; border: 1px solid rgba(199,169,107,0.3); }
 .cdd-repeat { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75); border: 1px solid rgba(255,255,255,0.2); }
-.cdd-pin { background: rgba(199,169,107,0.25); color: var(--yq-gold); border: 1px solid rgba(199,169,107,0.3); }
+.cdd-pin { background: rgba(199,169,107,0.25); color: var(--yq-accent); border: 1px solid rgba(199,169,107,0.3); }
 
 /* 目标日期 */
 .cdd-target {

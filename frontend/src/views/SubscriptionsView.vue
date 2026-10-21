@@ -203,7 +203,7 @@ const CATEGORY_OPTIONS = ['影音', '软件', '云服务', '会员', '宽带通�
 /* 配色取设计 token，避免硬编码 hex */
 const PALETTE = [
   'var(--lj-seal)', 'var(--lj-dai)', 'var(--lj-ochre)', 'var(--yq-rain)',
-  'var(--yq-gold)', 'var(--ls-jade)', 'var(--lj-vermilion)', 'var(--lj-mist)',
+  'var(--yq-accent)', 'var(--ls-jade)', 'var(--lj-vermilion)', 'var(--lj-mist)',
 ]
 
 const list = ref([])

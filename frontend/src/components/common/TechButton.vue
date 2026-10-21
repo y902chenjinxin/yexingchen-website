@@ -72,14 +72,14 @@ defineEmits(['click'])
   box-shadow: 0 0 18px rgba(45, 226, 255, .3), inset 0 0 0 1px rgba(45, 226, 255, .25);
 }
 
-/* 危险：品红霓虹 */
+/* 危险：朱红霓虹（v2.46.148 从品红拆出，与全站 --tc-danger 同源） */
 .tech-btn--danger {
-  color: #fff;
+  color: #1a0605;
   background:
-    linear-gradient(135deg, #ff5c8a, #ff2d6f) padding-box,
-    linear-gradient(135deg, #ff8fb0, #ff45a0) border-box;
+    linear-gradient(135deg, #ff7a5c, #ff3d2e) padding-box,
+    linear-gradient(135deg, #ffa48f, #ff5347) border-box;
   border: 1px solid transparent;
-  box-shadow: 0 0 0 1px rgba(255, 69, 160, .4), 0 8px 24px rgba(255, 69, 160, .35);
+  box-shadow: 0 0 0 1px rgba(255, 83, 71, .4), 0 8px 24px rgba(255, 83, 71, .35);
 }
 .tech-btn--danger:hover { filter: brightness(1.08); }
 
@@ -114,8 +114,8 @@ defineEmits(['click'])
   border-radius: 50%;
   animation: tech-spin .7s linear infinite;
 }
-.tech-btn--ghost .tech-btn__spinner,
-.tech-btn--danger .tech-btn__spinner { border-color: rgba(255, 255, 255, .35); border-top-color: #fff; }
+.tech-btn--ghost .tech-btn__spinner { border-color: rgba(255, 255, 255, .35); border-top-color: #fff; }
+.tech-btn--danger .tech-btn__spinner { border-color: rgba(26, 6, 5, .35); border-top-color: #1a0605; }
 @keyframes tech-spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {

@@ -28,7 +28,7 @@
   --dp-accent-hover: #8B5CF6;
   --dp-accent-strong: #8B5CF6;
   --dp-accent-faint: rgba(167, 139, 250, .18);
-  --dp-danger: #fb7185;
+  --dp-danger: var(--tc-danger, #ff5347);  /* v2.46.148 与 tech-theme.css 的危险色对齐（原玫瑰粉 #fb7185） */
   --dp-up: #e5484d;      /* 涨红（夜底浅色系） */
   --dp-down: #3f968e;    /* 跌青 */
   --dp-warning: #fcd34d;
@@ -56,18 +56,19 @@
   --yq-rain: var(--dp-accent);
   --yq-rain-bright: #C4B5FD;
   --yq-rain-deep: var(--dp-accent-strong);
-  --yq-gold: var(--dp-warning);
-  --yq-gold-bright: #FDE68A;
+  --yq-accent: var(--dp-warning);
+  --yq-accent-bright: #FDE68A;
   /* 金色字色（落在鎏金面上的字）：夜间深字，背景鎏金亮金黄，用深色 */
-  --yq-gold-fg: #0d0d18;
-  --yq-gold-fg-faint: rgba(13, 13, 24, .3);
-  --yq-gold-faint: rgba(252, 211, 77, .18);
-  --yq-gold-glow: rgba(252, 211, 77, .35);
-  --yq-gold-glow-strong: rgba(252, 211, 77, .5);
+  --yq-accent-fg: #0d0d18;
+  --yq-accent-fg-faint: rgba(13, 13, 24, .3);
+  --yq-accent-faint: rgba(252, 211, 77, .18);
+  --yq-accent-glow: rgba(252, 211, 77, .35);
+  --yq-accent-glow-strong: rgba(252, 211, 77, .5);
   --yq-rain-faint: rgba(167, 139, 250, .14);
   --yq-rain-glow: rgba(167, 139, 250, .55);
-  --dp-danger-faint: rgba(251, 113, 133, .14);
-  --dp-danger-glow: rgba(251, 113, 133, .5);
+  /* v2.46.148 危险色统一为朱红（原 rgba(251,113,133) 玫瑰粉） */
+  --dp-danger-faint: rgba(255, 83, 71, .14);
+  --dp-danger-glow: rgba(255, 83, 71, .5);
 
   /* 工作台 --lj-* */
   --lj-bg: var(--dp-bg);
@@ -82,19 +83,19 @@
   --lj-mist: var(--dp-text2);
   --lj-dai: var(--yq-rain, var(--dp-accent));            /* 黛青→雨青 */
   --lj-dai-deep: var(--yq-rain-deep, var(--dp-accent-strong));
-  --lj-ochre: var(--yq-gold, var(--dp-warning));
-  --lj-gold: var(--yq-gold, var(--dp-warning));
+  --lj-ochre: var(--yq-accent, var(--dp-warning));
+  --lj-gold: var(--yq-accent, var(--dp-warning));
   --lj-vermilion: var(--dp-danger);
   --lj-cinnabar: var(--dp-danger);                       /* 朱砂：保留支出红语义 */
-  --lj-seal: var(--yq-gold, var(--dp-accent));           /* 印章红→鎏金 */
-  --lj-seal-hover: var(--yq-gold-bright, var(--dp-accent-hover));
-  --lj-seal-soft: var(--yq-gold-faint, var(--dp-accent-faint));
+  --lj-seal: var(--yq-accent, var(--dp-accent));           /* 印章红→鎏金 */
+  --lj-seal-hover: var(--yq-accent-bright, var(--dp-accent-hover));
+  --lj-seal-soft: var(--yq-accent-faint, var(--dp-accent-faint));
   --lj-line: var(--dp-line);
   --lj-line-strong: var(--dp-line-strong);
   --lj-text: var(--dp-text);
   --lj-text-2: var(--dp-text2);
   --lj-text-3: var(--dp-text3);
-  --lj-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px var(--yq-gold-glow, rgba(124, 58, 237, .28)), inset 0 1px 0 rgba(255, 255, 255, .06);
+  --lj-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px var(--yq-accent-glow, rgba(124, 58, 237, .28)), inset 0 1px 0 rgba(255, 255, 255, .06);
 
   /* 岛屿深色 --ls-* */
   --ls-bg0: var(--dp-bg);

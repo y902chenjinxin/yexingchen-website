@@ -822,7 +822,7 @@ onBeforeUnmount(() => {
   border: 1px solid transparent; transition: all .25s; max-width: 200px;
 }
 .gk-player.active {
-  border-color: var(--yq-gold, #c7a96b); background: rgba(199,169,107,.1);
+  border-color: var(--yq-accent, #c7a96b); background: rgba(199,169,107,.1);
   box-shadow: 0 0 0 3px rgba(199,169,107,.15);
 }
 .gk-player-txt { min-width: 0; }
@@ -846,7 +846,7 @@ onBeforeUnmount(() => {
 .gk-modes { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .gk-mode { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--dp-line, rgba(0,0,0,.12));
   background: transparent; color: var(--dp-text2, #45505b); cursor: pointer; font-size: 12.5px; font-family: inherit; transition: all .2s; }
-.gk-mode.on { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
+.gk-mode.on { background: var(--yq-accent, #c7a96b); border-color: var(--yq-accent, #c7a96b); color: #fff; font-weight: 600; }
 .gk-mode:disabled { opacity: .38; cursor: not-allowed; }
 
 .gk-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
@@ -854,16 +854,16 @@ onBeforeUnmount(() => {
 .gk-banner.st-waiting { background: rgba(199,169,107,.12); color: var(--dp-text2, #45505b); }
 .gk-banner.st-playing { background: rgba(127,168,163,.12); color: var(--dp-text2, #45505b); }
 .gk-banner.st-finished { background: rgba(199,169,107,.18); color: var(--dp-text, #18202a); }
-.gk-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--yq-gold, #c7a96b);
+.gk-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--yq-accent, #c7a96b);
   animation: gkpulse 1.2s infinite; }
 @keyframes gkpulse { 50% { opacity: .3 } }
-.gk-result { font-weight: 700; color: var(--yq-gold, #c7a96b); }
+.gk-result { font-weight: 700; color: var(--yq-accent, #c7a96b); }
 
 .gk-status { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--dp-text2, #45505b); flex-wrap: wrap; justify-content: center; }
 .gk-quota { font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .gk-btn { padding: 5px 14px; border-radius: 9px; font-size: 12px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b); font-family: inherit; }
-.gk-btn.primary { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
+.gk-btn.primary { background: var(--yq-accent, #c7a96b); border-color: var(--yq-accent, #c7a96b); color: #fff; font-weight: 600; }
 .gk-btn:disabled { opacity: .5; cursor: default; }
 
 /* 邀请面板：与玩家条/棋盘同宽 */
@@ -886,7 +886,7 @@ onBeforeUnmount(() => {
   font-size: 12.5px; font-weight: 600; color: var(--dp-text2, #45505b);
   background: rgba(199,169,107,.14); padding: 7px 16px; border-radius: 999px;
 }
-.gk-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yq-gold, #c7a96b); animation: gkpulse 1.2s infinite; }
+.gk-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yq-accent, #c7a96b); animation: gkpulse 1.2s infinite; }
 
 /* ===== 棋盘：网格线画在格心 → 棋子落在交叉点上 ===== */
 .gk-boardwrap {

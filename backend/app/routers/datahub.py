@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/datahub", tags=["个人数据中心"])
 
 # v2.16：财经/生活模块家庭共享，数据中心按 household 聚合
-HOUSEHOLD_ID = 1
+from app.services.household import HOUSEHOLD_ID  # v2.46.169：统一来源，勿再本地定义
 
 FINANCE_CATEGORY_ICONS = {
     "餐饮": "🍜", "交通": "🚇", "购物": "🛍️", "居家": "🏠", "娱乐": "🎮",

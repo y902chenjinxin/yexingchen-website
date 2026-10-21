@@ -25,7 +25,7 @@ from app.utils.security import get_current_user
 router = APIRouter(prefix="/api/subscriptions", tags=["订阅账单"])
 
 # v2.17：订阅家庭共享（user_id 降级为「录入人」溯源）
-HOUSEHOLD_ID = 1
+from app.services.household import HOUSEHOLD_ID  # v2.46.169：统一来源，勿再本地定义
 
 CYCLES = ("weekly", "monthly", "quarterly", "yearly", "once")
 CYCLE_LABEL = {

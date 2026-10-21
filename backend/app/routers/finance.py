@@ -28,7 +28,7 @@ from app.services.member_naming import member_map
 router = APIRouter(prefix="/api/finance", tags=["个人记账"])
 
 # v2.16：财经模块家庭共享
-HOUSEHOLD_ID = 1
+from app.services.household import HOUSEHOLD_ID  # v2.46.169：统一来源，勿再本地定义
 
 
 def _member_map(db: Session) -> dict:

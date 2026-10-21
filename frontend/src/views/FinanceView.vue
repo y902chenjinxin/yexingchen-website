@@ -1930,7 +1930,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-cd-restore:hover { opacity: 1; }
 .fin-note-row { display: flex; align-items: center; gap: 8px; }
 .fin-note-input { flex: 1; padding: 9px 12px; border-radius: 10px; outline: none; font-family: var(--font-serif); background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); }
-.fin-note-input:focus { border-color: var(--yq-gold); }
+.fin-note-input:focus { border-color: var(--yq-accent); }
 .fin-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .fd-enter-active,.fd-leave-active { transition: opacity .28s ease, transform .28s ease; }
 .fd-enter-from,.fd-leave-to { opacity: 0; transform: translateY(-10px); }
@@ -1959,7 +1959,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   background: linear-gradient(90deg, transparent, var(--pool-accent), transparent); opacity: .5; }
 .fin-pool:hover { transform: translateY(-2px); border-color: var(--lj-line-strong); }
 .fin-pool.on { border-color: var(--pool-accent); box-shadow: inset 0 0 0 1px var(--pool-accent); }
-.fin-pool.savings { --pool-accent: var(--yq-gold); }
+.fin-pool.savings { --pool-accent: var(--yq-accent); }
 .fin-pool.public { --pool-accent: var(--yq-rain); }
 .fin-pool.personal { --pool-accent: #8d7fa8; }
 .fin-pool-top { display: flex; align-items: center; gap: 8px; }
@@ -2002,7 +2002,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-pool-hero-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .fin-pool-hero-label { font-size: 11.5px; color: var(--lj-text-3); letter-spacing: .1em; }
 .fin-pool-hero-val { font-size: clamp(25px, 3.6vw, 33px); font-weight: 700; font-variant-numeric: tabular-nums; }
-.fin-pool-hero.savings .fin-pool-hero-val { color: var(--yq-gold); }
+.fin-pool-hero.savings .fin-pool-hero-val { color: var(--yq-accent); }
 .fin-pool-hero.public .fin-pool-hero-val { color: var(--yq-rain); }
 /* 放在着色规则之后，透支时盖过池子主色（同特异性、靠后生效） */
 .fin-pool-hero .fin-pool-hero-val.neg { color: var(--lj-vermilion); }
@@ -2013,8 +2013,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   padding: 18px; border-radius: 16px; cursor: pointer;
   transition: border-color .2s, transform .15s, box-shadow .2s; }
 .fin-pcard:hover { border-color: var(--lj-line-strong); transform: translateY(-1px); }
-.fin-pcard:focus-visible { outline: 2px solid var(--yq-gold); outline-offset: 2px; }
-.fin-pcard.on { border-color: var(--yq-gold);
+.fin-pcard:focus-visible { outline: 2px solid var(--yq-accent); outline-offset: 2px; }
+.fin-pcard.on { border-color: var(--yq-accent);
   box-shadow: 0 10px 26px -18px rgba(199,169,107,.9); }
 .fin-pcard-avatar { font-size: 20px; line-height: 1; }
 .fin-pcard-name { font-size: 13px; color: var(--lj-text-2); letter-spacing: .08em; }
@@ -2022,7 +2022,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-pcard-val.neg { color: var(--lj-vermilion); }
 .fin-pcard-sub { font-size: 11.5px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
 .fin-pcard-toggle { margin-top: 2px; font-size: 11.5px; letter-spacing: .06em;
-  color: var(--yq-gold); }
+  color: var(--yq-accent); }
 
 /* 展开的成员流水面板 */
 .fin-ptxns { margin-top: 14px; padding: 16px 18px; border-radius: 16px; }
@@ -2051,7 +2051,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   font-family: var(--font-serif); font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
   cursor: pointer; white-space: nowrap; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .fin-fund-badge:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
-.fin-fund-badge.savings { color: var(--yq-gold); border-color: rgba(199,169,107,.45); }
+.fin-fund-badge.savings { color: var(--yq-accent); border-color: rgba(199,169,107,.45); }
 .fin-fund-badge.public { color: var(--yq-rain); border-color: rgba(127,168,163,.45); }
 .fin-fund-badge.personal { color: #8d7fa8; border-color: rgba(141,127,168,.45); }
 .fin-fund-badge.todo { border-style: dashed; }
@@ -2074,7 +2074,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   font-family: var(--font-serif); font-size: 13px; }
 .fin-fund:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
 .fin-fund.active { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.12); }
-.fin-fund.active.savings { border-color: var(--yq-gold); color: var(--yq-gold); background: rgba(199,169,107,.14); }
+.fin-fund.active.savings { border-color: var(--yq-accent); color: var(--yq-accent); background: rgba(199,169,107,.14); }
 .fin-fund.active.public { border-color: var(--yq-rain); color: var(--yq-rain); background: rgba(127,168,163,.16); }
 .fin-fund.active.personal { border-color: #8d7fa8; color: #8d7fa8; background: rgba(141,127,168,.14); }
 
@@ -2132,7 +2132,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .fin-filter { width: 130px; }
 .fin-filter-input { padding: 7px 11px; border-radius: 9px; outline: none; width: 180px; font-family: var(--font-serif); background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); }
-.fin-filter-input:focus { border-color: var(--yq-gold); }
+.fin-filter-input:focus { border-color: var(--yq-accent); }
 .fin-list-empty { padding: 40px 6px; text-align: center; color: var(--lj-text-3); font-size: 13px; }
 .fin-row { display: flex; align-items: center; gap: 12px; padding: 11px 8px; border-radius: 12px; transition: background .2s; }
 /* v2.46.33：行内包了一层 fin-row-body（滑动删除载体），布局职责移交 */

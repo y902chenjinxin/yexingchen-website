@@ -617,10 +617,10 @@ onBeforeUnmount(() => {
   background: rgba(255,255,255,.6); color: var(--dp-text, #18202a);
   transition: border-color .2s, background .2s;
 }
-.gtv-member.on { border-color: var(--yq-gold, #c7a96b); background: rgba(199,169,107,.16); font-weight: 600; }
+.gtv-member.on { border-color: var(--yq-accent, #c7a96b); background: rgba(199,169,107,.16); font-weight: 600; }
 :root[data-theme="night"] .gtv-member { background: rgba(255,255,255,.06); color: #f2eee4; }
 .gtv-ava { font-size: 15px; }
-.gtv-check { color: var(--yq-gold, #c7a96b); }
+.gtv-check { color: var(--yq-accent, #c7a96b); }
 .gtv-empty { margin: 0; font-size: 12.5px; color: var(--dp-text3, #8a8f98); }
 
 .gtv-chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -629,7 +629,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: rgba(255,255,255,.6);
   color: var(--dp-text, #18202a); transition: border-color .2s, background .2s;
 }
-.gtv-chip.on { border-color: var(--yq-gold, #c7a96b); background: rgba(199,169,107,.18); font-weight: 600; }
+.gtv-chip.on { border-color: var(--yq-accent, #c7a96b); background: rgba(199,169,107,.18); font-weight: 600; }
 :root[data-theme="night"] .gtv-chip { background: rgba(255,255,255,.06); color: #f2eee4; }
 
 /* ---------- 掼蛋 2v2 的队伍选择（队友 / 对手） ---------- */
@@ -640,7 +640,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(199, 169, 107, .35);
 }
 .gtv-teams-tip { margin: 0; font-size: 12px; line-height: 1.55; color: var(--dp-text3, #8a8f98); }
-.gtv-teams-tip b { color: var(--yq-gold, #c7a96b); font-weight: 700; }
+.gtv-teams-tip b { color: var(--yq-accent, #c7a96b); font-weight: 700; }
 .gtv-team-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .gtv-team-name { flex: 1; min-width: 72px; font-size: 13px; font-weight: 600; color: var(--dp-text, #18202a); }
 :root[data-theme="night"] .gtv-team-name { color: #f2eee4; }
@@ -674,7 +674,7 @@ onBeforeUnmount(() => {
   padding: 16px 12px; border-radius: 16px; text-align: center;
   border: 1px solid var(--dp-line, rgba(0,0,0,.12)); background: rgba(255,255,255,.55);
 }
-.gtv-seat.me { border-color: var(--yq-gold, #c7a96b); background: rgba(199,169,107,.14); }
+.gtv-seat.me { border-color: var(--yq-accent, #c7a96b); background: rgba(199,169,107,.14); }
 .gtv-seat.empty { border-style: dashed; opacity: .72; }
 .gtv-seat.ai { background: rgba(127,168,163,.12); }
 .gtv-seat.offline { opacity: .66; }
@@ -689,7 +689,7 @@ onBeforeUnmount(() => {
   font-size: 11px; line-height: 1.7; letter-spacing: .04em;
   border: 1px solid transparent; white-space: nowrap;
 }
-.gtv-seat-team.mate { border-color: var(--yq-gold, #c7a96b); color: #8a6d29; background: rgba(199,169,107,.16); }
+.gtv-seat-team.mate { border-color: var(--yq-accent, #c7a96b); color: #8a6d29; background: rgba(199,169,107,.16); }
 .gtv-seat-team.foe { border-color: var(--dp-line, rgba(0,0,0,.12)); color: var(--dp-text3, #8a8f98); background: rgba(0,0,0,.04); }
 :root[data-theme="night"] .gtv-seat-team.mate { color: #f0d79a; }
 :root[data-theme="night"] .gtv-seat-team.foe { background: rgba(255,255,255,.06); color: rgba(242,238,228,.62); }
@@ -779,7 +779,7 @@ onBeforeUnmount(() => {
   opacity: .5; transition: opacity .22s, border-color .22s, transform .15s;
 }
 .gtv-fsmenu:hover .gtv-fsmenu-btn,
-.gtv-fsmenu.is-open .gtv-fsmenu-btn { opacity: 1; border-color: var(--yq-gold, #c7a96b); }
+.gtv-fsmenu.is-open .gtv-fsmenu-btn { opacity: 1; border-color: var(--yq-accent, #c7a96b); }
 .gtv-fsmenu-btn:active { transform: scale(.94); }
 .gtv-fsmenu-panel {
   display: flex; flex-direction: column; gap: 6px;
@@ -829,13 +829,13 @@ onBeforeUnmount(() => {
   box-shadow: -20px 0 50px -20px rgba(0,0,0,.95);
 }
 .gtv-help-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.gtv-help-head b { font-size: 15px; color: var(--yq-gold, #c7a96b); }
+.gtv-help-head b { font-size: 15px; color: var(--yq-accent, #c7a96b); }
 .gtv-help-x {
   width: 30px; height: 30px; flex: none; border-radius: 50%; cursor: pointer;
   font-family: inherit; font-size: 13px; line-height: 1; color: #f2eee4;
   border: 1px solid rgba(233, 200, 119, .34); background: rgba(255, 255, 255, .08);
 }
-.gtv-help-x:hover { border-color: var(--yq-gold, #c7a96b); }
+.gtv-help-x:hover { border-color: var(--yq-accent, #c7a96b); }
 .gtv-help-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
 .gtv-help-list li { font-size: 12.5px; line-height: 1.7; color: #e6e2d6; }
 .gtv-help-panel .gtv-btn { align-self: flex-start; }

@@ -188,7 +188,7 @@ onBeforeUnmount(() => document.removeEventListener('paste', onPaste))
   background: transparent; color: var(--dp-text2, #45505b); cursor: pointer; font-size: 13.5px;
 }
 .qt-tab.active {
-  background: var(--yq-gold); border-color: var(--yq-gold); color: #fff; font-weight: 600;
+  background: var(--yq-accent); border-color: var(--yq-accent); color: #fff; font-weight: 600;
 }
 .qt-pane { display: flex; flex-direction: column; gap: 14px; }
 .qt-input, .qt-opt select {
@@ -200,7 +200,7 @@ onBeforeUnmount(() => document.removeEventListener('paste', onPaste))
 .qt-opt { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--dp-text2, #45505b); }
 .qt-opt input[type=range] { width: 160px; }
 .qt-opt select { width: auto; }
-.hl { color: var(--yq-gold); }
+.hl { color: var(--yq-accent); }
 .qt-result { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .qt-img {
   background: #fff; padding: 12px; border-radius: 14px;
@@ -219,14 +219,14 @@ onBeforeUnmount(() => document.removeEventListener('paste', onPaste))
   color: var(--dp-text, #18202a);
 }
 .qt-btn.primary {
-  background: var(--yq-gold); border-color: var(--yq-gold); color: #fff; font-weight: 600;
+  background: var(--yq-accent); border-color: var(--yq-accent); color: #fff; font-weight: 600;
 }
 .qt-drop {
   border: 1.5px dashed var(--dp-line, rgba(0,0,0,.18)); border-radius: 14px;
   padding: 34px 20px; text-align: center; cursor: pointer; color: var(--dp-text3, #8a8f98); font-size: 13.5px;
   transition: border-color .15s, background .15s;
 }
-.qt-drop.drag { border-color: var(--yq-gold); background: rgba(199,169,107,.06); }
+.qt-drop.drag { border-color: var(--yq-accent); background: rgba(199,169,107,.06); }
 .qt-file { display: none; }
 .qt-err { color: #e5484d; font-size: 13px; }
 </style>

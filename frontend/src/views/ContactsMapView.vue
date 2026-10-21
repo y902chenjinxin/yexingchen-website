@@ -347,7 +347,7 @@ onBeforeUnmount(() => cancelAnimationFrame(rafId))
   margin-top: 14px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   font-size: 14px; color: var(--dp-text, #18202a);
 }
-.mt-rel { color: var(--yq-gold); font-weight: 600; }
+.mt-rel { color: var(--yq-accent); font-weight: 600; }
 .mt-close {
   margin-left: auto; padding: 5px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text2, #45505b);

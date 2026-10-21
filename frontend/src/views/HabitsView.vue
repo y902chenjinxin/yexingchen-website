@@ -609,7 +609,7 @@ async function maybeWeekendReview() {
 .hb-wk-stat b { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tc-text, #0b1622); }
 .hb-wk-stat b i { font-size: 10px; font-style: normal; opacity: .55; margin-left: 1px; }
 .hb-wk-stat span { font-size: 11px; color: var(--tc-text-3, #5b6f8a); }
-.hb-wk-stat.warn { background: rgba(255, 77, 109, .09); }
+.hb-wk-stat.warn { background: rgba(255, 83, 71, .10); }
 .hb-wk-stat.warn b { color: var(--color-danger, #cf2540); }
 .hb-wk-text { margin: 10px 10px 0; font-size: 12.5px; color: var(--tc-text-2, #46586e); line-height: 1.65; }
 .hb-wk-advice {

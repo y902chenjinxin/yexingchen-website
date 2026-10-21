@@ -120,17 +120,17 @@ onMounted(() => { if (!(props.resume && restoreLocal())) buildBoard() })
 <style scoped>
 .mn-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .mn-info { font-size: 13.5px; color: var(--dp-text2, #45505b); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
-.mn-info b { color: var(--yq-gold, #c7a96b); }
+.mn-info b { color: var(--yq-accent, #c7a96b); }
 .mn-btn { padding: 4px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--color-bg-glass, rgba(127,127,127,.06));
   color: var(--dp-text2, #45505b); font-family: inherit; transition: all .18s; }
-.mn-btn:hover { border-color: var(--yq-gold, #c7a96b); color: var(--yq-gold-deep, var(--yq-gold-bright, #c7a96b)); }
+.mn-btn:hover { border-color: var(--yq-accent, #c7a96b); color: var(--yq-accent-deep, var(--yq-accent-bright, #c7a96b)); }
 .mn-btn.primary {
   padding: 5px 18px; font-size: 12.5px; font-weight: 600;
-  border-color: var(--yq-gold, #c7a96b); background: var(--yq-gold, #c7a96b); color: var(--yq-gold-fg, #fff);
-  box-shadow: 0 4px 12px var(--yq-gold-glow, rgba(199,169,107,.3));
+  border-color: var(--yq-accent, #c7a96b); background: var(--yq-accent, #c7a96b); color: var(--yq-accent-fg, #fff);
+  box-shadow: 0 4px 12px var(--yq-accent-glow, rgba(199,169,107,.3));
 }
-.mn-btn.primary:hover { filter: brightness(1.06); color: var(--yq-gold-fg, #fff); }
+.mn-btn.primary:hover { filter: brightness(1.06); color: var(--yq-accent-fg, #fff); }
 .mn-idle { font-size: 12.5px; color: var(--dp-text2, #8a8f98); }
 .mn-grid {
   display: grid; grid-template-columns: repeat(10, 34px); gap: 2px; padding: 8px; border-radius: 12px;
@@ -145,7 +145,7 @@ onMounted(() => { if (!(props.resume && restoreLocal())) buildBoard() })
 .mn-cell.flagged { background: #e8dfc0; }
 .mn-cell.boom { background: #f6b0b3; }
 .mn-toggle { font-size: 13px; color: var(--dp-text2, #45505b); }
-.mn-msg { font-size: 14px; font-weight: 600; color: var(--yq-gold, #c7a96b); }
+.mn-msg { font-size: 14px; font-weight: 600; color: var(--yq-accent, #c7a96b); }
 
 @media (max-width: 480px) {
   .mn-grid { grid-template-columns: repeat(10, 30px); }

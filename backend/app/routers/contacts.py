@@ -38,7 +38,7 @@ from app.utils.security import get_current_user
 router = APIRouter(prefix="/api/contacts", tags=["家人通讯录"])
 
 # v2.17：通讯录家庭共享（user_id 降级为「录入人」溯源）
-HOUSEHOLD_ID = 1
+from app.services.household import HOUSEHOLD_ID  # v2.46.169：统一来源，勿再本地定义
 
 MMDD_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 

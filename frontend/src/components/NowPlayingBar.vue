@@ -504,7 +504,7 @@ function fmt(sec) {
   transition: border-color .2s ease, box-shadow .2s ease;
 }
 .np-mini:hover { border-color: rgba(255, 255, 255, 0.24); }
-.np-mini:focus-visible { outline: 2px solid var(--yq-gold, #fbbf24); outline-offset: 2px; }
+.np-mini:focus-visible { outline: 2px solid var(--yq-accent, #fbbf24); outline-offset: 2px; }
 .np-mini.dragging { cursor: grabbing; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55); }
 .np-mini-note { font-size: 19px; line-height: 1; }
 
@@ -515,7 +515,7 @@ function fmt(sec) {
   background: rgba(200, 215, 230, 0.38);
 }
 .np-mini.playing .np-mini-dot {
-  background: var(--yq-gold, #fbbf24);
+  background: var(--yq-accent, #fbbf24);
   animation: npMiniPulse 1.9s ease-out infinite;
 }
 @keyframes npMiniPulse {

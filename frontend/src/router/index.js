@@ -226,6 +226,21 @@ const routes = [
     component: () => import('@/views/GamesView.vue'),
     meta: { requiresAuth: true }
   },
+  // v2.46.144 两款单机游戏的侧栏直达页（此前只挂在棋类游戏页内部，侧栏无入口）。
+  //   同一页面按 meta.game 分流：roadrash → 自绘 Canvas 移植版；pvz → 开源同人版 iframe 宿主。
+  //   路径刻意避开 nginx `location /play/pvz/`（带尾斜杠的 alias 前缀），/play/pvz 不带斜杠走 SPA fallback。
+  {
+    path: '/play/roadrash',
+    name: 'PlayRoadRash',
+    component: () => import('@/views/PlayView.vue'),
+    meta: { requiresAuth: true, game: 'roadrash' }
+  },
+  {
+    path: '/play/pvz',
+    name: 'PlayPvz',
+    component: () => import('@/views/PlayView.vue'),
+    meta: { requiresAuth: true, game: 'pvz' }
+  },
   // v2.44 牌类在线对局：独立等待房 / 牌桌宿主（掼蛋 / 麻将 / 大富翁）
   //   /tool/games/table/new?game=guandan → 建房表单；/tool/games/table/:id → 进房
   {

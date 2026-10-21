@@ -550,23 +550,23 @@
   --yq-rain: #7fa8a3;                      /* 主·雨青 */
   --yq-rain-bright: #a8d3ce;               /* 亮阶·光（hover/发光） */
   --yq-rain-deep: #5b8a85;                 /* 深雨青 */
-  --yq-gold: #c7a96b;                      /* 吻·鎏金（趋势点睛） */
-  --yq-gold-bright: #e4d9bd;
+  --yq-accent: #c7a96b;                      /* 吻·鎏金（趋势点睛） */
+  --yq-accent-bright: #e4d9bd;
   --color-primary: var(--yq-rain);
   --color-secondary: var(--yq-rain-deep);
-  --color-accent: var(--yq-gold);
+  --color-accent: var(--yq-accent);
   --color-qi-primary: var(--yq-rain);
   --color-qi-green: var(--yq-rain-deep);
   --color-qi-glow: rgba(127, 168, 163, 0.32);
   --island-glow-color: rgba(127, 168, 163, 0.2);
-  --color-gold: var(--yq-gold);
-  --color-gold-bright: var(--yq-gold-bright);
+  --color-gold: var(--yq-accent);
+  --color-gold-bright: var(--yq-accent-bright);
   --color-jade: var(--yq-rain-bright);
   --xiu-primary: var(--yq-rain);
   --xiu-primary-bright: var(--yq-rain-bright);
-  --xiu-gold: var(--yq-gold);
+  --xiu-gold: var(--yq-accent);
   --color-success: #6aa98f;
-  --color-warning: var(--yq-gold);
+  --color-warning: var(--yq-accent);
   --color-danger: #d28a7c;
 
   /* ---- 苹果级玻璃系统 ---- */
@@ -600,7 +600,7 @@
   --lj-dai: var(--yq-rain);
   --lj-dai-deep: var(--yq-rain-deep);
   --lj-mist: var(--color-text-secondary);
-  --lj-ochre: var(--yq-gold);
+  --lj-ochre: var(--yq-accent);
   --lj-vermilion: #d28a7c;
   --lj-line: rgba(127, 168, 163, 0.16);
   --lj-line-strong: rgba(127, 168, 163, 0.30);
@@ -681,36 +681,36 @@
   --yq-rain: #2f8a85;
   --yq-rain-bright: #3fa89f;
   --yq-rain-deep: #22665f;
-  --yq-gold: #a9804f;
-  --yq-gold-bright: #c7a96b;
+  --yq-accent: #a9804f;
+  --yq-accent-bright: #c7a96b;
   --color-primary: var(--yq-rain);
   --color-secondary: var(--yq-rain-deep);
-  --color-accent: var(--yq-gold);
+  --color-accent: var(--yq-accent);
   --color-qi-primary: var(--yq-rain);
   --color-qi-green: var(--yq-rain-deep);
   --color-qi-glow: rgba(47, 138, 133, 0.22);
   --island-glow-color: rgba(47, 138, 133, 0.16);
-  --color-gold: var(--yq-gold);
-  --color-gold-bright: var(--yq-gold-bright);
+  --color-gold: var(--yq-accent);
+  --color-gold-bright: var(--yq-accent-bright);
   --color-gold-dark: #8a6a42;
   --color-jade: var(--yq-rain-bright);
   --xiu-primary: var(--yq-rain);
   --xiu-primary-bright: var(--yq-rain-bright);
-  --xiu-gold: var(--yq-gold);
+  --xiu-gold: var(--yq-accent);
   --xiu-danger: #cd5844;
   --color-danger: #c2432f;
   --color-success: #2f8a5f;
-  --color-warning: var(--yq-gold);
+  --color-warning: var(--yq-accent);
   --lj-dai: #2f7f7a;
   --lj-dai-deep: #22665f;
-  --lj-ochre: var(--yq-gold);
+  --lj-ochre: var(--yq-accent);
   --lj-vermilion: #b85341;
   --lj-seal: #c25e4c;
   --lj-seal-hover: #b95341;
   --lj-seal-soft: rgba(194, 94, 76, 0.14);
   --ls-dai: var(--yq-rain);
   --ls-dai-deep: var(--yq-rain-deep);
-  --ls-ochre: var(--yq-gold);
+  --ls-ochre: var(--yq-accent);
   --ls-jade: #3f8a6a;
 
   /* ---- 玻璃卡/浮层/描边 ---- */
@@ -989,7 +989,7 @@ html:root[data-theme="day"] .filing-divider {
  * 用途：**必须跨主题恒定**的颜色 —— 品牌色、鎏金装饰、涨跌/危险/成功语义色。
  *
  * 为什么不挂主题 token：这些颜色如果跟着换肤走反而错。
- *   例如鎏金描边在日间不该变成青色（这正是 --yq-gold 当前的问题：
+ *   例如鎏金描边在日间不该变成青色（这正是 --yq-accent 当前的问题：
  *   它在 variables.css 是 #c7a96b，到 tech-theme.css 变成 #2de2ff）。
  *
  * 来源：docs/COLOR-TOKENS.md 阶段 0（从实测高频硬编码色收编，括号内为原调用点次数）。

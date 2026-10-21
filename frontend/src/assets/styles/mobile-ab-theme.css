@@ -45,7 +45,7 @@
   --yq-rain: #5e6ad2;
   --yq-rain-bright: #828fff;
   --yq-rain-deep: #3f4aa8;
-  --yq-gold: var(--yq-rain-bright);
+  --yq-accent: var(--yq-rain-bright);
   --color-primary: var(--yq-rain);
   --color-secondary: var(--yq-rain-deep);
   --color-accent: var(--yq-rain-bright);
@@ -173,7 +173,7 @@ html[data-theme="day"] #app.is-mobile {
   --yq-rain: #5b6ae0;
   --yq-rain-bright: #8b5cf6;
   --yq-rain-deep: #3f4aa8;
-  --yq-gold: var(--yq-rain);
+  --yq-accent: var(--yq-rain);
   --color-primary: var(--yq-rain);
   --color-secondary: var(--yq-rain-deep);
   --color-accent: var(--yq-rain-bright);

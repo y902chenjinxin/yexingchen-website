@@ -748,7 +748,7 @@ html[data-theme="day"] #app.is-mobile :is(.pt-date, .pt-loading) { color: #a08a5
  * 夜星巡检结论：工作台/笔记/AI对话守规范；模块页缺质感；我的页/分页/开关
  * 漏蓝紫；音乐/视频/小说是桌面管理表挤上手机。本段一次收编。
  * 根因备忘：ab/native-glass 在 #app.is-mobile 直挂 --el-color-primary/#5b6ae0
- * 与 --yq-gold=紫，paper 原先只挂在 html:has() 上（继承被直挂压掉）——
+ * 与 --yq-accent=紫，paper 原先只挂在 html:has() 上（继承被直挂压掉）——
  * 这里改为同作用域直挂、靠后加载顺序取胜。
  * ===================================================================== */
 #app.is-mobile {
@@ -760,10 +760,10 @@ html[data-theme="day"] #app.is-mobile :is(.pt-date, .pt-loading) { color: #a08a5
   --el-color-primary-light-9: #f3e7d9;
   --el-color-primary-dark-2: #a9853f;
   /* yq 方言令牌重映射：EmptyState/笔记/视频的鎏金系回归真金 */
-  --yq-gold: var(--xz-gold);
+  --yq-accent: var(--xz-gold);
   --yq-rain: #46655f;
   --yq-rain-bright: #568078;
-  --yq-gold-glow: rgba(201, 164, 92, .32);
+  --yq-accent-glow: rgba(201, 164, 92, .32);
 }
 html[data-theme="day"] #app.is-mobile {
   --el-color-primary: var(--xz-ochre);
@@ -921,10 +921,10 @@ html[data-theme="day"] #app.is-mobile {
 }
 #app.is-mobile .login-card .el-input__wrapper { border-radius: var(--m-radius-sm) !important; }
 /* 日主题特异性对齐：ab-theme 用 html[data-theme="day"] #app.is-mobile 定义
-   --yq-gold=紫/雨青，paper 同特异性后加载覆盖回真金 */
+   --yq-accent=紫/雨青，paper 同特异性后加载覆盖回真金 */
 html[data-theme="day"] #app.is-mobile {
-  --yq-gold: var(--xz-gold);
-  --yq-gold-glow: rgba(201, 164, 92, .32);
+  --yq-accent: var(--xz-gold);
+  --yq-accent-glow: rgba(201, 164, 92, .32);
 }
 /* EmptyState 主按钮：金青渐变偏脏，统一墨/金胶囊语言 */
 #app.is-mobile .ls-empty-btn--primary {

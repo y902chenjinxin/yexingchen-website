@@ -708,7 +708,7 @@ async function savePassword() {
 .account-ops { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 .acc-btn {
   padding: 9px 20px; border-radius: 10px; font-size: 13.5px; cursor: pointer; font-family: inherit;
-  border: 1px solid var(--yq-gold); background: transparent; color: var(--yq-gold);
+  border: 1px solid var(--yq-accent); background: transparent; color: var(--yq-accent);
   font-weight: 600; transition: background .18s;
 }
 .acc-btn:hover { background: rgba(199, 169, 107, .12); }

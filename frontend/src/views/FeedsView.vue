@@ -696,8 +696,6 @@ onMounted(() => {
 .fd-list-filters { display: flex; align-items: center; gap: 8px; }
 .fd-unread-badge { font-size: 11px; color: var(--lj-ochre); background: rgba(199,169,107,.16); padding: 2px 8px; border-radius: 999px; flex: none; font-variant-numeric: tabular-nums; }
 .fd-select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); font-size: 12px; outline: none; }
-.fd-search { width: 130px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--lj-line); background: rgba(0,0,0,.15); color: var(--lj-text); font-family: var(--font-serif); font-size: 12px; outline: none; }
-.fd-search:focus { border-color: var(--lj-seal); }
 
 /* 中栏 · 文章 —— 每张卡独立为一块分层玻璃面 */
 .fd-article-list { display: flex; flex-direction: column; gap: 14px; max-height: 640px; overflow-y: auto; padding-right: 6px; }

@@ -161,7 +161,7 @@ onMounted(() => load(false))
   border: 1px solid var(--dp-line); background: transparent; color: var(--dp-text2); cursor: pointer;
   width: 26px; height: 26px; border-radius: 8px; font-size: 13px; line-height: 1;
 }
-.sv-refresh:hover:not(:disabled) { border-color: var(--yq-gold, var(--dp-accent)); color: var(--yq-gold, var(--dp-accent)); }
+.sv-refresh:hover:not(:disabled) { border-color: var(--yq-accent, var(--dp-accent)); color: var(--yq-accent, var(--dp-accent)); }
 .sv-refresh:disabled { opacity: .5; cursor: default; }
 .sv-tip { font-size: 12.5px; color: var(--dp-text3); margin: 24px 0; text-align: center; }
 .sv-tip--err { color: #e5484d; }

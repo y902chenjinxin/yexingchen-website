@@ -289,13 +289,13 @@ onMounted(() => {
    （没有引入青色：项目里 --ls-jade / --yq-rain 目前实际都指向靛蓝，不是真青色，
      与其硬造一个，不如只用鎏金做强调、其余交给墨色层级。） */
 .section {
-  --el-color-primary: var(--yq-gold-bright);
-  --el-color-primary-light-3: var(--yq-gold);
-  --el-color-primary-light-5: var(--yq-gold);
-  --el-color-primary-light-7: var(--yq-gold-faint);
-  --el-color-primary-light-8: var(--yq-gold-faint);
-  --el-color-primary-light-9: var(--yq-gold-faint);
-  --el-switch-on-color: var(--yq-gold-bright);
+  --el-color-primary: var(--yq-accent-bright);
+  --el-color-primary-light-3: var(--yq-accent);
+  --el-color-primary-light-5: var(--yq-accent);
+  --el-color-primary-light-7: var(--yq-accent-faint);
+  --el-color-primary-light-8: var(--yq-accent-faint);
+  --el-color-primary-light-9: var(--yq-accent-faint);
+  --el-switch-on-color: var(--yq-accent-bright);
   --el-switch-off-color: var(--dp-line-strong);
 
   background: var(--dp-surface);
@@ -305,7 +305,7 @@ onMounted(() => {
   box-shadow: var(--dp-shadow);
 }
 .section-tip { font-size: 12px; color: var(--dp-text3); margin-bottom: 14px; line-height: 1.6; }
-.tip-em { color: var(--yq-gold-bright); font-weight: 500; }
+.tip-em { color: var(--yq-accent-bright); font-weight: 500; }
 
 /* 自定义 list 布局：6 列 grid，每列独立对齐 */
 .menu-list {
@@ -342,7 +342,7 @@ onMounted(() => {
 /* 一级组行：不再铺整行渐变底（太重、像色带），改用左侧鎏金细线 + 字重区分。
    层级靠留白和线来表达，不靠色块。 */
 .menu-row--group {
-  border-left-color: var(--yq-gold-bright);
+  border-left-color: var(--yq-accent-bright);
   font-weight: 500;
 }
 /* 二级行也不再铺底色，避免整页变成一条条色带 */
@@ -369,7 +369,7 @@ onMounted(() => {
   gap: 6px;
   flex-wrap: nowrap;
 }
-.menu-name .menu-branch { color: var(--yq-gold-bright); flex: none; }
+.menu-name .menu-branch { color: var(--yq-accent-bright); flex: none; }
 .menu-name .menu-leaf { color: var(--dp-text2); flex: none; }
 .menu-name .menu-title { font-size: 14px; }
 /* 分组行的「N 项」计数：轻量文字，替代原先每行都挂的「内置 / 分组容器」标签 */

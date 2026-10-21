@@ -8,7 +8,7 @@ import logging
 from app.database import engine, Base
 from app.routers import (
     admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, crawler, datahub, finance, fish, idphoto, life, log, lost, music, novel,
-    ocr, poem, quick, search, settings as settings_router, subscriptions,
+    ocr, poem, quick, roadrash_rooms, search, settings as settings_router, subscriptions,
     day_calendar, game_economy, game_rooms, game_tables, stocks, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
 from app.routers.workbench import router as workbench_router
@@ -192,6 +192,8 @@ app.include_router(game_rooms.router)
 app.include_router(game_economy.router)
 # v2.44 牌类在线对局：掼蛋 / 麻将 / 大富翁 多席服务端权威房间
 app.include_router(game_tables.router)
+# v2.46.150 暴力摩托在线一起玩：房号 + 轮询（进程内房态）
+app.include_router(roadrash_rooms.router)
 # v2.40.36 日历数据（农历/节气/节日/法定假期）
 app.include_router(day_calendar.router)
 

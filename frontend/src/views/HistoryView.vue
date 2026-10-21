@@ -240,7 +240,7 @@ onMounted(() => load())
   border-color: var(--dp-line-strong, rgba(127,127,127,0.35));
   color: var(--lj-text);
 }
-.ht-nav-btn:focus-visible { outline: 2px solid var(--yq-gold); outline-offset: 1px; }
+.ht-nav-btn:focus-visible { outline: 2px solid var(--yq-accent); outline-offset: 1px; }
 
 .ht-date { width: 132px; }
 .ht-date :deep(.el-input__wrapper) {
@@ -320,7 +320,7 @@ onMounted(() => load())
   background: rgba(199, 169, 107, 0.06);
 }
 .ht-vuecal.vuecal :deep(.vuecal__cell--today .vuecal__cell-date) {
-  color: var(--yq-gold);
+  color: var(--yq-accent);
   font-weight: 600;
 }
 /* 选中：金色渐变填充 */
@@ -350,7 +350,7 @@ onMounted(() => load())
 .ht-cal-today { font-family: var(--font-serif, serif); font-size: 12px; letter-spacing: .03em; color: var(--lj-text); }
 .ht-cal-tag {
   font-size: 11px; padding: 2px 9px; border-radius: 999px;
-  background: var(--lj-seal-soft, rgba(255,214,130,0.14)); color: var(--yq-gold, #b8860b);
+  background: var(--lj-seal-soft, rgba(255,214,130,0.14)); color: var(--yq-accent, #b8860b);
 }
 
 /* ============ 事件列表 ============ */
@@ -374,7 +374,6 @@ onMounted(() => load())
 .ht-dot:nth-child(3) { animation-delay: .36s; }
 @keyframes ht-blink { 0%,100%{opacity:.25;transform:scale(.8)} 50%{opacity:1;transform:scale(1)} }
 
-.ht-empty { padding: 30px 8px; text-align: center; color: var(--lj-text-3); font-size: 13px; }
 
 .ht-list {
   margin: 0; padding: 0; list-style: none;
@@ -392,7 +391,7 @@ onMounted(() => load())
 .ht-y {
   flex-shrink: 0; min-width: 64px; text-align: right;
   font-family: var(--font-serif, serif);
-  font-size: 15px; color: var(--yq-gold); letter-spacing: .03em;
+  font-size: 15px; color: var(--yq-accent); letter-spacing: .03em;
 }
 .ht-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .ht-t { font-size: 14px; color: var(--lj-text); line-height: 1.5; }

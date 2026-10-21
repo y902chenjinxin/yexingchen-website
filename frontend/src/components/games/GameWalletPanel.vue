@@ -489,8 +489,9 @@ onMounted(() => {
   border-bottom: 1px solid rgba(201, 169, 108, .1); font-size: 12.5px;
 }
 .gw-ledger-amt { font-weight: 700; font-variant-numeric: tabular-nums; flex: none; min-width: 58px; }
-.gw-ledger-amt.up { color: #3fae7a; }
-.gw-ledger-amt.down { color: var(--dp-danger, #fb7185); }
+/* v2.46.169：原来 up 是绿、down 是红，与红涨绿跌相反 */
+.gw-ledger-amt.up { color: var(--pnl-up, #e5484d); }
+.gw-ledger-amt.down { color: var(--pnl-down, #1aa86a); }
 .gw-ledger-note { flex: 1; color: var(--color-text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gw-ledger-time { flex: none; color: var(--color-text-secondary); opacity: .7; font-size: 11.5px; }
 
@@ -534,7 +535,7 @@ onMounted(() => {
 #app:not(.is-mobile) .gw-card::before { display: none; }
 #app:not(.is-mobile) .gw-head { border-bottom-color: var(--dp-line); }
 #app:not(.is-mobile) .gw-bal { background: var(--dp-accent-faint); border-color: var(--dp-line); }
-#app:not(.is-mobile) .gw-bal.gold { background: var(--yq-gold-faint); border-color: rgba(252, 211, 77, .28); }
+#app:not(.is-mobile) .gw-bal.gold { background: var(--yq-accent-faint); border-color: rgba(252, 211, 77, .28); }
 #app:not(.is-mobile) .gw-btn {
   color: #fff; border-color: transparent;
   background: linear-gradient(180deg, var(--dp-accent), var(--dp-accent-hover));
@@ -547,7 +548,7 @@ onMounted(() => {
 #app:not(.is-mobile) .gw-seg { background: var(--dp-accent-faint); border-color: var(--dp-line); }
 #app:not(.is-mobile) .gw-seg-btn.on { background: var(--dp-accent); color: #fff; }
 #app:not(.is-mobile) .gw-ledger-tabs button { border-color: var(--dp-line); }
-#app:not(.is-mobile) .gw-ledger-tabs button.on { background: var(--yq-gold-faint); color: var(--yq-gold); border-color: rgba(252, 211, 77, .4); }
+#app:not(.is-mobile) .gw-ledger-tabs button.on { background: var(--yq-accent-faint); color: var(--yq-accent); border-color: rgba(252, 211, 77, .4); }
 #app:not(.is-mobile) .gw-rank li { background: var(--dp-surface2); border-color: var(--dp-line); }
 #app:not(.is-mobile) .gw-medal { background: var(--dp-accent-faint); }
 #app:not(.is-mobile) .gw-bar { background: rgba(167, 139, 250, .14); }

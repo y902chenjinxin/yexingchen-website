@@ -30,7 +30,7 @@
   width: 100%;
   height: 100%;
   background: linear-gradient(135deg,
-    var(--yq-gold) 0%,
+    var(--yq-accent) 0%,
     var(--yq-rain) 100%);
   position: absolute;
   top: 0;
@@ -71,7 +71,7 @@
 /* 日间主题：双色更鲜明，投影更深 */
 :global(html[data-theme="day"] .dloader__ball) {
   background: linear-gradient(135deg,
-    var(--yq-gold, #a9804f) 0%,
+    var(--yq-accent, #a9804f) 0%,
     var(--yq-rain-deep, #22665f) 100%);
 }
 :global(html[data-theme="day"] .dloader__shadow) {

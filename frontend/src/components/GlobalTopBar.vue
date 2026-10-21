@@ -141,7 +141,7 @@
                 class="tb-alert-item kind-cd"
                 @click="goCountdown(cd.id)"
               >
-                <span class="tb-cd-mark" :style="{ background: cd.color || 'var(--yq-gold)' }"></span>
+                <span class="tb-cd-mark" :style="{ background: cd.color || 'var(--yq-accent)' }"></span>
                 <span class="tb-alert-name">{{ cd.title }}</span>
                 <span class="tb-alert-meta">
                   {{ shortDate(cd.target_date) }} ·
@@ -604,7 +604,7 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px var(--dp-bg, #0B0F14);
   transition: background var(--motion-fast) var(--ease-standard);
 }
-.tb-alert-dot.is-task { background: linear-gradient(135deg, var(--yq-gold), var(--yq-gold-bright, #d97706)); }
+.tb-alert-dot.is-task { background: linear-gradient(135deg, var(--yq-accent), var(--yq-accent-bright, #d97706)); }
 .tb-alert-dot.is-alert { background: var(--dp-up); }
 .tb-alert-panel {
   width: 360px; max-height: 520px; overflow-y: auto; padding: 10px 14px 12px;
@@ -677,8 +677,8 @@ onUnmounted(() => {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 6px;
   border-radius: 999px;
-  background: var(--lj-seal-soft, var(--yq-gold-faint));
-  color: var(--lj-seal, var(--yq-gold));
+  background: var(--lj-seal-soft, var(--yq-accent-faint));
+  color: var(--lj-seal, var(--yq-accent));
   font-size: 10.5px; font-weight: 600;
 }
 .tb-section-count--alert { background: rgba(216, 80, 79, .12); color: var(--dp-up); }
@@ -698,7 +698,7 @@ onUnmounted(() => {
   background: rgba(216, 80, 79, .05);
 }
 .tb-alert-kind.pri-high { background: rgba(216, 80, 79, .14); color: var(--dp-up); }
-.tb-alert-kind.pri-medium { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold); }
+.tb-alert-kind.pri-medium { background: var(--yq-accent-faint, rgba(199, 169, 107, .18)); color: var(--yq-accent); }
 .tb-alert-kind.pri-low { background: rgba(127, 168, 163, .14); color: var(--yq-rain); }
 
 .tb-alert-item.kind-cd { grid-template-columns: 10px 1fr; }
@@ -709,14 +709,14 @@ onUnmounted(() => {
 }
 .tb-alert-days {
   font-style: normal; font-weight: 600;
-  color: var(--lj-seal, var(--yq-gold));
+  color: var(--lj-seal, var(--yq-accent));
 }
 
 /* ---- 对局邀请（v2.45）：无点击跳转，操作由右侧两个按钮承担 ---- */
 .tb-alert-item.kind-invite { grid-template-columns: 44px 1fr auto; cursor: default; }
 .tb-alert-item.kind-invite:hover { background: rgba(216, 80, 79, .05); }
 .tb-alert-kind.kind-chess { background: rgba(127, 168, 163, .16); color: var(--yq-rain); }
-.tb-alert-kind.kind-table { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold); }
+.tb-alert-kind.kind-table { background: var(--yq-accent-faint, rgba(199, 169, 107, .18)); color: var(--yq-accent); }
 .tb-invite-acts { display: inline-flex; gap: 6px; align-self: center; }
 .tb-invite-btn {
   border: 1px solid transparent; border-radius: 999px;

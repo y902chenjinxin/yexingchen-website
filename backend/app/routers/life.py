@@ -45,7 +45,7 @@ from app.config import settings
 router = APIRouter(prefix="/api/life", tags=["生活岛"])
 
 # 全局只有一个 household（v2.15 简化设计）
-HOUSEHOLD_ID = 1
+from app.services.household import HOUSEHOLD_ID  # v2.46.169：统一来源，勿再本地定义
 
 # 美食记忆的「场合」（v2.41 起）
 MEAL_TYPES = {"feast", "memory", "travel", "home"}

@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 MARKETS = ("sh", "sz", "hk", "us")
 
 # v2.16：财经模块改为家庭共享（household-scoped），不再按 user_id 过滤
-HOUSEHOLD_ID = 1
+from app.services.household import HOUSEHOLD_ID  # v2.46.169：统一来源，勿再本地定义
 
 
 def ok(data=None, msg: str = "") -> dict:

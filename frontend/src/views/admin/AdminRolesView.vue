@@ -286,12 +286,12 @@ onMounted(async () => {
    只在本页重定义 Element Plus 主色，不动全局 --dp-accent，其它后台页维持原配色。
    理由同菜单页：管理后台此前是清一色靛蓝，一点玄黄鎏金都没有，跟工作台放在一起像两套系统。 */
 .section {
-  --el-color-primary: var(--yq-gold-bright);
-  --el-color-primary-light-3: var(--yq-gold);
-  --el-color-primary-light-5: var(--yq-gold);
-  --el-color-primary-light-7: var(--yq-gold-faint);
-  --el-color-primary-light-8: var(--yq-gold-faint);
-  --el-color-primary-light-9: var(--yq-gold-faint);
+  --el-color-primary: var(--yq-accent-bright);
+  --el-color-primary-light-3: var(--yq-accent);
+  --el-color-primary-light-5: var(--yq-accent);
+  --el-color-primary-light-7: var(--yq-accent-faint);
+  --el-color-primary-light-8: var(--yq-accent-faint);
+  --el-color-primary-light-9: var(--yq-accent-faint);
 
   background: var(--dp-surface);
   border: 1px solid var(--dp-line);
@@ -310,12 +310,12 @@ onMounted(async () => {
 
 /* 编辑弹窗：弹窗未设 append-to-body，就地渲染在本组件内，所以 scoped 的 :deep() 能穿透到它 */
 :deep(.role-dialog) {
-  --el-color-primary: var(--yq-gold-bright);
-  --el-color-primary-light-3: var(--yq-gold);
-  --el-color-primary-light-5: var(--yq-gold);
-  --el-color-primary-light-7: var(--yq-gold-faint);
-  --el-color-primary-light-8: var(--yq-gold-faint);
-  --el-color-primary-light-9: var(--yq-gold-faint);
+  --el-color-primary: var(--yq-accent-bright);
+  --el-color-primary-light-3: var(--yq-accent);
+  --el-color-primary-light-5: var(--yq-accent);
+  --el-color-primary-light-7: var(--yq-accent-faint);
+  --el-color-primary-light-8: var(--yq-accent-faint);
+  --el-color-primary-light-9: var(--yq-accent-faint);
 }
 
 .role-menu-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
@@ -334,8 +334,8 @@ onMounted(async () => {
   padding: 2px 0 2px 10px;
   background: transparent;
 
-  --el-checkbox-checked-bg-color: var(--yq-gold-bright);
-  --el-checkbox-checked-input-border-color: var(--yq-gold-bright);
+  --el-checkbox-checked-bg-color: var(--yq-accent-bright);
+  --el-checkbox-checked-input-border-color: var(--yq-accent-bright);
   --el-checkbox-checked-text-color: var(--dp-text);
   --el-tree-node-hover-bg-color: var(--dp-bg2);
 }
