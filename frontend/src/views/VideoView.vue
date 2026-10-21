@@ -1,10 +1,8 @@
 <template>
   <IslandInnerBase type="video" title="视频" subtitle="光影流转">
     <div class="manage-pane">
-      <div class="manage-toolbar">
-        <el-input v-model="keyword" size="small" clearable placeholder="搜索标题/分类" style="width: 260px">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+      <PageToolbar>
+        <SearchField v-model="keyword" placeholder="搜索标题/分类" width="260px" @search="doSearch" />
         <!-- 上传人筛选：视频库是全账号共享的，用它快速定位「自己传的」 -->
         <el-select
           v-model="uploaderId"
@@ -16,16 +14,16 @@
         >
           <el-option v-for="u in uploaders" :key="u.id" :label="u.name" :value="u.id" />
         </el-select>
-        <IconButton icon="search" label="查询" @click="doSearch" />
         <span v-if="hasFilter" class="search-count">匹配 {{ videoStore.list.length }} 条</span>
         <el-button v-if="hasFilter" size="small" plain @click="resetSearch">清空筛选</el-button>
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
-        <span class="mg-toolbar-spacer"></span>
-        <IconButton icon="upload" label="上传视频" variant="primary" @click="openUpload" />
-        <IconButton icon="folder" label="批量导入" @click="openBatch" />
-      </div>
+        <template #actions>
+          <IconButton icon="upload" label="上传视频" variant="primary" @click="openUpload" />
+          <IconButton icon="folder" label="批量导入" @click="openBatch" />
+        </template>
+      </PageToolbar>
       <!-- 加载中：鎏金光扫骨架行 -->
       <div v-if="videoStore.loading" class="sk-skeleton-rows">
         <SkeletonBlock v-for="i in 6" :key="i" width="100%" height="42px" style="margin-bottom: 8px;" />
@@ -60,8 +58,7 @@
         </el-table-column>
         <el-table-column label="操作" :width="isMobile ? 132 : 100" fixed="right">
           <template #default="{ row }">
-            <IconButton icon="edit" size="sm" label="编辑" icon-only @click="openEdit(row)" />
-            <IconButton icon="trash" size="sm" label="删除" variant="danger" icon-only @click="handleDelete(row)" />
+            <OpsCell :row="row" :actions="rowActions" />
           </template>
         </el-table-column>
       </el-table>
@@ -268,10 +265,12 @@
 
 <script setup>
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import PageToolbar from '@/components/common/PageToolbar.vue'
+import OpsCell from '@/components/common/OpsCell.vue'
+import SearchField from '@/components/common/SearchField.vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
 import { useVideoStore } from '@/stores/video'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -531,6 +530,12 @@ async function handleUpload() {
     uploading.value = false
   }
 }
+
+/* 行内动作清单（v2.46.159）：模板只声明，图标/文案/危险色一处可改 */
+const rowActions = [
+  { icon: 'edit', label: '编辑', onClick: openEdit },
+  { icon: 'trash', label: '删除', danger: true, onClick: handleDelete },
+]
 
 function openEdit(row) {
   editId.value = row.id

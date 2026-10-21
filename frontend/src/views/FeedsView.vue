@@ -109,10 +109,7 @@
                 :options="[{ value: 'all', label: '全部' }, { value: 'unread', label: '未读' }, { value: 'bookmarked', label: '已收藏' }]"
                 @change="reload(1)"
               />
-              <input v-model="q" class="fd-search" placeholder="搜索标题…"
-                     spellcheck="false" @keyup.enter="reload(1)" />
-              <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
-              <IconButton icon="search" size="sm" label="查询" @click="reload(1)" />
+              <SearchField v-model="q" placeholder="搜索标题…" width="170px" @search="reload(1)" />
             </div>
           </div>
 
@@ -265,6 +262,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import SearchField from '@/components/common/SearchField.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'

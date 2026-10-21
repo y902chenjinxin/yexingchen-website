@@ -19,10 +19,9 @@
           银行、支付、邮箱、主账号请用专业工具（Vaultwarden / KeePassXC / 系统钥匙串）。</span>
       </div>
 
-      <div class="va-toolbar">
-        <input v-model="filters.q" class="va-input" placeholder="搜名称 / 账号 / 网址 / 备注" @keyup.enter="reload">
-        <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
-        <IconButton icon="search" label="查询" @click="reload" />
+      <!-- v2.46.159：页面工具栏统一用 PageToolbar（间距/换行一处定义） -->
+      <PageToolbar>
+        <SearchField v-model="filters.q" placeholder="搜名称 / 账号 / 网址 / 备注" width="210px" @search="reload" />
         <FilterSelect v-model="filters.uploader_id" placeholder="谁存的（全部）" width="150px" @change="reload">
           <el-option v-for="u in uploaders" :key="u.user_id" :value="u.user_id" :label="u.name" />
         </FilterSelect>
@@ -30,7 +29,7 @@
           <el-option v-for="c in categories" :key="c" :value="c" :label="c" />
         </FilterSelect>
         <IconButton icon="refresh" label="重置" @click="resetFilters" />
-      </div>
+      </PageToolbar>
 
       <div v-if="loading" class="va-empty">加载中…</div>
       <div v-else-if="!list.length" class="va-empty">
@@ -100,6 +99,8 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import PageToolbar from '@/components/common/PageToolbar.vue'
+import SearchField from '@/components/common/SearchField.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'

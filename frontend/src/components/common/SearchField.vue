@@ -45,7 +45,7 @@
         <circle cx="10.5" cy="10.5" r="6.5" />
         <line x1="15.4" y1="15.4" x2="20" y2="20" />
       </svg>
-      <span class="sf__label">查询</span>
+      <span v-if="showLabel" class="sf__label">查询</span>
     </button>
   </div>
 </template>

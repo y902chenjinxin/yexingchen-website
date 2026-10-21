@@ -2,17 +2,9 @@
   <IslandInnerBase type="tool" title="工具" subtitle="机关百变">
     <!-- 管理表格（默认进入即管理页） -->
     <div class="manage-pane">
-      <div class="manage-toolbar">
-        <el-input
-          v-model="keyword"
-          size="small"
-          clearable
-          placeholder="搜索名称/描述"
-          style="width: 220px"
-        >
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
-        <IconButton icon="search" label="查询" @click="doSearch" />
+      <!-- v2.46.159：工具栏统一 PageToolbar，主操作走 #actions 自动贴右 -->
+      <PageToolbar>
+        <SearchField v-model="keyword" placeholder="搜索名称/描述" width="220px" @search="doSearch" />
         <span v-if="keyword" class="search-count">匹配 {{ filteredRows.length }} 条</span>
         <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
         <!-- v2.40.18：下架的工具默认不显示（如已归入通讯录的「人脉图谱」），
@@ -21,10 +13,10 @@
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
-        <!-- v2.46.148：主操作挪进工具栏，用掉批量删除右边的空白（原来在标题下单独占一行） -->
-        <span class="tl-toolbar-spacer"></span>
-        <IconButton icon="plus" label="添加工具" variant="primary" @click="openDialog()" />
-      </div>
+        <template #actions>
+          <IconButton icon="plus" label="添加工具" variant="primary" @click="openDialog()" />
+        </template>
+      </PageToolbar>
       <el-table
         ref="tableRef"
         :data="pagedRows"
@@ -132,6 +124,8 @@
 <script setup>
 defineOptions({ name: 'ToolView' })
 import { onMounted, ref, computed, watch } from 'vue'
+import PageToolbar from '@/components/common/PageToolbar.vue'
+import SearchField from '@/components/common/SearchField.vue'
 import { useRouter } from 'vue-router'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -139,7 +133,6 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import OpsCell from '@/components/common/OpsCell.vue'
 import { ElMessage } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
 import { useToolStore } from '@/stores/tool'
 import { getToolList, createTool, updateTool, deleteTool } from '@/api/tool'
 

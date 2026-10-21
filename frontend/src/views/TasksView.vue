@@ -15,17 +15,16 @@
         </div>
       </header>
 
-      <div class="tk-toolbar">
+      <!-- v2.46.159：页面工具栏统一用 PageToolbar（间距/换行一处定义） -->
+      <PageToolbar>
         <div class="tk-seg">
           <button v-for="t in TABS" :key="t.value" class="tk-seg-btn"
                   :class="{ on: tab === t.value }" @click="tab = t.value">
             {{ t.label }}<span v-if="counts[t.value]" class="tk-seg-n">{{ counts[t.value] }}</span>
           </button>
         </div>
-        <input v-model="keyword" class="tk-input" placeholder="搜索待办" spellcheck="false" @keyup.enter="reload" />
-        <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
-        <IconButton icon="search" label="查询" @click="reload" />
-      </div>
+        <SearchField v-model="keyword" placeholder="搜索待办" width="200px" @search="reload" />
+      </PageToolbar>
 
       <section v-for="g in groups" :key="g.key" class="tk-group">
         <div class="tk-group-head">
@@ -121,7 +120,8 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
-import IconButton from '@/components/common/IconButton.vue'
+import PageToolbar from '@/components/common/PageToolbar.vue'
+import SearchField from '@/components/common/SearchField.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

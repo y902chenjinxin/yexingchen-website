@@ -79,10 +79,9 @@
 
       <!-- ============ 单品墙 ============ -->
       <section v-else-if="tab === 'items'" class="wd-pane">
-        <div class="wd-toolbar">
-          <input v-model="itemFilters.q" class="wd-input" placeholder="搜名称 / 品牌 / 备注" @keyup.enter="loadItems">
-          <!-- v2.46.149：补「查询」按钮（原来只有回车） -->
-          <IconButton icon="search" size="sm" label="查询" @click="loadItems" />
+        <!-- v2.46.159：页面工具栏统一用 PageToolbar（间距/换行一处定义） -->
+      <PageToolbar>
+          <SearchField v-model="itemFilters.q" placeholder="搜名称 / 品牌 / 备注" width="200px" @search="loadItems" />
           <FilterSelect v-model="itemFilters.category" placeholder="全部品类" width="130px" @change="loadItems">
             <el-option v-for="c in metas.categories" :key="c" :value="c" :label="c" />
           </FilterSelect>
@@ -96,7 +95,7 @@
             <input v-model="staleOnly" type="checkbox" @change="toggleStale"> 90 天没穿过
           </label>
           <button class="wd-btn" @click="resetItemFilters">重置</button>
-        </div>
+        </PageToolbar>
 
         <div v-if="!items.length" class="wd-empty">这一位还没有入库的衣服 —— 点右上角「＋ 加一件」拍照存起来。</div>
         <div v-else class="wd-grid">
@@ -303,6 +302,8 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import PageToolbar from '@/components/common/PageToolbar.vue'
+import SearchField from '@/components/common/SearchField.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
