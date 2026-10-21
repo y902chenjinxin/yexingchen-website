@@ -20,7 +20,8 @@
         <span v-if="!stats.count" class="li-stats-hint">丢东西不丢人，忘了才可惜</span>
       </div>
 
-      <div class="li-toolbar">
+      <!-- v2.46.157：工具栏统一用 PageToolbar（左筛选 / 右操作，间距与换行一处定义） -->
+      <PageToolbar>
         <FilterSelect v-model="filters.uploader_id" placeholder="谁记的（全部）" width="150px" @change="reload">
           <el-option v-for="u in uploaders" :key="u.user_id" :value="u.user_id" :label="u.name" />
         </FilterSelect>
@@ -39,11 +40,9 @@
           class="li-date"
           @change="reload"
         />
-        <input v-model="filters.q" class="li-input" placeholder="搜物品 / 地点 / 经过" @keyup.enter="reload">
-        <!-- v2.46.149：搜索框光靠回车太隐蔽，补一个「查询」按钮 -->
-        <IconButton icon="search" label="查询" @click="reload" />
+        <SearchField v-model="filters.q" placeholder="搜物品 / 地点 / 经过" width="200px" @search="reload" />
         <IconButton icon="refresh" label="重置" @click="resetFilters" />
-      </div>
+      </PageToolbar>
 
       <div v-if="loading" class="li-empty">加载中…</div>
       <div v-else-if="!list.length" class="li-empty">
@@ -164,6 +163,8 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import { thumb } from '@/utils/img'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import PageToolbar from '@/components/common/PageToolbar.vue'
+import SearchField from '@/components/common/SearchField.vue'
 import { lostApi, uploadLifeImage } from '@/api/lifeExtra'
 
 const list = ref([])

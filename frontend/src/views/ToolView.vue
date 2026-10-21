@@ -73,11 +73,8 @@
           <template #default="{ row }">
             <!-- 使用＝打开工具本体（内置走模块路由 / 外链走站内详情内嵌页），
                  与「编辑」区分开：以前只有编辑删除，没有任何使用入口 -->
-            <div class="row-ops">
-              <IconButton icon="play" size="sm" label="使用" icon-only @click="go(row)" />
-              <IconButton icon="edit" size="sm" label="编辑" icon-only @click="openDialog(row)" />
-              <IconButton icon="trash" size="sm" label="删除" variant="danger" icon-only :disabled="row.kind === 'builtin'" @click="handleDelete(row)" />
-            </div>
+            <!-- v2.46.157：行内动作收敛到 OpsCell（图标化/禁用/危险色一处定义） -->
+            <OpsCell :row="row" :actions="opsActions" />
           </template>
         </el-table-column>
       </el-table>
@@ -140,6 +137,7 @@ import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import OpsCell from '@/components/common/OpsCell.vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useToolStore } from '@/stores/tool'
@@ -274,6 +272,13 @@ async function toggleEnabled(row, val) {
     row._enabled = !!row.is_enabled
   }
 }
+
+/* 行内动作清单（模板只声明，不存在于模板里，便于统一改图标/文案/权限） */
+const opsActions = [
+  { icon: 'play', label: '使用', onClick: go },
+  { icon: 'edit', label: '编辑', onClick: openDialog },
+  { icon: 'trash', label: '删除', danger: true, disabled: (r) => r.kind === 'builtin', onClick: handleDelete },
+]
 
 /* ---- 删除（内置禁删） ---- */
 const showDelete = ref(false)

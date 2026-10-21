@@ -1,3 +1,36 @@
+## [v2.46.158] - 2026-10-21
+
+### 全盘审计 + 第一批公共抽象（搜索框 / 行内操作 / 工具栏 / 格式化）
+
+夜星：「全盘扫一下项目，将一些方法或组件抽象出来，后续修改一次性改动」。
+先量了一遍再动手（数字见 `docs/REFACTOR.md`）：搜索框 15 处、操作列 6 处、`el-pagination` 14 处、
+`toFixed` 87 处、自定义 `fmtXxx` 37 个、硬编码颜色 6000+ 处。
+
+#### 新增 4 个公共产物
+| 产物 | 解决 |
+|---|---|
+| `components/common/SearchField.vue` | 搜索框+查询按钮一体；Enter / 按钮 / 清除三路统一；手机只留图标 |
+| `components/common/OpsCell.vue` | 行内动作：图标化、`danger`、`disabled(row)`、`show(row)`、自定义插槽 |
+| `components/common/PageToolbar.vue` | 工具栏：左筛选 / 右主操作，间距与换行一处定义，主操作贴右 |
+| `utils/format.js` | `fmtDate/fmtDateTime/fmtTime/fmtMd/fmtMoney/fmtYuan/fmtSize/fmtRelative/fmtPercent` |
+
+- `fmtMoney` 入参统一是**分**（对齐后端 `amount_cents`）；空值一律返回 `''`，不再出现 `¥NaN` / `Invalid Date`。
+- 设计取舍：`OpsCell` 只封装**单元格内容**，不封装 `el-table-column` —— 列宽/`fixed` 各页不同，包进去会多出一堆 props。
+
+#### 试点（已上线验证）
+- **工具管理**：操作列 → `OpsCell`。实测 15 行 / 15 个 `.ops` / 45 个图标按钮，`title` = 使用·编辑·删除。
+- **遗失物**：工具栏 → `PageToolbar` + `SearchField`。实测搜索「手环」命中 1 条，无 JS 错误。
+
+#### 未做的（明确留档，不藏着）
+- 剩余 13 处搜索框、5 处操作列、5 处工具栏：机械替换，下一批。
+- 14 处 `el-pagination` → `usePagedList`：中风险，需逐页回归。
+- **6000+ 硬编码颜色**、后端 130 处 `household_id` / 104 处软删：高风险，单独立项分批做。
+  一次全改没法用单测兜住视觉与数据回归。
+
+版本 SW v471→v472、APP_VERSION v2.46.157→v2.46.158。
+
+---
+
 ## [v2.46.156] - 2026-10-20
 
 ### 3D 掼蛋布局修正 + 两个 3D 牌桌接回音效
@@ -28,6 +61,39 @@
 点「提示」选好 6 张再出牌 → `buf=5`（**+1，真的发声了**）、`osc=0`（走真采样而非兜底合成音）、无报错。
 
 版本 SW v469→v470、APP_VERSION v2.46.155→v2.46.156。
+
+---
+
+## [v2.46.157] - 2026-10-21
+
+### 暴力摩托：碰撞终于有「砸」的感觉，迎面轿车会把摩托撞飞
+
+夜星：「现在没有与车碰撞的感觉，还有迎面的轿车也不是撞飞摩托」。
+
+#### 摔车机制（新增）
+
+- 撞上路边车 / 迎面轿车 → **摔车**：速度瞬间砸下来，车身被甩向一侧、腾空飞起并绕接地点翻大半圈，
+  约 1 秒后落地扶正，随后 1.2 秒无敌（避免刚起来又被同一堆东西撞倒）。
+- 摔车期间操控冻结，只保留惯性滑行，HUD 中央显示「摔车！」。
+
+#### 撞击反馈（新增三层）
+
+- **震屏**：撞击瞬间强度 5.5~9，叠加随机抖动（比原来的正弦更有「砸」感），0.5 秒内衰减。
+- **红色闪屏**：撞击瞬间整屏泛红，快速衰减。
+- **火花粒子**：撞击点迸出 8~30 颗带重力的火花，迎面撞车最多。
+
+#### 车辆碰撞不再只是扣耐久
+
+- 与对手 / 警车相撞：车身被撞歪（倾角 +0.55）、横向被推开、速度掉到 55%、屏幕震一下、迸火花。
+- 碰撞判定放宽到与后视车宽匹配（横向 0.17 路宽、纵向 130 像素），蹭上就有反馈。
+- 耐久：普通对手 -8、警车 -12；路边车 -28、迎面车 -38、锥桶 -8（锥桶只减速不摔）。
+
+#### 迎面轿车（新增）
+
+- 最左车道会逆向开来轿车：车头正对你、双大灯 + 光晕 + 前格栅，相对速度是双方之和，
+  撞上直接摔车并掉 38 耐久。躲开就是一次漂亮的贴身对穿。
+
+版本 SW v470→v471、APP_VERSION v2.46.156→v2.46.157。
 
 ---
 
@@ -144,6 +210,39 @@
 - 在线局按 `R` 不再重开（会和房间成绩对不上）；比赛中「退出比赛」= 离房，结算后「回到房间」由房主重置。
 
 版本 SW v463→v464、APP_VERSION v2.46.149→v2.46.150。
+
+---
+
+## [v2.46.158] - 2026-10-21
+
+### 全盘审计 + 第一批公共抽象（搜索框 / 行内操作 / 工具栏 / 格式化）
+
+夜星：「全盘扫一下项目，将一些方法或组件抽象出来，后续修改一次性改动」。
+先量了一遍再动手（数字见 `docs/REFACTOR.md`）：搜索框 15 处、操作列 6 处、`el-pagination` 14 处、
+`toFixed` 87 处、自定义 `fmtXxx` 37 个、硬编码颜色 6000+ 处。
+
+#### 新增 4 个公共产物
+| 产物 | 解决 |
+|---|---|
+| `components/common/SearchField.vue` | 搜索框+查询按钮一体；Enter / 按钮 / 清除三路统一；手机只留图标 |
+| `components/common/OpsCell.vue` | 行内动作：图标化、`danger`、`disabled(row)`、`show(row)`、自定义插槽 |
+| `components/common/PageToolbar.vue` | 工具栏：左筛选 / 右主操作，间距与换行一处定义，主操作贴右 |
+| `utils/format.js` | `fmtDate/fmtDateTime/fmtTime/fmtMd/fmtMoney/fmtYuan/fmtSize/fmtRelative/fmtPercent` |
+
+- `fmtMoney` 入参统一是**分**（对齐后端 `amount_cents`）；空值一律返回 `''`，不再出现 `¥NaN` / `Invalid Date`。
+- 设计取舍：`OpsCell` 只封装**单元格内容**，不封装 `el-table-column` —— 列宽/`fixed` 各页不同，包进去会多出一堆 props。
+
+#### 试点（已上线验证）
+- **工具管理**：操作列 → `OpsCell`。实测 15 行 / 15 个 `.ops` / 45 个图标按钮，`title` = 使用·编辑·删除。
+- **遗失物**：工具栏 → `PageToolbar` + `SearchField`。实测搜索「手环」命中 1 条，无 JS 错误。
+
+#### 未做的（明确留档，不藏着）
+- 剩余 13 处搜索框、5 处操作列、5 处工具栏：机械替换，下一批。
+- 14 处 `el-pagination` → `usePagedList`：中风险，需逐页回归。
+- **6000+ 硬编码颜色**、后端 130 处 `household_id` / 104 处软删：高风险，单独立项分批做。
+  一次全改没法用单测兜住视觉与数据回归。
+
+版本 SW v471→v472、APP_VERSION v2.46.157→v2.46.158。
 
 ---
 
@@ -277,6 +376,39 @@
 - 顺手把 `GamesView` 里暴力摩托的规则文案补上赛道与车辆两条。
 
 版本 SW v459→v460、APP_VERSION v2.46.145→v2.46.146。
+
+---
+
+## [v2.46.158] - 2026-10-21
+
+### 全盘审计 + 第一批公共抽象（搜索框 / 行内操作 / 工具栏 / 格式化）
+
+夜星：「全盘扫一下项目，将一些方法或组件抽象出来，后续修改一次性改动」。
+先量了一遍再动手（数字见 `docs/REFACTOR.md`）：搜索框 15 处、操作列 6 处、`el-pagination` 14 处、
+`toFixed` 87 处、自定义 `fmtXxx` 37 个、硬编码颜色 6000+ 处。
+
+#### 新增 4 个公共产物
+| 产物 | 解决 |
+|---|---|
+| `components/common/SearchField.vue` | 搜索框+查询按钮一体；Enter / 按钮 / 清除三路统一；手机只留图标 |
+| `components/common/OpsCell.vue` | 行内动作：图标化、`danger`、`disabled(row)`、`show(row)`、自定义插槽 |
+| `components/common/PageToolbar.vue` | 工具栏：左筛选 / 右主操作，间距与换行一处定义，主操作贴右 |
+| `utils/format.js` | `fmtDate/fmtDateTime/fmtTime/fmtMd/fmtMoney/fmtYuan/fmtSize/fmtRelative/fmtPercent` |
+
+- `fmtMoney` 入参统一是**分**（对齐后端 `amount_cents`）；空值一律返回 `''`，不再出现 `¥NaN` / `Invalid Date`。
+- 设计取舍：`OpsCell` 只封装**单元格内容**，不封装 `el-table-column` —— 列宽/`fixed` 各页不同，包进去会多出一堆 props。
+
+#### 试点（已上线验证）
+- **工具管理**：操作列 → `OpsCell`。实测 15 行 / 15 个 `.ops` / 45 个图标按钮，`title` = 使用·编辑·删除。
+- **遗失物**：工具栏 → `PageToolbar` + `SearchField`。实测搜索「手环」命中 1 条，无 JS 错误。
+
+#### 未做的（明确留档，不藏着）
+- 剩余 13 处搜索框、5 处操作列、5 处工具栏：机械替换，下一批。
+- 14 处 `el-pagination` → `usePagedList`：中风险，需逐页回归。
+- **6000+ 硬编码颜色**、后端 130 处 `household_id` / 104 处软删：高风险，单独立项分批做。
+  一次全改没法用单测兜住视觉与数据回归。
+
+版本 SW v471→v472、APP_VERSION v2.46.157→v2.46.158。
 
 ---
 
@@ -466,6 +598,39 @@
 `App.vue`：把排除清单提成常量 `ISLAND_FOOTER_PREFIXES = ['music','novel','video','log','tool','history','life','play']`，`showGlobalFooter` 改为 `!ISLAND_FOOTER_PREFIXES.includes(p.split('/')[1] || '')`。只加两个前缀 + 换精确比对，不动任何页面渲染逻辑（岛屿页脚仍在 `IslandInnerBase` 里，非岛屿页仍由 App 兜底）。
 
 版本 SW v458→v459、APP_VERSION v2.46.144→v2.46.145。
+
+---
+
+## [v2.46.158] - 2026-10-21
+
+### 全盘审计 + 第一批公共抽象（搜索框 / 行内操作 / 工具栏 / 格式化）
+
+夜星：「全盘扫一下项目，将一些方法或组件抽象出来，后续修改一次性改动」。
+先量了一遍再动手（数字见 `docs/REFACTOR.md`）：搜索框 15 处、操作列 6 处、`el-pagination` 14 处、
+`toFixed` 87 处、自定义 `fmtXxx` 37 个、硬编码颜色 6000+ 处。
+
+#### 新增 4 个公共产物
+| 产物 | 解决 |
+|---|---|
+| `components/common/SearchField.vue` | 搜索框+查询按钮一体；Enter / 按钮 / 清除三路统一；手机只留图标 |
+| `components/common/OpsCell.vue` | 行内动作：图标化、`danger`、`disabled(row)`、`show(row)`、自定义插槽 |
+| `components/common/PageToolbar.vue` | 工具栏：左筛选 / 右主操作，间距与换行一处定义，主操作贴右 |
+| `utils/format.js` | `fmtDate/fmtDateTime/fmtTime/fmtMd/fmtMoney/fmtYuan/fmtSize/fmtRelative/fmtPercent` |
+
+- `fmtMoney` 入参统一是**分**（对齐后端 `amount_cents`）；空值一律返回 `''`，不再出现 `¥NaN` / `Invalid Date`。
+- 设计取舍：`OpsCell` 只封装**单元格内容**，不封装 `el-table-column` —— 列宽/`fixed` 各页不同，包进去会多出一堆 props。
+
+#### 试点（已上线验证）
+- **工具管理**：操作列 → `OpsCell`。实测 15 行 / 15 个 `.ops` / 45 个图标按钮，`title` = 使用·编辑·删除。
+- **遗失物**：工具栏 → `PageToolbar` + `SearchField`。实测搜索「手环」命中 1 条，无 JS 错误。
+
+#### 未做的（明确留档，不藏着）
+- 剩余 13 处搜索框、5 处操作列、5 处工具栏：机械替换，下一批。
+- 14 处 `el-pagination` → `usePagedList`：中风险，需逐页回归。
+- **6000+ 硬编码颜色**、后端 130 处 `household_id` / 104 处软删：高风险，单独立项分批做。
+  一次全改没法用单测兜住视觉与数据回归。
+
+版本 SW v471→v472、APP_VERSION v2.46.157→v2.46.158。
 
 ---
 
@@ -756,6 +921,39 @@
 - **覆盖范围**：外壳（顶栏 / 命令面板 / AI 抽屉）→ 工作台（天气 / 服务器监测 / 此刻）→ 记账 / 资讯 / 生活 / 通讯录 / 足迹 → 工具集（PDF / 压缩 / 证件照 / 水印 / 音色克隆 / 弹幕 / 密码 / ASR / 倒计时等）→ 棋牌三件套 + 大富翁 + 五子棋 / 围棋 / 象棋 / 军棋 / 飞行棋，**90+ 文件**；通知标题、tooltip、规则说明里当装饰用的 emoji 一并去掉。
 - **保留（有意不改）**：`♠♥♣♦` 牌面花色、`⌘ ⇧` 键盘记号、CSS `content:'✈'` 之类版面排版字符 —— 属字体排版而非图标，且散落在卡片角标与 CSS 伪元素里，替换会改变牌面版式；`→ ↑ ↓ ‹ › ▾` 等句中分隔符同样保留。
 - 版本 SW v442→v443、APP_VERSION v2.46.128→v2.46.129。
+
+---
+
+## [v2.46.158] - 2026-10-21
+
+### 全盘审计 + 第一批公共抽象（搜索框 / 行内操作 / 工具栏 / 格式化）
+
+夜星：「全盘扫一下项目，将一些方法或组件抽象出来，后续修改一次性改动」。
+先量了一遍再动手（数字见 `docs/REFACTOR.md`）：搜索框 15 处、操作列 6 处、`el-pagination` 14 处、
+`toFixed` 87 处、自定义 `fmtXxx` 37 个、硬编码颜色 6000+ 处。
+
+#### 新增 4 个公共产物
+| 产物 | 解决 |
+|---|---|
+| `components/common/SearchField.vue` | 搜索框+查询按钮一体；Enter / 按钮 / 清除三路统一；手机只留图标 |
+| `components/common/OpsCell.vue` | 行内动作：图标化、`danger`、`disabled(row)`、`show(row)`、自定义插槽 |
+| `components/common/PageToolbar.vue` | 工具栏：左筛选 / 右主操作，间距与换行一处定义，主操作贴右 |
+| `utils/format.js` | `fmtDate/fmtDateTime/fmtTime/fmtMd/fmtMoney/fmtYuan/fmtSize/fmtRelative/fmtPercent` |
+
+- `fmtMoney` 入参统一是**分**（对齐后端 `amount_cents`）；空值一律返回 `''`，不再出现 `¥NaN` / `Invalid Date`。
+- 设计取舍：`OpsCell` 只封装**单元格内容**，不封装 `el-table-column` —— 列宽/`fixed` 各页不同，包进去会多出一堆 props。
+
+#### 试点（已上线验证）
+- **工具管理**：操作列 → `OpsCell`。实测 15 行 / 15 个 `.ops` / 45 个图标按钮，`title` = 使用·编辑·删除。
+- **遗失物**：工具栏 → `PageToolbar` + `SearchField`。实测搜索「手环」命中 1 条，无 JS 错误。
+
+#### 未做的（明确留档，不藏着）
+- 剩余 13 处搜索框、5 处操作列、5 处工具栏：机械替换，下一批。
+- 14 处 `el-pagination` → `usePagedList`：中风险，需逐页回归。
+- **6000+ 硬编码颜色**、后端 130 处 `household_id` / 104 处软删：高风险，单独立项分批做。
+  一次全改没法用单测兜住视觉与数据回归。
+
+版本 SW v471→v472、APP_VERSION v2.46.157→v2.46.158。
 
 ---
 
