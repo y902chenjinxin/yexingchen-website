@@ -1674,6 +1674,16 @@ function shade(hex, k) {
  *  出拳用独立姿势帧：蓄力 → 前击 / 后击 → 收招。 */
 const RIDER_W = 60
 const RIDER_H = 68
+
+/** v2.46.182：四台车不再只是换色 —— 按 shape 分化轮廓。
+ *  tire/body/bars/tail 是相对 street 的倍率，pipes 是排气根数。
+ *  cruiser 宽胎 + 四出排气 + 护杠；touring 高把 + 靠背；police 白车身 + 护杠（警灯另画）。 */
+const BIKE_SHAPES = {
+  street: { tire: 1.0, body: 1.0, bars: 1.0, tail: 1.0, pipes: 2, crashbar: false, backrest: false },
+  cruiser: { tire: 1.34, body: 1.26, bars: 1.12, tail: 1.55, pipes: 4, crashbar: true, backrest: false },
+  touring: { tire: 1.14, body: 1.18, bars: 1.28, tail: 1.2, pipes: 2, crashbar: false, backrest: true },
+  police: { tire: 1.04, body: 1.04, bars: 1.04, tail: 1.15, pipes: 2, crashbar: true, backrest: false },
+}
 const riderCache = new Map()
 
 function riderPal(color, police) {
@@ -1694,8 +1704,8 @@ function riderPal(color, police) {
 }
 
 /** pose: 0 骑乘 / 1 蓄力 / 2 前击 / 3 后击 / 4 收招 */
-function riderSprite(color, bucket, pose, police) {
-  const key = `${color}|${bucket}|${pose}|${police ? 1 : 0}`
+function riderSprite(color, bucket, pose, police, shape = 'street') {
+  const key = `${color}|${bucket}|${pose}|${police ? 1 : 0}|${shape}`
   const hit = riderCache.get(key)
   if (hit) return hit
   const c = document.createElement('canvas')
@@ -1713,28 +1723,57 @@ function riderSprite(color, bucket, pose, police) {
     g.fillRect(Math.round(OX + x + shear(y) + tw), baseY - y - h, Math.max(1, w), Math.max(1, h))
   }
 
-  /* ---- 摩托（后视）：后胎在下，挡泥板/尾灯/牌照在上，两侧排气 ---- */
-  R(-6, 0, 12, 2, pal.K)
-  R(-8, 2, 16, 5, pal.K)
-  R(-9, 7, 18, 8, pal.K)
-  R(-8, 15, 16, 2, pal.K)
-  R(-6, 4, 12, 1, pal.k)
-  R(-8, 9, 16, 1, pal.k)
-  R(-7, 13, 14, 1, pal.k)
+  /* ---- 摩托（后视）：后胎在下，挡泥板/尾灯/牌照在上，两侧排气 ----
+     v2.46.182：尺寸按车型倍率算，四台车轮廓可分辨 */
+  const S = BIKE_SHAPES[shape] || BIKE_SHAPES.street
+  const TW = Math.round(9 * S.tire)            // 后胎半宽（street=9）
+  const BW = Math.round(11 * S.body)           // 车身半宽（street=11）
+  const FW = Math.round(12 * S.body)           // 挡泥板半宽
+  const MW = Math.round(14 * S.bars)           // 后视镜外沿
+  const PX = (v) => Math.round(v)              // 便捷取整
+
+  // 后胎（四段收腰，随胎宽整体缩放）
+  R(-PX(TW * 0.67), 0, PX(TW * 1.33), 2, pal.K)
+  R(-PX(TW * 0.89), 2, PX(TW * 1.78), 5, pal.K)
+  R(-TW, 7, TW * 2, 8, pal.K)
+  R(-PX(TW * 0.89), 15, PX(TW * 1.78), 2, pal.K)
+  // 胎面纹
+  R(-PX(TW * 0.67), 4, PX(TW * 1.33), 1, pal.k)
+  R(-PX(TW * 0.89), 9, PX(TW * 1.78), 1, pal.k)
+  R(-PX(TW * 0.78), 13, PX(TW * 1.56), 1, pal.k)
+  // 轮毂 + 轴心
   R(-3, 5, 6, 4, pal.G)
   R(-1, 6, 2, 2, pal.g)
-  R(-6, 16, 3, 5, pal.g)
-  R(3, 16, 3, 5, pal.g)
-  R(-12, 15, 24, 3, pal.D)
-  R(-11, 18, 22, 7, pal.B)
-  R(-11, 18, 22, 2, pal.X)
-  R(-3, 21, 6, 3, pal.R)
-  R(-14, 12, 5, 7, pal.G)
-  R(9, 12, 5, 7, pal.G)
-  R(-14, 11, 5, 2, pal.g)
-  R(9, 11, 5, 2, pal.g)
-  R(-10, 19, 2, 2, '#e8a33a')
-  R(8, 19, 2, 2, '#e8a33a')
+  // 排气：cruiser 四出（左右各两根），其余双出
+  if (S.pipes >= 4) {
+    R(-PX(TW * 0.86), 16, 3, 5, pal.g)
+    R(-PX(TW * 0.56), 16, 3, 5, pal.g)
+    R(PX(TW * 0.52), 16, 3, 5, pal.g)
+    R(PX(TW * 0.82) - 3, 16, 3, 5, pal.g)
+  } else {
+    R(-PX(TW * 0.78), 16, 3, 5, pal.g)
+    R(PX(TW * 0.5), 16, 3, 5, pal.g)
+  }
+  // 挡泥板 + 车身 + 车身上缘高光
+  R(-FW, 15, FW * 2, 3, pal.D)
+  R(-BW, 18, BW * 2, 7, pal.B)
+  R(-BW, 18, BW * 2, 2, pal.X)
+  // 尾灯（宽随车型：cruiser 最宽）
+  const tlW = Math.max(4, Math.round(6 * S.tail))
+  R(-PX(tlW / 2), 21, tlW, 3, pal.R)
+  // 后视镜（外沿随车把宽度）
+  R(-MW, 12, 5, 7, pal.G)
+  R(MW - 5, 12, 5, 7, pal.G)
+  R(-MW, 11, 5, 2, pal.g)
+  R(MW - 5, 11, 5, 2, pal.g)
+  // 转向灯
+  R(-PX(BW - 1), 19, 2, 2, '#e8a33a')
+  R(PX(BW - 1), 19, 2, 2, '#e8a33a')
+  // 护杠（cruiser / police）
+  if (S.crashbar) {
+    R(-BW - 2, 15, 2, 7, pal.g)
+    R(BW, 15, 2, 7, pal.g)
+  }
 
   /* ---- 座垫 + 臀腿：和车身、上身都重叠一两格，避免出现「漂浮的黑缝」 ---- */
   R(-9, 25, 18, 6, '#262b34')
@@ -1769,6 +1808,10 @@ function riderSprite(color, bucket, pose, police) {
   R(-1, 56, 2, 7, pal.S, twist)
   R(-9, 56, 2, 4, pal.V, twist)
   R(8, 56, 2, 4, pal.V, twist)
+  // v2.46.182：盔顶高光 + 盔沿暗边 —— 缩放后圆顶不再是一块平色
+  R(-7, 62, 5, 1, pal.W, twist)
+  R(-6, 61, 3, 1, pal.W, twist)
+  R(-8, 55, 15, 1, pal.h, twist)
 
   /* ---- 手臂：袖子比躯干暗一档，手臂伸到躯干轮廓之外才看得出是胳膊 ---- */
   // 左手（画面左）：后击时向下后方甩出
@@ -1804,6 +1847,14 @@ function riderSprite(color, bucket, pose, police) {
   if (pose === 0 || pose === 4) {
     R(-23, 41, 3, 2, pal.g)
     R(19, 41, 3, 2, pal.g)
+  }
+
+  // 靠背 / 尾箱（touring）：后视时它挡在骑手下半身前面，所以最后画
+  if (S.backrest) {
+    R(-8, 26, 16, 3, pal.D)
+    R(-6, 29, 12, 13, pal.G)
+    R(-6, 29, 12, 2, pal.g)
+    R(-3, 33, 6, 4, pal.B)
   }
 
   // ---- v2.46.179：给精灵加 1px 深色描边 ----
@@ -1860,7 +1911,7 @@ function drawBike(ctx, x, y, k, b, dead) {
   const bucket = Math.max(-2, Math.min(2, Math.round(lean * 2.4)))
   const color = dead ? '#6b7280' : (b.color || '#e05a4a')
   const pose = dead ? 0 : attackPose(b)
-  const spr = riderSprite(color, bucket, pose, !!b.isPolice)
+  const spr = riderSprite(color, bucket, pose, !!b.isPolice, b.shape)
   // v2.46.170：原来玩家 0.82、对手 0.74，在 400px 宽的低分辨率画布上只有 40 多像素，
   // 细看也分不出头盔/手臂/车胎 —— 放大到 1.12 / 1.0，人形和出拳姿态才看得出来
   const scale = Math.max(0.42, k * (b.isPlayer ? 1.12 : 1.0))
