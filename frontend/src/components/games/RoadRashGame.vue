@@ -285,6 +285,20 @@ const TRACKS = {
     shoulder: '#8a7a58', shoulderDark: '#6a5c40',
     dash: '#e8d868', edge: '#d8d8c8', prop: 'pine', rail: true,
   },
+  downtown: {
+    // v2.46.183：参考经典伪 3D 公路游戏的「城市街道」观感 —— 两侧密集楼体 + 白色中央虚线
+    label: '市区', tag: '城市街道 · 白昼', scene: 'downtown',
+    sky: ['#a2c6e2', '#c8dcea', '#eef4f6'], cloud: '#ffffff', cloudShade: '#d2e2ee',
+    peaks: [[0, -70], [150, -120], [300, -90], [450, -140], [600, -100], [750, -130], [900, -95], [1050, -125], [1200, -80]],
+    farPeaks: '#b4c0cc', nearPeaks: '#8e9aa8',
+    ground: '#8e939a', groundShade: '#6e747c',
+    road: '#4c4e54', roadDark: '#35373d', roadLight: '#5e6068', tyre: '#2a2c32',
+    shoulder: '#a0a6ae', shoulderDark: '#7e848c',
+    dash: '#f2f2f2', edge: '#e6e6e6',
+    buildings: ['#5d6d8e', '#8c5a46', '#48928e', '#b39a6e', '#6b5a7c', '#7a8a6a'],
+    buildLight: 'rgba(255,255,255,.25)', windowLit: '#ffe6a8',
+    dashStyle: 'dashed', prop: 'lamp', rail: true,
+  },
   night: {
     label: '夜城', tag: '城市夜路 · 深夜', scene: 'city',
     sky: ['#070d1c', '#132441', '#2a3b60'], cloud: '#2c3e5c', cloudShade: '#1a2840',
@@ -297,7 +311,7 @@ const TRACKS = {
     prop: 'lamp', stars: true, rail: false,
   },
 }
-const TRACK_LIST = ['plain', 'desert', 'valley', 'night']
+const TRACK_LIST = ['plain', 'desert', 'valley', 'downtown', 'night']
 
 /* ---------- 车辆（差异真的落到手感上：极速 / 加速 / 换道冷却 / 耐久 / 攻击伤害） ---------- */
 const BIKES = {
@@ -1385,6 +1399,8 @@ function drawGround(ctx, t) {
     drawCliff(ctx, t)
   } else if (t.scene === 'city') {
     drawCityGlow(ctx, t)
+  } else if (t.scene === 'downtown') {
+    drawBuildings(ctx, t)
   } else {
     drawDunes(ctx, t)
   }
@@ -1459,6 +1475,62 @@ function drawCliff(ctx, t) {
       const rx = Math.floor(hash(py * 17) * Math.max(1, edge - 3))
       ctx.fillRect(rx, py, 2, 1)
       if (hash(py * 53) > 0.6) ctx.fillRect(Math.max(0, rx - 4), py, 1, 1)
+    }
+  }
+}
+
+/** 市区建筑（v2.46.183）
+ *  参考经典伪 3D 公路游戏的街道观感：两侧密集楼体，带窗格、顶部亮边、底层门洞。
+ *  全部用 roadEdgeAt 拿每行路面边缘 → 楼体自然随弯道一起弯、随距离一起缩。
+ *  左右错开节奏（side<0 时跳过部分序号），避免镜像对称的假感。 */
+function drawBuildings(ctx, t) {
+  if (!player) return
+  const step = 158
+  const base = Math.floor(player.roadPos / step)
+  const facade = t.buildings || ['#6a7280']
+  for (let i = base + 15; i >= base; i--) {
+    for (const side of [-1, 1]) {
+      if (side < 0 && i % 3 === 1) continue
+      const rel = i * step - player.roadPos
+      const y = pu(objY(rel))
+      if (y <= pu(hzNow) + 1 || y > PH + 6) continue
+      const e = roadEdgeAt(y)
+      const k = e.k
+      const seed = i * 17 + (side > 0 ? 101 : 7)
+      // v2.46.183：初版楼太高太密，把天空整个吃掉（看着像贴满 LED 的墙）。
+      // 高度压到 0.18~0.52、宽度略收，画面才留得出天光和远山。
+      const wWorld = 0.26 + hash(seed) * 0.24
+      const hWorld = 0.18 + hash(seed + 5) * 0.34
+      const scale = (ROAD_W * k) / PIX
+      const bw = Math.max(3, Math.round(wWorld * scale))
+      const bh = Math.max(5, Math.round(hWorld * scale))
+      const walk = Math.max(1, Math.round(9 * k))
+      const x = side < 0 ? Math.round(e.l - walk - bw) : Math.round(e.r + walk)
+      // 完全出画就不画
+      if (x + bw < 0 || x > PW) continue
+      const top = y - bh
+      ctx.fillStyle = facade[Math.floor(hash(seed + 11) * facade.length) % facade.length]
+      ctx.fillRect(x, top, bw, bh)
+      // 顶面亮边 + 背光侧暗边，给方盒一点体积
+      ctx.fillStyle = t.buildLight || 'rgba(255,255,255,.22)'
+      ctx.fillRect(x, top, bw, 1)
+      ctx.fillStyle = 'rgba(0,0,0,.26)'
+      ctx.fillRect(side < 0 ? x + bw - 1 : x, top + 1, 1, bh - 1)
+      // 窗格：1×2 的竖窗，随机点亮
+      if (bw >= 6 && bh >= 8) {
+        for (let wy = top + 3; wy < y - 4; wy += 5) {
+          for (let wx = x + 2; wx < x + bw - 2; wx += 4) {
+            const lit = hash(wx * 7 + wy * 13 + seed) > 0.62
+            ctx.fillStyle = lit ? (t.windowLit || '#ffe9b0') : 'rgba(18,24,32,.42)'
+            ctx.fillRect(wx, wy, 1, 2)
+          }
+        }
+      }
+      // 底层门洞
+      if (bh > 14 && bw > 6) {
+        ctx.fillStyle = 'rgba(12,16,22,.7)'
+        ctx.fillRect(x + Math.round(bw / 2) - 1, y - 5, 3, 5)
+      }
     }
   }
 }
@@ -1549,8 +1621,13 @@ function drawRoad(ctx, t) {
     const cx1 = Math.round((l + r) / 2)
     ctx.fillStyle = t.dash
     const lw = Math.max(1, Math.round(1.6 * e.k))
-    ctx.fillRect(cx1 - 2 - lw, py, lw, 1)
-    ctx.fillRect(cx1 + 2, py, lw, 1)
+    if (t.dashStyle === 'dashed') {
+      // v2.46.183：白色短虚线（市区/参考经典游戏观感），按世界距离 180 一段
+      if (Math.floor(linePos / 180) % 2 === 0) ctx.fillRect(cx1 - lw, py, lw * 2, 1)
+    } else {
+      ctx.fillRect(cx1 - 2 - lw, py, lw, 1)
+      ctx.fillRect(cx1 + 2, py, lw, 1)
+    }
   }
   // 路面接缝：每 1400 像素一条暗横带
   const jointStep = 1400
