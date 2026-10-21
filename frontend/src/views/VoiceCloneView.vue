@@ -197,6 +197,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { fmtSize } from '@/utils/format'
 import { ElMessage } from 'element-plus'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -226,11 +227,9 @@ const presetTexts = [
   '愿你成为自己的太阳。',
 ]
 
+/* v2.46.160：统一到 utils/format.js */
 function formatSize(b) {
-  if (!b) return ''
-  if (b < 1024) return `${b} B`
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
-  return `${(b / 1024 / 1024).toFixed(1)} MB`
+  return b ? fmtSize(b) : ''
 }
 
 function onFile(e) {

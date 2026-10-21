@@ -262,6 +262,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { fmtDate } from '@/utils/format'
 import SearchField from '@/components/common/SearchField.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage } from 'element-plus'
@@ -326,12 +327,9 @@ function statusClass(s) {
   return 'idle'
 }
 
+/* v2.46.160：统一到 utils/format.js */
 function fmtTime(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (isNaN(d)) return iso.slice(0, 10)
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return fmtDate(iso)
 }
 
 function onImgError(e) {

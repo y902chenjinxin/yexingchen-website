@@ -43,6 +43,7 @@
  * 交互：点选格 → 数字键盘；填错（同行/列/宫冲突）标红；提示格永久固定。
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { fmtClock } from '@/utils/format'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 import AppIcon from '@/components/common/AppIcon.vue'
 
@@ -176,9 +177,9 @@ function hint() {
   if (grid.value.every(v => v) && !grid.value.some((_, i) => isBad(i))) done.value = true
 }
 
+/* v2.46.160：统一到 utils/format.js */
 function fmtTime(s) {
-  const m = Math.floor(s / 60)
-  return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+  return fmtClock(s)
 }
 
 /* ---------- 本地存档：返回列表后可「继续上一局」（含计时延续） ---------- */

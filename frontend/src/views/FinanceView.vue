@@ -872,6 +872,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { fmtDate as fmtYmd } from '@/utils/format'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import LedgerIcon from '@/components/LedgerIcon.vue'
@@ -1304,15 +1305,13 @@ function pct(v) {
   if (!t) return '0'
   return ((v || 0) / t * 100).toFixed(1)
 }
+/* v2.46.160：统一到 utils/format.js（本文件已有同名 fmtDate，故别名导入 fmtYmd） */
 function fmtDate(d) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return fmtYmd(d)
 }
 function fmtDay(iso) {
-  if (!iso) return ''
-  return iso.slice(0, 10)
+  // 原来是 iso.slice(0,10)，纯字符串截断；走 fmtYmd 顺带避免时区陷阱
+  return fmtYmd(iso)
 }
 
 async function loadCategories() {

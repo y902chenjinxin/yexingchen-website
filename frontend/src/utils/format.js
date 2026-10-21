@@ -64,6 +64,7 @@ export function fmtMd(v, fallback = '') {
  *   fmtMoney(0)             → '¥0.00'
  */
 export function fmtMoney(cents, { sign = true, decimals = 2 } = {}) {
+  // 注意：金额的 null 有意按 0 处理（列表里不显示空，显示 ¥0.00）
   const n = Number(cents)
   if (!Number.isFinite(n)) return sign ? '¥0.00' : '0.00'
   const yuan = n / 100
@@ -83,6 +84,8 @@ export function fmtYuan(yuan, { sign = true, decimals = 2 } = {}) {
 
 /** 文件体积：1536 → '1.5 KB' */
 export function fmtSize(bytes) {
+  // 🔴 Number(null) === 0、Number('') === 0，必须先判空，否则空值会显示成 '0 B'
+  if (bytes == null || bytes === '') return ''
   const n = Number(bytes)
   if (!Number.isFinite(n) || n < 0) return ''
   if (n < 1024) return `${Math.round(n)} B`
@@ -103,6 +106,44 @@ export function fmtRelative(v, fallback = '') {
   if (diff < 86400_000) return `${Math.floor(diff / 3600_000)} 小时前`
   if (diff < 172800_000) return '昨天'
   return fmtDate(d)
+}
+
+
+/** 2026-10-20 21:30:05（日志类需要到秒） */
+export function fmtDateTimeSec(v, fallback = '') {
+  const d = toDate(v)
+  if (!d) return fallback
+  return `${fmtDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+/** 21:30（只要时分，如资讯/快速浏览） */
+export function fmtHm(v, fallback = '') {
+  const d = toDate(v)
+  if (!d) return fallback
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/**
+ * 时长：秒 → '1:05'（分钟不补零，音乐列表用）
+ * 非法/空返回 fallback。
+ */
+export function fmtDuration(sec, fallback = '-') {
+  // 🔴 同上：空值必须先判，否则显示 '0:00'
+  if (sec == null || sec === '') return fallback
+  const n = Number(sec)
+  if (!Number.isFinite(n) || n < 0) return fallback
+  const m = Math.floor(n / 60)
+  return `${m}:${pad(Math.floor(n % 60))}`
+}
+
+/**
+ * 时钟：秒 → '01:05'（分钟补零，播放器进度 / 游戏计时用）
+ * 非法或 ≤0 返回 '00:00'。
+ */
+export function fmtClock(sec) {
+  const n = Number(sec)
+  if (!Number.isFinite(n) || n <= 0) return '00:00'
+  return `${pad(Math.floor(n / 60))}:${pad(Math.floor(n % 60))}`
 }
 
 /** 纯数字百分比：0.2567 → '26%'（入参若已是 0-100 的整数，直接返回） */

@@ -47,6 +47,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { fmtDateTimeSec } from '@/utils/format'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { ElMessage } from 'element-plus'
@@ -83,12 +84,9 @@ function getActionClass(action) {
   return `action-${action || 'unknown'}`
 }
 
+/* v2.46.160：统一到 utils/format.js */
 function formatTime(timeStr) {
-  if (!timeStr) return '-'
-  const d = new Date(timeStr)
-  if (isNaN(d.getTime())) return timeStr
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  return fmtDateTimeSec(timeStr, '-')
 }
 
 async function fetchData() {

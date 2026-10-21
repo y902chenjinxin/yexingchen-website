@@ -167,6 +167,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { fmtClock } from '@/utils/format'
 import { VideoPause, VideoPlay } from '@element-plus/icons-vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { usePlayerStore } from '@/stores/player'
@@ -336,11 +337,9 @@ function onVolume() {
   player.setVolume(volProxy.value)
 }
 
+/* v2.46.160：统一到 utils/format.js 的 fmtClock（mm:ss，行为一致） */
 function fmt(sec) {
-  if (!Number.isFinite(sec) || sec <= 0) return '00:00'
-  const m = Math.floor(sec / 60)
-  const s = Math.floor(sec % 60)
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return fmtClock(sec)
 }
 </script>
 

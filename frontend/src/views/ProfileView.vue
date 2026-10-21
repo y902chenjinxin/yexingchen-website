@@ -241,6 +241,7 @@
 <script setup>
 defineOptions({ name: 'ProfileView' })
 import IconButton from '@/components/common/IconButton.vue'
+import { fmtDate } from '@/utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ElMessageBox } from 'element-plus'
@@ -380,10 +381,9 @@ function getRoleLabel(role) {
   return map[role] || role
 }
 
+/* v2.46.160：统一到 utils/format.js（原来输出 2026/10/21，现在 2026-10-21） */
 function formatDate(dateStr) {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  return fmtDate(dateStr, '-')
 }
 
 async function saveProfile() {

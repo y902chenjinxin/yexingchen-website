@@ -100,6 +100,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { fmtSize } from '@/utils/format'
 import { workbenchApi } from '@/api/workbench'
 import AppIcon from '@/components/common/AppIcon.vue'
 
@@ -119,12 +120,9 @@ function fmtMb(mb) {
   const v = Number(mb) || 0
   return v >= 1024 ? `${(v / 1024).toFixed(1)}G` : `${v}M`
 }
+/* v2.46.160：统一到 utils/format.js */
 function fmtBytes(bytes) {
-  const b = Number(bytes) || 0
-  if (b >= 1024 ** 3) return `${(b / 1024 ** 3).toFixed(2)} GB`
-  if (b >= 1024 ** 2) return `${(b / 1024 ** 2).toFixed(1)} MB`
-  if (b >= 1024) return `${(b / 1024).toFixed(0)} KB`
-  return `${b} B`
+  return fmtSize(Number(bytes) || 0)
 }
 
 function toggle(key) {

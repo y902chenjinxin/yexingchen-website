@@ -58,6 +58,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { fmtDateTimeSec } from '@/utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workbenchApi } from '@/api/workbench'
 import BackButton from '@/components/BackButton.vue'
@@ -98,9 +99,9 @@ async function cleanup() {
   reload()
 }
 
+/* v2.46.160：统一到 utils/format.js（原来是 toLocaleString，输出随系统区域变化） */
 function formatDate(s) {
-  if (!s) return ''
-  try { return new Date(s).toLocaleString('zh-CN', { hour12: false }) } catch { return s }
+  return fmtDateTimeSec(s)
 }
 
 onMounted(reload)

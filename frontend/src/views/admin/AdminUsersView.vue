@@ -126,6 +126,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { fmtDateTime } from '@/utils/format'
 import { Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -172,12 +173,9 @@ function getStatusType(s) {
   return 'info'
 }
 
+/* v2.46.160：实现统一到 utils/format.js（函数名与调用点保持不变） */
 function formatTime(s) {
-  if (!s) return '-'
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return s
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return fmtDateTime(s, '-')
 }
 
 async function fetchUsers() {

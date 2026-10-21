@@ -1,3 +1,48 @@
+## [v2.46.160] - 2026-10-21
+
+### 抽象第三批：格式化函数统一到 `utils/format.js`
+
+夜星：「继续做吧」。上一批剩下的 P2 里最安全的一项 —— **只替换函数体，不动调用点**。
+
+#### 做法
+37 个自定义 `fmtXxx` 里，把**语义明确**的 18 处改成转调 `utils/format.js`，
+函数名与所有调用点保持不变（回归面最小）：
+
+| 类型 | 页面 | 原来 | 现在 |
+|---|---|---|---|
+| 到分钟 | 后台用户 | 手写 pad + 拼串 | `fmtDateTime(s,'-')` |
+| 到秒 | 日志、回收站 | 手写 / `toLocaleString` | `fmtDateTimeSec` |
+| 到日 | 工具、小说、视频、资讯、个人资料 | 手写 / `toLocaleDateString` | `fmtDate` |
+| 时分 | 快速浏览 | 手写 pad | `fmtHm` |
+| 记账 | 记账 | 手写 pad / `iso.slice(0,10)` | `fmtDate as fmtYmd` |
+| 体积 | 小说、视频、语音克隆、服务器监控 | 各自 KB/MB 两档 | `fmtSize`（B/KB/MB/GB 自适应） |
+| 时长 | 播放器×2、数独计时 | 各自 pad | `fmtClock`（mm:ss） |
+
+`format.js` 相应补齐 `fmtDateTimeSec / fmtHm / fmtDuration / fmtClock`。
+
+#### 顺带修掉 3 个真实问题
+1. **`fmtSize(null)` 曾返回 `'0 B'`、`fmtDuration(null)` 返回 `'0:00'`** ——
+   `Number(null) === 0` 导致空值被当成 0。已在函数入口判空。
+   *这是写断言测试才发现的，靠页面肉眼看列表根本注意不到。*
+2. 记账的 `fmtDay(iso)` 原来用 `iso.slice(0,10)` 纯字符串截断，改走 `fmtYmd` 顺带避开时区陷阱。
+3. 个人资料/回收站原来用 `toLocaleDateString/String('zh-CN')`，输出随系统区域变化
+   （`2026/10/21` vs `2026-10-21`），现在固定 `YYYY-MM-DD`。
+
+#### 验证
+- **断言测试** `artifacts/_probe/fmt-test.mjs`（21 条用例，覆盖空值/负数/GB/非法日期）全部通过。
+  按项目约定 `artifacts/` 不入库，脚本留在本地；以后改 `format.js` 直接 `node artifacts/_probe/fmt-test.mjs` 复跑。
+- eslint 0 error；14 个页面抽查无 JS 错误；
+  工具页日期列 `2026-10-19`、资讯 `2026-10-21`、音乐列表 10 行未受影响（音乐页本轮未动）。
+
+#### 没动的 19 个（有意保留）
+股票价格 `fmtPrice`（null→`--` 语义）、游戏内数字 `fmt`、`formatMenuPerms`、`formatTarget`、
+`fmtPct`（null→`—`）、`fmtRange` 等 —— 这些是**业务格式化**，不是通用格式化，抽出来反而要加一堆参数。
+音乐页/笔记页的两个函数**暂缓**：文件里有并行会话的未提交改动。
+
+版本 SW v473→v474、APP_VERSION v2.46.159→v2.46.160。
+
+---
+
 ## [v2.46.159] - 2026-10-21
 
 ### 暴力摩托：补上声音模块 + 重量感（参考原版 Road Rash 的设计）
@@ -33,6 +78,51 @@
 - 击倒对手、命中、摔车都接上了音效与火花。
 
 版本 SW v472→v473、APP_VERSION v2.46.158→v2.46.159。
+
+---
+
+## [v2.46.160] - 2026-10-21
+
+### 抽象第三批：格式化函数统一到 `utils/format.js`
+
+夜星：「继续做吧」。上一批剩下的 P2 里最安全的一项 —— **只替换函数体，不动调用点**。
+
+#### 做法
+37 个自定义 `fmtXxx` 里，把**语义明确**的 18 处改成转调 `utils/format.js`，
+函数名与所有调用点保持不变（回归面最小）：
+
+| 类型 | 页面 | 原来 | 现在 |
+|---|---|---|---|
+| 到分钟 | 后台用户 | 手写 pad + 拼串 | `fmtDateTime(s,'-')` |
+| 到秒 | 日志、回收站 | 手写 / `toLocaleString` | `fmtDateTimeSec` |
+| 到日 | 工具、小说、视频、资讯、个人资料 | 手写 / `toLocaleDateString` | `fmtDate` |
+| 时分 | 快速浏览 | 手写 pad | `fmtHm` |
+| 记账 | 记账 | 手写 pad / `iso.slice(0,10)` | `fmtDate as fmtYmd` |
+| 体积 | 小说、视频、语音克隆、服务器监控 | 各自 KB/MB 两档 | `fmtSize`（B/KB/MB/GB 自适应） |
+| 时长 | 播放器×2、数独计时 | 各自 pad | `fmtClock`（mm:ss） |
+
+`format.js` 相应补齐 `fmtDateTimeSec / fmtHm / fmtDuration / fmtClock`。
+
+#### 顺带修掉 3 个真实问题
+1. **`fmtSize(null)` 曾返回 `'0 B'`、`fmtDuration(null)` 返回 `'0:00'`** ——
+   `Number(null) === 0` 导致空值被当成 0。已在函数入口判空。
+   *这是写断言测试才发现的，靠页面肉眼看列表根本注意不到。*
+2. 记账的 `fmtDay(iso)` 原来用 `iso.slice(0,10)` 纯字符串截断，改走 `fmtYmd` 顺带避开时区陷阱。
+3. 个人资料/回收站原来用 `toLocaleDateString/String('zh-CN')`，输出随系统区域变化
+   （`2026/10/21` vs `2026-10-21`），现在固定 `YYYY-MM-DD`。
+
+#### 验证
+- **断言测试** `artifacts/_probe/fmt-test.mjs`（21 条用例，覆盖空值/负数/GB/非法日期）全部通过。
+  按项目约定 `artifacts/` 不入库，脚本留在本地；以后改 `format.js` 直接 `node artifacts/_probe/fmt-test.mjs` 复跑。
+- eslint 0 error；14 个页面抽查无 JS 错误；
+  工具页日期列 `2026-10-19`、资讯 `2026-10-21`、音乐列表 10 行未受影响（音乐页本轮未动）。
+
+#### 没动的 19 个（有意保留）
+股票价格 `fmtPrice`（null→`--` 语义）、游戏内数字 `fmt`、`formatMenuPerms`、`formatTarget`、
+`fmtPct`（null→`—`）、`fmtRange` 等 —— 这些是**业务格式化**，不是通用格式化，抽出来反而要加一堆参数。
+音乐页/笔记页的两个函数**暂缓**：文件里有并行会话的未提交改动。
+
+版本 SW v473→v474、APP_VERSION v2.46.159→v2.46.160。
 
 ---
 
@@ -293,6 +383,51 @@
 
 ---
 
+## [v2.46.160] - 2026-10-21
+
+### 抽象第三批：格式化函数统一到 `utils/format.js`
+
+夜星：「继续做吧」。上一批剩下的 P2 里最安全的一项 —— **只替换函数体，不动调用点**。
+
+#### 做法
+37 个自定义 `fmtXxx` 里，把**语义明确**的 18 处改成转调 `utils/format.js`，
+函数名与所有调用点保持不变（回归面最小）：
+
+| 类型 | 页面 | 原来 | 现在 |
+|---|---|---|---|
+| 到分钟 | 后台用户 | 手写 pad + 拼串 | `fmtDateTime(s,'-')` |
+| 到秒 | 日志、回收站 | 手写 / `toLocaleString` | `fmtDateTimeSec` |
+| 到日 | 工具、小说、视频、资讯、个人资料 | 手写 / `toLocaleDateString` | `fmtDate` |
+| 时分 | 快速浏览 | 手写 pad | `fmtHm` |
+| 记账 | 记账 | 手写 pad / `iso.slice(0,10)` | `fmtDate as fmtYmd` |
+| 体积 | 小说、视频、语音克隆、服务器监控 | 各自 KB/MB 两档 | `fmtSize`（B/KB/MB/GB 自适应） |
+| 时长 | 播放器×2、数独计时 | 各自 pad | `fmtClock`（mm:ss） |
+
+`format.js` 相应补齐 `fmtDateTimeSec / fmtHm / fmtDuration / fmtClock`。
+
+#### 顺带修掉 3 个真实问题
+1. **`fmtSize(null)` 曾返回 `'0 B'`、`fmtDuration(null)` 返回 `'0:00'`** ——
+   `Number(null) === 0` 导致空值被当成 0。已在函数入口判空。
+   *这是写断言测试才发现的，靠页面肉眼看列表根本注意不到。*
+2. 记账的 `fmtDay(iso)` 原来用 `iso.slice(0,10)` 纯字符串截断，改走 `fmtYmd` 顺带避开时区陷阱。
+3. 个人资料/回收站原来用 `toLocaleDateString/String('zh-CN')`，输出随系统区域变化
+   （`2026/10/21` vs `2026-10-21`），现在固定 `YYYY-MM-DD`。
+
+#### 验证
+- **断言测试** `artifacts/_probe/fmt-test.mjs`（21 条用例，覆盖空值/负数/GB/非法日期）全部通过。
+  按项目约定 `artifacts/` 不入库，脚本留在本地；以后改 `format.js` 直接 `node artifacts/_probe/fmt-test.mjs` 复跑。
+- eslint 0 error；14 个页面抽查无 JS 错误；
+  工具页日期列 `2026-10-19`、资讯 `2026-10-21`、音乐列表 10 行未受影响（音乐页本轮未动）。
+
+#### 没动的 19 个（有意保留）
+股票价格 `fmtPrice`（null→`--` 语义）、游戏内数字 `fmt`、`formatMenuPerms`、`formatTarget`、
+`fmtPct`（null→`—`）、`fmtRange` 等 —— 这些是**业务格式化**，不是通用格式化，抽出来反而要加一堆参数。
+音乐页/笔记页的两个函数**暂缓**：文件里有并行会话的未提交改动。
+
+版本 SW v473→v474、APP_VERSION v2.46.159→v2.46.160。
+
+---
+
 ## [v2.46.159] - 2026-10-21
 
 ### 抽象第二批：SearchField / OpsCell / PageToolbar 全量铺开
@@ -498,6 +633,51 @@
 - 顺手把 `GamesView` 里暴力摩托的规则文案补上赛道与车辆两条。
 
 版本 SW v459→v460、APP_VERSION v2.46.145→v2.46.146。
+
+---
+
+## [v2.46.160] - 2026-10-21
+
+### 抽象第三批：格式化函数统一到 `utils/format.js`
+
+夜星：「继续做吧」。上一批剩下的 P2 里最安全的一项 —— **只替换函数体，不动调用点**。
+
+#### 做法
+37 个自定义 `fmtXxx` 里，把**语义明确**的 18 处改成转调 `utils/format.js`，
+函数名与所有调用点保持不变（回归面最小）：
+
+| 类型 | 页面 | 原来 | 现在 |
+|---|---|---|---|
+| 到分钟 | 后台用户 | 手写 pad + 拼串 | `fmtDateTime(s,'-')` |
+| 到秒 | 日志、回收站 | 手写 / `toLocaleString` | `fmtDateTimeSec` |
+| 到日 | 工具、小说、视频、资讯、个人资料 | 手写 / `toLocaleDateString` | `fmtDate` |
+| 时分 | 快速浏览 | 手写 pad | `fmtHm` |
+| 记账 | 记账 | 手写 pad / `iso.slice(0,10)` | `fmtDate as fmtYmd` |
+| 体积 | 小说、视频、语音克隆、服务器监控 | 各自 KB/MB 两档 | `fmtSize`（B/KB/MB/GB 自适应） |
+| 时长 | 播放器×2、数独计时 | 各自 pad | `fmtClock`（mm:ss） |
+
+`format.js` 相应补齐 `fmtDateTimeSec / fmtHm / fmtDuration / fmtClock`。
+
+#### 顺带修掉 3 个真实问题
+1. **`fmtSize(null)` 曾返回 `'0 B'`、`fmtDuration(null)` 返回 `'0:00'`** ——
+   `Number(null) === 0` 导致空值被当成 0。已在函数入口判空。
+   *这是写断言测试才发现的，靠页面肉眼看列表根本注意不到。*
+2. 记账的 `fmtDay(iso)` 原来用 `iso.slice(0,10)` 纯字符串截断，改走 `fmtYmd` 顺带避开时区陷阱。
+3. 个人资料/回收站原来用 `toLocaleDateString/String('zh-CN')`，输出随系统区域变化
+   （`2026/10/21` vs `2026-10-21`），现在固定 `YYYY-MM-DD`。
+
+#### 验证
+- **断言测试** `artifacts/_probe/fmt-test.mjs`（21 条用例，覆盖空值/负数/GB/非法日期）全部通过。
+  按项目约定 `artifacts/` 不入库，脚本留在本地；以后改 `format.js` 直接 `node artifacts/_probe/fmt-test.mjs` 复跑。
+- eslint 0 error；14 个页面抽查无 JS 错误；
+  工具页日期列 `2026-10-19`、资讯 `2026-10-21`、音乐列表 10 行未受影响（音乐页本轮未动）。
+
+#### 没动的 19 个（有意保留）
+股票价格 `fmtPrice`（null→`--` 语义）、游戏内数字 `fmt`、`formatMenuPerms`、`formatTarget`、
+`fmtPct`（null→`—`）、`fmtRange` 等 —— 这些是**业务格式化**，不是通用格式化，抽出来反而要加一堆参数。
+音乐页/笔记页的两个函数**暂缓**：文件里有并行会话的未提交改动。
+
+版本 SW v473→v474、APP_VERSION v2.46.159→v2.46.160。
 
 ---
 
@@ -762,6 +942,51 @@
 `App.vue`：把排除清单提成常量 `ISLAND_FOOTER_PREFIXES = ['music','novel','video','log','tool','history','life','play']`，`showGlobalFooter` 改为 `!ISLAND_FOOTER_PREFIXES.includes(p.split('/')[1] || '')`。只加两个前缀 + 换精确比对，不动任何页面渲染逻辑（岛屿页脚仍在 `IslandInnerBase` 里，非岛屿页仍由 App 兜底）。
 
 版本 SW v458→v459、APP_VERSION v2.46.144→v2.46.145。
+
+---
+
+## [v2.46.160] - 2026-10-21
+
+### 抽象第三批：格式化函数统一到 `utils/format.js`
+
+夜星：「继续做吧」。上一批剩下的 P2 里最安全的一项 —— **只替换函数体，不动调用点**。
+
+#### 做法
+37 个自定义 `fmtXxx` 里，把**语义明确**的 18 处改成转调 `utils/format.js`，
+函数名与所有调用点保持不变（回归面最小）：
+
+| 类型 | 页面 | 原来 | 现在 |
+|---|---|---|---|
+| 到分钟 | 后台用户 | 手写 pad + 拼串 | `fmtDateTime(s,'-')` |
+| 到秒 | 日志、回收站 | 手写 / `toLocaleString` | `fmtDateTimeSec` |
+| 到日 | 工具、小说、视频、资讯、个人资料 | 手写 / `toLocaleDateString` | `fmtDate` |
+| 时分 | 快速浏览 | 手写 pad | `fmtHm` |
+| 记账 | 记账 | 手写 pad / `iso.slice(0,10)` | `fmtDate as fmtYmd` |
+| 体积 | 小说、视频、语音克隆、服务器监控 | 各自 KB/MB 两档 | `fmtSize`（B/KB/MB/GB 自适应） |
+| 时长 | 播放器×2、数独计时 | 各自 pad | `fmtClock`（mm:ss） |
+
+`format.js` 相应补齐 `fmtDateTimeSec / fmtHm / fmtDuration / fmtClock`。
+
+#### 顺带修掉 3 个真实问题
+1. **`fmtSize(null)` 曾返回 `'0 B'`、`fmtDuration(null)` 返回 `'0:00'`** ——
+   `Number(null) === 0` 导致空值被当成 0。已在函数入口判空。
+   *这是写断言测试才发现的，靠页面肉眼看列表根本注意不到。*
+2. 记账的 `fmtDay(iso)` 原来用 `iso.slice(0,10)` 纯字符串截断，改走 `fmtYmd` 顺带避开时区陷阱。
+3. 个人资料/回收站原来用 `toLocaleDateString/String('zh-CN')`，输出随系统区域变化
+   （`2026/10/21` vs `2026-10-21`），现在固定 `YYYY-MM-DD`。
+
+#### 验证
+- **断言测试** `artifacts/_probe/fmt-test.mjs`（21 条用例，覆盖空值/负数/GB/非法日期）全部通过。
+  按项目约定 `artifacts/` 不入库，脚本留在本地；以后改 `format.js` 直接 `node artifacts/_probe/fmt-test.mjs` 复跑。
+- eslint 0 error；14 个页面抽查无 JS 错误；
+  工具页日期列 `2026-10-19`、资讯 `2026-10-21`、音乐列表 10 行未受影响（音乐页本轮未动）。
+
+#### 没动的 19 个（有意保留）
+股票价格 `fmtPrice`（null→`--` 语义）、游戏内数字 `fmt`、`formatMenuPerms`、`formatTarget`、
+`fmtPct`（null→`—`）、`fmtRange` 等 —— 这些是**业务格式化**，不是通用格式化，抽出来反而要加一堆参数。
+音乐页/笔记页的两个函数**暂缓**：文件里有并行会话的未提交改动。
+
+版本 SW v473→v474、APP_VERSION v2.46.159→v2.46.160。
 
 ---
 
@@ -1127,6 +1352,51 @@
 - **覆盖范围**：外壳（顶栏 / 命令面板 / AI 抽屉）→ 工作台（天气 / 服务器监测 / 此刻）→ 记账 / 资讯 / 生活 / 通讯录 / 足迹 → 工具集（PDF / 压缩 / 证件照 / 水印 / 音色克隆 / 弹幕 / 密码 / ASR / 倒计时等）→ 棋牌三件套 + 大富翁 + 五子棋 / 围棋 / 象棋 / 军棋 / 飞行棋，**90+ 文件**；通知标题、tooltip、规则说明里当装饰用的 emoji 一并去掉。
 - **保留（有意不改）**：`♠♥♣♦` 牌面花色、`⌘ ⇧` 键盘记号、CSS `content:'✈'` 之类版面排版字符 —— 属字体排版而非图标，且散落在卡片角标与 CSS 伪元素里，替换会改变牌面版式；`→ ↑ ↓ ‹ › ▾` 等句中分隔符同样保留。
 - 版本 SW v442→v443、APP_VERSION v2.46.128→v2.46.129。
+
+---
+
+## [v2.46.160] - 2026-10-21
+
+### 抽象第三批：格式化函数统一到 `utils/format.js`
+
+夜星：「继续做吧」。上一批剩下的 P2 里最安全的一项 —— **只替换函数体，不动调用点**。
+
+#### 做法
+37 个自定义 `fmtXxx` 里，把**语义明确**的 18 处改成转调 `utils/format.js`，
+函数名与所有调用点保持不变（回归面最小）：
+
+| 类型 | 页面 | 原来 | 现在 |
+|---|---|---|---|
+| 到分钟 | 后台用户 | 手写 pad + 拼串 | `fmtDateTime(s,'-')` |
+| 到秒 | 日志、回收站 | 手写 / `toLocaleString` | `fmtDateTimeSec` |
+| 到日 | 工具、小说、视频、资讯、个人资料 | 手写 / `toLocaleDateString` | `fmtDate` |
+| 时分 | 快速浏览 | 手写 pad | `fmtHm` |
+| 记账 | 记账 | 手写 pad / `iso.slice(0,10)` | `fmtDate as fmtYmd` |
+| 体积 | 小说、视频、语音克隆、服务器监控 | 各自 KB/MB 两档 | `fmtSize`（B/KB/MB/GB 自适应） |
+| 时长 | 播放器×2、数独计时 | 各自 pad | `fmtClock`（mm:ss） |
+
+`format.js` 相应补齐 `fmtDateTimeSec / fmtHm / fmtDuration / fmtClock`。
+
+#### 顺带修掉 3 个真实问题
+1. **`fmtSize(null)` 曾返回 `'0 B'`、`fmtDuration(null)` 返回 `'0:00'`** ——
+   `Number(null) === 0` 导致空值被当成 0。已在函数入口判空。
+   *这是写断言测试才发现的，靠页面肉眼看列表根本注意不到。*
+2. 记账的 `fmtDay(iso)` 原来用 `iso.slice(0,10)` 纯字符串截断，改走 `fmtYmd` 顺带避开时区陷阱。
+3. 个人资料/回收站原来用 `toLocaleDateString/String('zh-CN')`，输出随系统区域变化
+   （`2026/10/21` vs `2026-10-21`），现在固定 `YYYY-MM-DD`。
+
+#### 验证
+- **断言测试** `artifacts/_probe/fmt-test.mjs`（21 条用例，覆盖空值/负数/GB/非法日期）全部通过。
+  按项目约定 `artifacts/` 不入库，脚本留在本地；以后改 `format.js` 直接 `node artifacts/_probe/fmt-test.mjs` 复跑。
+- eslint 0 error；14 个页面抽查无 JS 错误；
+  工具页日期列 `2026-10-19`、资讯 `2026-10-21`、音乐列表 10 行未受影响（音乐页本轮未动）。
+
+#### 没动的 19 个（有意保留）
+股票价格 `fmtPrice`（null→`--` 语义）、游戏内数字 `fmt`、`formatMenuPerms`、`formatTarget`、
+`fmtPct`（null→`—`）、`fmtRange` 等 —— 这些是**业务格式化**，不是通用格式化，抽出来反而要加一堆参数。
+音乐页/笔记页的两个函数**暂缓**：文件里有并行会话的未提交改动。
+
+版本 SW v473→v474、APP_VERSION v2.46.159→v2.46.160。
 
 ---
 

@@ -254,6 +254,7 @@
 
 <script setup>
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import { fmtDate, fmtSize } from '@/utils/format'
 import PageToolbar from '@/components/common/PageToolbar.vue'
 import OpsCell from '@/components/common/OpsCell.vue'
 import SearchField from '@/components/common/SearchField.vue'
@@ -598,16 +599,13 @@ async function confirmBatchDelete() {
   }
 }
 
+/* v2.46.160：统一到 utils/format.js（原实现只有 KB/MB 两档，现在 B/KB/MB/GB 自适应） */
 function formatSize(bytes) {
-  if (bytes == null) return '-'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  return bytes == null ? '-' : fmtSize(bytes)
 }
 
 function formatTime(timeStr) {
-  if (!timeStr) return '-'
-  const d = new Date(timeStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return fmtDate(timeStr, '-')
 }
 </script>
 

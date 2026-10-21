@@ -124,6 +124,7 @@
 <script setup>
 defineOptions({ name: 'ToolView' })
 import { onMounted, ref, computed, watch } from 'vue'
+import { fmtDate } from '@/utils/format'
 import PageToolbar from '@/components/common/PageToolbar.vue'
 import SearchField from '@/components/common/SearchField.vue'
 import { useRouter } from 'vue-router'
@@ -334,10 +335,9 @@ async function confirmBatchDelete() {
 function onSizeChange(sz) { pageSize.value = sz; page.value = 1 }
 function onPageChange(p) { page.value = p }
 
+/* v2.46.160：统一到 utils/format.js */
 function formatTime(timeStr) {
-  if (!timeStr) return '-'
-  const d = new Date(timeStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return fmtDate(timeStr, '-')
 }
 </script>
 

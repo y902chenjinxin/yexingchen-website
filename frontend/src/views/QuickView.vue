@@ -82,6 +82,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { fmtHm } from '@/utils/format'
 import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import VoiceInputButton from '@/components/VoiceInputButton.vue'
@@ -95,10 +96,9 @@ const saving = ref(false)
 const loading = ref(true)
 const timeline = ref([])
 
+/* v2.46.160：统一到 utils/format.js */
 function fmtTime(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return fmtHm(iso)
 }
 function dayNum(day) {
   return (day || '--').slice(-2)
