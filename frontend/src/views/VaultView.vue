@@ -32,9 +32,13 @@
       </PageToolbar>
 
       <div v-if="loading" class="va-empty">加载中…</div>
-      <div v-else-if="!list.length" class="va-empty">
-        保险箱还是空的。点右上角「存一条」开始 —— 比如家里的 WiFi 密码。
-      </div>
+      <EmptyState
+        v-else-if="!list.length"
+        title="保险箱还是空的"
+        sub="先存一条试试 —— 比如家里的 WiFi 密码、快递柜取件码。"
+      >
+        <IconButton icon="plus" label="存一条" variant="primary" @click="openCreate" />
+      </EmptyState>
 
       <div v-else class="va-list">
         <article v-for="e in list" :key="e.id" class="va-card glass">
@@ -99,6 +103,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import PageToolbar from '@/components/common/PageToolbar.vue'
 import SearchField from '@/components/common/SearchField.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'

@@ -97,7 +97,10 @@
           <button class="wd-btn" @click="resetItemFilters">重置</button>
         </PageToolbar>
 
-        <div v-if="!items.length" class="wd-empty">这一位还没有入库的衣服 —— 点右上角「＋ 加一件」拍照存起来。</div>
+        <EmptyState v-if="!items.length" title="这一位还没有入库的衣服"
+          sub="拍一张照片、打几个标签，以后就能按天气和场合被推荐到。">
+          <IconButton icon="plus" label="加一件" variant="primary" @click="openItemCreate" />
+        </EmptyState>
         <div v-else class="wd-grid">
           <article v-for="it in items" :key="it.id" class="wd-card glass" @click="openItemDetail(it)">
             <div class="wd-card-img">
@@ -127,7 +130,10 @@
 
       <!-- ============ 搭配库 ============ -->
       <section v-else-if="tab === 'outfits'" class="wd-pane">
-        <div v-if="!outfits.length" class="wd-empty">还没有存过搭配。在「今日推荐」里点「存搭配」就会收进这里。</div>
+        <EmptyState v-if="!outfits.length" title="还没有存过搭配"
+          sub="去「今日推荐」看看，满意的话点「存搭配」就会收进这里。">
+          <IconButton icon="star" label="去今日推荐" @click="tab = 'today'" />
+        </EmptyState>
         <div v-else class="wd-outfits">
           <article v-for="o in outfits" :key="o.id" class="wd-outfit glass">
             <div class="wd-outfit-head">
@@ -302,6 +308,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import PageToolbar from '@/components/common/PageToolbar.vue'
 import SearchField from '@/components/common/SearchField.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'

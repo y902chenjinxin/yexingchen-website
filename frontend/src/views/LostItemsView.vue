@@ -45,9 +45,14 @@
       </PageToolbar>
 
       <div v-if="loading" class="li-empty">加载中…</div>
-      <div v-else-if="!list.length" class="li-empty">
-        还没有记录。第一次想记的时候，点右上角「记一笔」—— 图片可以不传，写几个字也算。
-      </div>
+      <!-- v2.46.162：手写空态 → EmptyState（插图 + 说明 + 直接行动） -->
+      <EmptyState
+        v-else-if="!list.length"
+        title="还没有记录"
+        sub="第一次想记的时候点下面这个按钮 —— 图片可以不传，写几个字也算。"
+      >
+        <IconButton icon="plus" label="记一笔" variant="primary" @click="openCreate" />
+      </EmptyState>
 
       <template v-else>
         <section v-for="grp in grouped" :key="grp.year" class="li-year">
@@ -157,6 +162,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'

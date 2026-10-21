@@ -75,7 +75,8 @@
           <span class="ht-loading-txt">加载中…</span>
         </div>
         <template v-else>
-          <div v-if="!items.length" class="ht-empty">该日暂无内置记录，点其他日期试试</div>
+          <EmptyState v-if="!items.length" title="这一日还没有记录"
+            sub="点日历上的其他日期看看，或者去对应模块里补一条。" />
           <ol v-else class="ht-list">
             <li v-for="(it, idx) in items" :key="`${it.year}-${idx}`" class="ht-row">
               <span class="ht-y">{{ it.year || '—' }}</span>
@@ -93,6 +94,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { VueCal } from 'vue-cal'
 import 'vue-cal/style'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
