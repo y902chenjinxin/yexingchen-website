@@ -593,9 +593,10 @@ onMounted(load)
   z-index: 3;
   display: flex;
   gap: 4px;
-  opacity: 0;
+  opacity: .42;
   transition: opacity 0.2s;
 }
+/* v2.46.178：同上，卡片操作由「hover 才出现」改为常显压淡 */
 .cd-card:hover .cd-card-actions {
   opacity: 1;
 }

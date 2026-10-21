@@ -1804,7 +1804,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-btn { border: none; cursor: pointer; border-radius: 10px; font-family: var(--font-serif);
   color: var(--lj-text); background: var(--lj-glass); border: 1px solid var(--lj-line); padding: 9px 16px; transition: border-color .22s ease, background-color .22s ease, color .22s ease, box-shadow .22s ease, transform .22s ease; }
 .fin-btn:hover { border-color: var(--lj-line-strong); }
-.fin-btn.primary { background: linear-gradient(135deg, rgba(127,168,163,.55), rgba(199,169,107,.4)); color: #fff; }
+.fin-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #fff; }
 .fin-btn.primary:hover { filter: brightness(1.05); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 .fin-btn.ghost { background: transparent; }
 .fin-btn.small { padding: 6px 12px; font-size: 13px; }

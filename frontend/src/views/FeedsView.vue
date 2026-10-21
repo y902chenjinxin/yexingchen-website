@@ -633,7 +633,7 @@ onMounted(() => {
   color: var(--lj-text); background: var(--lj-glass); border: 1px solid var(--lj-line); padding: 9px 16px; transition: all .22s; }
 .fd-btn:hover:not(:disabled) { border-color: var(--lj-line-strong); }
 .fd-btn:disabled { opacity: .6; cursor: not-allowed; }
-.fd-btn.primary { background: linear-gradient(135deg, rgba(127,168,163,.55), rgba(199,169,107,.4)); color: #fff; }
+.fd-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #fff; }
 .fd-btn.primary:hover:not(:disabled) { filter: brightness(1.05); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 .fd-btn.ghost { background: transparent; }
 .fd-btn.small { padding: 6px 12px; font-size: 13px; }
@@ -681,7 +681,9 @@ onMounted(() => {
 .fd-si-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .fd-si-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fd-si-cat { font-size: 10px; color: var(--lj-text-3); }
-.fd-si-ops { display: flex; gap: 2px; flex: none; opacity: 0; transition: opacity .2s; }
+.fd-si-ops { display: flex; gap: 2px; flex: none; opacity: .42; transition: opacity .2s; }
+/* v2.46.178：原来默认 opacity:0，按钮要 hover 整行才"现身"，用户找不到操作入口。
+   改为常显但压淡，hover 行时全亮 —— 既保留克制，又不藏功能。 */
 .fd-source-item:hover .fd-si-ops { opacity: 1; }
 .fd-op { width: 26px; height: 26px; border-radius: 7px; border: none; background: transparent; color: var(--lj-text-2); cursor: pointer; transition: all .2s; font-size: 13px; }
 .fd-op:hover { color: var(--lj-seal); background: rgba(127,168,163,.1); }
