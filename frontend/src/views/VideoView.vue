@@ -66,9 +66,9 @@
         <el-pagination
           background
           layout="total, sizes, prev, pager, next"
-          :total="videoStore.list.length"
+          :total="total"
           :page-size="pageSize"
-          :page-sizes="[10, 20, 50]"
+          :page-sizes="sizes"
           :current-page="page"
           @size-change="onSizeChange"
           @current-change="onPageChange"
@@ -265,6 +265,7 @@
 
 <script setup>
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import { usePagedList } from '@/composables/usePagedList'
 import { fmtDate, fmtSize } from '@/utils/format'
 import PageToolbar from '@/components/common/PageToolbar.vue'
 import OpsCell from '@/components/common/OpsCell.vue'
@@ -297,14 +298,12 @@ const uploadFile = ref(null)
 const coverFile = ref(null)
 const uploadForm = ref({ title: '', cos_url: '', category: '', tags: '' })
 
-/* ---- 管理分页（客户端，默认10条） ---- */
-const page = ref(1)
-const pageSize = ref(10)
-const pagedRows = computed(() =>
-  videoStore.list.slice((page.value - 1) * pageSize.value, page.value * pageSize.value)
+/* ---- 管理分页（客户端，默认10条）----
+   v2.46.161：统一走 usePagedList（自带越界修正）。store 属性不是 ref，包一层 computed 再传。 */
+const { page, pageSize, total, paged: pagedRows, sizes, onPageChange, onSizeChange } = usePagedList(
+  computed(() => videoStore.list),
+  { defaultSize: 10 }
 )
-function onSizeChange(sz) { pageSize.value = sz; page.value = 1 }
-function onPageChange(p) { page.value = p }
 
 const showEdit = ref(false)
 const saving = ref(false)

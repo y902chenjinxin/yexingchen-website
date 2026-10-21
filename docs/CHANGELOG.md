@@ -1,3 +1,43 @@
+## [v2.46.161] - 2026-10-21
+
+### 抽象第四批：`usePagedList` 客户端分页 + 修掉「停在空白页」
+
+#### 先分清两种分页
+| 模式 | 页面 | 能否抽象 |
+|---|---|---|
+| **客户端**（数据已在手，前端 slice） | 工具、小说、视频 | ✅ 本轮 |
+| **后端**（total 来自接口，翻页要重新请求） | 资讯、日志 | ❌ 不进本轮 —— page 是请求参数，`paged` 无意义 |
+
+强行统一两种模式会造出一个「什么都要传」的四不像，所以只做客户端那一类。
+
+#### 新增 `composables/usePagedList.js`
+替换三页各自写的 `page` / `pageSize` / `pagedRows` / `onPageChange` / `onSizeChange`：
+```js
+const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChange } =
+  usePagedList(filteredRows, { defaultSize: 24 })
+```
+- 默认每页数从各页硬编码（10 / 24）变成参数；
+- `page-sizes` 统一走 `sizes`，不再每页写一遍 `[10, 20, 50]`；
+- 输入防御：`onPageChange('3')` → 3、`onPageChange('abc')` → 1。
+
+#### 顺带修掉一个真实缺陷：**删除最后一页的最后一条会停在空白页**
+原来 8 个页面**没有一处**做越界修正。`usePagedList` 里监听 `[total, pageSize]`，
+页码超过总页数时自动退回最后一页。
+
+#### 验证
+- **行为断言** 13 条全过（`artifacts/_probe/paged-test.mjs`，本地留存不入库）：
+  默认 24/页 1 页 → 切 10/页 2 页且回第 1 页 → 第 2 页 5 条且首条 id=11 →
+  数据删到 1 条后**页码自动回 1** → 字符串/非法页码防御 → reset。
+- **现网实测**（工具页）：
+  切「10 条/页」→ 10 行 / 2 页 / 停在第 1 页；
+  翻到第 2 页 → `active=2`、5 行、首行是「自定义抽签」（真实翻页）；
+  搜索「小说」→ 结果 1 条、**页码自动回到 1**、显示「共 1 条」。
+- 小说/视频当前无数据，分页控件按 `v-if` 不渲染，代码结构与工具页一致。
+
+版本 SW v474→v475、APP_VERSION v2.46.160→v2.46.161。
+
+---
+
 ## [v2.46.160] - 2026-10-21
 
 ### 抽象第三批：格式化函数统一到 `utils/format.js`
@@ -78,6 +118,46 @@
 - 击倒对手、命中、摔车都接上了音效与火花。
 
 版本 SW v472→v473、APP_VERSION v2.46.158→v2.46.159。
+
+---
+
+## [v2.46.161] - 2026-10-21
+
+### 抽象第四批：`usePagedList` 客户端分页 + 修掉「停在空白页」
+
+#### 先分清两种分页
+| 模式 | 页面 | 能否抽象 |
+|---|---|---|
+| **客户端**（数据已在手，前端 slice） | 工具、小说、视频 | ✅ 本轮 |
+| **后端**（total 来自接口，翻页要重新请求） | 资讯、日志 | ❌ 不进本轮 —— page 是请求参数，`paged` 无意义 |
+
+强行统一两种模式会造出一个「什么都要传」的四不像，所以只做客户端那一类。
+
+#### 新增 `composables/usePagedList.js`
+替换三页各自写的 `page` / `pageSize` / `pagedRows` / `onPageChange` / `onSizeChange`：
+```js
+const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChange } =
+  usePagedList(filteredRows, { defaultSize: 24 })
+```
+- 默认每页数从各页硬编码（10 / 24）变成参数；
+- `page-sizes` 统一走 `sizes`，不再每页写一遍 `[10, 20, 50]`；
+- 输入防御：`onPageChange('3')` → 3、`onPageChange('abc')` → 1。
+
+#### 顺带修掉一个真实缺陷：**删除最后一页的最后一条会停在空白页**
+原来 8 个页面**没有一处**做越界修正。`usePagedList` 里监听 `[total, pageSize]`，
+页码超过总页数时自动退回最后一页。
+
+#### 验证
+- **行为断言** 13 条全过（`artifacts/_probe/paged-test.mjs`，本地留存不入库）：
+  默认 24/页 1 页 → 切 10/页 2 页且回第 1 页 → 第 2 页 5 条且首条 id=11 →
+  数据删到 1 条后**页码自动回 1** → 字符串/非法页码防御 → reset。
+- **现网实测**（工具页）：
+  切「10 条/页」→ 10 行 / 2 页 / 停在第 1 页；
+  翻到第 2 页 → `active=2`、5 行、首行是「自定义抽签」（真实翻页）；
+  搜索「小说」→ 结果 1 条、**页码自动回到 1**、显示「共 1 条」。
+- 小说/视频当前无数据，分页控件按 `v-if` 不渲染，代码结构与工具页一致。
+
+版本 SW v474→v475、APP_VERSION v2.46.160→v2.46.161。
 
 ---
 
@@ -383,6 +463,46 @@
 
 ---
 
+## [v2.46.161] - 2026-10-21
+
+### 抽象第四批：`usePagedList` 客户端分页 + 修掉「停在空白页」
+
+#### 先分清两种分页
+| 模式 | 页面 | 能否抽象 |
+|---|---|---|
+| **客户端**（数据已在手，前端 slice） | 工具、小说、视频 | ✅ 本轮 |
+| **后端**（total 来自接口，翻页要重新请求） | 资讯、日志 | ❌ 不进本轮 —— page 是请求参数，`paged` 无意义 |
+
+强行统一两种模式会造出一个「什么都要传」的四不像，所以只做客户端那一类。
+
+#### 新增 `composables/usePagedList.js`
+替换三页各自写的 `page` / `pageSize` / `pagedRows` / `onPageChange` / `onSizeChange`：
+```js
+const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChange } =
+  usePagedList(filteredRows, { defaultSize: 24 })
+```
+- 默认每页数从各页硬编码（10 / 24）变成参数；
+- `page-sizes` 统一走 `sizes`，不再每页写一遍 `[10, 20, 50]`；
+- 输入防御：`onPageChange('3')` → 3、`onPageChange('abc')` → 1。
+
+#### 顺带修掉一个真实缺陷：**删除最后一页的最后一条会停在空白页**
+原来 8 个页面**没有一处**做越界修正。`usePagedList` 里监听 `[total, pageSize]`，
+页码超过总页数时自动退回最后一页。
+
+#### 验证
+- **行为断言** 13 条全过（`artifacts/_probe/paged-test.mjs`，本地留存不入库）：
+  默认 24/页 1 页 → 切 10/页 2 页且回第 1 页 → 第 2 页 5 条且首条 id=11 →
+  数据删到 1 条后**页码自动回 1** → 字符串/非法页码防御 → reset。
+- **现网实测**（工具页）：
+  切「10 条/页」→ 10 行 / 2 页 / 停在第 1 页；
+  翻到第 2 页 → `active=2`、5 行、首行是「自定义抽签」（真实翻页）；
+  搜索「小说」→ 结果 1 条、**页码自动回到 1**、显示「共 1 条」。
+- 小说/视频当前无数据，分页控件按 `v-if` 不渲染，代码结构与工具页一致。
+
+版本 SW v474→v475、APP_VERSION v2.46.160→v2.46.161。
+
+---
+
 ## [v2.46.160] - 2026-10-21
 
 ### 抽象第三批：格式化函数统一到 `utils/format.js`
@@ -633,6 +753,46 @@
 - 顺手把 `GamesView` 里暴力摩托的规则文案补上赛道与车辆两条。
 
 版本 SW v459→v460、APP_VERSION v2.46.145→v2.46.146。
+
+---
+
+## [v2.46.161] - 2026-10-21
+
+### 抽象第四批：`usePagedList` 客户端分页 + 修掉「停在空白页」
+
+#### 先分清两种分页
+| 模式 | 页面 | 能否抽象 |
+|---|---|---|
+| **客户端**（数据已在手，前端 slice） | 工具、小说、视频 | ✅ 本轮 |
+| **后端**（total 来自接口，翻页要重新请求） | 资讯、日志 | ❌ 不进本轮 —— page 是请求参数，`paged` 无意义 |
+
+强行统一两种模式会造出一个「什么都要传」的四不像，所以只做客户端那一类。
+
+#### 新增 `composables/usePagedList.js`
+替换三页各自写的 `page` / `pageSize` / `pagedRows` / `onPageChange` / `onSizeChange`：
+```js
+const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChange } =
+  usePagedList(filteredRows, { defaultSize: 24 })
+```
+- 默认每页数从各页硬编码（10 / 24）变成参数；
+- `page-sizes` 统一走 `sizes`，不再每页写一遍 `[10, 20, 50]`；
+- 输入防御：`onPageChange('3')` → 3、`onPageChange('abc')` → 1。
+
+#### 顺带修掉一个真实缺陷：**删除最后一页的最后一条会停在空白页**
+原来 8 个页面**没有一处**做越界修正。`usePagedList` 里监听 `[total, pageSize]`，
+页码超过总页数时自动退回最后一页。
+
+#### 验证
+- **行为断言** 13 条全过（`artifacts/_probe/paged-test.mjs`，本地留存不入库）：
+  默认 24/页 1 页 → 切 10/页 2 页且回第 1 页 → 第 2 页 5 条且首条 id=11 →
+  数据删到 1 条后**页码自动回 1** → 字符串/非法页码防御 → reset。
+- **现网实测**（工具页）：
+  切「10 条/页」→ 10 行 / 2 页 / 停在第 1 页；
+  翻到第 2 页 → `active=2`、5 行、首行是「自定义抽签」（真实翻页）；
+  搜索「小说」→ 结果 1 条、**页码自动回到 1**、显示「共 1 条」。
+- 小说/视频当前无数据，分页控件按 `v-if` 不渲染，代码结构与工具页一致。
+
+版本 SW v474→v475、APP_VERSION v2.46.160→v2.46.161。
 
 ---
 
@@ -942,6 +1102,46 @@
 `App.vue`：把排除清单提成常量 `ISLAND_FOOTER_PREFIXES = ['music','novel','video','log','tool','history','life','play']`，`showGlobalFooter` 改为 `!ISLAND_FOOTER_PREFIXES.includes(p.split('/')[1] || '')`。只加两个前缀 + 换精确比对，不动任何页面渲染逻辑（岛屿页脚仍在 `IslandInnerBase` 里，非岛屿页仍由 App 兜底）。
 
 版本 SW v458→v459、APP_VERSION v2.46.144→v2.46.145。
+
+---
+
+## [v2.46.161] - 2026-10-21
+
+### 抽象第四批：`usePagedList` 客户端分页 + 修掉「停在空白页」
+
+#### 先分清两种分页
+| 模式 | 页面 | 能否抽象 |
+|---|---|---|
+| **客户端**（数据已在手，前端 slice） | 工具、小说、视频 | ✅ 本轮 |
+| **后端**（total 来自接口，翻页要重新请求） | 资讯、日志 | ❌ 不进本轮 —— page 是请求参数，`paged` 无意义 |
+
+强行统一两种模式会造出一个「什么都要传」的四不像，所以只做客户端那一类。
+
+#### 新增 `composables/usePagedList.js`
+替换三页各自写的 `page` / `pageSize` / `pagedRows` / `onPageChange` / `onSizeChange`：
+```js
+const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChange } =
+  usePagedList(filteredRows, { defaultSize: 24 })
+```
+- 默认每页数从各页硬编码（10 / 24）变成参数；
+- `page-sizes` 统一走 `sizes`，不再每页写一遍 `[10, 20, 50]`；
+- 输入防御：`onPageChange('3')` → 3、`onPageChange('abc')` → 1。
+
+#### 顺带修掉一个真实缺陷：**删除最后一页的最后一条会停在空白页**
+原来 8 个页面**没有一处**做越界修正。`usePagedList` 里监听 `[total, pageSize]`，
+页码超过总页数时自动退回最后一页。
+
+#### 验证
+- **行为断言** 13 条全过（`artifacts/_probe/paged-test.mjs`，本地留存不入库）：
+  默认 24/页 1 页 → 切 10/页 2 页且回第 1 页 → 第 2 页 5 条且首条 id=11 →
+  数据删到 1 条后**页码自动回 1** → 字符串/非法页码防御 → reset。
+- **现网实测**（工具页）：
+  切「10 条/页」→ 10 行 / 2 页 / 停在第 1 页；
+  翻到第 2 页 → `active=2`、5 行、首行是「自定义抽签」（真实翻页）；
+  搜索「小说」→ 结果 1 条、**页码自动回到 1**、显示「共 1 条」。
+- 小说/视频当前无数据，分页控件按 `v-if` 不渲染，代码结构与工具页一致。
+
+版本 SW v474→v475、APP_VERSION v2.46.160→v2.46.161。
 
 ---
 
@@ -1352,6 +1552,46 @@
 - **覆盖范围**：外壳（顶栏 / 命令面板 / AI 抽屉）→ 工作台（天气 / 服务器监测 / 此刻）→ 记账 / 资讯 / 生活 / 通讯录 / 足迹 → 工具集（PDF / 压缩 / 证件照 / 水印 / 音色克隆 / 弹幕 / 密码 / ASR / 倒计时等）→ 棋牌三件套 + 大富翁 + 五子棋 / 围棋 / 象棋 / 军棋 / 飞行棋，**90+ 文件**；通知标题、tooltip、规则说明里当装饰用的 emoji 一并去掉。
 - **保留（有意不改）**：`♠♥♣♦` 牌面花色、`⌘ ⇧` 键盘记号、CSS `content:'✈'` 之类版面排版字符 —— 属字体排版而非图标，且散落在卡片角标与 CSS 伪元素里，替换会改变牌面版式；`→ ↑ ↓ ‹ › ▾` 等句中分隔符同样保留。
 - 版本 SW v442→v443、APP_VERSION v2.46.128→v2.46.129。
+
+---
+
+## [v2.46.161] - 2026-10-21
+
+### 抽象第四批：`usePagedList` 客户端分页 + 修掉「停在空白页」
+
+#### 先分清两种分页
+| 模式 | 页面 | 能否抽象 |
+|---|---|---|
+| **客户端**（数据已在手，前端 slice） | 工具、小说、视频 | ✅ 本轮 |
+| **后端**（total 来自接口，翻页要重新请求） | 资讯、日志 | ❌ 不进本轮 —— page 是请求参数，`paged` 无意义 |
+
+强行统一两种模式会造出一个「什么都要传」的四不像，所以只做客户端那一类。
+
+#### 新增 `composables/usePagedList.js`
+替换三页各自写的 `page` / `pageSize` / `pagedRows` / `onPageChange` / `onSizeChange`：
+```js
+const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChange } =
+  usePagedList(filteredRows, { defaultSize: 24 })
+```
+- 默认每页数从各页硬编码（10 / 24）变成参数；
+- `page-sizes` 统一走 `sizes`，不再每页写一遍 `[10, 20, 50]`；
+- 输入防御：`onPageChange('3')` → 3、`onPageChange('abc')` → 1。
+
+#### 顺带修掉一个真实缺陷：**删除最后一页的最后一条会停在空白页**
+原来 8 个页面**没有一处**做越界修正。`usePagedList` 里监听 `[total, pageSize]`，
+页码超过总页数时自动退回最后一页。
+
+#### 验证
+- **行为断言** 13 条全过（`artifacts/_probe/paged-test.mjs`，本地留存不入库）：
+  默认 24/页 1 页 → 切 10/页 2 页且回第 1 页 → 第 2 页 5 条且首条 id=11 →
+  数据删到 1 条后**页码自动回 1** → 字符串/非法页码防御 → reset。
+- **现网实测**（工具页）：
+  切「10 条/页」→ 10 行 / 2 页 / 停在第 1 页；
+  翻到第 2 页 → `active=2`、5 行、首行是「自定义抽签」（真实翻页）；
+  搜索「小说」→ 结果 1 条、**页码自动回到 1**、显示「共 1 条」。
+- 小说/视频当前无数据，分页控件按 `v-if` 不渲染，代码结构与工具页一致。
+
+版本 SW v474→v475、APP_VERSION v2.46.160→v2.46.161。
 
 ---
 

@@ -75,9 +75,9 @@
         <el-pagination
           background
           layout="total, sizes, prev, pager, next"
-          :total="filteredRows.length"
+          :total="total"
           :page-size="pageSize"
-          :page-sizes="[10, 20, 50]"
+          :page-sizes="sizes"
           :current-page="page"
           @size-change="onSizeChange"
           @current-change="onPageChange"
@@ -124,6 +124,7 @@
 <script setup>
 defineOptions({ name: 'ToolView' })
 import { onMounted, ref, computed, watch } from 'vue'
+import { usePagedList } from '@/composables/usePagedList'
 import { fmtDate } from '@/utils/format'
 import PageToolbar from '@/components/common/PageToolbar.vue'
 import SearchField from '@/components/common/SearchField.vue'
@@ -148,9 +149,8 @@ const form = ref({ title: '', icon: '', description: '', url: '', kind: 'externa
 // 管理数据（全部含下架，客户端分页）
 const rows = ref([])
 const loading = ref(false)
-const page = ref(1)
 // 工具已增至 20+，默认一页显示 24 条，避免新工具被挤到第 2、3 页看不见
-const pageSize = ref(24)
+// （分页状态由 usePagedList 统一管理，见下方 filteredRows 之后）
 // 是否显示已下架的工具（默认否：下架 = 从工具模块撤下，但数据留着便于恢复）
 const showDisabled = ref(false)
 const disabledCount = computed(() => rows.value.filter(r => !r.is_enabled).length)
@@ -164,8 +164,10 @@ const filteredRows = computed(() => {
   const q = keyword.value.toLowerCase()
   return visibleRows.value.filter(r => (r.title || '').toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q))
 })
-const pagedRows = computed(() =>
-  filteredRows.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value)
+/* v2.46.161：分页状态统一走 usePagedList（自带越界修正：删光最后一页会退回上一页） */
+const { page, pageSize, total, paged: pagedRows, sizes, onPageChange, onSizeChange } = usePagedList(
+  filteredRows,
+  { defaultSize: 24 }
 )
 // 切换「显示已下架」后行数会变，页码归位避免停在空白页
 watch(showDisabled, () => { page.value = 1 })
@@ -330,10 +332,6 @@ async function confirmBatchDelete() {
     batchDeleting.value = false
   }
 }
-
-/* ---- 分页 ---- */
-function onSizeChange(sz) { pageSize.value = sz; page.value = 1 }
-function onPageChange(p) { page.value = p }
 
 /* v2.46.160：统一到 utils/format.js */
 function formatTime(timeStr) {
