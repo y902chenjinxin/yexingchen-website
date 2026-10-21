@@ -131,6 +131,46 @@
 #app:not(.is-mobile) .el-table .cell,
 #app:not(.is-mobile) .el-statistic__number { font-variant-numeric: tabular-nums; }
 
+
+/* =====================================================================
+ * v2.46.172 管理表格：列多时保持最小宽度 + 横向滚动（不再压缩内容）
+ *
+ * 现象（夜星截图）：音乐列表悬停时「3.4 MB」和「四金哥哥」挤在一起，看着像数据重叠。
+ * 实测：容器 758px，8 列自然总宽约 956px，但 Element Plus 的 fit 布局把
+ * min-width 列压到最小以适配容器 → 每列内容都被裁掉一截、相邻列文本粘连；
+ * 而右侧 fixed 的「操作」列仍按压缩后的位置 sticky，数据就"钻"到了它下面。
+ *
+ * 做法：表头/表体两张 table 同时给 min-width（必须同时，否则错位），
+ * 超出容器由 .el-table__body-wrapper 横向滚动 —— 内容完整可读，也不再互相压。
+ * ===================================================================== */
+#app:not(.is-mobile) .manage-pane .el-table .el-table__header table,
+#app:not(.is-mobile) .manage-pane .el-table .el-table__body table {
+  min-width: 940px;
+}
+/* 横向滚动条贴合卡片底部，别悬在半空 */
+/* v2.46.172：右侧固定列背景补全（修「悬停时数据重叠」）
+ *
+ * 现象：音乐/小说等列表悬停某行时，「大小 / 时长 / 上传人」的数字会从右侧「操作」列
+ * 的按钮间隙里透出来，看着像数据叠在一起。
+ *
+ * 根因：本文件原有固定列背景规则只覆盖了 th 和 .el-table__row--striped（斑马纹行），
+ * 普通行与悬停行没覆盖 → 落到半透明的 --el-table-row-hover-bg-color 上，
+ * 而行内容又可以横向滚出容器，于是就"透"出来了。
+ * 这里按同一套色（--dp-surface2）补齐普通行 / 悬停行 / 当前行。
+ */
+#app:not(.is-mobile) .el-table .el-table-fixed-column--right,
+#app:not(.is-mobile) .el-table .el-table__row:hover > .el-table-fixed-column--right,
+#app:not(.is-mobile) .el-table .el-table__row.hover-row > .el-table-fixed-column--right,
+#app:not(.is-mobile) .el-table .el-table__row.current-row > .el-table-fixed-column--right {
+  background: var(--dp-surface2) !important;
+}
+
+#app:not(.is-mobile) .manage-pane .el-table__body-wrapper::-webkit-scrollbar { height: 8px; }
+#app:not(.is-mobile) .manage-pane .el-table__body-wrapper::-webkit-scrollbar-thumb {
+  background: var(--dp-line-strong, rgba(127, 140, 160, .35));
+  border-radius: 4px;
+}
+
 /* =====================================================================
  * F. 玉简：只改视觉（底色/描边/标签/指示器聚焦），尺寸/位姿/拖拽一律不动
  * ===================================================================== */

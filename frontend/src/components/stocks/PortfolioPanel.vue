@@ -78,9 +78,9 @@
           </span>
         </div>
         <div class="pp-range">
-          <span class="pp-range-i">区间合计 <b :class="pnlCls(rangeSum)">{{ sign(rangeSum) }}¥{{ fmt(Math.abs(rangeSum)) }}</b></span>
-          <span class="pp-range-i">最大单日 <b :class="pnlCls(maxUp)">{{ sign(maxUp) }}¥{{ fmt(Math.abs(maxUp)) }}</b></span>
-          <span class="pp-range-i">最大回撤 <b :class="pnlCls(maxDown)">{{ sign(maxDown) }}¥{{ fmt(Math.abs(maxDown)) }}</b></span>
+          <span class="pp-range-i">区间合计 <b :class="pnlCls(rangeSum)">{{ signAbs(rangeSum) }}¥{{ fmt(Math.abs(rangeSum)) }}</b></span>
+          <span class="pp-range-i">最大单日 <b :class="pnlCls(maxUp)">{{ signAbs(maxUp) }}¥{{ fmt(Math.abs(maxUp)) }}</b></span>
+          <span class="pp-range-i">最大回撤 <b :class="pnlCls(maxDown)">{{ signAbs(maxDown) }}¥{{ fmt(Math.abs(maxDown)) }}</b></span>
         </div>
       </template>
       <p v-else class="pp-empty">
@@ -107,7 +107,7 @@
         >
           <template v-if="!c.blank">
             <span class="pp-cell-d">{{ c.day }}<i v-if="c.estimated" class="pp-cell-est" aria-label="估算值">~</i></span>
-            <span v-if="c.pnl !== null" class="pp-cell-v">{{ sign(c.pnl) }}{{ fmt(Math.abs(c.pnl), 0) }}</span>
+            <span v-if="c.pnl !== null" class="pp-cell-v">{{ signAbs(c.pnl) }}{{ fmt(Math.abs(c.pnl), 0) }}</span>
           </template>
         </div>
       </div>
@@ -144,7 +144,12 @@ const TW = 600
 const TH = 110
 const zeroY = TH / 2
 
-function sign(v) { return v > 0 ? '+' : '' }
+/**
+ * v2.46.172：配合 Math.abs() 显示的数值使用。
+ * 原来金额用 Math.abs(负数) 显示、符号只由 sign() 给，
+ * 而 sign() 对负数返回空字符串 —— 结果「-¥28」被显示成「¥28」，看着像盈利却标着绿色。
+ */
+function signAbs(v) { return v > 0 ? '+' : v < 0 ? '-' : '' }
 function fmt(v, n = 2) { return Number(v || 0).toFixed(n) }
 function pnlCls(v) { return v > 0 ? 'up' : v < 0 ? 'down' : 'flat' }
 function shortDate(d) { return (d || '').slice(5).replace('-', '/') }
@@ -216,7 +221,7 @@ const hoverRows = computed(() => {
   if (!d) return []
   return [{
     label: '当日盈亏',
-    value: `${sign(d.pnl)}¥${fmt(Math.abs(d.pnl))}`,
+    value: `${signAbs(d.pnl)}¥${fmt(Math.abs(d.pnl))}`,
     color: d.pnl >= 0 ? 'var(--pnl-up, #d8504f)' : 'var(--pnl-down, #3f968e)',
   }]
 })

@@ -29,17 +29,17 @@
         </div>
         <div class="st-kpi-card glass">
           <span class="st-kpi-k">每日盈亏</span>
-          <span class="st-kpi-v" :class="pnlCls(summary.today_pnl)">{{ sign(summary.today_pnl) }}¥ {{ animTodayPnl.toFixed(2) }}</span>
+          <span class="st-kpi-v" :class="pnlCls(summary.today_pnl)">{{ signAbs(summary.today_pnl) }}¥ {{ animTodayPnl.toFixed(2) }}</span>
           <span class="st-kpi-s">按持仓量估算</span>
         </div>
         <div class="st-kpi-card glass">
           <span class="st-kpi-k">总收益</span>
-          <span class="st-kpi-v" :class="pnlCls(summary.hold_pnl)">{{ sign(summary.hold_pnl) }}¥ {{ animHoldPnl.toFixed(2) }}</span>
+          <span class="st-kpi-v" :class="pnlCls(summary.hold_pnl)">{{ signAbs(summary.hold_pnl) }}¥ {{ animHoldPnl.toFixed(2) }}</span>
           <span class="st-kpi-s">现价对比成本</span>
         </div>
         <div class="st-kpi-card glass">
           <span class="st-kpi-k">总收益率</span>
-          <span class="st-kpi-v" :class="pnlCls(summary.hold_pct)">{{ sign(summary.hold_pct) }}{{ animHoldPct.toFixed(2) }}%</span>
+          <span class="st-kpi-v" :class="pnlCls(summary.hold_pct)">{{ signAbs(summary.hold_pct) }}{{ animHoldPct.toFixed(2) }}%</span>
           <span class="st-kpi-s">成本均价对比现价</span>
         </div>
         <div class="st-kpi-card glass">
@@ -160,7 +160,7 @@
                   <template v-if="editingId === it.id">
                     <!-- 编辑态：编辑面板已包含目标价 + 保存按钮（持仓列内），此格不再重复 -->
                   </template>
-                  <template v-else-if="it.quantity">{{ sign(it.hold_pnl) }}¥{{ fmt(Math.abs(it.hold_pnl ?? 0)) }}<br /><i class="st-sub-pct">{{ sign(it.hold_pct) }}{{ fmt(it.hold_pct, 2) }}%</i></template>
+                  <template v-else-if="it.quantity">{{ signAbs(it.hold_pnl) }}¥{{ fmt(Math.abs(it.hold_pnl ?? 0)) }}<br /><i class="st-sub-pct">{{ sign(it.hold_pct) }}{{ fmt(it.hold_pct, 2) }}%</i></template>
                   <template v-else>—</template>
                 </td>
                 <td class="r">
@@ -184,7 +184,7 @@
             </div>
             <div v-if="it.quantity" class="st-card-row">
               <span>持仓 {{ it.quantity }}股 · 成本{{ fmt(it.cost_price) }}</span>
-              <span :class="pnlCls(it.hold_pnl)">{{ sign(it.hold_pnl) }}¥{{ fmt(Math.abs(it.hold_pnl ?? 0)) }}</span>
+              <span :class="pnlCls(it.hold_pnl)">{{ signAbs(it.hold_pnl) }}¥{{ fmt(Math.abs(it.hold_pnl ?? 0)) }}</span>
             </div>
             <div v-if="it.target_price" class="st-card-row">
               <span>目标 {{ fmt(it.target_price) }}</span>
@@ -265,6 +265,12 @@ const readyTargets = computed(() => (summary.holdings || []).filter(h => h.targe
 const isMobile = ref(window.innerWidth < 760)
 function onResize() { isMobile.value = window.innerWidth < 760 }
 function sign(v) { return v > 0 ? '+' : '' }
+/**
+ * v2.46.172：配合 Math.abs() 显示的数值使用。
+ * 原来金额用 Math.abs(负数) 显示、符号只由 sign() 给，
+ * 而 sign() 对负数返回空字符串 —— 结果「-¥28」被显示成「¥28」，看着像盈利却标着绿色。
+ */
+function signAbs(v) { return v > 0 ? '+' : v < 0 ? '-' : '' }
 
 /* 数字滚动（#26）：KPI 汇总六项，刷新后从上一值滚到新值 */
 const animMarket = countUp(() => summary.market_value || 0, 620, 2)

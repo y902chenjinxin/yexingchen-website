@@ -91,7 +91,7 @@
           <div class="sd-hold-row"><span>现价</span><b>¥ {{ fmt(quote.price) }}</b></div>
           <div class="sd-hold-row">
             <span>持仓盈亏</span>
-            <b :class="pnlCls">{{ sign(watch.hold_pnl) }}¥ {{ fmt(Math.abs(watch.hold_pnl ?? 0)) }}（{{ sign(watch.hold_pct) }}{{ fmt(watch.hold_pct, 2) }}%）</b>
+            <b :class="pnlCls">{{ signAbs(watch.hold_pnl) }}¥ {{ fmt(Math.abs(watch.hold_pnl ?? 0)) }}（{{ sign(watch.hold_pct) }}{{ fmt(watch.hold_pct, 2) }}%）</b>
           </div>
           <div class="sd-hold-ops">
             <button class="sd-btn ghost small" @click="editing = !editing">{{ editing ? '收起' : '修改持仓' }}</button>
@@ -238,6 +238,12 @@ function onAnalysis(payload) {
 }
 
 function sign(v) { return v > 0 ? '+' : '' }
+/**
+ * v2.46.172：配合 Math.abs() 显示的数值使用。
+ * 原来金额用 Math.abs(负数) 显示、符号只由 sign() 给，
+ * 而 sign() 对负数返回空字符串 —— 结果「-¥28」被显示成「¥28」，看着像盈利却标着绿色。
+ */
+function signAbs(v) { return v > 0 ? '+' : v < 0 ? '-' : '' }
 function fmt(v, n = 2) { return v == null ? '--' : Number(v).toFixed(n) }
 function refCls(v) { const r = quote.value.pre_close; if (v == null || r == null || v === r) return 'flat'; return v > r ? 'up' : 'down' }
 function volTxt(v) {

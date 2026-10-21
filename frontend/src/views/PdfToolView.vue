@@ -88,6 +88,33 @@
                 :options="[{ value: 150, label: '标准 150 DPI' }, { value: 300, label: '高清 300 DPI' }]"
               />
             </label>
+            <!-- v2.46.172：新增 PNG（无损，适合截图存档） -->
+            <label class="opt">图片格式
+              <FilterSelect
+                v-model="bOpt.format"
+                width="160px"
+                :clearable="false"
+                :options="[{ value: 'jpg', label: 'JPG（体积小）' }, { value: 'png', label: 'PNG（无损）' }]"
+              />
+            </label>
+          </div>
+        </div>
+
+        <!-- Tab D：PDF 转 Word（v2.46.172） -->
+        <div v-show="tab === 'd'">
+          <div class="dropzone" :class="{ dragging }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop($event, 'd')" @click="trigUpload('d')">
+            <div class="dz-icon"><AppIcon icon="📝" :size="40" /></div>
+            <div class="dz-text">拖拽 PDF 到这里，或点击选择文件</div>
+            <div class="dz-hint">提取文字生成可编辑的 .docx；不保留图片与版式（扫描件需先 OCR）</div>
+          </div>
+          <PdfFileList
+            :files="dList"
+            :processing="processing"
+            :show-reorder="false"
+            @remove="(i) => removeAt('d', i)"
+          />
+          <div class="opt-grid">
+            <el-checkbox v-model="dOpt.pageBreak" size="small">每页之间插入分页符</el-checkbox>
           </div>
         </div>
 
@@ -169,7 +196,8 @@ onMounted(() => {
 const tabs = [
   { key: 'a', icon: '🖼', label: '图片转 PDF' },
   { key: 'b', icon: '📄', label: 'PDF 转图片' },
-  { key: 'c', icon: '📚', label: '合并与拆分' }
+  { key: 'c', icon: '📚', label: '合并与拆分' },
+  { key: 'd', icon: '📝', label: 'PDF 转 Word' }
 ]
 const tab = ref('a')
 const dragging = ref(false)
@@ -192,12 +220,18 @@ const pdfStepIndex = computed(() => {
 const aList = ref([])
 const bList = ref([])
 const cList = ref([])
+const dList = ref([])   // PDF 转 Word
 const aOpt = reactive({ pageSize: 'a4', orientation: 'auto', margin: 'none' })
-const bOpt = reactive({ dpi: 150 })
+const bOpt = reactive({ dpi: 150, format: 'jpg' })
+const dOpt = reactive({ pageBreak: true })
 const cOpt = reactive({ mergedName: 'merged.pdf', range: '' })
 
+/** kind → 文件列表（a 图片转PDF / b PDF转图片 / c 合并拆分 / d PDF转Word） */
+function listOf(kind) {
+  return kind === 'a' ? aList.value : kind === 'b' ? bList.value : kind === 'd' ? dList.value : cList.value
+}
 const currentList = computed(() =>
-  tab.value === 'a' ? aList.value : tab.value === 'b' ? bList.value : cList.value
+  tab.value === 'a' ? aList.value : tab.value === 'b' ? bList.value : tab.value === 'd' ? dList.value : cList.value
 )
 
 let uploadInput = null
@@ -230,7 +264,7 @@ const MAX_SIZE = 10 * 1024 * 1024
 const MAX_COUNT = 20
 
 function addFiles(kind, files) {
-  const target = kind === 'a' ? aList.value : kind === 'b' ? bList.value : cList.value
+  const target = listOf(kind)
   if (!files.length) return
   for (const f of files) {
     if (target.length >= MAX_COUNT) { ElMessage.warning(`最多 ${MAX_COUNT} 个文件，已停止添加`); break }
@@ -253,7 +287,7 @@ function move(kind, i, d) {
   ;[target[i], target[j]] = [target[j], target[i]]
 }
 function removeAt(kind, i) {
-  const target = kind === 'a' ? aList.value : kind === 'b' ? bList.value : cList.value
+  const target = listOf(kind)
   target.splice(i, 1)
 }
 function switchTab(k) { tab.value = k }
@@ -359,6 +393,9 @@ async function run() {
     catch (e) { showFatal(e) }
   } else if (tab.value === 'b') {
     try { await ensureLibs(); await buildPdfImages() }
+    catch (e) { showFatal(e) }
+  } else if (tab.value === 'd') {
+    try { await ensureLibs(); await buildPdfDocx() }
     catch (e) { showFatal(e) }
   } else {
     ElMessage.warning('请在「合并与拆分」区点击具体操作按钮')
@@ -466,12 +503,18 @@ async function buildPdfImages() {
       const ctx = canvas.getContext('2d')
       const renderCtx = { canvasContext: ctx, viewport }
       try { await page.render(renderCtx).promise } catch { failed = true; continue }
-      const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.92))
+      // v2.46.172：支持 PNG（原来固定输出 JPG）
+      const isPng = bOpt.format === 'png'
+      const blob = await new Promise((r) => (isPng
+        ? canvas.toBlob(r, 'image/png')
+        : canvas.toBlob(r, 'image/jpeg', 0.92)))
+      const ext = isPng ? 'png' : 'jpg'
+      const mime = isPng ? 'image/png' : 'image/jpeg'
       if (pages === 1) {
         const bytes = await blob.arrayBuffer()
-        downloadBytes(new Uint8Array(bytes), f.name.replace(/\.pdf$/i, '') + '_第1页.jpg', 'image/jpeg')
+        downloadBytes(new Uint8Array(bytes), f.name.replace(/\.pdf$/i, '') + `_第1页.${ext}`, mime)
       } else {
-        zip.file(`第${i}页.jpg`, blob)
+        zip.file(`第${i}页.${ext}`, blob)
       }
       progress.value = Math.round((i / pages) * 100)
     }
@@ -492,6 +535,126 @@ async function buildPdfImages() {
   }
   statusText.value = '完成'
   processing.value = false
+}
+
+/* ---------------- PDF 转 Word（v2.46.172） ----------------
+ * 只保留**文本**：按 PDF 里的 y 坐标聚成行、行内按 x 排序还原段落，
+ * 不保留图片 / 表格 / 矢量图形 —— 属于「可编辑文本稿」，不是版式还原。
+ * 版式还原级转换需要后端 pdf2docx（PyMuPDF + 版面分析），体积与耗时不适合塞进浏览器，
+ * 所以这里刻意走纯前端：零新依赖、不占服务器 CPU。
+ */
+const XML_ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }
+function xmlEsc(str) { return String(str).replace(/[&<>"']/g, (c) => XML_ESC[c]) }
+
+/** 一页的 textContent → 文本行数组 */
+function pageLines(textContent) {
+  const rows = new Map()
+  for (const it of (textContent.items || [])) {
+    const str = it.str
+    if (!str || !str.trim()) continue
+    const y = Math.round((it.transform?.[5] ?? 0) / 2) * 2
+    if (!rows.has(y)) rows.set(y, [])
+    rows.get(y).push(it)
+  }
+  return [...rows.entries()]
+    .sort((a, b) => b[0] - a[0])                       // PDF 的 y 轴向上，最大的排最前
+    .map(([, arr]) => {
+      arr.sort((a, b) => (a.transform?.[4] ?? 0) - (b.transform?.[4] ?? 0))
+      let line = ''
+      for (const it of arr) {
+        const str = it.str
+        // 英文/数字相邻补空格；中文直接相连
+        if (line && /[A-Za-z0-9]$/.test(line) && /^[A-Za-z0-9]/.test(str)) line += ' '
+        line += str
+      }
+      return line.trim()
+    })
+    .filter(Boolean)
+}
+
+function paraXml(text) {
+  return '<w:p><w:pPr><w:spacing w:after="80"/></w:pPr><w:r><w:rPr>'
+    + '<w:rFonts w:ascii="Calibri" w:eastAsia="宋体" w:hAnsi="Calibri"/><w:sz w:val="21"/></w:rPr>'
+    + '<w:t xml:space="preserve">' + xmlEsc(text) + '</w:t></w:r></w:p>'
+}
+
+async function buildPdfDocx() {
+  const f = dList.value[0]
+  if (!f) return
+  processing.value = true
+  progress.value = 0
+  f.error = ''
+  try {
+    statusText.value = `解析 PDF：${f.name}`
+    const data = await arrayBuffer(f.file)
+    let pdf
+    try {
+      pdf = await window.pdfjsLib.getDocument({ data }).promise
+    } catch (e) {
+      if (e && e.name === 'PasswordException') {
+        f.error = '该 PDF 已加密，请先解除密码再试'
+        ElMessage.error(f.error)
+        return
+      }
+      throw e
+    }
+    const pages = pdf.numPages
+    const body = []
+    for (let i = 1; i <= pages; i++) {
+      statusText.value = `提取文本 ${i}/${pages} 页…`
+      const page = await pdf.getPage(i)
+      const lines = pageLines(await page.getTextContent())
+      lines.forEach((ln) => body.push(paraXml(ln)))
+      if (dOpt.pageBreak && i < pages) body.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
+      progress.value = Math.round((i / pages) * 90)
+    }
+    pdf.destroy?.()
+    if (!body.length) {
+      f.error = '没有提取到文字（可能是扫描件，需要 OCR）'
+      ElMessage.error(f.error)
+      return
+    }
+
+    statusText.value = '生成 Word…'
+    const sect = '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>'
+      + '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>'
+    const docXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+      + body.join('') + sect + '</w:body></w:document>'
+    const types = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      + '<Default Extension="xml" ContentType="application/xml"/>'
+      + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+      + '</Types>'
+    const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+      + '</Relationships>'
+
+    const zip = new window.JSZip()
+    zip.file('[Content_Types].xml', types)
+    zip.file('_rels/.rels', rels)
+    zip.file('word/document.xml', docXml)
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = f.name.replace(/\.pdf$/i, '') + '.docx'
+    document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 2000)
+
+    progress.value = 100
+    ElMessage.success('已生成 Word（仅文本，不含图片与版式）')
+    clearList('d')
+  } catch (e) {
+    f.error = '处理失败'
+    ElMessage.error('处理失败：' + (e?.message || '未知错误'))
+  } finally {
+    processing.value = false
+    statusText.value = ''
+  }
 }
 
 async function doMerge() {
@@ -599,7 +762,7 @@ async function doSplitText() {
 }
 
 function clearList(kind) {
-  const target = kind === 'a' ? aList.value : kind === 'b' ? bList.value : cList.value
+  const target = listOf(kind)
   target.forEach((f) => { void f })
   target.length = 0
 }
