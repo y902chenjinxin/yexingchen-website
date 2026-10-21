@@ -23,6 +23,40 @@
 
 ---
 
+## [v2.46.168] - 2026-10-21
+
+### 修 K 线图「昨收」标签的未定义变量（tagW）
+
+`KlineChart.vue` 模板里 `:width="tagW"`，但脚本中没有 `tagW` 定义 ——
+eslint `vue/no-undef-properties` 一直报错，实际效果是「昨收」标签的半透明底块宽度无效。
+
+这是做颜色 token 化时顺带发现的**既有缺陷**（不是本次重构引入的）。
+
+#### 做法
+按字符类型估算宽度（`font-size: 10px` 下中文≈10px、数字/点≈5.6px，再留 4px 内边距）：
+```js
+const tagW = computed(() => {
+  const s = prevTxt.value || ''
+  const w = [...s].reduce((acc, ch) => acc + (/[\u4e00-\u9fa5，。、]/.test(ch) ? 10 : 5.6), 0)
+  return Math.round(w + 4)
+})
+```
+比写死更稳：价格位数变化时不会溢出或过短。
+
+估算验证：「昨收 12.34」→ 58px、「昨收 1234.56」→ 69px、「昨收」（无价格）→ 24px，
+均比实际文本宽度（约 50-55px 等）略宽，符合内边距预期。
+
+#### 一个诚实的说明
+该元素包在 `<g v-if="preY != null">` 里，而当前自选股没有「昨收」数据（`st.prev` 为空），
+所以**页面上看不到这块标签** —— 无法用截图验证渲染，只验证了计算逻辑与 lint 通过。
+等有昨收数据时即会正确显示。
+
+eslint 该文件由「1 error」变为干净。
+
+版本 SW v481→v482、APP_VERSION v2.46.167→v2.46.168。
+
+---
+
 ## [v2.46.167] - 2026-10-21
 
 ### 合并两个 EmptyState 组件（消除"假统一"）
@@ -325,6 +359,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - 击倒对手、命中、摔车都接上了音效与火花。
 
 版本 SW v472→v473、APP_VERSION v2.46.158→v2.46.159。
+
+---
+
+## [v2.46.168] - 2026-10-21
+
+### 修 K 线图「昨收」标签的未定义变量（tagW）
+
+`KlineChart.vue` 模板里 `:width="tagW"`，但脚本中没有 `tagW` 定义 ——
+eslint `vue/no-undef-properties` 一直报错，实际效果是「昨收」标签的半透明底块宽度无效。
+
+这是做颜色 token 化时顺带发现的**既有缺陷**（不是本次重构引入的）。
+
+#### 做法
+按字符类型估算宽度（`font-size: 10px` 下中文≈10px、数字/点≈5.6px，再留 4px 内边距）：
+```js
+const tagW = computed(() => {
+  const s = prevTxt.value || ''
+  const w = [...s].reduce((acc, ch) => acc + (/[\u4e00-\u9fa5，。、]/.test(ch) ? 10 : 5.6), 0)
+  return Math.round(w + 4)
+})
+```
+比写死更稳：价格位数变化时不会溢出或过短。
+
+估算验证：「昨收 12.34」→ 58px、「昨收 1234.56」→ 69px、「昨收」（无价格）→ 24px，
+均比实际文本宽度（约 50-55px 等）略宽，符合内边距预期。
+
+#### 一个诚实的说明
+该元素包在 `<g v-if="preY != null">` 里，而当前自选股没有「昨收」数据（`st.prev` 为空），
+所以**页面上看不到这块标签** —— 无法用截图验证渲染，只验证了计算逻辑与 lint 通过。
+等有昨收数据时即会正确显示。
+
+eslint 该文件由「1 error」变为干净。
+
+版本 SW v481→v482、APP_VERSION v2.46.167→v2.46.168。
 
 ---
 
@@ -852,6 +920,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 
 ---
 
+## [v2.46.168] - 2026-10-21
+
+### 修 K 线图「昨收」标签的未定义变量（tagW）
+
+`KlineChart.vue` 模板里 `:width="tagW"`，但脚本中没有 `tagW` 定义 ——
+eslint `vue/no-undef-properties` 一直报错，实际效果是「昨收」标签的半透明底块宽度无效。
+
+这是做颜色 token 化时顺带发现的**既有缺陷**（不是本次重构引入的）。
+
+#### 做法
+按字符类型估算宽度（`font-size: 10px` 下中文≈10px、数字/点≈5.6px，再留 4px 内边距）：
+```js
+const tagW = computed(() => {
+  const s = prevTxt.value || ''
+  const w = [...s].reduce((acc, ch) => acc + (/[\u4e00-\u9fa5，。、]/.test(ch) ? 10 : 5.6), 0)
+  return Math.round(w + 4)
+})
+```
+比写死更稳：价格位数变化时不会溢出或过短。
+
+估算验证：「昨收 12.34」→ 58px、「昨收 1234.56」→ 69px、「昨收」（无价格）→ 24px，
+均比实际文本宽度（约 50-55px 等）略宽，符合内边距预期。
+
+#### 一个诚实的说明
+该元素包在 `<g v-if="preY != null">` 里，而当前自选股没有「昨收」数据（`st.prev` 为空），
+所以**页面上看不到这块标签** —— 无法用截图验证渲染，只验证了计算逻辑与 lint 通过。
+等有昨收数据时即会正确显示。
+
+eslint 该文件由「1 error」变为干净。
+
+版本 SW v481→v482、APP_VERSION v2.46.167→v2.46.168。
+
+---
+
 ## [v2.46.167] - 2026-10-21
 
 ### 合并两个 EmptyState 组件（消除"假统一"）
@@ -1324,6 +1426,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - 顺手把 `GamesView` 里暴力摩托的规则文案补上赛道与车辆两条。
 
 版本 SW v459→v460、APP_VERSION v2.46.145→v2.46.146。
+
+---
+
+## [v2.46.168] - 2026-10-21
+
+### 修 K 线图「昨收」标签的未定义变量（tagW）
+
+`KlineChart.vue` 模板里 `:width="tagW"`，但脚本中没有 `tagW` 定义 ——
+eslint `vue/no-undef-properties` 一直报错，实际效果是「昨收」标签的半透明底块宽度无效。
+
+这是做颜色 token 化时顺带发现的**既有缺陷**（不是本次重构引入的）。
+
+#### 做法
+按字符类型估算宽度（`font-size: 10px` 下中文≈10px、数字/点≈5.6px，再留 4px 内边距）：
+```js
+const tagW = computed(() => {
+  const s = prevTxt.value || ''
+  const w = [...s].reduce((acc, ch) => acc + (/[\u4e00-\u9fa5，。、]/.test(ch) ? 10 : 5.6), 0)
+  return Math.round(w + 4)
+})
+```
+比写死更稳：价格位数变化时不会溢出或过短。
+
+估算验证：「昨收 12.34」→ 58px、「昨收 1234.56」→ 69px、「昨收」（无价格）→ 24px，
+均比实际文本宽度（约 50-55px 等）略宽，符合内边距预期。
+
+#### 一个诚实的说明
+该元素包在 `<g v-if="preY != null">` 里，而当前自选股没有「昨收」数据（`st.prev` 为空），
+所以**页面上看不到这块标签** —— 无法用截图验证渲染，只验证了计算逻辑与 lint 通过。
+等有昨收数据时即会正确显示。
+
+eslint 该文件由「1 error」变为干净。
+
+版本 SW v481→v482、APP_VERSION v2.46.167→v2.46.168。
 
 ---
 
@@ -1855,6 +1991,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 `App.vue`：把排除清单提成常量 `ISLAND_FOOTER_PREFIXES = ['music','novel','video','log','tool','history','life','play']`，`showGlobalFooter` 改为 `!ISLAND_FOOTER_PREFIXES.includes(p.split('/')[1] || '')`。只加两个前缀 + 换精确比对，不动任何页面渲染逻辑（岛屿页脚仍在 `IslandInnerBase` 里，非岛屿页仍由 App 兜底）。
 
 版本 SW v458→v459、APP_VERSION v2.46.144→v2.46.145。
+
+---
+
+## [v2.46.168] - 2026-10-21
+
+### 修 K 线图「昨收」标签的未定义变量（tagW）
+
+`KlineChart.vue` 模板里 `:width="tagW"`，但脚本中没有 `tagW` 定义 ——
+eslint `vue/no-undef-properties` 一直报错，实际效果是「昨收」标签的半透明底块宽度无效。
+
+这是做颜色 token 化时顺带发现的**既有缺陷**（不是本次重构引入的）。
+
+#### 做法
+按字符类型估算宽度（`font-size: 10px` 下中文≈10px、数字/点≈5.6px，再留 4px 内边距）：
+```js
+const tagW = computed(() => {
+  const s = prevTxt.value || ''
+  const w = [...s].reduce((acc, ch) => acc + (/[\u4e00-\u9fa5，。、]/.test(ch) ? 10 : 5.6), 0)
+  return Math.round(w + 4)
+})
+```
+比写死更稳：价格位数变化时不会溢出或过短。
+
+估算验证：「昨收 12.34」→ 58px、「昨收 1234.56」→ 69px、「昨收」（无价格）→ 24px，
+均比实际文本宽度（约 50-55px 等）略宽，符合内边距预期。
+
+#### 一个诚实的说明
+该元素包在 `<g v-if="preY != null">` 里，而当前自选股没有「昨收」数据（`st.prev` 为空），
+所以**页面上看不到这块标签** —— 无法用截图验证渲染，只验证了计算逻辑与 lint 通过。
+等有昨收数据时即会正确显示。
+
+eslint 该文件由「1 error」变为干净。
+
+版本 SW v481→v482、APP_VERSION v2.46.167→v2.46.168。
 
 ---
 
@@ -2487,6 +2657,40 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - **覆盖范围**：外壳（顶栏 / 命令面板 / AI 抽屉）→ 工作台（天气 / 服务器监测 / 此刻）→ 记账 / 资讯 / 生活 / 通讯录 / 足迹 → 工具集（PDF / 压缩 / 证件照 / 水印 / 音色克隆 / 弹幕 / 密码 / ASR / 倒计时等）→ 棋牌三件套 + 大富翁 + 五子棋 / 围棋 / 象棋 / 军棋 / 飞行棋，**90+ 文件**；通知标题、tooltip、规则说明里当装饰用的 emoji 一并去掉。
 - **保留（有意不改）**：`♠♥♣♦` 牌面花色、`⌘ ⇧` 键盘记号、CSS `content:'✈'` 之类版面排版字符 —— 属字体排版而非图标，且散落在卡片角标与 CSS 伪元素里，替换会改变牌面版式；`→ ↑ ↓ ‹ › ▾` 等句中分隔符同样保留。
 - 版本 SW v442→v443、APP_VERSION v2.46.128→v2.46.129。
+
+---
+
+## [v2.46.168] - 2026-10-21
+
+### 修 K 线图「昨收」标签的未定义变量（tagW）
+
+`KlineChart.vue` 模板里 `:width="tagW"`，但脚本中没有 `tagW` 定义 ——
+eslint `vue/no-undef-properties` 一直报错，实际效果是「昨收」标签的半透明底块宽度无效。
+
+这是做颜色 token 化时顺带发现的**既有缺陷**（不是本次重构引入的）。
+
+#### 做法
+按字符类型估算宽度（`font-size: 10px` 下中文≈10px、数字/点≈5.6px，再留 4px 内边距）：
+```js
+const tagW = computed(() => {
+  const s = prevTxt.value || ''
+  const w = [...s].reduce((acc, ch) => acc + (/[\u4e00-\u9fa5，。、]/.test(ch) ? 10 : 5.6), 0)
+  return Math.round(w + 4)
+})
+```
+比写死更稳：价格位数变化时不会溢出或过短。
+
+估算验证：「昨收 12.34」→ 58px、「昨收 1234.56」→ 69px、「昨收」（无价格）→ 24px，
+均比实际文本宽度（约 50-55px 等）略宽，符合内边距预期。
+
+#### 一个诚实的说明
+该元素包在 `<g v-if="preY != null">` 里，而当前自选股没有「昨收」数据（`st.prev` 为空），
+所以**页面上看不到这块标签** —— 无法用截图验证渲染，只验证了计算逻辑与 lint 通过。
+等有昨收数据时即会正确显示。
+
+eslint 该文件由「1 error」变为干净。
+
+版本 SW v481→v482、APP_VERSION v2.46.167→v2.46.168。
 
 ---
 

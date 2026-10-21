@@ -271,6 +271,14 @@ const lgx = computed(() => {
 
 const preY = computed(() => { const st = stats(); return st && st.prev != null ? yPrice(st.prev, st) : null })
 const prevTxt = computed(() => { const st = stats(); return st && st.prev != null ? `昨收 ${st.prev.toFixed(2)}` : '昨收' })
+/* v2.46.168：模板里 :width="tagW" 引用了未定义的变量（eslint vue/no-undef-properties），
+   导致「昨收」标签的半透明底块宽度无效。这里按字符类型估算：
+   font-size 10px 时中文约 10px、数字/点约 5.6px，再留 4px 内边距。 */
+const tagW = computed(() => {
+  const s = prevTxt.value || ''
+  const w = [...s].reduce((acc, ch) => acc + (/[\u4e00-\u9fa5，。、]/.test(ch) ? 10 : 5.6), 0)
+  return Math.round(w + 4)
+})
 const showPrevTag = computed(() => preY.value != null)
 
 /* ---------- 高位价格参考线 ---------- */
