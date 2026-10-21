@@ -171,6 +171,26 @@
   border-radius: 4px;
 }
 
+/* v2.46.190 管理表格：勾选框改「小方框」，别和圆形播放按钮撞脸
+   夜星反馈「播放按钮展示了两个」——实际是圆形勾选框 + 圆形播放按钮并排，看起来像两个播放键。
+   方形 vs 圆形一眼能分清，同时把勾选框体积压小、描边调淡，视觉重量让给主操作。 */
+#app:not(.is-mobile) .el-table .el-checkbox__inner {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border-color: var(--dp-line-strong, rgba(140, 160, 180, .38));
+  background: transparent;
+}
+#app:not(.is-mobile) .el-table .el-checkbox__inner::after {
+  left: 4px;
+  top: 1px;
+}
+#app:not(.is-mobile) .el-table .el-checkbox__input.is-checked .el-checkbox__inner,
+#app:not(.is-mobile) .el-table .el-checkbox__input.is-indeterminate .el-checkbox__inner {
+  background-color: var(--dp-accent, #0a708c);
+  border-color: var(--dp-accent, #0a708c);
+}
+
 /* v2.46.188 列表拖拽排序：拖动过程中锁定手势与文本选择，并关掉行的过渡动画
    （实时重排时如果还有 transition，行会"飘"着走，看起来像卡顿） */
 body.is-row-dragging {

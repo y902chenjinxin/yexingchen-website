@@ -38,7 +38,7 @@ const MAP = {
   },
   emulator: {
     title: '经典模拟器',
-    subtitle: 'EmulatorJS · ROM 本地加载 · 不上传服务器',
+    subtitle: '内置开源游戏 · 也可加载本地 ROM',
     component: EmulatorHost,
     mode: '',
   },

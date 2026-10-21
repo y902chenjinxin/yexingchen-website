@@ -23,6 +23,54 @@
 
 ---
 
+## [v2.46.191] - 2026-10-21
+
+### ① 音乐列表「两个播放按钮」→ 勾选框改方形
+
+夜星截图反馈「音乐播放按钮展示两个」。实际不是重复渲染：左侧是**圆形勾选框**、
+右侧是**圆形播放按钮**，两个圆并排看起来像两个播放键。
+
+处理：桌面端勾选框改 **14px 小方框**（`border-radius: 3px`）、描边调淡，方形 vs 圆形一眼分清，
+视觉重量让给主操作。顺手把播放按钮的选中态（❚❚ 两个竖条）确认无异常。
+
+### ② 模拟器：内置开源 ROM，下拉即玩
+
+夜星要「资源放云服务器，直接下拉选择就能玩」。这里有一条**必须守住的边界**：
+忍者神龟 / 双截龙 / 拳皇的 ROM 是商业作品，任何来源都不能放到公开站点分发。
+所以「放服务器」这件事只对**明确允许再分发的 homebrew** 成立。
+
+**已内置 2 款（都放在 `/var/www/yexingchen/roms/`）**：
+
+| 游戏 | 类型 | 授权 |
+|---|---|---|
+| Nova the Squirrel | 平台动作 | GPL-3.0（代码）+ CC BY-NC-SA 4.0（素材），作者 NovaSquirrel |
+| Thwaite | 射击 | 开源，作者 pinobatch |
+
+两个都从 GitHub Releases 下载（`NES\x1a` 头校验通过），nginx 新增 `location /roms/`
+（alias + 7 天缓存 + `Access-Control-Allow-Origin *`），`nginx -t` 通过后 reload。
+
+界面改成：**内置游戏下拉，选中即启动**；「选择本地 ROM」降为次级入口。
+
+#### 踩的坑
+iframe 是 `blob:` 承载 → **不透明来源**，里面写 `/roms/nova.nes` 这种根相对路径会报
+`Invalid URL`（`XMLHttpRequest.open` 失败），游戏卡在「解压游戏核心 40%」。
+必须传**完整绝对地址** `https://yexingchen.cn/roms/nova.nes`；该路径已配 CORS 头。
+
+#### 关于「格斗游戏」
+| 作品 | 技术上能否跑 | 能否内置到站点 |
+|---|---|---|
+| 忍者神龟 Tournament Fighters | ✅ NES/SNES/Genesis 版都能跑 | ❌ 商业 ROM |
+| 双截龙 | ✅ NES/SNES/Genesis | ❌ 商业 ROM |
+| 拳皇 | ✅ SNES/GBA/NeoGeo（NeoGeo 需 BIOS） | ❌ 商业 ROM |
+| **Super Tilt Bro**（开源 NES 大乱斗） | ✅ | ⏳ 仓库无现成 .nes，需编译或去 itch.io 取 |
+
+结论：**引擎完全支持格斗类**，限制只在 ROM 来源。想玩上表前三款，用「选择本地 ROM」
+加载你自己那份文件即可（文件只在浏览器里，不上传）。
+
+版本 SW v504→v505、APP_VERSION v2.46.190→v2.46.191。
+
+---
+
 ## [v2.46.189] - 2026-10-21
 
 ### 管理列表支持 PC 端拖拽排序（按住左键上下拖）

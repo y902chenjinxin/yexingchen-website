@@ -5,14 +5,33 @@
        整条链路数据不出本机，所以「站点公网可访问」也不会变成「提供 ROM 下载」。
        EmulatorJS 走官方 CDN（stable），不自托管数据文件。 -->
   <div class="em-host" :class="{ 'is-bare': bare }">
-    <!-- 未运行：选择 ROM -->
+    <!-- 未运行：选游戏 -->
     <div v-if="!frameSrc" class="em-intro">
-      <div class="em-badge">EmulatorJS · 本地加载</div>
+      <div class="em-badge">内置游戏 · 点开即玩</div>
       <h3 class="em-title">经典游戏模拟器</h3>
       <p class="em-desc">
-        选一个 ROM 就能玩。文件只存进<strong>这个浏览器的本地数据库</strong>，
-        <strong>不会上传到服务器</strong>，换设备 / 清缓存后需要重新选择。
+        下拉选一个<strong>内置游戏</strong>直接开玩，也可以加载自己机器上的 ROM。
       </p>
+
+      <!-- 内置游戏：下拉即启动 -->
+      <div class="em-picks">
+        <label class="em-field grow">
+          <span>内置游戏</span>
+          <select class="em-sel grow" :value="''" @change="onPickBuiltin">
+            <option value="">选一个游戏，选中即开始…</option>
+            <option v-for="g in BUILTIN" :key="g.id" :value="g.id">
+              {{ g.name }} · {{ g.tag }}
+            </option>
+          </select>
+        </label>
+      </div>
+      <p class="em-builtin-note">
+        <template v-for="g in BUILTIN" :key="g.id">
+          <b>{{ g.name }}</b>：{{ g.note }}<br />
+        </template>
+      </p>
+
+      <div class="em-divider"><span>或者用你自己的 ROM</span></div>
 
       <div class="em-picks">
         <label class="em-field">
@@ -24,15 +43,16 @@
       </div>
 
       <div class="em-acts">
-        <button class="em-btn primary" type="button" @click="pickFile">选择 ROM 文件</button>
-        <button v-if="savedName" class="em-btn" type="button" @click="playSaved">
+        <button class="em-btn" type="button" @click="pickFile">选择本地 ROM</button>
+        <button v-if="savedName" class="em-btn ghost" type="button" @click="playSaved">
           继续：{{ savedName }}
         </button>
-        <button v-if="savedName" class="em-btn ghost" type="button" @click="forget">清除已存 ROM</button>
+        <button v-if="savedName" class="em-btn ghost" type="button" @click="forget">清除</button>
       </div>
 
       <p class="em-note">
-        ROM 请自备（自有卡带 dump / 开源 homebrew）。本站不提供、不存储、不分发任何 ROM。
+        本地 ROM 只存在<strong>这个浏览器</strong>里，不上传服务器。
+        内置游戏为开源 homebrew（GPL / CC），商业游戏 ROM 不提供。
       </p>
     </div>
 
@@ -79,6 +99,19 @@ const CORES = [
 ]
 
 const CDN = 'https://cdn.emulatorjs.org/stable/data/'
+
+/* ---- 内置 ROM（v2.46.190）----
+   全部是**明确允许再分发**的 homebrew，放在本站 /roms/ 下：
+   - Nova the Squirrel：GPL-3.0（代码）+ CC BY-NC-SA 4.0（素材），作者 NovaSquirrel
+   - Thwaite：作者 pinobatch，开源（GPL），GitHub releases 分发
+   商业游戏（忍者神龟 / 双截龙 / 拳皇等）的 ROM 不在此列 —— 那是受版权保护的作品，
+   任何来源的 ROM 都不能拿到公开站点上分发。 */
+const BUILTIN = [
+  { id: 'nova', name: 'Nova the Squirrel', file: 'nova.nes', core: 'nes', size: 262160,
+    tag: '平台动作', note: 'GPL-3.0 / CC BY-NC-SA · 作者 NovaSquirrel' },
+  { id: 'thwaite', name: 'Thwaite', file: 'thwaite.nes', core: 'nes', size: 24592,
+    tag: '射击', note: '开源 · 作者 pinobatch' },
+]
 const DB_NAME = 'xuanhuang-emu'
 const STORE = 'roms'
 const KEY = 'last'
@@ -211,16 +244,42 @@ function blobToDataUrl(blob) {
 /** ROM 用 data URL 内联进 iframe 的 HTML：
  *  iframe 用 blob 承载时是 opaque origin，直接引用父页面的 blob URL 会被拦；
  *  data URL 不涉及网络与跨源，最稳，且整份 ROM 只在内存里。 */
-async function boot(blob, name, size) {
-  try {
-    const dataUrl = await blobToDataUrl(blob)
-    const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+/** 直接按 URL 启动（内置 ROM 走这条，不需要读本地文件） */
+function bootFromUrl(url, name, size, coreId) {
+  const html = buildFrameHtml(url, name, coreId || 'nes')
+  revoke()
+  currentUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
+  romName.value = name
+  romSize.value = size || 0
+  frameSrc.value = currentUrl
+}
+
+/** 下拉选中即启动 */
+function onPickBuiltin(e) {
+  const id = e && e.target ? e.target.value : ''
+  if (!id) return
+  const item = BUILTIN.find((g) => g.id === id)
+  if (item) playBuiltin(item)
+  if (e && e.target) e.target.value = ''
+}
+
+/** 内置游戏：点一下直接玩 */
+function playBuiltin(item) {
+  core.value = item.core || 'nes'
+  // iframe 由 blob 承载，是不透明来源 —— 相对路径 / 无法解析（会报 Invalid URL）
+  // 必须给完整绝对地址；/roms/ 已带 Access-Control-Allow-Origin *
+  const base = (typeof location !== 'undefined' && location.origin) || ''
+  bootFromUrl(`${base}/roms/${item.file}`, item.name, item.size, item.core)
+}
+
+function buildFrameHtml(gameUrl, name, coreId) {
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#game{width:100%;height:100%}</style>
 </head><body><div id="game"></div>
 <script>
   EJS_player = '#game';
-  EJS_core = ${JSON.stringify(core.value)};
-  EJS_gameUrl = ${JSON.stringify(dataUrl)};
+  EJS_core = ${JSON.stringify(coreId || 'nes')};
+  EJS_gameUrl = ${JSON.stringify(gameUrl)};
   EJS_gameName = ${JSON.stringify(name)};
   EJS_pathtodata = ${JSON.stringify(CDN)};
   EJS_startOnLoaded = true;
@@ -228,6 +287,12 @@ async function boot(blob, name, size) {
 </` + `script>
 <script src="${CDN}loader.js"></` + `script>
 </body></html>`
+}
+
+async function boot(blob, name, size) {
+  try {
+    const dataUrl = await blobToDataUrl(blob)
+    const html = buildFrameHtml(dataUrl, name, core.value)
 
     revoke()
     currentUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
@@ -292,6 +357,19 @@ onBeforeUnmount(() => {
 .em-btn.ghost { background: transparent; color: var(--color-text-3, #8b98a8); }
 .em-btn.sm { padding: 5px 12px; font-size: 12px; }
 .em-note { margin: 16px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--color-text-3, #8b98a8); }
+.em-field.grow, .em-sel.grow { flex: 1; min-width: 0; }
+.em-builtin-note {
+  margin: 0 0 16px; font-size: 11.5px; line-height: 1.7; text-align: left;
+  color: var(--color-text-3, #8b98a8); padding: 0 4px;
+}
+.em-builtin-note b { color: var(--color-text-2, #a8b6c6); font-weight: 600; }
+.em-divider {
+  display: flex; align-items: center; gap: 12px; margin: 18px 0;
+  font-size: 11.5px; color: var(--color-text-3, #8b98a8);
+}
+.em-divider::before, .em-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--color-border, rgba(140, 160, 180, .22));
+}
 
 /* 运行中 */
 .em-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
