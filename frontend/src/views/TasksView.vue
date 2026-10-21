@@ -380,7 +380,7 @@ onMounted(async () => {
 .tk-item.done { opacity: .6; }
 /* 自动定位高亮：来自顶栏提醒点击时短暂闪烁鎏金描边 */
 .tk-item.is-focused {
-  border: 1px solid var(--yq-gold, #c7a96b);
+  border: 1px solid var(--yq-gold);
   box-shadow: 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, .22)),
               0 6px 20px var(--yq-gold-glow, rgba(199, 169, 107, .28));
   transform: translateY(-1px);

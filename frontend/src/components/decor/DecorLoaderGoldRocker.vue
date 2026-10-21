@@ -38,7 +38,7 @@ const sizeStyle = computed(() => ({ fontSize: `${Number(props.size) / 16}px` }))
   top: 50%;
   background: linear-gradient(180deg,
     var(--yq-gold-bright, #f0e6c8),
-    var(--yq-gold, #c7a96b),
+    var(--yq-gold),
     var(--yq-gold-dark, #8a6d3f));
   border-radius: 2px;
 }
@@ -49,7 +49,7 @@ const sizeStyle = computed(() => ({ fontSize: `${Number(props.size) / 16}px` }))
   bottom: 0.18em;
   width: 1em;
   height: 1em;
-  background-color: var(--yq-gold, #c7a96b);
+  background-color: var(--yq-gold);
   box-shadow:
     inset -2px -2px 4px rgba(0, 0, 0, 0.25),
     inset 2px 2px 4px rgba(240, 230, 200, 0.6),

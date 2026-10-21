@@ -279,13 +279,13 @@ onUnmounted(() => clearTimeout(timer))
   font-size: 12px;
 }
 .cv-opt:hover {
-  color: var(--yq-gold, #c7a96b);
-  border-color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
+  border-color: var(--yq-gold);
 }
 .cv-opt.active {
   color: var(--yq-gold-fg, #0b0f14);
-  border-color: var(--yq-gold, #c7a96b);
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  border-color: var(--yq-gold);
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain));
   box-shadow: 0 4px 12px var(--yq-gold-glow, rgba(199, 169, 107, 0.3));
   font-weight: 600;
 }
@@ -352,7 +352,7 @@ onUnmounted(() => clearTimeout(timer))
 .cv-spin {
   width: 18px; height: 18px;
   border: 2px solid var(--yq-gold-fg-faint, rgba(11, 15, 20, 0.3));
-  border-top-color: var(--yq-gold, #c7a96b);
+  border-top-color: var(--yq-gold);
   border-radius: 50%;
   animation: cv-rot .7s linear infinite;
 }
@@ -373,7 +373,7 @@ onUnmounted(() => clearTimeout(timer))
   font-family: inherit;
 }
 .cv-btn-primary {
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain));
   color: var(--yq-gold-fg, #0b0f14);
   font-weight: 600;
   box-shadow: 0 4px 14px var(--yq-gold-glow, rgba(199, 169, 107, 0.28));
@@ -389,7 +389,7 @@ onUnmounted(() => clearTimeout(timer))
   color: var(--lj-text-2);
   border-color: var(--dp-line, rgba(127, 127, 127, 0.3));
 }
-.cv-btn-ghost:hover:not(:disabled) { color: var(--lj-text); border-color: var(--yq-gold, #c7a96b); }
+.cv-btn-ghost:hover:not(:disabled) { color: var(--lj-text); border-color: var(--yq-gold); }
 
 .cv-err {
   font-size: 12px;

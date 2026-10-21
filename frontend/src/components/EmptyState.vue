@@ -42,40 +42,40 @@ function onAction() { emit('action') }
 const patterns = {
   // 数据空：空盒子 + 虚线 + 箭头
   data: [
-    h('rect', { x: 60, y: 50, width: 80, height: 56, rx: 10, fill: 'none', stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 2.5, 'stroke-dasharray': '5 4' }),
-    h('path', { d: 'M 75 70 L 100 95 L 125 70', fill: 'none', stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.85 }),
-    h('circle', { cx: 100, cy: 58, r: 4.5, fill: 'var(--yq-gold, #c7a96b)' }),
+    h('rect', { x: 60, y: 50, width: 80, height: 56, rx: 10, fill: 'none', stroke: 'var(--yq-gold)', 'stroke-width': 2.5, 'stroke-dasharray': '5 4' }),
+    h('path', { d: 'M 75 70 L 100 95 L 125 70', fill: 'none', stroke: 'var(--yq-gold)', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.85 }),
+    h('circle', { cx: 100, cy: 58, r: 4.5, fill: 'var(--yq-gold)' }),
   ],
   // 搜索空：放大镜
   search: [
-    h('circle', { cx: 88, cy: 64, r: 22, fill: 'none', stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 3 }),
-    h('line', { x1: 105, y1: 81, x2: 128, y2: 104, stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 3.5, 'stroke-linecap': 'round' }),
-    h('circle', { cx: 88, cy: 64, r: 10, fill: 'var(--yq-gold, #c7a96b)', opacity: 0.25 }),
+    h('circle', { cx: 88, cy: 64, r: 22, fill: 'none', stroke: 'var(--yq-gold)', 'stroke-width': 3 }),
+    h('line', { x1: 105, y1: 81, x2: 128, y2: 104, stroke: 'var(--yq-gold)', 'stroke-width': 3.5, 'stroke-linecap': 'round' }),
+    h('circle', { cx: 88, cy: 64, r: 10, fill: 'var(--yq-gold)', opacity: 0.25 }),
   ],
   // 网络空：云 + 断线
   net: [
-    h('path', { d: 'M 50 80 Q 50 50 80 50 Q 90 35 110 45 Q 140 40 150 70 Q 160 95 130 100 L 70 100 Q 45 95 50 80 Z', fill: 'none', stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }),
+    h('path', { d: 'M 50 80 Q 50 50 80 50 Q 90 35 110 45 Q 140 40 150 70 Q 160 95 130 100 L 70 100 Q 45 95 50 80 Z', fill: 'none', stroke: 'var(--yq-gold)', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }),
     h('line', { x1: 70, y1: 75, x2: 130, y2: 75, stroke: 'var(--dp-danger, #fb7185)', 'stroke-width': 3, 'stroke-linecap': 'round' }),
   ],
   // 权限空：锁
   deny: [
-    h('rect', { x: 75, y: 75, width: 50, height: 40, rx: 6, fill: 'none', stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 3 }),
-    h('path', { d: 'M 84 75 L 84 60 Q 84 48 100 48 Q 116 48 116 60 L 116 75', fill: 'none', stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 3, 'stroke-linecap': 'round' }),
-    h('circle', { cx: 100, cy: 95, r: 3.5, fill: 'var(--yq-gold, #c7a96b)' }),
+    h('rect', { x: 75, y: 75, width: 50, height: 40, rx: 6, fill: 'none', stroke: 'var(--yq-gold)', 'stroke-width': 3 }),
+    h('path', { d: 'M 84 75 L 84 60 Q 84 48 100 48 Q 116 48 116 60 L 116 75', fill: 'none', stroke: 'var(--yq-gold)', 'stroke-width': 3, 'stroke-linecap': 'round' }),
+    h('circle', { cx: 100, cy: 95, r: 3.5, fill: 'var(--yq-gold)' }),
   ],
   // 时间空：沙漏
   time: [
-    h('rect', { x: 78, y: 40, width: 44, height: 60, rx: 4, fill: 'none', stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 2.5 }),
-    h('path', { d: 'M 80 45 L 120 45 L 100 70 Z M 80 95 L 120 95 L 100 70 Z', fill: 'none', stroke: 'var(--yq-gold, #c7a96b)', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }),
-    h('circle', { cx: 92, cy: 92, r: 2, fill: 'var(--yq-gold, #c7a96b)' }),
-    h('circle', { cx: 106, cy: 95, r: 2, fill: 'var(--yq-gold, #c7a96b)' }),
-    h('circle', { cx: 100, cy: 88, r: 2, fill: 'var(--yq-gold, #c7a96b)' }),
+    h('rect', { x: 78, y: 40, width: 44, height: 60, rx: 4, fill: 'none', stroke: 'var(--yq-gold)', 'stroke-width': 2.5 }),
+    h('path', { d: 'M 80 45 L 120 45 L 100 70 Z M 80 95 L 120 95 L 100 70 Z', fill: 'none', stroke: 'var(--yq-gold)', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }),
+    h('circle', { cx: 92, cy: 92, r: 2, fill: 'var(--yq-gold)' }),
+    h('circle', { cx: 106, cy: 95, r: 2, fill: 'var(--yq-gold)' }),
+    h('circle', { cx: 100, cy: 88, r: 2, fill: 'var(--yq-gold)' }),
   ],
   // 通用：圆点
   generic: [
-    h('circle', { cx: 70, cy: 70, r: 6, fill: 'var(--yq-gold, #c7a96b)', opacity: 0.6 }),
-    h('circle', { cx: 100, cy: 70, r: 6, fill: 'var(--yq-gold, #c7a96b)', opacity: 0.85 }),
-    h('circle', { cx: 130, cy: 70, r: 6, fill: 'var(--yq-gold, #c7a96b)', opacity: 0.6 }),
+    h('circle', { cx: 70, cy: 70, r: 6, fill: 'var(--yq-gold)', opacity: 0.6 }),
+    h('circle', { cx: 100, cy: 70, r: 6, fill: 'var(--yq-gold)', opacity: 0.85 }),
+    h('circle', { cx: 130, cy: 70, r: 6, fill: 'var(--yq-gold)', opacity: 0.6 }),
   ],
 }
 
@@ -89,8 +89,8 @@ const iconComponent = computed(() => () => {
     // 渐变定义
     h('defs', {}, [
       h('radialGradient', { id: 'ls-empty-bg', cx: '50%', cy: '50%', r: '50%' }, [
-        h('stop', { offset: '0%', 'stop-color': 'var(--yq-gold, #c7a96b)', 'stop-opacity': 0.32 }),
-        h('stop', { offset: '100%', 'stop-color': 'var(--yq-gold, #c7a96b)', 'stop-opacity': 0 }),
+        h('stop', { offset: '0%', 'stop-color': 'var(--yq-gold)', 'stop-opacity': 0.32 }),
+        h('stop', { offset: '100%', 'stop-color': 'var(--yq-gold)', 'stop-opacity': 0 }),
       ]),
     ]),
   ])
@@ -168,7 +168,7 @@ const iconComponent = computed(() => () => {
   font-family: inherit;
 }
 .ls-empty-btn--primary {
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain));
   color: var(--yq-gold-fg, #0b0f14);
   font-weight: 600;
   box-shadow: 0 4px 14px var(--yq-gold-glow, rgba(199, 169, 107, 0.28));

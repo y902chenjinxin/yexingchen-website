@@ -205,7 +205,7 @@ onMounted(generate)
 .pw-options { margin-top: 18px; display: flex; flex-direction: column; gap: 14px; }
 .pw-opt { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--dp-text2, #45505b); }
 .pw-opt input[type=range] { flex: 1; max-width: 320px; }
-.hl { color: var(--yq-gold, #c7a96b); font-size: 15px; }
+.hl { color: var(--yq-gold); font-size: 15px; }
 .pw-classes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .pw-check {
   display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer;
@@ -213,13 +213,13 @@ onMounted(generate)
   background: var(--dp-bg2, rgba(0,0,0,.03)); border: 1px solid var(--dp-line, rgba(0,0,0,.08));
   color: var(--dp-text, #18202a);
 }
-.pw-check input { accent-color: var(--yq-gold, #c7a96b); }
+.pw-check input { accent-color: var(--yq-gold); }
 .pw-sample { margin-left: auto; font-size: 11px; color: var(--dp-text3, #8a8f98); }
 .pw-err { color: #e5484d; font-size: 13px; }
 /* v2.46.76 批量生成 */
 .pw-count-input {
   width: 64px; text-align: center; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
-  color: var(--yq-gold, #c7a96b); background: none; border: none;
+  color: var(--yq-gold); background: none; border: none;
   border-bottom: 2px solid currentColor; outline: none;
 }
 .pw-generate {

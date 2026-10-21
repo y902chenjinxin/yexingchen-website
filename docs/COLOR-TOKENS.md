@@ -271,3 +271,60 @@ SVG 属性用 `var()` 虽可行，但若后续走 `html2canvas` 之类导出会�
 `KlineChart.vue:32` 模板里用了未定义的 `tagW`（`:width="tagW"`），
 eslint 报 `vue/no-undef-properties`。与本次颜色替换无关，是既有缺陷；
 没有依据猜它的期望宽度，未擅自改。
+
+---
+
+## 十、阶段 1 方案 B 执行结果（2026-10-21，v2.46.166）
+
+夜星选择 **B：承认青色、不改视觉**。
+
+### 做法：删掉失效的 fallback，而不是把金色改成青色
+
+原提议是「把 fallback 的 `#c7a96b` 改成 `#2de2ff`」。实际执行时改了主意，理由：
+`--yq-gold` 在项目里有 **12 处定义**（覆盖夜/日/移动/AB 各主题），
+所以 `var(--yq-gold, #c7a96b)` 里的 fallback **永远不生效**，是死代码。
+写死 `#2de2ff` 也不对 —— 日间该 token 是 `#0a708c`，硬编码任何一个值都不准确。
+
+**正确处理：直接删掉 fallback** → `var(--yq-gold)`。
+这既让代码与实际一致（跟随主题），又消除了「写着金色其实显示青色」的认知陷阱。
+
+### 实际执行：216 处 / 37 个文件
+
+| token | 删除的 fallback | 处数 |
+|---|---|---:|
+| `--yq-gold` | `#c7a96b` | 156 |
+| `--yq-rain` | `#7fa8a3` | 25 |
+| `--color-accent` | `#c7a96b` | 20 |
+| `--lj-ochre` / `--lj-dai` / `--lj-seal` | `#c7a96b` / `#7fa8a3` | 7 / 7 / 1 |
+
+涉及文件（节选）：`EmptyState`(22) / `VoiceCloneView`(22) / `desktop-product.css`(20) /
+`LifeView`(12) / `LunarCalendar`(11) / `DanmuToolView`(10) / `SpinToolView`(10) / `CoverToolView`(9) …
+
+**未动**：`components/games/*`（棋盘美术色，本身就用 `var(--yq-gold, #c7a96b)` 且属于独立美术体系；
+其中 `PvzEmbed.vue` 还是并行会话的新增文件）。
+
+### 验证：基线对比，逐字节一致
+
+改前先存基线（`artifacts/_probe/baseline-colors.json`），改后复测同一批元素：
+
+| 采样点 | 改前 | 改后 |
+|---|---|---|
+| 代码截图主按钮背景 | `rgb(10, 112, 140)` | `rgb(10, 112, 140)` |
+| 助手页日间青色元素 | 9 个，样本 `rgb(10,112,140)` | 9 个，同色 |
+| 助手页夜间青色元素 | 8 个，样本 `rgb(45,226,255)` | 8 个，同色 |
+
+`JSON.stringify(基线) === JSON.stringify(现状)` → **true**，无 JS 错误。
+证实「fallback 本来就是死代码」，删除后视觉零变化。
+
+### 遗留
+
+- `--yq-gold` 这个**名字**仍然误导（叫 gold、值是青）。改名属于阶段 4，本轮不做；
+  现在至少调用点里不再写着「#c7a96b」来骗人。
+- 游戏目录里还有一批 `var(--yq-gold, #c7a96b)`，因属美术体系未动。
+
+### 顺带发现：项目里有**两个 EmptyState 组件**
+- `components/EmptyState.vue`（7.7KB，带 data/search/net/deny 四种插画，被 ContactsView/HabitsView/LifeView 等引用）
+- `components/common/EmptyState.vue`（2KB，v2.46.33 新建，被遗失物/保险箱/衣柜/时光痕迹引用）
+
+同一功能两份实现，样式与 API 都不同。**本轮未合并**（涉及 25+ 处引用），
+建议单独立项：以功能更全的那份为准，收敛成一个。

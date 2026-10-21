@@ -93,22 +93,22 @@ const currentIndex = computed(() => {
 
 /* 完成态 */
 .stp-done .stp-circle {
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain));
   color: var(--yq-gold-fg, #0b0f14);
   border-color: transparent;
   box-shadow: 0 2px 8px var(--yq-gold-glow, rgba(199, 169, 107, 0.3));
 }
 .stp-done .stp-label { color: var(--lj-text-2); }
 .stp-done .stp-line {
-  background: linear-gradient(90deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(90deg, var(--yq-gold), var(--yq-rain));
   opacity: 0.65;
 }
 
 /* 当前态：鎏金 + 脉冲 */
 .stp-current .stp-circle {
   background: var(--color-bg-glass, rgba(127, 127, 127, 0.06));
-  border-color: var(--yq-gold, #c7a96b);
-  color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
+  color: var(--yq-gold);
   box-shadow:
     0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, 0.18)),
     0 0 18px var(--yq-gold-glow, rgba(199, 169, 107, 0.35));
@@ -125,7 +125,7 @@ const currentIndex = computed(() => {
   0%   { transform: scale(1); opacity: 0.9; }
   100% { transform: scale(1.6); opacity: 0; }
 }
-.stp-current .stp-label { color: var(--yq-gold, #c7a96b); font-weight: 600; }
+.stp-current .stp-label { color: var(--yq-gold); font-weight: 600; }
 
 /* 紧凑型 */
 .stp-compact .stp-circle { width: 22px; height: 22px; font-size: 11px; }

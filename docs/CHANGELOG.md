@@ -23,6 +23,42 @@
 
 ---
 
+## [v2.46.166] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1 方案 B：删除 216 处失效 fallback
+
+夜星选 B（承认青色、不改视觉）。执行时把方案调整得更彻底：
+
+**没有**把 fallback 里的 `#c7a96b` 改成 `#2de2ff`，而是**整个删掉**。
+理由：`--yq-gold` 有 12 处定义（覆盖夜/日/移动/AB 主题），fallback 永远不生效 = 死代码；
+而硬编码 `#2de2ff` 也不准确（日间是 `#0a708c`）。
+
+最终形态：`var(--yq-gold, #c7a96b)` → `var(--yq-gold)`。
+
+#### 规模：216 处 / 37 个文件
+`--yq-gold` 156、`--yq-rain` 25、`--color-accent` 20、`--lj-ochre` 7、`--lj-dai` 7、`--lj-seal` 1。
+节选：EmptyState(22) / VoiceCloneView(22) / desktop-product.css(20) / LifeView(12) / LunarCalendar(11)…
+
+未动 `components/games/*`（棋盘美术体系独立，且含并行会话新增的 PvzEmbed）。
+
+#### 验证：改前存基线，改后逐字节比对
+| 采样点 | 改前 | 改后 |
+|---|---|---|
+| 代码截图主按钮 | `rgb(10,112,140)` | `rgb(10,112,140)` |
+| 助手页日间青色元素 | 9 个 | 9 个 |
+| 助手页夜间青色元素 | 8 个 | 8 个 |
+
+`JSON.stringify(基线)===JSON.stringify(现状)` = **true**，无 JS 错误 →
+证实 fallback 本就不生效，删除是零变化。
+
+#### 顺带发现：项目里有两个 EmptyState
+`components/EmptyState.vue`（7.7KB，四种插画）与 `components/common/EmptyState.vue`（2KB）并存，
+样式与 API 都不同。本轮未合并（涉及 25+ 引用），建议单独立项收敛。
+
+版本 SW v479→v480、APP_VERSION v2.46.165→v2.46.166。
+
+---
+
 ## [v2.46.165] - 2026-10-21
 
 ### 颜色 token 化 · 阶段 1（安全部分）：24 处纯硬编码换 `--c-*`
@@ -255,6 +291,42 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - 击倒对手、命中、摔车都接上了音效与火花。
 
 版本 SW v472→v473、APP_VERSION v2.46.158→v2.46.159。
+
+---
+
+## [v2.46.166] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1 方案 B：删除 216 处失效 fallback
+
+夜星选 B（承认青色、不改视觉）。执行时把方案调整得更彻底：
+
+**没有**把 fallback 里的 `#c7a96b` 改成 `#2de2ff`，而是**整个删掉**。
+理由：`--yq-gold` 有 12 处定义（覆盖夜/日/移动/AB 主题），fallback 永远不生效 = 死代码；
+而硬编码 `#2de2ff` 也不准确（日间是 `#0a708c`）。
+
+最终形态：`var(--yq-gold, #c7a96b)` → `var(--yq-gold)`。
+
+#### 规模：216 处 / 37 个文件
+`--yq-gold` 156、`--yq-rain` 25、`--color-accent` 20、`--lj-ochre` 7、`--lj-dai` 7、`--lj-seal` 1。
+节选：EmptyState(22) / VoiceCloneView(22) / desktop-product.css(20) / LifeView(12) / LunarCalendar(11)…
+
+未动 `components/games/*`（棋盘美术体系独立，且含并行会话新增的 PvzEmbed）。
+
+#### 验证：改前存基线，改后逐字节比对
+| 采样点 | 改前 | 改后 |
+|---|---|---|
+| 代码截图主按钮 | `rgb(10,112,140)` | `rgb(10,112,140)` |
+| 助手页日间青色元素 | 9 个 | 9 个 |
+| 助手页夜间青色元素 | 8 个 | 8 个 |
+
+`JSON.stringify(基线)===JSON.stringify(现状)` = **true**，无 JS 错误 →
+证实 fallback 本就不生效，删除是零变化。
+
+#### 顺带发现：项目里有两个 EmptyState
+`components/EmptyState.vue`（7.7KB，四种插画）与 `components/common/EmptyState.vue`（2KB）并存，
+样式与 API 都不同。本轮未合并（涉及 25+ 引用），建议单独立项收敛。
+
+版本 SW v479→v480、APP_VERSION v2.46.165→v2.46.166。
 
 ---
 
@@ -712,6 +784,42 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 
 ---
 
+## [v2.46.166] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1 方案 B：删除 216 处失效 fallback
+
+夜星选 B（承认青色、不改视觉）。执行时把方案调整得更彻底：
+
+**没有**把 fallback 里的 `#c7a96b` 改成 `#2de2ff`，而是**整个删掉**。
+理由：`--yq-gold` 有 12 处定义（覆盖夜/日/移动/AB 主题），fallback 永远不生效 = 死代码；
+而硬编码 `#2de2ff` 也不准确（日间是 `#0a708c`）。
+
+最终形态：`var(--yq-gold, #c7a96b)` → `var(--yq-gold)`。
+
+#### 规模：216 处 / 37 个文件
+`--yq-gold` 156、`--yq-rain` 25、`--color-accent` 20、`--lj-ochre` 7、`--lj-dai` 7、`--lj-seal` 1。
+节选：EmptyState(22) / VoiceCloneView(22) / desktop-product.css(20) / LifeView(12) / LunarCalendar(11)…
+
+未动 `components/games/*`（棋盘美术体系独立，且含并行会话新增的 PvzEmbed）。
+
+#### 验证：改前存基线，改后逐字节比对
+| 采样点 | 改前 | 改后 |
+|---|---|---|
+| 代码截图主按钮 | `rgb(10,112,140)` | `rgb(10,112,140)` |
+| 助手页日间青色元素 | 9 个 | 9 个 |
+| 助手页夜间青色元素 | 8 个 | 8 个 |
+
+`JSON.stringify(基线)===JSON.stringify(现状)` = **true**，无 JS 错误 →
+证实 fallback 本就不生效，删除是零变化。
+
+#### 顺带发现：项目里有两个 EmptyState
+`components/EmptyState.vue`（7.7KB，四种插画）与 `components/common/EmptyState.vue`（2KB）并存，
+样式与 API 都不同。本轮未合并（涉及 25+ 引用），建议单独立项收敛。
+
+版本 SW v479→v480、APP_VERSION v2.46.165→v2.46.166。
+
+---
+
 ## [v2.46.165] - 2026-10-21
 
 ### 颜色 token 化 · 阶段 1（安全部分）：24 处纯硬编码换 `--c-*`
@@ -1114,6 +1222,42 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - 顺手把 `GamesView` 里暴力摩托的规则文案补上赛道与车辆两条。
 
 版本 SW v459→v460、APP_VERSION v2.46.145→v2.46.146。
+
+---
+
+## [v2.46.166] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1 方案 B：删除 216 处失效 fallback
+
+夜星选 B（承认青色、不改视觉）。执行时把方案调整得更彻底：
+
+**没有**把 fallback 里的 `#c7a96b` 改成 `#2de2ff`，而是**整个删掉**。
+理由：`--yq-gold` 有 12 处定义（覆盖夜/日/移动/AB 主题），fallback 永远不生效 = 死代码；
+而硬编码 `#2de2ff` 也不准确（日间是 `#0a708c`）。
+
+最终形态：`var(--yq-gold, #c7a96b)` → `var(--yq-gold)`。
+
+#### 规模：216 处 / 37 个文件
+`--yq-gold` 156、`--yq-rain` 25、`--color-accent` 20、`--lj-ochre` 7、`--lj-dai` 7、`--lj-seal` 1。
+节选：EmptyState(22) / VoiceCloneView(22) / desktop-product.css(20) / LifeView(12) / LunarCalendar(11)…
+
+未动 `components/games/*`（棋盘美术体系独立，且含并行会话新增的 PvzEmbed）。
+
+#### 验证：改前存基线，改后逐字节比对
+| 采样点 | 改前 | 改后 |
+|---|---|---|
+| 代码截图主按钮 | `rgb(10,112,140)` | `rgb(10,112,140)` |
+| 助手页日间青色元素 | 9 个 | 9 个 |
+| 助手页夜间青色元素 | 8 个 | 8 个 |
+
+`JSON.stringify(基线)===JSON.stringify(现状)` = **true**，无 JS 错误 →
+证实 fallback 本就不生效，删除是零变化。
+
+#### 顺带发现：项目里有两个 EmptyState
+`components/EmptyState.vue`（7.7KB，四种插画）与 `components/common/EmptyState.vue`（2KB）并存，
+样式与 API 都不同。本轮未合并（涉及 25+ 引用），建议单独立项收敛。
+
+版本 SW v479→v480、APP_VERSION v2.46.165→v2.46.166。
 
 ---
 
@@ -1575,6 +1719,42 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 `App.vue`：把排除清单提成常量 `ISLAND_FOOTER_PREFIXES = ['music','novel','video','log','tool','history','life','play']`，`showGlobalFooter` 改为 `!ISLAND_FOOTER_PREFIXES.includes(p.split('/')[1] || '')`。只加两个前缀 + 换精确比对，不动任何页面渲染逻辑（岛屿页脚仍在 `IslandInnerBase` 里，非岛屿页仍由 App 兜底）。
 
 版本 SW v458→v459、APP_VERSION v2.46.144→v2.46.145。
+
+---
+
+## [v2.46.166] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1 方案 B：删除 216 处失效 fallback
+
+夜星选 B（承认青色、不改视觉）。执行时把方案调整得更彻底：
+
+**没有**把 fallback 里的 `#c7a96b` 改成 `#2de2ff`，而是**整个删掉**。
+理由：`--yq-gold` 有 12 处定义（覆盖夜/日/移动/AB 主题），fallback 永远不生效 = 死代码；
+而硬编码 `#2de2ff` 也不准确（日间是 `#0a708c`）。
+
+最终形态：`var(--yq-gold, #c7a96b)` → `var(--yq-gold)`。
+
+#### 规模：216 处 / 37 个文件
+`--yq-gold` 156、`--yq-rain` 25、`--color-accent` 20、`--lj-ochre` 7、`--lj-dai` 7、`--lj-seal` 1。
+节选：EmptyState(22) / VoiceCloneView(22) / desktop-product.css(20) / LifeView(12) / LunarCalendar(11)…
+
+未动 `components/games/*`（棋盘美术体系独立，且含并行会话新增的 PvzEmbed）。
+
+#### 验证：改前存基线，改后逐字节比对
+| 采样点 | 改前 | 改后 |
+|---|---|---|
+| 代码截图主按钮 | `rgb(10,112,140)` | `rgb(10,112,140)` |
+| 助手页日间青色元素 | 9 个 | 9 个 |
+| 助手页夜间青色元素 | 8 个 | 8 个 |
+
+`JSON.stringify(基线)===JSON.stringify(现状)` = **true**，无 JS 错误 →
+证实 fallback 本就不生效，删除是零变化。
+
+#### 顺带发现：项目里有两个 EmptyState
+`components/EmptyState.vue`（7.7KB，四种插画）与 `components/common/EmptyState.vue`（2KB）并存，
+样式与 API 都不同。本轮未合并（涉及 25+ 引用），建议单独立项收敛。
+
+版本 SW v479→v480、APP_VERSION v2.46.165→v2.46.166。
 
 ---
 
@@ -2137,6 +2317,42 @@ const { page, pageSize, total, pageCount, paged, sizes, onPageChange, onSizeChan
 - **覆盖范围**：外壳（顶栏 / 命令面板 / AI 抽屉）→ 工作台（天气 / 服务器监测 / 此刻）→ 记账 / 资讯 / 生活 / 通讯录 / 足迹 → 工具集（PDF / 压缩 / 证件照 / 水印 / 音色克隆 / 弹幕 / 密码 / ASR / 倒计时等）→ 棋牌三件套 + 大富翁 + 五子棋 / 围棋 / 象棋 / 军棋 / 飞行棋，**90+ 文件**；通知标题、tooltip、规则说明里当装饰用的 emoji 一并去掉。
 - **保留（有意不改）**：`♠♥♣♦` 牌面花色、`⌘ ⇧` 键盘记号、CSS `content:'✈'` 之类版面排版字符 —— 属字体排版而非图标，且散落在卡片角标与 CSS 伪元素里，替换会改变牌面版式；`→ ↑ ↓ ‹ › ▾` 等句中分隔符同样保留。
 - 版本 SW v442→v443、APP_VERSION v2.46.128→v2.46.129。
+
+---
+
+## [v2.46.166] - 2026-10-21
+
+### 颜色 token 化 · 阶段 1 方案 B：删除 216 处失效 fallback
+
+夜星选 B（承认青色、不改视觉）。执行时把方案调整得更彻底：
+
+**没有**把 fallback 里的 `#c7a96b` 改成 `#2de2ff`，而是**整个删掉**。
+理由：`--yq-gold` 有 12 处定义（覆盖夜/日/移动/AB 主题），fallback 永远不生效 = 死代码；
+而硬编码 `#2de2ff` 也不准确（日间是 `#0a708c`）。
+
+最终形态：`var(--yq-gold, #c7a96b)` → `var(--yq-gold)`。
+
+#### 规模：216 处 / 37 个文件
+`--yq-gold` 156、`--yq-rain` 25、`--color-accent` 20、`--lj-ochre` 7、`--lj-dai` 7、`--lj-seal` 1。
+节选：EmptyState(22) / VoiceCloneView(22) / desktop-product.css(20) / LifeView(12) / LunarCalendar(11)…
+
+未动 `components/games/*`（棋盘美术体系独立，且含并行会话新增的 PvzEmbed）。
+
+#### 验证：改前存基线，改后逐字节比对
+| 采样点 | 改前 | 改后 |
+|---|---|---|
+| 代码截图主按钮 | `rgb(10,112,140)` | `rgb(10,112,140)` |
+| 助手页日间青色元素 | 9 个 | 9 个 |
+| 助手页夜间青色元素 | 8 个 | 8 个 |
+
+`JSON.stringify(基线)===JSON.stringify(现状)` = **true**，无 JS 错误 →
+证实 fallback 本就不生效，删除是零变化。
+
+#### 顺带发现：项目里有两个 EmptyState
+`components/EmptyState.vue`（7.7KB，四种插画）与 `components/common/EmptyState.vue`（2KB）并存，
+样式与 API 都不同。本轮未合并（涉及 25+ 引用），建议单独立项收敛。
+
+版本 SW v479→v480、APP_VERSION v2.46.165→v2.46.166。
 
 ---
 

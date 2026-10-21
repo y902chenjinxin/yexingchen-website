@@ -690,10 +690,10 @@ html:root[data-theme="day"] .login-page .filing-links a {
   background-color: var(--color-bg-glass, rgba(127, 127, 127, 0.04)) !important;
 }
 #app:not(.is-mobile) .el-loading-spinner .path {
-  stroke: var(--yq-gold, #c7a96b) !important;
+  stroke: var(--yq-gold) !important;
 }
 #app:not(.is-mobile) .el-loading-spinner .el-loading-text {
-  color: var(--yq-gold, #c7a96b) !important;
+  color: var(--yq-gold) !important;
 }
 
 /* ----- 原生 <input> / <textarea> / <select>（iOS Safari 默认灰底圆角修复） ----- */
@@ -719,7 +719,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
 #app:not(.is-mobile) input:focus:not([class*="el-"]),
 #app:not(.is-mobile) textarea:focus:not([class*="el-"]),
 #app:not(.is-mobile) select:focus:not([class*="el-"]) {
-  border-color: var(--yq-gold, #c7a96b) !important;
+  border-color: var(--yq-gold) !important;
   box-shadow: 0 0 0 3px var(--yq-gold-faint, rgba(199, 169, 107, 0.18));
 }
 #app:not(.is-mobile) input::placeholder:not([class*="el-"]),
@@ -768,7 +768,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
    两套主题互不污染：用 :root[data-theme] 选择器区分 */
 #app:not(.is-mobile) .el-button--primary {
   /* 默认（夜间）：鎏金 → 雨青 渐变 + 深字 + glow */
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3)) !important;
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain)) !important;
   border-color: transparent !important;
   color: var(--yq-gold-fg, #0b0f14) !important;
   font-weight: 600;
@@ -813,7 +813,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
 #app:not(.is-mobile) .el-tag.el-tag--success {
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.18));
   border-color: var(--yq-gold-glow, rgba(199, 169, 107, 0.35));
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
 }
 #app:not(.is-mobile) .el-tag.el-tag--info {
   background: var(--yq-rain-faint, rgba(127, 168, 163, 0.12));
@@ -895,14 +895,14 @@ html:root[data-theme="day"] .login-page .filing-links a {
   transition: border-color .2s, box-shadow .2s, transform .15s;
 }
 #app:not(.is-mobile) .glass:hover {
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
   box-shadow: 0 18px 44px rgba(0, 0, 0, .18), 0 0 0 1px var(--yq-gold-glow, rgba(199, 169, 107, .25)) inset;
 }
 
 /* 所有 el-button：non-primary 类型 hover 时描边变鎏金（更克制） */
 #app:not(.is-mobile) .el-button:not(.el-button--primary):not(.is-disabled):hover {
-  border-color: var(--yq-gold, #c7a96b);
-  color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
+  color: var(--yq-gold);
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.06));
 }
 
@@ -912,7 +912,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
   border-color: var(--dp-line, rgba(127, 127, 127, 0.18));
 }
 #app:not(.is-mobile) .el-card:hover {
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .16), 0 0 0 1px var(--yq-gold-glow, rgba(199, 169, 107, 0.2)) inset;
 }
 
@@ -954,7 +954,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
   width: 3px;
   /* 渐变收在鎏金系内：原先第二色用了 --yq-rain（名字是「雨青」，实际值却是靛蓝 #5b6ae0），
      在鎏金竖条尾巴上透出一截冷紫，跟玄黄调性不符。 */
-  background: linear-gradient(180deg, var(--yq-gold, #c7a96b), var(--yq-gold-bright, #e5c477));
+  background: linear-gradient(180deg, var(--yq-gold), var(--yq-gold-bright, #e5c477));
   opacity: 0;
   transform: scaleY(.4);
   transform-origin: center;
@@ -989,21 +989,21 @@ html:root[data-theme="day"] .login-page .filing-links a {
   background: currentColor;
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
 }
-.status-dot.is-gold { color: var(--yq-gold, #c7a96b); }
-.status-dot.is-rain { color: var(--yq-rain, #7fa8a3); }
+.status-dot.is-gold { color: var(--yq-gold); }
+.status-dot.is-rain { color: var(--yq-rain); }
 .status-dot.is-danger { color: var(--dp-danger, #e57373); }
 .status-dot.is-muted { color: var(--lj-text-3); }
 
 /* el-tag 在 admin 中以鎏金/雨青/危险三色为主 */
 .el-tag--success.admin-tag {
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.12));
-  border-color: var(--yq-gold, #c7a96b);
-  color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
+  color: var(--yq-gold);
 }
 .el-tag--info.admin-tag {
-  background: color-mix(in srgb, var(--yq-rain, #7fa8a3) 14%, transparent);
-  border-color: color-mix(in srgb, var(--yq-rain, #7fa8a3) 50%, transparent);
-  color: var(--yq-rain, #7fa8a3);
+  background: color-mix(in srgb, var(--yq-rain) 14%, transparent);
+  border-color: color-mix(in srgb, var(--yq-rain) 50%, transparent);
+  color: var(--yq-rain);
 }
 .el-tag--danger.admin-tag {
   background: color-mix(in srgb, var(--dp-danger, #e57373) 14%, transparent);
@@ -1048,7 +1048,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
  * - 排除 el-input / el-textarea / el-select 等已经走 Element Plus 主题的元素
  * ===================================================================== */
 #app:not(.is-mobile) :focus-visible {
-  outline: 2px solid var(--yq-gold, #c7a96b);
+  outline: 2px solid var(--yq-gold);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--yq-gold-faint, rgba(199, 169, 107, 0.22));
   transition: outline-color var(--motion-fast) var(--ease-standard),
@@ -1064,5 +1064,5 @@ html:root[data-theme="day"] .login-page .filing-links a {
 
 /* 卡片类（点上去有 mouse-light 效果）—— 鼠标 hover 时不显示焦点环，仅键盘 tab 才显示 */
 #app:not(.is-mobile) [v-mouse-light]:focus-visible {
-  outline-color: var(--yq-gold, #c7a96b);
+  outline-color: var(--yq-gold);
 }

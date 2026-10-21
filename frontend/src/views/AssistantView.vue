@@ -572,7 +572,7 @@ onUnmounted(() => {
 .chat-msg.user .chat-bubble { text-align: right; }
 .chat-name {
   font-size: 11px;
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
   margin: 0 0 4px;
   opacity: 0.85;
   letter-spacing: .04em;
@@ -613,7 +613,7 @@ onUnmounted(() => {
   width: 2px; height: 1em;
   vertical-align: text-bottom;
   margin-left: 2px;
-  background: linear-gradient(180deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(180deg, var(--yq-gold), var(--yq-rain));
   box-shadow: 0 0 6px var(--yq-gold-glow, rgba(199, 169, 107, 0.6));
   animation: chat-blink 1s steps(1) infinite;
   border-radius: 1px;
@@ -623,7 +623,7 @@ onUnmounted(() => {
 .chat-save { margin-top: 8px; text-align: left; }
 .chat-save-toggle {
   display: inline-flex; align-items: center; gap: 4px;
-  cursor: pointer; font-size: 12px; color: var(--yq-gold, #c7a96b);
+  cursor: pointer; font-size: 12px; color: var(--yq-gold);
   padding: 4px 10px; user-select: none; list-style: none;
   border-radius: 999px;
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
@@ -632,7 +632,7 @@ onUnmounted(() => {
 }
 .chat-save-toggle:hover {
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.15));
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
   transform: translateY(-1px);
   box-shadow: 0 4px 10px var(--yq-gold-glow, rgba(199, 169, 107, 0.2));
 }

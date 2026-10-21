@@ -258,7 +258,7 @@ function resetRound() { result.value = ''; haptic.light() }
 .sp-top-lab { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--color-ink-dim, #7a8087); }
 .sp-icon-btn {
   width: 36px; height: 36px; border-radius: 10px; border: none; cursor: pointer; font-size: 16px;
-  background: transparent; color: var(--color-accent, #c7a96b);
+  background: transparent; color: var(--color-accent);
 }
 /* 配置卡片条：横向滚动，多签组并列常驻；选中态鎏金描边 */
 .sp-cfg-strip {
@@ -275,15 +275,15 @@ function resetRound() { result.value = ''; haptic.light() }
 }
 .sp-cfg-card:active { transform: scale(.97); }
 .sp-cfg-card.on {
-  border-color: var(--color-accent, #c7a96b);
-  box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--color-accent, #c7a96b) 80%, transparent);
-  background: color-mix(in srgb, var(--color-accent, #c7a96b) 7%, var(--ls-card, #fff));
+  border-color: var(--color-accent);
+  box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--color-accent) 80%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--ls-card, #fff));
 }
 .sp-cfg-card-name {
   font-size: 13px; font-weight: 700; color: var(--color-ink, #3a3f45);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.sp-cfg-card.on .sp-cfg-card-name { color: var(--color-accent, #c7a96b); }
+.sp-cfg-card.on .sp-cfg-card-name { color: var(--color-accent); }
 .sp-cfg-card-chips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 18px; }
 .sp-cfg-card-chips i {
   font-style: normal; font-size: 10px; line-height: 1; padding: 3px 6px; border-radius: 999px;
@@ -294,7 +294,7 @@ function resetRound() { result.value = ''; haptic.light() }
 .sp-cfg-card-num { font-size: 10.5px; color: var(--color-ink-dim, #7a8087); font-variant-numeric: tabular-nums; }
 .sp-cfg-add {
   width: 52px; align-items: center; justify-content: center;
-  font-size: 20px; color: var(--color-accent, #c7a96b);
+  font-size: 20px; color: var(--color-accent);
   border-style: dashed; background: transparent;
 }
 
@@ -302,7 +302,7 @@ function resetRound() { result.value = ''; haptic.light() }
 .sp-pointer {
   position: absolute; left: 50%; top: -4px; transform: translateX(-50%); z-index: 3;
   border-left: 9px solid transparent; border-right: 9px solid transparent;
-  border-top: 16px solid var(--color-accent, #c7a96b);
+  border-top: 16px solid var(--color-accent);
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25));
 }
 .sp-wheel {
@@ -345,7 +345,7 @@ function resetRound() { result.value = ''; haptic.light() }
   border: none; border-bottom: 1.5px solid var(--ls-line, rgba(0,0,0,.12));
   outline: none; transition: border-color .2s;
 }
-.sp-input:focus { border-bottom-color: var(--color-accent, #c7a96b); }
+.sp-input:focus { border-bottom-color: var(--color-accent); }
 .sp-opts { display: flex; flex-direction: column; gap: 14px; }
 .sp-opt { display: flex; flex-direction: column; gap: 5px; }
 .sp-opt-idx { font-size: 12px; color: var(--color-ink-dim, #7a8087); }
@@ -359,10 +359,10 @@ function resetRound() { result.value = ''; haptic.light() }
 .sp-weight-ico { color: var(--color-ink-dim, #7a8087); }
 .sp-weight-num {
   width: 44px; text-align: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
-  color: var(--color-accent, #c7a96b); background: none; border: none;
+  color: var(--color-accent); background: none; border: none;
   border-bottom: 2px solid currentColor; outline: none;
 }
-.sp-weight-range { flex: 1; accent-color: var(--color-accent, #c7a96b); height: 4px; }
+.sp-weight-range { flex: 1; accent-color: var(--color-accent); height: 4px; }
 .sp-opt-stat { margin-left: auto; font-style: normal; font-size: 12px; color: var(--color-ink-dim, #7a8087); }
 .sp-err { font-size: 12px; color: #e5484d; }
 .sp-edit-actions { display: flex; gap: 10px; flex-wrap: wrap; }

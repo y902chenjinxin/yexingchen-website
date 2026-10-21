@@ -63,13 +63,13 @@ function dateRange(t) {
   border: 1px solid var(--lj-line); color: var(--lj-text); transition: all .28s; overflow: hidden;
 }
 .tt-card:hover { border-color: var(--lj-line-strong); transform: translateY(-2px); }
-.tt-card.on { border-color: var(--lj-ochre, #C7A96B); box-shadow: 0 0 0 1px var(--lj-ochre, #C7A96B), 0 10px 22px rgba(0,0,0,.28); }
+.tt-card.on { border-color: var(--lj-ochre); box-shadow: 0 0 0 1px var(--lj-ochre), 0 10px 22px rgba(0,0,0,.28); }
 .tt-cover { display: block; height: 90px; border-radius: 8px; margin-bottom: 10px; background-size: cover; background-position: center; opacity: .92; }
 .tt-body { display: flex; flex-direction: column; gap: 5px; }
 .tt-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tt-title { font-size: 14px; font-weight: 600; letter-spacing: .03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tt-star { color: var(--lj-ochre, #C7A96B); font-size: 12px; letter-spacing: 1px; flex: none; }
-.tt-cities { font-size: 12px; color: var(--lj-dai, #7FA8A3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-star { color: var(--lj-ochre); font-size: 12px; letter-spacing: 1px; flex: none; }
+.tt-cities { font-size: 12px; color: var(--lj-dai); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tt-foot { display: flex; align-items: center; justify-content: space-between; }
 .tt-date { font-size: 11px; color: var(--lj-text-3); }
 .tt-badge { font-size: 12px; }

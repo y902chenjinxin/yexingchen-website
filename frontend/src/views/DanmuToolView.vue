@@ -379,17 +379,17 @@ function startRoll() {
   background: var(--ls-card, #fff); border: 1px solid var(--ls-line, rgba(0,0,0,.08));
   border-radius: 12px; outline: none; transition: border-color .2s;
 }
-.dm-input:focus { border-color: var(--color-accent, #c7a96b); }
+.dm-input:focus { border-color: var(--color-accent); }
 .dm-clear {
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
   width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
   background: rgba(0,0,0,.08); color: inherit; font-size: 15px; line-height: 1;
 }
 .dm-slider-row { display: flex; align-items: center; gap: 14px; }
-.dm-range { flex: 1; accent-color: var(--color-accent, #c7a96b); height: 4px; }
+.dm-range { flex: 1; accent-color: var(--color-accent); height: 4px; }
 .dm-slider-val {
   min-width: 44px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums;
-  color: var(--color-accent, #c7a96b); border-bottom: 2px solid currentColor; padding-bottom: 1px;
+  color: var(--color-accent); border-bottom: 2px solid currentColor; padding-bottom: 1px;
 }
 
 /* 方向 / 类型：胶囊单选组 */
@@ -404,9 +404,9 @@ function startRoll() {
 }
 .dm-dir input, .dm-type input { position: absolute; opacity: 0; pointer-events: none; }
 .dm-dir.on, .dm-type.on {
-  color: var(--color-accent, #c7a96b); font-weight: 700;
-  border-color: color-mix(in srgb, var(--color-accent, #c7a96b) 55%, transparent);
-  background: color-mix(in srgb, var(--color-accent, #c7a96b) 10%, var(--ls-card, #fff));
+  color: var(--color-accent); font-weight: 700;
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--ls-card, #fff));
 }
 
 /* 颜色：前景/背景两块，块内 = 名称 + 当前色 + 手动输入框 + 预设色板 + 取色器 */
@@ -432,7 +432,7 @@ function startRoll() {
   border: 1px solid var(--ls-line, rgba(0,0,0,.12)); border-radius: 8px;
   outline: none; transition: border-color .2s, color .2s;
 }
-.dm-color-text:focus { border-color: var(--color-accent, #c7a96b); }
+.dm-color-text:focus { border-color: var(--color-accent); }
 .dm-color-text.bad { border-color: #e5484d; color: #e5484d; }
 .dm-color-cur {
   width: 22px; height: 22px; border-radius: 50%;
@@ -448,7 +448,7 @@ function startRoll() {
 }
 .dm-swatch:active { transform: scale(.92); }
 .dm-swatch.on {
-  box-shadow: 0 0 0 2px var(--ls-card, #fff), 0 0 0 3.5px var(--color-accent, #c7a96b);
+  box-shadow: 0 0 0 2px var(--ls-card, #fff), 0 0 0 3.5px var(--color-accent);
 }
 .dm-swatch-custom {
   display: grid; place-items: center; overflow: hidden;
@@ -461,8 +461,8 @@ function startRoll() {
 .dm-show-btn {
   margin-top: 8px; padding: 14px 0; border: none; border-radius: 14px; cursor: pointer;
   font-size: 16px; font-weight: 700; letter-spacing: .04em;
-  color: var(--color-accent, #c7a96b);
-  background: color-mix(in srgb, var(--color-accent, #c7a96b) 14%, transparent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
   transition: filter .2s, opacity .2s;
 }
 .dm-show-btn:not(:disabled):hover { filter: brightness(1.06); }

@@ -39,7 +39,7 @@
   width: 100%;
   height: 100%;
   /* 玄黄：雨青主体色 + 鎏金辉光 */
-  background: var(--yq-rain, #7fa8a3);
+  background: var(--yq-rain);
   box-shadow: 0 0 8px var(--shadow-glow, rgba(127, 168, 163, 0.55));
   border-radius: 2px;
 }

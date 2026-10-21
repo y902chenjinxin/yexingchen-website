@@ -371,13 +371,13 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   flex: none;
   width: 28px; height: 28px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain));
   color: var(--yq-gold-fg, #0b0f14);
   font-size: 13px; font-weight: 700;
   box-shadow: 0 2px 8px var(--yq-gold-glow, rgba(199, 169, 107, 0.3));
 }
 .vc-card-step--alt {
-  background: linear-gradient(135deg, var(--yq-rain, #7fa8a3), var(--yq-gold, #c7a96b));
+  background: linear-gradient(135deg, var(--yq-rain), var(--yq-gold));
 }
 .vc-card-title { margin: 0; font-size: 16px; color: var(--lj-text); letter-spacing: .04em; font-weight: 600; }
 .vc-card-sub { margin: 2px 0 0; font-size: 12px; color: var(--lj-text-3); letter-spacing: .04em; }
@@ -446,12 +446,12 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   min-height: 96px;
 }
 .vc-drop:hover {
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
 }
 .vc-drop.has {
   border-style: solid;
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.12));
   padding: 14px 16px;
 }
@@ -462,7 +462,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
     var(--yq-rain-faint, rgba(127, 168, 163, 0.22)));
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 18px;
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
 }
 .vc-drop-text { font-size: 14px; color: var(--lj-text); letter-spacing: .04em; }
 .vc-drop-hint { font-size: 11px; color: var(--lj-text-3); letter-spacing: .06em; }
@@ -473,7 +473,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 .vc-file-icon {
   flex: none;
   width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain));
   color: var(--yq-gold-fg, #0b0f14);
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 18px;
@@ -513,7 +513,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   letter-spacing: .04em;
 }
 .vc-chip:hover {
-  color: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold); border-color: var(--yq-gold);
 }
 
 /* ============ 按钮 ============ */
@@ -533,7 +533,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 }
 /* 主按钮：金绿渐变 + 主题感知字色与光晕 */
 .vc-btn-primary {
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain));
   color: var(--yq-gold-fg, #0b0f14);
   font-weight: 600;
   box-shadow: 0 4px 14px var(--yq-gold-glow, rgba(199, 169, 107, 0.28));
@@ -551,7 +551,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   color: var(--lj-text-2);
   border-color: var(--dp-line, rgba(127, 127, 127, 0.3));
 }
-.vc-btn-ghost:hover { color: var(--lj-text); border-color: var(--yq-gold, #c7a96b); }
+.vc-btn-ghost:hover { color: var(--lj-text); border-color: var(--yq-gold); }
 
 .vc-spin {
   width: 14px; height: 14px;
@@ -564,7 +564,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 
 .vc-progress {
   position: absolute; left: 0; bottom: -4px; height: 2px;
-  background: linear-gradient(90deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(90deg, var(--yq-gold), var(--yq-rain));
   border-radius: 2px;
   transition: width .2s ease;
   box-shadow: 0 0 8px var(--yq-gold-glow, rgba(199, 169, 107, 0.5));
@@ -585,7 +585,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   position: absolute; top: -8px; left: 14px;
   padding: 2px 10px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-rain, #7fa8a3));
+  background: linear-gradient(135deg, var(--yq-gold), var(--yq-rain));
   color: var(--yq-gold-fg, #0b0f14);
   font-size: 10px;
   letter-spacing: .08em;
@@ -617,7 +617,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   transition: all .15s;
 }
 .vc-voice-card.active {
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.1));
   box-shadow: 0 2px 10px var(--yq-gold-glow, rgba(199, 169, 107, 0.22));
 }
@@ -641,7 +641,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
 }
 .vc-voice-meta .vc-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: var(--yq-rain, #7fa8a3);
+  background: var(--yq-rain);
   box-shadow: 0 0 6px var(--yq-rain-glow, rgba(127, 168, 163, 0.6));
 }
 .vc-voice-meta.expiring { color: var(--dp-danger, #fb7185); }
@@ -664,7 +664,7 @@ onUnmounted(() => { if (audioUrl.value) URL.revokeObjectURL(audioUrl.value) })
   font-family: inherit;
 }
 .vc-mini:hover {
-  color: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold); border-color: var(--yq-gold);
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.06));
 }
 .vc-mini.danger:hover {

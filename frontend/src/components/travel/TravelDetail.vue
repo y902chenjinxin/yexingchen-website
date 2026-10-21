@@ -69,10 +69,10 @@ function dateRange(t) {
 .tdet-body { padding: 18px 20px 24px; }
 .tdet-title { margin: 0 0 8px; font-size: 20px; letter-spacing: .06em; color: var(--lj-text); }
 .tdet-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
-.tdet-star { color: var(--lj-ochre, #C7A96B); letter-spacing: 1px; font-size: 13px; }
+.tdet-star { color: var(--lj-ochre); letter-spacing: 1px; font-size: 13px; }
 .tdet-date { font-size: 12px; color: var(--lj-text-3); }
-.tdet-tag { font-size: 11px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--lj-line); color: var(--lj-dai, #7FA8A3); }
-.tdet-cities { font-size: 13px; color: var(--lj-dai, #7FA8A3); margin: 4px 0 10px; }
+.tdet-tag { font-size: 11px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--lj-line); color: var(--lj-dai); }
+.tdet-cities { font-size: 13px; color: var(--lj-dai); margin: 4px 0 10px; }
 .tdet-summary { font-size: 13.5px; color: var(--lj-text-2); line-height: 1.7; margin-bottom: 10px; }
 .tdet-video { width: 100%; max-height: 380px; border-radius: 12px; margin: 8px 0; background: #000; }
 .tdet-md { font-size: 14px; line-height: 1.9; color: var(--lj-text); }
@@ -80,8 +80,8 @@ function dateRange(t) {
 .tdet-md :deep(h1) { font-size: 18px; } .tdet-md :deep(h2) { font-size: 16px; } .tdet-md :deep(h3) { font-size: 15px; }
 .tdet-md :deep(p) { margin: 6px 0; }
 .tdet-md :deep(code) { background: rgba(127,168,163,.12); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
-.tdet-md :deep(a) { color: var(--lj-dai, #7FA8A3); }
-.tdet-md :deep(blockquote) { border-left: 2px solid var(--lj-ochre, #C7A96B); margin: 8px 0; padding-left: 12px; color: var(--lj-text-2); }
+.tdet-md :deep(a) { color: var(--lj-dai); }
+.tdet-md :deep(blockquote) { border-left: 2px solid var(--lj-ochre); margin: 8px 0; padding-left: 12px; color: var(--lj-text-2); }
 .tdet-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 14px; }
 .tdet-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; cursor: zoom-in; }
 .tdet-zoom { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; }

@@ -189,7 +189,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
 }
 .ne-toolbar button:hover, .ne-toolbar .ne-upload-btn:hover {
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
   border-color: var(--yq-gold-glow, rgba(199, 169, 107, 0.5));
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
   transform: translateY(-1px);
@@ -210,8 +210,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
 .ne-color-wrap { position: relative; display: inline-block; }
 .ne-color-btn.active {
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.18));
-  color: var(--yq-gold, #c7a96b);
-  border-color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
+  border-color: var(--yq-gold);
   box-shadow: 0 0 0 2px var(--yq-gold-glow, rgba(199, 169, 107, 0.18));
 }
 
@@ -241,7 +241,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
 }
 .ne-color-swatch:hover {
   transform: scale(1.18) rotate(-4deg);
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
   box-shadow: 0 4px 10px rgba(0, 0, 0, .35);
 }
 
@@ -258,7 +258,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
   border-radius: 6px; color: var(--lj-text); font-size: 12px;
   transition: border-color .15s;
 }
-.ne-hex-input:focus { outline: none; border-color: var(--yq-gold, #c7a96b); }
+.ne-hex-input:focus { outline: none; border-color: var(--yq-gold); }
 
 .ne-color-rgb { display: inline-flex; gap: 3px; }
 .ne-color-rgb input {

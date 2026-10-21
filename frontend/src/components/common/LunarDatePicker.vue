@@ -73,7 +73,7 @@ onMounted(refreshLunar)
 }
 .lp-field.empty .lp-field-main { color: var(--dp-text3, #8a8f98); }
 .lp-field-main { flex: 1; }
-.lp-field-lunar { font-size: 11.5px; color: var(--yq-gold, #c7a96b); white-space: nowrap; }
+.lp-field-lunar { font-size: 11.5px; color: var(--yq-gold); white-space: nowrap; }
 .lp-caret { color: var(--dp-text3, #8a8f98); font-size: 11px; }
 .lp-clear {
   border: none; background: transparent; cursor: pointer; color: var(--dp-text3, #8a8f98);

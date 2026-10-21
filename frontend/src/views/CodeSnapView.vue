@@ -166,7 +166,7 @@ async function copyImage() {
   padding: 9px 22px; border-radius: 10px; font-size: 13.5px; cursor: pointer;
   border: 1px solid var(--dp-line, rgba(0,0,0,.14)); background: var(--dp-surface, #fff); color: var(--dp-text, #18202a);
 }
-.cs-btn.primary { background: var(--yq-gold, #c7a96b); border-color: var(--yq-gold, #c7a96b); color: #fff; font-weight: 600; }
+.cs-btn.primary { background: var(--yq-gold); border-color: var(--yq-gold); color: #fff; font-weight: 600; }
 .cs-btn:disabled { opacity: .5; cursor: not-allowed; }
 .cs-note { margin-top: 10px; font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 </style>

@@ -95,11 +95,11 @@ function onTitleInput(e) {
   letter-spacing: .04em;
 }
 .state.saving {
-  color: var(--yq-rain, #7fa8a3);
+  color: var(--yq-rain);
   border-color: var(--yq-rain-glow, rgba(127, 168, 163, 0.4));
 }
 .state.saved {
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
   border-color: var(--yq-gold-glow, rgba(199, 169, 107, 0.4));
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.1));
 }
@@ -113,7 +113,7 @@ function onTitleInput(e) {
 .state-dot {
   display: inline-block;
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--yq-rain, #7fa8a3);
+  background: var(--yq-rain);
   box-shadow: 0 0 8px var(--yq-rain-glow, rgba(127, 168, 163, 0.6));
   animation: ne-state-pulse 1.2s ease-in-out infinite;
 }
@@ -126,7 +126,7 @@ function onTitleInput(e) {
 .state-check {
   display: inline-flex; align-items: center; justify-content: center;
   width: 14px; height: 14px; border-radius: 50%;
-  background: var(--yq-gold, #c7a96b);
+  background: var(--yq-gold);
   color: var(--yq-gold-fg, #0b0f14);
   font-size: 9px; font-weight: 700;
   animation: ne-state-check .35s cubic-bezier(.2,.8,.2,1.4);

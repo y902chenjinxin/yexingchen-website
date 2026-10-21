@@ -229,13 +229,13 @@ function submit() {
 .ted-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ted-stars { display: flex; align-items: center; gap: 3px; }
 .ted-star { font-size: 20px; line-height: 1; border: none; background: none; color: rgba(120,135,145,.25); cursor: pointer; }
-.ted-star.on { color: var(--lj-ochre, #C7A96B); }
+.ted-star.on { color: var(--lj-ochre); }
 .ted-star-empty { margin-left: 8px; font-size: 11px; color: var(--lj-text-3); }
 .ted-vis { display: flex; gap: 18px; font-size: 13px; color: var(--lj-text-2); }
 .ted-radio { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .ted-citylist { display: flex; flex-direction: column; gap: 6px; }
 .ted-city { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--lj-line); background: rgba(255,255,255,.03); }
-.ted-city-seq { width: 20px; height: 20px; border-radius: 50%; background: rgba(127,168,163,.16); color: var(--lj-dai, #7FA8A3); font-size: 11px; display: grid; place-items: center; flex: none; }
+.ted-city-seq { width: 20px; height: 20px; border-radius: 50%; background: rgba(127,168,163,.16); color: var(--lj-dai); font-size: 11px; display: grid; place-items: center; flex: none; }
 .ted-city-name { flex: 1; font-size: 13px; color: var(--lj-text); }
 .ted-city-name em { font-style: normal; font-size: 11px; color: var(--lj-text-3); }
 .ted-city-ops { display: flex; gap: 4px; flex: none; }

@@ -104,7 +104,7 @@ onBeforeUnmount(() => document.removeEventListener('paste', onPaste))
   padding: 34px 20px; text-align: center; cursor: pointer; color: var(--dp-text3, #8a8f98); font-size: 13.5px;
   transition: border-color .15s, background .15s;
 }
-.ot-drop.drag { border-color: var(--yq-gold, #c7a96b); background: rgba(199,169,107,.06); }
+.ot-drop.drag { border-color: var(--yq-gold); background: rgba(199,169,107,.06); }
 .ot-file { display: none; }
 .ot-preview { max-width: 100%; max-height: 420px; border-radius: 10px; }
 .ot-status { margin-top: 12px; font-size: 13px; color: var(--dp-text3, #8a8f98); }

@@ -604,7 +604,7 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px var(--dp-bg, #0B0F14);
   transition: background var(--motion-fast) var(--ease-standard);
 }
-.tb-alert-dot.is-task { background: linear-gradient(135deg, var(--yq-gold, #c7a96b), var(--yq-gold-bright, #d97706)); }
+.tb-alert-dot.is-task { background: linear-gradient(135deg, var(--yq-gold), var(--yq-gold-bright, #d97706)); }
 .tb-alert-dot.is-alert { background: var(--dp-up); }
 .tb-alert-panel {
   width: 360px; max-height: 520px; overflow-y: auto; padding: 10px 14px 12px;
@@ -698,8 +698,8 @@ onUnmounted(() => {
   background: rgba(216, 80, 79, .05);
 }
 .tb-alert-kind.pri-high { background: rgba(216, 80, 79, .14); color: var(--dp-up); }
-.tb-alert-kind.pri-medium { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold, #c7a96b); }
-.tb-alert-kind.pri-low { background: rgba(127, 168, 163, .14); color: var(--yq-rain, #7fa8a3); }
+.tb-alert-kind.pri-medium { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold); }
+.tb-alert-kind.pri-low { background: rgba(127, 168, 163, .14); color: var(--yq-rain); }
 
 .tb-alert-item.kind-cd { grid-template-columns: 10px 1fr; }
 .tb-alert-item.kind-cd .tb-alert-name { font-size: 12.5px; }
@@ -715,8 +715,8 @@ onUnmounted(() => {
 /* ---- 对局邀请（v2.45）：无点击跳转，操作由右侧两个按钮承担 ---- */
 .tb-alert-item.kind-invite { grid-template-columns: 44px 1fr auto; cursor: default; }
 .tb-alert-item.kind-invite:hover { background: rgba(216, 80, 79, .05); }
-.tb-alert-kind.kind-chess { background: rgba(127, 168, 163, .16); color: var(--yq-rain, #7fa8a3); }
-.tb-alert-kind.kind-table { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold, #c7a96b); }
+.tb-alert-kind.kind-chess { background: rgba(127, 168, 163, .16); color: var(--yq-rain); }
+.tb-alert-kind.kind-table { background: var(--yq-gold-faint, rgba(199, 169, 107, .18)); color: var(--yq-gold); }
 .tb-invite-acts { display: inline-flex; gap: 6px; align-self: center; }
 .tb-invite-btn {
   border: 1px solid transparent; border-radius: 999px;

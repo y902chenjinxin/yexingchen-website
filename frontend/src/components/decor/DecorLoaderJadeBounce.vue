@@ -30,8 +30,8 @@
   width: 100%;
   height: 100%;
   background: linear-gradient(135deg,
-    var(--yq-gold, #c7a96b) 0%,
-    var(--yq-rain, #7fa8a3) 100%);
+    var(--yq-gold) 0%,
+    var(--yq-rain) 100%);
   position: absolute;
   top: 0;
   left: 0;

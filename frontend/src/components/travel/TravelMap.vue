@@ -428,7 +428,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 .tl-k { display: inline-flex; align-items: center; gap: 5px; }
 .tl-sq { width: 10px; height: 10px; border-radius: 3px; background: rgba(120,135,145,.16); border: 1px solid rgba(127,168,163,.5); }
 .tl-sq.on { background: rgba(127,168,163,.7); box-shadow: 0 0 5px rgba(127,168,163,.7); }
-.tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lj-dai, #7FA8A3); box-shadow: 0 0 4px var(--lj-dai, #7FA8A3); }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lj-dai); box-shadow: 0 0 4px var(--lj-dai); }
 
 /* 筛选 chip */
 .tm-chip { position: absolute; right: 120px; bottom: 14px; z-index: 3; display: inline-flex; align-items: center; gap: 8px;
@@ -451,7 +451,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(rafId) })
 .tc-trip { display: flex; align-items: center; gap: 6px; color: var(--lj-text-2); font-size: 12px; cursor: pointer;
   background: none; border: none; padding: 3px 2px; text-align: left; border-radius: 6px; }
 .tc-trip:hover { color: #e4cd9a; background: rgba(127,168,163,.12); }
-.tc-trip i { width: 5px; height: 5px; border-radius: 50%; background: var(--lj-ochre, #C7A96B); flex: none; }
+.tc-trip i { width: 5px; height: 5px; border-radius: 50%; background: var(--lj-ochre); flex: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .tm-dot.pulse { animation: none; }

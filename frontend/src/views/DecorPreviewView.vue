@@ -195,7 +195,7 @@ onMounted(() => {
   background: var(--color-bg-glass, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
 }
-.dp-tag b { color: var(--yq-gold, #c7a96b); font-weight: 600; margin-left: 4px; }
+.dp-tag b { color: var(--yq-gold); font-weight: 600; margin-left: 4px; }
 
 .dp-grid {
   display: grid;
@@ -212,7 +212,7 @@ onMounted(() => {
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 .dp-card:hover {
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
 }
 .dp-card header {
   display: flex;
@@ -224,7 +224,7 @@ onMounted(() => {
 .dp-num {
   font-family: var(--font-serif, serif);
   font-size: 13px;
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
   background: rgba(199, 169, 107, 0.12);
   padding: 2px 8px;
   border-radius: 4px;
@@ -270,7 +270,7 @@ onMounted(() => {
   padding-top: 12px;
   border-top: 1px dashed var(--color-border, rgba(255, 255, 255, 0.08));
 }
-.dp-desc strong { color: var(--yq-gold, #c7a96b); font-weight: 600; }
+.dp-desc strong { color: var(--yq-gold); font-weight: 600; }
 
 /* 真实场景对比 */
 .dp-compare h2 {
@@ -306,7 +306,7 @@ onMounted(() => {
   gap: 10px;
   padding: 10px 18px;
   border-radius: 10px;
-  border: 1px solid var(--yq-rain, #7fa8a3);
+  border: 1px solid var(--yq-rain);
   background: linear-gradient(135deg,
     rgba(127, 168, 163, 0.18),
     rgba(199, 169, 107, 0.12));
@@ -332,7 +332,7 @@ onMounted(() => {
   padding: 16px 20px;
   border-radius: 12px;
   background: var(--color-bg-glass, rgba(255, 255, 255, 0.04));
-  border-left: 3px solid var(--yq-gold, #c7a96b);
+  border-left: 3px solid var(--yq-gold);
 }
 .dp-foot p {
   margin: 0;

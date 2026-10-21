@@ -240,7 +240,7 @@ onMounted(() => load())
   border-color: var(--dp-line-strong, rgba(127,127,127,0.35));
   color: var(--lj-text);
 }
-.ht-nav-btn:focus-visible { outline: 2px solid var(--yq-gold, #c7a96b); outline-offset: 1px; }
+.ht-nav-btn:focus-visible { outline: 2px solid var(--yq-gold); outline-offset: 1px; }
 
 .ht-date { width: 132px; }
 .ht-date :deep(.el-input__wrapper) {
@@ -320,7 +320,7 @@ onMounted(() => load())
   background: rgba(199, 169, 107, 0.06);
 }
 .ht-vuecal.vuecal :deep(.vuecal__cell--today .vuecal__cell-date) {
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
   font-weight: 600;
 }
 /* 选中：金色渐变填充 */
@@ -392,7 +392,7 @@ onMounted(() => load())
 .ht-y {
   flex-shrink: 0; min-width: 64px; text-align: right;
   font-family: var(--font-serif, serif);
-  font-size: 15px; color: var(--yq-gold, #c7a96b); letter-spacing: .03em;
+  font-size: 15px; color: var(--yq-gold); letter-spacing: .03em;
 }
 .ht-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .ht-t { font-size: 14px; color: var(--lj-text); line-height: 1.5; }

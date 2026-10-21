@@ -1930,7 +1930,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-cd-restore:hover { opacity: 1; }
 .fin-note-row { display: flex; align-items: center; gap: 8px; }
 .fin-note-input { flex: 1; padding: 9px 12px; border-radius: 10px; outline: none; font-family: var(--font-serif); background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); }
-.fin-note-input:focus { border-color: var(--yq-gold, #c7a96b); }
+.fin-note-input:focus { border-color: var(--yq-gold); }
 .fin-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .fd-enter-active,.fd-leave-active { transition: opacity .28s ease, transform .28s ease; }
 .fd-enter-from,.fd-leave-to { opacity: 0; transform: translateY(-10px); }
@@ -2013,8 +2013,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   padding: 18px; border-radius: 16px; cursor: pointer;
   transition: border-color .2s, transform .15s, box-shadow .2s; }
 .fin-pcard:hover { border-color: var(--lj-line-strong); transform: translateY(-1px); }
-.fin-pcard:focus-visible { outline: 2px solid var(--yq-gold, #c7a96b); outline-offset: 2px; }
-.fin-pcard.on { border-color: var(--yq-gold, #c7a96b);
+.fin-pcard:focus-visible { outline: 2px solid var(--yq-gold); outline-offset: 2px; }
+.fin-pcard.on { border-color: var(--yq-gold);
   box-shadow: 0 10px 26px -18px rgba(199,169,107,.9); }
 .fin-pcard-avatar { font-size: 20px; line-height: 1; }
 .fin-pcard-name { font-size: 13px; color: var(--lj-text-2); letter-spacing: .08em; }
@@ -2022,7 +2022,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-pcard-val.neg { color: var(--lj-vermilion); }
 .fin-pcard-sub { font-size: 11.5px; color: var(--lj-text-3); font-variant-numeric: tabular-nums; }
 .fin-pcard-toggle { margin-top: 2px; font-size: 11.5px; letter-spacing: .06em;
-  color: var(--yq-gold, #c7a96b); }
+  color: var(--yq-gold); }
 
 /* 展开的成员流水面板 */
 .fin-ptxns { margin-top: 14px; padding: 16px 18px; border-radius: 16px; }
@@ -2132,7 +2132,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .fin-filter { width: 130px; }
 .fin-filter-input { padding: 7px 11px; border-radius: 9px; outline: none; width: 180px; font-family: var(--font-serif); background: var(--color-bg-glass, rgba(127,127,127,.06)); border: 1px solid var(--dp-line, rgba(127,127,127,.22)); color: var(--lj-text); }
-.fin-filter-input:focus { border-color: var(--yq-gold, #c7a96b); }
+.fin-filter-input:focus { border-color: var(--yq-gold); }
 .fin-list-empty { padding: 40px 6px; text-align: center; color: var(--lj-text-3); font-size: 13px; }
 .fin-row { display: flex; align-items: center; gap: 12px; padding: 11px 8px; border-radius: 12px; transition: background .2s; }
 /* v2.46.33：行内包了一层 fin-row-body（滑动删除载体），布局职责移交 */

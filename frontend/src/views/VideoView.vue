@@ -732,14 +732,14 @@ function formatTime(timeStr) {
 }
 .batch-upload :deep(.el-upload-dragger:hover),
 .batch-upload :deep(.el-upload.is-dragover .el-upload-dragger) {
-  border-color: var(--yq-gold, #c7a96b);
+  border-color: var(--yq-gold);
   background: var(--yq-gold-faint, rgba(199, 169, 107, 0.08));
   box-shadow: 0 4px 16px var(--yq-gold-glow, rgba(199, 169, 107, 0.18));
 }
 .batch-drop { text-align: center; color: var(--ls-text-2); }
 .batch-drop-icon { font-size: 28px; line-height: 1; margin-bottom: 6px; }
 .batch-drop-text { font-size: 13px; }
-.batch-drop-text em { color: var(--yq-gold, #c7a96b); font-style: normal; margin: 0 4px; }
+.batch-drop-text em { color: var(--yq-gold); font-style: normal; margin: 0 4px; }
 .batch-drop-hint { font-size: 11.5px; color: var(--ls-text-3); margin-top: 4px; }
 
 .batch-table-wrap {
@@ -762,7 +762,7 @@ function formatTime(timeStr) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--yq-gold, #c7a96b);
+  color: var(--yq-gold);
   font-size: 12.5px;
   vertical-align: middle;
 }

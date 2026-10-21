@@ -191,7 +191,7 @@ onMounted(async () => {
 .ft-loading, .ft-err { text-align: center; padding: 30px; color: var(--dp-text3, #8a8f98); font-size: 13px; }
 .ft-err { color: #e5484d; }
 .ft-hero { display: flex; justify-content: space-between; align-items: center; padding: 22px 24px; gap: 18px; flex-wrap: wrap; }
-.ft-hero.is-holiday { border-left: 3px solid var(--yq-gold, #c7a96b); }
+.ft-hero.is-holiday { border-left: 3px solid var(--yq-gold); }
 .ft-hero.is-makeup { border-left: 3px solid #e5484d; }
 .ft-date { font-size: 13px; color: var(--dp-text3, #8a8f98); }
 .ft-main { margin-top: 6px; font-size: 22px; font-weight: 800; color: var(--dp-text, #18202a); }
@@ -199,11 +199,11 @@ onMounted(async () => {
 .ft-hero-right { min-width: 180px; }
 .ft-week-label { font-size: 12px; color: var(--dp-text3, #8a8f98); }
 .ft-week-bar { margin-top: 6px; height: 8px; border-radius: 999px; background: var(--dp-bg2, rgba(0,0,0,.06)); overflow: hidden; }
-.ft-week-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--yq-gold, #c7a96b), var(--yq-gold-bright, #f59e0b)); border-radius: 999px; }
-.ft-week-pct { margin-top: 4px; font-size: 12px; color: var(--yq-gold, #c7a96b); font-weight: 700; text-align: right; }
+.ft-week-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--yq-gold), var(--yq-gold-bright, #f59e0b)); border-radius: 999px; }
+.ft-week-pct { margin-top: 4px; font-size: 12px; color: var(--yq-gold); font-weight: 700; text-align: right; }
 .ft-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
 .ft-stat { padding: 14px 16px; text-align: center; }
-.ft-stat-num { font-size: 22px; font-weight: 800; color: var(--yq-gold, #c7a96b); line-height: 1.2; }
+.ft-stat-num { font-size: 22px; font-weight: 800; color: var(--yq-gold); line-height: 1.2; }
 .ft-stat-label { margin-top: 4px; font-size: 11.5px; color: var(--dp-text3, #8a8f98); }
 .ft-makeup { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 14px 16px; border-left: 3px solid #e5484d; }
 .ft-makeup-icon { font-size: 20px; }
@@ -235,7 +235,7 @@ onMounted(async () => {
 .ft-h-badge {
   flex: none; font-size: 11px; padding: 2px 7px; border-radius: 999px; line-height: 1.5;
 }
-.ft-h-badge.legal { color: var(--yq-gold, #c7a96b); background: color-mix(in srgb, var(--yq-gold, #c7a96b) 14%, transparent); }
+.ft-h-badge.legal { color: var(--yq-gold); background: color-mix(in srgb, var(--yq-gold) 14%, transparent); }
 .ft-h-badge.makeup { color: #e5484d; background: color-mix(in srgb, #e5484d 12%, transparent); }
 .ft-h-days { flex: none; margin-left: auto; font-size: 13.5px; font-weight: 700; color: var(--dp-text2, #45505b); }
 .ft-h-days.hot { color: #e5484d; }
