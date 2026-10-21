@@ -55,9 +55,26 @@ print("  uploaded files:", n)
 code, out = cexec("cat /var/www/yexingchen/dist/sw.js | head -5; echo '---'; grep -o \"xuanhuang-v[0-9]*\" /var/www/yexingchen/dist/sw.js | head -1")
 print("  sw version:", out.decode(errors="replace").strip())
 
-# verify served homepage returns 200 with new index
+# ---- 校验：不只是「首页 200」，而是「入口 JS 真的能取到」----
+# v2.46.177 事故：SSH 中途断连，index.html 已传但 assets 没传完，
+# 首页仍然返回 200（SPA 的 index.html 是静态文件），实际白屏。
+# 所以必须解析 index.html 里引用的 /assets/index-*.js 并真实取一次。
 code, out = cexec("curl -s -o /dev/null -w 'home=%{http_code}' https://yexingchen.cn/ 2>/dev/null; echo ''")
 print("  ", out.decode(errors="replace").strip())
+
+code, out = cexec("grep -oE '/assets/index-[A-Za-z0-9_-]+\\.js' /var/www/yexingchen/dist/index.html | head -1")
+entry = out.decode(errors="replace").strip()
+if not entry:
+    print("  !! 无法从 index.html 解析出入口 JS，部署可能不完整")
+    raise SystemExit(2)
+
+code, out = cexec(f"curl -s -o /dev/null -w '%{{http_code}} %{{size_download}}' https://yexingchen.cn{entry}")
+status = out.decode(errors="replace").strip()
+print(f"  entry {entry} → {status}")
+parts = status.split()
+if len(parts) != 2 or parts[0] != "200" or int(parts[1]) < 10240:
+    print("  !! 入口 JS 不可用或体积异常，站点会白屏 —— 请立即重跑本脚本")
+    raise SystemExit(3)
 
 s.close(); t.close()
 print("== frontend deploy done ==")

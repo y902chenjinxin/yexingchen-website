@@ -9,9 +9,6 @@
     <div class="fd-inner">
       <!-- 页头 -->
       <header class="fd-head">
-        <div class="fd-head-left">
-          <BackButton class="fd-back" />
-        </div>
         <div class="fd-titles">
           <h1 class="fd-title">资讯推送</h1>
           <p class="fd-sub">订阅源 · 智能摘要 · 一键收藏 · 上次更新 {{ lastSynced }}</p>
@@ -266,7 +263,6 @@ import { fmtDate } from '@/utils/format'
 import SearchField from '@/components/common/SearchField.vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import { ElMessage } from 'element-plus'
-import BackButton from '@/components/BackButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import { feedsApi } from '@/api/feeds'
@@ -628,7 +624,6 @@ onMounted(() => {
 
 /* 页头 */
 .fd-head { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
-.fd-head-left { flex: none; }
 .fd-titles { flex: 1; }
 .fd-title { margin: 0; font-size: 28px; letter-spacing: .12em; }
 .fd-sub { margin: 6px 0 0; font-size: 12px; color: var(--lj-text-2); letter-spacing: .18em; }

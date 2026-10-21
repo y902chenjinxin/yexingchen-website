@@ -9,7 +9,6 @@
     <div class="st-inner">
       <!-- 页头 -->
       <header class="st-head">
-        <div class="st-head-left"><BackButton class="st-back" /></div>
         <div class="st-titles">
           <h1 class="st-title">行情</h1>
           <p class="st-sub">自选股 · 持仓盈亏 · 实时报价</p>
@@ -219,7 +218,6 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import FilterSelect from '@/components/common/FilterSelect.vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import BackButton from '@/components/BackButton.vue'
 import PortfolioPanel from '@/components/stocks/PortfolioPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
@@ -415,8 +413,6 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-inner { position: relative; padding: 84px 20px 40px; max-width: 1100px; margin: 0 auto; }
 
 .st-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
-.st-head-left { display: flex; }
-.st-back { margin-right: 2px; }
 .st-titles { flex: 1; min-width: 160px; }
 .st-title { margin: 0; font-size: 22px; letter-spacing: .1em; color: var(--lj-text); }
 .st-sub { margin: 2px 0 0; font-size: 12px; color: var(--lj-text-2); letter-spacing: .08em; }
