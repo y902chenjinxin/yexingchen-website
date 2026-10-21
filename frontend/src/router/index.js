@@ -236,6 +236,13 @@ const routes = [
     meta: { requiresAuth: true, game: 'roadrash' }
   },
   {
+    // 经典模拟器（v2.46.185）：ROM 由用户本地选择，走 IndexedDB，不落服务器
+    path: '/play/emulator',
+    name: 'PlayEmulator',
+    component: () => import('@/views/PlayView.vue'),
+    meta: { requiresAuth: true, game: 'emulator' }
+  },
+  {
     path: '/play/pvz',
     name: 'PlayPvz',
     component: () => import('@/views/PlayView.vue'),

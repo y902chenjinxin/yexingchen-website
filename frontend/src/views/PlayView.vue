@@ -23,6 +23,7 @@ import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import RoadRashGame from '@/components/games/RoadRashGame.vue'
 import PvzEmbed from '@/components/games/PvzEmbed.vue'
+import EmulatorHost from '@/components/games/EmulatorHost.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,6 +34,12 @@ const MAP = {
     title: '暴力摩托',
     subtitle: '伪 3D 公路竞速 · 近身格斗 · 跑满全程即通关',
     component: RoadRashGame,
+    mode: '',
+  },
+  emulator: {
+    title: '经典模拟器',
+    subtitle: 'EmulatorJS · ROM 本地加载 · 不上传服务器',
+    component: EmulatorHost,
     mode: '',
   },
   pvz: {

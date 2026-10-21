@@ -42,14 +42,22 @@ cexec(f"mv {REMOTE_DIST}/download {REMOTE_DIST}.download.tmp >/dev/null 2>&1; "
 cexec(f"mv {REMOTE_DIST}.download.tmp {REMOTE_DIST}/download >/dev/null 2>&1; "
       f"mv {REMOTE_DIST}.wellknown.tmp {REMOTE_DIST}/.well-known >/dev/null 2>&1")
 n = 0
-for root, _, files in os.walk(LOCAL_DIST):
-    rel = os.path.relpath(root, LOCAL_DIST).replace("\\", "/")
-    rdir = REMOTE_DIST if rel == "." else f"{REMOTE_DIST}/{rel}"
-    if rel != ".":
-        cexec(f"mkdir -p {rdir}")
-    for f in files:
-        s.put(os.path.join(root, f), f"{rdir}/{f}")
-        n += 1
+try:
+    for root, _, files in os.walk(LOCAL_DIST):
+        rel = os.path.relpath(root, LOCAL_DIST).replace("\\", "/")
+        rdir = REMOTE_DIST if rel == "." else f"{REMOTE_DIST}/{rel}"
+        if rel != ".":
+            cexec(f"mkdir -p {rdir}")
+        for f in files:
+            s.put(os.path.join(root, f), f"{rdir}/{f}")
+            n += 1
+except Exception as exc:
+    # v2.46.186：上传中途断连（Server connection dropped）时**必须**立刻告警。
+    # 脚本是先 rm -rf 再逐个上传，中途断 = 线上目录残缺 = 白屏，且异常会跳过下面的校验。
+    # 已记录两次同类事故（v2.46.177 / v2.46.186），所以这里直接给出可执行指令。
+    print(f"  !! 上传中断（已完成 {n} 个文件）：{exc}")
+    print("  !! 线上目录此时可能残缺，站点会白屏 —— 请立即重跑本脚本")
+    raise SystemExit(4)
 print("  uploaded files:", n)
 
 code, out = cexec("cat /var/www/yexingchen/dist/sw.js | head -5; echo '---'; grep -o \"xuanhuang-v[0-9]*\" /var/www/yexingchen/dist/sw.js | head -1")

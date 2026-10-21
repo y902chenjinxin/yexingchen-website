@@ -183,6 +183,9 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { roadrashApi, beaconRoadrashLeave } from '@/api/roadrash'
 import { rrSfx, setMuted, isMuted } from '@/utils/games/roadrash-sfx'
+// v2.46.185：AI 生成的高精度骑手精灵（骑乘 / 出拳），手绘版本保留为兜底
+import riderRideUrl from '@/assets/game/rider-ride.png'
+import riderPunchUrl from '@/assets/game/rider-punch.png'
 
 const props = defineProps({
   initialMode: { type: String, default: '' },
@@ -1749,8 +1752,8 @@ function shade(hex, k) {
  *  下方是宽后胎 / 挡泥板 / 双排气 / 尾罩 + 尾灯 + 牌照，上方是跨坐的腿、皮衣、
  *  头盔和两只伸向车把的手臂。压弯时按高度做横向剪切（轮胎不动、头肩偏得最多），
  *  出拳用独立姿势帧：蓄力 → 前击 / 后击 → 收招。 */
-const RIDER_W = 60
-const RIDER_H = 68
+const RIDER_W = 96
+const RIDER_H = 108
 
 /** v2.46.182：四台车不再只是换色 —— 按 shape 分化轮廓。
  *  tire/body/bars/tail 是相对 street 的倍率，pipes 是排气根数。
@@ -1762,6 +1765,60 @@ const BIKE_SHAPES = {
   police: { tire: 1.04, body: 1.04, bars: 1.04, tail: 1.15, pipes: 2, crashbar: true, backrest: false },
 }
 const riderCache = new Map()
+
+/* ---- v2.46.185：AI 生成的高精度骑手精灵（96×108，透明背景）
+ *  只有两张：骑乘 / 出拳。其余姿态复用：
+ *  pose 1 蓄力 → 骑乘；pose 2/4 前击/收招 → 出拳；pose 3 后击 → 出拳左右翻转。
+ *  手绘版本仍保留为兜底（图片没加载完时用），不会出现空白。 */
+const riderImgs = { ride: new Image(), punch: new Image() }
+{
+  const bust = () => riderCache.clear()
+  riderImgs.ride.onload = bust
+  riderImgs.punch.onload = bust
+  riderImgs.ride.src = riderRideUrl
+  riderImgs.punch.src = riderPunchUrl
+}
+const tintCache = new Map()
+
+function hexToRgb(hex) {
+  const h = String(hex || '#e2604a').replace('#', '')
+  const v = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  const n = parseInt(v.slice(0, 6) || 'e2604a', 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+/** 把精灵里「偏红」的皮衣像素换成目标色（车胎/头盔/排气保持原样），并可选水平翻转 */
+function tintRider(img, color, flip) {
+  const key = `${color}|${flip ? 1 : 0}`
+  const hit = tintCache.get(key)
+  if (hit) return hit
+  const c = document.createElement('canvas')
+  c.width = img.naturalWidth
+  c.height = img.naturalHeight
+  const g = c.getContext('2d')
+  if (flip) { g.translate(c.width, 0); g.scale(-1, 1) }
+  g.drawImage(img, 0, 0)
+  const [tr, tg, tb] = hexToRgb(color)
+  try {
+    const im = g.getImageData(0, 0, c.width, c.height)
+    const d = im.data
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 24) continue
+      const r = d[i], gg = d[i + 1], bb = d[i + 2]
+      // 只动「红色明显高于绿蓝」的像素，避免把车胎/头盔也染了
+      if (r > 55 && r - Math.max(gg, bb) > 26) {
+        const lum = (r * 0.3 + gg * 0.6 + bb * 0.1) / 255
+        const k = Math.min(1.75, 0.55 + lum)
+        d[i] = Math.min(255, Math.round(tr * k))
+        d[i + 1] = Math.min(255, Math.round(tg * k))
+        d[i + 2] = Math.min(255, Math.round(tb * k))
+      }
+    }
+    g.putImageData(im, 0, 0)
+  } catch { /* 取不到像素就保持原色 */ }
+  tintCache.set(key, c)
+  return c
+}
 
 function riderPal(color, police) {
   const B = police ? POLICE_COLOR : color
@@ -1785,6 +1842,15 @@ function riderSprite(color, bucket, pose, police, shape = 'street') {
   const key = `${color}|${bucket}|${pose}|${police ? 1 : 0}|${shape}`
   const hit = riderCache.get(key)
   if (hit) return hit
+  // 图片精灵优先（加载完成后自动接管），失败则落到下面的手绘逻辑
+  const ready = riderImgs.ride.naturalWidth > 0 && riderImgs.punch.naturalWidth > 0
+  if (ready) {
+    const usePunch = pose === 2 || pose === 3 || pose === 4
+    const src = usePunch ? riderImgs.punch : riderImgs.ride
+    const spr = tintRider(src, police ? POLICE_COLOR : color, pose === 3)
+    riderCache.set(key, spr)
+    return spr
+  }
   const c = document.createElement('canvas')
   c.width = RIDER_W
   c.height = RIDER_H
@@ -1991,7 +2057,8 @@ function drawBike(ctx, x, y, k, b, dead) {
   const spr = riderSprite(color, bucket, pose, !!b.isPolice, b.shape)
   // v2.46.170：原来玩家 0.82、对手 0.74，在 400px 宽的低分辨率画布上只有 40 多像素，
   // 细看也分不出头盔/手臂/车胎 —— 放大到 1.12 / 1.0，人形和出拳姿态才看得出来
-  const scale = Math.max(0.42, k * (b.isPlayer ? 1.12 : 1.0))
+  // 画布从 62×70 放大到 96×108（AI 精灵细节更多），缩放系数同比下调，屏幕尺寸不变
+  const scale = Math.max(0.2, k * (b.isPlayer ? 0.54 : 0.48))
   const w = Math.round(spr.width * scale)
   const h = Math.round(spr.height * scale)
   const xp = Math.round(x / PIX)

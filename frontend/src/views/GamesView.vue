@@ -323,6 +323,7 @@ const ICON = {
   junqi_flip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="4.6" width="8" height="14.8" rx="2"/><path d="M5.9 9.2h2.6M5.9 12h2.6M5.9 14.8h2.6"/><path d="M15.4 9a4.4 4.4 0 0 1 0 6"/><path d="M15.2 7.2l.5 2-2 .4"/></svg>',
   pvz: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.8" cy="9.4" r="4.4"/><path d="M14.2 9.4h3.6"/><path d="M9.8 13.8v6.6"/><path d="M9.8 16.8c-2.4 0-3.9-1.5-3.9-3.3"/></svg>',
   roadrash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.2" cy="17" r="3.4"/><circle cx="17.8" cy="17" r="3.4"/><path d="M6.2 17l3.3-5.2h5.1l1.3 5.2"/><path d="M9.5 11.8h4.6"/><path d="M14.6 11.8l2.7-3.1"/><path d="M15.4 7.6h3"/></svg>',
+  emulator: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="4.2" width="18.8" height="12.2" rx="2"/><path d="M8.4 20.2h7.2"/><path d="M12 16.4v3.8"/><path d="M6.6 8.6h3.2v3.2H6.6z"/><path d="M15.2 8.8h2.2"/><path d="M15.2 11.6h2.2"/></svg>',
 }
 
 const gamelist = [
@@ -616,6 +617,20 @@ const gamelist = [
       { key: 'classic', label: '经典 · 单程', hint: '12000 米 · 5 名对手 · 2 辆警车' },
       { key: 'hard', label: '硬核 · 长途', hint: '18000 米 · 6 名对手 · 3 辆警车' },
     ],
+  },
+  {
+    key: 'emulator', label: '经典模拟器', tag: 'EmulatorJS · ROM 本地加载', group: '休闲',
+    desc: '用 EmulatorJS 跑老主机游戏：NES / SNES / GBA / GB / N64 / MD / PSX。ROM 由你自己选择，只存在浏览器本地，不上传服务器。',
+    icon: ICON.emulator,
+    component: defineAsyncComponent(() => import('@/components/games/EmulatorHost.vue')),
+    rules: [
+      '用法：选主机类型 → 点「选择 ROM 文件」挑一个本机的 ROM → 立刻开玩，支持存档（浏览器本地）。',
+      '隐私：ROM 只写进这个浏览器的 IndexedDB，会转成内存里的 data URL 交给模拟器 iframe；服务器不接收、不保存、不分发任何 ROM 文件。',
+      '换设备或清浏览器数据后需要重新选择 ROM；同一浏览器下次进入会提示「继续：文件名」。',
+      'ROM 需自备（自有卡带 dump 或开源 homebrew）。',
+      '内核由 EmulatorJS 提供（官方 CDN stable），本站只做壳。',
+    ],
+    modes: null,
   },
   {
     key: 'pvz', label: '植物大战僵尸', tag: '开源同人版 · 塔防', group: '休闲',
