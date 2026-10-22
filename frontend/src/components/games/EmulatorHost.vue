@@ -50,7 +50,7 @@
       </div>
 
       <div class="em-acts">
-        <button class="em-btn primary" type="button" @click="uploadInput?.click()">上传 ROM 到服务器</button>
+        <button class="em-btn primary" type="button" @click="uploadInput?.click()">上传 ROM（可多选）</button>
         <button class="em-btn" type="button" @click="pickFile">本地直接玩（不落盘）</button>
         <button v-if="savedName" class="em-btn ghost" type="button" @click="playSaved">
           继续：{{ savedName }}
@@ -84,6 +84,7 @@
     <input
       ref="uploadInput"
       type="file"
+      multiple
       accept=".nes,.sfc,.smc,.gba,.gb,.gbc,.md,.gen,.bin,.iso,.n64,.z64"
       hidden
       @change="onUploadFile"
@@ -329,22 +330,33 @@ async function boot(blob, name, size) {
   }
 }
 
-/** 上传自己的 ROM（存到服务器 roms/user/） */
+/** 上传自己的 ROM（支持一次选多个，逐个传，存到服务器 roms/user/） */
 async function onUploadFile(e) {
-  const f = e?.target?.files?.[0]
+  const files = Array.from(e?.target?.files || [])
   if (e?.target) e.target.value = ''
-  if (!f) return
-  if (f.size > 64 * 1024 * 1024) { ElMessage.error('超过 64MB'); return }
-  const fd = new FormData()
-  fd.append('file', f)
-  fd.append('label', f.name.replace(/\.[^.]+$/, ''))
-  try {
-    await uploadRom(fd)
-    ElMessage.success('已上传，下拉里可以选了')
-    await loadRoms()
-  } catch (err) {
-    ElMessage.error('上传失败：' + (err?.response?.data?.msg || err?.message || '未知错误'))
+  if (!files.length) return
+
+  const tooBig = files.filter((f) => f.size > 64 * 1024 * 1024)
+  const ok = files.filter((f) => f.size <= 64 * 1024 * 1024)
+  if (tooBig.length) ElMessage.warning(`${tooBig.length} 个文件超过 64MB，已跳过`)
+  if (!ok.length) return
+
+  let done = 0
+  const failed = []
+  for (const f of ok) {
+    const fd = new FormData()
+    fd.append('file', f)
+    fd.append('label', f.name.replace(/\.[^.]+$/, ''))
+    try {
+      await uploadRom(fd)
+      done++
+    } catch (err) {
+      failed.push(`${f.name}（${err?.response?.data?.msg || err?.message || '失败'}）`)
+    }
   }
+  if (done) ElMessage.success(`已上传 ${done} 个，下拉里可以选了`)
+  if (failed.length) ElMessage.error('失败：' + failed.join('; '))
+  await loadRoms()
 }
 
 onMounted(async () => {
