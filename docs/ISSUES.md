@@ -1883,3 +1883,14 @@ c8d9e0f1a2b3, c9d0e1f2a3b4, e1f2a3b4c5d6, e2f3a4b5c6d7, f2a3b4c5d6e7, f3a4b5c6d7
 5. **必须先在数据库副本上演练**，不能直接对生产库动手。
 
 在此之前：**schema 变更一律手工 SQL + 在 migration 文件里写幂等保护**（`if col not in cols`）。
+
+### V2444-002 补充：手工 SQL 与 migration 文件不能并存（2026-10-22）
+
+**事故**：给 music/novels/videos 加 `sort_order` 时手工跑了 SQL，但仓库里仍保留对应 migration
+（`down_revision = c8d9e0f1a2b3`）。部署后 `c8d9e0f1a2b3` 不再是 alembic head，
+`schema_guard.assert_production_schema_ok` 启动校验失败 → 后端反复重启、`/api/*` 全 502。
+
+**当前可行做法（alembic 链修好之前）**：
+1. schema 变更只用**手工 SQL**，并且**不要在 `alembic/versions/` 留文件**；
+2. 部署后必须确认 `/health` 返回 200（不是 `/api/health`，那个是 404）；
+3. 若已误留文件：删掉它 → `alembic heads` 应恢复为 `c8d9e0f1a2b3 (head)` → `pm2 restart`。

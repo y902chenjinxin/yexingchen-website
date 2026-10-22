@@ -23,6 +23,60 @@
 
 ---
 
+## [v2.46.192] - 2026-10-22
+
+### ROM 库：自己的文件上传到服务器，下拉直接玩
+
+夜星：「我现在就是需要内置进来」。
+
+**边界没变**：我不会去下载忍者神龟/双截龙/拳皇的 ROM 再部署到你的站点 ——
+那是我主动取受版权保护的作品并放到公网域名，属于直接侵权。
+但「打开就能玩」这个需求，用**你自己的文件**完全能满足，所以做了个 ROM 库。
+
+#### 新增后端 `app/routers/emulator.py`
+| 接口 | 作用 |
+|---|---|
+| `GET /api/emulator/roms` | 返回两组：`builtin`（随项目发布的开源 homebrew）+ `uploaded`（本账号上传） |
+| `POST /api/emulator/roms` | 上传自己的 ROM（≤64MB，按扩展名自动判主机） |
+| `DELETE /api/emulator/roms/{file}` | 删除已上传的（内置的删不掉） |
+
+存储：`/var/www/yexingchen/roms/`（内置，随项目）+ `roms/user/`（上传）。
+文件名走白名单正则（防路径穿越），扩展名限 12 种，大小上限 64MB。
+
+#### 前端
+下拉按「内置（开源）/ 我上传的」分组，选中即启动；
+两个入口：**上传 ROM 到服务器**（以后换设备也能玩）/ **本地直接玩**（不落盘）。
+
+#### 验证
+- `GET` 返回 `builtin: ["Nova the Squirrel","Thwaite"]`、`uploaded: 0`
+- 实测上传 `thwaite.nes` → 列表立刻出现 → `DELETE` 返回 200 清理干净
+- 页面下拉渲染正确、无 JS 错误
+
+### 🔴 事故：加 migration 触发 schema_guard，后端拒绝启动
+
+部署后端后 `health=000`，PM2 反复重启。错误日志：
+
+```
+ProductionSchemaError: Production alembic version 'c8d9e0f1a2b3'
+不在已知 head 列表 ['d0e1f2a3b4c5', 't1u2v3w4x5y6'] 中
+```
+
+原因链：
+1. 昨天加的 `sort_order` 字段是**手工 SQL** 加的（因为 alembic 链有循环引用，见 V2444-002）
+2. 但仓库里还留着那份 migration（`down_revision = c8d9e0f1a2b3`）
+3. 它一进 `alembic/versions/`，`c8d9e0f1a2b3` 就**不再是 head**
+4. `schema_guard` 在启动时校验「DB 版本 ∈ head 列表」→ 不匹配 → 直接 raise
+
+修复：删掉那份 migration（字段已经手工加过，它本来就没必要存在），
+`alembic heads` 恢复为 `c8d9e0f1a2b3 (head)`，与 DB 一致，重启即恢复（`/health` 200）。
+
+> 教训：**在 alembic 链修好前，绝对不要在 versions/ 里留"手工加字段"对应的 migration**。
+> 要么彻底手工（不留文件），要么把链修好再走正规迁移，中间态会让站点起不来。
+
+版本 SW v505→v506、APP_VERSION v2.46.191→v2.46.192。
+
+---
+
 ## [v2.46.191] - 2026-10-21
 
 ### ① 音乐列表「两个播放按钮」→ 勾选框改方形

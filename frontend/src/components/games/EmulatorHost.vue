@@ -16,18 +16,25 @@
       <!-- 内置游戏：下拉即启动 -->
       <div class="em-picks">
         <label class="em-field grow">
-          <span>内置游戏</span>
-          <select class="em-sel grow" :value="''" @change="onPickBuiltin">
-            <option value="">选一个游戏，选中即开始…</option>
-            <option v-for="g in BUILTIN" :key="g.id" :value="g.id">
-              {{ g.name }} · {{ g.tag }}
-            </option>
+          <span>游戏</span>
+          <select class="em-sel grow" :value="''" @change="onPickRom">
+            <option value="">{{ romLoading ? '读取中…' : '选一个游戏，选中即开始…' }}</option>
+            <optgroup label="内置（开源）">
+              <option v-for="g in romLib.builtin" :key="'b-' + g.file" :value="'b:' + g.file">
+                {{ g.label }}{{ g.tag ? ' · ' + g.tag : '' }}
+              </option>
+            </optgroup>
+            <optgroup v-if="romLib.uploaded.length" label="我上传的">
+              <option v-for="g in romLib.uploaded" :key="'u-' + g.file" :value="'u:' + g.file">
+                {{ g.label }}
+              </option>
+            </optgroup>
           </select>
         </label>
       </div>
       <p class="em-builtin-note">
-        <template v-for="g in BUILTIN" :key="g.id">
-          <b>{{ g.name }}</b>：{{ g.note }}<br />
+        <template v-for="g in romLib.builtin" :key="'n-' + g.file">
+          <b>{{ g.label }}</b>：{{ g.credit }}<br />
         </template>
       </p>
 
@@ -43,16 +50,18 @@
       </div>
 
       <div class="em-acts">
-        <button class="em-btn" type="button" @click="pickFile">选择本地 ROM</button>
+        <button class="em-btn primary" type="button" @click="uploadInput?.click()">上传 ROM 到服务器</button>
+        <button class="em-btn" type="button" @click="pickFile">本地直接玩（不落盘）</button>
         <button v-if="savedName" class="em-btn ghost" type="button" @click="playSaved">
           继续：{{ savedName }}
         </button>
-        <button v-if="savedName" class="em-btn ghost" type="button" @click="forget">清除</button>
+        <button v-if="savedName" class="em-btn ghost" type="button" @click="forget">清除本地缓存</button>
       </div>
 
       <p class="em-note">
-        本地 ROM 只存在<strong>这个浏览器</strong>里，不上传服务器。
-        内置游戏为开源 homebrew（GPL / CC），商业游戏 ROM 不提供。
+        <strong>上传到服务器</strong>：存进你自己的目录，以后直接在下拉里选，换设备也能玩（上限 64MB）。<br />
+        <strong>本地直接玩</strong>：只在浏览器内存里跑，服务器不留文件。<br />
+        内置游戏为开源 homebrew（GPL / CC）；本模块不预置任何商业游戏 ROM。
       </p>
     </div>
 
@@ -73,6 +82,13 @@
     </div>
 
     <input
+      ref="uploadInput"
+      type="file"
+      accept=".nes,.sfc,.smc,.gba,.gb,.gbc,.md,.gen,.bin,.iso,.n64,.z64"
+      hidden
+      @change="onUploadFile"
+    />
+    <input
       ref="fileInput"
       type="file"
       accept=".nes,.sfc,.smc,.gba,.gb,.gbc,.gbc,.n64,.z64,.bin,.iso"
@@ -85,6 +101,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
+import { listRoms, uploadRom } from '@/api/emulator'
 
 defineProps({ bare: { type: Boolean, default: false } })
 
@@ -100,23 +117,30 @@ const CORES = [
 
 const CDN = 'https://cdn.emulatorjs.org/stable/data/'
 
-/* ---- 内置 ROM（v2.46.190）----
-   全部是**明确允许再分发**的 homebrew，放在本站 /roms/ 下：
-   - Nova the Squirrel：GPL-3.0（代码）+ CC BY-NC-SA 4.0（素材），作者 NovaSquirrel
-   - Thwaite：作者 pinobatch，开源（GPL），GitHub releases 分发
-   商业游戏（忍者神龟 / 双截龙 / 拳皇等）的 ROM 不在此列 —— 那是受版权保护的作品，
-   任何来源的 ROM 都不能拿到公开站点上分发。 */
-const BUILTIN = [
-  { id: 'nova', name: 'Nova the Squirrel', file: 'nova.nes', core: 'nes', size: 262160,
-    tag: '平台动作', note: 'GPL-3.0 / CC BY-NC-SA · 作者 NovaSquirrel' },
-  { id: 'thwaite', name: 'Thwaite', file: 'thwaite.nes', core: 'nes', size: 24592,
-    tag: '射击', note: '开源 · 作者 pinobatch' },
-]
+/* ---- ROM 库（v2.46.192）----
+   列表来自后端 `GET /api/emulator/roms`：
+   - builtin：随项目发布的**开源 homebrew**（只读，Nova the Squirrel / Thwaite）
+   - uploaded：**本账号自己上传**的文件，存在服务器 roms/user/ 下
+   本模块不预置任何商业游戏 ROM。 */
+/* 本地 ROM 缓存（IndexedDB）：用于「本地直接玩」记住上次的文件 */
 const DB_NAME = 'xuanhuang-emu'
 const STORE = 'roms'
 const KEY = 'last'
 
+const romLib = ref({ builtin: [], uploaded: [] })
+const romLoading = ref(false)
+
+async function loadRoms() {
+  romLoading.value = true
+  try {
+    const res = await listRoms()
+    romLib.value = res.data || { builtin: [], uploaded: [] }
+  } catch { /* 列表拉不到不阻塞本地 ROM */ }
+  finally { romLoading.value = false }
+}
+
 const fileInput = ref(null)
+const uploadInput = ref(null)
 const core = ref('nes')
 const frameSrc = ref('')
 const romName = ref('')
@@ -255,22 +279,23 @@ function bootFromUrl(url, name, size, coreId) {
 }
 
 /** 下拉选中即启动 */
-function onPickBuiltin(e) {
-  const id = e && e.target ? e.target.value : ''
-  if (!id) return
-  const item = BUILTIN.find((g) => g.id === id)
-  if (item) playBuiltin(item)
+function onPickRom(e) {
+  const v = e && e.target ? e.target.value : ''
   if (e && e.target) e.target.value = ''
+  if (!v) return
+  const [kind, file] = [v.slice(0, 1), v.slice(2)]
+  const pool = kind === 'b' ? romLib.value.builtin : romLib.value.uploaded
+  const item = (pool || []).find((g) => g.file === file)
+  if (item) playServerRom(item)
 }
 
-/** 内置游戏：点一下直接玩 */
-function playBuiltin(item) {
+/** 播放服务器上的 ROM（内置或已上传），用完整绝对地址 */
+function playServerRom(item) {
   core.value = item.core || 'nes'
-  // iframe 由 blob 承载，是不透明来源 —— 相对路径 / 无法解析（会报 Invalid URL）
-  // 必须给完整绝对地址；/roms/ 已带 Access-Control-Allow-Origin *
   const base = (typeof location !== 'undefined' && location.origin) || ''
-  bootFromUrl(`${base}/roms/${item.file}`, item.name, item.size, item.core)
+  bootFromUrl(`${base}${item.url}`, item.label || item.file, item.size, item.core)
 }
+
 
 function buildFrameHtml(gameUrl, name, coreId) {
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
@@ -304,7 +329,26 @@ async function boot(blob, name, size) {
   }
 }
 
+/** 上传自己的 ROM（存到服务器 roms/user/） */
+async function onUploadFile(e) {
+  const f = e?.target?.files?.[0]
+  if (e?.target) e.target.value = ''
+  if (!f) return
+  if (f.size > 64 * 1024 * 1024) { ElMessage.error('超过 64MB'); return }
+  const fd = new FormData()
+  fd.append('file', f)
+  fd.append('label', f.name.replace(/\.[^.]+$/, ''))
+  try {
+    await uploadRom(fd)
+    ElMessage.success('已上传，下拉里可以选了')
+    await loadRoms()
+  } catch (err) {
+    ElMessage.error('上传失败：' + (err?.response?.data?.msg || err?.message || '未知错误'))
+  }
+}
+
 onMounted(async () => {
+  loadRoms()
   try {
     const rec = await dbGet()
     if (rec?.name) { savedName.value = rec.name; core.value = rec.core || 'nes' }

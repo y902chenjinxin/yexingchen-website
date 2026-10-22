@@ -9,7 +9,7 @@ from app.database import engine, Base
 from app.routers import (
     admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, crawler, datahub, finance, fish, idphoto, life, log, lost, music, novel,
     ocr, poem, quick, roadrash_rooms, search, settings as settings_router, subscriptions,
-    day_calendar, game_economy, game_rooms, game_tables, stocks, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
+    day_calendar, emulator, game_economy, game_rooms, game_tables, stocks, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
 from app.routers.workbench import router as workbench_router
 from app.routers.feed import router as feed_router
@@ -196,6 +196,7 @@ app.include_router(game_tables.router)
 app.include_router(roadrash_rooms.router)
 # v2.40.36 日历数据（农历/节气/节日/法定假期）
 app.include_router(day_calendar.router)
+app.include_router(emulator.router)
 
 
 @app.get("/")
