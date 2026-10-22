@@ -392,10 +392,15 @@ body.fs-page .site-footer,
 body.fs-page .mid {
   display: none !important;
 }
-/* 外壳收起后，内容区不该再给 TabBar 让位 */
+/* 外壳收起后，内容区不该再给 TabBar / 侧栏让位 */
 body.fs-page #app,
 body.fs-page #app.is-mobile {
   padding-bottom: 0 !important;
+  /* 🔴 桌面端 #app 有 padding-left: 220px 给侧栏让位（desktop-product.css）。
+     侧栏被 display:none 之后这块 padding 还在 → 左边露出一条 #app 的深蓝背景，
+     右边是页面自己的纯黑，看着"左右两边颜色不一"（v2.46.223 修）。
+     侧栏都不显示了，让位当然也要归零。 */
+  padding-left: 0 !important;
   min-height: 100vh;
   min-height: 100dvh;
 }

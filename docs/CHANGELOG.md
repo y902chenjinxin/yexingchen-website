@@ -23,6 +23,55 @@
 
 ---
 
+## [v2.46.223] - 2026-10-22
+
+### 修：3D 棋牌页左右两边颜色不一（左侧一条深蓝）
+
+夜星截图：3D 棋牌大厅左侧 ~220px 是深蓝，右侧纯黑，中间一条硬边。
+
+#### 根因：侧栏隐藏了，但"让位"没撤
+`desktop-product.css` 里桌面端给侧栏留空间：
+```css
+#app:not(.is-mobile) { padding-left: 220px; }
+```
+`useFullscreenPage()` 只把 `.dsb` 设成 `display:none`，
+**`#app` 的 220px padding-left 还留着** → 左侧露出 `#app` 自己的深蓝背景（`--color-bg`），
+右侧是 `.g3d-root` 的纯黑（`--dp-bg`）→ 左右两种颜色。
+
+#### 修法
+全屏态把让位一起归零（`App.vue`）：
+```css
+body.fs-page #app,
+body.fs-page #app.is-mobile {
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;   /* ← 新增 */
+  min-height: 100dvh;
+}
+```
+
+#### 影响面
+只有 `Games3DView` 受影响 —— 它是 `position: relative; width: 100%` 的正常流元素。
+其余全屏页都是 `position: fixed; inset: 0`（PlayView / 阅读器 / 牌桌 / 时钟），
+本来就不吃 `#app` 的 padding。
+
+#### 验证
+```
+bodyClass      "fs-page"
+appPaddingLeft "0px"        （改前 220px）
+appRect        [0, 1280]    铺满
+rootRect       [0, 1280]    铺满
+sidebar        "none"
+```
+截图确认：整页统一纯黑，卡片居中。
+
+> 教训：**隐藏元素 ≠ 撤销它占的位。** 用 `display:none` 收掉侧栏/TabBar 之后，
+> 记得同步检查父容器给它们留的 `padding-left` / `padding-bottom` / `margin`。
+> 否则会留下一条"颜色不对但元素不在"的空白带，比侧栏还在时更难看。
+
+版本 SW v536→v537、APP_VERSION v2.46.222→v2.46.223。
+
+---
+
 ## [v2.46.222] - 2026-10-22
 
 ### 修：3D 棋牌大厅卡片标题/图标看不清（浅字压白卡）
