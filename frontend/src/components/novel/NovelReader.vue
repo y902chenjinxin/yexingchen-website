@@ -32,17 +32,29 @@
        遮罩 .nrd-mask 本来就盖在正文区上，不需要靠隐藏 stage 来挡。 -->
     <div v-show="!error && kind === 'epub'" ref="epubRef" class="nrd-stage" />
 
-    <!-- TXT 容器 -->
+    <!-- TXT 容器（v2.46.201）
+         分页模式：CSS 多列，一列 = 一页，翻页整体 translateX，一页正好填满屏幕；
+         滚动模式：连续上下滑，滚到接近底部按章懒加载下一章。 -->
     <div
       v-show="!error && kind === 'txt'"
       ref="txtRef"
       class="nrd-stage nrd-txt"
+      :class="{ 'is-paged': flow === 'paginated' }"
       @scroll.passive="onTxtScroll"
     >
-      <div class="nrd-txt-inner">
-        <h2 v-if="txtChapter" class="nrd-ch-title">{{ txtChapter.title }}</h2>
-        <p v-for="(para, i) in txtParas" :key="i" class="nrd-p">{{ para }}</p>
-        <div v-if="txtChapter && txtIndex >= txtChapters.length - 1" class="nrd-end">— 全书完 —</div>
+      <div ref="colsRef" class="nrd-txt-cols" :style="colsStyle">
+        <template v-if="flow === 'paginated'">
+          <h2 v-if="txtChapter" class="nrd-ch-title">{{ txtChapter.title }}</h2>
+          <p v-for="(para, i) in txtParas" :key="'p' + i" class="nrd-p">{{ para }}</p>
+          <div v-if="txtChapter && txtIndex >= txtChapters.length - 1" class="nrd-end">— 全书完 —</div>
+        </template>
+        <template v-else>
+          <section v-for="sec in loadedSecs" :key="'s' + sec.idx" class="nrd-sec">
+            <h2 class="nrd-ch-title">{{ sec.title }}</h2>
+            <p v-for="(para, i) in sec.paras" :key="'q' + i" class="nrd-p">{{ para }}</p>
+          </section>
+          <div v-if="loadedSecs.length >= txtChapters.length" class="nrd-end">— 全书完 —</div>
+        </template>
       </div>
     </div>
 
@@ -217,7 +229,14 @@ function setFlow(v) {
   if (settings.value.flow === v) return
   settings.value.flow = v
   saveSettings()
-  if (kind.value === 'epub') rebuildEpub()
+  if (kind.value === 'epub') { rebuildEpub(); return }
+  if (kind.value === 'txt') {
+    // 分页 ↔ 滚动：分页要重新量页宽；滚动要确保当前章已加载
+    nextTick(() => {
+      if (v === 'paginated') { txtPage.value = 0; measurePages() }
+      else { loadUntil(txtIndex.value); syncTxtPercent() }
+    })
+  }
 }
 function bump(key, d) {
   settings.value[key] = Math.max(14, Math.min(30, settings.value[key] + d * 1))
@@ -250,6 +269,58 @@ const txtChapters = ref([])   // [{ title, paras: [] }]
 const txtIndex = ref(0)
 const txtChapter = computed(() => txtChapters.value[txtIndex.value] || null)
 const txtParas = computed(() => (txtChapter.value ? txtChapter.value.paras : []))
+
+/* v2.46.201：分页模式改用「CSS 多列」做真实分页（一页正好填满屏幕），
+   翻页 = 整块 translateX；滚动模式按章懒加载，不再一次渲染全书。 */
+const txtPage = ref(0)        // 分页模式：章内第几页
+const txtPageCount = ref(1)   // 分页模式：本章总页数
+const pageWidth = ref(0)      // 一页可用宽度（容器宽 - 左右边距）
+const loadedSecs = ref([])    // 滚动模式：已加载的章节段
+const colsRef = ref(null)
+const PAGE_GAP = 40
+
+const colsStyle = computed(() => {
+  if (flow.value !== 'paginated') return {}
+  return {
+    columnWidth: `${pageWidth.value}px`,
+    columnGap: `${PAGE_GAP}px`,
+    columnFill: 'auto',
+    transform: `translateX(-${txtPage.value * (pageWidth.value + PAGE_GAP)}px)`,
+  }
+})
+
+/** 量页宽 + 本章页数 */
+function measurePages() {
+  if (flow.value !== 'paginated' || kind.value !== 'txt') return
+  const el = txtRef.value
+  if (!el) return
+  pageWidth.value = Math.max(120, el.clientWidth - padding.value * 2)
+  requestAnimationFrame(() => {
+    const cols = colsRef.value
+    if (!cols) return
+    const per = pageWidth.value + PAGE_GAP
+    txtPageCount.value = Math.max(1, Math.round((cols.scrollWidth + PAGE_GAP) / per))
+    if (txtPage.value > txtPageCount.value - 1) txtPage.value = txtPageCount.value - 1
+  })
+}
+
+/** 滚动模式：按需把 0..idx 的章节塞进 DOM */
+function loadUntil(idx) {
+  const target = Math.min(idx, txtChapters.value.length - 1)
+  for (let k = loadedSecs.value.length; k <= target; k++) {
+    const c = txtChapters.value[k]
+    if (!c) break
+    loadedSecs.value.push({ idx: k, title: c.title, paras: c.paras })
+  }
+}
+
+/** 进度 = (章序号 + 章内页比) / 总章数 */
+function syncTxtPercent() {
+  const n = Math.max(1, txtChapters.value.length)
+  const inChap = txtPageCount.value > 1 ? txtPage.value / txtPageCount.value : 0
+  percent.value = Math.min(100, Math.round(((txtIndex.value + inChap) / n) * 100))
+  saveProgress({ chapter: txtIndex.value, page: txtPage.value, percent: percent.value / 100 })
+}
 
 const PROG_KEY = computed(() => `xuanhuang:reader:prog:${props.novel.id}`)
 
@@ -441,42 +512,84 @@ function onKey(e) {
 
 /* ---------------- TXT 逻辑 ---------------- */
 function txtPrev() {
+  if (kind.value === 'epub') { rendition?.prev(); return }
   if (flow.value === 'paginated') {
-    if (txtIndex.value > 0) switchChapter(txtIndex.value - 1)
+    if (txtPage.value > 0) { txtPage.value -= 1; syncTxtPercent(); return }
+    if (txtIndex.value > 0) { goChapter(txtIndex.value - 1, true); return }
     return
   }
   txtRef.value?.scrollBy({ top: -txtRef.value.clientHeight * 0.9, behavior: 'smooth' })
 }
+
 function txtNext() {
+  if (kind.value === 'epub') { rendition?.next(); return }
   if (flow.value === 'paginated') {
-    if (txtIndex.value < txtChapters.value.length - 1) switchChapter(txtIndex.value + 1)
+    if (txtPage.value < txtPageCount.value - 1) { txtPage.value += 1; syncTxtPercent(); return }
+    if (txtIndex.value < txtChapters.value.length - 1) { goChapter(txtIndex.value + 1); return }
     return
   }
-  txtRef.value?.scrollBy({ top: txtRef.value.clientHeight * 0.9, behavior: 'smooth' })
+  const el = txtRef.value
+  if (!el) return
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 60 && loadedSecs.value.length < txtChapters.value.length) {
+    loadUntil(loadedSecs.value.length)
+    nextTick(() => el.scrollBy({ top: el.clientHeight * 0.9, behavior: 'smooth' }))
+    return
+  }
+  el.scrollBy({ top: el.clientHeight * 0.9, behavior: 'smooth' })
 }
 
-function switchChapter(i, keepScroll = false) {
+/** 切章（分页模式重置到第一页；toLast=true 时落到最后一页） */
+function goChapter(i, toLast = false) {
   if (i < 0 || i >= txtChapters.value.length) return
   txtIndex.value = i
   tocActive.value = i
-  percent.value = Math.round(((i + 1) / Math.max(1, txtChapters.value.length)) * 100)
-  saveProgress({ chapter: i, scrollTop: 0, percent: percent.value / 100 })
-  nextTick(() => {
-    if (!keepScroll && txtRef.value) txtRef.value.scrollTop = 0
-  })
+  if (flow.value === 'paginated') {
+    txtPage.value = 0
+    nextTick(() => {
+      measurePages()
+      if (toLast) {
+        requestAnimationFrame(() => {
+          txtPage.value = Math.max(0, txtPageCount.value - 1)
+          syncTxtPercent()
+        })
+      } else syncTxtPercent()
+    })
+  } else {
+    loadUntil(i)
+    nextTick(() => {
+      const el = txtRef.value
+      const sec = el?.querySelectorAll('.nrd-sec')?.[i]
+      if (sec && el) el.scrollTop = sec.offsetTop
+      syncTxtPercent()
+    })
+  }
+}
+
+function switchChapter(i) {
+  return goChapter(i, false)
 }
 
 let scrollTimer = 0
 function onTxtScroll() {
+  const el = txtRef.value
+  if (!el) return
+
+  if (flow.value === 'scroll') {
+    // 接近底部：追加下一章（按章懒加载）
+    if (loadedSecs.value.length < txtChapters.value.length &&
+        el.scrollTop + el.clientHeight > el.scrollHeight - 800) {
+      loadUntil(loadedSecs.value.length)
+    }
+    // 反推当前章节
+    const secs = el.querySelectorAll('.nrd-sec')
+    let cur = 0
+    secs.forEach((sd, k) => { if (sd.offsetTop <= el.scrollTop + 8) cur = k })
+    if (cur !== txtIndex.value) { txtIndex.value = cur; tocActive.value = cur }
+  }
+
   clearTimeout(scrollTimer)
   scrollTimer = setTimeout(() => {
-    const el = txtRef.value
-    if (!el) return
-    saveProgress({
-      chapter: txtIndex.value,
-      scrollTop: el.scrollTop,
-      percent: percent.value / 100,
-    })
+    saveProgress({ chapter: txtIndex.value, page: txtPage.value, scrollTop: el.scrollTop, percent: percent.value / 100 })
   }, 400)
 }
 
@@ -503,6 +616,7 @@ function applyAll() {
 onMounted(async () => {
   loadSettings()
   window.addEventListener('keydown', onKey)
+  window.addEventListener('resize', onResize)
   try {
     kind.value = pickKind()
     if (!kind.value) throw new Error('只支持 EPUB 和 TXT 格式')
@@ -519,7 +633,20 @@ onMounted(async () => {
       txtIndex.value = Math.min(Math.max(0, ci), txtChapters.value.length - 1)
       percent.value = Math.round(((txtIndex.value + 1) / txtChapters.value.length) * 100)
       await nextTick()
-      if (saved?.scrollTop && txtRef.value) txtRef.value.scrollTop = saved.scrollTop
+      if (flow.value === 'paginated') {
+        measurePages()
+        // 恢复章内页码（等测量完再设，否则会被 clamp 回 0）
+        if (saved && Number.isInteger(saved.page) && saved.page > 0) {
+          requestAnimationFrame(() => {
+            txtPage.value = Math.min(saved.page, Math.max(0, txtPageCount.value - 1))
+            syncTxtPercent()
+          })
+        }
+      } else {
+        loadUntil(txtIndex.value)
+        await nextTick()
+        if (saved?.scrollTop && txtRef.value) txtRef.value.scrollTop = saved.scrollTop
+      }
     }
   } catch (e) {
     error.value = e?.response?.data?.msg || e?.message || '解析失败'
@@ -535,12 +662,21 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
+  window.removeEventListener('resize', onResize)
   clearTimeout(scrollTimer)
   try { rendition?.destroy() } catch { /* 忽略 */ }
   try { book?.destroy() } catch { /* 忽略 */ }
 })
 
 watch(atStart, (v) => { atStart.value = v })
+
+/* 窗口尺寸 / 边距 / 字号变化 → 分页模式要重新切页 */
+let resizeTimer = 0
+function onResize() {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => { measurePages() }, 180)
+}
+watch([size, lineHeight, padding], () => { onResize() })
 </script>
 
 <style scoped>
@@ -596,12 +732,31 @@ watch(atStart, (v) => { atStart.value = v })
 /* 内容舞台 */
 .nrd-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; }
 .nrd-txt { overflow-y: auto; overflow-x: hidden; }
-.nrd-txt-inner {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: var(--nrd-pad);
+.nrd-txt-cols {
   font-size: var(--nrd-size);
   line-height: var(--nrd-lh);
+  padding: var(--nrd-pad);
+  box-sizing: border-box;
+}
+/* 分页模式：多列横向排布，一列 = 一页，超出部分隐藏，翻页靠 translateX */
+.nrd-txt.is-paged {
+  overflow: hidden;
+}
+.nrd-txt.is-paged .nrd-txt-cols {
+  height: 100%;
+  will-change: transform;
+  transition: transform .28s cubic-bezier(.22, .61, .36, 1);
+}
+.nrd-txt.is-paged .nrd-ch-title {
+  break-inside: avoid;
+  column-span: none;
+}
+.nrd-txt.is-paged .nrd-p {
+  break-inside: avoid;
+}
+/* 滚动模式：普通块流 */
+.nrd-sec + .nrd-sec {
+  margin-top: 1.6em;
 }
 .nrd-ch-title {
   margin: 0 0 1.2em;

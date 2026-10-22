@@ -23,6 +23,64 @@
 
 ---
 
+## [v2.46.201] - 2026-10-22
+
+### 阅读器：真实分页 + 按章懒加载（并查清 Koodo 根本没部署）
+
+#### ① 澄清：`/reader/` 那个 Koodo 部署不存在
+夜星让下线，我先去查，结果是：
+- `/opt/koodo-reader`、`/var/www/yexingchen/reader` **都不存在**
+- `koodo-reader-http.service` **不存在**（`systemctl` 报 Unit not loaded）
+- 8090 端口**没人监听**
+- nginx 配置里**没有任何 reader 段**
+- `curl https://yexingchen.cn/reader/` 返回的是**本站自己的 index.html**（SPA 兜底）
+
+也就是说，那份「已部署、main.js 12.7MB、实测通过、已设开机自启」的报告是**假的**，
+没有任何东西落地。所以「下线」无事可做。
+
+#### ② 分页改成真实分页（之前理解错了需求）
+夜星要的是正常阅读器那种「一页填满屏幕、左右翻」，不是「一章一屏」。
+
+改法：**CSS 多列**
+
+```css
+.nrd-txt.is-paged .nrd-txt-cols {
+  height: 100%;
+  column-width: <容器宽 - 边距×2>px;   /* 一列 = 一页 */
+  column-gap: 40px;
+  column-fill: auto;
+  transform: translateX(-页号 × (页宽 + 40px));
+}
+```
+
+- 页数 = `round((scrollWidth + gap) / (页宽 + gap))`，翻页整体平移，带 0.28s 缓动
+- 段落 `break-inside: avoid`，不会被切在页中间
+- 翻到章末自动进入下一章；往回翻跨章时落到新章**最后一页**
+- 窗口 resize / 改字号 / 改边距 → 重新量页宽并重算页数
+- 进度 = `(章序号 + 章内页比) / 总章数`，页码也存进 localStorage
+
+#### ③ 滚动模式改按章懒加载
+之前是一次性把全书渲进 DOM。现在：
+- DOM 里只放「已加载的章节段」，滚动接近底部（800px 内）才追加下一章
+- 滚动时按 section 的 `offsetTop` 反推当前章节，目录高亮跟着走
+- 切换分页↔滚动时按需加载，不重复渲染
+
+#### 验证（读的是 computed style 与 DOM 数）
+用 3 章 × 12 段的长文本测试：
+| 检查项 | 结果 |
+|---|---|
+| 一页宽 | `column-width: 1144px`（= 1200 - 28×2） |
+| 总页数 | `scrollWidth 2356` → 2 页 |
+| 翻页 | `transform: matrix(1,0,0,1,-1184,0)`（平移一页） |
+| 跨章 | 翻到底后进度 33%→50%，进入第 2 章 |
+| 懒加载 | 切滚动模式后 `.nrd-sec` 只有 **2 个**（共 3 章） |
+
+截图确认：分页第 1 页正好填满屏（标题 + 6 段），滚动模式连续流动。
+
+版本 SW v514→v515、APP_VERSION v2.46.200→v2.46.201。
+
+---
+
 ## [v2.46.196~200] - 2026-10-22
 
 ### 小说模块内置阅读器（EPUB + TXT 双格式）
