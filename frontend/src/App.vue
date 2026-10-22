@@ -8,7 +8,12 @@
 
     <!-- 路由视图：移动端缓存三个底部 Tab 首页，切 Tab 不再重挂载而闪白；桌面不缓存维持现状 -->
     <router-view v-if="!showInitialLoading" id="main-content" v-slot="{ Component, route }">
-      <transition name="route-fade" mode="out-in">
+      <!-- v2.46.219：全屏路由跳过路由过渡。
+           原因：<transition mode="out-in"> 要求子组件是「单一真实元素」，而全屏页
+           （阅读器）内部根是 <Teleport to="body">，拿不到 el → 离开钩子永不结束
+           → 点返回后新页面永远进不来，整块内容区空白（侧栏正常）。
+           全屏页本来也不需要过渡动画，直接关掉最稳。 -->
+      <transition :name="isFullscreenRoute(route) ? 'route-fade-none' : 'route-fade'" mode="out-in">
         <keep-alive :include="keepAliveNames">
           <component :is="Component" :key="route.fullPath" />
         </keep-alive>
@@ -104,6 +109,13 @@ watch(isMobile, (v) => {
 
 // 移动端缓存三个底部 Tab 首页组件（切 Tab 不重挂载、不闪白）；桌面 include 为空 → 不缓存
 const keepAliveNames = computed(() => isMobile.value ? ['WorkbenchView', 'ModulesView', 'ProfileView'] : [])
+
+/* 全屏路由：不做路由过渡（内部有 Teleport，transition 拿不到真实元素）
+   名单与 router/index.js 的 FULLSCREEN_ROUTES 保持一致。 */
+const FULLSCREEN_ROUTE_NAMES = new Set(['NovelRead', 'MusicPlaying'])
+function isFullscreenRoute(r) {
+  return !!(r && FULLSCREEN_ROUTE_NAMES.has(r.name))
+}
 
 // 移动端全屏播放器开关
 

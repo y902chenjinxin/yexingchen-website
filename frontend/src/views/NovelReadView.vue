@@ -5,11 +5,18 @@
        而 body.nrd-open 把侧栏隐藏了，退回的页面就成了"空白且回不去"。
 
        改成独立路由后：系统返回键 = 路由后退 = 回到 /novel 列表，符合直觉。 -->
-  <NovelReader v-if="novel" :novel="novel" @close="close" />
-  <div v-else-if="loading" class="nrd-loading-page">正在打开…</div>
-  <div v-else class="nrd-loading-page">
-    <p>{{ error || '这本书找不到了' }}</p>
-    <button type="button" @click="close">返回书架</button>
+  <!-- 🔴 必须有真实单根元素（v2.46.219 修空白页）。
+       之前是三个 v-if 分支并列 = fragment，而 <NovelReader> 本身的根又是 <Teleport>。
+       App.vue 的路由 <transition mode="out-in"> 拿不到真实 DOM 元素时，
+       离开钩子永不结束 → 新页面永远不进入 → 点返回后整块内容区空白（侧栏正常）。
+       Vue 的 transition 要求子组件是「单一真实元素」，Teleport / fragment 都不满足。 -->
+  <div class="nrv-root">
+    <NovelReader v-if="novel" :novel="novel" @close="close" />
+    <div v-else-if="loading" class="nrd-loading-page">正在打开…</div>
+    <div v-else class="nrd-loading-page">
+      <p>{{ error || '这本书找不到了' }}</p>
+      <button type="button" @click="close">返回书架</button>
+    </div>
   </div>
 </template>
 

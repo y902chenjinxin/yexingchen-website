@@ -23,6 +23,70 @@
 
 ---
 
+## [v2.46.219] - 2026-10-22
+
+### 修：阅读器点返回 → 内容区整块空白（侧栏正常）
+
+夜星截图：从阅读器点左上角返回，URL 回到 `/novel`、侧栏和菜单都正常，
+**右侧内容区一片空白**，只剩粒子背景。
+
+#### 根因：路由过渡卡死，不是数据没加载
+
+`App.vue` 的路由出口是：
+```html
+<transition name="route-fade" mode="out-in">
+  <component :is="Component" :key="route.fullPath" />
+</transition>
+```
+
+而 `NovelReadView` 的模板是**三个 `v-if` 分支并列**（fragment），
+里面的 `<NovelReader>` 根节点又是 `<Teleport to="body">`。
+
+Vue 的 `<transition>` 要求子组件是**单一真实 DOM 元素**。`Teleport` 和 fragment 都不满足 ——
+`mode="out-in"` 会等旧组件 `leave` 完成再让新组件进入，拿不到 el 时**离开钩子永不结束**，
+于是新页面（小说列表）**永远不进入**。
+
+DOM 层面表现就是：路由变了、侧栏在、内容区空。验证时也能看到
+`#main-content > *` 的 `opacity` 卡在过渡值上。
+
+> 这也是 v2.46.207 那次"返回空白"的真正原因 —— 当时我判断成"截图时机太早"，
+> 其实是稳定复现的 bug，只是没有深究。
+
+#### 修法（两处，双保险）
+
+**① 给全屏路由页包真实单根**
+```html
+<!-- NovelReadView.vue -->
+<div class="nrv-root">
+  <NovelReader v-if="novel" ... />
+  <div v-else-if="loading">…</div>
+  <div v-else>…</div>
+</div>
+```
+`MusicPlayingView` 同样处理。
+
+**② 全屏路由直接跳过路由过渡**
+```html
+<transition :name="isFullscreenRoute(route) ? 'route-fade-none' : 'route-fade'" mode="out-in">
+```
+全屏页本来就是整页切换，不需要 0.28s 的淡入缩放；关掉最稳，也彻底避开 Teleport 的边界情况。
+
+#### 验证
+```
+阅读器 URL: /novel/6/read | 有阅读器: true
+返回后: url=/novel, leftoverReader=false, bodyClass="", fsPage=false,
+        sidebar=flex, hasTable=true, opacity=1, 无 JS 错误
+```
+截图确认：列表完整（查询/批量删除/上传小说/批量导入 + 表格 + 分页 + 页脚）。
+
+#### 顺手清理
+小说列表里有 5 条我历次测试留下的假书（"功能测试书"×3、"手机测试"×2），
+已按「作者=测试 / 标题白名单」精确删除，现列表为空（夜星原本未上传过书）。
+
+版本 SW v532→v533、APP_VERSION v2.46.218→v2.46.219。
+
+---
+
 ## [v2.46.217~218] - 2026-10-22
 
 ### 全站"真全屏"重构：所有沉浸型功能整页化，返回键行为统一

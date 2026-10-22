@@ -4,7 +4,10 @@
        - 不参与路由 → 手机系统返回键直接退出当前页面（甚至退出音乐页），而不是收起播放器
        - 只有手机端渲染（`v-if="isMobile"`）→ PC 上根本没有全屏播放器可用
        现在给它一个真正的 URL，两端共用，浏览器箭头 / 系统返回键都能正确退出。 -->
-  <MobileFullPlayer page :model-value="true" @update:model-value="onClose" />
+  <!-- 同 NovelReadView：必须有真实单根，否则路由 transition 的 out-in 会卡住 -->
+  <div class="mpv-root">
+    <MobileFullPlayer page :model-value="true" @update:model-value="onClose" />
+  </div>
 </template>
 
 <script setup>
@@ -30,3 +33,10 @@ onMounted(() => {
   if (!player.curItem) router.replace('/music')
 })
 </script>
+
+<style scoped>
+.mpv-root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+</style>
