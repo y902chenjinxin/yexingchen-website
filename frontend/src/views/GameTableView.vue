@@ -1,5 +1,5 @@
 <template>
-  <IslandInnerBase type="tool" :title="pageTitle" :subtitle="pageSubtitle">
+  <IslandInnerBase wide type="tool" :title="pageTitle" :subtitle="pageSubtitle">
     <div class="gtv-root">
       <!-- ========== 建房（id=new） ========== -->
       <section v-if="mode === 'create'" class="gtv-card">
@@ -284,6 +284,7 @@ import { usePinchZoom } from '@/composables/usePinchZoom'
 import { familyMembers } from '@/api/lifeExtra'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useImmersive } from '@/composables/useImmersive'
+import { enterFullscreenShell, exitFullscreenShell, pushFullscreenHistory } from '@/composables/useFullscreenPage'
 
 const route = useRoute()
 const router = useRouter()
@@ -346,6 +347,22 @@ function syncImmersive(on) {
   immersiveOn = on
   if (on) enterImmersive()
   else exitImmersive()
+}
+
+/* ---------- 真全屏（v2.46.217） ----------
+   牌桌全屏以前只是组件状态：手机系统返回键会直接退出整桌（对手还在等你出牌）。
+   现在全屏时压一条 history 记录 → 返回键先退出全屏；同时隐藏站点外壳。
+
+   注意：牌桌是横向舞台，外壳（顶栏/侧栏/TabBar）必须全部让位，
+   否则 zoom 基准算的是被压缩后的容器宽度，牌会显得又小又挤。 */
+let disposeFsHistory = null
+let fsPopping = false
+
+/** 系统返回键 / 浏览器箭头：先退出全屏 */
+function onFsPop() {
+  if (!fullscreen.value) return
+  fsPopping = true
+  fullscreen.value = false
 }
 
 const room = t.room
@@ -412,6 +429,15 @@ function exitFullscreen() {
 watch(fullscreen, async (v) => {
   menuOpen.value = false
   syncImmersive(v)
+  if (v) {
+    enterFullscreenShell()
+    disposeFsHistory = pushFullscreenHistory()
+  } else {
+    exitFullscreenShell()
+    // popstate 已经消费掉那条记录，不能再 back 一次（否则连退两页）
+    if (fsPopping) { fsPopping = false; disposeFsHistory = null }
+    else { disposeFsHistory?.(); disposeFsHistory = null }
+  }
   unbindZoom?.()
   unbindZoom = null
   contentRO?.disconnect()
@@ -554,6 +580,7 @@ async function enterRoom(id) {
 }
 
 onMounted(async () => {
+  window.addEventListener('popstate', onFsPop)
   const id = route.params.id
   if (!id || id === 'new') {
     mode.value = 'create'
@@ -575,6 +602,9 @@ onMounted(async () => {
 function onUnload() { t.leaveOnUnload() }
 window.addEventListener('pagehide', onUnload)
 onBeforeUnmount(() => {
+  window.removeEventListener('popstate', onFsPop)
+  disposeFsHistory = null
+  if (fullscreen.value) exitFullscreenShell()
   syncImmersive(false)
   window.removeEventListener('pagehide', onUnload)
   window.removeEventListener('resize', onResize)

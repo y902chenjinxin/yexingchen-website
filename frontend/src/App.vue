@@ -45,10 +45,11 @@
     <WhaleCompanion v-if="!showInitialLoading && auth.isLoggedIn && showWhale && !immersive" />
 
     <!-- 登录后全站底部播放条（播放时出现）；牌桌沉浸期间收起 -->
-    <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn && !immersive" @open-full="fullPlayer = true" />
+    <NowPlayingBar v-if="!showInitialLoading && auth.isLoggedIn && !immersive" @open-full="openFullPlayer" />
 
-    <!-- 移动端全屏播放器（点迷你播放条信息区展开） -->
-    <MobileFullPlayer v-if="isMobile" v-model="fullPlayer" />
+    <!-- 音乐全屏播放器已改成独立路由 /now-playing（v2.46.217）：
+         原来是这里的 v-if 覆盖层 → 手机返回键会退出整个页面而不是收起播放器，
+         而且只有手机端渲染，PC 没有全屏播放器。见 MusicPlayingView.vue。 -->
 
     <!-- 登录后全站底部网安/备案标识（工作台与岛屿/工具内容页各自渲染页脚，此处不再重复） -->
     <SiteFooter v-if="!showInitialLoading && auth.isLoggedIn && showGlobalFooter" variant="dark" />
@@ -66,7 +67,6 @@ import GlobalTopBar from '@/components/GlobalTopBar.vue'
 import DesktopSidebar from '@/components/desktop/DesktopSidebar.vue'
 import MobileTabBar from '@/components/MobileTabBar.vue'
 import MobileInviteDock from '@/components/mobile/MobileInviteDock.vue'
-import MobileFullPlayer from '@/components/mobile/MobileFullPlayer.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
@@ -82,6 +82,12 @@ import TechBackdrop from '@/components/effects/TechBackdrop.vue'
 const WhaleCompanion = defineAsyncComponent(() => import('@/components/effects/WhaleCompanion.vue'))
 
 const router = useRouter()
+
+/** 打开全屏播放器：走路由，这样浏览器箭头 / 手机返回键都能正确退出 */
+function openFullPlayer() {
+  if (router.currentRoute.value.name === 'MusicPlaying') return
+  router.push({ name: 'MusicPlaying' })
+}
 const route = useRoute()
 const auth = useAuthStore()
 const prefs = usePrefsStore()
@@ -100,7 +106,6 @@ watch(isMobile, (v) => {
 const keepAliveNames = computed(() => isMobile.value ? ['WorkbenchView', 'ModulesView', 'ProfileView'] : [])
 
 // 移动端全屏播放器开关
-const fullPlayer = ref(false)
 
 /* 对局邀请单例（棋类 + 牌类）：顶栏面板 / 移动端胶囊 / 新到提示共用一份数据 */
 const gameInvites = useGameInvites()
@@ -349,6 +354,38 @@ onMounted(async () => {
     transform: none;
     filter: none;
   }
+}
+
+/* ================= 真全屏页面（v2.46.217） =================
+   由 composables/useFullscreenPage.js 在进入全屏页时给 body 加 `fs-page`。
+   这里统一收起站点外壳，让全屏页拿到干净的整块视口。
+
+   为什么用 body class 而不是 z-index：实测侧栏 `.dsb` 的 z-index 只有 90，
+   但 Teleport 到 body 且 z-index 1900 的覆盖层**仍然被它压住**（合成层/包含块问题），
+   抬高层级治不好。直接隐藏周边元素最可靠 —— 全屏本来就是沉浸场景，
+   侧栏/页脚/播放条这时都没有存在意义。
+
+   🔴 卸载时机一旦出错，残留的 class 会让下一个页面"没侧栏、不能滚、看着空白"，
+   所以 router/index.js 的 afterEach 里做了兜底清理。 */
+body.fs-page {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+body.fs-page .lj-topbar,
+body.fs-page .mt-tabbar,
+body.fs-page .npbar,
+body.fs-page .whale-stage,
+body.fs-page .dsb,
+body.fs-page .site-footer,
+body.fs-page .mid {
+  display: none !important;
+}
+/* 外壳收起后，内容区不该再给 TabBar 让位 */
+body.fs-page #app,
+body.fs-page #app.is-mobile {
+  padding-bottom: 0 !important;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 </style>
 

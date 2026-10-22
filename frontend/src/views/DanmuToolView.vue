@@ -177,6 +177,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { enterFullscreenShell, exitFullscreenShell, pushFullscreenHistory } from '@/composables/useFullscreenPage'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { haptic } from '@/utils/haptic'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -300,11 +301,18 @@ function syncRotation() {
   rotated.value = dir.value === 'landscape' && isPortraitViewport()
 }
 
+/* v2.46.217 真全屏：弹幕舞台以前只是组件状态，手机系统返回键会直接退出整个工具页。
+   现在进展示时压一条 history 记录 → 返回键先退出展示；同时隐藏站点外壳。 */
+let disposeFsHistory = null
+let fsPopping = false
+
 function show() {
   if (!text.value.trim()) return
   haptic.light()
   persist()
   playing.value = true
+  enterFullscreenShell()
+  disposeFsHistory = pushFullscreenHistory()
   if (dir.value === 'landscape') {
     // 能锁就锁（真实浏览器全屏下有效）；失败静默，靠 rotate90 兜底
     try { screen.orientation?.lock?.('landscape')?.catch?.(() => {}) } catch { /* 忽略 */ }
@@ -318,6 +326,10 @@ function show() {
 function stop() {
   playing.value = false
   rotated.value = false
+  exitFullscreenShell()
+  // popstate 已经消费掉那条记录，不能再 back（否则连退两页）
+  if (fsPopping) { fsPopping = false; disposeFsHistory = null }
+  else { disposeFsHistory?.(); disposeFsHistory = null }
   if (fsOpened && document.fullscreenElement) { try { document.exitFullscreen() } catch { /* 忽略 */ } }
   fsOpened = false
   try { screen.orientation?.unlock?.() } catch { /* 忽略 */ }
@@ -334,6 +346,14 @@ function onKey(e) {
   if (e.key === 'Escape' && playing.value) stop()
 }
 window.addEventListener('keydown', onKey)
+
+/** 系统返回键 / 浏览器箭头：先退出弹幕展示 */
+function onFsPop() {
+  if (!playing.value) return
+  fsPopping = true
+  stop()
+}
+window.addEventListener('popstate', onFsPop)
 
 /* 展示中转屏 / 改方向：重判 rotate 兜底 + 重算滚动时长 */
 function onViewportChange() {

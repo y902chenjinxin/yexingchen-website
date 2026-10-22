@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { routeGuard } from './guards'
+import { forceExitFullscreenPage } from '@/composables/useFullscreenPage'
 
 const routes = [
   {
@@ -66,6 +67,15 @@ const routes = [
     path: '/music',
     name: 'Music',
     component: () => import('@/views/MusicView.vue'),
+    meta: { requiresAuth: true }
+  },
+  // v2.46.217：音乐全屏播放器改成独立路由（原来是 App.vue 里的 v-if 覆盖层，返回键行为不对）
+  // 🔴 路径不能用 /music/playing：服务器上 /music/ 前缀被真实目录占用（nginx 对它单独处理），
+  //    直链会 404、刷新也打不开。换成顶层 /now-playing 避开前缀冲突。
+  {
+    path: '/now-playing',
+    name: 'MusicPlaying',
+    component: () => import('@/views/MusicPlayingView.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -479,11 +489,20 @@ const router = createRouter({
   routes
 })
 
-// v2.46.207 兜底：阅读器用 body.nrd-open 隐藏侧栏并锁滚动，
+// v2.46.207 兜底：全屏页用 body class（nrd-open / fs-page）隐藏侧栏并锁滚动，
 // 一旦因为系统返回/直接跳转导致组件异常卸载，残留的 class 会让下一个页面
 // 变成"没侧栏、不能滚、看着空白"。这里每次路由变化都校正一次。
+//
+// v2.46.217：全屏形态统一到 composables/useFullscreenPage.js，
+// 这里维护一份"整页全屏"的路由名单，名单外一律强制清理。
+const FULLSCREEN_ROUTES = new Set([
+  'NovelRead', // 小说阅读器
+  'MusicPlaying', // 音乐全屏播放器（v2.46.217 从覆盖层改成路由）
+])
+
 router.afterEach((to) => {
-  if (to.name !== 'NovelRead') {
+  if (!FULLSCREEN_ROUTES.has(to.name)) {
+    forceExitFullscreenPage()
     document.body.classList.remove('nrd-open')
   }
 })

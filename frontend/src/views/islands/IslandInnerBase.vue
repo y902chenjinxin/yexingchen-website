@@ -1,5 +1,5 @@
 <template>
-  <div class="island-inner" :class="`island-inner-${type}`">
+  <div class="island-inner" :class="[`island-inner-${type}`, { 'is-wide': wide }]">
     <!-- 内容区（背景/装饰由 desktop-product.css 主题化接管，避免重复渲染） -->
     <div class="inner-content">
       <header class="inner-header">
@@ -55,7 +55,11 @@ defineProps({
   subtitle: {
     type: String,
     required: true
-  }
+  },
+  /* v2.46.217 整页模式：给游戏/牌桌这类"体验型"内容用 ——
+     去掉内容卡片的宽内边距与页脚，把视口尽量让给内容本身。
+     管理型页面（列表/表单）保持默认，卡片布局更易读。 */
+  wide: Boolean
 })
 
 function goBack() {
@@ -184,6 +188,22 @@ function goToolList() {
   margin-top: 10px;
   flex-wrap: wrap;
 }
+
+/* v2.46.217 整页模式：游戏、牌桌这类整块内容不需要卡片式的 40px 边距，
+   页脚也纯属干扰（它们本来就是沉浸场景）。 */
+.island-inner.is-wide .inner-content {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.island-inner.is-wide .inner-header {
+  padding-top: 14px;
+  padding-bottom: 6px;
+}
+.island-inner.is-wide .island-subtitle { display: none; }
+.island-inner.is-wide .inner-main {
+  padding: 4px 12px 8px;
+}
+.island-inner.is-wide .inner-footer { display: none; }
 
 .inner-main {
   flex: 1;

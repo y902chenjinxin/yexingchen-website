@@ -23,6 +23,100 @@
 
 ---
 
+## [v2.46.217~218] - 2026-10-22
+
+### 全站"真全屏"重构：所有沉浸型功能整页化，返回键行为统一
+
+夜星：「所有展示全屏效果的功能都做优化，实现真全屏。PC 就是整个页面展示对应内容，
+只能通过浏览器箭头返回；手机整个页面展示，只能通过手机自带返回按钮返回。
+不然现在就是在页面里嵌入了一个小页面，看着就很不舒服。」
+
+#### 查清了三类问题
+
+| 类型 | 表现 | 涉及 |
+|---|---|---|
+| **A. 内容卡片** | 游戏/牌桌被 `IslandInnerBase` 包着，四周都是站点外壳 | GamesView、GameTableView、PlayView |
+| **B. 状态式全屏** | `position:fixed;inset:0` 的舞台，但**全屏是组件状态不是路由** → 系统返回键直接退出整个页面 | 游戏放大、翻页时钟、弹幕展示 |
+| **C. 覆盖层** | `v-if` 挂在 App.vue，完全不参与路由，且只有手机端渲染 | 音乐全屏播放器 |
+
+#### 统一基础设施
+新增 `composables/useFullscreenPage.js`：
+- `useFullscreenPage()` —— 整页全屏页用。挂载时给 body 加 `fs-page`、锁滚动、手机切真机 viewport；卸载还原。**引用计数**防止路由过渡期互相清状态
+- `enterFullscreenShell()/exitFullscreenShell()` —— 条件式全屏（页内"放大"按钮）用
+- `pushFullscreenHistory()` —— 往浏览器历史压一条记录，返回键先退全屏
+- `forceExitFullscreenPage()` —— 路由兜底强制清理
+
+`App.vue` 一处 CSS 统一收起外壳：
+```css
+body.fs-page .lj-topbar, .mt-tabbar, .npbar, .whale-stage, .dsb, .site-footer, .mid { display: none !important; }
+```
+
+`router/index.js` 维护 `FULLSCREEN_ROUTES` 名单，名单外每次路由变化强制清理残留状态。
+
+#### 逐项改造
+
+**① 游戏大厅 / 在线牌桌（GamesView / GameTableView）**
+- 全屏态改由 `setBig()` / `watch(fullscreen)` 驱动：进全屏压历史记录 + 隐藏外壳
+- `popstate` 监听：返回键 **先退出全屏**，不再退出整个页面（对局不白打）
+- 内容卡片加 `wide` 模式：去掉 40px 内边距、隐藏页脚、副标题
+
+**② 3D 棋牌（Games3DView）**
+- 整页体验，之前 `height:100vh` 但宽度被侧栏挤掉、牌桌中心偏移 → 进入即隐藏外壳
+
+**③ 单机游戏（PlayView：暴力摩托 / 模拟器 / 植物大战僵尸）**
+- 彻底去掉 `IslandInnerBase`，改 `fixed inset:0` 整页容器 + 极简顶栏（返回大厅）
+- `.pv-main` 用 `flex:1 + min-height:0`，游戏组件拿满剩余空间
+
+**④ 翻页时钟（FlipClockView）**
+- 原来桌面端 `if (!isMobile) return` 直接禁掉全屏入口 → 两端都放开
+- 全屏压历史记录，返回键只退出全屏
+
+**⑤ 弹幕工具（DanmuToolView）**
+- 展示态绑历史记录 + 外壳隐藏，返回键先退出展示
+
+**⑥ 音乐全屏播放器（最大改动）**
+- 从 `App.vue` 的 `v-if` 覆盖层改成独立路由 `/now-playing`（`MusicPlayingView.vue`）
+- PC 端也能用了（原来 `v-if="isMobile"` 只有手机渲染）
+- `MobileFullPlayer` 加 `page` 模式：整页铺满；桌面端居中 520px 播放卡（整页铺满封面会失真）
+- 没有正在播放的内容时直接 `replace('/music')`，不留空播放器
+
+**⑦ 小说阅读器**
+- 已有的自造 viewport/`nrd-open` 逻辑收敛到统一 composable
+
+#### 🔴 关键决策：为什么用 history 而不是 query
+
+第一反应是把全屏态做成 `?fs=1`。但 `App.vue` 的 RouterView 是 `:key="route.fullPath"` ——
+**query 一变整个组件销毁重建，对局状态全丢**。这个坑 GamesView 的 `enterRoom`
+注释里已经记过一次（接受邀请后回到空态）。
+
+所以改用 `history.pushState({ ...history.state, __fs: 1 }, '')`：
+- URL 不变 → 路由无感 → 组件不重挂载 → 状态保留
+- 系统返回键 / 浏览器箭头会 pop 掉这条记录 → 先退出全屏
+
+保留 `history.state` 原字段，否则 vue-router 的 popstate 处理会读到不认识的 state。
+
+#### 🔴 又一个部署踩坑：`/music/playing` 直链 404
+一开始播放器路由定的是 `/music/playing`。部署后 `curl` 发现 **404**：
+服务器上 `/music/` 前缀被一个真实目录占着（`curl /music/` → 403，和 `/sounds/` 同样症状），
+nginx 对它有单独处理，导致 `/music/playing` 走不到 SPA 的 `index.html` 兜底。
+**改成顶层 `/now-playing` 后立即 200。**
+→ 新增前端路由前，先 `curl` 一下这个前缀，确认没被静态目录/API 占掉。
+
+#### 验证
+| 项 | 结果 |
+|---|---|
+| lint（13 个改动文件） | 0 error（1 个原有 warning） |
+| 构建 | 17.18s 成功 |
+| 产物核验 | `now-playing`、`fs-page` 均进包；`MusicPlaying` chunk 存在 |
+| SW / 版本 | v532 / v2.46.218 |
+| `/now-playing` 直链 | 200 |
+| `/novel/1/read` | 200（未受影响） |
+
+夜星自查建议：游戏放大 → 浏览器箭头应只退全屏；音乐全屏播放器 → 手机返回键应回到原页面；
+3D 棋牌 → 左侧不该再被侧栏压住。
+
+---
+
 ## [v2.46.215~216] - 2026-10-22
 
 ### 全文搜索 + PDF 阅读

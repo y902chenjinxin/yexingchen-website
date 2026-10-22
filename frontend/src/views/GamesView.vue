@@ -1,5 +1,5 @@
 <template>
-  <IslandInnerBase type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇 · 暴力摩托 · 植物大战僵尸">
+  <IslandInnerBase wide type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇 · 暴力摩托 · 植物大战僵尸">
     <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill, 'is-fsfit': fitActive, 'is-card': isCardGame }">
       <!-- ===== 左：游戏类型 ===== -->
       <!-- 手机端：未选游戏时铺开手账网格；选中后收起（对局区占满，切游戏走「返回列表」）。
@@ -306,6 +306,7 @@ import { loadGame, clearGame, saveAge } from '@/utils/gameSave'
 import { usePinchZoom } from '@/composables/usePinchZoom'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useImmersive } from '@/composables/useImmersive'
+import { enterFullscreenShell, exitFullscreenShell, pushFullscreenHistory } from '@/composables/useFullscreenPage'
 
 const ICON = {
   gomoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><circle cx="9" cy="9" r="2" fill="currentColor" stroke="none"/></svg>',
@@ -692,6 +693,44 @@ function syncImmersive(on) {
   else exitImmersive()
 }
 const isCardGame = computed(() => TABLE_GAMES.has(tab.value))
+
+/* ---------- 真全屏（v2.46.217） ----------
+   以前 isBig 只是组件状态：手机系统返回键走浏览器历史后退 → **直接退出整个游戏页**，
+   而不是退出全屏，对局白打。现在进全屏时往 history 压一条记录，
+   返回键先消费它退出全屏；同时给 body 加 fs-page 隐藏侧栏/顶栏/TabBar。
+
+   为什么不把全屏做成子路由：App.vue 的 RouterView 是 `:key="route.fullPath"`，
+   URL 一变组件就销毁重建，对局状态全丢（本文件 enterRoom 的注释里已经踩过一次）。 */
+let disposeFsHistory = null
+let shellOn = false
+
+function syncShell(on) {
+  if (on === shellOn) return
+  shellOn = on
+  if (on) enterFullscreenShell()
+  else exitFullscreenShell()
+}
+
+function setBig(v) {
+  const next = !!v
+  if (isBig.value === next) return
+  isBig.value = next
+  syncShell(next)
+  if (next) {
+    disposeFsHistory = pushFullscreenHistory()
+  } else {
+    disposeFsHistory?.()
+    disposeFsHistory = null
+  }
+}
+
+/** 系统返回键 / 浏览器箭头：先退出全屏，不退出页面 */
+function onFsPop() {
+  if (!isBig.value) return
+  isBig.value = false
+  syncShell(false)
+  disposeFsHistory = null
+}
 /** 手机端 + 牌类 + 全屏：走「等比缩放铺满一屏」，与在线牌桌同一套手感 */
 const fitActive = computed(() => isMobile.value && isBig.value && isCardGame.value)
 
@@ -740,6 +779,7 @@ watch(fitActive, async (v) => {
 
 function onFitResize() { if (fitActive.value) scheduleFit() }
 onMounted(() => {
+  window.addEventListener('popstate', onFsPop)
   window.addEventListener('resize', onFitResize)
   if (fitActive.value) scheduleFit()
 })
@@ -764,7 +804,7 @@ function pick(key) {
   chosenMode.value = ''
   chosenBoard.value = g.boardSizes ? g.boardSizes[0] : 15
   resumeFlag.value = false
-  isBig.value = !!g.big
+  setBig(!!g.big)
   phase.value = g.modes ? 'setup' : 'play'
   showRules.value = false
   runId.value += 1
@@ -785,7 +825,7 @@ function startGame(modeKey) {
   runId.value += 1
   // 手机端牌类（掼蛋/麻将/大富翁）：开局即全屏 = 自动横屏 + 等比铺满一屏，
   // 不用再让用户手点「放大」；桌面端与棋类不受影响
-  if (isMobile.value && TABLE_GAMES.has(tab.value)) isBig.value = true
+  if (isMobile.value && TABLE_GAMES.has(tab.value)) setBig(true)
 }
 
 function resumeGame() {
@@ -795,7 +835,7 @@ function resumeGame() {
   resumeFlag.value = true
   phase.value = 'play'
   runId.value += 1
-  if (isMobile.value && TABLE_GAMES.has(tab.value)) isBig.value = true
+  if (isMobile.value && TABLE_GAMES.has(tab.value)) setBig(true)
 }
 
 function backToList() {
@@ -810,10 +850,11 @@ function backToList() {
 }
 
 function toggleBig() {
-  isBig.value = !isBig.value
+  const next = !isBig.value
+  setBig(next)
   // v2.46.91：浏览器里进/出全屏时顺带把系统栏收掉/恢复（WebView 会拒绝，静默忽略）
   try {
-    if (isBig.value) stageRef.value?.requestFullscreen?.()?.catch?.(() => {})
+    if (next) stageRef.value?.requestFullscreen?.()?.catch?.(() => {})
     else if (document.fullscreenElement) document.exitFullscreen?.()?.catch?.(() => {})
   } catch { /* 忽略 */ }
 }
@@ -840,6 +881,9 @@ watch(isBig, async (v) => {
 })
 onBeforeUnmount(() => {
   document.body.style.overflow = ''
+  window.removeEventListener('popstate', onFsPop)
+  if (shellOn) { shellOn = false; exitFullscreenShell() }
+  disposeFsHistory = null
   syncImmersive(false)
   raiseHost(false)
   window.removeEventListener('resize', onFitResize)

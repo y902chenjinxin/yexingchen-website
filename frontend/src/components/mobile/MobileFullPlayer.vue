@@ -1,6 +1,6 @@
 <template>
   <transition name="mfp">
-    <div v-if="visible" class="mfp" @click.self="close">
+    <div v-if="visible" class="mfp" :class="{ 'is-page': page }" @click.self="close">
       <div class="mfp-sheet" role="dialog" aria-modal="true" aria-label="全屏播放器">
         <!-- 顶部：下拉关闭 + 标题 -->
         <div class="mfp-handle"></div>
@@ -152,7 +152,12 @@ import AppIcon from '@/components/common/AppIcon.vue'
 
 const player = usePlayerStore()
 
-const props = defineProps({ modelValue: Boolean })
+const props = defineProps({
+  modelValue: Boolean,
+  /* v2.46.217：作为独立路由页渲染（真全屏），而不是 App.vue 里的覆盖层。
+     page 模式下去掉遮罩/圆角/上滑面板观感，整页铺满。 */
+  page: Boolean,
+})
 const emit = defineEmits(['update:modelValue'])
 const visible = computed({
   get: () => props.modelValue,
@@ -204,6 +209,35 @@ function fmt(sec) {
   backdrop-filter: blur(10px);
   display: flex; align-items: flex-end; justify-content: center;
 }
+/* page 模式（路由页）：去掉遮罩层与上滑面板观感，整页铺满；
+   桌面端居中一张固定的播放卡（整页铺满会让封面大到失真）。 */
+.mfp.is-page {
+  position: relative;
+  inset: auto;
+  height: 100vh;
+  height: 100dvh;
+  z-index: auto;
+  background: linear-gradient(180deg, #0a100e, #060a09);
+}
+.mfp.is-page .mfp-sheet {
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  border-top: 0;
+  box-shadow: none;
+}
+@media (min-width: 900px) {
+  .mfp.is-page { align-items: center; padding: 24px; }
+  .mfp.is-page .mfp-sheet {
+    height: min(860px, calc(100dvh - 48px));
+    max-height: min(860px, calc(100dvh - 48px));
+    max-width: 520px;
+    border-radius: 26px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+  }
+}
+
 .mfp-sheet {
   width: 100%;
   /* svh = 最小视口高度：地址栏收起/展开都不会把底部控制键顶出屏幕 */

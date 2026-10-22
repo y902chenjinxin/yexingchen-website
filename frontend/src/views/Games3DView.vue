@@ -43,6 +43,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useImmersive } from '@/composables/useImmersive'
+import { useFullscreenPage } from '@/composables/useFullscreenPage'
 import Guandan3DBoard from '@/components/games3d/Guandan3DBoard.vue'
 import Mahjong3DBoard from '@/components/games3d/Mahjong3DBoard.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -52,6 +53,11 @@ import '@/assets/styles/games3d.css'
  * 横屏时 App 底部 Tab 栏（fixed z-index 1500）会压住手牌；进入横屏即
  * enterImmersive 让 App.vue 收起 Tab 栏，竖屏恢复。引用计数防重复 / 漏 exit。 */
 const { enterImmersive, exitImmersive } = useImmersive()
+
+/* v2.46.217 真全屏：3D 牌桌是整页体验，不该被侧栏/顶栏切掉一块 ——
+   以前 g3d-root 虽然 height:100vh，但宽度被侧栏挤掉，牌桌中心偏移。
+   进入本页即隐藏站点外壳，浏览器返回键 / 系统返回键直接退出本页。 */
+useFullscreenPage()
 let immersiveOn = false
 function syncImmersive() {
   const landscape = window.innerWidth > window.innerHeight

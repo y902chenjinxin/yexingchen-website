@@ -3,27 +3,41 @@
        起因：只有 GamesView（棋类游戏页）内部挂了这两款游戏，侧栏「娱乐」分组没有入口，
        夜星反馈「我在侧边栏娱乐模块没有看到」。
        同一页面按路由 meta.game 分流：roadrash → 自绘 Canvas 移植版；pvz → 开源同人版 iframe 宿主。 -->
-  <IslandInnerBase type="tool" :title="cfg.title" :subtitle="cfg.subtitle">
-    <template #toolbar>
-      <button class="pv-hall" type="button" @click="goHall">
-        <AppIcon icon="↩" :size="14" /> 游戏大厅
+  <!-- v2.46.217 真全屏：以前这三个游戏被塞进 IslandInnerBase 卡片，
+       上下左右都是站点外壳，画布只分到中间一小块 —— 夜星说的"页面里嵌入小页面"。
+       游戏是纯体验型内容，直接整页：只留一条极简顶栏（返回大厅），
+       其余全部给游戏；浏览器返回键 / 手机返回键退出本页。 -->
+  <div class="pv-page">
+    <header class="pv-top">
+      <button class="pv-hall" type="button" @click="goHall" aria-label="返回游戏大厅">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14.5 5.5 8 12l6.5 6.5" />
+        </svg>
+        <span>大厅</span>
       </button>
-    </template>
+      <div class="pv-title">
+        <b>{{ cfg.title }}</b>
+        <i>{{ cfg.subtitle }}</i>
+      </div>
+    </header>
 
     <div class="pv-main">
       <component :is="cfg.component" :bare="true" :initial-mode="cfg.mode" />
     </div>
-  </IslandInnerBase>
+  </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useFullscreenPage } from '@/composables/useFullscreenPage'
 import { useRoute, useRouter } from 'vue-router'
-import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
-import AppIcon from '@/components/common/AppIcon.vue'
 import RoadRashGame from '@/components/games/RoadRashGame.vue'
 import PvzEmbed from '@/components/games/PvzEmbed.vue'
 import EmulatorHost from '@/components/games/EmulatorHost.vue'
+
+/* 真全屏页：隐藏侧栏/顶栏/TabBar/页脚，游戏拿满整块视口 */
+useFullscreenPage()
 
 const route = useRoute()
 const router = useRouter()
@@ -58,10 +72,47 @@ function goHall() {
 </script>
 
 <style scoped>
-.pv-main { padding: 0 0 12px; }
+/* 整页游戏容器：fixed 是为了不依赖父容器高度链（祖先有 transform 时也能铺满） */
+.pv-page {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  display: flex;
+  flex-direction: column;
+  background: var(--dp-bg, #f7f5f0);
+  color: var(--dp-text, #2b2b2b);
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.pv-top {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--dp-line, rgba(20, 30, 40, .1));
+}
+.pv-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pv-title b { font-size: 13.5px; font-weight: 600; }
+.pv-title i {
+  font-size: 11.5px;
+  font-style: normal;
+  opacity: .55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pv-main {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  padding: 0;
+}
+.pv-main > * { flex: 1 1 0; min-height: 0; min-width: 0; }
 .pv-hall {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 14px; cursor: pointer; font-size: 12.5px;
+  display: inline-flex; align-items: center; gap: 5px;
+  flex-shrink: 0;
+  padding: 6px 12px; cursor: pointer; font-size: 12.5px;
   border-radius: 999px; color: var(--dp-text2, #45505b);
   border: 1px solid var(--glass-border, var(--dp-line, rgba(0, 0, 0, .14)));
   background: var(--color-bg-glass, rgba(127, 127, 127, .06));

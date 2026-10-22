@@ -279,6 +279,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import ePub from 'epubjs'
+import { useFullscreenPage } from '@/composables/useFullscreenPage'
 
 const props = defineProps({
   novel: { type: Object, required: true },
@@ -680,26 +681,12 @@ function syncTocActive(href) {
 }
 
 /* ---------------- 翻页 ---------------- */
-/* ---------------- 移动端：viewport + 触摸手势（v2.46.202） ----------------
-   本站手机浏览器的 viewport 被 main.js 覆写成 width=1280（要桌面版布局），
-   在阅读器里必须临时切回 device-width —— 否则 19px 字号相对 1280 宽会小到没法读，
-   column 分页的 1144px 页宽也会被整体缩小。退出阅读器时还原。 */
+/* ---------------- 移动端：触摸手势（v2.46.202） ----------------
+   viewport 切换 / 外壳隐藏已统一到 composables/useFullscreenPage.js（v2.46.217），
+   这里只保留触摸能力判断，供默认字号与手势逻辑使用。 */
 const isTouch = ref(false)
-let savedViewport = ''
-
 function enterTouchMode() {
   isTouch.value = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window
-  if (!isTouch.value) return
-  const meta = document.querySelector('meta[name="viewport"]')
-  if (!meta) return
-  savedViewport = meta.getAttribute('content') || ''
-  meta.setAttribute('content',
-    'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover')
-}
-function exitTouchMode() {
-  if (!isTouch.value || !savedViewport) return
-  const meta = document.querySelector('meta[name="viewport"]')
-  if (meta) meta.setAttribute('content', savedViewport)
 }
 
 /* 触摸滑动翻页（分页模式）。滚动模式交给原生滚动，不拦截。 */
@@ -1027,13 +1014,15 @@ function applyAll() {
   if (kind.value === 'epub') applyEpubTheme()
 }
 
+/* 真全屏页：隐藏站点外壳 + 手机切真机 viewport（统一实现，见 useFullscreenPage） */
+useFullscreenPage()
+
 /* ---------------- 初始化 ---------------- */
 onMounted(async () => {
   loadSettings()
   window.addEventListener('keydown', onKey)
   window.addEventListener('resize', onResize)
   enterTouchMode()
-  document.body.classList.add('nrd-open')
   try {
     kind.value = pickKind()
     if (!kind.value) throw new Error('只支持 EPUB 和 TXT 格式')
@@ -1093,8 +1082,7 @@ onBeforeUnmount(() => {
   flushProgress()
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('resize', onResize)
-  exitTouchMode()
-  document.body.classList.remove('nrd-open')
+
   clearTimeout(scrollTimer)
   try { rendition?.destroy() } catch { /* 忽略 */ }
   try { book?.destroy() } catch { /* 忽略 */ }
@@ -1413,18 +1401,6 @@ watch([size, lineHeight, padding], () => { onResize() })
 
 .nrd-fade-enter-active, .nrd-fade-leave-active { transition: opacity .16s ease; }
 .nrd-fade-enter-from, .nrd-fade-leave-to { opacity: 0; }
-
-/* 阅读时隐藏桌面侧栏与移动端 TabBar。
-   .nrd 已 Teleport 到 body 且 z-index 1900，但实测手机上左侧仍被侧栏压住，
-   直接隐藏最省事（阅读本来就是沉浸场景，侧栏没有存在意义）。 */
-:global(body.nrd-open .dsb),
-:global(body.nrd-open .tab-bar),
-:global(body.nrd-open .app-tabbar) {
-  display: none !important;
-}
-:global(body.nrd-open) {
-  overflow: hidden !important;
-}
 
 /* ================= 移动端 / 触摸设备（v2.46.202） =================
    用 pointer: coarse 判断而不是屏幕宽度 —— 本站手机浏览器 viewport 被覆写成 1280，

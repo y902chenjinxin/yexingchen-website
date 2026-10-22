@@ -7,7 +7,7 @@
     <div class="fc-tool">
       <FlipClock size="lg" />
       <p class="fc-tip">实时走时 · 每秒自动翻页，支持减少动态效果偏好</p>
-      <button v-if="isMobile" class="fc-enter" type="button" @click="setFullscreen(true)">
+      <button class="fc-enter" type="button" @click="setFullscreen(true)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4" /></svg>
         全屏时钟
       </button>
@@ -32,6 +32,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import FlipClock from '@/components/mobile/FlipClock.vue'
 import { useImmersive } from '@/composables/useImmersive'
+import { enterFullscreenShell, exitFullscreenShell, pushFullscreenHistory } from '@/composables/useFullscreenPage'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 /* 全屏只对移动端外壳生效（APK WebView 或 ?m=1），桌面浏览器走常规工具页。
@@ -47,14 +48,36 @@ function syncOrient() {
   landscape.value = window.innerWidth > window.innerHeight
 }
 
+/* 真全屏（v2.46.217）：原来桌面端 `if (!isMobile) return` 直接禁掉了全屏入口，
+   而手机端的全屏是 Teleport 覆盖层 —— 系统返回键会直接退出整个时钟页。
+   现在两端都能进，且进全屏时压一条 history 记录，返回键只退出全屏。 */
+let disposeFsHistory = null
+let fsPopping = false
+
 function setFullscreen(on) {
-  if (!isMobile.value) return
+  if (fsOn.value === on) return
   fsOn.value = on
-  if (on && !immersiveOn) { enterImmersive(); immersiveOn = true }
-  else if (!on && immersiveOn) { exitImmersive(); immersiveOn = false }
+  if (on) {
+    if (!immersiveOn) { enterImmersive(); immersiveOn = true }
+    enterFullscreenShell()
+    disposeFsHistory = pushFullscreenHistory()
+  } else {
+    if (immersiveOn) { exitImmersive(); immersiveOn = false }
+    exitFullscreenShell()
+    if (fsPopping) { fsPopping = false; disposeFsHistory = null }
+    else { disposeFsHistory?.(); disposeFsHistory = null }
+  }
+}
+
+/** 系统返回键 / 浏览器箭头：先退出全屏 */
+function onFsPop() {
+  if (!fsOn.value) return
+  fsPopping = true
+  setFullscreen(false)
 }
 
 onMounted(() => {
+  window.addEventListener('popstate', onFsPop)
   syncOrient()
   window.addEventListener('resize', syncOrient)
   window.addEventListener('orientationchange', syncOrient)
@@ -63,6 +86,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('popstate', onFsPop)
+  disposeFsHistory = null
+  if (fsOn.value) { fsOn.value = false; exitFullscreenShell() }
   window.removeEventListener('resize', syncOrient)
   window.removeEventListener('orientationchange', syncOrient)
   if (immersiveOn) { exitImmersive(); immersiveOn = false }
