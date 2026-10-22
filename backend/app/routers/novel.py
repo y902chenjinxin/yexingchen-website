@@ -1,11 +1,12 @@
 from app.models.novel import Novel
 from fastapi import APIRouter, Depends, UploadFile, File, Form
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional, List
 import io
 import csv
+import os
 from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
@@ -327,6 +328,45 @@ async def download_novel_template(current_user: dict = Depends(get_current_user)
 
 # ========== 单本详情（v2.46.195：在线阅读器取书 / 刷新直链恢复） ==========
 # 必须定义在 /template 之后，否则 /api/novels/template 会被 {novel_id} 抢先匹配成 422。
+@router.get("/{novel_id}/file")
+async def get_novel_file(
+    novel_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """下载小说原始文件（v2.46.196）
+
+    前端用 axios 带 token 取成 ArrayBuffer，再交给 epub.js / TXT 解码器 ——
+    这样 epub.js 内部就不需要自己带认证头（它带的请求没有 Authorization）。
+    """
+    n = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not n or not n.file_path:
+        raise_error(ErrCode.NOVEL_NOT_FOUND, "小说文件不存在")
+
+    # 统一到 backend/uploads（老数据 /uploads/xxx，新数据 /xxx）
+    rel = n.file_path.lstrip("/").replace("\\", "/")
+    if not rel.startswith("uploads/"):
+        rel = "uploads/" + rel
+    full = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", rel))
+    if not os.path.isfile(full):
+        raise_error(ErrCode.NOVEL_NOT_FOUND, "文件已丢失")
+
+    ext = os.path.splitext(full)[1].lower()
+    media = {
+        ".epub": "application/epub+zip",
+        ".txt": "text/plain; charset=utf-8",
+        ".pdf": "application/pdf",
+        ".mobi": "application/x-mobipocket-ebook",
+        ".azw3": "application/vnd.amazon.ebook",
+    }.get(ext, "application/octet-stream")
+    return FileResponse(
+        full,
+        media_type=media,
+        filename=n.original_filename or os.path.basename(full),
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
 @router.get("/{novel_id}", response_model=ResponseBase)
 async def get_novel_detail(
     novel_id: int,

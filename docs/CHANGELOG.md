@@ -23,6 +23,62 @@
 
 ---
 
+## [v2.46.196~200] - 2026-10-22
+
+### 小说模块内置阅读器（EPUB + TXT 双格式）
+
+#### 背景：上一个方案做偏了
+夜星让另一个 agent 做在线阅读器，交付的是 **Koodo Reader 独立部署**（`/reader/` +
+自己的 Docker 数据源 + 自己的书架）。问题在于：**跟现有小说模块完全割裂** ——
+小说页只有表格管理，一本书都读不了；要读还得去另一个应用、再绑定一次数据源。
+夜星要的是「在小说模块里点阅读就能读，用现有存储」。
+
+#### 本次做法：在现有 Vue 项目内写轻量阅读器
+| 文件 | 作用 |
+|---|---|
+| `backend/app/routers/novel.py` | 新增 `GET /api/novels/{id}/file`，直接吐原始文件字节 |
+| `components/novel/NovelReader.vue` | 阅读器主体（约 700 行），全屏覆盖层 z-index 1600 |
+| `NovelView.vue` | 行内操作加「阅读」按钮（`icon: 'play'` 打头） |
+
+**存储沿用 novels 表 + backend/uploads**，没有任何第二套数据源。
+
+#### 能力
+- **EPUB**：epub.js 渲染，CFI 级进度记忆，目录来自 `book.navigation`
+- **TXT**：前端分章（正则 `第x章/回/节/卷`、`卷x`、`序章/楔子/番外`），
+  用 `TextDecoder` 解码：BOM → 严格 UTF-8 → GBK 兜底（`fatal:true` 试错）
+- **两种模式**：左右分页 / 上下滚动（EPUB 走 `flow: paginated|scrolled`，
+  TXT 分页模式 = 一章一屏、章内滚动，正好对应「一章滑着看完再翻页」）
+- **热更新**：白天/护眼/夜间、宋/黑/楷、字号 14~30、行距 1.4~2.4、边距 8~64，
+  全部经 CSS 变量（TXT）+ `themes.override`（EPUB iframe），即时生效并持久化到 localStorage
+- **其他**：键盘 ←→ / 空格翻页、Esc 退出、点两侧边缘翻页、进度条、目录侧栏
+
+#### 🔴 踩了四个坑，每个都致命
+**1. 项目封装的 api 会吞掉二进制响应。**
+`api/index.js` 的响应拦截器判断 `response.data.code`，二进制没有 `code` 字段 →
+直接 `Promise.reject(response.data)`，抛的是 **ArrayBuffer 不是 Error**（`message` 为空）→
+阅读器只显示「解析失败」。**文件下载必须走原生 fetch**。
+
+**2. `.nrd-stage` 上的 `v-show="!loading"` 让 epub.js 在 0×0 容器里渲染。**
+loading 期间 `display:none` → 尺寸 0 → iframe 按 0 尺寸布局，加载完显示出来一片空白。
+去掉 `!loading` 条件（遮罩本来就盖在正文区上），加载后再补一次 `rendition.resize()`。
+
+**3. `themes.register` + `select` 会把正文弄丢。**
+每次 select 重建 stylesheet，实测切主题后 iframe 里内容消失。改用 `themes.override`
+逐条设置属性，不重建；改字号后还要手动 `display(cfi)` 重新定位（epub.js 重新分页后不回原位）。
+
+**4. 小说页路由是 `/novel` 不是 `/novels`。** 测试脚本一开始点了个 404 页面。
+
+#### 验证
+- TXT：分章到「第一章 学而时习之」，2 段渲染，进度 33%
+- EPUB：iframe 内文本为「第一章 春夜喜雨…」，白天 `color: rgb(43,43,43)`，
+  切夜间后 `color: rgb(207,212,218)`、容器 `rgb(22,24,28)`，正文仍可见
+- 目录：EPUB 2 项、TXT 按章生成
+- 测试书全部用脚本上传后删除，novels 表未留垃圾数据
+
+版本 SW v510→v514、APP_VERSION v2.46.195→v2.46.200。
+
+---
+
 ## [v2.46.195] - 2026-10-22
 
 ### 音乐列表暂停图标：四条竖杠 → 两条

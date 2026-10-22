@@ -250,6 +250,9 @@
       </template>
     </el-dialog>
   </IslandInnerBase>
+  <!-- 阅读器：全屏覆盖层 -->
+  <NovelReader v-if="reading" :novel="reading" @close="reading = null" />
+
 </template>
 
 <script setup>
@@ -270,6 +273,7 @@ import { downloadNovelTemplate } from '@/api/novel'
 import { reorderNovel } from '@/api/novel'
 import { useRowDragSort } from '@/composables/useRowDragSort'
 import { useIsMobile } from '@/composables/useIsMobile'
+import NovelReader from '@/components/novel/NovelReader.vue'
 
 const novelStore = useNovelStore()
 const { isMobile } = useIsMobile()
@@ -517,9 +521,17 @@ async function handleUpload() {
 
 /* 行内动作清单（v2.46.159）：模板只声明，图标/文案/危险色一处可改 */
 const rowActions = [
+  // v2.46.196：点「阅读」进阅读器（epub.js / TXT 分章），直接读 novels 表的原始文件
+  { icon: 'play', label: '阅读', onClick: openReader },
   { icon: 'edit', label: '编辑', onClick: openEdit },
   { icon: 'trash', label: '删除', danger: true, onClick: handleDelete },
 ]
+
+/** 打开阅读器 */
+const reading = ref(null)
+function openReader(row) {
+  reading.value = row
+}
 
 function openEdit(row) {
   editId.value = row.id
