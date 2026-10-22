@@ -20,9 +20,7 @@
 import { computed } from 'vue'
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
 import { useRoute } from 'vue-router'
-import RoadRashGame from '@/components/games/RoadRashGame.vue'
 import PvzEmbed from '@/components/games/PvzEmbed.vue'
-import EmulatorHost from '@/components/games/EmulatorHost.vue'
 
 /* 真全屏页：隐藏侧栏/顶栏/TabBar/页脚，游戏拿满整块视口 */
 useFullscreenPage()
@@ -31,18 +29,6 @@ const route = useRoute()
 
 /** 键与 route.meta.game 对齐；mode 留空 = 交给组件按端自己选档（手机 easy / 桌面 classic） */
 const MAP = {
-  roadrash: {
-    title: '暴力摩托',
-    subtitle: '伪 3D 公路竞速 · 近身格斗 · 跑满全程即通关',
-    component: RoadRashGame,
-    mode: '',
-  },
-  emulator: {
-    title: '经典模拟器',
-    subtitle: '内置开源游戏 · 也可加载本地 ROM',
-    component: EmulatorHost,
-    mode: '',
-  },
   pvz: {
     title: '植物大战僵尸',
     subtitle: '开源同人版 · 经典塔防 · 关卡 / 图鉴 / 商店',
@@ -51,7 +37,7 @@ const MAP = {
   },
 }
 
-const cfg = computed(() => MAP[route.meta.game] || MAP.roadrash)
+const cfg = computed(() => MAP[route.meta.game] || MAP.pvz)
 
 </script>
 

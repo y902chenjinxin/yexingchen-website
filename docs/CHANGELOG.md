@@ -23,6 +23,47 @@
 
 ---
 
+## [v2.46.225] - 2026-10-23
+
+### 下线：暴力摩托、经典模拟器（连服务器文件一起清）
+
+夜星：「把这个经典模拟器干掉、暴力摩托干掉，都在服务器里删除，没啥用，不好玩还浪费时间」
+
+#### 前端
+| 位置 | 处理 |
+|---|---|
+| `constants/navModules.js` | 删侧栏两个入口 + 无用图标 import（Bicycle / Monitor） |
+| `router/index.js` | 删 `/play/roadrash`、`/play/emulator` 两条路由 |
+| `views/GamesView.vue` | 删大厅里的两个游戏条目 + 两个 ICON SVG（约 45 行） |
+| `views/PlayView.vue` | MAP 只留 pvz；fallback 从 `MAP.roadrash` 改成 `MAP.pvz` |
+| 文件 | 删 `EmulatorHost.vue`、`RoadRashGame.vue`、`api/emulator.js`、`api/roadrash.js`、`utils/games/roadrash-sfx.js` |
+
+#### 后端
+- 删 `routers/emulator.py`（含 ROM 上传/列表/删除）、`routers/roadrash_rooms.py`（联机房间，内存存储，无表可清）
+- `main.py` 去掉两条 import 与 `include_router`
+- 验证：`emulator` / `roadrash` 路由数 = **0**，总路由 263
+
+#### 服务器
+- 删 nginx `location /roms/`（附注释，第 120-126 行）；**改前备份** `.bak-20261023001741`，`nginx -t` 通过后 `nginx -s reload`
+- 删 `/var/www/yexingchen/roms`（4.3M / 3 个 homebrew：thwaite.nes、nova.kes、doukutsu-en.gen）
+- **先打包到 `/root/deleted-roms-20261023.tar.gz`（1.7M）再删**，后悔还能恢复
+
+> ⚠️ 验证时注意：删完 `curl /roms/nova.nes` 仍返回 **200** —— 因为 nginx 的 SPA 兜底会把任何
+> 不存在路径都返回 `index.html`。要判断"文件真的没了"，看 `Content-Type: text/html`
+> 和内容是不是 `<!DOCTYPE html>`，不能只看状态码。
+
+#### 产物核验
+```
+EmulatorHost chunk: 0
+RoadRashGame chunk: 0
+Pvz chunk: 2（仍在）
+assets 里残留 roadrash 字符串: 无
+```
+
+版本 SW v538→v539、APP_VERSION v2.46.224→v2.46.225。
+
+---
+
 ## [v2.46.224] - 2026-10-22
 
 ### 植物大战僵尸：整页全屏 + 手机自动横屏 + 去掉返回按钮

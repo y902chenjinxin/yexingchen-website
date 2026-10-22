@@ -42,9 +42,7 @@ import {
   Aim,
   Clock,
   Sunrise,
-  Bicycle,
   Sunny,
-  Monitor,
 } from '@element-plus/icons-vue'
 
 export const NAV_GROUPS = [
@@ -91,8 +89,6 @@ export const NAV_GROUPS = [
       { path: '/tool/games', title: '棋类游戏', icon: Football },
       // v2.46.144 两款单机游戏给侧栏直达入口 —— 此前只挂在「棋类游戏」页内部的休闲分组，
       // 从侧栏根本看不到，等于没接（夜星反馈「侧边栏娱乐模块没有看到」）。
-      { path: '/play/roadrash', title: '暴力摩托', icon: Bicycle },
-      { path: '/play/emulator', title: '经典模拟器', icon: Monitor },
       { path: '/play/pvz', title: '植物大战僵尸', icon: Sunny },
       { path: '/tool/games-3d', title: '3D 棋牌', icon: Box },
       { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },

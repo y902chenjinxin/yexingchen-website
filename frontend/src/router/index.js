@@ -244,22 +244,9 @@ const routes = [
     component: () => import('@/views/GamesView.vue'),
     meta: { requiresAuth: true }
   },
-  // v2.46.144 两款单机游戏的侧栏直达页（此前只挂在棋类游戏页内部，侧栏无入口）。
-  //   同一页面按 meta.game 分流：roadrash → 自绘 Canvas 移植版；pvz → 开源同人版 iframe 宿主。
-  //   路径刻意避开 nginx `location /play/pvz/`（带尾斜杠的 alias 前缀），/play/pvz 不带斜杠走 SPA fallback。
-  {
-    path: '/play/roadrash',
-    name: 'PlayRoadRash',
-    component: () => import('@/views/PlayView.vue'),
-    meta: { requiresAuth: true, game: 'roadrash' }
-  },
-  {
-    // 经典模拟器（v2.46.185）：ROM 由用户本地选择，走 IndexedDB，不落服务器
-    path: '/play/emulator',
-    name: 'PlayEmulator',
-    component: () => import('@/views/PlayView.vue'),
-    meta: { requiresAuth: true, game: 'emulator' }
-  },
+  // v2.46.225：暴力摩托、经典模拟器已下线（夜星：没啥用，还浪费时间）。
+  //   对应组件 / 后端路由 / 服务器 ROM 目录一并删除，只剩 PvZ。
+  //   路径刻意避开 nginx `location /play/pvz/`（带尾斜杠的 alias 前缀），不带斜杠走 SPA fallback。
   {
     path: '/play/pvz',
     name: 'PlayPvz',
