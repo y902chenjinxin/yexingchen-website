@@ -521,7 +521,7 @@ const router = useRouter()
 
 const rowActions = [
   // v2.46.196：点「阅读」进阅读器（epub.js / TXT 分章），直接读 novels 表的原始文件
-  { icon: 'play', label: '阅读', onClick: openReader },
+  { icon: 'book', label: '阅读', onClick: openReader },
   { icon: 'edit', label: '编辑', onClick: openEdit },
   { icon: 'trash', label: '删除', danger: true, onClick: handleDelete },
 ]
