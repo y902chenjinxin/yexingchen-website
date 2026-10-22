@@ -18,7 +18,31 @@
       <div v-if="novelStore.loading" class="sk-skeleton-rows">
         <SkeletonBlock v-for="i in 6" :key="i" width="100%" height="42px" style="margin-bottom: 8px;" />
       </div>
-      <el-table ref="tableRef" :data="pagedRows" stripe class="admin-table" style="width: 100%" @selection-change="onSelectionChange">
+      <!-- 手机端：书架（卡片网格 + 封面 + 进度）。桌面端仍走下面的表格。
+           v2.46.209：夜星要「PC 列表 / 手机书架」，用触摸能力判断而不是宽度
+           （本站手机浏览器 viewport 是 1280，max-width 媒体查询不触发）。 -->
+      <div v-if="isTouch && !novelStore.loading && pagedRows.length" class="novel-shelf">
+        <button
+          v-for="n in pagedRows"
+          :key="n.id"
+          class="ns-card"
+          type="button"
+          @click="openReader(n)"
+        >
+          <div class="ns-cover" :style="coverStyle(n)">
+            <img v-if="n.cover_url" :src="n.cover_url" :alt="n.title" loading="lazy" />
+            <span v-else class="ns-initial">{{ (n.title || '书').slice(0, 1) }}</span>
+            <span class="ns-prog" :style="{ width: progressOf(n) + '%' }" />
+          </div>
+          <div class="ns-meta">
+            <span class="ns-title">{{ n.title }}</span>
+            <span class="ns-sub">{{ n.author || '未知作者' }}</span>
+            <span class="ns-pct">{{ progressOf(n) }}%</span>
+          </div>
+        </button>
+      </div>
+
+      <el-table v-if="!isTouch" ref="tableRef" :data="pagedRows" stripe class="admin-table" style="width: 100%" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="48" />
         <el-table-column prop="title" label="标题" min-width="150" />
         <el-table-column v-if="!isMobile" prop="author" label="作者" width="110" />
@@ -253,7 +277,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed, watch, nextTick } from 'vue'
 import { usePagedList } from '@/composables/usePagedList'
 import { fmtDate, fmtSize } from '@/utils/format'
 import PageToolbar from '@/components/common/PageToolbar.vue'
@@ -519,6 +543,59 @@ async function handleUpload() {
 /* 行内动作清单（v2.46.159）：模板只声明，图标/文案/危险色一处可改 */
 const router = useRouter()
 
+/* ---------------- 手机端书架（v2.46.209） ----------------
+   判断触摸能力而不是屏幕宽度：本站手机浏览器 viewport 被 main.js 覆写成 1280，
+   max-width 媒体查询在手机上不会触发。*/
+const isTouch = ref(false)
+
+/* 手机端要把这一页切成真正的窄屏：本站手机浏览器 viewport 被 main.js 覆写成 1280
+   （全站要网页版布局），但书架必须按真实屏宽排才好看，否则卡片会被挤成指头大小。
+   所以在这个路由上临时切 device-width + 隐藏侧栏，离开时还原。 */
+let savedViewport = ''
+function enterShelfMode() {
+  const meta = document.querySelector('meta[name="viewport"]')
+  if (!meta) return
+  savedViewport = meta.getAttribute('content') || ''
+  meta.setAttribute('content',
+    'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover')
+  document.body.classList.add('novel-shelf-mode')
+}
+function exitShelfMode() {
+  const meta = document.querySelector('meta[name="viewport"]')
+  if (meta && savedViewport) meta.setAttribute('content', savedViewport)
+  document.body.classList.remove('novel-shelf-mode')
+}
+
+onMounted(() => {
+  isTouch.value = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window
+  if (isTouch.value) enterShelfMode()
+})
+onBeforeUnmount(() => { exitShelfMode() })
+
+/** 没有封面时用「书名首字 + 渐变」，按 id 稳定取色（同一本书每次颜色一致） */
+const COVER_GRADS = [
+  ['#f0e6d2', '#cdb389'],
+  ['#e2ecE8', '#a9c6bd'],
+  ['#f0e2dc', '#c9a89f'],
+  ['#e4eaf2', '#aabccd'],
+  ['#ece4f0', '#b8a8c6'],
+]
+function coverStyle(n) {
+  const g = COVER_GRADS[Math.abs(Number(n.id) || 0) % COVER_GRADS.length]
+  return { background: `linear-gradient(155deg, ${g[0]}, ${g[1]})` }
+}
+
+/** 阅读进度：读阅读器写进 localStorage 的那份 */
+function progressOf(n) {
+  try {
+    const raw = localStorage.getItem(`xuanhuang:reader:prog:${n.id}`)
+    if (!raw) return 0
+    const j = JSON.parse(raw)
+    return Math.max(0, Math.min(100, Math.round((j.percent || 0) * 100)))
+  } catch { return 0 }
+}
+
+
 const rowActions = [
   // v2.46.196：点「阅读」进阅读器（epub.js / TXT 分章），直接读 novels 表的原始文件
   { icon: 'book', label: '阅读', onClick: openReader },
@@ -771,5 +848,103 @@ function formatTime(timeStr) {
   --el-table-tr-bg-color: transparent;
   --el-table-header-bg-color: transparent;
   --el-table-border-color: var(--ls-line, rgba(127, 127, 127, 0.18));
+}
+
+/* ================= 手机端书架（v2.46.209） =================
+   夜星要「PC 列表 / 手机书架」。卡片靠封面撑视觉，不加边框，
+   进度用封面底部一条细线表示，比数字更直观。 */
+.novel-shelf { padding: 4px 2px 12px; }
+.novel-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 16px 11px;
+}
+.ns-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  /* 🔴 <button> 的 UA 样式 color 是 buttontext（黑色），深色主题下书名会看不见，
+     必须显式继承父级（这个坑 3D 棋牌大厅也踩过一次） */
+  color: inherit;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ns-cover {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px -8px rgba(20, 30, 40, .38), 0 1px 0 rgba(255, 255, 255, .5) inset;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.ns-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ns-initial {
+  font-size: 34px;
+  font-weight: 500;
+  color: rgba(70, 58, 46, .5);
+  letter-spacing: .04em;
+  user-select: none;
+}
+.ns-prog {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(60, 50, 40, .55);
+  border-radius: 0 2px 2px 0;
+  transition: width .3s ease;
+}
+.ns-card:active .ns-cover {
+  transform: scale(.965);
+  box-shadow: 0 3px 10px -6px rgba(20, 30, 40, .4);
+}
+.ns-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ns-title {
+  font-size: 13px;
+  line-height: 1.35;
+  /* 跟随主题：项目有多套 token（--ls-* / --lj-* / --dp-*），用 inherit 最稳 */
+  color: inherit;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.ns-sub {
+  font-size: 11.5px;
+  opacity: .62;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ns-pct { font-size: 11px; opacity: .55; }
+
+/* 手机（触摸）上给书架多留点呼吸空间，并让网格更密 */
+@media (pointer: coarse) {
+  .novel-shelf {
+    /* 父容器（IslandInnerBase）在窄屏仍有约 57px 内边距，撑不出 3 列，
+       用负 margin 往回收一点 */
+    margin: 0 -14px;
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: 18px 10px;
+    padding: 8px 0 20px;
+  }
+  .ns-initial { font-size: 30px; }
+  .ns-title { font-size: 12.5px; }
+}
+
+/* 书架模式（手机）：侧栏在 390 宽下会把内容挤没，直接隐藏 */
+:global(body.novel-shelf-mode .dsb),
+:global(body.novel-shelf-mode .tab-bar),
+:global(body.novel-shelf-mode .app-tabbar) {
+  display: none !important;
 }
 </style>
