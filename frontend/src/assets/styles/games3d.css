@@ -26,7 +26,11 @@
    夜星反馈「3D 棋牌的背景跟其他娱乐的不一样，是黑的」。
    深色是 v2.46.122 为 3D 牌桌刻意做的沉浸背景（衬托牌面与光效），
    但**选游戏的这一屏**没有 3D 内容，黑底反而跟全站割裂。
-   所以只在 lobby 阶段换浅色；一进牌局还是原来的深色沉浸。 */
+   所以只在 lobby 阶段**跟随站点主题**（不再固定深蓝黑）；一进牌局还是原来的深色沉浸。
+
+   v2.46.222 修：上一版把卡片背景写死 #fff，文字却跟随 --dp-text
+   （夜间是 #e6f0ff 浅色）→ 浅字压白卡，标题和图标几乎看不见。
+   现在背景/文字/图标全部走主题变量，两套主题都对。 */
 .g3d-root.is-lobby {
   background: var(--dp-bg, #f7f5f0);
   color: var(--dp-text, #2b2b2b);
@@ -38,10 +42,13 @@
   background-clip: initial;
   color: var(--dp-text, #1f2a33);
 }
-.g3d-root.is-lobby .g3d-lobby-head p { color: var(--dp-text-3, #6b7280); }
+.g3d-root.is-lobby .g3d-lobby-head p { color: var(--dp-text2, #6b7280); }
 .g3d-root.is-lobby .g3d-lobby-card {
+  /* 🔴 背景必须用主题卡片色，不能写死 #fff（v2.46.222 修）。
+     日间 --dp-surface = #ffffff、夜间 = #0d0d18；而文字用的是 --dp-text
+     （夜间是浅色）。写死白底 + 浅色文字 = 深色主题下标题/图标几乎看不见。 */
   color: var(--dp-text, #2b2b2b);
-  background: #fff;
+  background: var(--dp-surface, #fff);
   border: 1px solid var(--dp-line, rgba(20, 30, 40, .1));
   box-shadow: 0 10px 26px -18px rgba(20, 30, 40, .34);
   backdrop-filter: none;
@@ -51,8 +58,29 @@
   box-shadow: 0 16px 30px -18px rgba(20, 30, 40, .38);
   transform: translateY(-2px);
 }
-.g3d-root.is-lobby .lc-name { color: var(--dp-text, #2b2b2b); }
-.g3d-root.is-lobby .lc-desc { color: var(--dp-text-3, #6b7280); }
+/* 标题/描述/图标一律继承卡片色（图标是 currentColor 的线性 SVG）。
+   原来 .lc-name 硬编码 #f2f8ff，深色主题下压在浅卡上同样看不见。
+
+   🔴 变量名是 --dp-text2 / --dp-text3（**没有连字符**）：
+   之前的 var(--dp-text-3, #6b7280) 根本不存在，一直在悄悄走 fallback。 */
+.g3d-root.is-lobby .g3d-lobby-card .lc-name {
+  color: inherit;
+  font-weight: 700;
+}
+.g3d-root.is-lobby .g3d-lobby-card .lc-desc {
+  color: var(--dp-text2, #6b7280);
+}
+.g3d-root.is-lobby .g3d-lobby-card .lc-icon {
+  color: var(--dp-accent, #c7a96b);
+  opacity: 1;
+}
+/* 夜间（含缺省）：卡片比纯黑页面亮一档，避免"深灰压黑"糊成一片。
+   主题开关是 :root[data-theme]，缺省即夜间 —— 所以 :no-theme 走 --dp-surface 也够亮。 */
+html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
+  background: var(--dp-surface2, #141426);
+  border-color: rgba(255, 255, 255, .09);
+  box-shadow: 0 12px 30px -20px rgba(0, 0, 0, .8);
+}
 
 /* 装饰层：点阵 + 光斑 + 桌沿光带 */
 .g3d-deco { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
