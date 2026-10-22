@@ -15,14 +15,22 @@
         <span class="nrd-name">{{ novel.title }}</span>
         <span class="nrd-pct">{{ percent }}%</span>
       </div>
-      <button class="nrd-ic" type="button" title="目录" @click="togglePanel('toc')">☰</button>
-      <button class="nrd-ic" type="button" title="书签" @click="togglePanel('marks')">
+      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="目录" @click="togglePanel('toc')">☰</button>
+      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="搜索" @click="togglePanel('find')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.2" />
+          <path d="M15.2 15.2 20 20" />
+        </svg>
+      </button>
+      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="书签" @click="togglePanel('marks')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
           <path d="M7 4.5h10v15l-5-3.4-5 3.4v-15Z" />
         </svg>
       </button>
       <button
+        v-if="kind !== 'pdf'"
         class="nrd-ic"
         :class="{ on: speaking }"
         type="button"
@@ -38,7 +46,7 @@
           <path d="M8.5 5.5 18 12l-9.5 6.5v-13Z" />
         </svg>
       </button>
-      <button class="nrd-ic" type="button" title="设置" @click="togglePanel('set')">Aa</button>
+      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="设置" @click="togglePanel('set')">Aa</button>
     </header>
 
     <!-- 加载 / 错误 -->
@@ -57,6 +65,17 @@
        epub.js 会在 0×0 容器里渲染，加载完显示出来就是一片空白（实测踩过）。
        遮罩 .nrd-mask 本来就盖在正文区上，不需要靠隐藏 stage 来挡。 -->
     <div v-show="!error && kind === 'epub'" ref="epubRef" class="nrd-stage" />
+
+    <!-- PDF（v2.46.215）：用浏览器原生查看器，不改主题不重排 ——
+         自带渲染层（pdf.js）在手机上体验也未必更好，且要额外维护 worker。
+         手机浏览器大多不内嵌 PDF，检测到时给下载入口。 -->
+    <div v-if="kind === 'pdf'" class="nrd-stage nrd-pdf">
+      <iframe v-if="!pdfBlocked && pdfUrl" :src="pdfUrl" class="nrd-pdf-frame" title="PDF" />
+      <div v-else class="nrd-pdf-fallback">
+        <p>{{ pdfBlocked ? '当前浏览器不支持内嵌 PDF' : 'PDF 加载中…' }}</p>
+        <a v-if="pdfUrl" class="nrd-btn primary" :href="pdfUrl" :download="novel.title + '.pdf'">下载后用其他应用打开</a>
+      </div>
+    </div>
 
     <!-- TXT 容器（v2.46.201）
          分页模式：CSS 多列，一列 = 一页，翻页整体 translateX，一页正好填满屏幕；
@@ -87,7 +106,7 @@
     </div>
 
     <!-- 底部：进度 + 翻页 -->
-    <footer class="nrd-foot">
+    <footer v-if="kind !== 'pdf'" class="nrd-foot">
       <button class="nrd-nav" type="button" :disabled="atStart" @click="goPrev">上一页</button>
       <div class="nrd-prog">
         <i :style="{ width: percent + '%' }" />
@@ -114,6 +133,40 @@
             {{ item.label }}
           </button>
           <p v-if="!toc.length" class="nrd-toc-empty">这本没有可用目录</p>
+        </div>
+      </aside>
+    </transition>
+
+    <!-- 全文搜索抽屉（v2.46.215） -->
+    <transition name="nrd-fade">
+      <aside v-if="findOpen" class="nrd-toc nrd-find">
+        <div class="nrd-toc-head">
+          <span>搜索</span>
+          <button class="nrd-ic" type="button" @click="findOpen = false">×</button>
+        </div>
+        <div class="nrd-find-box">
+          <input
+            v-model="findQ"
+            class="nrd-find-input"
+            type="search"
+            placeholder="输入关键词"
+            @keyup.enter="runFind"
+          />
+          <button class="nrd-btn primary" type="button" @click="runFind">搜索</button>
+        </div>
+        <p class="nrd-find-tip">{{ findTip }}</p>
+        <div class="nrd-toc-list">
+          <button
+            v-for="(r, i) in findResults"
+            :key="i"
+            class="nrd-find-item"
+            type="button"
+            @click="jumpToResult(r)"
+          >
+            <span class="nrd-find-ch">{{ r.chapter }}</span>
+            <span class="nrd-find-snip">{{ r.snippet }}</span>
+          </button>
+          <p v-if="findQ && !findResults.length && findTip" class="nrd-toc-empty">没有找到「{{ findQ }}」</p>
         </div>
       </aside>
     </transition>
@@ -408,6 +461,7 @@ function pickKind(name) {
   const n = String(name || props.novel.original_filename || '').toLowerCase()
   if (n.endsWith('.epub')) return 'epub'
   if (n.endsWith('.txt')) return 'txt'
+  if (n.endsWith('.pdf')) return 'pdf'
   return ''
 }
 
@@ -457,6 +511,20 @@ function splitChapters(text) {
 
   if (!chapters.length) chapters.push({ title: props.novel.title || '正文', paras: [text.trim()] })
   return chapters
+}
+
+/* ---------------- PDF（v2.46.215） ---------------- */
+const pdfUrl = ref('')
+const pdfBlocked = ref(false)
+
+function openPdf(buf) {
+  const blob = new Blob([buf], { type: 'application/pdf' })
+  pdfUrl.value = URL.createObjectURL(blob)
+  // 手机浏览器普遍不内嵌 PDF（会直接下载或白屏），给下载兜底
+  const ua = navigator.userAgent || ''
+  const mobile = /Android|iPhone|iPad|iPod|HarmonyOS|Mobile|MicroMessenger/i.test(ua)
+  pdfBlocked.value = mobile
+  percent.value = 0
 }
 
 /* ---------------- EPUB ---------------- */
@@ -756,6 +824,59 @@ function onTxtScroll() {
   }, 400)
 }
 
+/* ---------------- 全文搜索（v2.46.215） ----------------
+   TXT：直接在分章后的段落里找，返回章节 + 上下文片段；
+   EPUB：正文在各章 iframe 里，逐章抽取文本成本高，先只搜目录标题。 */
+const findOpen = ref(false)
+const findQ = ref('')
+const findResults = ref([])
+const findTip = ref('')
+
+function runFind() {
+  const q = findQ.value.trim()
+  findResults.value = []
+  if (!q) { findTip.value = ''; return }
+
+  if (kind.value === 'txt') {
+    const out = []
+    txtChapters.value.forEach((c, ci) => {
+      c.paras.forEach((p) => {
+        let idx = p.indexOf(q)
+        while (idx >= 0 && out.length < 300) {
+          out.push({
+            ci,
+            chapter: c.title,
+            snippet: p.slice(Math.max(0, idx - 24), idx + q.length + 34),
+          })
+          idx = p.indexOf(q, idx + q.length)
+        }
+      })
+    })
+    findResults.value = out
+    findTip.value = out.length ? `共 ${out.length} 处` : ''
+    return
+  }
+
+  // EPUB：只搜目录
+  const out = toc.value
+    .map((t, i) => ({ t, i }))
+    .filter(({ t }) => (t.label || '').includes(q))
+    .map(({ t, i }) => ({ ci: i, chapter: t.label, snippet: '目录匹配', href: t.href }))
+  findResults.value = out
+  findTip.value = out.length
+    ? `目录命中 ${out.length} 条（EPUB 正文全文搜索暂未支持）`
+    : 'EPUB 只能搜目录标题，正文搜索待后续版本'
+}
+
+function jumpToResult(r) {
+  findOpen.value = false
+  if (kind.value === 'epub') {
+    if (r.href) rendition?.display(r.href)
+    return
+  }
+  goChapter(r.ci)
+}
+
 /* ---------------- 书签 / 笔记（v2.46.212） ---------------- */
 const marksOpen = ref(false)
 const marks = ref([])
@@ -764,13 +885,15 @@ const MARK_LABEL = { bookmark: '书签', highlight: '划线', note: '笔记' }
 /** 三个面板互斥（目录 / 书签 / 设置），避免叠在一起 */
 function togglePanel(which) {
   // 🔴 必须取 .value：直接放 ref 对象，`!ref` 恒为 false，面板永远打不开
-  const cur = { toc: tocOpen.value, marks: marksOpen.value, set: setOpen.value }
+  const cur = { toc: tocOpen.value, marks: marksOpen.value, set: setOpen.value, find: findOpen.value }
   const next = !cur[which]
   tocOpen.value = false
   marksOpen.value = false
   setOpen.value = false
+  findOpen.value = false
   if (which === 'toc') tocOpen.value = next
   else if (which === 'marks') { marksOpen.value = next; if (next) loadMarks() }
+  else if (which === 'find') { findOpen.value = next; if (next) nextTick(() => document.querySelector('.nrd-find-input')?.focus()) }
   else setOpen.value = next
 }
 
@@ -915,7 +1038,9 @@ onMounted(async () => {
     kind.value = pickKind()
     if (!kind.value) throw new Error('只支持 EPUB 和 TXT 格式')
     const buf = await fetchBuffer()
-    if (kind.value === 'epub') {
+    if (kind.value === 'pdf') {
+      openPdf(buf)
+    } else if (kind.value === 'epub') {
       await openEpub(buf)
     } else {
       const text = decodeText(buf)
@@ -973,6 +1098,7 @@ onBeforeUnmount(() => {
   clearTimeout(scrollTimer)
   try { rendition?.destroy() } catch { /* 忽略 */ }
   try { book?.destroy() } catch { /* 忽略 */ }
+  if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value)
 })
 
 watch(atStart, (v) => { atStart.value = v })
@@ -1344,6 +1470,80 @@ watch([size, lineHeight, padding], () => { onResize() })
   .nrd-txt.is-paged { touch-action: none; }
   /* 滚动模式允许原生纵向滚动 */
   .nrd-txt:not(.is-paged) { touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+}
+
+/* PDF 容器（v2.46.215） */
+.nrd-pdf { background: #525659; }
+.nrd-pdf-frame { width: 100%; height: 100%; border: 0; display: block; }
+.nrd-pdf-fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #e8e8e8;
+  font-size: 13.5px;
+  padding: 0 24px;
+  text-align: center;
+}
+.nrd-pdf-fallback .nrd-btn {
+  border: 0;
+  background: #fff;
+  color: #333;
+  text-decoration: none;
+  margin-top: 0;
+}
+
+/* 搜索抽屉（v2.46.215） */
+.nrd-find { width: 340px; max-width: 88vw; }
+.nrd-find-box {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px 6px;
+}
+.nrd-find-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--nrd-line);
+  background: transparent;
+  color: inherit;
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+}
+.nrd-find-input:focus { border-color: currentColor; }
+.nrd-find-box .nrd-btn { margin-top: 0; flex-shrink: 0; }
+.nrd-find-tip {
+  margin: 0;
+  padding: 0 16px 8px;
+  font-size: 11.5px;
+  opacity: .55;
+}
+.nrd-find-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--nrd-line);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nrd-find-item:hover { background: rgba(127, 127, 127, .1); }
+.nrd-find-ch { display: block; font-size: 11.5px; opacity: .55; margin-bottom: 3px; }
+.nrd-find-snip {
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* 书签抽屉（v2.46.212） */
