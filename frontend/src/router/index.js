@@ -74,6 +74,14 @@ const routes = [
     component: () => import('@/views/NovelView.vue'),
     meta: { requiresAuth: true }
   },
+  // v2.46.207：阅读器改成独立路由 —— 手机系统返回键才能正确"关闭阅读器回到列表"，
+  // 而不是带着 body.nrd-open 的隐藏侧栏状态退到别的页面（表现为空白且回不去）
+  {
+    path: '/novel/:id(\\d+)/read',
+    name: 'NovelRead',
+    component: () => import('@/views/NovelReadView.vue'),
+    meta: { requiresAuth: true }
+  },
   {
     path: '/video',
     name: 'Video',
@@ -469,6 +477,15 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// v2.46.207 兜底：阅读器用 body.nrd-open 隐藏侧栏并锁滚动，
+// 一旦因为系统返回/直接跳转导致组件异常卸载，残留的 class 会让下一个页面
+// 变成"没侧栏、不能滚、看着空白"。这里每次路由变化都校正一次。
+router.afterEach((to) => {
+  if (to.name !== 'NovelRead') {
+    document.body.classList.remove('nrd-open')
+  }
 })
 
 router.beforeEach(routeGuard)
