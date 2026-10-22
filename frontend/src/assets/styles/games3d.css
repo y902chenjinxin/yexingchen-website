@@ -22,6 +22,38 @@
     linear-gradient(165deg, #14273f 0%, #101c33 48%, #0c1526 100%);
 }
 
+/* ---- v2.46.194 大厅阶段改用浅色，与游戏大厅/其他娱乐页统一 ----
+   夜星反馈「3D 棋牌的背景跟其他娱乐的不一样，是黑的」。
+   深色是 v2.46.122 为 3D 牌桌刻意做的沉浸背景（衬托牌面与光效），
+   但**选游戏的这一屏**没有 3D 内容，黑底反而跟全站割裂。
+   所以只在 lobby 阶段换浅色；一进牌局还是原来的深色沉浸。 */
+.g3d-root.is-lobby {
+  background: var(--dp-bg, #f7f5f0);
+  color: var(--dp-text, #2b2b2b);
+}
+.g3d-root.is-lobby .g3d-deco { opacity: .16; }
+.g3d-root.is-lobby .g3d-lobby-head h1 {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: var(--dp-text, #1f2a33);
+}
+.g3d-root.is-lobby .g3d-lobby-head p { color: var(--dp-text-3, #6b7280); }
+.g3d-root.is-lobby .g3d-lobby-card {
+  color: var(--dp-text, #2b2b2b);
+  background: #fff;
+  border: 1px solid var(--dp-line, rgba(20, 30, 40, .1));
+  box-shadow: 0 10px 26px -18px rgba(20, 30, 40, .34);
+  backdrop-filter: none;
+}
+.g3d-root.is-lobby .g3d-lobby-card:hover {
+  border-color: var(--dp-accent, #c7a96b);
+  box-shadow: 0 16px 30px -18px rgba(20, 30, 40, .38);
+  transform: translateY(-2px);
+}
+.g3d-root.is-lobby .lc-name { color: var(--dp-text, #2b2b2b); }
+.g3d-root.is-lobby .lc-desc { color: var(--dp-text-3, #6b7280); }
+
 /* 装饰层：点阵 + 光斑 + 桌沿光带 */
 .g3d-deco { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .g3d-deco::before {

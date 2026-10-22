@@ -1,5 +1,5 @@
 <template>
-  <div class="g3d-root">
+  <div class="g3d-root" :class="{ 'is-lobby': phase === 'lobby' }">
     <!-- 背景装饰（需求4：非全黑，冷蓝光晕 + 点阵 + 光点） -->
     <div class="g3d-deco">
       <i class="g3d-orb a"></i>
