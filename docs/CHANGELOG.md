@@ -23,6 +23,60 @@
 
 ---
 
+## [v2.46.212~214] - 2026-10-22
+
+### 阅读器补齐：进度云同步 / 书签笔记 / 朗读 / 书架收藏
+
+夜星：「全部都做了」。
+
+#### 数据层（手工 SQL，未留 migration —— alembic 链仍是坏的）
+`novels` 加 6 个字段：`progress_cfi` / `progress_percent` / `progress_chapter` /
+`last_read_at` / `read_seconds` / `is_favorite`；新建 `novel_bookmarks`
+（kind=bookmark|highlight|note，带 cfi / chapter / quote / note / percent）。
+
+#### ① 进度云端同步（P0，之前只有 localStorage）
+- 翻页后**防抖 1.2 秒**上报 `PUT /api/novels/{id}/progress`
+- 阅读时长：距上次上报满 30 秒才结算增量，防挂机刷时长
+- 打开书时**服务器优先**（跨设备），localStorage 只作兜底
+- TXT 存章节标题（跨设备按标题找回），EPUB 存 CFI
+
+#### ② 书签 / 笔记
+顶栏加书签按钮，抽屉里可「当前位置加书签」「写笔记」、点击跳转、删除。
+TXT 按章节标题定位，EPUB 按 CFI。
+
+#### ③ 朗读（TTS）
+用浏览器原生 `SpeechSynthesis`，读当前章。**仅 TXT**：
+EPUB 正文在 iframe 里取不到纯文本，会提示「朗读目前只支持 TXT」。
+
+#### ④ 书架收藏
+卡片右上角星标，触摸设备常显（无 hover）。收藏状态存服务器。
+
+#### 🔴 修了四个 bug，其中两个很隐蔽
+1. **`ResponseBase.data` 的类型是 `dict`** —— bookmarks 接口直接返回 list，
+   被 pydantic 拒绝（`dict_type`），接口 500。改成 `{"list": [...]}`。
+2. **详情接口没有返回新字段** —— 前端拿不到 `progress_percent`，跨设备恢复失效。
+3. **`togglePanel` 里 ref 漏写 `.value`** —— `!ref` 恒为 false，三个面板全都打不开。
+4. **部署中途 `schema_guard` 报错**：`alembic heads` 短暂显示为
+   `['d0e1f2a3b4c5','t1u2v3w4x5y6']`（文件传一半的状态），传完自动恢复 `c8d9e0f1a2b3`。
+   不是真故障，但会吓一跳 —— 部署后先等几秒再看 health。
+
+#### 验证（端到端）
+```
+服务器进度: {"percent":0.5,"chapter":"第三章 功能测试3"}
+书签: [{"id":1,"kind":"bookmark","chapter":"第三章 功能测试3","pct":50}]
+收藏: {"is_favorite":1}
+删书签: 200
+```
+
+#### 还没做
+- **PDF 阅读**：后端允许上传 PDF，但前端没接 pdf.js（要引入渲染层，手机体验也一般）
+- **全书搜索**：TXT 可做，EPUB 要遍历所有章节提取文本，成本高
+- **仿真翻书动画 / 自定义字体导入**：锦上添花，暂缓
+
+版本 SW v525→v528、APP_VERSION v2.46.211→v2.46.214。
+
+---
+
 ## [v2.46.209~211] - 2026-10-22
 
 ### 手机端书架（PC 保持列表）

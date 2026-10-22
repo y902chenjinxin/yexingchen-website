@@ -15,8 +15,30 @@
         <span class="nrd-name">{{ novel.title }}</span>
         <span class="nrd-pct">{{ percent }}%</span>
       </div>
-      <button class="nrd-ic" type="button" title="目录" @click="tocOpen = !tocOpen">☰</button>
-      <button class="nrd-ic" type="button" title="设置" @click="setOpen = !setOpen">Aa</button>
+      <button class="nrd-ic" type="button" title="目录" @click="togglePanel('toc')">☰</button>
+      <button class="nrd-ic" type="button" title="书签" @click="togglePanel('marks')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7 4.5h10v15l-5-3.4-5 3.4v-15Z" />
+        </svg>
+      </button>
+      <button
+        class="nrd-ic"
+        :class="{ on: speaking }"
+        type="button"
+        :title="speaking ? '停止朗读' : '朗读'"
+        @click="toggleSpeak"
+      >
+        <svg v-if="speaking" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <rect x="6.5" y="5" width="4" height="14" rx="1" />
+          <rect x="13.5" y="5" width="4" height="14" rx="1" />
+        </svg>
+        <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8.5 5.5 18 12l-9.5 6.5v-13Z" />
+        </svg>
+      </button>
+      <button class="nrd-ic" type="button" title="设置" @click="togglePanel('set')">Aa</button>
     </header>
 
     <!-- 加载 / 错误 -->
@@ -92,6 +114,31 @@
             {{ item.label }}
           </button>
           <p v-if="!toc.length" class="nrd-toc-empty">这本没有可用目录</p>
+        </div>
+      </aside>
+    </transition>
+
+    <!-- 书签 / 笔记抽屉 -->
+    <transition name="nrd-fade">
+      <aside v-if="marksOpen" class="nrd-toc nrd-marks">
+        <div class="nrd-toc-head">
+          <span>书签与笔记</span>
+          <button class="nrd-ic" type="button" @click="marksOpen = false">×</button>
+        </div>
+        <div class="nrd-mark-add">
+          <button class="nrd-btn primary" type="button" @click="addMark('bookmark')">当前位置加书签</button>
+          <button class="nrd-btn" type="button" @click="addMark('note')">写笔记</button>
+        </div>
+        <div class="nrd-toc-list">
+          <div v-for="m in marks" :key="m.id" class="nrd-mark">
+            <button class="nrd-mark-main" type="button" @click="jumpToMark(m)">
+              <span class="nrd-mark-kind">{{ MARK_LABEL[m.kind] || '书签' }}</span>
+              <span class="nrd-mark-text">{{ m.note || m.quote || m.chapter || '（无内容）' }}</span>
+              <span class="nrd-mark-pct">{{ Math.round((m.percent || 0) * 100) }}%</span>
+            </button>
+            <button class="nrd-mark-del" type="button" title="删除" @click="removeMark(m)">×</button>
+          </div>
+          <p v-if="!marks.length" class="nrd-toc-empty">还没有书签。读到喜欢的地方点「当前位置加书签」。</p>
         </div>
       </aside>
     </transition>
@@ -334,7 +381,8 @@ function syncTxtPercent() {
   const n = Math.max(1, txtChapters.value.length)
   const inChap = txtPageCount.value > 1 ? txtPage.value / txtPageCount.value : 0
   percent.value = Math.min(100, Math.round(((txtIndex.value + inChap) / n) * 100))
-  saveProgress({ chapter: txtIndex.value, page: txtPage.value, percent: percent.value / 100 })
+  saveProgress({ chapter: txtIndex.value, chapterTitle: txtChapter.value?.title || '',
+                 page: txtPage.value, percent: percent.value / 100 })
 }
 
 const PROG_KEY = computed(() => `xuanhuang:reader:prog:${props.novel.id}`)
@@ -421,12 +469,15 @@ async function openEpub(buffer) {
   const nav = await book.loaded.navigation.catch(() => null)
   toc.value = (nav?.toc || []).map((it) => ({ label: it.label.trim(), href: it.href }))
 
-  // 进度恢复
+  // 进度恢复：服务器 > 本地（服务器是跨设备的权威来源）
   let saved = null
   try { saved = JSON.parse(localStorage.getItem(PROG_KEY.value) || 'null') } catch { /* 忽略 */ }
-  if (saved?.cfi) {
-    await rendition.display(saved.cfi).catch(() => rendition.display())
-    percent.value = Math.round((saved.percent || 0) * 100)
+  const serverCfi = props.novel.progress_cfi || ''
+  const startCfi = serverCfi || saved?.cfi || ''
+  if (startCfi) {
+    await rendition.display(startCfi).catch(() => rendition.display())
+    const sp = Number(props.novel.progress_percent) || 0
+    percent.value = Math.round((serverCfi ? sp : (saved?.percent || 0)) * 100)
   } else {
     await rendition.display()
   }
@@ -509,6 +560,48 @@ function saveProgress(obj) {
   try {
     localStorage.setItem(PROG_KEY.value, JSON.stringify({ ...obj, at: Date.now() }))
   } catch { /* 忽略 */ }
+  queueRemoteSave(obj)
+}
+
+/* ---------------- 进度云端同步（v2.46.212） ----------------
+   之前只存 localStorage：换设备 / 清缓存就丢。现在防抖上报到服务器，
+   打开时优先用服务器进度（本地只作兜底）。
+   时长每 60 秒结算一次增量，避免每次翻页都写库。 */
+let remoteTimer = 0
+let pendingProgress = null
+let sessionStart = Date.now()
+let sentSeconds = 0
+
+function queueRemoteSave(obj) {
+  pendingProgress = obj
+  clearTimeout(remoteTimer)
+  remoteTimer = setTimeout(flushProgress, 1200)
+}
+
+function flushProgress() {
+  if (!pendingProgress) return
+  const obj = pendingProgress
+  pendingProgress = null
+  const tk = localStorage.getItem('token') || ''
+  // 阅读时长：距上次上报超过 30 秒才算有效（防挂机刷时长）
+  const now = Date.now()
+  const elapsed = Math.round((now - sessionStart) / 1000)
+  let seconds = 0
+  if (elapsed - sentSeconds >= 30) {
+    seconds = elapsed - sentSeconds
+    sentSeconds = elapsed
+  }
+  fetch(`/api/novels/${props.novel.id}/progress`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+    body: JSON.stringify({
+      cfi: obj.cfi || '',
+      chapter: obj.chapterTitle || '',
+      percent: obj.percent || 0,
+      seconds,
+    }),
+    keepalive: true,
+  }).catch(() => { /* 网络失败不影响本地阅读 */ })
 }
 
 function syncTocActive(href) {
@@ -663,6 +756,135 @@ function onTxtScroll() {
   }, 400)
 }
 
+/* ---------------- 书签 / 笔记（v2.46.212） ---------------- */
+const marksOpen = ref(false)
+const marks = ref([])
+const MARK_LABEL = { bookmark: '书签', highlight: '划线', note: '笔记' }
+
+/** 三个面板互斥（目录 / 书签 / 设置），避免叠在一起 */
+function togglePanel(which) {
+  // 🔴 必须取 .value：直接放 ref 对象，`!ref` 恒为 false，面板永远打不开
+  const cur = { toc: tocOpen.value, marks: marksOpen.value, set: setOpen.value }
+  const next = !cur[which]
+  tocOpen.value = false
+  marksOpen.value = false
+  setOpen.value = false
+  if (which === 'toc') tocOpen.value = next
+  else if (which === 'marks') { marksOpen.value = next; if (next) loadMarks() }
+  else setOpen.value = next
+}
+
+async function loadMarks() {
+  const tk = localStorage.getItem('token') || ''
+  try {
+    const r = await fetch(`/api/novels/${props.novel.id}/bookmarks`, {
+      headers: { Authorization: `Bearer ${tk}` },
+    })
+    const j = await r.json()
+    marks.value = Array.isArray(j.data?.list) ? j.data.list : []
+  } catch { marks.value = [] }
+}
+
+/** 当前位置加书签 / 写笔记 */
+async function addMark(kind) {
+  const tk = localStorage.getItem('token') || ''
+  const cfi = kind.value === 'epub'
+    ? (rendition?.currentLocation()?.start?.cfi || '')
+    : ''
+  const chapter = kind.value === 'epub'
+    ? (toc.value[tocActive.value]?.label || '')
+    : (txtChapter.value?.title || '')
+
+  let note = ''
+  if (kind === 'note') {
+    const txt = window.prompt('记点什么：', '')
+    if (txt === null) return
+    note = txt.trim()
+    if (!note) return
+  }
+
+  try {
+    await fetch(`/api/novels/${props.novel.id}/bookmarks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+      body: JSON.stringify({
+        kind, cfi, chapter, note,
+        quote: kind === 'highlight' ? note : '',
+        percent: (percent.value || 0) / 100,
+      }),
+    })
+    await loadMarks()
+  } catch { /* 忽略 */ }
+}
+
+async function removeMark(m) {
+  const tk = localStorage.getItem('token') || ''
+  try {
+    await fetch(`/api/novels/bookmarks/${m.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${tk}` },
+    })
+    marks.value = marks.value.filter((x) => x.id !== m.id)
+  } catch { /* 忽略 */ }
+}
+
+/** 跳转到书签位置 */
+function jumpToMark(m) {
+  marksOpen.value = false
+  if (kind.value === 'epub') {
+    if (m.cfi) rendition?.display(m.cfi)
+    return
+  }
+  // TXT：先找章节标题，找不到就按百分比估算章节
+  const idx = txtChapters.value.findIndex((c) => c.title === m.chapter)
+  if (idx >= 0) { goChapter(idx); return }
+  const guess = Math.min(
+    txtChapters.value.length - 1,
+    Math.max(0, Math.floor((m.percent || 0) * txtChapters.value.length))
+  )
+  goChapter(guess)
+}
+
+/* ---------------- 朗读（Web Speech API） ---------------- */
+const speaking = ref(false)
+let utter = null
+
+function currentSpeakText() {
+  if (kind.value === 'txt') {
+    const c = txtChapter.value
+    if (!c) return ''
+    return `${c.title}。${c.paras.join(' ')}`
+  }
+  return ''
+}
+
+function toggleSpeak() {
+  if (speaking.value) { stopSpeak(); return }
+  const text = currentSpeakText()
+  if (!text) {
+    // EPUB 的正文在 iframe 里，取不到纯文本；TXT 才有内容可读
+    window.alert('朗读目前只支持 TXT 书籍')
+    return
+  }
+  if (!('speechSynthesis' in window)) {
+    window.alert('当前浏览器不支持语音朗读')
+    return
+  }
+  utter = new SpeechSynthesisUtterance(text.slice(0, 8000))
+  utter.lang = 'zh-CN'
+  utter.rate = 1
+  utter.onend = () => { speaking.value = false }
+  utter.onerror = () => { speaking.value = false }
+  speaking.value = true
+  window.speechSynthesis.cancel()
+  window.speechSynthesis.speak(utter)
+}
+
+function stopSpeak() {
+  try { window.speechSynthesis.cancel() } catch { /* 忽略 */ }
+  speaking.value = false
+}
+
 /* ---------------- 目录跳转 ---------------- */
 function jumpTo(i) {
   tocOpen.value = false
@@ -701,7 +923,13 @@ onMounted(async () => {
       toc.value = txtChapters.value.map((c) => ({ label: c.title }))
       let saved = null
       try { saved = JSON.parse(localStorage.getItem(PROG_KEY.value) || 'null') } catch { /* 忽略 */ }
-      const ci = saved && Number.isInteger(saved.chapter) ? saved.chapter : 0
+      // 服务器进度（progress_chapter 存的是章节标题，找它的下标）
+      let ci = saved && Number.isInteger(saved.chapter) ? saved.chapter : 0
+      const srvChapter = String(props.novel.progress_chapter || '')
+      if (srvChapter) {
+        const idx = txtChapters.value.findIndex((c) => c.title === srvChapter)
+        if (idx >= 0) ci = idx
+      }
       txtIndex.value = Math.min(Math.max(0, ci), txtChapters.value.length - 1)
       // 进度统一由 syncTxtPercent 算（含章内页比）；这里先给个粗值，nextTick 后再校准
       percent.value = Math.round((txtIndex.value / txtChapters.value.length) * 100)
@@ -735,6 +963,9 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  stopSpeak()
+  clearTimeout(remoteTimer)
+  flushProgress()
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('resize', onResize)
   exitTouchMode()
@@ -1114,6 +1345,56 @@ watch([size, lineHeight, padding], () => { onResize() })
   /* 滚动模式允许原生纵向滚动 */
   .nrd-txt:not(.is-paged) { touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 }
+
+/* 书签抽屉（v2.46.212） */
+.nrd-marks { width: 320px; max-width: 86vw; }
+.nrd-mark-add {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--nrd-line);
+}
+.nrd-mark-add .nrd-btn { flex: 1; margin-top: 0; }
+.nrd-mark {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--nrd-line);
+}
+.nrd-mark-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nrd-mark-main:hover { background: rgba(127, 127, 127, .1); }
+.nrd-mark-kind { font-size: 11px; opacity: .55; }
+.nrd-mark-text {
+  font-size: 13px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nrd-mark-pct { font-size: 11px; opacity: .45; }
+.nrd-mark-del {
+  width: 42px;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: .45;
+  font-size: 17px;
+  cursor: pointer;
+}
+.nrd-mark-del:hover { opacity: .9; }
+.nrd-ic.on { background: rgba(127, 127, 127, .18); }
 
 /* 主题过渡 */
 .nrd, .nrd-toc, .nrd-set { transition: background .22s ease, color .22s ease; }

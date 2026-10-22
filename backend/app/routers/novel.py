@@ -1,4 +1,4 @@
-from app.models.novel import Novel
+from app.models.novel import Novel, NovelBookmark
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
@@ -7,6 +7,7 @@ from typing import Optional, List
 import io
 import csv
 import os
+from datetime import datetime
 from app.database import get_db
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
@@ -328,6 +329,133 @@ async def download_novel_template(current_user: dict = Depends(get_current_user)
 
 # ========== 单本详情（v2.46.195：在线阅读器取书 / 刷新直链恢复） ==========
 # 必须定义在 /template 之后，否则 /api/novels/template 会被 {novel_id} 抢先匹配成 422。
+@router.put("/{novel_id}/progress", response_model=ResponseBase)
+async def save_progress(
+    novel_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """保存阅读进度（v2.46.212）
+
+    夜星主要在手机上读，进度必须跟着账号走 —— 之前只存 localStorage，
+    换设备 / 清缓存就丢。
+    """
+    n = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not n:
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
+
+    cfi = str(payload.get("cfi") or "")[:255]
+    chapter = str(payload.get("chapter") or "")[:200]
+    try:
+        percent = float(payload.get("percent") or 0)
+    except (TypeError, ValueError):
+        percent = 0
+    percent = max(0.0, min(1.0, percent))
+
+    n.progress_cfi = cfi
+    n.progress_chapter = chapter
+    n.progress_percent = percent
+    n.last_read_at = datetime.now()
+
+    # 阅读时长累加（前端每 60 秒上报一次增量）
+    try:
+        add = int(payload.get("seconds") or 0)
+    except (TypeError, ValueError):
+        add = 0
+    if 0 < add < 3600:
+        n.read_seconds = (n.read_seconds or 0) + add
+
+    db.commit()
+    return ResponseBase(msg="已保存", data={
+        "percent": percent, "read_seconds": n.read_seconds or 0,
+    })
+
+
+@router.put("/{novel_id}/favorite", response_model=ResponseBase)
+async def toggle_favorite(
+    novel_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """收藏 / 取消收藏（v2.46.212）"""
+    n = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not n:
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
+    n.is_favorite = 1 if payload.get("favorite") else 0
+    db.commit()
+    return ResponseBase(msg="已更新", data={"is_favorite": n.is_favorite})
+
+
+@router.get("/{novel_id}/bookmarks", response_model=ResponseBase)
+async def list_bookmarks(
+    novel_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """这本书的书签 / 划线 / 笔记（只返回本人的）"""
+    uid = current_user.get("user_id") or current_user.get("id")
+    rows = (db.query(NovelBookmark)
+              .filter(NovelBookmark.novel_id == novel_id, NovelBookmark.user_id == uid)
+              .order_by(NovelBookmark.percent.asc(), NovelBookmark.id.asc())
+              .all())
+    # 🔴 ResponseBase.data 的类型是 dict，直接传 list 会被 pydantic 拒绝（dict_type）
+    return ResponseBase(data={"list": [{
+        "id": r.id, "kind": r.kind, "cfi": r.cfi, "chapter": r.chapter,
+        "quote": r.quote, "note": r.note, "percent": r.percent,
+        "created_at": r.created_at.isoformat() if r.created_at else "",
+    } for r in rows]})
+
+
+@router.post("/{novel_id}/bookmarks", response_model=ResponseBase)
+async def create_bookmark(
+    novel_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """新增书签 / 划线 / 笔记"""
+    n = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not n:
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
+    uid = current_user.get("user_id") or current_user.get("id")
+    kind = str(payload.get("kind") or "bookmark")
+    if kind not in ("bookmark", "highlight", "note"):
+        kind = "bookmark"
+    b = NovelBookmark(
+        novel_id=novel_id,
+        user_id=uid,
+        kind=kind,
+        cfi=str(payload.get("cfi") or "")[:255],
+        chapter=str(payload.get("chapter") or "")[:200],
+        quote=str(payload.get("quote") or "")[:2000],
+        note=str(payload.get("note") or "")[:2000],
+        percent=float(payload.get("percent") or 0),
+    )
+    db.add(b)
+    db.commit()
+    db.refresh(b)
+    return ResponseBase(msg="已记录", data={"id": b.id})
+
+
+@router.delete("/bookmarks/{bookmark_id}", response_model=ResponseBase)
+async def delete_bookmark(
+    bookmark_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    uid = current_user.get("user_id") or current_user.get("id")
+    b = (db.query(NovelBookmark)
+           .filter(NovelBookmark.id == bookmark_id, NovelBookmark.user_id == uid)
+           .first())
+    if not b:
+        raise_error(ErrCode.NOT_FOUND, "记录不存在")
+    db.delete(b)
+    db.commit()
+    return ResponseBase(msg="已删除")
+
+
 @router.get("/{novel_id}/file")
 async def get_novel_file(
     novel_id: int,
@@ -389,4 +517,11 @@ async def get_novel_detail(
         "uploader_id": novel.uploader_id,
         "file_size": novel.file_size,
         "created_at": str(novel.created_at),
+        # v2.46.212：阅读进度 / 收藏 / 时长（前端靠这些做跨设备恢复）
+        "progress_cfi": novel.progress_cfi or "",
+        "progress_percent": novel.progress_percent or 0,
+        "progress_chapter": novel.progress_chapter or "",
+        "read_seconds": novel.read_seconds or 0,
+        "is_favorite": novel.is_favorite or 0,
+        "last_read_at": str(novel.last_read_at) if novel.last_read_at else "",
     })

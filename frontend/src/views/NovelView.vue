@@ -33,6 +33,19 @@
             <img v-if="n.cover_url" :src="n.cover_url" :alt="n.title" loading="lazy" />
             <span v-else class="ns-initial">{{ (n.title || '书').slice(0, 1) }}</span>
             <span class="ns-prog" :style="{ width: progressOf(n) + '%' }" />
+            <span
+              class="ns-star"
+              :class="{ on: Number(n.is_favorite) === 1 }"
+              role="button"
+              :aria-label="Number(n.is_favorite) === 1 ? '取消收藏' : '收藏'"
+              @click.stop="toggleFav(n)"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24"
+                   :fill="Number(n.is_favorite) === 1 ? 'currentColor' : 'none'"
+                   stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+                <path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8L12 3.6Z" />
+              </svg>
+            </span>
           </div>
           <div class="ns-meta">
             <span class="ns-title">{{ n.title }}</span>
@@ -585,8 +598,10 @@ function coverStyle(n) {
   return { background: `linear-gradient(155deg, ${g[0]}, ${g[1]})` }
 }
 
-/** 阅读进度：读阅读器写进 localStorage 的那份 */
+/** 阅读进度：服务器优先（跨设备），本地 localStorage 兜底 */
 function progressOf(n) {
+  const srv = Number(n.progress_percent)
+  if (srv > 0) return Math.min(100, Math.round(srv * 100))
   try {
     const raw = localStorage.getItem(`xuanhuang:reader:prog:${n.id}`)
     if (!raw) return 0
@@ -602,6 +617,22 @@ const rowActions = [
   { icon: 'edit', label: '编辑', onClick: openEdit },
   { icon: 'trash', label: '删除', danger: true, onClick: handleDelete },
 ]
+
+async function toggleFav(n) {
+  const tk = localStorage.getItem('token') || ''
+  const next = Number(n.is_favorite) === 1 ? 0 : 1
+  n.is_favorite = next
+  try {
+    const r = await fetch(`/api/novels/${n.id}/favorite`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+      body: JSON.stringify({ favorite: next }),
+    })
+    if (!r.ok) throw new Error(String(r.status))
+  } catch {
+    n.is_favorite = next ? 0 : 1
+  }
+}
 
 function openReader(row) {
   // v2.46.207：走路由而不是组件内覆盖层，这样手机返回键能正确回到列表
@@ -946,5 +977,27 @@ function formatTime(timeStr) {
 :global(body.novel-shelf-mode .tab-bar),
 :global(body.novel-shelf-mode .app-tabbar) {
   display: none !important;
+}
+
+/* 书架星标（收藏） */
+.ns-star {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(30, 26, 20, .28);
+  opacity: 0;
+  transition: opacity .16s ease;
+}
+.ns-star.on { opacity: 1; color: #ffe9a8; }
+@media (pointer: coarse) {
+  /* 触摸设备没有 hover，收藏按钮常显，否则永远点不到 */
+  .ns-star { opacity: .92; }
 }
 </style>
