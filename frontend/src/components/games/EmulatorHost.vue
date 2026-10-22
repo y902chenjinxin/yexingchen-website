@@ -356,39 +356,88 @@ function isZipFile(f) {
   return /\.zip$/i.test(f.name || '') || f.type === 'application/zip' || f.type === 'application/x-zip-compressed'
 }
 
+/** 从 zip 条目里挑 ROM：跳过 Mac 垃圾/隐藏文件，层级浅的排前面 */
+function pickRoms(entries) {
+  return entries
+    .filter((e) => {
+      const n = e.name.toLowerCase()
+      if (n.includes('__macosx') || n.startsWith('.')) return false
+      return ROM_EXTS.some((x) => n.endsWith(x))
+    })
+    .sort((a, b) => a.name.split('/').length - b.name.split('/').length)
+}
+
 /**
- * 把选中的文件展开成待处理的 File 列表：zip 自动解包，普通 ROM 原样返回。
- * zip 里可能有多级目录（`game/rom.nes`）和一个包里多个 ROM，全部取出、按层级浅的优先。
+ * 解不开时告诉用户包里**到底是什么**（v2.46.221）。
+ *
+ * 原来只甩一句"没找到 ROM 文件"，用户不知道是自己下错了还是我们认不出。
+ * 华军软件园这类站下的"双截龙"往往是 **Windows 版（含 setup.exe）**，
+ * 跟模拟器能跑的主机 ROM 完全是两种东西 —— 必须说清楚，否则用户会一直重试。
  */
-async function expandFiles(files) {
+function describeEntries(entries) {
+  const names = entries.map((e) => (e.name.split('/').pop() || '').toLowerCase())
+  const hasExe = names.some((n) => n.endsWith('.exe'))
+  const hasDll = names.some((n) => n.endsWith('.dll'))
+  const sample = entries.slice(0, 4).map((e) => e.name.split('/').pop()).join('、')
+  const more = entries.length > 4 ? ` 等 ${entries.length} 个文件` : ''
+
+  if (hasExe || hasDll) {
+    return `这是 Windows 游戏（${sample}${more}），要在电脑上安装运行；`
+      + '这个模拟器只能跑主机 ROM（.nes / .sfc / .gba / .md / .bin 等）。'
+  }
+  // 街机 MAME romset：一堆无扩展名或纯数字分片
+  const weird = names.filter((n) => !n.includes('.')).length
+  if (entries.length > 3 && weird >= entries.length * 0.6) {
+    return `包里是 ${entries.length} 个没有扩展名的分片文件（${sample}${more}），`
+      + '看起来像街机 MAME romset；当前只支持主机 ROM（.nes / .sfc / .gba / .md 等）。'
+  }
+  return `包内是：${sample}${more}，没有模拟器支持的 ROM 后缀（.nes / .sfc / .gba / .md / .bin / .iso 等）。`
+}
+
+/**
+ * 把选中的文件展开成待处理的 File 列表：
+ * zip 自动解包（**最多两层**，街机包常是 zip 套 zip），普通 ROM 原样返回。
+ */
+async function expandFiles(files, depth = 0) {
   const out = []
   for (const f of files) {
     if (!isZipFile(f)) { out.push(f); continue }
+
+    let entries
     try {
       const zip = await JSZip.loadAsync(f)
-      const entries = Object.values(zip.files || {}).filter((e) => !e.dir)
-      const roms = entries
-        .filter((e) => {
-          const n = e.name.toLowerCase()
-          if (n.includes('__macosx') || n.startsWith('.')) return false
-          return ROM_EXTS.some((x) => n.endsWith(x))
-        })
-        // 层级越浅越可能是主 ROM（避免误取附带的补丁/说明书目录里的文件）
-        .sort((a, b) => a.name.split('/').length - b.name.split('/').length)
+      entries = Object.values(zip.files || {}).filter((e) => !e.dir)
+    } catch (err) {
+      ElMessage.error(`「${f.name}」解压失败：${err?.message || '不是有效的 zip（可能已损坏，或其实是 rar/7z 改了后缀）'}`)
+      continue
+    }
 
-      if (!roms.length) {
-        ElMessage.warning(`「${f.name}」里没找到 ROM 文件（支持 ${ROM_EXTS.join(' / ')}）`)
-        continue
-      }
+    const roms = pickRoms(entries)
+    if (roms.length) {
       for (const e of roms) {
         const blob = await e.async('blob')
         const base = (e.name.split('/').pop() || 'rom').trim()
         out.push(new File([blob], base, { type: 'application/octet-stream' }))
       }
       if (roms.length > 1) ElMessage.info(`「${f.name}」里有 ${roms.length} 个 ROM，已全部取出`)
-    } catch (err) {
-      ElMessage.error(`「${f.name}」解压失败：${err?.message || '不是有效的 zip'}`)
+      continue
     }
+
+    // 包里没有裸 ROM：再试一层（街机 romset 是 zip 里放 zip）
+    const innerZips = entries.filter((e) => /\.zip$/i.test(e.name) && !/__macosx/i.test(e.name))
+    if (innerZips.length && depth < 1) {
+      const inner = []
+      for (const iz of innerZips) {
+        const blob = await iz.async('blob')
+        inner.push(new File([blob], (iz.name.split('/').pop() || 'inner.zip'), { type: 'application/zip' }))
+      }
+      const got = await expandFiles(inner, depth + 1)
+      if (got.length) { out.push(...got); continue }
+      ElMessage.warning(`「${f.name}」里 ${innerZips.length} 个内层压缩包解开后也没有 ROM。`)
+      continue
+    }
+
+    ElMessage.warning(`「${f.name}」—— ${describeEntries(entries)}`)
   }
   return out
 }
