@@ -1,5 +1,5 @@
 <template>
-  <IslandInnerBase wide type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 贪吃蛇 · 暴力摩托 · 植物大战僵尸">
+  <IslandInnerBase wide type="tool" title="棋类游戏" subtitle="五子棋 · 围棋 · 象棋 · 军棋 · 飞行棋 · 掼蛋 · 麻将 · 大富翁 · 数独 · 扫雷 · 植物大战僵尸">
     <div class="gm-root" :class="{ 'is-big': isBig, 'is-fill': !!cur.fill, 'is-fsfit': fitActive, 'is-card': isCardGame }">
       <!-- ===== 左：游戏类型 ===== -->
       <!-- 手机端：未选游戏时铺开手账网格；选中后收起（对局区占满，切游戏走「返回列表」）。
@@ -314,7 +314,6 @@ const ICON = {
   sudoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/></svg>',
   mine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="13" r="6"/><path d="M12 7V3M4.6 10.6 2 8M19.4 10.6 22 8M7 19l-2 2M17 19l2 2"/></svg>',
   go: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/><circle cx="9.2" cy="9.2" r="2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="14.8" r="2" fill="currentColor" stroke="none"/></svg>',
-  snake: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h7a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3h2"/><rect x="2" y="15.5" width="2.6" height="2.6" rx="1" fill="currentColor" stroke="none"/><circle cx="18.6" cy="4.6" r="1.5" fill="currentColor" stroke="none"/></svg>',
   xiangqi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.6 6.6h16.8M3.6 17.4h16.8M6.6 3.6v16.8M17.4 3.6v16.8"/><circle cx="12" cy="12" r="4.4"/><path d="M9.9 12h4.2M12 9.9v4.2"/></svg>',
   xiangqi_flip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="4.4" width="8.4" height="15.2" rx="2"/><path d="M6.4 9.4h2.4M6.4 12h2.4M6.4 14.6h2.4"/><path d="M15.4 9a4.4 4.4 0 0 1 0 6"/><path d="M15.2 7.2l.5 2-2 .4"/></svg>',
   guandan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8.4" y="3.6" width="9" height="13" rx="1.8" transform="rotate(12 12.9 10.1)"/><rect x="6.6" y="6.4" width="9" height="13" rx="1.8"/><path d="M9.4 10.6h3.4M9.4 13.2h2.2"/></svg>',
@@ -579,20 +578,6 @@ const gamelist = [
       '翻开：点格子翻开；数字表示它周围 8 格里的雷数；翻到空白格会自动展开一片。',
       '插旗：电脑端右键标雷；手机端勾选「旗子模式（手机用）」后，点格子即为插旗。',
       '胜负：踩到雷即失败（雷区全亮）；把所有雷正确标出即通关。',
-    ],
-    modes: null,
-  },
-  {
-    key: 'snake', label: '贪吃蛇', tag: '最高分记录', group: '休闲',
-    desc: '经典贪吃蛇，记录本机最高分。',
-    icon: ICON.snake,
-    component: defineAsyncComponent(() => import('@/components/games/SnakeGame.vue')),
-    rules: [
-      '目标：操控小蛇吃红色食物，每吃一个得 10 分，蛇身随之变长。',
-      '开始：点「开始游戏」，或直接按任意方向键开局。',
-      '操作：用键盘方向键转向；电脑端无需先点棋盘，按方向键即可控制。',
-      '结束：撞到自己的身体即结束（走到边缘会从另一侧穿出，不会撞墙）。',
-      '记录：本机最高分会自动保存，下次进入仍会显示。',
     ],
     modes: null,
   },
