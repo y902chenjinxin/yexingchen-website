@@ -323,3 +323,30 @@ async def download_novel_template(current_user: dict = Depends(get_current_user)
             "Cache-Control": "no-cache",
         },
     )
+
+
+# ========== 单本详情（v2.46.195：在线阅读器取书 / 刷新直链恢复） ==========
+# 必须定义在 /template 之后，否则 /api/novels/template 会被 {novel_id} 抢先匹配成 422。
+@router.get("/{novel_id}", response_model=ResponseBase)
+async def get_novel_detail(
+    novel_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not novel:
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
+
+    return ResponseBase(data={
+        "id": novel.id,
+        "title": novel.title,
+        "author": novel.author,
+        "cover_path": novel.cover_path,
+        "file_path": novel.file_path,
+        "original_filename": novel.original_filename,
+        "category": novel.category,
+        "tags": novel.tags,
+        "uploader_id": novel.uploader_id,
+        "file_size": novel.file_size,
+        "created_at": str(novel.created_at),
+    })

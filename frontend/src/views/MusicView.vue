@@ -77,7 +77,21 @@
                 :class="{ playing: isCurPlaying(row) }"
                 :title="isCurPlaying(row) ? '暂停' : '播放'"
                 @click="handlePlay(row)"
-              ><template v-if="isCurPlaying(row)"><AppIcon icon="❚" :size="12" /><AppIcon icon="❚" :size="12" /></template><AppIcon v-else icon="▶" :size="12" /></button>
+              ><!-- v2.46.195 暂停图标改用 SVG 画两条竖杠。
+                   原来用两个 ❚（U+275A）字符，这个码位在部分字体会渲染成一条较宽的双线，
+                   两个叠起来就变成四条，夜星反馈「点击变成四个竖杠」。SVG 精确可控。 -->
+              <svg
+                v-if="isCurPlaying(row)"
+                class="ic-pause"
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                aria-hidden="true"
+              >
+                <rect x="3" y="2.2" width="2" height="7.6" rx=".6" fill="currentColor" />
+                <rect x="7" y="2.2" width="2" height="7.6" rx=".6" fill="currentColor" />
+              </svg>
+              <AppIcon v-else icon="▶" :size="12" /></button>
               <span class="tt">{{ row.title || '未知曲目' }}</span>
               <el-tag v-if="Number(row.is_default) === 1" size="small" type="warning">内置</el-tag>
             </div>
@@ -828,6 +842,7 @@ function formatDuration(sec) {
   border: 1px solid var(--dp-line);
   padding: 0;
 }
+.ic-pause { display: block; flex-shrink: 0; }
 .mini-btn:hover {
   background: var(--dp-surface2);
   color: var(--dp-accent);
