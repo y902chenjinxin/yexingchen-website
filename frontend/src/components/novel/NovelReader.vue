@@ -3,6 +3,10 @@
        集成在小说模块内部，直接读 novels 表的原始文件，不依赖外部应用。
        EPUB 走 epub.js，TXT 前端分章后自己渲染。
        全屏覆盖层（z-index 1600，与项目全屏约定一致）。 -->
+  <!-- 🔴 必须 Teleport 到 body：NovelView 的祖先链里有 transform，
+       position:fixed 会相对那个祖先定位而不是视口，实测阅读器只占了右侧内容区、
+       左边被侧边栏压住一半。挂到 body 才是真正的全屏。 -->
+  <Teleport to="body">
   <div class="nrd" :class="`theme-${theme}`" :style="cssVars">
     <!-- 顶栏 -->
     <header class="nrd-bar">
@@ -41,6 +45,8 @@
       class="nrd-stage nrd-txt"
       :class="{ 'is-paged': flow === 'paginated' }"
       @scroll.passive="onTxtScroll"
+      @touchstart.passive="onTouchStart"
+      @touchend.passive="onTouchEnd"
     >
       <div ref="colsRef" class="nrd-txt-cols" :style="colsStyle">
         <template v-if="flow === 'paginated'">
@@ -167,6 +173,7 @@
       <button class="nrd-edge right" type="button" aria-label="下一页" @click="goNext" />
     </template>
   </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -214,10 +221,18 @@ const cssVars = computed(() => ({
   '--nrd-font': curFont.value.stack,
 }))
 
+function isTouchDevice() {
+  return (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window
+}
+
 function loadSettings() {
+  // 触摸设备首次阅读：边距收窄（28px 在 375 宽的屏上太占地方），字号略小
+  const base = isTouchDevice()
+    ? { ...defaultSettings, padding: 20, size: 18 }
+    : defaultSettings
   try {
     const raw = localStorage.getItem(SET_KEY)
-    if (raw) settings.value = { ...defaultSettings, ...JSON.parse(raw) }
+    settings.value = raw ? { ...base, ...JSON.parse(raw) } : { ...base }
   } catch { /* 忽略 */ }
 }
 function saveSettings() {
@@ -424,6 +439,15 @@ async function openEpub(buffer) {
     atStart.value = !!loc?.atStart
   })
   rendition.on('keyup', onKey)
+  // 给每章 iframe 内部挂触摸手势（外部监听收不到 iframe 里的 touch）
+  rendition.hooks.content.register((contents) => {
+    const doc = contents && contents.document
+    if (!doc) return
+    doc.addEventListener('touchstart', onTouchStart, { passive: true })
+    doc.addEventListener('touchend', onTouchEnd, { passive: true })
+    // 分页模式下禁止 iframe 内横向滚动干扰
+    try { doc.documentElement.style.touchAction = 'pan-y' } catch { /* 忽略 */ }
+  })
 }
 
 async function renderEpub() {
@@ -495,6 +519,52 @@ function syncTocActive(href) {
 }
 
 /* ---------------- 翻页 ---------------- */
+/* ---------------- 移动端：viewport + 触摸手势（v2.46.202） ----------------
+   本站手机浏览器的 viewport 被 main.js 覆写成 width=1280（要桌面版布局），
+   在阅读器里必须临时切回 device-width —— 否则 19px 字号相对 1280 宽会小到没法读，
+   column 分页的 1144px 页宽也会被整体缩小。退出阅读器时还原。 */
+const isTouch = ref(false)
+let savedViewport = ''
+
+function enterTouchMode() {
+  isTouch.value = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window
+  if (!isTouch.value) return
+  const meta = document.querySelector('meta[name="viewport"]')
+  if (!meta) return
+  savedViewport = meta.getAttribute('content') || ''
+  meta.setAttribute('content',
+    'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover')
+}
+function exitTouchMode() {
+  if (!isTouch.value || !savedViewport) return
+  const meta = document.querySelector('meta[name="viewport"]')
+  if (meta) meta.setAttribute('content', savedViewport)
+}
+
+/* 触摸滑动翻页（分页模式）。滚动模式交给原生滚动，不拦截。 */
+let tX = 0
+let tY = 0
+let tActive = false
+function onTouchStart(e) {
+  if (e.touches.length !== 1) return
+  tX = e.touches[0].clientX
+  tY = e.touches[0].clientY
+  tActive = true
+}
+function onTouchEnd(e) {
+  if (!tActive) return
+  tActive = false
+  const t = e.changedTouches && e.changedTouches[0]
+  if (!t) return
+  const dx = t.clientX - tX
+  const dy = t.clientY - tY
+  // 竖直方向占主导 → 用户想滚动，不翻页
+  if (Math.abs(dy) > Math.abs(dx)) return
+  if (Math.abs(dx) < 46) return
+  if (dx < 0) goNext()
+  else goPrev()
+}
+
 function goPrev() {
   if (kind.value === 'epub') { rendition?.prev(); return }
   txtPrev()
@@ -617,6 +687,8 @@ onMounted(async () => {
   loadSettings()
   window.addEventListener('keydown', onKey)
   window.addEventListener('resize', onResize)
+  enterTouchMode()
+  document.body.classList.add('nrd-open')
   try {
     kind.value = pickKind()
     if (!kind.value) throw new Error('只支持 EPUB 和 TXT 格式')
@@ -631,8 +703,10 @@ onMounted(async () => {
       try { saved = JSON.parse(localStorage.getItem(PROG_KEY.value) || 'null') } catch { /* 忽略 */ }
       const ci = saved && Number.isInteger(saved.chapter) ? saved.chapter : 0
       txtIndex.value = Math.min(Math.max(0, ci), txtChapters.value.length - 1)
-      percent.value = Math.round(((txtIndex.value + 1) / txtChapters.value.length) * 100)
+      // 进度统一由 syncTxtPercent 算（含章内页比）；这里先给个粗值，nextTick 后再校准
+      percent.value = Math.round((txtIndex.value / txtChapters.value.length) * 100)
       await nextTick()
+      syncTxtPercent()
       if (flow.value === 'paginated') {
         measurePages()
         // 恢复章内页码（等测量完再设，否则会被 clamp 回 0）
@@ -663,6 +737,8 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('resize', onResize)
+  exitTouchMode()
+  document.body.classList.remove('nrd-open')
   clearTimeout(scrollTimer)
   try { rendition?.destroy() } catch { /* 忽略 */ }
   try { book?.destroy() } catch { /* 忽略 */ }
@@ -683,7 +759,9 @@ watch([size, lineHeight, padding], () => { onResize() })
 .nrd {
   position: fixed;
   inset: 0;
-  z-index: 1600;
+  /* v2.46.205：1600 会被站点侧栏/桌宠(1800)压住，实测手机上左侧被侧栏挡掉一半。
+     提到 1900（仍低于全局提示层 9999 与 ElMessage 2000）。 */
+  z-index: 1900;
   display: flex;
   flex-direction: column;
   background: var(--nrd-bg);
@@ -978,6 +1056,64 @@ watch([size, lineHeight, padding], () => { onResize() })
 
 .nrd-fade-enter-active, .nrd-fade-leave-active { transition: opacity .16s ease; }
 .nrd-fade-enter-from, .nrd-fade-leave-to { opacity: 0; }
+
+/* 阅读时隐藏桌面侧栏与移动端 TabBar。
+   .nrd 已 Teleport 到 body 且 z-index 1900，但实测手机上左侧仍被侧栏压住，
+   直接隐藏最省事（阅读本来就是沉浸场景，侧栏没有存在意义）。 */
+:global(body.nrd-open .dsb),
+:global(body.nrd-open .tab-bar),
+:global(body.nrd-open .app-tabbar) {
+  display: none !important;
+}
+:global(body.nrd-open) {
+  overflow: hidden !important;
+}
+
+/* ================= 移动端 / 触摸设备（v2.46.202） =================
+   用 pointer: coarse 判断而不是屏幕宽度 —— 本站手机浏览器 viewport 被覆写成 1280，
+   @media (max-width: 767px) 在手机上根本不触发。 */
+.nrd {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nrd-bar { padding-left: calc(12px + env(safe-area-inset-left, 0)); padding-right: calc(12px + env(safe-area-inset-right, 0)); }
+
+@media (pointer: coarse) {
+  /* 手指目标放大到 42px 以上 */
+  .nrd-bar { height: 56px; }
+  .nrd-ic { width: 42px; height: 42px; font-size: 17px; }
+  .nrd-name { font-size: 15px; }
+  .nrd-foot { height: 54px; }
+  .nrd-nav { padding: 10px 18px; font-size: 14px; }
+
+  /* 点击翻页热区扩到两侧 30%：手机上比 12% 好按得多 */
+  .nrd-edge { top: 56px; bottom: 54px; width: 30%; }
+
+  /* 设置面板改成底部弹出，占满宽度，拇指够得着 */
+  .nrd-set {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0));
+    border-radius: 18px 18px 0 0;
+  }
+  .nrd-set-row > span { width: 34px; font-size: 13px; }
+  .nrd-seg button { padding: 10px 4px; font-size: 13px; }
+  .nrd-slider input[type='range'] { height: 28px; }
+  .nrd-btn { padding: 11px 20px; font-size: 14px; }
+
+  /* 目录抽屉占满更多宽度，条目更高 */
+  .nrd-toc { width: 86vw; max-width: 86vw; }
+  .nrd-toc-item { padding: 13px 18px; font-size: 14.5px; }
+
+  /* 分页模式下禁止浏览器接管手势，滑动由我们处理 */
+  .nrd-txt.is-paged { touch-action: none; }
+  /* 滚动模式允许原生纵向滚动 */
+  .nrd-txt:not(.is-paged) { touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+}
 
 /* 主题过渡 */
 .nrd, .nrd-toc, .nrd-set { transition: background .22s ease, color .22s ease; }

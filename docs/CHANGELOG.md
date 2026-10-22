@@ -23,6 +23,59 @@
 
 ---
 
+## [v2.46.202~206] - 2026-10-22
+
+### 阅读器移动端适配（夜星主要在手机上读）
+
+#### 两个必须先解决的硬问题
+
+**1. 手机上字号会小到没法读。**
+`main.js` 会把手机浏览器的 viewport 覆写成 `width=1280`（为了走网页版布局）。
+阅读器如果在 1280 逻辑宽度里渲染，19px 字号会被整体缩小到约 1/3，分页的 350px 页宽也会被压扁。
+→ 进阅读器时**临时切回 `width=device-width, initial-scale=1, maximum-scale=1,viewport-fit=cover`**，
+退出时还原原值。
+
+**2. 阅读器只占了右边一半，左边被侧栏压住（截图可见）。**
+即使 `Teleport to="body"` + `z-index: 1900`，侧栏（`aside.dsb`，z-index 只有 90）
+仍然盖在左边 —— 层级不是原因，是布局/合成层的怪现象。
+→ 直接给 `body` 加 `nrd-open`，阅读期间 `display:none` 掉 `.dsb` / TabBar，
+并锁 `overflow:hidden`。阅读本来就是沉浸场景，侧栏没有存在意义。
+
+#### 触摸交互
+- **左右滑动翻页**：`touchstart/touchend` 取位移，横向位移 >46px 且大于纵向位移才翻页（避免误触）
+- **EPUB 的 iframe 内部也要能滑**：外部收不到 iframe 里的 touch，
+  用 `rendition.hooks.content.register()` 往每章 `document` 上挂同一套监听
+- **点击翻页热区从 12% 扩到 30%**（手机上 12% 太窄按不准）
+- `touch-action`：分页模式 `none`（手势自己接管），滚动模式 `pan-y`（原生滚动）
+
+#### 触摸设备样式（`@media (pointer: coarse)`）
+用 `pointer: coarse` 判断而不是 `max-width: 767px` —— viewport 是 1280 时媒体查询不会触发。
+
+| 项 | 桌面 | 触摸 |
+|---|---|---|
+| 顶栏高 | 50px | 56px |
+| 图标按钮 | 34px | 42px |
+| 设置面板 | 右上浮层 330px | **底部弹出、占满宽度** |
+| 目录抽屉 | 300px | 86vw |
+| 默认字号/边距 | 19px / 28px | 18px / 20px |
+
+安全区：`env(safe-area-inset-*)` 处理刘海与底部横条。
+
+#### 验证（iPhone 13 模拟，hasTouch）
+| 检查项 | 结果 |
+|---|---|
+| 进入前 viewport | `width=1280, viewport-fit=cover` |
+| 进入后 viewport | `width=device-width, initial-scale=1, maximum-scale=1, ...` |
+| 阅读器位置 | `left 0, top 0, w 390`（真全屏，无侧栏） |
+| 页宽 | `column-width: 350px`（390 - 20×2） |
+| 触控目标 | 顶栏 56px、图标 42px、字号 18px |
+| 左滑 | `translateX(-390px)`，进度 0%→10% |
+| 退出 | viewport 还原、侧栏恢复 |
+
+版本 SW v515→v520、APP_VERSION v2.46.201→v2.46.206。
+
+---
+
 ## [v2.46.201] - 2026-10-22
 
 ### 阅读器：真实分页 + 按章懒加载（并查清 Koodo 根本没部署）
