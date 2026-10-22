@@ -50,6 +50,8 @@ BUILTIN_META = {
                  "credit": "GPL-3.0 / CC BY-NC-SA 4.0 · NovaSquirrel"},
     "thwaite.nes": {"label": "Thwaite", "tag": "射击",
                     "credit": "开源 · pinobatch"},
+    "doukutsu-en.gen": {"label": "Cave Story MD", "tag": "Metroidvania",
+                        "credit": "MIT 移植 · andwn（原作 Studio Pixel freeware）"},
 }
 
 
