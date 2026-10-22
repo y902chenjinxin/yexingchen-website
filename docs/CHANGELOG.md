@@ -23,6 +23,62 @@
 
 ---
 
+## [v2.46.224] - 2026-10-22
+
+### 植物大战僵尸：整页全屏 + 手机自动横屏 + 去掉返回按钮
+
+夜星：「植物大战僵尸应该全屏打开，手机端是自动横屏展示，然后没有返回按钮，
+就是浏览器自带或者手机自带返回」。
+
+#### ① 去掉游戏页顶栏
+`PlayView` 顶部那条「← 大厅 / 游戏名 / 副标题」整条删掉。
+游戏本身就是整块内容，页内任何 UI 都是干扰；返回统一交给浏览器箭头 / 系统返回键
+（v2.46.217 已经把这一页做成 `fixed inset:0` 的独立路由，返回行为本来就是对的）。
+
+#### ② 舞台整页铺满
+`PvzEmbed` 接 `bare` 进全屏模式：
+- `.pz-wrap.is-full` → `position:fixed; inset:0`，去掉 `max-width` / 圆角 / 边框
+- iframe 定位从「左上角 + `transform-origin:0 0`」改成**绝对居中 + `translate(-50%,-50%)`**，
+  缩放多少都居中，不会往右下溢
+- 缩放系数改成**宽高取小**（`min(w/900, h/600)`），保证整幕可见；
+  非全屏模式仍按宽度算，不影响其他入口
+
+#### ③ 手机自动横屏（三级降级）
+```js
+// 1. 全屏（必须在点击事件的同步调用栈里，否则浏览器拒绝）
+fsPromise = document.documentElement.requestFullscreen?.()
+// 2. 锁方向（要先进全屏才允许；Android Chrome / 鸿蒙支持，iOS 不支持）
+await screen.orientation?.lock?.('landscape')
+// 3. rotate90 兜底：仍竖屏就把舞台宽高对调后绕中心转 90°
+rotated = isPortrait()
+```
+`rotate90` 是项目既有方案（牌桌 / 翻页时钟 / 弹幕同款，V2462-001 起）。
+退出时 `unlock()` + `exitFullscreen()`。
+
+#### 🔴 踩到一个选择器特异性坑
+```css
+.pz-wrap.is-full .pz-stage { width: 100%; height: 100%; }   /* (0,3,0) */
+.pz-stage.is-rot { width: 100vh; height: 100vw; }           /* (0,2,0) ← 被覆盖，旋转失效 */
+```
+旋转那组必须写成 `.pz-wrap.is-full .pz-stage.is-rot`（0,4,0）才生效。
+
+#### 验证（iPhone 13 竖屏模拟，390×664）
+```
+进入时: viewport [390,664] | hasTopbar=false | wrapFull=true | 侧栏 none | body=fs-page
+开始后: wrapFull=true | stageRot=true
+        stageRect [0,0,390,664]        旋转后包围盒正好铺满视口
+        stageCss  w=664px h=390px      宽高已对调（100vh × 100vw）
+        iframe    390×585 视觉 / scale 0.65
+        iframe 内已渲染游戏封面与「开始游戏」按钮，无 JS 错误
+```
+
+> `orientation.lock` 在 headless 里拿不到真实结果，真机行为需夜星实测：
+> 鸿蒙/Android 大概率直接锁成横屏；若被拒会退到 `rotate90`（截图就是兜底形态）。
+
+版本 SW v537→v538、APP_VERSION v2.46.223→v2.46.224。
+
+---
+
 ## [v2.46.223] - 2026-10-22
 
 ### 修：3D 棋牌页左右两边颜色不一（左侧一条深蓝）

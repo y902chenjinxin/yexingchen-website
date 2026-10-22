@@ -7,21 +7,9 @@
        上下左右都是站点外壳，画布只分到中间一小块 —— 夜星说的"页面里嵌入小页面"。
        游戏是纯体验型内容，直接整页：只留一条极简顶栏（返回大厅），
        其余全部给游戏；浏览器返回键 / 手机返回键退出本页。 -->
+  <!-- v2.46.224：去掉顶栏（夜星：全屏打开，不要返回按钮，靠浏览器/手机自带返回）。
+       游戏本身就是整块内容，任何页内 UI 都是干扰。 -->
   <div class="pv-page">
-    <header class="pv-top">
-      <button class="pv-hall" type="button" @click="goHall" aria-label="返回游戏大厅">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14.5 5.5 8 12l6.5 6.5" />
-        </svg>
-        <span>大厅</span>
-      </button>
-      <div class="pv-title">
-        <b>{{ cfg.title }}</b>
-        <i>{{ cfg.subtitle }}</i>
-      </div>
-    </header>
-
     <div class="pv-main">
       <component :is="cfg.component" :bare="true" :initial-mode="cfg.mode" />
     </div>
@@ -31,7 +19,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import RoadRashGame from '@/components/games/RoadRashGame.vue'
 import PvzEmbed from '@/components/games/PvzEmbed.vue'
 import EmulatorHost from '@/components/games/EmulatorHost.vue'
@@ -40,7 +28,6 @@ import EmulatorHost from '@/components/games/EmulatorHost.vue'
 useFullscreenPage()
 
 const route = useRoute()
-const router = useRouter()
 
 /** 键与 route.meta.game 对齐；mode 留空 = 交给组件按端自己选档（手机 easy / 桌面 classic） */
 const MAP = {
@@ -66,9 +53,6 @@ const MAP = {
 
 const cfg = computed(() => MAP[route.meta.game] || MAP.roadrash)
 
-function goHall() {
-  router.push('/tool/games')
-}
 </script>
 
 <style scoped>
@@ -83,24 +67,6 @@ function goHall() {
   color: var(--dp-text, #2b2b2b);
   padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
-}
-.pv-top {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--dp-line, rgba(20, 30, 40, .1));
-}
-.pv-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.pv-title b { font-size: 13.5px; font-weight: 600; }
-.pv-title i {
-  font-size: 11.5px;
-  font-style: normal;
-  opacity: .55;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .pv-main {
   flex: 1 1 0;
