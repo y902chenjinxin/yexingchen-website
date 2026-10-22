@@ -23,6 +23,55 @@
 
 ---
 
+## [v2.46.220] - 2026-10-22
+
+### 修：模拟器上传 ROM 不认 zip（网上下载的都是压缩包）
+
+夜星：「我在 D 盘文件夹里游戏里下载了游戏 zip 但是不给我上传咋回事」
+
+#### 原因：两道门都堵着
+| 位置 | 问题 |
+|---|---|
+| 前端 `accept` | 只列裸 ROM 后缀（`.nes/.sfc/.gba/...`），**没有 `.zip`** → 文件选择器里 zip 是灰的、点不上 |
+| 后端校验 | `if ext not in EXT_CORE: raise_error("不支持的格式")` → 即使绕过前端也会被拒 |
+
+而 ROM 站下载的文件基本都是 zip 打包，用户根本选不到。
+
+#### 修法：前端解压，服务器仍只存 ROM
+不放开后端收 zip（服务器不存压缩包，也避免变成 ROM 分发站），改成**上传前在前端解开**：
+
+```js
+const zip = await JSZip.loadAsync(file)
+const roms = entries
+  .filter(e => !e.dir && !/__macosx/i.test(e.name) && ROM_EXTS.some(x => e.name.toLowerCase().endsWith(x)))
+  .sort((a, b) => a.name.split('/').length - b.name.split('/').length) // 层级浅的优先当主 ROM
+```
+- 两个入口都支持：**上传 ROM（存服务器）** 和 **换 ROM（本地 IndexedDB 播放）**
+- 一个包里多个 ROM → 全部取出逐个上传；本地播放取层级最浅的那个
+- 多级目录（`Super Game/rom.gba`）自动取 basename
+- `__MACOSX/._xxx`、隐藏文件、readme/封面 全部跳过
+- 先解包**再**判 64MB（zip 本身可能超限但里面 ROM 是小的）
+- `.7z/.rar` 前端读不了 → 明确提示「请先解压」，而不是抛一个后端格式错误
+- 按钮文案改为「上传 ROM（可多选，支持 zip）」
+
+`jszip` 提升为直接依赖（原先是 `epubjs` 的间接依赖，属幽灵依赖）。
+
+#### 验证
+Node 造典型 ROM 包（多级目录 + readme + 封面 + `__MACOSX` 垃圾 + 第二个 ROM）：
+```
+全部条目: Super Game/rom.gba, Super Game/readme.txt, Super Game/cover.png,
+          __MACOSX/._rom.gba, patch/other.nes
+筛出的 ROM: Super Game/rom.gba, patch/other.nes
+第一个（本地播放）: rom.gba，字节数 1024 ✓
+无 ROM 的包 → 正确识别为空 ✓
+```
+线上 chunk 核验：两个 `<input>` 的 `accept` 均以 `.zip` 开头；
+解压失败提示文案在包内。
+
+版本 SW v533→v534、APP_VERSION v2.46.219→v2.46.220。
+
+---
+
 ## [v2.46.219] - 2026-10-22
 
 ### 修：阅读器点返回 → 内容区整块空白（侧栏正常）

@@ -50,7 +50,7 @@
       </div>
 
       <div class="em-acts">
-        <button class="em-btn primary" type="button" @click="uploadInput?.click()">上传 ROM（可多选）</button>
+        <button class="em-btn primary" type="button" @click="uploadInput?.click()">上传 ROM（可多选，支持 zip）</button>
         <button class="em-btn" type="button" @click="pickFile">本地直接玩（不落盘）</button>
         <button v-if="savedName" class="em-btn ghost" type="button" @click="playSaved">
           继续：{{ savedName }}
@@ -85,14 +85,14 @@
       ref="uploadInput"
       type="file"
       multiple
-      accept=".nes,.sfc,.smc,.gba,.gb,.gbc,.md,.gen,.bin,.iso,.n64,.z64"
+      accept=".zip,.nes,.sfc,.smc,.gba,.gb,.gbc,.md,.gen,.bin,.iso,.n64,.z64"
       hidden
       @change="onUploadFile"
     />
     <input
       ref="fileInput"
       type="file"
-      accept=".nes,.sfc,.smc,.gba,.gb,.gbc,.gbc,.n64,.z64,.bin,.iso"
+      accept=".zip,.nes,.sfc,.smc,.gba,.gb,.gbc,.n64,.z64,.bin,.iso"
       hidden
       @change="onFile"
     />
@@ -103,6 +103,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listRoms, uploadRom } from '@/api/emulator'
+import JSZip from 'jszip'
 
 defineProps({ bare: { type: Boolean, default: false } })
 
@@ -201,9 +202,19 @@ function pickFile() {
 }
 
 async function onFile(e) {
-  const file = e.target.files?.[0]
+  const picked = Array.from(e.target.files || [])
   e.target.value = ''
+  let file = picked[0]
   if (!file) return
+
+  // zip 先解包（取里面层级最浅的 ROM；本地播放只播一个）
+  if (isZipFile(file)) {
+    const got = await expandFiles([file])
+    if (!got.length) return
+    file = got[0]
+    if (got.length > 1) ElMessage.info(`已从压缩包里取出 ${got.length} 个 ROM，先播放「${file.name}」`)
+  }
+
   if (!file.size) { ElMessage.error('文件为空'); return }
   if (file.size > 64 * 1024 * 1024) { ElMessage.error('ROM 超过 64MB，暂不支持'); return }
 
@@ -330,14 +341,78 @@ async function boot(blob, name, size) {
   }
 }
 
+/* ---------------- zip 支持（v2.46.220） ----------------
+   夜星反馈："在 D 盘下载了游戏 zip，但不给我上传"。
+   原因：accept 只列了裸 ROM 后缀，zip 在文件选择器里是灰的；
+   后端也只认裸 ROM（服务器不存压缩包）。而 ROM 站下载的基本都是 zip。
+
+   做法：**在前端解压**，取出里面的 ROM 文件再逐个上传/播放。
+   服务器上仍然只有 ROM 文件，不改变"不存商业 ROM 包"的前提。 */
+
+/** 与后端 EXT_CORE 对齐：只认这些后缀 */
+const ROM_EXTS = ['.nes', '.sfc', '.smc', '.gba', '.gb', '.gbc', '.md', '.gen', '.bin', '.iso', '.n64', '.z64']
+
+function isZipFile(f) {
+  return /\.zip$/i.test(f.name || '') || f.type === 'application/zip' || f.type === 'application/x-zip-compressed'
+}
+
+/**
+ * 把选中的文件展开成待处理的 File 列表：zip 自动解包，普通 ROM 原样返回。
+ * zip 里可能有多级目录（`game/rom.nes`）和一个包里多个 ROM，全部取出、按层级浅的优先。
+ */
+async function expandFiles(files) {
+  const out = []
+  for (const f of files) {
+    if (!isZipFile(f)) { out.push(f); continue }
+    try {
+      const zip = await JSZip.loadAsync(f)
+      const entries = Object.values(zip.files || {}).filter((e) => !e.dir)
+      const roms = entries
+        .filter((e) => {
+          const n = e.name.toLowerCase()
+          if (n.includes('__macosx') || n.startsWith('.')) return false
+          return ROM_EXTS.some((x) => n.endsWith(x))
+        })
+        // 层级越浅越可能是主 ROM（避免误取附带的补丁/说明书目录里的文件）
+        .sort((a, b) => a.name.split('/').length - b.name.split('/').length)
+
+      if (!roms.length) {
+        ElMessage.warning(`「${f.name}」里没找到 ROM 文件（支持 ${ROM_EXTS.join(' / ')}）`)
+        continue
+      }
+      for (const e of roms) {
+        const blob = await e.async('blob')
+        const base = (e.name.split('/').pop() || 'rom').trim()
+        out.push(new File([blob], base, { type: 'application/octet-stream' }))
+      }
+      if (roms.length > 1) ElMessage.info(`「${f.name}」里有 ${roms.length} 个 ROM，已全部取出`)
+    } catch (err) {
+      ElMessage.error(`「${f.name}」解压失败：${err?.message || '不是有效的 zip'}`)
+    }
+  }
+  return out
+}
+
 /** 上传自己的 ROM（支持一次选多个，逐个传，存到服务器 roms/user/） */
 async function onUploadFile(e) {
-  const files = Array.from(e?.target?.files || [])
+  const picked = Array.from(e?.target?.files || [])
   if (e?.target) e.target.value = ''
+  if (!picked.length) return
+
+  // 先解包再判大小：zip 本身可能超过 64MB，但里面的 ROM 是小的
+  const files = await expandFiles(picked)
   if (!files.length) return
 
-  const tooBig = files.filter((f) => f.size > 64 * 1024 * 1024)
-  const ok = files.filter((f) => f.size <= 64 * 1024 * 1024)
+  // 常见压缩格式里只有 zip 能直接读；7z/rar 得先自己解压
+  const unsupported = files.filter((f) => !ROM_EXTS.some((x) => f.name.toLowerCase().endsWith(x)))
+  if (unsupported.length) {
+    ElMessage.warning(`只能直接传 zip 或 ROM 文件：${unsupported.map((f) => f.name).join('、')}（7z/rar 请先解压）`)
+  }
+  const usable = files.filter((f) => ROM_EXTS.some((x) => f.name.toLowerCase().endsWith(x)))
+  if (!usable.length) return
+
+  const tooBig = usable.filter((f) => f.size > 64 * 1024 * 1024)
+  const ok = usable.filter((f) => f.size <= 64 * 1024 * 1024)
   if (tooBig.length) ElMessage.warning(`${tooBig.length} 个文件超过 64MB，已跳过`)
   if (!ok.length) return
 
