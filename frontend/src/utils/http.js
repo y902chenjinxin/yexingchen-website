@@ -36,11 +36,17 @@ export function createApi({ baseURL = '/api', timeout = 30000, ...rest } = {}) {
         const status = error.response.status
         const detail = error.response.data?.detail || error.response.data?.msg || '请求失败'
         const message = typeof detail === 'string' ? detail : detail?.msg || '请求失败'
-        if (status === 401) {
+        // 🔴 与 api/index.js 保持一致（v2.46.227）：登录/改密接口用 401 表达"凭据错误"，
+        // 不能当成 token 失效去清 token 踢人，否则用户输错一次密码就被登出。
+        const url = error.config?.url || ''
+        const isCredentialCheck = url.includes('/auth/login') || url.includes('/auth/change-password')
+        if (status === 401 && !isCredentialCheck) {
           localStorage.removeItem('token')
           if (router.currentRoute.value.path !== '/login') {
             router.push('/login')
           }
+        } else if (status === 401) {
+          // 凭据校验失败：不弹全局提示，交给业务方显示具体原因
         } else if (status === 403) {
           ElMessage.error('权限不足')
         } else if (status === 404) {
