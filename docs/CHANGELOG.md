@@ -23,6 +23,59 @@
 
 ---
 
+## [v2.46.233] - 2026-10-23
+
+### 视频时长 + 一次 alembic 版本链事故
+
+夜星：「需要，全盘看下，一起改了」（接上一轮音乐时长）
+
+#### 全盘盘查结论
+| 模块 | 元信息字段 | 状态 |
+|---|---|---|
+| 音乐 | `duration` | 已有字段但接口没写 → v2.46.232 已修 |
+| 视频 | **压根没有 duration** | 本次补齐 |
+| 小说 | 无 word_count | **不做**：字数要解析 epub/pdf 正文，成本高收益低 |
+| 笔记 / 工具 | 无媒体元信息 | 不涉及 |
+
+#### 视频改动
+- 迁移 `ca348bb715be`：`videos` 加 `duration INTEGER NOT NULL DEFAULT 0`
+- 模型 / 列表接口 / 上传接口 / `VideoUpdate` 全部支持 duration
+- 前端：列表新增「时长」列；上传前用 `<video preload="metadata">` 读本地文件时长
+- 历史数据同样自愈（读 `/api/video/{id}/stream` 文件头 → 就地显示 → PUT 回写，并发 6）
+- `utils/audioMeta.js` 的 `probe()` 通用化，新增 `readVideoDuration()`；
+  `formatDuration` 支持小时（h:mm:ss）
+
+> 当前视频库是空的（0 条），所以"历史补全"暂时无数据可跑 —— 上传一个视频即可见效。
+
+#### 🔴 踩了一串 alembic 坑（差点把后端搞挂）
+1. **手填 revision id 撞名两次**：
+   - `a7b8c9d0e1f2` → 撞 `finance_funds`
+   - `d1e2f3a4b5c6` → 撞 `travels`
+   撞名后 `alembic heads` 报 `present more than once` / `CycleDetected`，`upgrade` 直接失败。
+   → **正解：先扫出全部 48 个现有 revision，再随机生成一个不冲突的 id。**
+2. **画蛇添足加 merge**：以为 `a3b4c5d6e7f8` 是并列 head，写了 merge 迁移，
+   结果它其实是当前 head 的**祖先**，合并造成环（`CycleDetected` 列出 41 个 revision）。
+   → 删掉 merge，只让新迁移接在唯一 head 后即可。
+3. **部署脚本只覆盖不删除**：第一次的错误迁移已上传到服务器，本地删了但远端还在，
+   导致服务器上**三个 head 并存**。
+   → 对比两端文件名集合，删掉 `a7b8c9d0e1f2_video_duration.py` 才对。
+4. **`schema_guard` 直接拒绝启动**：DB 版本不在已知 head 列表时，`main.py` 抛
+   `ProductionSchemaError` → PM2 崩溃循环 → `health=000`。
+   → 这个守卫是好设计（防止版本漂移），但也把"迁移没跑"从"静默失败"变成"立刻宕机"。
+
+#### 最终验证
+```
+alembic: c8d9e0f1a2b3 → ca348bb715be（单一 head）
+videos.duration 列: True
+health: 200（local + 外网）
+PM2: online
+[视频] 列含「时长」；[音乐] 列含「时长」，10 行正常；无 JS 错误
+```
+
+版本 SW v546→v547、APP_VERSION v2.46.232→v2.46.233。
+
+---
+
 ## [v2.46.232] - 2026-10-23
 
 ### 音乐时长：从"永远 0:00"到真实时长（含 63 条历史数据自动补全）

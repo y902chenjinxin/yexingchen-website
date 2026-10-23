@@ -195,6 +195,8 @@ class VideoUpdate(BaseModel):
     cos_url: Optional[str] = None
     category: Optional[str] = None
     tags: Optional[str] = None
+    # v2.46.233：时长（秒），历史数据补全后回写用
+    duration: Optional[int] = None
 
 
 class VideoItem(BaseModel):

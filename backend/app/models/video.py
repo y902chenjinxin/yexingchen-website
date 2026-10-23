@@ -19,6 +19,8 @@ class Video(Base):
     uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     is_test_data = Column(Integer, default=0)
     file_size = Column(Integer, default=0)
+    # v2.46.233：时长（秒）。前端上传前用 <video preload="metadata"> 读，后端只存。
+    duration = Column(Integer, default=0)
     # v2.46.188：管理列表拖拽排序用；值越小越靠前
     sort_order = Column(Integer, nullable=False, default=0, index=True)
     created_at = Column(DateTime, default=datetime.now)

@@ -37,6 +37,9 @@
           </template>
         </el-table-column>
         <el-table-column v-if="!isMobile" prop="tags" label="标签" min-width="120" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" label="时长" width="72">
+          <template #default="{ row }">{{ formatDuration(row.duration) }}</template>
+        </el-table-column>
         <el-table-column v-if="!isMobile" label="文件大小" width="100">
           <template #default="{ row }">{{ formatSize(row.file_size) }}</template>
         </el-table-column>
@@ -274,6 +277,7 @@ import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage } from 'element-plus'
 import { useVideoStore } from '@/stores/video'
+import { readVideoDuration, readRemoteDuration, runWithConcurrency } from '@/utils/audioMeta'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
@@ -486,6 +490,44 @@ async function fetchData() {
   if (keyword.value) params.q = keyword.value
   if (uploaderId.value) params.uploader_id = uploaderId.value
   await videoStore.fetchList(params)
+  healDurations()
+}
+
+/* ---------- 视频时长：显示与历史补全（v2.46.233，与音乐同一套机制） ----------
+ * 之前 videos 表压根没有 duration 字段，列表也没有时长列。
+ * 这里在列表加载后，对 duration<=0 的条目读 <video preload="metadata"> 的
+ * /api/video/{id}/stream 文件头，先就地显示再 PUT 回写，之后直接读库。
+ * 并发 6（实测足够快，nginx 支持 Range 只取几 KB）；失败静默跳过。 */
+let healingDurations = false
+async function healDurations() {
+  if (healingDurations) return
+  const list = videoStore.list || []
+  const todo = list.filter((v) => v && !(Number(v.duration) > 0))
+  if (!todo.length) return
+  healingDurations = true
+  try {
+    await runWithConcurrency(todo, async (v) => {
+      const dur = await readRemoteDuration(`/api/video/${v.id}/stream`, 'video')
+      if (!dur) return
+      v.duration = dur
+      try {
+        await videoStore.update(v.id, { duration: dur })
+      } catch { /* 回写失败不影响本次显示 */ }
+    }, 6)
+  } finally {
+    healingDurations = false
+  }
+}
+
+/** 秒 → m:ss / h:mm:ss；未知显示破折号（别把"没读到"装成 0:00） */
+function formatDuration(sec) {
+  const n = Number(sec)
+  if (!n || isNaN(n) || n <= 0) return '—'
+  const h = Math.floor(n / 3600)
+  const m = Math.floor((n % 3600) / 60)
+  const ss = Math.floor(n % 60)
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+  return `${m}:${String(ss).padStart(2, '0')}`
 }
 
 function doSearch() {
@@ -526,6 +568,8 @@ async function handleUpload() {
   try {
     const formData = new FormData()
     formData.append('file', uploadFile.value)
+    // v2.46.233：上传前读本地视频时长（只解析文件头，不下载整片）
+    formData.append('duration', String(await readVideoDuration(uploadFile.value)))
     formData.append('title', uploadForm.value.title)
     formData.append('cos_url', uploadForm.value.cos_url || '')
     formData.append('category', uploadForm.value.category || '')

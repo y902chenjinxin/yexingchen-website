@@ -21,7 +21,7 @@
 /** 兜底超时：某些损坏文件或不支持格式的元数据事件永远不触发 */
 const TIMEOUT_MS = 8000
 
-function probe(src, cleanup) {
+function probe(src, cleanup, tag = 'audio') {
   return new Promise((resolve) => {
     let settled = false
     const done = (v) => {
@@ -35,16 +35,16 @@ function probe(src, cleanup) {
     }
     const timer = setTimeout(() => done(0), TIMEOUT_MS)
 
-    const audio = document.createElement('audio')
-    audio.preload = 'metadata'
-    audio.muted = true
-    audio.addEventListener('loadedmetadata', () => done(audio.duration), { once: true })
+    const el = document.createElement(tag)
+    el.preload = 'metadata'
+    el.muted = true
+    el.addEventListener('loadedmetadata', () => done(el.duration), { once: true })
     // 有些浏览器元数据非法时只触发 durationchange
-    audio.addEventListener('durationchange', () => {
-      if (Number.isFinite(audio.duration) && audio.duration > 0) done(audio.duration)
+    el.addEventListener('durationchange', () => {
+      if (Number.isFinite(el.duration) && el.duration > 0) done(el.duration)
     })
-    audio.addEventListener('error', () => done(0), { once: true })
-    audio.src = src
+    el.addEventListener('error', () => done(0), { once: true })
+    el.src = src
   })
 }
 
@@ -65,15 +65,31 @@ export function readAudioDuration(file) {
 }
 
 /**
+ * 读本地视频文件时长（秒）。视频同样只解析文件头（moov 原子），不下载整片。
+ * @param {File} file
+ * @returns {Promise<number>}
+ */
+export function readVideoDuration(file) {
+  if (!file || typeof URL === 'undefined' || !URL.createObjectURL) return Promise.resolve(0)
+  let url = ''
+  try {
+    url = URL.createObjectURL(file)
+  } catch {
+    return Promise.resolve(0)
+  }
+  return probe(url, () => URL.revokeObjectURL(url), 'video')
+}
+
+/**
  * 读远程音频 URL 的时长（秒）。用于历史数据补全。
  * 注意：会给服务器发一次 metadata 请求（通常只有几 KB 的头），别在长列表里
  * 无节制并发 —— 调用方应串行或小并发。
  * @param {string} url
  * @returns {Promise<number>}
  */
-export function readRemoteDuration(url) {
+export function readRemoteDuration(url, tag = 'audio') {
   if (!url) return Promise.resolve(0)
-  return probe(url, () => { /* 远程 URL 无需释放 */ })
+  return probe(url, () => { /* 远程 URL 无需释放 */ }, tag)
 }
 
 /**

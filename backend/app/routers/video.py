@@ -92,6 +92,7 @@ async def list_videos(
                 "uploader_id": v.uploader_id,
                 "uploader_name": uploader_names.get(v.uploader_id, ""),
                 "file_size": v.file_size,
+                "duration": v.duration or 0,
                 "created_at": str(v.created_at)
             }
             for v in items
@@ -128,6 +129,8 @@ async def upload_video(
     cos_url: str = Form(""),
     category: str = Form(""),
     tags: str = Form(""),
+    # v2.46.233：时长（秒）由前端 <video preload="metadata"> 读本地文件得到
+    duration: int = Form(0),
     cover: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -156,7 +159,8 @@ async def upload_video(
         tags=tags,
         cover_path=cover_path,
         uploader_id=current_user["user_id"],
-        file_size=file_size
+        file_size=file_size,
+        duration=max(0, int(duration or 0))
     )
     db.add(video)
     db.commit()
@@ -208,6 +212,8 @@ async def update_video(
         video.category = req.category
     if req.tags is not None:
         video.tags = req.tags
+    if req.duration is not None:
+        video.duration = max(0, int(req.duration))
 
     db.commit()
 
