@@ -291,6 +291,8 @@
   border: 1px solid var(--tc-line);
   color: var(--tc-text);
   box-shadow: 0 24px 60px rgba(15, 60, 110, .18);
+  /* v2.46.229：补圆角（与夜间版 radius-lg 一致）。EP 默认 4px 直角白盒观感差。 */
+  border-radius: var(--radius-lg, 14px);
 }
 :root[data-theme="day"] .el-dialog__title,
 :root[data-theme="day"] .el-drawer__title { color: var(--tc-text); }

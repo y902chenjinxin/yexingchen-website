@@ -426,9 +426,13 @@ body { background: var(--tc-bg-1); }
   box-shadow: var(--glass-shadow), 0 0 28px rgba(45, 226, 255, .14);
 }
 
-/* 对话框 / 抽屉：霓虹玻璃 */
-.el-dialog,
-.el-drawer {
+/* 对话框 / 抽屉：霓虹玻璃。
+ * 🔴 v2.46.229：必须限定夜间作用域 —— 原来是全局 + !important，把
+ *    tech-theme-day.css 的白玻璃弹窗压死了，日间主题下弹窗深色面板
+ *    + 浅色输入框拼成一盘（夜星反馈"音乐批量导入页面有点怪"）。
+ *    加 :root:not([data-theme="day"]) 后，日间走 day 版自己的白玻璃。 */
+:root:not([data-theme="day"]) .el-dialog,
+:root:not([data-theme="day"]) .el-drawer {
   background: rgba(12, 18, 30, .92) !important;
   border: 1px solid var(--tc-line-strong) !important;
   border-radius: var(--radius-lg) !important;
