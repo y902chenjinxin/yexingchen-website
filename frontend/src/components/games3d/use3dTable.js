@@ -32,23 +32,22 @@ export function wallTF(side, i, n) {
   return `translate(-50%,-50%) translate3d(${x}px,${y}px,45px) rotateZ(${rotZ}deg) rotateX(-90deg)`
 }
 
-/** 玩家手牌：一律**立牌**递到镜头前。
+/** 玩家手牌：两种形态 —— 麻将竖插在桌上，扑克立起后仰像拿在手里。
  *  step 自适应：牌多时（掼蛋 27 张）自动收窄重叠，总宽不超过约 1000px；
  *  lift>0 表示选中抬升（沿 z 轴抬）。
  *
- * 🔴 v2.46.228 修「掼蛋牌不是对着我的」：
- * 原来 stand=false（掼蛋）时**不加 rotateX(-90deg)**，牌会跟着世界的 rotateX(66°)
- * 一起倾斜 —— 也就是平躺在桌面上。玩家看到的是一条被压扁的牌带（高约 35px，
- * 而牌本身高 58px），根本不是"拿在手里对着自己"的手牌。
- * 现在两种都立牌：rotateX(-90°) 抵消世界的 66°，剩余 -24° 微后仰，
- * 正是"把手牌竖起来递到镜头前"的手感（与麻将一致）。
- *
- * z 统一抬到 46：立牌必须离桌面更高，否则牌身会插进桌面里。 */
+ * 🔴 v2.46.228：掼蛋原来走 stand=false 完全不加旋转，牌跟着世界 rotateX(66°)
+ *    平躺在桌面，玩家看到的是一条压扁牌带 —— "牌不是对着我的"。
+ * 🔴 v2.46.229：上一版直接照搬麻将的 rotateX(-90°)（竖直插在桌上）也不对 ——
+ *    扑克不是麻将，参考主流掼蛋手游（欢乐掼蛋 / 微信掼蛋）的持牌：
+ *    **牌立起约 60°、牌面朝玩家并略微后仰**，保留 6° 与视线的夹角出立体感
+ *    （能看见牌的侧厚度，而不是一张贴在屏幕上的平面贴图）。
+ *    与中央出牌区 centerTF 的 rotateX(-52°) 同一语系。 */
 export function handTF(i, n, stand, ty = 324, lift = 0) {
   const step = Math.min(44, 1000 / Math.max(1, n))
   const off = (i - (n - 1) / 2) * step
   if (stand) return `translate(-50%,-50%) translate3d(${off}px,${ty}px,${46 + lift}px) rotateX(-90deg)`
-  return `translate(-50%,-50%) translate3d(${off}px,${ty}px,${46 + lift}px) rotateX(-90deg)`
+  return `translate(-50%,-50%) translate3d(${off}px,${ty}px,${46 + lift}px) rotateX(-60deg)`
 }
 
 /** 对手手牌背面：'N'|'W'|'E' */

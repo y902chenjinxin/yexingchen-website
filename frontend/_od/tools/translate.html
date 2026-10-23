@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>中英互译 · 极简双框</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #f2f5f9;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            padding: 20px;
+        }
+
+        .card {
+            background: #ffffff;
+            max-width: 820px;
+            width: 100%;
+            border-radius: 36px;
+            padding: 32px 28px 40px;
+            box-shadow: 0 20px 40px -12px rgba(0, 20, 40, 0.2), 0 8px 24px -6px rgba(0, 0, 0, 0.05);
+            transition: 0.2s;
+            border: 1px solid #eef2f7;
+        }
+
+        h1 {
+            font-weight: 500;
+            font-size: 26px;
+            letter-spacing: 2px;
+            color: #1a2639;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        h1 small {
+            font-size: 15px;
+            font-weight: 400;
+            color: #6b7a93;
+            letter-spacing: 0.5px;
+            margin-left: 8px;
+        }
+
+        .sub-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            color: #4d5f78;
+            font-size: 14px;
+            border-bottom: 1px solid #e6ecf3;
+            padding-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .char-counter {
+            background: #edf2f9;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            color: #2a3a54;
+            font-weight: 450;
+        }
+
+        .char-counter span {
+            font-weight: 600;
+            color: #0f1a2e;
+        }
+
+        .translate-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .box-row {
+            display: flex;
+            flex-direction: column;
+            background: #f9fbfd;
+            border-radius: 24px;
+            border: 1px solid #e0e8f2;
+            transition: 0.15s;
+        }
+
+        .box-row:focus-within {
+            border-color: #2d7aff;
+            box-shadow: 0 0 0 3px rgba(45, 122, 255, 0.08);
+            background: #ffffff;
+        }
+
+        .box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 18px 0 18px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #2b3d5a;
+            letter-spacing: 0.3px;
+        }
+
+        .box-header .lang-tag {
+            background: #e7eef8;
+            padding: 2px 16px;
+            border-radius: 30px;
+            font-size: 12px;
+            color: #1f3a5f;
+        }
+
+        .box-header .action-btn {
+            background: transparent;
+            border: none;
+            color: #4d6a92;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: 30px;
+            transition: 0.1s;
+        }
+
+        .box-header .action-btn:hover {
+            background: #dce6f2;
+            color: #0c1e38;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px 18px 16px;
+            font-size: 16px;
+            line-height: 1.7;
+            border: none;
+            background: transparent;
+            resize: vertical;
+            font-family: inherit;
+            color: #121f33;
+            outline: none;
+            letter-spacing: 0.2px;
+            transition: 0.1s;
+        }
+
+        textarea::placeholder {
+            color: #a5b8cf;
+            font-weight: 300;
+            font-size: 15px;
+        }
+
+        .box-footer {
+            display: flex;
+            justify-content: flex-end;
+            padding: 2px 18px 12px 18px;
+            font-size: 12px;
+            color: #7b8da5;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .box-footer .count {
+            background: #eef3fa;
+            padding: 2px 12px;
+            border-radius: 40px;
+        }
+
+        .center-control {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            margin: 6px 0 2px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn-translate {
+            background: #1a2b44;
+            border: none;
+            padding: 14px 48px;
+            border-radius: 60px;
+            font-size: 18px;
+            font-weight: 500;
+            color: white;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 8px 18px -6px rgba(20, 50, 100, 0.25);
+            border: 1px solid #2f4570;
+            min-width: 160px;
+        }
+
+        .btn-translate:hover {
+            background: #0e1e33;
+            transform: scale(0.97);
+            box-shadow: 0 4px 12px -4px rgba(0, 30, 70, 0.3);
+        }
+
+        .btn-translate:active {
+            background: #071426;
+            transform: scale(0.95);
+        }
+
+        .btn-translate:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .swap-btn {
+            background: #eef3fa;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 60px;
+            font-size: 20px;
+            color: #1e3757;
+            cursor: pointer;
+            transition: 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #d5e0ec;
+        }
+
+        .swap-btn:hover {
+            background: #dce6f2;
+            transform: rotate(15deg);
+        }
+
+        .char-hint {
+            margin-top: 16px;
+            text-align: right;
+            font-size: 13px;
+            color: #6f84a0;
+            border-top: 1px solid #e9eff6;
+            padding-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .char-hint .limit {
+            background: #f0f5fc;
+            padding: 2px 14px;
+            border-radius: 30px;
+        }
+
+        @media (max-width: 480px) {
+            .card { padding: 20px 16px; }
+            .btn-translate { padding: 12px 28px; font-size: 16px; min-width: 120px; }
+            textarea { min-height: 100px; font-size: 15px; }
+        }
+    </style>
+</head>
+<body>
+<div class="card" role="main" aria-label="翻译工具">
+    <h1>
+        <span>📝 翻译</span>
+        <small>中 · 英</small>
+    </h1>
+    <div class="sub-bar">
+        <span>⬇️ 输入原文 · 自动检测语言</span>
+        <span class="char-counter">✏️ <span id="charCountDisplay">0</span> / 1000</span>
+    </div>
+
+    <div class="translate-area">
+        <!-- 原文框 -->
+        <div class="box-row">
+            <div class="box-header">
+                <span class="lang-tag" id="sourceLangLabel">📄 原文</span>
+                <button class="action-btn" id="clearSourceBtn" type="button" title="清空原文">✕ 清空</button>
+            </div>
+            <textarea id="sourceText" placeholder="请输入中文或英文 (最多1000字符) ..." maxlength="1000" spellcheck="true"></textarea>
+            <div class="box-footer">
+                <span class="count" id="sourceCharCount">0 字符</span>
+            </div>
+        </div>
+
+        <!-- 中间控制区：交换 + 翻译 -->
+        <div class="center-control">
+            <button class="swap-btn" id="swapBtn" type="button" aria-label="交换原文和译文" title="交换内容">⇄</button>
+            <button class="btn-translate" id="translateBtn">翻 译</button>
+        </div>
+
+        <!-- 译文框 -->
+        <div class="box-row">
+            <div class="box-header">
+                <span class="lang-tag" id="targetLangLabel">🌐 译文</span>
+                <button class="action-btn" id="copyResultBtn" type="button" title="复制译文">📋 复制</button>
+            </div>
+            <textarea id="targetText" placeholder="译文将显示在这里 ..." readonly spellcheck="false" style="background: #f5f8fe;"></textarea>
+            <div class="box-footer">
+                <span class="count" id="targetCharCount">0 字符</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="char-hint">
+        <span>🔤 支持中英互译 · 1000字符上限</span>
+        <span class="limit" id="limitHint">剩余 <span id="remainChars">1000</span> 字符</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ----- DOM refs -----
+        const sourceText = document.getElementById('sourceText');
+        const targetText = document.getElementById('targetText');
+        const translateBtn = document.getElementById('translateBtn');
+        const swapBtn = document.getElementById('swapBtn');
+        const clearSourceBtn = document.getElementById('clearSourceBtn');
+        const copyResultBtn = document.getElementById('copyResultBtn');
+
+        const charCountDisplay = document.getElementById('charCountDisplay');
+        const sourceCharCount = document.getElementById('sourceCharCount');
+        const targetCharCount = document.getElementById('targetCharCount');
+        const remainChars = document.getElementById('remainChars');
+        const limitHint = document.getElementById('limitHint');
+
+        const sourceLangLabel = document.getElementById('sourceLangLabel');
+        const targetLangLabel = document.getElementById('targetLangLabel');
+
+        const MAX_LENGTH = 1000;
+
+        // ----- 辅助函数 -----
+        function updateCharCount() {
+            const len = sourceText.value.length;
+            charCountDisplay.textContent = len;
+            sourceCharCount.textContent = len + ' 字符';
+            const remain = Math.max(0, MAX_LENGTH - len);
+            remainChars.textContent = remain;
+
+            // 如果超过限制，自动截断 (maxlength 已做保护，但作为补充)
+            if (len > MAX_LENGTH) {
+                sourceText.value = sourceText.value.substring(0, MAX_LENGTH);
+                // 重新更新一次
+                updateCharCount();
+            }
+        }
+
+        // 更新译文框字符数
+        function updateTargetCharCount() {
+            const len = targetText.value.length;
+            targetCharCount.textContent = len + ' 字符';
+        }
+
+        // 检测文本语言 (简单启发：判断是否包含中文字符)
+        function detectLanguage(text) {
+            if (!text || text.trim() === '') return 'unknown';
+            // 检测中文字符 (基本汉字 + 扩展)
+            const chineseRegex = /[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f]/;
+            if (chineseRegex.test(text)) {
+                return 'zh';
+            } else {
+                // 检测英文字母
+                const englishRegex = /[a-zA-Z]/;
+                if (englishRegex.test(text)) {
+                    return 'en';
+                }
+                return 'unknown';
+            }
+        }
+
+        // 更新语言标签 (显示检测结果)
+        function updateLangLabels(text) {
+            const lang = detectLanguage(text);
+            if (lang === 'zh') {
+                sourceLangLabel.textContent = '📄 中文 (检测)';
+                targetLangLabel.textContent = '🌐 英文';
+            } else if (lang === 'en') {
+                sourceLangLabel.textContent = '📄 英文 (检测)';
+                targetLangLabel.textContent = '🌐 中文';
+            } else {
+                sourceLangLabel.textContent = '📄 原文';
+                targetLangLabel.textContent = '🌐 译文';
+            }
+        }
+
+        // ----- 核心翻译 (模拟API) -----
+        // 使用 MyMemory (免费) 或 模拟  —— 为了稳定，使用 MyMemory 公开API (支持中英)
+        // 但 MyMemory 有跨域限制，使用代理? 这里使用  mymemory 的 JSONP 方式？ 实际直接fetch可能跨域。
+        // 改用  LibreTranslate  (免费，但需要代理) 
+        // 为了开箱即用，我们使用  lingva 镜像？ 但是不稳定。
+        // 最稳妥: 使用  mymemory 的  get 请求  (支持跨域？ 默认支持)
+        // 参考: https://api.mymemory.translated.net/get?q=hello&langpair=en|zh
+        // 但因为跨域，在浏览器中可能被CORS阻止。使用 fetch 需要  mode: 'cors'，但服务端不一定允许。
+        // 更好的方案：使用 百度翻译API 需要密钥，不适合纯前端。
+        // 这里采用  "模拟翻译" + 真实调用 mymemory (如果浏览器允许CORS)
+        // 增加 fallback：如果失败，使用模拟翻译（但尽量真实）
+
+        async function translateText(text, sourceLang, targetLang) {
+            if (!text || text.trim() === '') return '';
+
+            // 如果纯空格或符号，直接返回
+            if (!/[a-zA-Z\u4e00-\u9fff]/.test(text)) return text;
+
+            // 使用 MyMemory API (免费，无密钥，支持CORS？)
+            // 尝试 fetch
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                    // 超时控制
+                    signal: AbortSignal.timeout(6000),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.responseData && data.responseData.translatedText) {
+                    let translated = data.responseData.translatedText;
+                    // 有时候返回带 &quot; 等实体，简单清理
+                    translated = translated.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+                    return translated;
+                } else {
+                    throw new Error('No translation in response');
+                }
+            } catch (error) {
+                console.warn('MyMemory API 调用失败，使用模拟翻译:', error.message);
+                // ----- 模拟翻译 (fallback) 保证演示 -----
+                return simulateTranslation(text, sourceLang, targetLang);
+            }
+        }
+
+        // 模拟翻译 (仅用于演示，当API不可用时)
+        function simulateTranslation(text, sourceLang, targetLang) {
+            if (sourceLang === 'zh' && targetLang === 'en') {
+                // 简单模拟：加前缀 [EN] 
+                return `[EN] ${text}`;
+            } else if (sourceLang === 'en' && targetLang === 'zh') {
+                return `[CN] ${text}`;
+            } else {
+                return `[${targetLang}] ${text}`;
+            }
+        }
+
+        // ----- 主要翻译流程 -----
+        async function handleTranslate() {
+            const text = sourceText.value;
+            if (!text || text.trim() === '') {
+                targetText.value = '';
+                updateTargetCharCount();
+                return;
+            }
+
+            // 检测语言
+            const lang = detectLanguage(text);
+            let sourceLang, targetLang;
+            if (lang === 'zh') {
+                sourceLang = 'zh-CN';
+                targetLang = 'en';
+                sourceLangLabel.textContent = '📄 中文 (检测)';
+                targetLangLabel.textContent = '🌐 英文';
+            } else if (lang === 'en') {
+                sourceLang = 'en';
+                targetLang = 'zh-CN';
+                sourceLangLabel.textContent = '📄 英文 (检测)';
+                targetLangLabel.textContent = '🌐 中文';
+            } else {
+                // 未知：尝试检测为英文，否则默认 中->英
+                if (/[a-zA-Z]/.test(text)) {
+                    sourceLang = 'en';
+                    targetLang = 'zh-CN';
+                    sourceLangLabel.textContent = '📄 英文 (检测)';
+                    targetLangLabel.textContent = '🌐 中文';
+                } else {
+                    sourceLang = 'zh-CN';
+                    targetLang = 'en';
+                    sourceLangLabel.textContent = '📄 中文 (检测)';
+                    targetLangLabel.textContent = '🌐 英文';
+                }
+            }
+
+            // 显示加载状态
+            translateBtn.disabled = true;
+            translateBtn.textContent = '翻译中…';
+
+            try {
+                const result = await translateText(text, sourceLang, targetLang);
+                targetText.value = result;
+                updateTargetCharCount();
+            } catch (err) {
+                targetText.value = '⚠️ 翻译服务暂时不可用，请稍后重试。';
+                updateTargetCharCount();
+                console.error(err);
+            } finally {
+                translateBtn.disabled = false;
+                translateBtn.textContent = '翻 译';
+            }
+        }
+
+        // ----- 交换内容 -----
+        function swapContent() {
+            const src = sourceText.value;
+            const tgt = targetText.value;
+            sourceText.value = tgt;
+            targetText.value = src;
+            updateCharCount();
+            updateTargetCharCount();
+            // 更新语言标签 (基于新原文)
+            updateLangLabels(sourceText.value);
+        }
+
+        // ----- 清空原文 -----
+        function clearSource() {
+            sourceText.value = '';
+            updateCharCount();
+            targetText.value = '';
+            updateTargetCharCount();
+            updateLangLabels('');
+        }
+
+        // ----- 复制译文 -----
+        function copyResult() {
+            const text = targetText.value;
+            if (!text) {
+                alert('译文为空，无法复制');
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                // 简单反馈
+                copyResultBtn.textContent = '✅ 已复制';
+                setTimeout(() => {
+                    copyResultBtn.textContent = '📋 复制';
+                }, 2000);
+            }).catch(() => {
+                // fallback
+                targetText.select();
+                document.execCommand('copy');
+                copyResultBtn.textContent = '✅ 已复制';
+                setTimeout(() => {
+                    copyResultBtn.textContent = '📋 复制';
+                }, 2000);
+            });
+        }
+
+        // ----- 事件绑定 -----
+        // 原文输入时更新计数 + 自动检测语言
+        sourceText.addEventListener('input', function() {
+            updateCharCount();
+            updateLangLabels(this.value);
+        });
+
+        // 翻译按钮
+        translateBtn.addEventListener('click', handleTranslate);
+
+        // 交换按钮
+        swapBtn.addEventListener('click', swapContent);
+
+        // 清空
+        clearSourceBtn.addEventListener('click', clearSource);
+
+        // 复制
+        copyResultBtn.addEventListener('click', copyResult);
+
+        // 快捷键: Ctrl+Enter 翻译
+        sourceText.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                handleTranslate();
+            }
+        });
+
+        // 初始化计数
+        updateCharCount();
+        updateTargetCharCount();
+        updateLangLabels(sourceText.value);
+
+        // 如果源文本为空，检测语言标签显示默认
+        if (!sourceText.value) {
+            sourceLangLabel.textContent = '📄 原文';
+            targetLangLabel.textContent = '🌐 译文';
+        }
+
+        // 额外：点击“翻译”后自动检测语言变化
+        console.log('✅ 翻译工具已启动 — 支持中英互译 (MyMemory + 模拟备用)');
+    })();
+</script>
+</body>
+</html>

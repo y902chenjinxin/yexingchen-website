@@ -1,0 +1,1 @@
+const d=["#e9c877","#f4dc9c","#7fd0a8","#6db3f2","#e2554c","#c9a227"];function r(n=26){const o=[];let t=7;const c=()=>(t=t*48271%2147483647,t/2147483647);for(let e=0;e<n;e++)o.push({"--cx":`${(c()*96+2).toFixed(1)}%`,"--cd":`${(c()*1.6).toFixed(2)}s`,"--cdur":`${(c()*1.2+1.6).toFixed(2)}s`,"--crot":`${Math.round(c()*900-450)}deg`,"--cc":d[e%d.length]});return o}export{r as c};
