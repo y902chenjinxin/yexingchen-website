@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512" role="img" aria-label="玄黄">
+  <!-- 玄黄 · 云雷玉璧
+       墨玉底盘 + 雨青玉环 + 鎏金内外缘与四向齿（牙璧式出脊）。
+       设计约束：无文字、仅两色系（墨/金 + 雨青）、无细碎描边；
+       16px 下自然退化为「墨盘 + 玉环」，仍可一眼辨认。 -->
+  <defs>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#243440"/>
+      <stop offset="1" stop-color="#0a1216"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#f0dcae"/>
+      <stop offset="0.45" stop-color="#c7a96b"/>
+      <stop offset="1" stop-color="#8f6f33"/>
+    </linearGradient>
+    <linearGradient id="jade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a8c9c3"/>
+      <stop offset="0.5" stop-color="#7fa8a3"/>
+      <stop offset="1" stop-color="#4e7b76"/>
+    </linearGradient>
+    <clipPath id="orb"><circle cx="50" cy="50" r="46"/></clipPath>
+  </defs>
+
+  <circle cx="50" cy="50" r="46" fill="url(#ink)"/>
+  <g clip-path="url(#orb)">
+    <ellipse cx="34" cy="22" rx="26" ry="14" fill="#ffffff" opacity="0.10"/>
+  </g>
+
+  <!-- 玉环本体 -->
+  <circle cx="50" cy="50" r="32" fill="none" stroke="url(#jade)" stroke-width="15"/>
+  <!-- 鎏金内外缘 -->
+  <circle cx="50" cy="50" r="40.5" fill="none" stroke="url(#gold)" stroke-width="1.5" opacity="0.85"/>
+  <circle cx="50" cy="50" r="23.5" fill="none" stroke="url(#gold)" stroke-width="1.5" opacity="0.85"/>
+  <!-- 四向出脊（牙璧） -->
+  <g stroke="#f0dcae" stroke-width="2.6" stroke-linecap="round" opacity="0.95">
+    <line x1="50" y1="22" x2="50" y2="11"/>
+    <line x1="50" y1="78" x2="50" y2="89"/>
+    <line x1="22" y1="50" x2="11" y2="50"/>
+    <line x1="78" y1="50" x2="89" y2="50"/>
+  </g>
+</svg>
