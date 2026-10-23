@@ -179,7 +179,12 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 /* ================= 舞台 / 世界 ================= */
 /* board 组件根容器：透明，背景由外层 .g3d-root 提供 */
 .g3d-board { position: absolute; inset: 0; }
-.g3d-stage { position: absolute; inset: 0; z-index: 1; perspective: 1500px; perspective-origin: 50% 42%; overflow: hidden; }
+/* v2.46.228：perspective-origin 必须和 .g3d-world 的定位（top:52%）**一致**。
+   原来是 50% 42%，比世界原点高 10% —— 消失点在上方，牌桌的远端向消失点收缩时
+   会把整个桌面"往上拽"，视觉重心偏高、不正对着坐在下方的玩家（夜星反馈
+   "3D 掼蛋不是对着我的"）。而且这是百分比，窗口越矮偏得越明显。
+   对齐成 52% 后，桌面以世界原点为中心展开，桌面中心落在 52% 处，正对玩家。 */
+.g3d-stage { position: absolute; inset: 0; z-index: 1; perspective: 1500px; perspective-origin: 50% 52%; overflow: hidden; }
 .g3d-world { position: absolute; left: 50%; top: 52%; width: 0; height: 0; transform-style: preserve-3d; }
 
 /* ================= 牌桌 3D 板 ================= */

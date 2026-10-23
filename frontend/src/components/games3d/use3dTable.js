@@ -32,14 +32,23 @@ export function wallTF(side, i, n) {
   return `translate(-50%,-50%) translate3d(${x}px,${y}px,45px) rotateZ(${rotZ}deg) rotateX(-90deg)`
 }
 
-/** 玩家手牌：stand=true 立牌（麻将，z=46）/ false 平贴桌面（掼蛋，z=21）
+/** 玩家手牌：一律**立牌**递到镜头前。
  *  step 自适应：牌多时（掼蛋 27 张）自动收窄重叠，总宽不超过约 1000px；
- *  lift>0 表示选中抬升（沿 z 轴抬）。 */
+ *  lift>0 表示选中抬升（沿 z 轴抬）。
+ *
+ * 🔴 v2.46.228 修「掼蛋牌不是对着我的」：
+ * 原来 stand=false（掼蛋）时**不加 rotateX(-90deg)**，牌会跟着世界的 rotateX(66°)
+ * 一起倾斜 —— 也就是平躺在桌面上。玩家看到的是一条被压扁的牌带（高约 35px，
+ * 而牌本身高 58px），根本不是"拿在手里对着自己"的手牌。
+ * 现在两种都立牌：rotateX(-90°) 抵消世界的 66°，剩余 -24° 微后仰，
+ * 正是"把手牌竖起来递到镜头前"的手感（与麻将一致）。
+ *
+ * z 统一抬到 46：立牌必须离桌面更高，否则牌身会插进桌面里。 */
 export function handTF(i, n, stand, ty = 324, lift = 0) {
   const step = Math.min(44, 1000 / Math.max(1, n))
   const off = (i - (n - 1) / 2) * step
   if (stand) return `translate(-50%,-50%) translate3d(${off}px,${ty}px,${46 + lift}px) rotateX(-90deg)`
-  return `translate(-50%,-50%) translate3d(${off}px,${ty}px,${21 + lift}px)`
+  return `translate(-50%,-50%) translate3d(${off}px,${ty}px,${46 + lift}px) rotateX(-90deg)`
 }
 
 /** 对手手牌背面：'N'|'W'|'E' */
