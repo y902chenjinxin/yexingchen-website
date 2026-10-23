@@ -17,6 +17,8 @@ export const batchUploadMusic = ({ files, items }) => {
     formData.append('artists', it.artist || '')
     formData.append('categories', it.category || '')
     formData.append('tags', it.tags || '')
+    // v2.46.231：时长由前端读本地文件得到，后端只存不解析
+    formData.append('durations', String(it.duration || 0))
   })
   return api.post('/music/batch', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

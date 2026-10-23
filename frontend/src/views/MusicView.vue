@@ -342,6 +342,7 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useMusicStore } from '@/stores/music'
+import { readAudioDuration, readRemoteDuration, runWithConcurrency } from '@/utils/audioMeta'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { downloadMusicTemplate, getMusicUploaders } from '@/api/music'
@@ -433,15 +434,19 @@ function handleBatchFileChange(file) {
   if (!file || !file.raw) return
   const raw = file.raw
   if (batchItems.value.some((it) => it.filename === raw.name && it.size === raw.size)) return
-  batchItems.value.push({
+  const item = {
     raw,
     filename: raw.name,
     size: raw.size,
+    duration: 0,
     title: raw.name.replace(/\.[^.]+$/, ''),
     artist: batchForm.value.artist || '',
     category: batchForm.value.category || '',
     tags: batchForm.value.tags || '',
-  })
+  }
+  batchItems.value.push(item)
+  // v2.46.231：边加边读时长（读本地 File 头，零网络），不阻塞选择流程
+  readAudioDuration(raw).then((d) => { item.duration = d })
   applyBatchTitleMode() // 重新按当前模式刷新预览标题
 }
 
@@ -492,12 +497,14 @@ async function submitBatch() {
   batchResult.value = null
   try {
     const files = batchItems.value.map((it) => it.raw)
-    const items = batchItems.value.map((it) => ({
+    // 提交前把还没读完时长的补齐（已读到的直接用，避免重复解析）
+    const items = await Promise.all(batchItems.value.map(async (it) => ({
       title: it.title || it.filename.replace(/\.[^.]+$/, ''),
       artist: batchForm.value.artist || '',
       category: batchForm.value.category || '',
       tags: batchForm.value.tags || '',
-    }))
+      duration: it.duration || (await readAudioDuration(it.raw)) || 0,
+    })))
     const res = await musicStore.batchUpload({ files, items })
     const data = res?.data || {}
     batchResult.value = {
@@ -554,6 +561,35 @@ async function fetchData() {
   if (keyword.value) params.q = keyword.value
   if (uploaderId.value) params.uploader_id = uploaderId.value
   await musicStore.fetchList(params)
+  healDurations()
+}
+
+/* ---------- 历史数据时长补全（v2.46.231） ----------
+ * 2.46.231 之前上传的曲目 duration 全是 0（当时上传接口根本没这个字段）。
+ * 这里在列表加载后，对 duration<=0 的曲目发一次 metadata 请求读到真实时长，
+ * 先本地显示、再回写数据库 —— 之后打开列表就直接有值，不用再读。
+ * 并发 6：实测每条读 metadata + 回写约 2-3 秒，63 条曲目并发 2 要跑近 2 分钟，
+ * 并发 6 能压到 30 秒内。nginx 支持 Range，每次只取文件头（几 KB），不会占带宽。
+ * 失败静默跳过（不打扰用户）。 */
+let healingDurations = false
+async function healDurations() {
+  if (healingDurations) return
+  const list = musicStore.list || []
+  const todo = list.filter((m) => m && m.id !== 'default' && !(Number(m.duration) > 0))
+  if (!todo.length) return
+  healingDurations = true
+  try {
+    await runWithConcurrency(todo, async (m) => {
+      const dur = await readRemoteDuration(`/api/music/${m.id}/stream`)
+      if (!dur) return
+      m.duration = dur // 先让界面立刻有值
+      try {
+        await musicStore.update(m.id, { duration: dur })
+      } catch { /* 回写失败不影响本次显示 */ }
+    }, 6)
+  } finally {
+    healingDurations = false
+  }
 }
 
 function doSearch() {
@@ -589,6 +625,9 @@ async function handleUpload() {
   try {
     const formData = new FormData()
     formData.append('file', uploadFile.value)
+    // v2.46.231：先读本地文件时长（零网络，只解析文件头），随表单提交
+    const dur = await readAudioDuration(uploadFile.value)
+    formData.append('duration', String(dur))
     formData.append('title', uploadForm.value.title)
     formData.append('artist', uploadForm.value.artist || '')
     formData.append('category', uploadForm.value.category || '')
@@ -724,7 +763,8 @@ function formatSize(bytes) {
 }
 
 function formatDuration(sec) {
-  if (sec == null || isNaN(sec)) return '-'
+  // 0 / 空 / 非法一律显示破折号：未解析出时长时给 "0:00" 会误导
+  if (sec == null || isNaN(sec) || Number(sec) <= 0) return '—'
   const m = Math.floor(sec / 60)
   const s = Math.floor(sec % 60)
   return `${m}:${String(s).padStart(2, '0')}`

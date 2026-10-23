@@ -177,6 +177,9 @@ async def upload_music(
     artist: str = Form(""),
     category: str = Form(""),
     tags: str = Form(""),
+    # v2.46.231：时长（秒）由前端用 <audio preload="metadata"> 读本地文件得到。
+    # 后端不解析音频（避免在生产装 mutagen 等依赖），收不到就存 0。
+    duration: int = Form(0),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -195,7 +198,8 @@ async def upload_music(
         category=category,
         tags=tags,
         uploader_id=current_user["user_id"],
-        file_size=file_size
+        file_size=file_size,
+        duration=max(0, int(duration or 0))
     )
     db.add(music)
     db.commit()
@@ -247,6 +251,8 @@ async def update_music(
         music.category = req.category
     if req.tags is not None:
         music.tags = req.tags
+    if req.duration is not None:
+        music.duration = max(0, int(req.duration))
 
     db.commit()
 
@@ -289,6 +295,8 @@ async def batch_upload_music(
     artists: List[str] = Form(default_factory=list, description="与文件一一对应的作者（可选）"),
     categories: List[str] = Form(default_factory=list, description="与文件一一对应的分类（可选）"),
     tags: List[str] = Form(default_factory=list, description="与文件一一对应的标签（可选）"),
+    # v2.46.231：每条音频时长（秒），前端读本地文件得到；缺省按 0 存
+    durations: List[str] = Form(default_factory=list, description="与文件一一对应的时长秒数（可选）"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -306,6 +314,13 @@ async def batch_upload_music(
     artists_p = _pad(artists)
     categories_p = _pad(categories)
     tags_p = _pad(tags)
+    durations_p = _pad(durations, "0")
+
+    def _sec(v) -> int:
+        try:
+            return max(0, int(float(v)))
+        except (TypeError, ValueError):
+            return 0
 
     results: List[dict] = []
     success_count = 0
@@ -342,6 +357,7 @@ async def batch_upload_music(
                 tags=tags_p[idx],
                 uploader_id=current_user["user_id"],
                 file_size=file_size,
+                duration=_sec(durations_p[idx]),
             )
             db.add(music)
             db.flush()  # 先取 id，单条失败可回滚而不影响其他

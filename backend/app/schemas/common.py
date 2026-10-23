@@ -126,6 +126,8 @@ class MusicUpdate(BaseModel):
     artist: Optional[str] = None
     category: Optional[str] = None
     tags: Optional[str] = None
+    # v2.46.231：时长（秒）。前端读不到时传 0；历史数据补全后回写用这个字段。
+    duration: Optional[int] = None
 
 
 class BgmChoiceUpdate(BaseModel):
