@@ -153,3 +153,37 @@ export function fmtPercent(v, decimals = 0) {
   const p = Math.abs(n) <= 1 ? n * 100 : n
   return `${p.toFixed(decimals)}%`
 }
+
+/**
+ * 从音乐文件名解析「歌名-作者」（v2.46.234）
+ *
+ * 需求：上传 `晴天-周杰伦.mp3` 时自动拆成 标题=晴天、作者=周杰伦，
+ * 用户不用在两个输入框里各打一次。
+ *
+ * 规则（按夜星口径，**前面是歌名、后面是作者**）：
+ * - `晴天-周杰伦.mp3`   → { title: '晴天', artist: '周杰伦' }
+ * - `晴天 - 周杰伦.mp3` → 同上（容忍分隔符两侧空格）
+ * - `晴天－周杰伦.mp3`  → 同上（全角破折号 / em dash / en dash 都认）
+ * - `晴天.mp3`          → { title: '晴天', artist: '' }
+ * - `Live-版-周杰伦.mp3` → { title: 'Live', artist: '版-周杰伦' }（取**第一个**分隔符）
+ *
+ * 不拆的情况：分隔符在首尾（`-晴天` / `晴天-`），拆出来会有空串。
+ *
+ * 注意：如果文件名是「作者-歌名」的写法，会拆反 —— 这是按产品口径定的，
+ * 不做智能猜测（猜错了更难解释）。用户改了哪个框下次就不再自动覆盖。
+ */
+export function parseMusicFilename(filename) {
+  const raw = String(filename || '')
+  // 去掉目录前缀（有些浏览器的 file.name 带路径）与扩展名
+  const base = raw.split(/[/\\]/).pop().replace(/\.[^.]+$/, '').trim()
+  if (!base) return { title: '', artist: '' }
+
+  const m = base.match(/^(.+?)\s*[-－—–]\s*(.+)$/)
+  if (!m) return { title: base, artist: '' }
+
+  const title = m[1].trim()
+  const artist = m[2].trim()
+  // 任一侧为空就当作没有分隔符（`-晴天` / `晴天-` 这种）
+  if (!title || !artist) return { title: base, artist: '' }
+  return { title, artist }
+}

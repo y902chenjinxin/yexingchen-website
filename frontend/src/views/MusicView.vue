@@ -247,7 +247,7 @@
         <div class="batch-drop">
           <div class="batch-drop-icon"><AppIcon icon="📥" :size="28" /></div>
           <div class="batch-drop-text">拖拽文件到这里，或<em>点击选择</em></div>
-          <div class="batch-drop-hint">MP3 / FLAC / WAV，单次最多 20 个</div>
+          <div class="batch-drop-hint">MP3 / FLAC / WAV，单次最多 20 个 · 文件名写成「歌名-作者」会自动拆开</div>
         </div>
       </el-upload>
 
@@ -343,6 +343,7 @@ import { Search } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useMusicStore } from '@/stores/music'
 import { readAudioDuration, readRemoteDuration, runWithConcurrency } from '@/utils/audioMeta'
+import { parseMusicFilename } from '@/utils/format'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { downloadMusicTemplate, getMusicUploaders } from '@/api/music'
@@ -434,13 +435,15 @@ function handleBatchFileChange(file) {
   if (!file || !file.raw) return
   const raw = file.raw
   if (batchItems.value.some((it) => it.filename === raw.name && it.size === raw.size)) return
+  // v2.46.234：文件名当「歌名-作者」解析；作者优先用文件名里的，没有再落到批量作者框
+  const parsed = parseMusicFilename(raw.name)
   const item = {
     raw,
     filename: raw.name,
     size: raw.size,
     duration: 0,
-    title: raw.name.replace(/\.[^.]+$/, ''),
-    artist: batchForm.value.artist || '',
+    title: parsed.title,
+    artist: parsed.artist || batchForm.value.artist || '',
     category: batchForm.value.category || '',
     tags: batchForm.value.tags || '',
   }
@@ -468,16 +471,19 @@ function applyBatchTitleMode() {
   const mode = batchForm.value.titleMode
   const commonArtist = batchForm.value.artist || ''
   for (const it of batchItems.value) {
+    // v2.46.234：标题里的"歌名"部分始终取文件名解析后的 title，
+    // 作者优先级：文件名自带（`晴天-周杰伦.mp3`）> 批量作者输入框。
+    const parsed = parseMusicFilename(it.filename)
+    const artist = parsed.artist || commonArtist
     if (mode === 'filename') {
-      it.title = it.filename.replace(/\.[^.]+$/, '')
+      it.title = parsed.title
     } else if (mode === 'filename-artist') {
-      const base = it.filename.replace(/\.[^.]+$/, '')
-      it.title = commonArtist ? `${base} - ${commonArtist}` : base
+      it.title = artist ? `${parsed.title} - ${artist}` : parsed.title
     } else {
-      // custom：保留用户已输入的标题，没有则用文件名兜底
-      if (!it.title) it.title = it.filename.replace(/\.[^.]+$/, '')
+      // custom：保留用户已输入的标题，没有则用解析出的歌名兜底
+      if (!it.title) it.title = parsed.title
     }
-    it.artist = commonArtist
+    it.artist = artist
     it.category = batchForm.value.category || ''
     it.tags = batchForm.value.tags || ''
   }
@@ -604,18 +610,27 @@ function resetSearch() {
   doSearch()
 }
 
+/** 上一次由文件名自动填进表单的值（用户手动改过就不再用它覆盖） */
+const autoFilled = ref({ title: '', artist: '' })
+
 function openUpload() {
   uploadForm.value = { title: '', artist: '', category: '', tags: '' }
   uploadFileList.value = []
   uploadFile.value = null
+  // 记录上一条"自动填充"的值，换文件时据此判断要不要跟着更新
+  autoFilled.value = { title: '', artist: '' }
   showUpload.value = true
 }
 
 function handleFileChange(file) {
   uploadFile.value = file.raw
-  if (!uploadForm.value.title) {
-    uploadForm.value.title = file.name.replace(/\.[^.]+$/, '')
-  }
+  // v2.46.234：文件名当「歌名-作者」解析，两个框一次填好，不用手打两遍。
+  // 覆盖条件：框是空的，或者框里还是上次的自动填充值（说明用户没改过）。
+  const parsed = parseMusicFilename(file.name)
+  const f = uploadForm.value
+  if (!f.title || f.title === autoFilled.value.title) f.title = parsed.title
+  if (!f.artist || f.artist === autoFilled.value.artist) f.artist = parsed.artist
+  autoFilled.value = { title: parsed.title, artist: parsed.artist }
 }
 
 async function handleUpload() {
