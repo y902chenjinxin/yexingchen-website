@@ -134,10 +134,10 @@ async def create_subtitle(
     src = video.cos_url
     if src.startswith(("http://", "https://")):
         raise_error(ErrCode.INVALID_PARAM, "COS 远程视频暂不支持生成字幕（需先下载到本地）")
-    full = src if os.path.isabs(src) else os.path.join(
-        os.path.dirname(__file__), "..", "..", src)
-    if not os.path.exists(full):
-        raise_error(ErrCode.VIDEO_NOT_FOUND, "视频文件不存在")
+    # 交给统一的解析函数：cos_url 形如 /videos/xxx.mp4，要补 uploads/ 前缀
+    full = subtitle_svc.resolve_local_path(src)
+    if not full:
+        raise_error(ErrCode.VIDEO_NOT_FOUND, "视频文件不存在（cos_url=%s）" % (src or "空"))
 
     try:
         info = subtitle_svc.start_task(video_id, full)

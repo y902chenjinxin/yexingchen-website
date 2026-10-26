@@ -41,7 +41,27 @@ import time
 import uuid
 from typing import Callable, Optional
 
-_BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _find_backend_dir() -> str:
+    """向上回溯找 backend 根目录。
+
+    🔴 v2.46.236 修：原来直接写 dirname(dirname(__file__))，
+    但本文件在 app/services/ 下，算两次只到 app/ —— 模型目录拼成了
+    app/models/ms（不存在），线上引擎一直报 ready=False。
+    改成按标志文件回溯，不再依赖写死层数。
+    """
+    d = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(5):
+        if os.path.isdir(os.path.join(d, "uploads")) or \
+           os.path.isfile(os.path.join(d, "requirements.txt")):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+_BACKEND_DIR = _find_backend_dir()
 
 # ---------------------------------------------------------------- 模型探测
 
@@ -125,6 +145,37 @@ def engine_status() -> dict:
         "model_dir": d or None,
         "ffmpeg": ffmpeg_available(),
     }
+
+
+# ---------------------------------------------------------------- 路径解析
+
+def resolve_local_path(src: str) -> str:
+    """把视频的 cos_url 解析成磁盘绝对路径；不是本地文件返回空串。
+
+    🔴 v2.46.236 修：上传后 cos_url 存的是 `/videos/xxx.mp4`
+    （**以 / 开头但并不是真绝对路径**，实际文件在 backend/uploads/videos/）。
+    `os.path.isabs()` 会把它当绝对路径直接拿去用 —— 必然"文件不存在"。
+    这里按 music 的 `_stream_file` 同一口径处理：先剥前导斜杠，再看要不要补
+    `uploads/` 前缀。
+
+    兼容三种历史格式：
+      /videos/x.mp4          → uploads/videos/x.mp4
+      /uploads/videos/x.mp4  → uploads/videos/x.mp4
+      /var/www/.../x.mp4     → 原样（真绝对路径）
+    """
+    if not src:
+        return ""
+    if src.startswith(("http://", "https://")):
+        return ""
+    # 真绝对路径（或相对当前工作目录且确实存在）
+    if os.path.exists(src):
+        return src
+    rel = src.lstrip("/\\").replace("\\", "/")
+    for cand in (rel, "uploads/" + rel):
+        p = os.path.join(_BACKEND_DIR, cand)
+        if os.path.exists(p):
+            return p
+    return ""
 
 
 # ---------------------------------------------------------------- 音频处理
@@ -289,6 +340,9 @@ def start_task(video_id: int, src_path: str) -> dict:
 
     引擎缺失时**先抛** SubtitleUnavailable，让接口立刻 503，而不是建一个必败的任务。
     """
+    # 🔴 v2.46.236 修：本函数要读全局 _running 判断是否有任务在跑。
+    # 漏了 global 声明时 Python 会把它当成局部变量 → UnboundLocalError 500。
+    global _running
     get_model()  # 触发可用性检查（模型/ffmpeg/依赖）
     _prune()
     task_id = uuid.uuid4().hex[:12]

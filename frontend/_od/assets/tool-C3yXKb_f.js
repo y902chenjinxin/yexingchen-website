@@ -1,0 +1,1 @@
+import{x as s}from"./vue-vendor-yTF-gpd-.js";import{u as l}from"./useCrudStore-Dd_JbCO7.js";import{f as t}from"./index-DDASHvIN.js";const a=o=>t.get("/tools",{params:o}),r=o=>t.post("/tools",o),p=(o,e)=>t.put(`/tools/${o}`,e),d=o=>t.delete(`/tools/${o}`),m=s("tool",()=>l("tool",{getList:a,upload:r,update:p,delete:d}));export{m as a,r as c,d,a as g,p as u};

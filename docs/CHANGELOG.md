@@ -82,6 +82,28 @@ modelscope.cn   -> 200 / 0.2s  ✓
 - 中文为主（`language="zh"`），要自动检测需改 `None`
 - 一次只跑一个任务，排队时前端显示"已排队"
 
+#### 上线后连修三个 bug（每个都让功能不可用）
+1. **`_BACKEND_DIR` 少算一层**：文件在 `app/services/` 下，`dirname` 两次只到 `app/`，
+   模型路径拼成 `app/models/ms`（不存在）→ 引擎恒 `ready=False`。
+   → 改成按标志文件（`uploads/` / `requirements.txt`）**向上回溯**，不依赖写死层数。
+2. **`cos_url` 以 `/` 开头但不是真绝对路径**：上传后存的是 `/videos/xxx.mp4`，
+   `os.path.isabs()` 判定为绝对 → 直接拿去用 → "视频文件不存在"。
+   → 抽 `resolve_local_path()`，按 music `_stream_file` 的口径先剥前导斜杠、再补 `uploads/`；
+   兼容 `/videos/x`、`/uploads/videos/x`、真绝对路径三种历史格式。
+3. **`start_task` 漏 `global _running`**：函数内读全局变量被当成局部 →
+   `UnboundLocalError` → 接口 500。→ 补 `global` 声明。
+
+#### 端到端验证（真实 HTTP，登录→上传→生成→下载→清理）
+```
+引擎状态: ready=True, model=master, ffmpeg=True
+上传 200 (id=1) → 起任务 200 (task_id) → transcribing 5% → done 100%（共 2 句）
+SRT: 00:00:00,000 --> 00:00:01,000  作词也是
+     00:00:01,000 --> 00:00:02,000  作曲
+列表 has_subtitle: True ｜ 清理 200 ｜ 字幕文件已删
+```
+> 只出 2 句是因为测试素材是**纯音乐**（只识别到开头的"作词/作曲"标签）；
+> 讲话类视频会正常出全片字幕。
+
 版本 SW v549→v550、APP_VERSION v2.46.235→v2.46.236。
 
 ---
