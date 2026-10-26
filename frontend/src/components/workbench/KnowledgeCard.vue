@@ -10,13 +10,14 @@
         <button class="kn-nav-btn" title="看昨天" @click="go(-1)">‹</button>
         <span class="kn-date">{{ data.date.slice(5) }}</span>
         <button class="kn-nav-btn" title="看明天" @click="go(1)">›</button>
+        <!-- v2.46.252：折叠按钮统一放卡片右上角，三张卡同一位置 -->
+        <FoldBtn :open="open" open-text="展开" @toggle="open = !open" />
       </div>
     </header>
 
     <div class="kn-hd">
       <h2 class="kn-concept">{{ data.concept }}</h2>
       <span class="kn-en">{{ data.concept_en }}</span>
-      <button class="kn-fold" @click="open = !open">{{ open ? '收起' : '展开' }}</button>
     </div>
     <p class="kn-one">{{ data.one_line }}</p>
 
@@ -51,6 +52,7 @@
  */
 import { onMounted, ref } from 'vue'
 import { workbenchApi } from '@/api/workbench'
+import FoldBtn from '@/components/workbench/FoldBtn.vue'
 
 const data = ref(null)
 const open = ref(true)
@@ -92,10 +94,6 @@ onMounted(() => load(0))
 .kn-hd { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
 .kn-concept { margin: 0; font-size: 20px; letter-spacing: -.01em; color: var(--tc-text, #0b1622); }
 .kn-en { font-size: 11.5px; color: var(--tc-text-3, #5b6f8a); letter-spacing: .02em; }
-.kn-fold {
-  margin-left: auto; border: 0; background: transparent; cursor: pointer; padding: 2px 4px;
-  font: inherit; font-size: 11.5px; color: var(--tc-cyan, #0e93b8);
-}
 .kn-one {
   margin: 6px 0 0; font-size: 13.5px; line-height: 1.7;
   color: var(--lj-seal, #a9812f); font-weight: 600;

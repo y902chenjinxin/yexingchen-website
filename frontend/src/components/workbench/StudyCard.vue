@@ -10,6 +10,8 @@
         <button class="sc-nav-btn" title="看昨天" @click="go(-1)">‹</button>
         <span class="sc-date">{{ data.date.slice(5) }}</span>
         <button class="sc-nav-btn" title="看明天" @click="go(1)">›</button>
+        <!-- v2.46.252：折叠按钮统一放卡片右上角（原来藏在右栏里，位置和其他卡对不上） -->
+        <FoldBtn :open="open" :open-text="`长句 ${data.word_count} 词`" @toggle="open = !open" />
       </div>
     </header>
 
@@ -65,13 +67,12 @@
 
       <!-- 右：长句（>50 词，默认收起，不占视线） -->
       <div class="sc-right">
-        <button class="sc-sent-toggle" :class="{ open }" @click="open = !open">
+        <div class="sc-sent-toggle" :class="{ open }">
           <span class="sc-sent-title">
-            {{ open ? '长句' : `读一个长句` }}
+            {{ open ? '长句' : '读一个长句' }}
             <em>{{ data.word_count }} 词</em>
           </span>
-          <span class="sc-sent-arrow">{{ open ? '收起' : '展开' }}</span>
-        </button>
+        </div>
         <div v-if="open" class="sc-sent">
           <p class="sc-en">{{ data.sentence }}</p>
           <p class="sc-cn">{{ data.sentence_zh }}</p>
@@ -96,6 +97,7 @@
  */
 import { computed, onMounted, ref } from 'vue'
 import { workbenchApi } from '@/api/workbench'
+import FoldBtn from '@/components/workbench/FoldBtn.vue'
 
 const data = ref(null)
 const open = ref(false)
@@ -192,15 +194,13 @@ onMounted(() => load(0))
 
 .sc-sent-toggle {
   width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 8px 12px; border-radius: 10px; cursor: pointer; font: inherit;
+  padding: 8px 12px; border-radius: 10px; font: inherit;
   border: 1px dashed var(--tc-line-strong, rgba(15, 60, 110, .26)); background: transparent;
-  color: var(--tc-text-2, #46586e); transition: border-color .15s, background-color .15s;
+  color: var(--tc-text-2, #46586e);
 }
-.sc-sent-toggle:hover { border-color: var(--tc-cyan, #0e93b8); background: rgba(14, 147, 184, .05); }
 .sc-sent-toggle.open { border-style: solid; }
 .sc-sent-title { font-size: 12.5px; font-weight: 600; color: var(--tc-text, #0b1622); }
 .sc-sent-title em { font-style: normal; font-weight: 400; font-size: 11px; color: var(--tc-text-3, #5b6f8a); margin-left: 6px; }
-.sc-sent-arrow { font-size: 11.5px; color: var(--tc-cyan, #0e93b8); }
 .sc-sent { margin-top: 10px; }
 .sc-en {
   margin: 0 0 8px; font-size: 13.5px; line-height: 1.85; color: var(--tc-text, #0b1622);

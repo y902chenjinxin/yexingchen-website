@@ -10,6 +10,8 @@
         <button class="so-nav-btn" title="看昨天" @click.stop="go(-1)">‹</button>
         <span class="so-date">{{ data.date.slice(5) }}</span>
         <button class="so-nav-btn" title="看明天" @click.stop="go(1)">›</button>
+        <!-- v2.46.252：折叠按钮统一放卡片右上角 -->
+        <FoldBtn :open="open" open-text="展开" @toggle="open = !open" />
       </div>
     </header>
 
@@ -27,7 +29,6 @@
     >
       <h3 class="so-scene">{{ data.scene }}</h3>
       <p class="so-hook">{{ data.hook }}</p>
-      <span class="so-fold">{{ open ? '收起' : '展开看怎么办' }}</span>
     </div>
 
     <div v-if="open" class="so-body">
@@ -79,6 +80,7 @@
  */
 import { onMounted, ref } from 'vue'
 import { workbenchApi } from '@/api/workbench'
+import FoldBtn from '@/components/workbench/FoldBtn.vue'
 
 const data = ref(null)
 const open = ref(false)
@@ -137,7 +139,6 @@ onMounted(() => load(0))
 .so-scene { margin: 0; font-size: 17px; line-height: 1.5; letter-spacing: -.01em; color: var(--tc-text, #0b1622); }
 .so-open:hover .so-scene { color: var(--tc-cyan-deep, #0a708c); }
 .so-hook { margin: 5px 0 0; font-size: 13px; line-height: 1.7; color: var(--tc-text-2, #46586e); }
-.so-fold { display: inline-block; margin-top: 6px; font-size: 11.5px; color: var(--tc-cyan, #0e93b8); }
 
 .so-body { margin-top: 10px; }
 .so-story {
