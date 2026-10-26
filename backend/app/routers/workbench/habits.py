@@ -414,14 +414,20 @@ def _settle_one(db: Session, h: Habit, uid: int, today: date) -> list:
         else:
             miss_streak += 1
             if miss_streak > grace and di not in paid:
+                # v2.46.248（夜星：「习惯未完成造成惩罚的钱自动调度到存款里」）：
+                # 由「个人零花支出」改成「个人零花 → 存款」的内部转账。
+                # 差别在于 —— expense 会让这笔钱从账本里消失，transfer 只是换了个池子；
+                # 罚款的意义是「不让你花」，不是「凭空烧掉」，所以留在存款里更合理，
+                # 也不会污染月度收支统计（transfer 不计入 income/expense）。
                 txn = FinanceTransaction(
                     user_id=uid,
                     household_id=HOUSEHOLD_ID,
-                    type="expense",
+                    type="transfer",
                     amount_cents=amount,
                     category=PENALTY_CATEGORY,
                     note=f"断链自罚 · {h.name} · {cursor.isoformat()}"[:255],
                     fund="personal",
+                    fund_to="savings",
                     occurred_at=datetime.combine(cursor, time(9, 0)),
                 )
                 db.add(txn)

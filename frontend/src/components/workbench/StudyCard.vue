@@ -44,6 +44,14 @@
           </div>
         </div>
 
+        <div v-if="data.mnemonic" class="sc-block sc-memo">
+          <div class="sc-lbl">
+            记忆法
+            <em v-if="data.mnemonic_type">{{ data.mnemonic_type }}</em>
+          </div>
+          <p class="sc-memo-text">{{ data.mnemonic }}</p>
+        </div>
+
         <div class="sc-block">
           <div class="sc-lbl">组词 / 搭配</div>
           <ul class="sc-coll">
@@ -165,6 +173,19 @@ onMounted(() => load(0))
 }
 .sc-chip i { font-style: normal; color: var(--tc-text-3, #5b6f8a); margin-right: 5px; font-size: 10.5px; }
 .sc-coll { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+/* 记忆法（v2.46.248）：卡片里最该被看见的一块之一，用鎏金竖线拉出来 */
+.sc-memo {
+  padding: 9px 12px 10px; border-radius: 10px;
+  background: var(--tc-seal-soft, rgba(199, 169, 107, .1));
+  border-left: 2px solid var(--lj-seal, #a9812f);
+}
+.sc-memo .sc-lbl { color: var(--lj-seal, #a9812f); font-weight: 600; margin-bottom: 4px; }
+.sc-memo .sc-lbl em {
+  font-style: normal; font-weight: 400; margin-left: 7px; padding: 1px 5px;
+  font-size: 10px; border-radius: 4px; background: rgba(169, 129, 47, .14);
+}
+.sc-memo-text { margin: 0; font-size: 12.5px; line-height: 1.85; color: var(--tc-text-2, #46586e); }
 .sc-coll li { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
 .sc-coll b { color: var(--tc-text, #0b1622); font-weight: 600; }
 .sc-coll em { font-style: normal; color: var(--tc-text-3, #5b6f8a); font-size: 11.5px; }

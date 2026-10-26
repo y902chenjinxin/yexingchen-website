@@ -26,8 +26,12 @@ from typing import Iterable
 
 _HERE = pathlib.Path(__file__).parent
 _JSON_PATH = _HERE / "study_words.json"
+# 手工精选的 30 条写在 _study_data.py 里（不是 JSON），它们的记忆法单独放这里，
+# 免得为了 30 条记忆法把整个数据文件改成 JSON 格式
+_MN_PATH = _HERE / "study_mnemonic_curated.json"
 
 _cache: list[dict] | None = None
+_mn_cache: dict[str, dict] | None = None
 
 
 def load_generated() -> list[dict]:
@@ -42,8 +46,22 @@ def load_generated() -> list[dict]:
     return _cache
 
 
+def _load_curated_mnemonic() -> dict[str, dict]:
+    global _mn_cache
+    if _mn_cache is None:
+        try:
+            _mn_cache = json.loads(_MN_PATH.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            _mn_cache = {}
+    return _mn_cache
+
+
 def merge(curated: Iterable[dict]) -> list[dict]:
-    """精选词在前 + 词典词在后，按 `w` 去重（精选优先）。"""
+    """精选词在前 + 词典词在后，按 `w` 去重（精选优先）。
+
+    精选词在这里顺手贴上记忆法（v2.46.248），让两类词条在前端长一个样。
+    """
+    mn = _load_curated_mnemonic()
     merged: list[dict] = []
     seen: set[str] = set()
     for entry in curated:
@@ -51,6 +69,10 @@ def merge(curated: Iterable[dict]) -> list[dict]:
         if not w or w in seen:
             continue
         seen.add(w)
+        extra = mn.get(w)
+        if extra:
+            entry = {**entry, "mnemonic": extra["mnemonic"],
+                     "mnemonic_type": extra.get("mnemonic_type", "")}
         merged.append(entry)
     for entry in load_generated():
         w = entry.get("w")

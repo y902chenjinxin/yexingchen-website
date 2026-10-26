@@ -47,6 +47,9 @@
     <!-- 每日英语（v2.46.245）：手机上也是「顺手看一眼」的位置 -->
     <StudyCard class="abb-today" />
 
+    <!-- 每日知识（v2.46.248）：跨学科知识点 + 寓言故事 -->
+    <KnowledgeCard class="abb-today" />
+
     <!-- 快捷入口（精选）＋ 全部模块目录入口 -->
     <div class="abb-sec">
       <div class="abb-sec__head">
@@ -78,6 +81,7 @@ import { useRouter } from 'vue-router'
 import { financeApi } from '@/api/finance'
 import TodayHabitsCard from '@/components/workbench/TodayHabitsCard.vue'
 import StudyCard from '@/components/workbench/StudyCard.vue'
+import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'

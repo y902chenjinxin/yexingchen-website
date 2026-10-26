@@ -88,6 +88,13 @@
       <StudyCard />
     </section>
 
+    <!-- ============ 每日知识（v2.46.248）：一个跨学科知识点 + 原创寓言 ============
+         夜星要「形成复利效应」的被动学习：每天读一个小故事，比背名词有用。
+         同样放整条 —— 故事需要横向宽度，两栏里会挤成窄条。 -->
+    <section class="bento-learn">
+      <KnowledgeCard />
+    </section>
+
     <!-- ============ Bento S3：每日一言 + 历史上的今天（文化小卡） ============ -->
     <section class="bento-s3">
       <div v-mouse-light class="bento-card bento-card--zero">
@@ -115,6 +122,7 @@ import DailyQuoteCard from '@/components/workbench/DailyQuoteCard.vue'
 import OnThisDayCard from '@/components/workbench/OnThisDayCard.vue'
 import ServerMonitorCard from '@/components/workbench/ServerMonitorCard.vue'
 import StudyCard from '@/components/workbench/StudyCard.vue'
+import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
 import { useAuthStore } from '@/stores/auth'

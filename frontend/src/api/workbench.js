@@ -241,10 +241,16 @@ export const workbenchApi = {
   },
 }
 
-// 每日英语（v2.46.245）：内置 30 条词库按日期轮换，不调外部模型
+// 每日英语（v2.46.245 / 词库扩到 962 词见 v2.46.247）：内置词库按日期轮换，不调外部模型
 workbenchApi.study = {
   today: (offset = 0) => api.get('/study/today', { params: { offset } }),
   list: (limit = 30) => api.get('/study/list', { params: { limit } }),
+}
+
+// 每日知识（v2.46.248）：跨学科知识点 + 原创寓言，220 条按日期轮换
+workbenchApi.knowledge = {
+  today: (offset = 0) => api.get('/knowledge/today', { params: { offset } }),
+  list: (limit = 30) => api.get('/knowledge/list', { params: { limit } }),
 }
 
 export default workbenchApi

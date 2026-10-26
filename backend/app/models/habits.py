@@ -35,7 +35,8 @@ class Habit(Base):
     # 例如「今天喝 3 杯水」→ daily_target=3，喝一杯就 count+1，到 3 才算完成
     daily_target = Column(Integer, nullable=False, default=0, server_default="0")
     # 断链自罚（v2.46.143）：漏一天罚多少钱（分）。0 = 关闭自罚。
-    # 罚金会写成一条记账支出（category 「断链罚金」，fund personal），
+    # v2.46.248 起罚金写成**内部转账**（category「断链罚金」，fund personal → fund_to savings）：
+    # 钱从个人零花挪进存款池，不消失、不计入月度支出，只是变得不好花。
     # 幂等由 HabitPenalty 的唯一约束 (habit_id, miss_date) 保证，重复结算不会重复记账。
     penalty_cents = Column(Integer, nullable=False, default=0, server_default="0")
     # 宽限：允许漏几天不罚（0 = 漏一天就罚）。给「一周只能做 3 次」这类习惯用。

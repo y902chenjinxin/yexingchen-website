@@ -246,8 +246,26 @@
           <span>名称</span>
           <el-input v-model="form.name" maxlength="64" placeholder="例如：走 6000 步" />
         </label>
+        <!-- v2.46.248：维度放最前面 —— 先定「这属于哪一块」，图标自动跟着换，
+             也顺带解释了雷达图那六个轴是怎么来的 -->
         <div class="hb-field">
-          <span>图标</span>
+          <span>归属维度（雷达图按这个维度汇总）</span>
+          <div class="hb-acc-pick">
+            <button
+              v-for="a in ACCOUNT_OPTIONS"
+              :key="a.key"
+              type="button"
+              class="hb-acc-btn"
+              :class="{ on: form.account === a.key }"
+              @click="pickAccount(a.key)"
+            >
+              <AppIcon :icon="a.icon" :size="14" />
+              {{ a.label }}
+            </button>
+          </div>
+        </div>
+        <div class="hb-field">
+          <span>图标（选了维度会自动带出，可改）</span>
           <div class="hb-icons">
             <button
               v-for="ic in ICON_CHOICES"
@@ -278,22 +296,10 @@
           <span>宽限天数（连续漏的前 N 天不罚）</span>
           <el-input-number v-model="form.penalty_grace" :min="0" :max="7" controls-position="right" />
         </label>
-        <div class="hb-field">
-          <span>复利账户（雷达图按账户汇总）</span>
-          <div class="hb-acc-pick">
-            <button
-              v-for="a in ACCOUNT_OPTIONS"
-              :key="a.key"
-              type="button"
-              class="hb-acc-btn"
-              :class="{ on: form.account === a.key }"
-              @click="form.account = form.account === a.key ? '' : a.key"
-            >
-              {{ a.label }}
-            </button>
-          </div>
-        </div>
-        <p class="hb-form-tip">开了自罚后，漏一天会自动在账本记一笔「断链罚金」支出（个人零花池），漏几天记几笔。</p>
+        <p class="hb-form-tip">
+          开了自罚后，漏一天会自动从「个人零花」转一笔到「存款」，漏几天转几笔 ——
+          罚的钱不消失，变成存款。
+        </p>
       </div>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
@@ -333,12 +339,12 @@ const {
 
 /** 六账户（顺序与后端 ACCOUNTS 一致，雷达图按这个顺序画） */
 const ACCOUNT_OPTIONS = [
-  { key: 'health', label: '身体' },
-  { key: 'mind', label: '认知' },
-  { key: 'wealth', label: '财富' },
-  { key: 'social', label: '人脉' },
-  { key: 'emotion', label: '关系' },
-  { key: 'work', label: '作品' },
+  { key: 'health', label: '身体', icon: '💪' },
+  { key: 'mind', label: '认知', icon: '🧠' },
+  { key: 'wealth', label: '财富', icon: '💰' },
+  { key: 'social', label: '人脉', icon: '🤝' },
+  { key: 'emotion', label: '关系', icon: '❤️' },
+  { key: 'work', label: '作品', icon: '🎨' },
 ]
 
 const showHistory = ref(false)
@@ -407,8 +413,24 @@ const form = reactive({
   account: '',
 })
 
-/** 图标候选：走 AppIcon 的 emoji 查表，命中就画线性图标；没命中的原样显示也不难看 */
-const ICON_CHOICES = ['💧', '🏃', '📖', '✍️', '🧘', '💰', '🌙', '☀️', '🥗', '🧹', '📷', '🎯']
+/** 图标候选 = 六个复利维度（v2.46.248）。
+ *  夜星：「习惯的图标看不懂，做几个通用点的图标，对应 6 个维度的，具体的不用细分」。
+ *  所以不再给十几个具体物件（水滴/扫帚/相机…），只留六个维度图标，
+ *  选了维度就自动带出对应图标，想换还可以在下面手动点。 */
+const ICON_CHOICES = ACCOUNT_OPTIONS.map((a) => a.icon)
+
+/** 选维度：顺手把图标换成该维度的（用户手动挑过别的不覆盖） */
+function pickAccount(key) {
+  if (form.account === key) {
+    form.account = ''
+    return
+  }
+  form.account = key
+  const dimIcons = ACCOUNT_OPTIONS.map((a) => a.icon)
+  if (!form.icon || dimIcons.includes(form.icon)) {
+    form.icon = ACCOUNT_OPTIONS.find((a) => a.key === key)?.icon || form.icon
+  }
+}
 
 const totalCheckins = computed(() => list.value.reduce((s, h) => s + (h.total_count || 0), 0))
 
@@ -509,7 +531,7 @@ async function bootSettle() {
   const yuan = (items.reduce((s, i) => s + i.amount_cents, 0) / 100).toFixed(0)
   ElNotification({
     title: `断链了 ${items.length} 天，已记 ¥${yuan}`,
-    message: `账本里多了 ${items.length} 笔「断链罚金」：${items.slice(0, 3).map((i) => `${i.date.slice(5)} ${i.habit}`).join('、')}${items.length > 3 ? ' …' : ''}`,
+    message: `断链 ${items.length} 天，已自动从零花转进存款：${items.slice(0, 3).map((i) => `${i.date.slice(5)} ${i.habit}`).join('、')}${items.length > 3 ? ' …' : ''}`,
     type: 'warning',
     duration: 7000,
     position: 'bottom-right',
@@ -673,6 +695,7 @@ async function maybeWeekendReview() {
 /* 账户选择 */
 .hb-acc-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .hb-acc-btn {
+  display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 11px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--tc-line, rgba(15, 60, 110, .14));
   background: transparent; color: var(--tc-text-2, #46586e);
