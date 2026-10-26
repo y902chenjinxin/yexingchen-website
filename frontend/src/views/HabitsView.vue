@@ -53,7 +53,11 @@
           <span class="hb-card-sub">本周至今 · 总 {{ radar.overall }}%</span>
         </div>
         <div class="hb-radar-wrap">
-          <svg class="hb-radar" viewBox="0 0 120 120" role="img" aria-label="六账户完成率雷达图">
+          <!-- v2.46.247：viewBox 由 0 0 120 120 扩到 -20 -12 160 144。
+               原来图形占满整块画布，四字标签（信用人脉 / 情绪关系）在左下用
+               text-anchor=end 向左延伸，起点算下来是负数 → 被 SVG 裁掉，
+               线上看到的就是「?关系」。四周留白后标签完整。 -->
+          <svg class="hb-radar" viewBox="-20 -12 160 144" role="img" aria-label="六账户完成率雷达图">
             <g class="hb-radar-grid">
               <polygon v-for="g in RADAR_GRID" :key="g.key" :points="g.points" />
               <line
@@ -378,7 +382,7 @@ const radarDots = computed(() => {
 const radarLabels = computed(() => {
   const accs = radar.value?.accounts || []
   return accs.map((a, i) => {
-    const p = pointAt(i, 1.26)
+    const p = pointAt(i, 1.22)
     return {
       label: a.label,
       x: +p.x.toFixed(1),
@@ -683,7 +687,7 @@ async function maybeWeekendReview() {
 
 /* 雷达 */
 .hb-radar-wrap { display: flex; justify-content: center; padding: 4px 8px 2px; }
-.hb-radar { width: 100%; max-width: 320px; height: auto; }
+.hb-radar { width: 100%; max-width: 380px; height: auto; overflow: visible; }
 .hb-radar-grid polygon { fill: none; stroke: var(--tc-line, rgba(15, 60, 110, .14)); stroke-width: .6; }
 .hb-radar-grid line { stroke: var(--tc-line, rgba(15, 60, 110, .12)); stroke-width: .5; }
 .hb-radar-area {
@@ -693,7 +697,7 @@ async function maybeWeekendReview() {
   stroke-linejoin: round;
 }
 .hb-radar-dot { fill: var(--tc-cyan, #0e93b8); }
-.hb-radar-label { font-size: 6px; fill: var(--tc-text-2, #46586e); }
+.hb-radar-label { font-size: 5.6px; fill: var(--tc-text-2, #46586e); }
 .hb-radar-label.empty { fill: var(--tc-text-3, #5b6f8a); opacity: .55; }
 .hb-radar-tip { margin: 6px 12px 8px; font-size: 11.5px; color: var(--tc-text-3, #5b6f8a); line-height: 1.6; }
 

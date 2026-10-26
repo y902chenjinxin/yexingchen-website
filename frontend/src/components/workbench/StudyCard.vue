@@ -13,6 +13,18 @@
       </div>
     </header>
 
+    <!-- v2.46.247：词库从 30 条扩到一整本（900+ 词），每天一个新词，
+         走完一整轮才回到第一个。这条细进度是「长期任务」的进度感，
+         不占地方也不抢视线。 -->
+    <div v-if="data.total" class="sc-meta">
+      <span class="sc-prog" aria-hidden="true">
+        <i :style="{ width: pct + '%' }"></i>
+      </span>
+      <span class="sc-meta-text">
+        词库 {{ data.total }} 词 · 第 {{ data.position }} 个<template v-if="data.round > 1">（第 {{ data.round }} 轮）</template>
+      </span>
+    </div>
+
     <div class="sc-body">
       <!-- 左：单词本体 -->
       <div class="sc-left">
@@ -74,12 +86,19 @@
  *
  * 长句默认收起：>50 词的英文段子铺在首页会喧宾夺主，展开才看。
  */
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { workbenchApi } from '@/api/workbench'
 
 const data = ref(null)
 const open = ref(false)
 const offset = ref(0)
+
+/** 词库整体进度（第几个 / 共几个） */
+const pct = computed(() => {
+  const d = data.value
+  if (!d || !d.total) return 0
+  return Math.max(0, Math.min(100, (d.position / d.total) * 100))
+})
 
 async function load(off = 0) {
   try {
@@ -99,7 +118,7 @@ onMounted(() => load(0))
 
 <style scoped>
 .sc { padding: 16px 20px 18px; }
-.sc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.sc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .sc-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; letter-spacing: .02em; color: var(--tc-text, #0b1622); }
 .sc-tag {
   font-size: 10.5px; font-weight: 600; letter-spacing: .08em; padding: 2px 7px; border-radius: 6px;
@@ -113,6 +132,19 @@ onMounted(() => load(0))
 }
 .sc-nav-btn:hover { background: rgba(14, 147, 184, .1); color: var(--tc-cyan, #0e93b8); }
 .sc-date { font-size: 11px; color: var(--tc-text-3, #5b6f8a); font-variant-numeric: tabular-nums; min-width: 38px; text-align: center; }
+
+/* 词库进度（长期任务感） */
+.sc-meta { display: flex; align-items: center; gap: 9px; margin: -4px 0 12px; }
+.sc-prog {
+  position: relative; flex: 1 1 auto; max-width: 190px; height: 3px; border-radius: 2px;
+  background: rgba(15, 60, 110, .1); overflow: hidden;
+}
+.sc-prog i {
+  display: block; height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(14, 147, 184, .55), var(--tc-cyan, #0e93b8));
+  transition: width .4s ease;
+}
+.sc-meta-text { font-size: 10.5px; color: var(--tc-text-3, #5b6f8a); letter-spacing: .01em; }
 
 .sc-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 22px; }
 @media (max-width: 860px) { .sc-body { grid-template-columns: 1fr; gap: 14px; } }
