@@ -43,6 +43,22 @@
         <el-table-column v-if="!isMobile" label="文件大小" width="100">
           <template #default="{ row }">{{ formatSize(row.file_size) }}</template>
         </el-table-column>
+        <!-- 自动字幕（v2.46.236）：无 → 生成；生成中 → 百分比；有 → 下载 -->
+        <el-table-column v-if="!isMobile" label="字幕" width="96">
+          <template #default="{ row }">
+            <span v-if="subTasks[row.id]?.status === 'running'" class="sub-running">
+              {{ Math.round((subTasks[row.id].progress || 0) * 100) }}%
+            </span>
+            <button v-else-if="row.has_subtitle" class="sub-link" @click="downloadSub(row)">下载</button>
+            <button
+              v-else
+              class="sub-link"
+              :disabled="!subtitleReady"
+              :title="subtitleReady ? '自动生成 SRT 字幕（本地识别，不上传云端）' : '服务端未启用字幕引擎'"
+              @click="genSubtitle(row)"
+            >生成</button>
+          </template>
+        </el-table-column>
         <el-table-column v-if="!isMobile" label="链接(COS)" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">
             <a v-if="row.cos_url" :href="row.cos_url" target="_blank" rel="noopener noreferrer" class="file-link">{{ row.cos_url }}</a>
@@ -267,7 +283,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import { onMounted, onBeforeUnmount, reactive, ref, computed, watch, nextTick } from 'vue'
 import { usePagedList } from '@/composables/usePagedList'
 import { fmtDate, fmtSize } from '@/utils/format'
 import PageToolbar from '@/components/common/PageToolbar.vue'
@@ -283,7 +299,7 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import { downloadVideoTemplate, getVideoUploaders } from '@/api/video'
-import { reorderVideo } from '@/api/video'
+import { reorderVideo, getSubtitleStatus, createSubtitle, getSubtitleTask, downloadSubtitle } from '@/api/video'
 import { useRowDragSort } from '@/composables/useRowDragSort'
 import { useIsMobile } from '@/composables/useIsMobile'
 
@@ -476,6 +492,7 @@ async function onDownloadTemplate() {
 onMounted(() => {
   fetchData()
   loadUploaders()
+  loadSubtitleStatus()
 })
 
 async function loadUploaders() {
@@ -484,6 +501,84 @@ async function loadUploaders() {
     uploaders.value = res?.data?.list || []
   } catch { /* 拉不到就只显示「全部」，不影响主流程 */ }
 }
+
+/* ---------- 自动字幕（v2.46.236） ----------
+ * 后端 ffmpeg 抽音轨 + faster-whisper 本地识别，全局单任务队列。
+ * 这里只负责：起任务 → 每 1.5s 轮询进度 → 完成后刷新该行状态。
+ * 识别在服务端跑（30 分钟视频约 5 分钟），关掉页面任务也不会中断
+ * （但轮询会停，回来重新生成即可，已有 srt 会直接显示"下载"）。 */
+const subtitleReady = ref(false)
+const subTasks = reactive({})   // videoId -> { status, progress, message, taskId }
+const subTimers = new Map()
+
+async function loadSubtitleStatus() {
+  try {
+    const res = await getSubtitleStatus()
+    subtitleReady.value = !!res?.data?.ready
+  } catch {
+    subtitleReady.value = false
+  }
+}
+
+async function genSubtitle(row) {
+  if (subTasks[row.id]?.status === 'running') return
+  try {
+    const res = await createSubtitle(row.id)
+    const taskId = res?.data?.task_id
+    if (!taskId) throw new Error('未拿到任务 ID')
+    subTasks[row.id] = { status: 'running', progress: 0, message: '准备中…', taskId }
+    pollSubtitle(row, taskId)
+    ElMessage.success(res?.msg || '已开始生成字幕')
+  } catch (e) {
+    ElMessage.error(e?.msg || e?.detail || '启动失败，请稍后重试')
+  }
+}
+
+function pollSubtitle(row, taskId) {
+  const stop = () => {
+    const t = subTimers.get(row.id)
+    if (t) { clearInterval(t); subTimers.delete(row.id) }
+  }
+  stop()
+  const timer = setInterval(async () => {
+    try {
+      const res = await getSubtitleTask(row.id, taskId)
+      const d = res?.data || {}
+      const st = subTasks[row.id]
+      if (!st) { stop(); return }
+      st.progress = d.progress || 0
+      st.message = d.message || ''
+      if (d.status === 'done') {
+        stop()
+        st.status = 'done'
+        row.has_subtitle = true
+        ElMessage.success(`字幕生成完成：${d.sentences || 0} 句`)
+      } else if (d.status === 'failed') {
+        stop()
+        st.status = 'failed'
+        ElMessage.error(d.message || '生成失败')
+        delete subTasks[row.id]
+      }
+    } catch {
+      stop()
+      delete subTasks[row.id]
+    }
+  }, 1500)
+  subTimers.set(row.id, timer)
+}
+
+async function downloadSub(row) {
+  try {
+    await downloadSubtitle(row.id, `${row.title || 'video'}.srt`)
+  } catch (e) {
+    ElMessage.error(e?.msg || e?.detail || '下载失败')
+  }
+}
+
+onBeforeUnmount(() => {
+  subTimers.forEach((t) => clearInterval(t))
+  subTimers.clear()
+})
 
 async function fetchData() {
   // size=200 一次性拉全（管理页用客户端分页）
@@ -833,5 +928,27 @@ function formatTime(timeStr) {
   --el-table-tr-bg-color: transparent;
   --el-table-header-bg-color: transparent;
   --el-table-border-color: var(--ls-line, rgba(127, 127, 127, 0.18));
+}
+
+/* 自动字幕列（v2.46.236） */
+.sub-link {
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--dp-line, rgba(127, 127, 127, 0.3));
+  background: transparent;
+  color: var(--dp-accent, #3d7fd6);
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+.sub-link:hover:not(:disabled) {
+  background: rgba(61, 127, 214, 0.10);
+  border-color: var(--dp-accent, #3d7fd6);
+}
+.sub-link:disabled { color: var(--dp-text3, #999); cursor: not-allowed; opacity: .6; }
+.sub-running {
+  font-size: 12px;
+  color: var(--yq-accent, #c7a96b);
+  font-variant-numeric: tabular-nums;
 }
 </style>

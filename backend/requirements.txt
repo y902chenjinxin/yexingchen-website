@@ -21,3 +21,8 @@ lunardate==0.3.0  # 农历生日换算（纯 Python，无 C 扩展；覆盖 1900
 onnxruntime>=1.18.0  # 证件照 MODNet 服务端 CPU 推理（浏览器 wasm 对量化为全零，迁到后端）
 numpy>=1.26.0  # v2.39 RAG 语义召回（向量 BLOB → ndarray 余弦相似度）
 beautifulsoup4==4.12.3  # 爬虫工具 HTML 解析（纯 Python html.parser 后端，无 C 扩展）
+
+# v2.46.236 视频自动字幕：ffmpeg 抽音轨 + CTranslate2 推理（CPU int8 约 6x 实时）
+# 模型需单独下载（见 app/services/subtitle.py 文件头），不随依赖安装
+faster-whisper==1.2.1
+modelscope==1.40.2

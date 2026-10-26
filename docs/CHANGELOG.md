@@ -23,6 +23,69 @@
 
 ---
 
+## [v2.46.236] - 2026-10-26
+
+### 视频自动字幕：ffmpeg 抽音轨 + faster-whisper 本地识别（P0）
+
+夜星拍板做 P0（rembg 抠图 + 视频字幕），其余不做。
+
+#### 先盘现状，结果推翻了原方案
+| 原计划 | 实测发现 | 结论 |
+|---|---|---|
+| 装 rembg 给证件照抠图 | `idphoto.py` **已在用 MODNet**（6.4MB 已部署），人像专用模型 | **不做**：rembg 是通用 u2net，换过去是降级 |
+| 装 faster-whisper 做字幕 | `asr.py` 已有 **sherpa-onnx + SenseVoice** | 先试复用，见下 |
+
+#### 关键实验：为什么最后还是装了 whisper
+用 90 秒带 BGM 的音频对比两条路：
+
+| 方案 | 结果 |
+|---|---|
+| ffmpeg `silencedetect` 切句 + SenseVoice 逐段识别 | **只切出 1 段**（BGM 一直在响，找不到静音点），时间戳完全不可用 |
+| faster-whisper **base int8** | **15 段**，每段 3-6 秒，边界合理，**5.9x 实时**（90 秒 → 15.2 秒） |
+
+→ 字幕的核心是**时间轴**，SenseVoice 中文更准但无时间戳，做不了 SRT。
+纯讲话音频只要文字时仍走 `/api/asr`（更快更准）。
+
+#### 模型获取（HF 全挂，走 ModelScope）
+```
+huggingface.co  -> 超时
+hf-mirror.com   -> 超时
+modelscope.cn   -> 200 / 0.2s  ✓
+```
+`pengzhendong/faster-whisper-base`，142MB，20 秒下完，离线放在
+`backend/models/ms/models/.../snapshots/master`。
+
+#### 实现
+- `app/services/subtitle.py`（新增）
+  - `extract_audio`：ffmpeg → 16k 单声道 wav
+  - `transcribe`：whisper 生成器边出段边报进度（`condition_on_previous_text=False` 防长视频复读）
+  - `build_srt`：标准 SRT（时间码用逗号，不是小数点）
+  - **全局单任务队列**：CPU 只有 2-4 核，边说边转会把整站拖慢 → 同时只跑一个字幕任务，其余排队
+- `app/routers/video.py` 新增 5 个接口
+  - `GET  /api/videos/subtitle/status` 引擎状态（前端据此决定按钮是否可点）
+  - `POST /api/videos/{id}/subtitle` 起任务 → 返回 task_id
+  - `GET  /api/videos/{id}/subtitle/{task_id}` 查进度
+  - `GET  /api/videos/{id}/subtitle.srt` 下载
+  - `DELETE /api/videos/{id}/subtitle` 删除重生成
+  - 路由顺序：`/subtitle/status` 必须排在 `/{video_id}/...` 之前，否则 "subtitle" 会被当 int 解析成 422
+- 前端：视频列表新增「字幕」列（无 → 生成 / 生成中 → 百分比 / 有 → 下载），每 1.5s 轮询
+- **不动数据库**：字幕按 `uploads/subtitles/{video_id}.srt` 存盘，列表用文件存在性算 `has_subtitle`
+  （上次 alembic 事故的教训）
+
+#### 顺手修一个既有 bug
+`frontend/src/api/video.js` 的 `reorderVideo` 请求的是 `/video/reorder`（单数），
+后端 router prefix 是 `/api/videos`（复数）—— **拖拽排序一直在 404**，
+前端看着"保存成功"其实没存。已对齐成复数。
+
+#### 已知限制
+- 只支持**本地存储**的视频；COS 远程视频返回明确提示（要先下载）
+- 中文为主（`language="zh"`），要自动检测需改 `None`
+- 一次只跑一个任务，排队时前端显示"已排队"
+
+版本 SW v549→v550、APP_VERSION v2.46.235→v2.46.236。
+
+---
+
 ## [v2.46.235] - 2026-10-26
 
 ### 项目清理：工作区 743 MB 残留 + 8 个死导出 + 时长格式化汇总
