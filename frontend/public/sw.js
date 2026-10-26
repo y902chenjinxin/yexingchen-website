@@ -10,7 +10,7 @@
  * 不缓存：跨源资源（CDN/字体/统计）。
  * 注册失败不应阻塞应用启动（main.js 中已 try/catch）。
  */
-const VERSION = 'xuanhuang-v564'
+const VERSION = 'xuanhuang-v565'
 const STATIC_CACHE = `${VERSION}-static`
 
 self.addEventListener('install', (event) => {
