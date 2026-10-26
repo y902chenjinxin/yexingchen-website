@@ -127,6 +127,99 @@ def _guided(guide, src, r=8, eps=1e-4):
     return _box(a, r) * I + _box(b, r)
 
 
+# ---------------------------------------------------------------- 主体筛选
+# v2.46.244：MODNet 是「显著性」分割 —— 画面里同样显眼的东西（红幔、窗帘、
+# 亮色摆件）会被一起判成前景。证件照只想要人，所以再过一道连通域：
+# 取最大的一块（人像）+ 面积不小于它 15% 的其他块（防止手臂被切开时丢手），
+# 其余连通块整块丢掉。工作分辨率压到 256 长边（~5 万像素），BFS 几十毫秒。
+
+def _main_subject_mask(alpha_u8, work=256, keep_ratio=0.15, min_ratio=0.0025):
+    """从 alpha 里挑出人像主体，返回**同尺寸**的 0/1 float 蒙版。
+
+    纯 numpy + Python BFS（生产环境没装 scipy）。alpha_u8 是 uint8 灰度数组。
+    """
+    h, w = alpha_u8.shape
+    if h < 8 or w < 8:
+        return np.ones((h, w), dtype=np.float32)
+    scale = min(1.0, work / float(max(h, w)))
+    ws = max(8, int(round(w * scale)))
+    hs = max(8, int(round(h * scale)))
+    small = np.asarray(
+        Image.fromarray(alpha_u8, mode="L").resize((ws, hs), Image.BILINEAR)
+    ) > 127
+    total = ws * hs
+    if not small.any():
+        return np.ones((h, w), dtype=np.float32)
+
+    lab = np.zeros((hs, ws), dtype=np.int32)
+    areas = [0]
+    cur = 0
+    ys, xs = np.nonzero(small)
+    for y0, x0 in zip(ys.tolist(), xs.tolist()):
+        if lab[y0, x0]:
+            continue
+        cur += 1
+        lab[y0, x0] = cur
+        stack = [(y0, x0)]
+        cnt = 0
+        while stack:
+            y, x = stack.pop()
+            cnt += 1
+            if y > 0 and small[y - 1, x] and not lab[y - 1, x]:
+                lab[y - 1, x] = cur; stack.append((y - 1, x))
+            if y < hs - 1 and small[y + 1, x] and not lab[y + 1, x]:
+                lab[y + 1, x] = cur; stack.append((y + 1, x))
+            if x > 0 and small[y, x - 1] and not lab[y, x - 1]:
+                lab[y, x - 1] = cur; stack.append((y, x - 1))
+            if x < ws - 1 and small[y, x + 1] and not lab[y, x + 1]:
+                lab[y, x + 1] = cur; stack.append((y, x + 1))
+        areas.append(cnt)
+
+    biggest = max(areas)
+    if biggest < total * 0.02:      # 前景太小 = 模型没认出人，别乱删
+        return np.ones((h, w), dtype=np.float32)
+    thresh = max(biggest * keep_ratio, total * min_ratio)
+    keep_ids = [i for i, a in enumerate(areas) if i and a >= thresh]
+    keep_small = np.isin(lab, keep_ids).astype(np.float32)
+
+    # 向外扩 1 像素：避免把人像边缘/发丝切掉
+    k = keep_small
+    grown = k.copy()
+    grown[1:, :] = np.maximum(grown[1:, :], k[:-1, :])
+    grown[:-1, :] = np.maximum(grown[:-1, :], k[1:, :])
+    grown[:, 1:] = np.maximum(grown[:, 1:], k[:, :-1])
+    grown[:, :-1] = np.maximum(grown[:, :-1], k[:, 1:])
+
+    keep = Image.fromarray((grown * 255).astype(np.uint8), mode="L").resize((w, h), Image.BILINEAR)
+    return np.asarray(keep, dtype=np.float32) / 255.0
+
+
+def _cut_top_backdrop(a, min_band=0.02, narrow=0.60):
+    """切掉顶部的背景布/窗帘/装饰 —— 人像头顶不该顶着一大片横跨整幅的前景。
+
+    判定：最上面那行前景占比 ≥5%，说明「顶边就有东西」；从顶往下扫到第一行
+    「宽度收窄到 narrow 以下」的位置（= 头顶/肩线），把上面整段清掉。
+    这条只对「背景布顶到画面最上沿」的场景生效：
+      - 特写（头就顶在最上面，第一行本身就窄）→ cut=0 → 不动
+      - 切掉的段不足画面 2% → 不动（避免削头）
+    """
+    h, w = a.shape
+    fg = a > 0.5
+    rowsum = fg.sum(axis=1).astype(np.float32) / float(w)
+    if rowsum.size == 0 or rowsum[0] < 0.05:
+        return a
+    cut = -1
+    for y in range(h):
+        if rowsum[y] < narrow:
+            cut = y
+            break
+    if cut <= 0 or cut < h * min_band:
+        return a
+    out = a.copy()
+    out[:cut] = 0.0
+    return out
+
+
 # 后处理面积上限：原图可能有 1200 万像素，全量做 10 次均值滤波要 ~500MB 峰值，
 # 小 CVM 扛不住。超过就降采样做细化再放回去（无损于观感，因为要细化的就是过渡带）。
 _MAX_REFINE_PX = 6_000_000
@@ -145,12 +238,16 @@ def _refine_alpha(matte_img, rgb_img, lo=0.10, hi=0.86, radius=8, feather=1):
     g_img = rgb_img if (rw, rh) == (w, h) else rgb_img.resize((rw, rh), Image.BILINEAR)
 
     a = np.asarray(a_img, dtype=np.float32) / 255.0
-    # ① 软阈值：<lo 的雾状残影压成 0、>hi 的压成 1，中间线性 —— 保留真实半透明（发丝）
+    # ① 主体筛选：只留连通域最大的一块（人像）—— 把窗帘/红幔/摆件这些
+    #    「同样显眼但不是人」的区域整块丢掉。放在阈值之前：先做粗筛再精修。
+    keep = _main_subject_mask((a * 255.0).astype(np.uint8))
+    a = _cut_top_backdrop(a * keep)
+    # ② 软阈值：<lo 的雾状残影压成 0、>hi 的压成 1，中间线性 —— 保留真实半透明（发丝）
     a = np.clip((a - lo) / max(hi - lo, 1e-6), 0.0, 1.0)
-    # ② 引导滤波：过渡带贴到原图真实轮廓上（这一步是「边缘锐利」的关键）
+    # ③ 引导滤波：过渡带贴到原图真实轮廓上（这一步是「边缘锐利」的关键）
     gray = np.asarray(g_img.convert("L"), dtype=np.float32) / 255.0
     a = np.clip(_guided(gray, a, r=radius, eps=1e-4), 0.0, 1.0)
-    # ③ 1px 羽化：去掉阈值带来的硬锯齿
+    # ④ 1px 羽化：去掉阈值带来的硬锯齿
     if feather > 0:
         a = np.clip(_box(a, feather), 0.0, 1.0)
 

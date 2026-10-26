@@ -102,14 +102,24 @@
            被压在下一张牌底下，只剩一个淡花色（DOM 里 .cf-corner 明明都在）。
            腾讯斗地主的手牌本来就是 2D 平面，挪出来既绕开这个 bug，
            又能把阴影 / 描边 / 扇形弧度做扎实。 -->
-      <div class="g3d-hand2d" :style="{ '--hn': viewHand.length }">
+      <div
+        ref="handEl"
+        class="g3d-hand2d"
+        :style="{ '--hn': viewHand.length }"
+        @contextmenu.prevent
+      >
         <div
           v-for="(c, i) in viewHand"
           :key="c.id"
           class="hcard"
-          :class="{ sel: sel.includes(c.id), wild: isWildCard(c), grouped: i < headCount }"
+          :class="{
+            sel: sel.includes(c.id),
+            wild: isWildCard(c),
+            grouped: i < headCount,
+            lifting: dragLiftId === c.id,
+          }"
           :style="hcardStyle(i)"
-          @click="toggleSel(c)"
+          @pointerdown="onCardDown(c, i, $event)"
         >
           <div class="hcard-face card-front" :class="[isRed(c) ? 'red' : 'blk', c.joker ? 'joker' : '']">
             <span class="cf-corner"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
@@ -508,6 +518,118 @@ function toggleSel(c) {
   else sel.value = [...sel.value, c.id]
 }
 
+/* ================= 手牌手势（v2.46.244） =================
+ * 三种操作，全部走 pointer 事件（鼠标 / 触摸 / 笔一致）：
+ *   ① 点按        —— 切换单张选中（立即响应，不做双击延迟）
+ *   ② 左右滑动    —— 划过的牌**追加**到选中（从按下那张到当前那张的区间）
+ *   ③ 向上滑动    —— 抬起过 50px 就把这张当单张打出
+ *   ④ 双击        —— 快速点同一张两次 = 出单张（与向上滑动等价）
+ *
+ * 按项目既有规矩实现（见 docs/ISSUES.md）：
+ *   - 监听挂 window，不依赖 setPointerCapture（划出牌面也能继续）
+ *   - 用位移阈值区分「点按 / 划选 / 上滑」，阈值 10px（横向）/ 16px（纵向）
+ *   - 触发过拖动就不再当成点按，避免「划完松手又切换了一次选中」
+ */
+const handEl = ref(null)
+const dragLiftId = ref('')     // 上滑中的那张（CSS 抬起来）
+let drag = null                // { id, idx, x0, y0, mode, base, lastIdx }
+let lastTap = { id: null, t: 0 }
+
+/** 指针 x 落在哪张牌上：后面的牌画在上层，取最后一个命中的 */
+function idxAtX(x) {
+  const root = handEl.value
+  if (!root) return -1
+  const els = root.querySelectorAll('.hcard')
+  let idx = -1
+  for (let i = 0; i < els.length; i++) {
+    const r = els[i].getBoundingClientRect()
+    if (x >= r.left && x <= r.right) idx = i
+  }
+  return idx
+}
+
+/** 从 base 出发，把 [a..b] 区间追加进选中 */
+function applyRange(base, a, b) {
+  const lo = Math.min(a, b)
+  const hi = Math.max(a, b)
+  const add = viewHand.value.slice(lo, hi + 1).map(c => c.id)
+  const set = new Set([...base, ...add])
+  sel.value = viewHand.value.filter(c => set.has(c.id)).map(c => c.id)
+}
+
+function onCardDown(c, idx, e) {
+  if (!canAct.value) return
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+  drag = { id: c.id, idx, x0: e.clientX, y0: e.clientY, mode: '', base: sel.value.slice(), lastIdx: -1 }
+}
+
+function onWinMove(e) {
+  if (!drag) return
+  const dx = e.clientX - drag.x0
+  const dy = e.clientY - drag.y0
+  if (!drag.mode) {
+    if (Math.abs(dx) > 10 && Math.abs(dx) >= Math.abs(dy)) drag.mode = 'select'
+    else if (dy < -16 && Math.abs(dy) > Math.abs(dx)) drag.mode = 'up'
+    else return
+  }
+  if (drag.mode === 'select') {
+    const idx = idxAtX(e.clientX)
+    if (idx >= 0 && idx !== drag.lastIdx) {
+      drag.lastIdx = idx
+      applyRange(drag.base, drag.idx, idx)
+    }
+  } else if (drag.mode === 'up') {
+    // 超过 40px 才抬起示意，避免轻扫就跳起来
+    dragLiftId.value = dy < -40 ? drag.id : ''
+  }
+}
+
+function onWinUp(e) {
+  if (!drag) return
+  const dx = e.clientX - drag.x0
+  const dy = e.clientY - drag.y0
+  const d = drag
+  drag = null
+  dragLiftId.value = ''
+  if (d.mode === 'up') {
+    if (dy < -50) playSingleById(d.id)
+    return
+  }
+  if (d.mode === 'select') return        // 划选已经生效，松手不再切换
+  // 位移没到阈值 = 点按
+  void dx
+  handleTap(d.id)
+}
+
+/** 点按：同一张 300ms 内点第二次 = 出单张；否则切换选中 */
+function handleTap(id) {
+  const now = Date.now()
+  if (lastTap.id === id && now - lastTap.t < 300) {
+    lastTap = { id: null, t: 0 }
+    playSingleById(id)
+    return
+  }
+  lastTap = { id, t: now }
+  const c = hands.value[0].find(x => x.id === id)
+  if (c) toggleSel(c)
+}
+
+/** 把某一张当单张打出去（双击 / 上滑共用） */
+function playSingleById(id) {
+  if (!canAct.value) return
+  const c = hands.value[0].find(x => x.id === id)
+  if (!c) return
+  const pat = G.detectPattern([c], roundLevel.value)
+  if (!pat) { toastMsg('这张牌打不出去'); return }
+  if (!G.canBeat(pat, target.value?.pattern ?? null)) {
+    toastMsg('单张压不过上一手')
+    sfx.pick()
+    return
+  }
+  sel.value = [id]
+  applyPlay(0, [c])
+}
+
 function doPlay() {
   if (!canAct.value) return
   if (!selPattern.value) { toastMsg('这不是合法牌型'); return }
@@ -621,8 +743,15 @@ watch(turn, (now, prev) => {
 onMounted(() => {
   sfx.preload()   // 预热采样，消掉第一手出牌的取包延迟
   newRound()
+  // 手牌手势：move/up 挂 window，划出牌面也不会丢事件
+  window.addEventListener('pointermove', onWinMove, { passive: true })
+  window.addEventListener('pointerup', onWinUp)
+  window.addEventListener('pointercancel', onWinUp)
 })
 onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', onWinMove)
+  window.removeEventListener('pointerup', onWinUp)
+  window.removeEventListener('pointercancel', onWinUp)
   clearTimeout(aiTimer)
   clearTimeout(dealTimer)
   clearTimeout(toastTimer)
