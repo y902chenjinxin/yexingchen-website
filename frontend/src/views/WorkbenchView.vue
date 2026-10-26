@@ -13,6 +13,9 @@
     <!-- 今天要做（v2.46.140）：工作台原来全是回顾性数字，缺「向前看」的一块 -->
     <TodayHabitsCard class="wb-today" />
 
+    <!-- 关系提醒（v2.46.250）：谁生日、谁有点久了 —— 一行字，点进去能直接生成开场白 -->
+    <RelationsCard class="wb-today" />
+
     <!-- ============ Bento S1：核心数字 + 记账趋势（不对称大块） ============ -->
     <section class="bento-s1">
       <!-- 左列：净流入（大块）+ 足迹 + 自选股
@@ -123,6 +126,7 @@
 import { ref, computed, onMounted } from 'vue'
 import MobileWorkbenchHome from '@/components/mobile/MobileWorkbenchHome.vue'
 import TodayHabitsCard from '@/components/workbench/TodayHabitsCard.vue'
+import RelationsCard from '@/components/workbench/RelationsCard.vue'
 import TrendBars from '@/components/dashboard/TrendBars.vue'
 import WeatherCard from '@/components/workbench/WeatherCard.vue'
 import DailyQuoteCard from '@/components/workbench/DailyQuoteCard.vue'

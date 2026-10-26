@@ -9,7 +9,7 @@ from app.database import engine, Base
 from app.routers import (
     admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, crawler, datahub, finance, fish, idphoto, life, log, lost, music, novel,
     ocr, poem, quick, search, settings as settings_router, subscriptions,
-    day_calendar, game_economy, game_rooms, game_tables, stocks, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
+    day_calendar, game_economy, game_rooms, game_tables, relations, stocks, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
 from app.routers.workbench import router as workbench_router
 from app.routers.feed import router as feed_router
@@ -157,6 +157,8 @@ app.include_router(crawler.router)
 app.include_router(cover.router)
 app.include_router(voice_clone.router)
 app.include_router(countdown.router)
+# v2.46.250 关系维护：与 contacts 同一张表，但按 user_id 隔离（个人私有）
+app.include_router(relations.router)
 app.include_router(log.router)
 app.include_router(search.router)
 app.include_router(settings_router.router)

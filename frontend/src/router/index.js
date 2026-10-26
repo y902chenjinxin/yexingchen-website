@@ -360,6 +360,13 @@ const routes = [
     component: () => import('@/views/ContactsView.vue'),
     meta: { requiresAuth: true }
   },
+  // v2.46.250 关系维护：和通讯录同一张表，但后端按 user_id 隔离（个人私有）
+  {
+    path: '/relations',
+    name: 'Relations',
+    component: () => import('@/views/RelationsView.vue'),
+    meta: { requiresAuth: true }
+  },
   // v2.15 生活模块：家人共享的体重 / 美食记忆
   // v2.41：拆成两个菜单 —— 「体重记录」与「美食记忆」共用同一视图，靠 mode prop 切换
   {

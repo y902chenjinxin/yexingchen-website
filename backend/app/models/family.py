@@ -51,16 +51,56 @@ class Contact(Base):
     birthday_type = Column(String(8), nullable=False, default="solar")  # solar / lunar
     # 阴历闰月标记：闰四月初一 vs 四月初一是两个不同的日子，必须分开存
     lunar_leap = Column(Integer, nullable=False, default=0)  # 0/1，仅 birthday_type=lunar 时有意义
-    tags = Column(String(255), nullable=False, default="")  # 逗号分隔
+    tags = Column(String(255), nullable=False, default="")  # 逗号分隔（关系视图里当「共同话题」用）
     notes = Column(Text, nullable=False, default="")
     is_pinned = Column(Integer, nullable=False, default=0)
     sort_order = Column(Integer, nullable=False, default=0)
+    # ---------- 关系维护（v2.46.250）----------
+    # 亲密度 1~5：决定「多久没联系该提醒」。5 星最重要。
+    # 存 0 表示「没打分」，提醒逻辑按 3 星算（不惩罚懒得打分的人）。
+    intimacy = Column(Integer, nullable=False, default=0, server_default="0")
+    # 最近一次联系（YYYY-MM-DD 字符串，与全站日历日口径一致）。
+    # 由 RelationLog 写入/删除时回填，不手工维护。
+    last_contact_at = Column(String(10), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
     deleted_at = Column(DateTime, nullable=True, index=True)
 
     __table_args__ = (
         Index("ix_contact_user_deleted", "user_id", "deleted_at"),
+    )
+
+
+class RelationLog(Base):
+    """一次互动记录（v2.46.250）。
+
+    夜星：「突然想起一个人，想记录一下今天聊了什么」——
+    所以这里刻意做得极轻：三个标签 + 一句话，其余全可空。
+
+    `follow_up` 是这一栏里最值钱的：记录「下次可以接着问的事」
+    （他女儿今年高考 / 他在看房 / 他胃不好不能喝酒），
+    以后生成开场白全靠它 —— notes 记过去，follow_up 指向未来。
+    """
+
+    __tablename__ = "xuanhuang_relation_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    contact_id = Column(
+        Integer, ForeignKey("xuanhuang_contacts.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    # 冗余一份 user_id：个人视图只按人过滤，不必每次都 join contacts
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    happened_on = Column(String(10), nullable=False)     # YYYY-MM-DD
+    channel = Column(String(16), nullable=False, default="")   # 微信/电话/见面/其他
+    tags = Column(String(120), nullable=False, default="")     # 逗号分隔
+    note = Column(Text, nullable=False, default="")            # 一句话
+    follow_up = Column(String(200), nullable=False, default="")  # 下次可以接着问的事
+    mood = Column(Integer, nullable=False, default=0)          # 1~5，0=没填
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index("ix_relation_log_contact_date", "contact_id", "happened_on"),
     )
 
 

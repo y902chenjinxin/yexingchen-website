@@ -79,6 +79,7 @@ export const NAV_GROUPS = [
       { path: '/wardrobe', title: '穿搭推荐', icon: Suitcase },
       { path: '/vault', title: '密码保险箱', icon: Lock },
       { path: '/contacts', title: '通讯录', icon: Compass },
+      { path: '/relations', title: '关系', icon: Connection },   // v2.46.250 亲友关系维护（个人私有，只自己可见）
       { path: '/subscriptions', title: '订阅', icon: Coin },
     ],
   },
