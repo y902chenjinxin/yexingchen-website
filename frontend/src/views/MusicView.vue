@@ -343,7 +343,7 @@ import { Search } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useMusicStore } from '@/stores/music'
 import { readAudioDuration, readRemoteDuration, runWithConcurrency } from '@/utils/audioMeta'
-import { parseMusicFilename } from '@/utils/format'
+import { parseMusicFilename, fmtMediaDuration as formatDuration } from '@/utils/format'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { downloadMusicTemplate, getMusicUploaders } from '@/api/music'
@@ -777,13 +777,6 @@ function formatSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-function formatDuration(sec) {
-  // 0 / 空 / 非法一律显示破折号：未解析出时长时给 "0:00" 会误导
-  if (sec == null || isNaN(sec) || Number(sec) <= 0) return '—'
-  const m = Math.floor(sec / 60)
-  const s = Math.floor(sec % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
 </script>
 
 <style scoped>

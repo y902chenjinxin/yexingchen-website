@@ -23,6 +23,64 @@
 
 ---
 
+## [v2.46.235] - 2026-10-26
+
+### 项目清理：工作区 743 MB 残留 + 8 个死导出 + 时长格式化汇总
+
+夜星：「清理下项目里未使用的代码和文件，有需要就汇总做精简」
+
+#### ① 工作区（codex_work 根目录）删除 743 MB
+| 目标 | 体积 | 判断 |
+|---|---|---|
+| `reader/` | **595 MB / 89,755 文件** | koodo-reader 开源项目，10-22 下载的调研素材，**全项目零引用** |
+| `artifacts/_probe` 的 png+webm | 84 MB / 302 个 | 历次调试截图与录屏（归拢后整目录删） |
+| `frontend/dist-deploy232` | 58 MB | 孤儿构建产物（`dist` 缺失，只有它） |
+| `artifacts/roms/` | 4.3 MB | 模拟器已下线，ROM 无主 |
+| `_tmp_roadrash/` | 156 KB | 暴力摩托已下线 |
+
+**保留**（有意不清）：
+- `_pvz_open_source/` 132 MB —— 线上 `/play/pvz/` 的唯一源料，删了无法重新上传
+- `artifacts/_archive/` —— 归档区（含 9 月的模型测试）
+- `wedding/` 13 MB —— 个人内容，不碰
+- `frontend/dist/` —— 当前版本产物（v549）
+
+#### ② 死代码：文件 0 个，导出 8 个
+派了独立扫描（AST import 解析 + 从 main.js 的传递可达性 + 模板标签反查 + 逐符号 grep，
+覆盖 236 个代码文件），结论：**这一周新增的 3D 棋牌 / 音视频时长 / 文件名解析，接线全部正确，
+没有留下死文件**。上周已清空过一次，本次只清了导出级死代码：
+
+| 文件 | 删除的导出 | 说明 |
+|---|---|---|
+| `components/games3d/use3dTable.js` | `CENTER_SLOT` | 已被两个板各自的 `CENTER_OFF` 取代；`CENTER_TF` 只去 export（内部还在用） |
+| `utils/format.js` | `fmtMd` / `fmtMoney` / `fmtYuan` / `fmtRelative` / `fmtDuration` / `fmtPercent` | 全部零外部引用；`toDate` 只去 export（内部 7 处使用） |
+| `utils/games/guandan.js` | `MIN_LEVEL` | 只用 `MAX_LEVEL` |
+| `utils/games/mahjong.js` | `SUIT_GLYPH` / `aiWantHu` | 牌面渲染走 `MahjongTileFace.vue`；`aiWantHu` 是对 `canHu` 的空包装 |
+| `components.d.ts` | `FloatingAiButton` 条目 | 指向已不存在的文件（`dts: false` 不会自动重建） |
+
+#### ③ 汇总精简：两处 `formatDuration` 合并
+音乐页和视频页各写了一份时长格式化，逻辑重复、口径还不一致（视频要多支持小时）。
+抽成 `utils/format.js` 的 `fmtMediaDuration`，两处改为别名导入，模板调用不变。
+→ 消除重复实现，口径统一为「0/空 → `—`，`m:ss`，超一小时自动 `h:mm:ss`」。
+
+#### 保留但记录在案（不删）
+- `api/admin.js:updateUserRole`、`api/log.js:deleteLogs`、`api/settings.js:getBgMusic|updateBgMusic`、
+  `api/toolkit.js:capsule*`（4 个）—— 共 8 个**零调用接口**，疑似未上线功能的预留，需产品确认
+- `mahjong.js:dangerOf`、`note-assets.js:isAssetPlaceholder` —— 仅测试引用，删要同步改测试
+- `views/DecorPreviewView.vue` + 3 个 `DecorLoader*.vue` —— 有路由 `/decor-preview`，仅直链可访问
+
+#### 验证
+```
+vite build 通过（无悬空引用）
+[音乐] 10 行，时长列 3:02 / 2:47 / 3:17 / 3:38 / 3:34
+[视频] 时长列存在
+[3D棋牌] / [游戏大厅] 正常渲染
+无 JS 错误
+```
+
+版本 SW v548→v549、APP_VERSION v2.46.234→v2.46.235。
+
+---
+
 ## [v2.46.234] - 2026-10-24
 
 ### 音乐上传：文件名「歌名-作者」自动拆分（单个 + 批量）

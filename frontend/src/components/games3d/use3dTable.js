@@ -4,7 +4,7 @@
  * 固定正视微前倾视角（VIEW_RX），牌桌顶面 z=15、立牌高 60 → 中心 z=45 等。 */
 
 export const VIEW_RX = 66
-export const CENTER_TF = 'translate(-50%,-50%) translate3d(0px,0px,240px) scale(0.16)'
+const CENTER_TF = 'translate(-50%,-50%) translate3d(0px,0px,240px) scale(0.16)'
 
 /** 3D 盒子的宽/高/厚 CSS 变量 */
 export function boxVars(w, h, t) {
@@ -84,9 +84,4 @@ export const SEAT_SLOT = [
   { pos: [392, 0], lift: 80 },   // 1 右
   { pos: [0, -318], lift: 96 },  // 2 上
   { pos: [-392, 0], lift: 80 },  // 3 左
-]
-
-/** 手牌区中央牌墙/出牌区的原点偏移（按屏幕位） */
-export const CENTER_SLOT = [
-  { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 },
 ]

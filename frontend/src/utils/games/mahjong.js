@@ -23,8 +23,6 @@ export const HONOR_NAME = { 1: '红中', 2: '发财', 3: '白板', 4: '东风', 
  *  （v2.46.24：东南西北风牌整副移除，夜星要求；与后端引擎同步） */
 export const RANKS = { m: 9, s: 9, p: 9, z: 3 }
 export const RANK_TEXT = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' }
-/** 显示用：一筒 / 三条 / 五万；牌面数字优先，副标写花色 */
-export const SUIT_GLYPH = { m: '萬', s: '條', p: '筒' }
 
 /** 36 个点位 → 索引：m=0..8, s=9..17, p=18..26, z=27..29（30..35 留空恒为 0） */
 export function idxOf(suit, rank) {
@@ -464,11 +462,6 @@ export function aiWantChi(hand, tile, meldCount, missing, ctx = {}) {
   const before = shanten(hand, meldCount)
   const rest = hand.filter(t => t.id !== combos[0][0].id && t.id !== combos[0][1].id)
   return shanten(rest, meldCount + 1) < before
-}
-
-/** AI 是否胡：见胡就胡（胡牌即结束，一胡就是本局赢家） */
-export function aiWantHu(hand, meldCount) {
-  return canHu(hand, meldCount)
 }
 
 /** 找出手牌里所有可暗杠的点位 */

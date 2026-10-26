@@ -278,6 +278,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import { ElMessage } from 'element-plus'
 import { useVideoStore } from '@/stores/video'
 import { readVideoDuration, readRemoteDuration, runWithConcurrency } from '@/utils/audioMeta'
+import { fmtMediaDuration as formatDuration } from '@/utils/format'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
@@ -519,16 +520,7 @@ async function healDurations() {
   }
 }
 
-/** 秒 → m:ss / h:mm:ss；未知显示破折号（别把"没读到"装成 0:00） */
-function formatDuration(sec) {
-  const n = Number(sec)
-  if (!n || isNaN(n) || n <= 0) return '—'
-  const h = Math.floor(n / 3600)
-  const m = Math.floor((n % 3600) / 60)
-  const ss = Math.floor(n % 60)
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
-  return `${m}:${String(ss).padStart(2, '0')}`
-}
+
 
 function doSearch() {
   videoStore.page = 1

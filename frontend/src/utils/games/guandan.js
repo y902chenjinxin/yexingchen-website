@@ -22,7 +22,6 @@ export const JOKER_SMALL = 16
 export const JOKER_BIG = 17
 export const TEAM_OF = { 0: 0, 1: 1, 2: 0, 3: 1 }
 export const MAX_LEVEL = 14   // A
-export const MIN_LEVEL = 2
 
 /** 座位相对关系：0=你(下) 1=右家 2=对家(上) 3=左家 */
 export const SEAT_NAME = { 0: '你', 1: '右家', 2: '对家', 3: '左家' }
