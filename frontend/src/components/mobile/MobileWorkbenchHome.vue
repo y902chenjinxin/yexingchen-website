@@ -50,6 +50,9 @@
     <!-- 每日知识（v2.46.248）：跨学科知识点 + 寓言故事 -->
     <KnowledgeCard class="abb-today" />
 
+    <!-- 每日场景（v2.46.249）：人情世故，收起状态很轻 -->
+    <SocialCard class="abb-today" />
+
     <!-- 快捷入口（精选）＋ 全部模块目录入口 -->
     <div class="abb-sec">
       <div class="abb-sec__head">
@@ -82,6 +85,7 @@ import { financeApi } from '@/api/finance'
 import TodayHabitsCard from '@/components/workbench/TodayHabitsCard.vue'
 import StudyCard from '@/components/workbench/StudyCard.vue'
 import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
+import SocialCard from '@/components/workbench/SocialCard.vue'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'

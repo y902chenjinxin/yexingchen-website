@@ -24,6 +24,7 @@ from app.routers.workbench.tasks import router as tasks_router
 from app.routers.workbench.trash import router as trash_router
 from app.routers.workbench.study import router as study_router
 from app.routers.workbench.knowledge import router as knowledge_router
+from app.routers.workbench.social import router as social_router
 
 router = APIRouter()
 router.include_router(dashboard_router)
@@ -32,6 +33,7 @@ router.include_router(culture_router)
 router.include_router(habits_router)
 router.include_router(study_router)   # v2.46.245 每日英语
 router.include_router(knowledge_router)   # v2.46.248 每日知识（跨学科寓言）
+router.include_router(social_router)   # v2.46.249 每日场景（人情世故）
 router.include_router(weather_router)
 router.include_router(notes_router)
 router.include_router(assets_router)

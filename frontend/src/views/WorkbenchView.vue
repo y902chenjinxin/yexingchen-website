@@ -95,6 +95,13 @@
       <KnowledgeCard />
     </section>
 
+    <!-- ============ 每日场景（v2.46.249）：人情世故 ============
+         夜星：「每日展示一个场景，点击卡片展开查看这个场景，当小故事看的。」
+         默认收起（只露「难在哪」），整卡可点展开 —— 内向下班路上扫一眼就够。 -->
+    <section class="bento-learn">
+      <SocialCard />
+    </section>
+
     <!-- ============ Bento S3：每日一言 + 历史上的今天（文化小卡） ============ -->
     <section class="bento-s3">
       <div v-mouse-light class="bento-card bento-card--zero">
@@ -123,6 +130,7 @@ import OnThisDayCard from '@/components/workbench/OnThisDayCard.vue'
 import ServerMonitorCard from '@/components/workbench/ServerMonitorCard.vue'
 import StudyCard from '@/components/workbench/StudyCard.vue'
 import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
+import SocialCard from '@/components/workbench/SocialCard.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
 import { useAuthStore } from '@/stores/auth'

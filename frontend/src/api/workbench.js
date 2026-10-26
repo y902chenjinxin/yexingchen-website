@@ -253,4 +253,10 @@ workbenchApi.knowledge = {
   list: (limit = 30) => api.get('/knowledge/list', { params: { limit } }),
 }
 
+// 每日场景（v2.46.249）：人情世故 120 条，收起只看「难在哪」，展开看怎么做怎么说
+workbenchApi.social = {
+  today: (offset = 0) => api.get('/social/today', { params: { offset } }),
+  list: (limit = 30) => api.get('/social/list', { params: { limit } }),
+}
+
 export default workbenchApi
