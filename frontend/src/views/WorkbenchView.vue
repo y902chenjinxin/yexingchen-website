@@ -81,6 +81,13 @@
       </div>
     </section>
 
+    <!-- ============ 学习（v2.46.245）：每天一个单词，被动学习 ============
+         夜星要的是「不用费神」：打开工作台顺手看一眼，不专门去学。
+         放整条（不进 S3 的两栏）是因为长句需要横向空间。 -->
+    <section class="bento-learn">
+      <StudyCard />
+    </section>
+
     <!-- ============ Bento S3：每日一言 + 历史上的今天（文化小卡） ============ -->
     <section class="bento-s3">
       <div v-mouse-light class="bento-card bento-card--zero">
@@ -107,6 +114,7 @@ import WeatherCard from '@/components/workbench/WeatherCard.vue'
 import DailyQuoteCard from '@/components/workbench/DailyQuoteCard.vue'
 import OnThisDayCard from '@/components/workbench/OnThisDayCard.vue'
 import ServerMonitorCard from '@/components/workbench/ServerMonitorCard.vue'
+import StudyCard from '@/components/workbench/StudyCard.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
 import { useAuthStore } from '@/stores/auth'
@@ -313,10 +321,13 @@ onMounted(async () => {
 }
 /* 监测卡铺满整行 */
 .bento-s4 > :deep(*) { width: 100%; }
+.bento-learn { margin-top: 16px; }
+
 .bento-s3 {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
   gap: 16px;
+  margin-top: 16px;
 }
 /* 让子卡片内的卡片自己撑满（去掉 bento-card 自带的 padding 冲突） */
 .bento-card--zero { padding: 0; }

@@ -31,6 +31,9 @@ class Habit(Base):
     color = Column(String(16), nullable=True, default="#67e8f9")
     # 每周目标打卡次数（0 表示不限）
     weekly_goal = Column(Integer, nullable=False, default=0)
+    # 每天目标次数（v2.46.245）：0/1 = 布尔打卡（老语义）；>1 = 一天要做 N 次
+    # 例如「今天喝 3 杯水」→ daily_target=3，喝一杯就 count+1，到 3 才算完成
+    daily_target = Column(Integer, nullable=False, default=0, server_default="0")
     # 断链自罚（v2.46.143）：漏一天罚多少钱（分）。0 = 关闭自罚。
     # 罚金会写成一条记账支出（category 「断链罚金」，fund personal），
     # 幂等由 HabitPenalty 的唯一约束 (habit_id, miss_date) 保证，重复结算不会重复记账。
@@ -69,6 +72,8 @@ class HabitCheckin(Base):
         index=True,
     )
     checkin_date = Column(Integer, nullable=False)  # YYYYMMDD
+    # 当天已完成次数（v2.46.245）：老数据都是 1；daily_target>1 的习惯按次累加
+    count = Column(Integer, nullable=False, default=1, server_default="1")
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
 

@@ -66,6 +66,8 @@ export const workbenchApi = {
     update: (id, data) => api.patch(`/habits/${id}`, data),
     remove: (id) => api.delete(`/habits/${id}`),
     toggle: (id, data) => api.post(`/habits/${id}/toggle`, data),
+    // v2.46.245 每日进度：「今天喝 3 杯水，喝一杯记一下」——delta 默认 +1
+    step: (id, delta = 1) => api.post(`/habits/${id}/step`, { delta }),
     // v2.46.143：断链自罚结算（幂等，进「今天」页调用一次）+ 本周复盘
     settle: () => api.post('/habits/settle'),
     weekly: () => api.get('/habits/weekly'),
@@ -237,6 +239,12 @@ export const workbenchApi = {
       }
     },
   },
+}
+
+// 每日英语（v2.46.245）：内置 30 条词库按日期轮换，不调外部模型
+workbenchApi.study = {
+  today: (offset = 0) => api.get('/study/today', { params: { offset } }),
+  list: (limit = 30) => api.get('/study/list', { params: { limit } }),
 }
 
 export default workbenchApi

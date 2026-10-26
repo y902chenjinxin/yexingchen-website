@@ -67,6 +67,8 @@ class HabitIn(BaseModel):
     penalty_grace: int = Field(default=0, ge=0, le=7)
     # 复利账户（空串 = 未归类）
     account: Optional[str] = None
+    # 每天目标次数（v2.46.245）：0/1 = 布尔打卡；>1 = 一天要做 N 次（如喝水 3 杯）
+    daily_target: int = Field(default=0, ge=0, le=50)
 
 
 class CheckinResult(BaseModel):
@@ -142,12 +144,16 @@ def list_habits(
     )
     result = []
     for h in rows:
-        checked_today = (
-            db.query(HabitCheckin.id)
+        # v2.46.245：一天 N 次的习惯要带次数回来。占位行也算「今天有记录」，
+        # 所以 checked_today 改成「次数达到目标」（target<=1 时等价于老逻辑）。
+        row = (
+            db.query(HabitCheckin)
             .filter(HabitCheckin.habit_id == h.id, HabitCheckin.checkin_date == today_int)
             .first()
-            is not None
         )
+        today_count = int(getattr(row, "count", 0) or 0) if row else 0
+        target = int(h.daily_target or 0)
+        checked_today = (today_count >= target) if target > 1 else (row is not None)
         stats = _compute_stats(db, h, uid)
         result.append({
             "id": h.id,
@@ -155,6 +161,8 @@ def list_habits(
             "icon": h.icon or "✓",
             "color": h.color or "#67e8f9",
             "weekly_goal": h.weekly_goal,
+            "daily_target": target,
+            "today_count": today_count,
             "sort_order": h.sort_order,
             "checked_today": checked_today,
             "penalty_cents": h.penalty_cents or 0,
@@ -179,6 +187,7 @@ def create_habit(
         icon=body.icon,
         color=body.color,
         weekly_goal=body.weekly_goal,
+        daily_target=max(0, min(50, body.daily_target or 0)),
         sort_order=body.sort_order,
         penalty_cents=body.penalty_cents,
         penalty_grace=body.penalty_grace,
@@ -215,10 +224,28 @@ def toggle_checkin(
         raise_http(404, "习惯不存在", 404)
 
     exist = (
-        db.query(HabitCheckin.id)
+        db.query(HabitCheckin)
         .filter(HabitCheckin.habit_id == habit_id, HabitCheckin.checkin_date == checked_date)
         .first()
     )
+    # v2.46.245：一天 N 次的习惯，toggle 是「一键打满 / 一键清零」，
+    # 不能沿用「有记录就删」的老逻辑 —— 那会把 count=2/3 的进度直接抹成 0。
+    target = int(h.daily_target or 0)
+    if target > 1:
+        cur = int(getattr(exist, "count", 0) or 0) if exist else 0
+        if cur >= target:
+            db.query(HabitCheckin).filter(HabitCheckin.habit_id == habit_id,
+                                          HabitCheckin.checkin_date == checked_date).delete()
+            db.commit()
+            return ok({"habit_id": habit_id, "checked": False, "date": checked_date, "today_count": 0})
+        if exist:
+            exist.count = target
+        else:
+            db.add(HabitCheckin(habit_id=habit_id, user_id=uid,
+                                checkin_date=checked_date, count=target))
+        db.commit()
+        return ok({"habit_id": habit_id, "checked": True, "date": checked_date, "today_count": target})
+
     if exist:
         db.query(HabitCheckin).filter(
             HabitCheckin.habit_id == habit_id,
@@ -230,6 +257,70 @@ def toggle_checkin(
         db.add(HabitCheckin(habit_id=habit_id, user_id=uid, checkin_date=checked_date))
         db.commit()
         return ok({"habit_id": habit_id, "checked": True, "date": checked_date})
+
+
+@router.post("/{habit_id}/step")
+def step_checkin(
+    habit_id: int,
+    body: Optional[dict] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """「今天喝 3 杯水，喝一杯记一下」（v2.46.245）。
+
+    body: {"delta": 1} 加一次、{"delta": -1} 退一次；默认 +1。
+    返回 {today_count, target, checked}，前端据此乐观更新整张卡片。
+
+    关键：count 减到 0 就**删掉这天那条记录** —— streak / week_count / heat
+    全部按「有没有 checkin 行」算，留一条 count=0 的占位会破坏这些统计。
+    """
+    uid = current_user["user_id"]
+    delta = 1
+    if body and body.get("delta") is not None:
+        try:
+            delta = int(body["delta"])
+        except (TypeError, ValueError):
+            raise_http(400, "delta 格式不正确", 400)
+    # 允许一次加多次（勾选框「一键打满」时传 delta=target-当前），下面按 cap 夹紧
+    delta = max(-50, min(50, delta))
+    if delta == 0:
+        delta = 1
+
+    h = (
+        db.query(Habit)
+        .filter(Habit.id == habit_id, Habit.user_id == uid, Habit.deleted_at.is_(None))
+        .first()
+    )
+    if not h:
+        raise_http(404, "习惯不存在", 404)
+
+    target = int(h.daily_target or 0)
+    today_int = _today_int()
+    row = (
+        db.query(HabitCheckin)
+        .filter(HabitCheckin.habit_id == habit_id, HabitCheckin.checkin_date == today_int)
+        .first()
+    )
+    cur = int(getattr(row, "count", 0) or 0) if row else 0
+    nxt = cur + delta
+    cap = target if target > 1 else 1          # 布尔习惯最多 1 次
+    nxt = max(0, min(cap, nxt))
+
+    if nxt <= 0:
+        if row:
+            db.query(HabitCheckin).filter(HabitCheckin.id == row.id).delete()
+    elif row:
+        row.count = nxt
+    else:
+        db.add(HabitCheckin(habit_id=habit_id, user_id=uid,
+                            checkin_date=today_int, count=nxt))
+    db.commit()
+    return ok({
+        "habit_id": habit_id,
+        "today_count": nxt,
+        "target": target,
+        "checked": (nxt >= target) if target > 1 else (nxt >= 1),
+    })
 
 
 @router.patch("/{habit_id}")
@@ -251,6 +342,7 @@ def update_habit(
     h.icon = body.icon or h.icon
     h.color = body.color or h.color
     h.weekly_goal = body.weekly_goal
+    h.daily_target = max(0, min(50, body.daily_target or 0))
     h.sort_order = body.sort_order
     h.penalty_cents = body.penalty_cents
     h.penalty_grace = body.penalty_grace

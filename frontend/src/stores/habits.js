@@ -42,8 +42,18 @@ export const useHabitsStore = defineStore('habits', () => {
 
   const doneCount = computed(() => list.value.filter((h) => h.checked_today).length)
   const total = computed(() => list.value.length)
-  /** 今日完成率 0~100 */
-  const progress = computed(() => (total.value ? Math.round((doneCount.value / total.value) * 100) : 0))
+  /** 是否「一天 N 次」型习惯（v2.46.245） */
+  const isCountHabit = (h) => Number(h?.daily_target || 0) > 1
+  /**
+   * 今日完成率 0~100 —— 按「单位」算，不按条目算。
+   * 3 杯水喝了 1 杯 = 1/3 而不是 0%；布尔习惯 1 次 = 1 单位。
+   * 这样进度条真正反映今天做了多少，而不是「几件事开了个头」。
+   */
+  const unitDone = computed(() => list.value.reduce(
+    (s, h) => s + (isCountHabit(h) ? Math.min(Number(h.today_count) || 0, h.daily_target) : (h.checked_today ? 1 : 0)), 0))
+  const unitTotal = computed(() => list.value.reduce(
+    (s, h) => s + (isCountHabit(h) ? h.daily_target : 1), 0))
+  const progress = computed(() => (unitTotal.value ? Math.round((unitDone.value / unitTotal.value) * 100) : 0))
   /** 还没打卡的（工作台卡片只展示这几条） */
   const pending = computed(() => list.value.filter((h) => !h.checked_today))
   /** 最长连续天数 */
@@ -76,8 +86,68 @@ export const useHabitsStore = defineStore('habits', () => {
     return inflight
   }
 
+  /**
+   * 记一次进度（v2.46.245）：喝了一杯水就 +1。
+   * 乐观更新 —— 点一下立刻变，失败再回滚；streak / 周次 只在「刚达成/刚撤销」时动。
+   */
+  async function step(habit, delta = 1) {
+    const isCount = isCountHabit(habit)
+    const cap = isCount ? habit.daily_target : 1
+    const prev = {
+      c: Number(habit.today_count) || 0,
+      checked: habit.checked_today,
+      streak: habit.streak,
+      week: habit.week_count,
+      total: habit.total_count,
+    }
+    const nxt = Math.max(0, Math.min(cap, prev.c + delta))
+    if (nxt === prev.c) return prev.c
+    const wasDone = isCount ? prev.c >= cap : prev.checked
+    const nowDone = isCount ? nxt >= cap : nxt >= 1
+    habit.today_count = nxt
+    habit.checked_today = nowDone
+    if (nowDone && !wasDone) {
+      habit.streak = (prev.streak || 0) + 1
+      habit.week_count = (prev.week || 0) + 1
+      habit.total_count = (prev.total || 0) + 1
+    } else if (!nowDone && wasDone) {
+      habit.streak = Math.max(0, (prev.streak || 0) - 1)
+      habit.week_count = Math.max(0, (prev.week || 0) - 1)
+      habit.total_count = Math.max(0, (prev.total || 0) - 1)
+    }
+    if (Array.isArray(habit.heat) && habit.heat.length) {
+      const cell = habit.heat.find((c) => c.date === localDay())
+      const mark = nowDone || nxt > 0
+      if (cell) cell.checked = mark
+      else habit.heat[habit.heat.length - 1].checked = mark
+    }
+    try {
+      const res = await workbenchApi.habits.step(habit.id, delta)
+      const d = res?.data || res
+      if (d && d.today_count != null && Number(d.today_count) !== nxt) {
+        // 后端夹紧过（比如超过目标）→ 以后端为准
+        habit.today_count = Number(d.today_count)
+        habit.checked_today = !!d.checked
+      }
+    } catch (e) {
+      habit.today_count = prev.c
+      habit.checked_today = prev.checked
+      habit.streak = prev.streak
+      habit.week_count = prev.week
+      habit.total_count = prev.total
+      throw e
+    }
+    return nxt
+  }
+
   /** 打卡 / 取消打卡（乐观更新 + 失败回滚） */
   async function toggle(habit) {
+    // 一天 N 次的习惯：勾选框 = 一键打满 / 一键清零
+    if (isCountHabit(habit)) {
+      const cur = Number(habit.today_count) || 0
+      const delta = cur >= habit.daily_target ? -cur : habit.daily_target - cur
+      return step(habit, delta)
+    }
     const prev = { checked: habit.checked_today, streak: habit.streak, week: habit.week_count, total: habit.total_count }
     habit.checked_today = !prev.checked
     habit.streak = prev.checked ? Math.max(0, prev.streak - 1) : prev.streak + 1
@@ -189,7 +259,8 @@ export const useHabitsStore = defineStore('habits', () => {
   return {
     list, weekly, radar, household, reviews, lastSettle, loading, error, day,
     doneCount, total, progress, pending, bestStreak, allDone,
-    load, toggle, create, update, remove, settle, loadWeekly,
+    unitDone, unitTotal, isCountHabit,
+    load, toggle, step, create, update, remove, settle, loadWeekly,
     loadRadar, loadHousehold, loadReviews, makeReview,
   }
 })

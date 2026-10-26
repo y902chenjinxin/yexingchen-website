@@ -109,11 +109,11 @@
       <section v-if="total" class="hb-card glass-card">
         <ul class="hb-list">
           <li v-for="h in list" :key="h.id" class="hb-row" :class="{ done: h.checked_today }">
+            <div v-if="!managing" class="hb-line">
             <button
-              v-if="!managing"
               class="hb-hit"
               :aria-pressed="h.checked_today ? 'true' : 'false'"
-              :aria-label="`${h.name}，${h.checked_today ? '已打卡，点击取消' : '未打卡，点击打卡'}`"
+              :aria-label="`${h.name}，${h.checked_today ? '已完成，点击清零' : '未完成，点击打满'}`"
               @click="onToggle(h)"
             >
               <span class="hb-ico" :style="h.color ? { color: h.color } : null">
@@ -122,6 +122,9 @@
               <span class="hb-main">
                 <span class="hb-name">{{ h.name }}</span>
                 <span class="hb-meta">
+                  <b v-if="isCount(h)" class="hb-prog" :class="{ full: h.checked_today }">
+                    今天 {{ h.today_count || 0 }}/{{ h.daily_target }}
+                  </b>
                   连续 {{ h.streak }} 天 · 本周 {{ h.week_count }}<template v-if="h.weekly_goal">/{{ h.weekly_goal }}</template>
                   · 累计 {{ h.total_count }}
                   <template v-if="h.account"> · {{ accountLabel(h.account) }}</template>
@@ -134,6 +137,14 @@
                 </svg>
               </span>
             </button>
+            <!-- v2.46.245：一天 N 次的习惯，右侧 ＋ 记一次 -->
+            <button
+              v-if="isCount(h)"
+              class="hb-plus"
+              :title="`记一次（${h.today_count || 0}/${h.daily_target}）`"
+              @click.stop="onStep(h)"
+            >＋</button>
+            </div>
 
             <!-- 管理模式：改 / 删 -->
             <div v-else class="hb-manage">
@@ -250,6 +261,11 @@
           <span>每周目标（0 = 不限）</span>
           <el-input-number v-model="form.weekly_goal" :min="0" :max="7" controls-position="right" />
         </label>
+        <label class="hb-field">
+          <span>每天目标（0/1 = 做一次就完成）</span>
+          <el-input-number v-model="form.daily_target" :min="0" :max="50" controls-position="right" />
+        </label>
+        <p class="hb-hint">比如「喝 3 杯水」填 3：喝一杯就在工作台点一下 ＋，看到 1/3、2/3，到 3 才算完成。</p>
         <label class="hb-field">
           <span>断链自罚（每天，元；填 0 = 关闭）</span>
           <el-input-number v-model="form.penalty_yuan" :min="0" :max="1000" :step="1" :precision="2" controls-position="right" />
@@ -381,6 +397,7 @@ const form = reactive({
   name: '',
   icon: '✓',
   weekly_goal: 0,
+  daily_target: 0,
   penalty_yuan: 0,   // 存「元」，提交时转分
   penalty_grace: 0,
   account: '',
@@ -395,6 +412,19 @@ function heatCount(h) {
   return (h.heat || []).filter((c) => c.checked).length
 }
 
+/** 是否「一天 N 次」型习惯（喝水 3 杯这种，v2.46.245） */
+function isCount(h) { return Number(h?.daily_target || 0) > 1 }
+
+/** 记一次进度 */
+async function onStep(h) {
+  try {
+    const n = await store.step(h, 1)
+    if (n && n >= h.daily_target) {
+      ElMessage({ message: `${h.name} 今天 ${h.daily_target}/${h.daily_target}，达标了`, type: 'success', duration: 1600 })
+    }
+  } catch { /* 拦截器已提示 */ }
+}
+
 async function onToggle(h) {
   try {
     await store.toggle(h)
@@ -406,7 +436,7 @@ async function onToggle(h) {
 
 function openCreate() {
   Object.assign(form, {
-    id: 0, name: '', icon: ICON_CHOICES[0], weekly_goal: 0,
+    id: 0, name: '', icon: ICON_CHOICES[0], weekly_goal: 0, daily_target: 0,
     penalty_yuan: 0, penalty_grace: 0, account: ACCOUNT_OPTIONS[0].key,
   })
   dialog.value = true
@@ -418,6 +448,7 @@ function openEdit(h) {
     name: h.name,
     icon: h.icon || '✓',
     weekly_goal: h.weekly_goal || 0,
+    daily_target: h.daily_target || 0,
     penalty_yuan: (h.penalty_cents || 0) / 100,
     penalty_grace: h.penalty_grace || 0,
     account: h.account || '',
@@ -434,6 +465,7 @@ async function submit() {
       icon: form.icon,
       color: null,
       weekly_goal: form.weekly_goal || 0,
+      daily_target: form.daily_target || 0,
       // 元 → 分（后端只认分，避免浮点误差）
       penalty_cents: Math.round((Number(form.penalty_yuan) || 0) * 100),
       penalty_grace: form.penalty_grace || 0,
@@ -706,4 +738,15 @@ async function maybeWeekendReview() {
 :global(#app.is-mobile .hb-progress) { padding: 14px; gap: 12px; }
 :global(#app.is-mobile .hb-heat-name) { width: 68px; }
 :global(#app.is-mobile .hb-cells i) { height: 8px; min-width: 3px; border-radius: 2px; }
+.hb-line { display: flex; align-items: center; gap: 4px; }
+.hb-line .hb-hit { flex: 1; min-width: 0; }
+.hb-plus {
+  width: 30px; height: 30px; flex: none; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--lj-line-strong); background: transparent;
+  color: var(--lj-seal); font-size: 16px; line-height: 1; padding: 0;
+}
+.hb-plus:hover { background: var(--lj-seal-soft); border-color: var(--lj-seal); }
+.hb-prog { font-weight: 700; color: var(--lj-seal); font-variant-numeric: tabular-nums; }
+.hb-prog.full { color: var(--color-success, #0f7a56); }
+.hb-hint { margin-left: 8px; font-size: 11.5px; color: var(--lj-text-3); line-height: 1.5; }
 </style>

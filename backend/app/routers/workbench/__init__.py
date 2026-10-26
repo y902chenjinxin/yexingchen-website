@@ -22,12 +22,14 @@ from app.routers.workbench.search import router as search_router
 from app.routers.workbench.server_monitor import router as server_monitor_router
 from app.routers.workbench.tasks import router as tasks_router
 from app.routers.workbench.trash import router as trash_router
+from app.routers.workbench.study import router as study_router
 
 router = APIRouter()
 router.include_router(dashboard_router)
 router.include_router(brief_router)
 router.include_router(culture_router)
 router.include_router(habits_router)
+router.include_router(study_router)   # v2.46.245 每日英语
 router.include_router(weather_router)
 router.include_router(notes_router)
 router.include_router(assets_router)
