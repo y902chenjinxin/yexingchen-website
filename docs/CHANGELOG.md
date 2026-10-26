@@ -23,6 +23,52 @@
 
 ---
 
+## [v2.46.237] - 2026-10-26
+
+### 撤销：视频自动字幕功能（v2.46.236 全部回退）
+
+夜星：「将视频字幕这块内容去除吧」
+
+#### 移除清单
+| 位置 | 内容 |
+|---|---|
+| `backend/app/services/subtitle.py` | 整个文件删除（抽音轨 / 转写 / SRT / 单任务队列） |
+| `backend/app/routers/video.py` | 5 个字幕接口 + `subtitle_svc` 导入 + 列表 `has_subtitle` 字段 |
+| `frontend/src/views/VideoView.vue` | 「字幕」列 + 轮询逻辑 + 样式 + `onBeforeUnmount`/`reactive` 导入 |
+| `frontend/src/api/video.js` | 字幕 5 个方法 |
+| `backend/requirements.txt` | `faster-whisper` / `modelscope`（曾为字幕引入） |
+
+#### 服务器同步清理
+```
+pip uninstall faster-whisper modelscope      ✓
+rm -rf backend/models/ms        (142MB)      ✓
+rm -rf backend/models/whisper   (空目录残留)  ✓
+rm -rf backend/uploads/subtitles             ✓
+rm -rf /root/.cache/{huggingface,modelscope} ✓
+```
+清理后 `backend/models/` 只剩原有的 `modnet.onnx`(6.4M) 与 `sherpa-onnx-sense-voice`(229M)，
+磁盘占用回到引入前水平。字幕接口现在返回 404。
+
+#### 保留（与字幕无关的独立修复）
+`api/video.js` 的 `reorderVideo` 路径仍是复数 `/videos/reorder` ——
+这是 v2.46.236 顺手修的一个**既有 bug**（原来打单数 `/video/reorder`，
+后端前缀是 `/api/videos`，拖拽排序一直 404 静默失败），不属于字幕功能，**保留**。
+
+#### 验证
+```
+视频列表列头：标题 / 分类 / 标签 / 时长 / 文件大小 / 链接(COS) / 上传时间 / 上传人 / 操作
+（无「字幕」列）
+GET /api/videos/subtitle/status → 404
+health 200，PM2 online
+```
+
+> 相关实现细节（whisper vs SenseVoice 的对比实验、ModelScope 下载、三个路径 bug）
+> 已归档在 `.workbuddy/memory/2026-10-26.md`，将来若要重做可以直接复用结论。
+
+版本 SW v550→v551、APP_VERSION v2.46.236→v2.46.237。
+
+---
+
 ## [v2.46.236] - 2026-10-26
 
 ### 视频自动字幕：ffmpeg 抽音轨 + faster-whisper 本地识别（P0）

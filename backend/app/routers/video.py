@@ -1,5 +1,4 @@
 from app.models.video import Video
-from app.services import subtitle as subtitle_svc
 from app.models.user import User
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
@@ -94,7 +93,6 @@ async def list_videos(
                 "uploader_name": uploader_names.get(v.uploader_id, ""),
                 "file_size": v.file_size,
                 "duration": v.duration or 0,
-                "has_subtitle": subtitle_svc.has_subtitle(v.id),
                 "created_at": str(v.created_at)
             }
             for v in items
@@ -103,90 +101,6 @@ async def list_videos(
         "page": page,
         "size": size
     })
-
-
-# ============ 自动字幕（v2.46.236）============
-# 路由顺序很关键：`/subtitle/status` 必须放在 `/{video_id}/...` 之前，
-# 否则 "subtitle" 会被当成 video_id 去做 int 转换，直接 422。
-
-@router.get("/subtitle/status", response_model=ResponseBase)
-async def subtitle_engine_status(current_user: dict = Depends(get_current_user)):
-    """字幕引擎是否可用（前端据此决定按钮可点/置灰）。"""
-    return ResponseBase(data=subtitle_svc.engine_status())
-
-
-@router.post("/{video_id}/subtitle", response_model=ResponseBase)
-async def create_subtitle(
-    video_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """给视频生成字幕：后台单任务队列跑，返回 task_id 供前端轮询。
-
-    仅支持**本地存储**的视频（COS 远程视频要先下载，本次不做）。
-    """
-    video = db.query(Video).filter(Video.id == video_id).first()
-    if not video:
-        raise_error(ErrCode.VIDEO_NOT_FOUND, "视频不存在")
-    if not video.cos_url:
-        raise_error(ErrCode.INVALID_PARAM, "该视频没有可用的文件路径")
-
-    src = video.cos_url
-    if src.startswith(("http://", "https://")):
-        raise_error(ErrCode.INVALID_PARAM, "COS 远程视频暂不支持生成字幕（需先下载到本地）")
-    # 交给统一的解析函数：cos_url 形如 /videos/xxx.mp4，要补 uploads/ 前缀
-    full = subtitle_svc.resolve_local_path(src)
-    if not full:
-        raise_error(ErrCode.VIDEO_NOT_FOUND, "视频文件不存在（cos_url=%s）" % (src or "空"))
-
-    try:
-        info = subtitle_svc.start_task(video_id, full)
-    except subtitle_svc.SubtitleUnavailable as exc:
-        raise_error(ErrCode.INVALID_PARAM, str(exc))
-    return ResponseBase(msg="已开始生成字幕" if not info["queued"] else "已排队",
-                        data=info)
-
-
-@router.get("/{video_id}/subtitle/{task_id}", response_model=ResponseBase)
-async def get_subtitle_task(
-    video_id: int,
-    task_id: str,
-    current_user: dict = Depends(get_current_user),
-):
-    """查询字幕任务进度：status = queued|starting|extracting|transcribing|done|failed"""
-    task = subtitle_svc.get_task(task_id)
-    if not task:
-        raise_error(ErrCode.INVALID_PARAM, "任务不存在或已过期")
-    return ResponseBase(data=task)
-
-
-@router.get("/{video_id}/subtitle.srt")
-async def download_subtitle(
-    video_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """下载已生成的 SRT 字幕文件。"""
-    path = subtitle_svc.subtitle_path(video_id)
-    if not os.path.isfile(path):
-        raise_error(ErrCode.VIDEO_NOT_FOUND, "该视频还没有生成字幕")
-    return FileResponse(path, media_type="application/x-subrip",
-                        filename=f"video-{video_id}.srt")
-
-
-@router.delete("/{video_id}/subtitle", response_model=ResponseBase)
-async def delete_subtitle(
-    video_id: int,
-    current_user: dict = Depends(get_current_user),
-):
-    """删除已生成的字幕文件（重新生成前可先清掉）。"""
-    path = subtitle_svc.subtitle_path(video_id)
-    if os.path.isfile(path):
-        try:
-            os.remove(path)
-        except OSError as exc:
-            raise_error(ErrCode.INVALID_PARAM, f"删除失败：{exc}")
-    return ResponseBase(msg="已删除")
 
 
 @router.get("/{video_id}/stream")
