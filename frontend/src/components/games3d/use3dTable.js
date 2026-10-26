@@ -43,11 +43,20 @@ export function wallTF(side, i, n) {
  *    **牌立起约 60°、牌面朝玩家并略微后仰**，保留 6° 与视线的夹角出立体感
  *    （能看见牌的侧厚度，而不是一张贴在屏幕上的平面贴图）。
  *    与中央出牌区 centerTF 的 rotateX(-52°) 同一语系。 */
-export function handTF(i, n, stand, ty = 324, lift = 0) {
-  const step = Math.min(44, 1000 / Math.max(1, n))
+export function handTF(i, n, stand, ty = 324, lift = 0, fan = 0) {
+  // v2.46.238：牌宽 42→60，步距收到 38（露出 38px，重叠 22px）。
+  // 27 张总宽约 1026px，1080 宽屏上正好铺满，每张的点数都露得出来。
+  const step = Math.min(38, 1060 / Math.max(1, n))
   const off = (i - (n - 1) / 2) * step
   if (stand) return `translate(-50%,-50%) translate3d(${off}px,${ty}px,${46 + lift}px) rotateX(-90deg)`
-  return `translate(-50%,-50%) translate3d(${off}px,${ty}px,${46 + lift}px) rotateX(-60deg)`
+  /* v2.46.239 扇形：参考腾讯斗地主的持牌 —— 整手牌绕中心张开一个很浅的弧，
+     两端各向外转 fan 度、并抬高 9px。之所以只有几度：掼蛋 27 张，转多了
+     两端点数就被压扁看不清了，「像捏在手里」的观感靠弧度和扇形共同给。
+     fan=0 时退化成原来的平铺（麻将/别处调用不受影响）。 */
+  const t = n > 1 ? (i - (n - 1) / 2) / ((n - 1) / 2) : 0
+  const rotZ = -t * fan
+  const arc = -Math.abs(t) * Math.abs(t) * 9
+  return `translate(-50%,-50%) translate3d(${off}px,${ty + arc}px,${46 + lift}px) rotateX(-60deg) rotateZ(${rotZ}deg)`
 }
 
 /** 对手手牌背面：'N'|'W'|'E' */

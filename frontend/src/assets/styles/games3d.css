@@ -173,8 +173,10 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 }
 .g3d-op:hover { background: rgba(233, 200, 119, .22); }
 .g3d-op.on { background: var(--tc-btn-grad, linear-gradient(135deg,#8b5cff,#2de2ff)); color: var(--tc-btn-fg, #04121c); font-weight: 700; }
-.g3d-op.ghost { border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .05); color: var(--tc-text, #e6f2ff); }
-.g3d-op:disabled { opacity: .38; cursor: not-allowed; }
+/* v2.46.238：同 .g3d-btn.ghost，顶栏那两颗（返回 / 重新开始）原来也看不清 */
+.g3d-op.ghost { border-color: rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .17); color: #f0f7ff; }
+.g3d-op.ghost:hover { background: rgba(255, 255, 255, .26); }
+.g3d-op:disabled { opacity: .55; cursor: not-allowed; }
 
 /* ================= 舞台 / 世界 ================= */
 /* board 组件根容器：透明，背景由外层 .g3d-root 提供 */
@@ -198,13 +200,15 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 .gt3-back { width: var(--w); height: var(--t); transform: translate(-50%, -50%) rotateX(-90deg) translateZ(calc(var(--h) / 2)); background: linear-gradient(90deg, #061a12, #164433); }
 .gt3-felt {
   position: absolute; inset: 0; border-radius: 26px; overflow: hidden;
+  /* v2.46.238：整体提亮。原来 #1d5c46→#082019 太暗，牌放在上面几乎融进桌面，
+     夜星反馈「页面太暗、按钮看不清」。桌面提两档、光斑加强。 */
   background:
-    radial-gradient(120% 90% at 50% 40%, rgba(255, 255, 255, .07), transparent 60%),
-    linear-gradient(160deg, #1d5c46, #0f3a2c 58%, #082019);
+    radial-gradient(120% 90% at 50% 38%, rgba(255, 255, 255, .16), transparent 62%),
+    linear-gradient(160deg, #33996f, #1a6b4e 58%, #0d4230);
   box-shadow:
-    inset 0 0 0 3px rgba(233, 200, 119, .38),
-    inset 0 0 0 12px rgba(233, 200, 119, .1),
-    inset 0 0 40px rgba(0, 0, 0, .5);
+    inset 0 0 0 3px rgba(233, 200, 119, .5),
+    inset 0 0 0 12px rgba(233, 200, 119, .14),
+    inset 0 0 46px rgba(0, 0, 0, .38);
 }
 .gt3-woven {
   position: absolute; inset: 0; opacity: .5;
@@ -212,7 +216,7 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
     repeating-linear-gradient(45deg, rgba(255, 255, 255, .025) 0 2px, transparent 2px 4px),
     repeating-linear-gradient(-45deg, rgba(0, 0, 0, .05) 0 2px, transparent 2px 4px);
 }
-.gt3-vignette { position: absolute; inset: 0; background: radial-gradient(115% 78% at 50% 42%, transparent 52%, rgba(0, 0, 0, .42)); }
+.gt3-vignette { position: absolute; inset: 0; background: radial-gradient(120% 85% at 50% 42%, transparent 58%, rgba(0, 0, 0, .26)); }
 
 /* 中央罗盘 */
 .gt3-compass {
@@ -315,21 +319,164 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 
 /* 扑克牌 */
 .card-front {
-  position: relative; border-radius: 6px; overflow: hidden;
-  background: linear-gradient(180deg, #fffdf8, #f1ece0);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  box-shadow: inset 0 0 0 1px rgba(120, 100, 60, .2);
+  position: relative; border-radius: 7px; overflow: hidden;
+  background: linear-gradient(178deg, #ffffff 0%, #fdfbf5 62%, #f3eee1 100%);
+  /* v2.46.239：右侧 + 底部各压一道内阴影 —— 27 张牌只有 38px 重叠步距，
+     没有内阴影时相邻两张白面直接连成一条白带（夜星：「看着太low了」）。
+     内阴影是「自己身上被下一张压住的暗边」，不受绘制顺序影响，最稳。 */
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 82, 52, .30),
+    inset -11px 0 11px -8px rgba(16, 20, 28, .34),
+    inset 0 -9px 10px -9px rgba(16, 20, 28, .26);
 }
-.card-front .cf-rank { font-size: calc(var(--w) * .52); font-weight: 800; line-height: 1; }
-.card-front .cf-suit { font-size: calc(var(--w) * .46); line-height: 1; margin-top: 2px; }
-.card-front.red { color: #d23b3b; }
-.card-front.blk { color: #1c2733; }
+/* v2.46.238 牌面重做：原来「数字 + 花色居中」，27 张一叠后左边全被压住、只看得到半张，
+   所以「像小卡片」。改成真实扑克布局 —— **点数固定在左上角**，重叠只露左侧 38px 时
+   依然能一眼读出点数；右下角放一个淡化的大花色做视觉重心。 */
+.card-front .cf-corner {
+  position: absolute; left: 7%; top: 5%;
+  display: flex; flex-direction: column; align-items: center;
+  line-height: .92; letter-spacing: -.5px;
+}
+.card-front .cf-corner b { font-size: calc(var(--w) * .46); font-weight: 800; }
+.card-front .cf-corner i { font-size: calc(var(--w) * .30); font-style: normal; margin-top: 1px; }
+.card-front .cf-suit-big {
+  position: absolute; right: 5%; bottom: 4%;
+  font-size: calc(var(--w) * .56); line-height: 1; opacity: .13;
+}
+.card-front.red { color: #d81f26; }
+.card-front.blk { color: #14202c; }
+/* 王牌（大小王）：去掉角标、整张写「大王/小王」 */
+.card-front.joker .cf-corner b { font-size: calc(var(--w) * .30); writing-mode: vertical-rl; letter-spacing: 1px; }
+.card-front.joker .cf-suit-big { opacity: .1; }
 .card-back {
   border-radius: 6px;
   background:
     repeating-linear-gradient(45deg, rgba(255, 255, 255, .12) 0 3px, transparent 3px 6px),
     linear-gradient(160deg, #b8342f, #7e1f1c);
   box-shadow: inset 0 0 0 2px rgba(233, 200, 119, .4);
+}
+
+/* v2.46.238 手牌底座：一条深绿绒布，让手牌像「捏在手里」而不是浮在桌面上 */
+.gt3-handbed {
+  position: absolute; left: 50%; bottom: 0; z-index: 5;
+  width: min(1120px, 96vw); height: 76px;
+  transform: translateX(-50%);
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(180deg, rgba(9, 26, 40, .0), rgba(6, 18, 30, .72) 55%, rgba(4, 12, 22, .92));
+  box-shadow: 0 -14px 34px -16px rgba(0, 0, 0, .8);
+  pointer-events: none;
+}
+
+/* ================= 2D 手牌牌扇（v2.46.240） ================= */
+/* 手牌从 3D 世界挪到屏幕层，理由见组件模板注释（27 张同 z 平面会被 3D 排序
+   翻转绘制顺序，右半边点数被盖掉）。形态参考腾讯斗地主：平铺重叠 + 浅扇形 +
+   每张牌右侧一道暗边，一眼能看出是一叠牌而不是一条白带。 */
+.g3d-hand2d {
+  --hcw: clamp(38px, 6vw, 78px);
+  --hch: calc(var(--hcw) * 1.40);
+  --step: calc(var(--hcw) * 0.57);
+  position: absolute; left: 50%; bottom: 70px; z-index: 8;
+  transform: translateX(-50%);
+  width: min(1300px, 99vw);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 4px;
+  pointer-events: none;
+  /* 整条牌带在桌面上的投影 —— 手牌「压在桌上」而不是浮着 */
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .45));
+}
+.hcard {
+  --w: var(--hcw);
+  position: relative; flex: 0 0 auto;
+  width: var(--hcw); height: var(--hch);
+  margin-left: calc(var(--step) - var(--hcw));
+  border-radius: 9px;
+  transform-origin: 50% 118%;
+  transform: translateY(var(--arc, 0px)) rotate(var(--rot, 0deg));
+  transition: transform .2s cubic-bezier(.22, .9, .28, 1), filter .18s;
+  pointer-events: auto; cursor: pointer;
+  animation: hcDeal .34s cubic-bezier(.2, .85, .3, 1) backwards;
+  animation-delay: var(--delay, 0ms);
+}
+.hcard:first-child { margin-left: 0; }
+@keyframes hcDeal {
+  from { opacity: 0; transform: translateY(calc(var(--arc, 0px) + 46px)) rotate(var(--rot, 0deg)); }
+  to   { opacity: 1; transform: translateY(var(--arc, 0px)) rotate(var(--rot, 0deg)); }
+}
+.hcard .card-front {
+  /* 🔴 v2.46.240：必须显式 absolute + inset:0。牌面原本靠 .pc-face/.pc-front 给的
+     宽高与定位（3D 那套），2D 牌扇没挂那两个类 —— 结果 .card-front 是普通块级、
+     高度 0，27 张牌在 DOM 里都在、opacity=1，但屏幕上什么都没有。 */
+  position: absolute; inset: 0;
+  border-radius: 9px;
+  background: linear-gradient(178deg, #ffffff 0%, #fdfbf5 64%, #f3eee1 100%);
+  /* 右侧暗边 = 被下一张压住的阴影；底部暗边 = 整叠的厚度感 */
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 82, 52, .34),
+    inset -10px 0 11px -8px rgba(16, 20, 28, .30),
+    inset 0 -8px 10px -9px rgba(16, 20, 28, .22);
+}
+/* 角标：比 3D 版略小（0.46 → 0.40），避免 27 张挤在一起显得吵闹 */
+.hcard .cf-corner { left: 8%; top: 4%; }
+.hcard .cf-corner b { font-size: calc(var(--w) * .40); }
+.hcard .cf-corner i { font-size: calc(var(--w) * .28); }
+.hcard .cf-suit-big { right: 6%; bottom: 4%; font-size: calc(var(--w) * .50); opacity: .12; }
+.hcard.joker .cf-corner b { font-size: calc(var(--w) * .26); }
+
+/* 选中：抬起 + 金色描边 + 光晕（腾讯斗地主的选中态） */
+.hcard.sel {
+  transform: translateY(calc(var(--arc, 0px) - 18px)) rotate(var(--rot, 0deg));
+  filter: drop-shadow(0 0 12px rgba(255, 214, 120, .75));
+}
+.hcard.sel .card-front {
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 206, 92, .95),
+    inset -10px 0 11px -8px rgba(16, 20, 28, .22);
+}
+.hcard:hover:not(.sel) { transform: translateY(calc(var(--arc, 0px) - 7px)) rotate(var(--rot, 0deg)); }
+
+/* 左区（钉组 / 同花顺组）：牌底一条金线 */
+.hcard.grouped .card-front::before {
+  content: ''; position: absolute; left: 8%; right: 8%; bottom: 4px; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(233, 200, 119, 0), rgba(233, 200, 119, .95), rgba(233, 200, 119, 0));
+}
+/* 逢人配（红桃级牌）保持原样：靠 .wild 的既有描边 */
+
+/* ================= 手牌工具条（v2.46.239） ================= */
+/* 位置：底栏（操作条 bottom:18 / 自己 HUD bottom:18）上方一行。
+   不放在手牌正上方是因为手牌抬起来后位置随牌数变，会撞；固定在这里视线也顺。 */
+.g3d-handtools {
+  position: absolute; left: 50%; bottom: 200px; transform: translateX(-50%); z-index: 22;
+  display: flex; gap: 8px; align-items: center;
+  padding: 7px 12px; border-radius: 14px;
+  background: rgba(8, 16, 30, .78);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, .16);
+  box-shadow: 0 14px 34px -16px rgba(0, 0, 0, .85);
+}
+.g3d-btn.sm { padding: 6px 13px; font-size: 13px; border-radius: 9px; }
+/* 牌型提示：窄但给一个最小宽度，避免选牌/不选牌时条子左右跳 */
+.g3d-pat {
+  min-width: 86px; padding: 0 8px; text-align: center;
+  font-size: 13px; line-height: 1; letter-spacing: .3px;
+  color: rgba(226, 238, 255, .62);
+  font-variant-numeric: tabular-nums;
+  transition: color .15s;
+}
+.g3d-pat.is-ok { color: #ffd977; font-weight: 700; }
+.g3d-pat.is-bad { color: #ff8f8f; }
+@media (max-width: 640px) {
+  .g3d-handtools { bottom: 172px; gap: 6px; padding: 6px 8px; }
+  .g3d-pat { min-width: 62px; font-size: 12px; }
+  .g3d-btn.sm { padding: 5px 9px; font-size: 12px; }
+}
+
+/* 左区（钉组 / 同花顺组）标记：牌底一条金色细线，扫一眼就知道这几张是成组的 */
+.pc3d.gd-hand.grouped .pc-front::before {
+  content: ''; position: absolute; left: 6%; right: 6%; bottom: 3px; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(233, 200, 119, 0), rgba(233, 200, 119, .95), rgba(233, 200, 119, 0));
+  opacity: .9;
 }
 
 /* ================= 操作条 / 提示 / 结算 ================= */
@@ -356,8 +503,11 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 }
 .g3d-btn:hover { background: rgba(233, 200, 119, .24); }
 .g3d-btn.primary { background: var(--tc-btn-grad, linear-gradient(135deg,#8b5cff,#2de2ff)); color: var(--tc-btn-fg, #04121c); font-weight: 700; }
-.g3d-btn.ghost { border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .05); color: var(--tc-text, #e6f2ff); }
-.g3d-btn:disabled { opacity: .38; cursor: not-allowed; }
+/* v2.46.238：ghost 原来 5% 白底 + 浅字、disabled 再降到 38% —— 深色背景上基本看不见。
+   改成实底 + 明显描边；disabled 提到 55% 并且用虚线边框，能看出「有按钮但暂时不可用」。 */
+.g3d-btn.ghost { border-color: rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .17); color: #f0f7ff; }
+.g3d-btn.ghost:hover:not(:disabled) { background: rgba(255, 255, 255, .26); }
+.g3d-btn:disabled { opacity: .55; cursor: not-allowed; border-style: dashed; }
 
 .g3d-toast {
   position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 30;

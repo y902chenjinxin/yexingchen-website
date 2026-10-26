@@ -63,7 +63,7 @@
             v-for="k in 5"
             :key="o.side + k"
             class="pc3d gd-back"
-            :style="pieceBox(true, 46, 64, 12, oppTF(o.side, k - 1, 5), k - 1, false, false)"
+            :style="pieceBox(true, 50, 72, 12, oppTF(o.side, k - 1, 5), k - 1, false, false)"
           >
             <div class="pc-face pc-front card-back"></div>
             <div class="pc-face pc-back card-back"></div>
@@ -74,26 +74,6 @@
           </div>
         </div>
 
-        <!-- 我的手牌（座位 0） -->
-        <div
-          v-for="(c, i) in hands[0]"
-          :key="c.id"
-          class="pc3d gd-hand"
-          :class="{ sel: sel.includes(c.id), wild: isWildCard(c) }"
-          :style="pieceBox(dealt, 42, 58, 11, handTF(i, hands[0].length, false, 292, sel.includes(c.id) ? 29 : 0), i, true, false)"
-          @click="toggleSel(c)"
-        >
-          <div class="pc-face pc-front card-front" :class="isRed(c) ? 'red' : 'blk'">
-            <span class="cf-rank">{{ cardText(c) }}</span>
-            <span class="cf-suit">{{ cardSuit(c) }}</span>
-          </div>
-          <div class="pc-face pc-back card-back"></div>
-          <div class="pc-face pc-top mj-ivory"></div>
-          <div class="pc-face pc-bottom mj-ivory"></div>
-          <div class="pc-face pc-left mj-edge"></div>
-          <div class="pc-face pc-right mj-edge"></div>
-        </div>
-
         <!-- 中央出牌区：每个已出座位显示其最新一手，按屏幕位给原点偏移 -->
         <template v-for="seat in throwSeats" :key="'gc' + seat">
           <div
@@ -101,11 +81,12 @@
             :key="c.id"
             class="pc3d gd-hand mj-center"
             :class="{ wild: isWildCard(c) }"
-            :style="pieceBox(dealt, 42, 58, 11, centerTF(i, 40, CENTER_OFF[screenPos(seat, 0)]), i, false, false)"
+            :style="pieceBox(dealt, 52, 74, 12, centerTF(i, 40, CENTER_OFF[screenPos(seat, 0)]), i, false, false)"
           >
-            <div class="pc-face pc-front card-front" :class="isRed(c) ? 'red' : 'blk'">
-              <span class="cf-rank">{{ cardText(c) }}</span>
-              <span class="cf-suit">{{ cardSuit(c) }}</span>
+            <!-- 出牌区的牌少（一手 1~8 张）、间距大，保留右下角大花色做视觉重心 -->
+            <div class="pc-face pc-front card-front" :class="[isRed(c) ? 'red' : 'blk', c.joker ? 'joker' : '']">
+              <span class="cf-corner"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+              <span v-if="!c.joker" class="cf-suit-big">{{ cardSuit(c) }}</span>
             </div>
             <div class="pc-face pc-back card-back"></div>
             <div class="pc-face pc-top mj-ivory"></div>
@@ -115,6 +96,53 @@
           </div>
         </template>
       </div>
+      <!-- 我的手牌（v2.46.240：**移出 3D 世界**，改成屏幕层的 2D 牌扇）
+           🔴 为什么必须挪出来：27 张牌作为 preserve-3d 的子元素时 z 全部相同，
+           浏览器做 3D 排序会在线程中间翻转绘制顺序 —— 实测右半边 13 张的点数
+           被压在下一张牌底下，只剩一个淡花色（DOM 里 .cf-corner 明明都在）。
+           腾讯斗地主的手牌本来就是 2D 平面，挪出来既绕开这个 bug，
+           又能把阴影 / 描边 / 扇形弧度做扎实。 -->
+      <div class="g3d-hand2d" :style="{ '--hn': viewHand.length }">
+        <div
+          v-for="(c, i) in viewHand"
+          :key="c.id"
+          class="hcard"
+          :class="{ sel: sel.includes(c.id), wild: isWildCard(c), grouped: i < headCount }"
+          :style="hcardStyle(i)"
+          @click="toggleSel(c)"
+        >
+          <div class="hcard-face card-front" :class="[isRed(c) ? 'red' : 'blk', c.joker ? 'joker' : '']">
+            <span class="cf-corner"><b>{{ cardText(c) }}</b><i>{{ cardSuit(c) }}</i></span>
+            <span v-if="!c.joker" class="cf-suit-big">{{ cardSuit(c) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- v2.46.238：手牌底座（托住手牌，不再像浮在桌面上） -->
+      <div class="gt3-handbed"></div>
+    </div>
+
+    <!-- 手牌工具条（v2.46.239）：牌型识别 / 提示 / 挪左 / 挪右 / 重选
+         2D 板这套工具在「手牌上方」，3D 放在底栏上方一行，视线落点一致。 -->
+    <div class="g3d-handtools">
+      <span
+        class="g3d-pat"
+        :class="{ 'is-ok': sel.length && canPlay, 'is-bad': sel.length && !canPlay }"
+      >{{ patLabel }}</span>
+      <button class="g3d-btn ghost sm" :disabled="!canAct" @click="doHint">提示</button>
+      <button
+        class="g3d-btn ghost sm"
+        :disabled="!canAct || (!sel.length && !seqGroups.length)"
+        :title="sel.length || seqGroups.length ? '把选中的牌（未选则第一组同花顺/顺子）钉到最左' : '先选牌，再挪到左侧'"
+        @click="pinSeqToLeft"
+      >挪左</button>
+      <button
+        class="g3d-btn ghost sm"
+        :disabled="!sel.length"
+        title="把选中的牌按牌值归位到整手降序序列里"
+        @click="pinToRight"
+      >挪右</button>
+      <button class="g3d-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
     </div>
 
     <!-- 操作条 -->
@@ -157,11 +185,13 @@
 <script setup>
 /* 3D 掼蛋：复用 2D 单机对局循环（components/games/GuandanBoard.vue solo 分支）+ 规则引擎 utils/games/guandan.js。
    人类固定坐座位 0（HUMAN_SEATS=[0]），1/2/3 为 AI；无任何 online 分支。 */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as G from '@/utils/games/guandan.js'
 import {
-  VIEW_RX, boxVars, pieceBox, handTF, oppTF, centerTF, seatTF, SEAT_SLOT, screenPos,
+  VIEW_RX, boxVars, pieceBox, oppTF, centerTF, seatTF, SEAT_SLOT, screenPos,
 } from '@/components/games3d/use3dTable.js'
+/* v2.46.240：手牌已移出 3D 世界（改 2D 牌扇），本组件不再用 handTF；
+ * 麻将板（Mahjong3DBoard）仍走 3D 立牌，那边继续用。 */
 import AppIcon from '@/components/common/AppIcon.vue'
 /* v2.46.154：3D 牌桌此前**完全没接音效**（2D 板有），所以出牌/不要/发牌都是静的。
    这里直接复用 2D 掼蛋那套采样 + 声像，听感一致。 */
@@ -213,6 +243,12 @@ const roundResult = ref({ up: 0, winTeam: 0, order: [] })
 const matchOver = ref(false)
 const firstSeat = ref(0)
 const dealt = ref(false)        // 发牌错峰：新一局先收拢到中央再展开
+/* 手牌归集（v2.46.239，从 2D 板移植）：
+ *   pinnedGroups = 每次「挪左」钉住的 ids 数组，按操作顺序；
+ *   rightDocks  = 每次「挪右」的 ids 数组（按牌值插入降序 continuum）。
+ * 出掉对应的牌会自动失效（按 base 里的 id 过滤），新局清空。 */
+const pinnedGroups = ref([])
+const rightDocks = ref([])
 
 /* ---------- 派生 ---------- */
 const myLevel = computed(() => teamLevel.value[0])
@@ -225,6 +261,77 @@ const selCards = computed(() => hands.value[0].filter(c => sel.value.includes(c.
 const selPattern = computed(() => G.detectPattern(selCards.value, roundLevel.value))
 const canPlay = computed(() => !!selPattern.value && G.canBeat(selPattern.value, target.value?.pattern ?? null))
 const canAct = computed(() => phase.value === 'playing' && turn.value === 0 && !finished.value.includes(0))
+
+/* ---------- 手牌展示顺序：左区（钉组 + 同花顺组）| 散牌区 ----------
+ * 与 2D GuandanBoard.vue 的 handParts 同口径（那边注释里有更详细的历史），规则：
+ *  ① 手动「挪右」最优先——被挪右的牌不进左区（旧版 dock 会被同花顺抢走，
+ *     导致「同花顺不能往右挪」）；
+ *  ② 手动「挪左」钉的组按钉的顺序进左区，与挪右撞牌时让位（挪右是更新的操作）；
+ *  ③ 天然同花顺（不含逢人配）从大到小**贪心取互不重叠的 5 张组**进左区，
+ *     同花 6~9 张只取最大 5 张、剩余回散牌区；同花 10 张自动拆两组；
+ *  ④ 只要存在挪右的牌，整手按牌值降序排成一条 continuum（顺子/三张被拆开）。
+ * 3D 之前完全没有这套，手上有没有同花顺全靠自己数——这是夜星提的主要差距。 */
+const handParts = computed(() => {
+  const base = hands.value[0] || []
+  if (phase.value === 'settled' || !base.length) return { head: [], mid: base }
+  const inBase = new Set(base.map(c => c.id))
+  const val = c => G.cardValue(c, roundLevel.value)
+  const asc = (a, b) => val(a) - val(b)
+  const docks = rightDocks.value
+    .map(d => ({ ids: d.ids.filter(id => inBase.has(id)) }))
+    .filter(d => d.ids.length)
+  const dockIds = new Set()
+  for (const d of docks) for (const id of d.ids) dockIds.add(id)
+  const pinGroups = pinnedGroups.value
+    .map(g => g.filter(id => inBase.has(id) && !dockIds.has(id)))
+    .filter(g => g.length)
+  const pinnedIds = new Set(pinGroups.flat())
+  const naturals = base.filter(c => !G.isWild(c, roundLevel.value) && !pinnedIds.has(c.id) && !dockIds.has(c.id))
+  const flushGroups = []
+  const usedF = new Set()
+  for (const cs of G.findFlushBombs(naturals, roundLevel.value)) {
+    if (cs.some(c => usedF.has(c.id))) continue
+    flushGroups.push(cs)
+    for (const c of cs) usedF.add(c.id)
+  }
+  if (!pinGroups.length && !flushGroups.length && !docks.length) return { head: [], mid: base }
+  if (docks.length) {
+    let seq = base.filter(c => !pinnedIds.has(c.id)).sort((a, b) => val(b) - val(a))
+    for (const d of docks) {
+      const set = new Set(d.ids)
+      seq = seq.filter(c => !set.has(c.id))
+      for (const c of base.filter(c => set.has(c.id)).sort((a, b) => val(b) - val(a))) {
+        let at = seq.findIndex(x => val(x) < val(c))
+        if (at < 0) at = seq.length
+        seq = seq.slice(0, at).concat([c], seq.slice(at))
+      }
+    }
+    const head = pinGroups.map(ids => base.filter(c => ids.includes(c.id)).sort(asc)).flat()
+    return { head, mid: seq }
+  }
+  const groups = [
+    ...pinGroups.map(ids => base.filter(c => ids.includes(c.id)).sort(asc)),
+    ...flushGroups.map(cs => cs.slice().sort(asc)),
+  ].sort((a, b) => Math.max(...b.map(val)) - Math.max(...a.map(val)))
+  const head = groups.flat()
+  const usedL = new Set(head.map(c => c.id))
+  const mid = base.filter(c => !usedL.has(c.id) && !dockIds.has(c.id)).sort((a, b) => val(b) - val(a))
+  return { head, mid }
+})
+const viewHand = computed(() => handParts.value.head.concat(handParts.value.mid))
+/** 左区牌数（前 headCount 张带「已归集」标记） */
+const headCount = computed(() => handParts.value.head.length)
+/** 「挪左」的保底候选：同花顺优先，其次普通顺子 */
+const seqGroups = computed(() => G.findSeqGroups(hands.value[0], roundLevel.value))
+/** 牌型提示文案 */
+const patLabel = computed(() => {
+  if (!sel.value.length) {
+    return headCount.value ? `已归集 ${headCount.value} 张` : '选牌'
+  }
+  if (!selPattern.value) return '牌型无效'
+  const name = G.PATTERN_NAME[selPattern.value.type] || '出牌'
+  return canPlay.value ? name : `${name} · 压不过`
+})
 
 /* ---------- 小工具 ---------- */
 function cardText(c) { return c.joker ? (c.joker === 'big' ? '大' : '小') : G.RANK_TEXT[c.rank] }
@@ -262,6 +369,8 @@ function newRound() {
   finished.value = []
   phase.value = 'playing'
   sel.value = []
+  pinnedGroups.value = []
+  rightDocks.value = []
   clearThrows()
   history.value = []
   // 发牌动画：先收拢到中央，下一帧展开
@@ -417,8 +526,72 @@ function doHint() {
   const tgt = target.value
   const lastIsTeammate = !!tgt && G.TEAM_OF[tgt.seat] === G.TEAM_OF[0]
   const pick = G.aiChoose(hands.value[0], tgt?.pattern ?? null, roundLevel.value, { lastIsTeammate })
-  if (pick && pick.length) sel.value = pick.map(c => c.id)
+  if (pick && pick.length) { sel.value = pick.map(c => c.id); sfx.pick() }
   else toastMsg('没有能压过的牌，只能「不要」')
+}
+
+/* ---------- 手牌归集操作（v2.46.239，与 2D 板同语义） ---------- */
+/** 「挪左」：把选中的牌钉到最左；没选中时退而钉第一组同花顺/顺子。 */
+function pinSeqToLeft() {
+  let ids = sel.value.slice()
+  if (!ids.length) {
+    if (!seqGroups.value.length) { toastMsg('手上没有顺子或同花顺'); return }
+    ids = seqGroups.value[0].map(c => c.id)
+  }
+  pinnedGroups.value = [
+    ...pinnedGroups.value.map(g => g.filter(id => !ids.includes(id))).filter(g => g.length),
+    ids,
+  ]
+  if (rightDocks.value.length) {
+    rightDocks.value = rightDocks.value
+      .map(d => ({ ids: d.ids.filter(id => !ids.includes(id)) }))
+      .filter(d => d.ids.length)
+  }
+  toastMsg(sel.value.length ? '已挪到左侧' : '已把第一组同花顺/顺子挪到左侧')
+  sfx.pick()
+  sel.value = []
+}
+
+/** 「挪右」：把选中的牌按牌值归位到整手降序序列里（组合会被拆开，与 2D 一致）。 */
+function pinToRight() {
+  const ids = sel.value.slice()
+  if (!ids.length) { toastMsg('先选牌，再点「挪右」'); return }
+  rightDocks.value = [
+    ...rightDocks.value.map(d => ({ ids: d.ids.filter(id => !ids.includes(id)) })).filter(d => d.ids.length),
+    { ids },
+  ]
+  // 挪右解除左钉（dock 优先于自动同花顺与钉组）
+  if (pinnedGroups.value.length) {
+    pinnedGroups.value = pinnedGroups.value
+      .map(g => g.filter(id => !ids.includes(id)))
+      .filter(g => g.length)
+  }
+  sel.value = []
+  toastMsg(`已挪到右侧 ${ids.length} 张`)
+  sfx.pick()
+}
+
+function clearSel() {
+  if (!sel.value.length) return
+  sel.value = []
+  sfx.pick()
+}
+
+/* ---------- 2D 牌扇的每张牌定位（v2.46.240） ----------
+ * 用 CSS 变量把「旋转 / 弧度 / 入场延迟」传给样式，避免每张牌算一长串内联样式：
+ *   --rot   ：绕牌底外一点微转，两端外张 → 扇形
+ *   --arc   ：两端略抬高 → 弧
+ *   --delay ：发牌错峰（18ms/张，27 张约 0.5s 铺完）
+ * zIndex 递增保证绘制顺序恒为「从左到右压在上一层」，不再依赖 3D 排序。 */
+function hcardStyle(i) {
+  const n = viewHand.value.length || 1
+  const t = n > 1 ? (i - (n - 1) / 2) / ((n - 1) / 2) : 0
+  return {
+    zIndex: 10 + i,
+    '--rot': (-t * 2.4).toFixed(2) + 'deg',
+    '--arc': (-Math.abs(t) * Math.abs(t) * 7).toFixed(1) + 'px',
+    '--delay': (i * 18) + 'ms',
+  }
 }
 
 function restart() {
@@ -433,6 +606,16 @@ function restart() {
   toast.value = ''
   newRound()
 }
+
+/* ---------- 「轮到你」提醒（v2.46.239） ----------
+ * 3D 板之前没有这一步：AI 出完牌轮到你了，画面只是铭牌描边变金色，
+ * 视线在牌上时完全察觉不到（夜星：「出牌的声音等等」）。
+ * 用 sfx.alert（双音 + 轻震），只在**从别人转到自己**时响，新开局也响一次。 */
+watch(turn, (now, prev) => {
+  if (now !== 0 || phase.value !== 'playing') return
+  if (prev === 0) return
+  sfx.alert()
+})
 
 /* ---------- 生命周期 ---------- */
 onMounted(() => {
