@@ -28,12 +28,24 @@ defineEmits(['toggle'])
 <style scoped>
 .fbtn {
   display: inline-flex; align-items: center; gap: 3px;
-  border: 0; background: transparent; cursor: pointer; padding: 2px 0 2px 4px;
-  font: inherit; font-size: 11.5px; line-height: 1.4; white-space: nowrap;
-  color: var(--tc-cyan, #0e93b8);
-  transition: opacity .15s;
+  border: 1px solid var(--tc-line, rgba(15, 60, 110, .16));
+  border-radius: 999px; background: transparent; cursor: pointer;
+  padding: 3px 9px 3px 10px;
+  font: inherit; font-size: 11.5px; line-height: 1.5; white-space: nowrap;
+  color: var(--tc-text-2, #46586e);
+  transition: border-color .15s, color .15s, background-color .15s;
 }
-.fbtn:hover { opacity: .7; }
+.fbtn:hover {
+  border-color: var(--tc-cyan, #0e93b8);
+  color: var(--tc-cyan-deep, #0a708c);
+  background: rgba(14, 147, 184, .07);
+}
+/* 展开中：边框和字变青，一眼看出「现在能看到全部内容」 */
+.fbtn.on {
+  border-color: var(--tc-cyan, #0e93b8);
+  color: var(--tc-cyan-deep, #0a708c);
+  background: rgba(14, 147, 184, .07);
+}
 .fbtn-text { letter-spacing: .01em; }
 .fbtn-arrow {
   display: inline-block; font-style: normal; font-size: 12px; line-height: 1;

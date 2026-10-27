@@ -77,8 +77,11 @@
           <p class="sc-en">{{ data.sentence }}</p>
           <p class="sc-cn">{{ data.sentence_zh }}</p>
         </div>
-        <p v-else class="sc-hint">
+        <p v-else class="sc-hint" role="button" tabindex="0"
+           @click="open = true" @keydown.enter.prevent="open = true"
+           @keydown.space.prevent="open = true">
           每天读一个长句，不查词也能猜大意 —— 学语言靠的是见面次数，不是背的次数。
+          <em class="sc-hint-more">点这里展开 ›</em>
         </p>
       </div>
     </div>
@@ -207,5 +210,10 @@ onMounted(() => load(0))
   letter-spacing: .01em;
 }
 .sc-cn { margin: 0; font-size: 12.5px; line-height: 1.8; color: var(--tc-text-3, #5b6f8a); }
-.sc-hint { margin: 8px 2px 0; font-size: 11.5px; line-height: 1.7; color: var(--tc-text-3, #5b6f8a); }
+.sc-hint {
+  margin: 8px 2px 0; font-size: 11.5px; line-height: 1.7; color: var(--tc-text-3, #5b6f8a);
+  cursor: pointer; border-radius: 6px; padding: 3px 4px;
+}
+.sc-hint:hover { background: rgba(14, 147, 184, .05); }
+.sc-hint-more { font-style: normal; color: var(--tc-cyan, #0e93b8); }
 </style>
