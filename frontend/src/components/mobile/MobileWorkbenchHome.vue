@@ -53,6 +53,9 @@
     <!-- 每日场景（v2.46.249）：人情世故，收起状态很轻 -->
     <SocialCard class="abb-today" />
 
+    <!-- 今日定律（v2.46.255）：瞎猫理论那类，收起只占两行 -->
+    <LawCard class="abb-today" />
+
     <!-- 快捷入口（精选）＋ 全部模块目录入口 -->
     <div class="abb-sec">
       <div class="abb-sec__head">
@@ -86,6 +89,7 @@ import TodayHabitsCard from '@/components/workbench/TodayHabitsCard.vue'
 import StudyCard from '@/components/workbench/StudyCard.vue'
 import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
 import SocialCard from '@/components/workbench/SocialCard.vue'
+import LawCard from '@/components/workbench/LawCard.vue'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'

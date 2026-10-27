@@ -259,4 +259,10 @@ workbenchApi.social = {
   list: (limit = 30) => api.get('/social/list', { params: { limit } }),
 }
 
+// 今日定律（v2.46.255）：瞎猫理论 / 好运设计这类「一句话说透」的定律与效应
+workbenchApi.laws = {
+  today: (offset = 0) => api.get('/laws/today', { params: { offset } }),
+  list: (limit = 30) => api.get('/laws/list', { params: { limit } }),
+}
+
 export default workbenchApi

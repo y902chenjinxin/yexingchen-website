@@ -105,6 +105,12 @@
       <SocialCard />
     </section>
 
+    <!-- ============ 今日定律（v2.46.255）：瞎猫理论 / 好运设计这类 ============
+         夜星：「我觉得我挺喜欢看这些东西的。」默认收起 —— 工作台已经三张长卡了。 -->
+    <section class="bento-learn">
+      <LawCard />
+    </section>
+
     <!-- ============ Bento S3：每日一言 + 历史上的今天（文化小卡） ============ -->
     <section class="bento-s3">
       <div v-mouse-light class="bento-card bento-card--zero">
@@ -135,6 +141,7 @@ import ServerMonitorCard from '@/components/workbench/ServerMonitorCard.vue'
 import StudyCard from '@/components/workbench/StudyCard.vue'
 import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
 import SocialCard from '@/components/workbench/SocialCard.vue'
+import LawCard from '@/components/workbench/LawCard.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
 import { useAuthStore } from '@/stores/auth'
