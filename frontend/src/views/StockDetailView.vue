@@ -532,7 +532,7 @@ html[data-theme="night"] .sd-an-head { background: rgba(18, 24, 32, 0.7); }
 }
 
 .sd-btn { border-radius: 9px; padding: 7px 14px; font-size: 13px; border: 1px solid transparent; cursor: pointer; transition: all .2s; }
-.sd-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #0B0F14; }
+.sd-btn.primary { background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); border-color: transparent; transition: filter .16s ease, transform .1s ease; }
 .sd-btn.ghost { background: transparent; color: var(--lj-text); border-color: var(--lj-line); }
 .sd-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
 .sd-btn.small { padding: 5px 10px; font-size: 12px; }

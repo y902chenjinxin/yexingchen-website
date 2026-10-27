@@ -189,7 +189,7 @@ onMounted(load)
 
 .qk-btn { border: none; cursor: pointer; border-radius: 10px; font-family: var(--font-serif);
   padding: 9px 18px; transition: all .22s; color: var(--lj-text); }
-.qk-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #fff; }
+.qk-btn.primary { background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); border-color: transparent; transition: filter .16s ease, transform .1s ease; }
 .qk-btn.primary:disabled { opacity: .5; cursor: not-allowed; }
 .qk-btn.primary:not(:disabled):hover { filter: brightness(1.05); }
 

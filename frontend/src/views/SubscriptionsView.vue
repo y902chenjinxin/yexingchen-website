@@ -338,7 +338,7 @@ onMounted(reload)
 
 .sb-btn { border-radius: 9px; padding: 8px 16px; font-size: 13px; border: 1px solid transparent;
   cursor: pointer; transition: all .2s; font-family: inherit; }
-.sb-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #0B0F14; }
+.sb-btn.primary { background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); border-color: transparent; transition: filter .16s ease, transform .1s ease; }
 .sb-btn.ghost { background: transparent; color: var(--lj-text); border-color: var(--lj-line); }
 .sb-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
 .sb-btn.tiny { padding: 3px 9px; font-size: 12px; }

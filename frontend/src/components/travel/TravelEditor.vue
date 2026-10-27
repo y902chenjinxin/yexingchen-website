@@ -256,7 +256,7 @@ function submit() {
 .ted-textarea { width: 100%; box-sizing: border-box; min-height: 160px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--lj-line); background: rgba(255,255,255,.04); color: var(--lj-text); font-size: 13.5px; line-height: 1.7; resize: vertical; outline: none; font-family: inherit; }
 .ted-textarea:focus { border-color: var(--lj-seal); }
 .ted-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
-.ted-btn { padding: 9px 22px; border-radius: 999px; border: 1px solid var(--lj-line-strong); background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: var(--lj-text); font-size: 13.5px; cursor: pointer; }
+.ted-btn { padding: 9px 22px; border-radius: 999px; border: 1px solid transparent; background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); font-size: 13.5px; cursor: pointer; border-color: transparent; transition: filter .16s ease, transform .1s ease; }
 .ted-btn.ghost { background: none; border-color: var(--lj-line); color: var(--lj-text-2); }
 .ted-btn:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 760px) { .ted-grid { grid-template-columns: 1fr; } }

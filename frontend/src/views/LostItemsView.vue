@@ -356,7 +356,7 @@ onMounted(async () => {
   font-family: inherit; transition: all .2s;
 }
 .li-btn:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
-.li-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #0B0F14; border-color: transparent; }
+.li-btn.primary { background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); border-color: transparent; }
 .li-btn.danger { color: var(--pnl-up, #c2432f); }
 .li-btn:disabled { opacity: .6; cursor: default; }
 

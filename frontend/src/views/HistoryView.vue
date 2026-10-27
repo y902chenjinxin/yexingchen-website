@@ -326,11 +326,12 @@ onMounted(() => load())
 /* 选中：金色渐变填充 */
 .ht-vuecal.vuecal :deep(.vuecal__cell--selected),
 .ht-vuecal.vuecal :deep(.vuecal__cell--selected .vuecal__cell-content) {
-  background: linear-gradient(135deg, rgba(199,169,107,0.85), rgba(127,168,163,0.85)) !important;
-  color: #0b0f14;
+  /* v2.46.254：原来是金绿渐变（浅底上发灰），改成与全站选中态一致的淡色高亮 */
+  background: var(--lj-seal-soft, rgba(14, 147, 184, .12)) !important;
+  color: var(--lj-seal, #0a708c);
 }
 .ht-vuecal.vuecal :deep(.vuecal__cell--selected .vuecal__cell-date) {
-  color: #0b0f14; font-weight: 700;
+  color: var(--lj-seal, #0a708c); font-weight: 700;
 }
 /* 非本月弱化 */
 .ht-vuecal.vuecal :deep(.vuecal__cell--out-of-scope) {

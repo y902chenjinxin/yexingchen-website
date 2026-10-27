@@ -249,7 +249,7 @@ onMounted(async () => {
   font-family: inherit; transition: all .2s;
 }
 .va-btn:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
-.va-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #0B0F14; border-color: transparent; }
+.va-btn.primary { background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); border-color: transparent; }
 .va-btn.tiny { padding: 4px 10px; font-size: 12px; }
 .va-btn.danger { color: var(--pnl-up, #c2432f); }
 .va-btn:disabled { opacity: .6; cursor: default; }

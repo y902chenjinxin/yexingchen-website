@@ -419,7 +419,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 .st-head-right { display: flex; gap: 8px; margin-left: auto; }
 
 .st-btn { border-radius: 9px; padding: 8px 16px; font-size: 13px; border: 1px solid transparent; cursor: pointer; transition: all .2s; }
-.st-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #0B0F14; }
+.st-btn.primary { background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); border-color: transparent; transition: filter .16s ease, transform .1s ease; }
 .st-btn.ghost { background: transparent; color: var(--lj-text); border-color: var(--lj-line); }
 .st-btn.ghost:hover { border-color: var(--lj-line-strong); color: var(--lj-seal); }
 .st-btn.tiny { padding: 3px 8px; font-size: 12px; }

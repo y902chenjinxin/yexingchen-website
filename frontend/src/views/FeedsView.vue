@@ -633,7 +633,7 @@ onMounted(() => {
   color: var(--lj-text); background: var(--lj-glass); border: 1px solid var(--lj-line); padding: 9px 16px; transition: all .22s; }
 .fd-btn:hover:not(:disabled) { border-color: var(--lj-line-strong); }
 .fd-btn:disabled { opacity: .6; cursor: not-allowed; }
-.fd-btn.primary { background: linear-gradient(135deg, rgba(199,169,107,.85), rgba(127,168,163,.85)); color: #fff; }
+.fd-btn.primary { background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); border-color: transparent; transition: filter .16s ease, transform .1s ease; }
 .fd-btn.primary:hover:not(:disabled) { filter: brightness(1.05); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 .fd-btn.ghost { background: transparent; }
 .fd-btn.small { padding: 6px 12px; font-size: 13px; }
