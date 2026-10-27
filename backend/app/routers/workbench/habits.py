@@ -20,6 +20,13 @@ from app.models.finance import FinanceTransaction
 from app.models.habits import Habit, HabitCheckin, HabitPenalty, HabitReview
 from app.utils.security import get_current_user
 from app.routers.workbench._common import ok, raise_http
+from app.services.habit_schedule import (
+    due_dates,
+    freq_text,
+    is_due,
+    parse_ints,
+    streak_of,
+)
 
 router = APIRouter(prefix="/api/habits", tags=["工作台-习惯打卡"])
 
@@ -55,6 +62,36 @@ def _to_date(v: int) -> date:
     return d
 
 
+def norm_schedule(body) -> dict:
+    """把前端传来的周期参数收拾干净（v2.46.256）。
+
+    - freq 只认四个值，其它一律退回 daily（宁可每天提醒，也别静默不提醒）
+    - weekdays 去重排序、只留 1~7
+    - month_days 去重排序、只留 1~31
+    - yearly 缺月/日就退回 daily
+    """
+    freq = (getattr(body, "freq", None) or "daily").lower()
+    if freq not in ("daily", "weekly", "monthly", "yearly"):
+        freq = "daily"
+    interval = max(1, min(365, int(getattr(body, "interval", 1) or 1)))
+    wd = sorted({x for x in parse_ints(getattr(body, "weekdays", "")) if 1 <= x <= 7})
+    md = sorted({x for x in parse_ints(getattr(body, "month_days", "")) if 1 <= x <= 31})
+    ym = int(getattr(body, "year_month", 0) or 0)
+    yd = int(getattr(body, "year_day", 0) or 0)
+
+    if freq == "yearly" and not (1 <= ym <= 12 and 1 <= yd <= 31):
+        freq = "daily"
+    return {
+        "freq": freq,
+        "interval": interval if freq == "daily" else 1,
+        "weekdays": ",".join(str(x) for x in wd) if freq == "weekly" else "",
+        "month_days": ",".join(str(x) for x in md) if freq == "monthly" else "",
+        "year_month": ym if freq == "yearly" else 0,
+        "year_day": yd if freq == "yearly" else 0,
+        "anchor": (getattr(body, "anchor", None) or None),
+    }
+
+
 # ---------- Schemas ----------
 class HabitIn(BaseModel):
     name: str = Field(min_length=1, max_length=64)
@@ -69,6 +106,15 @@ class HabitIn(BaseModel):
     account: Optional[str] = None
     # 每天目标次数（v2.46.245）：0/1 = 布尔打卡；>1 = 一天要做 N 次（如喝水 3 杯）
     daily_target: int = Field(default=0, ge=0, le=50)
+    # ---------- 周期调度（v2.46.256）----------
+    # freq=daily 每 N 天 / weekly 每周固定周几 / monthly 每月固定几号 / yearly 每年某月某日
+    freq: str = Field(default="daily")
+    interval: int = Field(default=1, ge=1, le=365)
+    weekdays: str = Field(default="", max_length=20)     # "1,3,5"（1=周一）
+    month_days: str = Field(default="", max_length=40)   # "15" 或 "1,15,31"
+    year_month: int = Field(default=0, ge=0, le=12)
+    year_day: int = Field(default=0, ge=0, le=31)
+    anchor: Optional[str] = None                          # 每 N 天的起算日
 
 
 class CheckinResult(BaseModel):
@@ -87,14 +133,9 @@ def _compute_stats(db: Session, habit: Habit, user_id: int) -> dict:
     dates = {c.checkin_date for c in checkins}
     today = date.today()
 
-    # 连续天数：从今天（或昨天，若今天未打卡）往回数
-    streak = 0
-    cursor = today
-    if _to_int(cursor) not in dates:
-        cursor -= timedelta(days=1)  # 今天没打则从昨天算
-    while _to_int(cursor) in dates:
-        streak += 1
-        cursor -= timedelta(days=1)
+    # 连续天数（v2.46.256）：只数「该做的日子」，不该做的日子不算断链。
+    # 否则「每月 15 号」这种习惯的连击永远是 1。
+    streak = streak_of(habit, dates, today)
 
     # 本周（周一起）次数
     monday = today - timedelta(days=today.weekday())
@@ -162,6 +203,14 @@ def list_habits(
             "color": h.color or "#67e8f9",
             "weekly_goal": h.weekly_goal,
             "daily_target": target,
+            "freq": h.freq or "daily",
+            "interval": int(h.interval or 1),
+            "weekdays": h.weekdays or "",
+            "month_days": h.month_days or "",
+            "year_month": int(h.year_month or 0),
+            "year_day": int(h.year_day or 0),
+            "freq_text": freq_text(h),
+            "is_due_today": is_due(h, today),
             "today_count": today_count,
             "sort_order": h.sort_order,
             "checked_today": checked_today,
@@ -188,6 +237,7 @@ def create_habit(
         color=body.color,
         weekly_goal=body.weekly_goal,
         daily_target=max(0, min(50, body.daily_target or 0)),
+        **norm_schedule(body),
         sort_order=body.sort_order,
         penalty_cents=body.penalty_cents,
         penalty_grace=body.penalty_grace,
@@ -343,6 +393,8 @@ def update_habit(
     h.color = body.color or h.color
     h.weekly_goal = body.weekly_goal
     h.daily_target = max(0, min(50, body.daily_target or 0))
+    for k, v in norm_schedule(body).items():
+        setattr(h, k, v)
     h.sort_order = body.sort_order
     h.penalty_cents = body.penalty_cents
     h.penalty_grace = body.penalty_grace
@@ -409,6 +461,11 @@ def _settle_one(db: Session, h: Habit, uid: int, today: date) -> list:
     cursor = start
     while cursor < today:
         di = _to_int(cursor)
+        # v2.46.256：不该做的日子不参与漏检，也不打断连续计数。
+        # 否则「每月 15 号交房租」会在其他 29 天里天天被罚。
+        if not is_due(h, cursor):
+            cursor += timedelta(days=1)
+            continue
         if di in dates:
             miss_streak = 0
         else:
@@ -514,7 +571,10 @@ def _compute_weekly(db: Session, uid: int, today: date) -> dict:
         h_days = (today - h_start).days + 1
         if h_days < 1:
             h_days = 1
-        h_ints = [_to_int(h_start + timedelta(days=i)) for i in range(h_days)]
+        # v2.46.256：应做天数按「该做的日子」算，不再是日历天数
+        _due = due_dates(h, h_start, today + timedelta(days=1))
+        h_days = len(_due) or 1
+        h_ints = [_to_int(d) for d in _due]
         checked = (
             db.query(HabitCheckin)
             .filter(HabitCheckin.habit_id == h.id, HabitCheckin.checkin_date.in_(h_ints))

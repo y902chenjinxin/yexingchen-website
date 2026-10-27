@@ -44,9 +44,17 @@
     </ul>
 
     <p v-if="!allDone && pending.length > 3" class="thc-rest">还有 {{ pending.length - 3 }} 件</p>
+    <p v-if="restCount" class="thc-rest">另有 {{ restCount }} 个排在别的日子</p>
   </section>
 
   <!-- 空态：有提醒价值 —— 没设每日动作的人，等于没有「今天该做什么」 -->
+  <!-- 今天没有安排，但有别的日子的任务（月度/年度）—— 别误导他去新建 -->
+  <section v-else-if="loaded && restCount" class="thc thc--empty glass-card">
+    <div class="thc-empty-title">今天没有安排</div>
+    <p class="thc-empty-sub">你还有 {{ restCount }} 个习惯排在别的日子，去「今天」页能看到全部和下一个到期日。</p>
+    <button class="thc-cta" @click="$router.push('/habits')">去看看 ›</button>
+  </section>
+
   <section v-else-if="loaded" class="thc thc--empty glass-card">
     <div class="thc-empty-title">今天还没有要做的事</div>
     <p class="thc-empty-sub">先设 1~3 个每天想坚持的小动作，这里就会出现打卡和连续天数。</p>
@@ -73,7 +81,7 @@ import { useHabitsStore } from '@/stores/habits'
 
 const store = useHabitsStore()
 // ⚠️ setup store 直接解构会丢掉响应性（store 代理已经把 ref 拆成值），必须 storeToRefs
-const { total, unitDone, unitTotal, progress, pending, allDone } = storeToRefs(store)
+const { total, unitDone, unitTotal, progress, pending, allDone, restCount } = storeToRefs(store)
 
 /** 是否「一天 N 次」型习惯（喝水 3 杯这种） */
 function isCount(h) { return Number(h?.daily_target || 0) > 1 }

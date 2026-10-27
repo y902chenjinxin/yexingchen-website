@@ -129,7 +129,8 @@
                   <b v-if="isCount(h)" class="hb-prog" :class="{ full: h.checked_today }">
                     今天 {{ h.today_count || 0 }}/{{ h.daily_target }}
                   </b>
-                  连续 {{ h.streak }} 天 · 本周 {{ h.week_count }}<template v-if="h.weekly_goal">/{{ h.weekly_goal }}</template>
+                  <template v-if="h.freq_text">{{ h.freq_text }} · </template>
+                  连续 {{ h.streak }} 次 · 本周 {{ h.week_count }}<template v-if="h.weekly_goal">/{{ h.weekly_goal }}</template>
                   · 累计 {{ h.total_count }}
                   <template v-if="h.account"> · {{ accountLabel(h.account) }}</template>
                   <template v-if="h.penalty_cents"> · 罚 ¥{{ (h.penalty_cents / 100).toFixed(0) }}/天</template>
@@ -279,15 +280,64 @@
             </button>
           </div>
         </div>
-        <label class="hb-field">
-          <span>每周目标（0 = 不限）</span>
+        <!-- 多久做一次（v2.46.256）：原来只能设「每周几次」，表达不了「每月 15 号交房租」 -->
+        <div class="hb-field">
+          <span>多久做一次</span>
+          <div class="hb-seg">
+            <button
+              v-for="f in FREQ_OPTIONS"
+              :key="f.key"
+              type="button"
+              class="hb-seg-btn"
+              :class="{ on: form.freq === f.key }"
+              @click="form.freq = f.key"
+            >{{ f.label }}</button>
+          </div>
+        </div>
+
+        <label v-if="form.freq === 'daily'" class="hb-field">
+          <span>间隔（1 = 每天）</span>
+          <el-input-number v-model="form.interval" :min="1" :max="365" controls-position="right" />
+        </label>
+
+        <div v-if="form.freq === 'weekly'" class="hb-field">
+          <span>选星期（都不选 = 每周任意 N 次）</span>
+          <div class="hb-week">
+            <button
+              v-for="(w, i) in WEEKDAY_LABELS"
+              :key="w"
+              type="button"
+              class="hb-wd-btn"
+              :class="{ on: form.weekdays.includes(i + 1) }"
+              @click="toggleWeekday(i + 1)"
+            >{{ w }}</button>
+          </div>
+        </div>
+        <label v-if="form.freq === 'weekly' && !form.weekdays.length" class="hb-field">
+          <span>每周做够几次（0 = 不限）</span>
           <el-input-number v-model="form.weekly_goal" :min="0" :max="7" controls-position="right" />
         </label>
+
+        <label v-if="form.freq === 'monthly'" class="hb-field">
+          <span>每月几号（多个用逗号；31 = 当月最后一天）</span>
+          <el-input v-model="form.monthDays" maxlength="40" placeholder="15 或 1,15,31" />
+        </label>
+
+        <div v-if="form.freq === 'yearly'" class="hb-field">
+          <span>每年哪天</span>
+          <div class="hb-year">
+            <el-input-number v-model="form.yearMonth" :min="1" :max="12" controls-position="right" />
+            <em>月</em>
+            <el-input-number v-model="form.yearDay" :min="1" :max="31" controls-position="right" />
+            <em>日</em>
+          </div>
+        </div>
+
         <label class="hb-field">
-          <span>每天目标（0/1 = 做一次就完成）</span>
+          <span>当天做几次算完成（0/1 = 做一次就完成）</span>
           <el-input-number v-model="form.daily_target" :min="0" :max="50" controls-position="right" />
         </label>
-        <p class="hb-hint">比如「喝 3 杯水」填 3：喝一杯就在工作台点一下 ＋，看到 1/3、2/3，到 3 才算完成。</p>
+        <p class="hb-hint">{{ freqHint }}</p>
         <label class="hb-field">
           <span>断链自罚（每天，元；填 0 = 关闭）</span>
           <el-input-number v-model="form.penalty_yuan" :min="0" :max="1000" :step="1" :precision="2" controls-position="right" />
@@ -411,6 +461,49 @@ const form = reactive({
   penalty_yuan: 0,   // 存「元」，提交时转分
   penalty_grace: 0,
   account: '',
+  // 周期调度（v2.46.256）
+  freq: 'daily',          // daily | weekly | monthly | yearly
+  interval: 1,            // 每天 → 每 N 天
+  weekdays: [],           // 每周 → 选中的星期（1=周一…7=周日）
+  monthDays: '',          // 每月 → "15" 或 "1,15,31"
+  yearMonth: 3,           // 每年 → 月
+  yearDay: 1,             // 每年 → 日
+})
+
+/** 频率四个档位 */
+const FREQ_OPTIONS = [
+  { key: 'daily', label: '每天' },
+  { key: 'weekly', label: '每周' },
+  { key: 'monthly', label: '每月' },
+  { key: 'yearly', label: '每年' },
+]
+const WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+
+function toggleWeekday(n) {
+  const i = form.weekdays.indexOf(n)
+  if (i >= 0) form.weekdays.splice(i, 1)
+  else form.weekdays.push(n)
+  form.weekdays.sort((a, b) => a - b)
+}
+
+/** 表单底下的说明：让人一眼确认「这个习惯到底哪几天会出现」 */
+const freqHint = computed(() => {
+  if (form.freq === 'daily') {
+    return form.interval > 1
+      ? `每 ${form.interval} 天出现一次，其他日子不进「今天要做」。`
+      : '每天都会出现在「今天要做」里。'
+  }
+  if (form.freq === 'weekly') {
+    if (form.weekdays.length) {
+      const names = form.weekdays.map((i) => WEEKDAY_LABELS[i - 1]).join('、')
+      return `只在 ${names} 出现。`
+    }
+    return `每天都可做，一周凑够 ${form.weekly_goal || '不限'} 次即可（不计漏）。`
+  }
+  if (form.freq === 'monthly') {
+    return '只在设定的那几天出现；写 31 遇到小月会落到月末。'
+  }
+  return '一年只出现一次；2 月 29 日遇平年会落到 2 月 28。'
 })
 
 /** 图标候选 = 六个复利维度（v2.46.248）。
@@ -464,6 +557,7 @@ function openCreate() {
   Object.assign(form, {
     id: 0, name: '', icon: ICON_CHOICES[0], weekly_goal: 0, daily_target: 0,
     penalty_yuan: 0, penalty_grace: 0, account: ACCOUNT_OPTIONS[0].key,
+    freq: 'daily', interval: 1, weekdays: [], monthDays: '', yearMonth: 3, yearDay: 1,
   })
   dialog.value = true
 }
@@ -478,6 +572,12 @@ function openEdit(h) {
     penalty_yuan: (h.penalty_cents || 0) / 100,
     penalty_grace: h.penalty_grace || 0,
     account: h.account || '',
+    freq: h.freq || 'daily',
+    interval: h.interval || 1,
+    weekdays: (h.weekdays || '').split(',').filter(Boolean).map(Number),
+    monthDays: h.month_days || '',
+    yearMonth: h.year_month || 3,
+    yearDay: h.year_day || 1,
   })
   dialog.value = true
 }
@@ -496,6 +596,13 @@ async function submit() {
       penalty_cents: Math.round((Number(form.penalty_yuan) || 0) * 100),
       penalty_grace: form.penalty_grace || 0,
       account: form.account || '',
+      // 周期调度：只把当前档位用得上的字段发过去（其余留空，后端也会归一化）
+      freq: form.freq,
+      interval: form.freq === 'daily' ? (Number(form.interval) || 1) : 1,
+      weekdays: form.freq === 'weekly' ? form.weekdays.join(',') : '',
+      month_days: form.freq === 'monthly' ? String(form.monthDays || '').trim() : '',
+      year_month: form.freq === 'yearly' ? (Number(form.yearMonth) || 1) : 0,
+      year_day: form.freq === 'yearly' ? (Number(form.yearDay) || 1) : 0,
     }
     if (form.id) await store.update(form.id, payload)
     else await store.create(payload)
@@ -694,6 +801,32 @@ async function maybeWeekendReview() {
 
 /* 账户选择 */
 .hb-acc-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* 周期选择（v2.46.256）：档位 + 星期，都是轻量胶囊，和维度选择同一套观感 */
+.hb-seg { display: flex; gap: 5px; flex-wrap: wrap; }
+.hb-seg-btn {
+  padding: 5px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12.5px;
+  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14)); background: transparent;
+  color: var(--tc-text-2, #46586e); transition: border-color .15s, color .15s, background-color .15s;
+}
+.hb-seg-btn:hover { border-color: var(--tc-cyan, #0e93b8); color: var(--tc-cyan-deep, #0a708c); }
+.hb-seg-btn.on {
+  border-color: var(--tc-cyan, #0e93b8); color: var(--tc-cyan-deep, #0a708c);
+  background: rgba(14, 147, 184, .1); font-weight: 600;
+}
+.hb-week { display: flex; gap: 5px; flex-wrap: wrap; }
+.hb-wd-btn {
+  min-width: 44px; padding: 5px 8px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 12.5px;
+  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14)); background: transparent;
+  color: var(--tc-text-2, #46586e); transition: border-color .15s, color .15s, background-color .15s;
+}
+.hb-wd-btn:hover { border-color: var(--tc-cyan, #0e93b8); }
+.hb-wd-btn.on {
+  border-color: var(--tc-cyan, #0e93b8); color: var(--tc-cyan-deep, #0a708c);
+  background: rgba(14, 147, 184, .12); font-weight: 600;
+}
+.hb-year { display: flex; align-items: center; gap: 6px; }
+.hb-year em { font-style: normal; font-size: 12px; color: var(--tc-text-3, #5b6f8a); }
 .hb-acc-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 11px; border-radius: 999px; cursor: pointer;

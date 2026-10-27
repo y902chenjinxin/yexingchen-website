@@ -34,6 +34,23 @@ class Habit(Base):
     # 每天目标次数（v2.46.245）：0/1 = 布尔打卡（老语义）；>1 = 一天要做 N 次
     # 例如「今天喝 3 杯水」→ daily_target=3，喝一杯就 count+1，到 3 才算完成
     daily_target = Column(Integer, nullable=False, default=0, server_default="0")
+    # ---------- 周期调度（v2.46.256）----------
+    # 夜星：「只支持按周来选做几天，没法按天、按月、按年来选，某月固定一天做什么都没有。」
+    # 原来的 weekly_goal 只是「每周想做几次」的统计目标，不影响「今天该不该做」，
+    # 所以所有习惯每天都在「今天要做」里出现。这组字段补上真正的调度：
+    #   freq=daily   + interval    每 N 天（1=每天）
+    #   freq=weekly  + weekdays    "1,3,5"（1=周一…7=周日）；空 = 每周做够 weekly_goal 次
+    #   freq=monthly + month_days  "15" 或 "1,15,31"（31 在小月落到月末）
+    #   freq=yearly  + year_month/year_day
+    # 老数据全部落 daily + interval=1 → 每天都 due，行为与改造前完全一致。
+    freq = Column(String(10), nullable=False, default="daily", server_default="daily")
+    interval = Column(Integer, nullable=False, default=1, server_default="1")
+    weekdays = Column(String(20), nullable=False, default="", server_default="")
+    month_days = Column(String(40), nullable=False, default="", server_default="")
+    year_month = Column(Integer, nullable=False, default=0, server_default="0")
+    year_day = Column(Integer, nullable=False, default=0, server_default="0")
+    # 「每 N 天」的起算日；空 = 用创建日期
+    anchor = Column(String(10), nullable=True)
     # 断链自罚（v2.46.143）：漏一天罚多少钱（分）。0 = 关闭自罚。
     # v2.46.248 起罚金写成**内部转账**（category「断链罚金」，fund personal → fund_to savings）：
     # 钱从个人零花挪进存款池，不消失、不计入月度支出，只是变得不好花。

@@ -40,8 +40,17 @@ export const useHabitsStore = defineStore('habits', () => {
   const day = ref('')
   let inflight = null
 
-  const doneCount = computed(() => list.value.filter((h) => h.checked_today).length)
-  const total = computed(() => list.value.length)
+  /**
+   * 今天该做的（v2.46.256）。
+   * 按周/月/年调度的习惯不该每天出现 —— 后端返回 is_due_today，
+   * 老数据没有这个字段时按「该做」处理（保守：宁可多显示，也别漏提醒）。
+   */
+  const todayList = computed(() => list.value.filter((h) => h.is_due_today !== false))
+
+  const doneCount = computed(() => todayList.value.filter((h) => h.checked_today).length)
+  const total = computed(() => todayList.value.length)
+  /** 今天不用做的（月度/年度任务等），给卡片上一句「另有 N 个今天不用做」 */
+  const restCount = computed(() => Math.max(0, list.value.length - todayList.value.length))
   /** 是否「一天 N 次」型习惯（v2.46.245） */
   const isCountHabit = (h) => Number(h?.daily_target || 0) > 1
   /**
@@ -49,13 +58,13 @@ export const useHabitsStore = defineStore('habits', () => {
    * 3 杯水喝了 1 杯 = 1/3 而不是 0%；布尔习惯 1 次 = 1 单位。
    * 这样进度条真正反映今天做了多少，而不是「几件事开了个头」。
    */
-  const unitDone = computed(() => list.value.reduce(
+  const unitDone = computed(() => todayList.value.reduce(
     (s, h) => s + (isCountHabit(h) ? Math.min(Number(h.today_count) || 0, h.daily_target) : (h.checked_today ? 1 : 0)), 0))
-  const unitTotal = computed(() => list.value.reduce(
+  const unitTotal = computed(() => todayList.value.reduce(
     (s, h) => s + (isCountHabit(h) ? h.daily_target : 1), 0))
   const progress = computed(() => (unitTotal.value ? Math.round((unitDone.value / unitTotal.value) * 100) : 0))
   /** 还没打卡的（工作台卡片只展示这几条） */
-  const pending = computed(() => list.value.filter((h) => !h.checked_today))
+  const pending = computed(() => todayList.value.filter((h) => !h.checked_today))
   /** 最长连续天数 */
   const bestStreak = computed(() => list.value.reduce((m, h) => Math.max(m, h.streak || 0), 0))
   /** 全部打卡完成 */
@@ -258,7 +267,7 @@ export const useHabitsStore = defineStore('habits', () => {
 
   return {
     list, weekly, radar, household, reviews, lastSettle, loading, error, day,
-    doneCount, total, progress, pending, bestStreak, allDone,
+    doneCount, total, progress, pending, bestStreak, allDone, todayList, restCount,
     unitDone, unitTotal, isCountHabit,
     load, toggle, step, create, update, remove, settle, loadWeekly,
     loadRadar, loadHousehold, loadReviews, makeReview,
