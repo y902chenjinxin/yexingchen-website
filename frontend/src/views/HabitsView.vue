@@ -112,7 +112,11 @@
       <!-- 今日清单 -->
       <section v-if="total" class="hb-card glass-card">
         <ul class="hb-list">
-          <li v-for="h in list" :key="h.id" class="hb-row" :class="{ done: h.checked_today }">
+          <!-- 🔴 v2.46.266：原来 v-for 用的是全量 list —— 月/年/周频的习惯全被列进「今天」，
+               而顶上的 total 走的是 todayList（已按 is_due_today 过滤），
+               于是出现「0/3 已完成」下面却躺着 6 条。日常只看今天该做的；
+               管理模式才列全量（否则今天不该做的习惯连编辑都点不到）。 -->
+          <li v-for="h in (managing ? list : todayList)" :key="h.id" class="hb-row" :class="{ done: h.checked_today }">
             <div v-if="!managing" class="hb-line">
             <button
               class="hb-hit"
@@ -163,7 +167,9 @@
       </section>
 
       <!-- 空态 -->
-      <section v-if="!total && !loading" class="hb-empty">
+      <!-- 空态按「有没有习惯」判断，不按「今天有没有该做的」——
+           否则今天全做完（total=0）时也会弹「还没有每天要做的事」 -->
+      <section v-if="!list.length && !loading" class="hb-empty">
         <EmptyState
           tone="data"
           title="还没有每天要做的事"
@@ -383,7 +389,7 @@ import { useHabitsStore } from '@/stores/habits'
 
 const store = useHabitsStore()
 const {
-  list, weekly, radar, household, reviews,
+  list, todayList, weekly, radar, household, reviews,
   loading, doneCount, total, progress, pending, bestStreak, allDone,
 } = storeToRefs(store)
 

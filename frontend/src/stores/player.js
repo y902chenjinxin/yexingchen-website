@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getMusicPlayback, saveMusicPlayback } from '@/api/music'
+import { getMusicPlayback, saveMusicPlayback, getMusicList } from '@/api/music'
 
 /**
  * 音频播放控制核心：管理单一 <audio> 实例，处理「点播 / 暂停 / 进度 / 音量」。
@@ -376,9 +376,19 @@ export const usePlayerStore = defineStore('player', () => {
     if (!t || !t.id) return
 
     let q = Array.isArray(list) && list.length ? list.slice() : []
+    if (!q.length) {
+      /* v2.46.266（夜星：「退出再进，缓存的歌没法切换，要进音乐页才能切」）：
+       * 以前没列表就只放这一首当队列 → NowPlayingBar 的上/下一首被
+       * `queue.length < 2` 禁用，首页只能看不能切。
+       * 这里顺手拉一次曲库（size=0 一次拉全）当队列，首页就能直接切歌。 */
+      try {
+        const res = await getMusicList({ size: 0 })
+        q = res?.data?.list || []
+      } catch { q = [] }
+    }
     let idx = q.findIndex((x) => String(x.id) === String(t.id))
     if (idx < 0) {
-      // 还没进音乐页（拿不到整张列表）：先只放这一首，进页面后由 setQueue 换成完整列表
+      // 列表里没有（比如这首被删了）：退化成只播这一首，至少不崩
       q = [{ id: t.id, title: t.title, artist: t.artist || '', duration: t.duration || 0 }]
       idx = 0
     }

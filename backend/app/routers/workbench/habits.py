@@ -573,7 +573,13 @@ def _compute_weekly(db: Session, uid: int, today: date) -> dict:
             h_days = 1
         # v2.46.256：应做天数按「该做的日子」算，不再是日历天数
         _due = due_dates(h, h_start, today + timedelta(days=1))
-        h_days = len(_due) or 1
+        # v2.46.266（夜星：「创建的月习惯出现在天和周里了」）：
+        # 本周压根没有该做的日子（每月 15 号这周没到 15 号、每年 3 月 15 之类）→
+        # 直接不进本周复盘。原来 h_days 兜底成 1，等于凭空给分母 +1、
+        # 完成率被拖低，还会被选成「最弱」给出「下周只保交房租」这种荒唐建议。
+        if not _due:
+            continue
+        h_days = len(_due)
         h_ints = [_to_int(d) for d in _due]
         checked = (
             db.query(HabitCheckin)
