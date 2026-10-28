@@ -40,9 +40,9 @@ OFFLINE_SECONDS = 30
 ROOM_TTL_MINUTES = 30
 RETURN_DEADLINE = 30            # 其他牌桌的还贡倒计时（秒）
 # 掼蛋的进贡 / 还贡：v2.44.1 曾把倒计时整个取消（怕代打违背真人意愿），代价是真人挂机时
-# 整桌无限等待、服务端也推不动（没有 deadline 就等于永远不触发兜底）。
-# v2.46.7 起给足 5 分钟 —— 夜星：「还贡牌时间改为 5 分钟，有充分时间考虑」；
-# 5 分钟足够慢慢想，真忘了也会自动代选一张合法牌，牌局不会卡死。
+# 整桌无限等待；v2.46.7 起给 5 分钟兜底；**v2.46.265 又一次取消** ——
+# 夜星：「只有 AI 才需要自动的，真人不限制时间」。AI 的贡牌由引擎 step_ai() 自动完成，
+# 本来就不依赖这个兜底，原来那 5 分钟只会替真人做决定。常量留着备查，不再使用。
 GUANDAN_TRIBUTE_DEADLINE = 300
 GUANDAN_RETURN_DEADLINE = 300
 
@@ -231,16 +231,16 @@ AI_ACT_MAX = 3.5
 def _deadline_for(game: str, state: dict) -> datetime | None:
     """超时兜底的截止时间。
 
-    掼蛋的进贡 / 还贡自 v2.46.7 起给 **5 分钟**（`GUANDAN_*_DEADLINE`）：
-    真人手动选牌，但挂机时由 `on_timeout` 自动代选一张合法牌，牌局不会无限卡住。
+    v2.46.265（夜星：「只有 AI 才需要自动的，真人不限制时间」）：
+    掼蛋的进贡 / 还贡**不再给真人倒计时**。
+    原来那 5 分钟（v2.46.7 起）只会做一件事 —— 替真人选牌：
+    AI 的贡牌本来就由引擎 `step_ai()` 自动完成，压根用不到这个兜底。
+    所以这里直接返回 None，真人想多久想多久；想结束牌局有「解散牌桌」。
+
     其余游戏暂无需要倒计时的阶段（`RETURN_DEADLINE` 保留给历史行为）。
     """
     phase = state.get("phase")
     if game == "guandan":
-        if phase == "tribute":
-            return _now().replace(microsecond=0) + timedelta(seconds=GUANDAN_TRIBUTE_DEADLINE)
-        if phase == "return":
-            return _now().replace(microsecond=0) + timedelta(seconds=GUANDAN_RETURN_DEADLINE)
         return None
     if phase == "return":
         return _now().replace(microsecond=0) + timedelta(seconds=RETURN_DEADLINE)

@@ -263,7 +263,7 @@
           <button class="gt-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
         </div>
 
-        <!-- 进贡（在线 · 手动选牌，逢人配不能贡；服务端 5 分钟未选则自动代选） -->
+        <!-- 进贡（在线 · 手动选牌，逢人配不能贡；真人**不限时**，v2.46.265 取消 5 分钟兜底） -->
         <div v-else-if="tributePending" class="gd-return gd-tribute">
           <div class="gd-return-tip">
             进贡：点一张牌进贡给 {{ seatName(tributeTo) }}（逢人配不能进贡）
@@ -285,7 +285,7 @@
           </div>
         </div>
 
-        <!-- 还贡（在线 · 双方并行，各自选牌确认；服务端要求 ≤10，5 分钟未选则自动代选）
+        <!-- 还贡（在线 · 双方并行，各自选牌确认；服务端要求 ≤10，真人**不限时**）
              v2.46.23：选中后不再立刻提交——先高亮预览，点「还贡」按钮才真正给出（夜星） -->
         <div v-else-if="returnPending" class="gd-return">
           <div class="gd-return-tip">
@@ -753,7 +753,7 @@ function pinToRight() {
   sfx.pick()
 }
 
-/* ---------- 贡牌倒计时（服务端 5 分钟未选则自动代选） ---------- */
+/* ---------- 贡牌倒计时（只在服务端给了 deadline 时显示；v2.46.265 起真人没有 deadline） ---------- */
 const leftSec = ref(0)
 let tickTimer = null
 function tickLeft() {
@@ -2029,7 +2029,7 @@ watch(phase, (p, old) => {
 .gd-return { display: flex; flex-direction: column; gap: 6px; padding: 6px 2px; }
 .gd-return-tip { font-size: 12.5px; color: var(--gt-ink-dim, #b9b3a6); text-align: center; }
 .gd-return-cards { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-/* 贡牌倒计时：服务端 5 分钟未选会自动代选一张，剩最后 1 分钟变红提醒 */
+/* 贡牌倒计时：只在服务端给 deadline 时出现（v2.46.265 起掼蛋真人不再有时限），剩最后 1 分钟变红 */
 .gd-timer { color: var(--gt-gold); font-variant-numeric: tabular-nums; }
 .gd-timer.urgent { color: #ff8f7d; }
 .gd-return-tip .gd-timer { margin-left: 8px; font-weight: 700; }

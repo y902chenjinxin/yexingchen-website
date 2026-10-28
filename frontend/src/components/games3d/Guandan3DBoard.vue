@@ -242,7 +242,7 @@ const props = defineProps({
   acting: { type: Boolean, default: false },
   /** 外层（在线牌桌）自带顶栏时传 false，避免两条顶栏叠在一起 */
   showTopbar: { type: Boolean, default: true },
-  /** 服务端给的操作截止时间（进贡/还贡超时会自动代选） */
+  /** 服务端给的操作截止时间。v2.46.265 起掼蛋真人不再有时限 → 通常为空，为空就不显示倒计时 */
   deadlineAt: { type: String, default: '' },
   /** 各座位显示名（在线由房间座位表给出；缺省回落到本地默认名） */
   seatNames: { type: Array, default: null },

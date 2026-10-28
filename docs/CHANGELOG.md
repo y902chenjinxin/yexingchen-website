@@ -23,6 +23,32 @@
 
 ---
 
+## [v2.46.265] - 2026-10-28（仅后端）
+
+### 进贡 / 还贡不再替真人做决定（取消 5 分钟兜底）
+
+夜星：「只有 AI 才需要自动的，真人不限制时间。」
+
+查代码确认：AI 的贡牌本来就由引擎 `step_ai()` 自动完成（`phase == "tribute"` / `"return"`
+两条分支，AI 一到就直接选牌），**根本不依赖那个 5 分钟 deadline**。
+所以 `_deadline_for()` 给掼蛋的 300 秒，实际只做一件事 —— **替挂机的真人选牌**。
+
+改动：
+
+- `_deadline_for()`: 掼蛋（tribute / return / playing）一律返回 `None` → 真人想多久想多久
+- 大富翁等其它牌桌的 `return` 阶段保持原样（`RETURN_DEADLINE = 30` 不动）
+- `on_timeout()`（自动代选）保留但掼蛋不会再被触发；AI 自动进贡走 `step_ai()`，不受影响
+- 前端倒计时本身是「有 deadline 才显示」，服务端不给就自动消失：
+  3D 板那行「· 剩 4:12 会自动代选一张」不会再出现；2D 板 `v-if="leftSec"` 同理
+- 注释同步（2D 两处模板注释 + 3D props 注释），避免以后误以为还有时限
+
+代价：真人挂机时整桌会一直等 —— 这是夜星要的语义，想结束用「解散牌桌」。
+
+线上实测：`_deadline_for("guandan", {"phase":"tribute"|"return"|"playing"})` 全部返回 None；
+`_deadline_for("monopoly", {"phase":"return"})` 仍返回时间；`step_ai` 的 tribute 分支仍在。
+
+---
+
 ## [v2.46.264] - 2026-10-28
 
 ### 3D 在线：进贡倒计时改成 mm:ss，并说明「出牌无时限」
