@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { getMusicPlayback, saveMusicPlayback } from '@/api/music'
 
 /**
  * 音频播放控制核心：管理单一 <audio> 实例，处理「点播 / 暂停 / 进度 / 音量」。
@@ -98,7 +99,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   audio.addEventListener('playing', () => { isPlaying.value = true })
-  audio.addEventListener('pause', () => { isPlaying.value = false })
+  audio.addEventListener('pause', () => { isPlaying.value = false; savePlayback(true) })
   audio.addEventListener('ended', () => {
     isPlaying.value = false
     // 点播结束：根据播放模式决定下一步
@@ -149,6 +150,7 @@ export const usePlayerStore = defineStore('player', () => {
       audio.load()
     }
     audio.play().catch(() => {})
+    savePlayback(true)   // 切歌即记下「现在听的是这首」（进度 0）
   }
 
   // 记录最近播放（用于 shuffle 短期去重）
@@ -311,10 +313,110 @@ export const usePlayerStore = defineStore('player', () => {
   audio.addEventListener('timeupdate', () => {
     progress.value = audio.currentTime
     duration.value = audio.duration || 0
+    savePlayback(false)   // 播放中每 10 秒上报一次进度（本地每次 timeupdate 都写）
   })
 
   function seek(sec) {
     if (Number.isFinite(sec)) audio.currentTime = sec
+  }
+
+  /* ---------- 上次听到哪（v2.46.259） ----------
+   * 夜星：「播放音乐增加个机制，记住我上次听的哪个音乐，根据账号来，
+   * 不然我每次都要手动调整，麻烦得很。」
+   *
+   * 权威存储在后端 music_playback（user_id 唯一），换设备 / 清缓存 / 换浏览器都能续上；
+   * localStorage 只存一份「本机最后一次」，用于首屏立刻显示，绝不作为数据源。
+   * 上报策略：播放中每 10 秒一次（单行 upsert，开销可忽略）+ 暂停 / 切歌 / 页面隐藏时强制。
+   */
+  const LAST_KEY = 'xh_music_last'
+  let lastSaveAt = 0
+  let restoring = false     // 恢复期间禁写：否则 loadedmetadata 之前的 0 会把进度清掉
+
+  function currentSnapshot() {
+    if (mode.value !== 'playlist' || !curItem.value) return null
+    const id = Number(curItem.value.id)
+    if (!Number.isFinite(id)) return null      // 'default' 之类的兼容别名不记
+    const pos = Math.round(audio.currentTime || 0)
+    if (!Number.isFinite(pos) || pos < 0) return null
+    return { trackId: id, position: pos }
+  }
+
+  function savePlayback(force = false) {
+    if (restoring) return
+    const snap = currentSnapshot()
+    if (!snap) return
+    try {
+      localStorage.setItem(LAST_KEY, JSON.stringify({ ...snap, ts: Date.now() }))
+    } catch { /* 配额满 / 隐私模式：丢本地兜底即可，不影响后端 */ }
+    const now = Date.now()
+    if (!force && now - lastSaveAt < 10000) return
+    lastSaveAt = now
+    saveMusicPlayback(snap.trackId, snap.position).catch(() => {})
+  }
+
+  /** 队列换成真实列表，并指向当前曲目 —— 进音乐页后「上一首/下一首」才有意义 */
+  function setQueue(list, index = -1) {
+    if (!Array.isArray(list) || !list.length) return
+    queue.value = list.slice()
+    queueIndex.value = index >= 0 && index < queue.value.length ? index : 0
+  }
+
+  /** 恢复上次听到哪。**不自动播放**：浏览器会拦，而且用户可能只是进来看看。 */
+  async function restoreLastPlayback(list = null) {
+    if (mode.value === 'playlist' && curItem.value) return   // 已恢复 / 正在播，不打扰
+    if (mode.value === 'bgm') return                         // 背景乐在响，别插一脚
+    let data = null
+    try {
+      const res = await getMusicPlayback()
+      data = res?.data || null
+    } catch {
+      return    // 未登录 / 网络异常：静默跳过，不打扰
+    }
+    const t = data?.track
+    if (!t || !t.id) return
+
+    let q = Array.isArray(list) && list.length ? list.slice() : []
+    let idx = q.findIndex((x) => String(x.id) === String(t.id))
+    if (idx < 0) {
+      // 还没进音乐页（拿不到整张列表）：先只放这一首，进页面后由 setQueue 换成完整列表
+      q = [{ id: t.id, title: t.title, artist: t.artist || '', duration: t.duration || 0 }]
+      idx = 0
+    }
+
+    restoring = true
+    curItem.value = q[idx]
+    queue.value = q
+    queueIndex.value = idx
+    mode.value = 'playlist'
+    dismissed.value = false        // 播放条以「暂停」态出现，点一下就续上
+    const url = resolveUrl(q[idx])
+    hardStop()
+    audio.loop = playMode.value === 'single'
+    audio.volume = volume.value
+    audio.src = url
+    audio.load()
+
+    const target = Math.max(0, Number(data.position) || 0)
+    const dur0 = Number(t.duration) || 0
+    const onMeta = () => {
+      audio.removeEventListener('loadedmetadata', onMeta)
+      const dur = Number(audio.duration) || dur0
+      // 离结尾不到 3 秒就从头开始，否则一进来就是「已经播完了」
+      if (target > 0 && dur > 0 && target < dur - 3) {
+        audio.currentTime = target
+        progress.value = target
+      }
+      restoring = false
+    }
+    audio.addEventListener('loadedmetadata', onMeta)
+    // 某些 WebView 不派发 loadedmetadata：3 秒后解除保护位，免得永远不保存
+    setTimeout(() => { restoring = false }, 3000)
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') savePlayback(true)
+    })
   }
 
   function seekByRatio(r) {
@@ -348,6 +450,8 @@ export const usePlayerStore = defineStore('player', () => {
     playItem, togglePlay, stopAndHide, setVolume, toggleMute,
     setBgmEnabled, toggleBgm,
     seek, seekByRatio,
+    /* 上次听到哪（v2.46.259） */
+    savePlayback, restoreLastPlayback, setQueue,
     /* 播放模式 / 队列 */
     playMode, queue, queueIndex, PLAY_MODES,
     next, prev, cyclePlayMode, setPlayMode,

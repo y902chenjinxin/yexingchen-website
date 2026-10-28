@@ -43,3 +43,10 @@ export const downloadMusicTemplate = async () => {
 
 /** 拖拽排序（v2.46.188）：按传入的 id 顺序保存 */
 export const reorderMusic = (ids) => api.put('/music/reorder', { ids })
+
+/* ---------- 上次听到哪（v2.46.259） ----------
+ * 按账号存在后端（不是 localStorage）：换设备/清缓存都能续上，
+ * 家里多人共用一台设备时各记各的。 */
+export const getMusicPlayback = () => api.get('/music/playback')
+export const saveMusicPlayback = (trackId, position) =>
+  api.put('/music/playback', { track_id: Number(trackId), position: Math.max(0, Math.round(position || 0)) })

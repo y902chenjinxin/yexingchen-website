@@ -562,12 +562,25 @@ async function loadUploaders() {
 }
 
 async function fetchData() {
-  // size=200 一次性拉全（管理页用客户端分页），避免后端默认 20 条导致列表截断
-  const params = { size: 200 }
+  // size=0 → 后端一次拉全（v2.46.259）。
+  // 原来是 200：库里 254 首时，排在末尾的 54 首（最早手动上传、sort_order 还是老值的那批）
+  // 永远不显示，看起来像「歌丢了」。客户端分页照旧，只是数据源不再被截断。
+  const params = { size: 0 }
   if (keyword.value) params.q = keyword.value
   if (uploaderId.value) params.uploader_id = uploaderId.value
   await musicStore.fetchList(params)
+  syncQueueWithList()
   healDurations()
+}
+
+/* 进页面后把播放队列换成这张真实列表（v2.46.259）：
+ * 启动时恢复「上次听到哪」只有一首曲目当队列，上下首点了没用；
+ * 这里补上完整列表并让 index 指向当前曲目，行为就和无记忆时一致了。 */
+function syncQueueWithList() {
+  const list = musicStore.list || []
+  if (!list.length || player.mode !== 'playlist' || !player.curItem) return
+  const idx = list.findIndex((x) => String(x.id) === String(player.curItem.id))
+  if (idx >= 0) player.setQueue(list, idx)
 }
 
 /* ---------- 历史数据时长补全（v2.46.231） ----------

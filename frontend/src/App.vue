@@ -251,6 +251,14 @@ onMounted(async () => {
   // 且是**本地通知**——站点打开时检查一次，没开站点不会收到。失败静默，绝不打扰。
   if (auth.isLoggedIn) {
     setTimeout(() => { checkFestivalNotice().catch(() => {}) }, 3000)
+
+    /* 恢复「上次听到哪」（v2.46.259）：静默恢复成暂停态，不自动出声。
+       延迟 1.2 秒，避开首屏请求高峰；动态 import 避免把播放器打进首屏 bundle。 */
+    setTimeout(() => {
+      import('@/stores/player')
+        .then(({ usePlayerStore }) => usePlayerStore().restoreLastPlayback())
+        .catch(() => {})
+    }, 1200)
   }
 
   // 已登录后启动 token 滑动续期定时器：周期性检查，临近过期自动续期，保持不掉线

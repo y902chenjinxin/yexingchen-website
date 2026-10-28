@@ -1,4 +1,4 @@
-from app.models.music import Music
+from app.models.music import Music, MusicPlayback
 from app.models.user import User
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Response
 from fastapi.responses import StreamingResponse
@@ -132,7 +132,15 @@ async def list_music(
         query = query.filter(Music.uploader_id == uploader_id)
 
     total = query.count()
-    items = query.order_by(Music.sort_order.asc(), Music.created_at.desc()).offset((page - 1) * size).limit(size).all()
+    ordered = query.order_by(Music.sort_order.asc(), Music.created_at.desc())
+    # v2.46.259：size<=0 表示「一次拉全」。
+    # 起因：前端固定传 size=200，而库里有 254 首 —— 排在末尾的 54 首（最早手动上传的
+    # 那批，sort_order 还是 21~50 的老值）永远不显示，夜星以为歌丢了。
+    # 上限 1000 兜住滥用；曲目再多一个数量级也不会卡。
+    if size and size > 0:
+        items = ordered.offset((page - 1) * size).limit(size).all()
+    else:
+        items = ordered.limit(1000).all()
 
     # 批量取上传人显示名（一次查询，避免逐条 N+1）
     uids = {m.uploader_id for m in items if m.uploader_id}
@@ -208,6 +216,56 @@ async def upload_music(
                detail=f"上传音乐：{title}", ip_address="")
 
     return ResponseBase(msg="上传成功", data={"id": music.id})
+
+
+# ---------- 上次听到哪（v2.46.259） ----------
+# ⚠️ 这两个路由必须定义在 `/{music_id}` 之前：FastAPI 按定义顺序匹配，
+#    否则 PUT /api/music/playback 会被 `PUT /{music_id}` 吃掉（music_id="playback"）。
+
+@router.get("/playback", response_model=ResponseBase)
+async def get_music_playback(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """返回本账号上次听的曲目与进度。没有记录 / 曲目已被删 → track 为 null。"""
+    row = db.query(MusicPlayback).filter(MusicPlayback.user_id == current_user["user_id"]).first()
+    if not row:
+        return ResponseBase(data={"track": None, "position": 0})
+    m = db.query(Music).filter(Music.id == row.track_id).first()
+    if not m:
+        # 曲目被删了：顺手清掉这条悬空记录，免得每次进来都查空
+        db.delete(row)
+        db.commit()
+        return ResponseBase(data={"track": None, "position": 0})
+    return ResponseBase(data={
+        "track": {
+            "id": m.id,
+            "title": m.title,
+            "artist": m.artist or "",
+            "duration": m.duration or 0,
+        },
+        "position": int(row.position or 0),
+        "updated_at": str(row.updated_at) if row.updated_at else "",
+    })
+
+
+@router.put("/playback", response_model=ResponseBase)
+async def save_music_playback(payload: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """记住上次听到哪。前端每 10 秒 + 暂停/切歌时上报，单行 upsert，开销可忽略。"""
+    uid = current_user["user_id"]
+    try:
+        track_id = int(payload.get("track_id"))
+        position = max(0, int(payload.get("position") or 0))
+    except (TypeError, ValueError):
+        raise_error(ErrCode.INVALID_PARAM, "缺少 track_id")
+    if not db.query(Music.id).filter(Music.id == track_id).first():
+        raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐文件不存在")
+
+    row = db.query(MusicPlayback).filter(MusicPlayback.user_id == uid).first()
+    if row:
+        row.track_id = track_id
+        row.position = position
+    else:
+        db.add(MusicPlayback(user_id=uid, track_id=track_id, position=position))
+    db.commit()
+    return ResponseBase(msg="ok")
 
 
 @router.put("/reorder", response_model=ResponseBase)

@@ -27,3 +27,20 @@ class Music(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     uploader = relationship("User", back_populates="music")
+
+
+class MusicPlayback(Base):
+    """「上次听到哪」——按账号一条记录（v2.46.259）。
+
+    为什么不放 localStorage：夜星的原话是「根据账号来」，换设备/换浏览器/清缓存
+    都该续上；而且家里多人共用一台设备时，各人该记各人的。
+    只记一个 track_id + 进度秒数，队列不落库（进音乐页时用当前列表重建）。
+    """
+
+    __tablename__ = "music_playback"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    track_id = Column(Integer, nullable=False)
+    position = Column(Integer, nullable=False, default=0)   # 秒，整秒精度足够
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
