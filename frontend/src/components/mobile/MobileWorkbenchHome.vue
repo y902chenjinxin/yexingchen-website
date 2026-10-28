@@ -28,18 +28,9 @@
       </div>
     </div>
 
-    <div class="abb-stats" aria-label="关键数据">
-      <div class="abb-stat">
-        <span class="abb-stat__label">流水笔数</span>
-        <strong>{{ count ?? '—' }}</strong>
-        <small>本月记录</small>
-      </div>
-      <div class="abb-stat">
-        <span class="abb-stat__label">已接入</span>
-        <strong>{{ quick.length }}</strong>
-        <small>个功能模块</small>
-      </div>
-    </div>
+    <!-- 数据带（流水笔数 / 已接入 N 个模块）v2.46.258 已删：
+         宫格上移后它就贴在快捷入口上面，「已接入 14 个模块」与下面的宫格完全重复，
+         「流水笔数」也没有可行动性 —— 整块去掉，首页少一层噪音。 -->
 
     <!-- 快捷入口（精选）＋ 全部模块目录入口
          v2.46.257（夜星）：原来排在 5 张内容卡之后，手机上要滑四五屏才找得到，
@@ -159,7 +150,7 @@ const quick = computed(() => {
 
 const income = ref(null)
 const expense = ref(null)
-const count = ref(null)
+/* v2.46.258：数据带删除后 count 无消费者，一并移除（少一次无意义的字段映射） */
 
 /* 数字滚动（#26）：hero 收支从 0 滚到位；null 期间维持「—」占位 */
 const animIncome = countUp(() => income.value ?? 0, 700, 2)
@@ -189,7 +180,6 @@ onMounted(async () => {
     if (d) {
       income.value = d.month_income ?? d.income ?? null
       expense.value = d.month_expense ?? d.expense ?? null
-      count.value = d.month_count ?? d.count ?? null
     }
   } catch { /* 未就绪保持占位 */ }
 })

@@ -234,17 +234,11 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
    被这里的 #app.is-mobile 高特异性覆盖掉了。统一回 pnl 语义。 */
 #app.is-mobile .abb-hero__num.up { color: var(--pnl-up, #e5484d); }
 #app.is-mobile .abb-hero__num.dn { color: var(--pnl-down, #1aa86a); }
-/* v2.46.117：持仓盈亏卡下架（夜星：不在手机端工作台展示），3 列 → 2 列 */
-#app.is-mobile .abb-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
-#app.is-mobile .abb-stat { min-width: 0; padding: 13px 12px; border: 1px solid var(--m-line); border-radius: 14px; background: var(--m-surface); }
-#app.is-mobile .abb-stat__label, #app.is-mobile .abb-stat small { display: block; color: var(--m-text-3); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#app.is-mobile .abb-stat strong { display: block; margin: 7px 0 3px; color: var(--m-text); font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* v2.46.169：同理，盈亏正/负 = 涨/跌，用 pnl 语义（红涨绿跌） */
-#app.is-mobile .abb-stat strong.positive { color: var(--pnl-up, #e5484d); }
-#app.is-mobile .abb-stat strong.negative { color: var(--pnl-down, #1aa86a); }
-/* v2.46.257 快捷入口上移到「今天」之前：上面接数据带（带 margin-top:10px），
-   下面接内容卡（自带 12px）—— 上 18 下 4 才不会挤在一起 */
-#app.is-mobile .abb-sec { margin: 18px 0 4px; }
+/* v2.46.258：数据带整块删除（宫格上移后「已接入 14 个模块」与宫格重复，
+   「流水笔数」没有可行动性），.abb-stats / .abb-stat 的死规则一并清掉 */
+/* v2.46.257 快捷入口上移到「今天」之前：上面接收支卡（自带 18px），
+   下面接内容卡（自带 12px）—— 上 14 下 4 才不会挤在一起 */
+#app.is-mobile .abb-sec { margin: 14px 0 4px; }
 #app.is-mobile .abb-sec__title { color: var(--m-text); letter-spacing: -.02em; font-size: 16px; }
 #app.is-mobile .abb-grid { gap: 8px; }
 #app.is-mobile .abb-cell { padding: 14px 4px 12px; border: 1px solid var(--m-line) !important; border-radius: 14px; background: var(--m-surface) !important; box-shadow: none !important; }
