@@ -58,23 +58,9 @@
     <!-- 今天要做（v2.46.140） -->
     <TodayHabitsCard class="abb-today" />
 
-    <!-- 每日英语（v2.46.245）：手机上也是「顺手看一眼」的位置 -->
-    <StudyCard class="abb-today" />
-
-    <!-- 每日知识（v2.46.248）：跨学科知识点 + 寓言故事 -->
-    <KnowledgeCard class="abb-today" />
-
-    <!-- 每日场景（v2.46.249）：人情世故，收起状态很轻 -->
-    <SocialCard class="abb-today" />
-
-    <!-- 今日定律（v2.46.255）：瞎猫理论那类，收起只占两行 -->
-    <LawCard class="abb-today" />
-
-    <!-- 每日思维逻辑（v2.46.269）：谬误 / 偏差 / 模型 / 方法，每天一条 -->
-    <LogicCard class="abb-today" />
-
-    <!-- 每日一题（v2.46.270）：四选一，答完才给解析 -->
-    <QuizCard class="abb-today" />
+    <!-- 今日阅读（v2.46.273）：原来六张每日卡纵向堆叠，一屏只到「今天要做」，
+         要滑两屏才到底。现在收进一个容器，chips 切换、只渲染当前那张。 -->
+    <DailyDeck class="abb-today" />
 
   </section>
 </template>
@@ -84,12 +70,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { financeApi } from '@/api/finance'
 import TodayHabitsCard from '@/components/workbench/TodayHabitsCard.vue'
-import StudyCard from '@/components/workbench/StudyCard.vue'
-import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
-import SocialCard from '@/components/workbench/SocialCard.vue'
-import LawCard from '@/components/workbench/LawCard.vue'
-import LogicCard from '@/components/workbench/LogicCard.vue'
-import QuizCard from '@/components/workbench/QuizCard.vue'
+import DailyDeck from '@/components/workbench/DailyDeck.vue'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'

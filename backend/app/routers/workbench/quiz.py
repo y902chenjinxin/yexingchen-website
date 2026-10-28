@@ -37,6 +37,7 @@ from datetime import date as _date_cls
 from fastapi import APIRouter, Depends, Query
 
 from app.routers.workbench._common import ok
+from app.routers.workbench.logic import _load as _load_logic
 from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api/quiz", tags=["工作台-每日一题"])
@@ -58,6 +59,30 @@ def _load() -> list[dict]:
     return _cache
 
 
+def _related(topic: str) -> dict | None:
+    """题目挂到的概念，从思维逻辑库（127 条）里取完整解释（v2.46.273）。
+
+    设计取舍：**不给所有题都硬挂一个概念**。175 题里只有 19 题真的在考某个可命名的
+    心理效应（沉没成本 / 确认偏误 / 框架效应…），其余是纯计算、字面拆解、语法辨析，
+    本来就没有「延伸阅读」这回事。覆盖率 11% 是真实的，不是为了凑数去硬配。
+    """
+    if not topic:
+        return None
+    for x in _load_logic():
+        if x.get("name") == topic:
+            return {
+                "name": x.get("name", ""),
+                "name_en": x.get("name_en", ""),
+                "cat": x.get("cat", ""),
+                "one_line": x.get("one_line", ""),
+                "shape": x.get("shape", ""),
+                "example": x.get("example", ""),
+                "howto": x.get("howto", ""),
+                "caveat": x.get("caveat", ""),
+            }
+    return None
+
+
 def _entry_at(offset: int = 0) -> dict | None:
     items = _load()
     total = len(items)
@@ -70,6 +95,7 @@ def _entry_at(offset: int = 0) -> dict | None:
     item["index"] = idx
     item["position"] = idx + 1
     item["total"] = total
+    item["related"] = _related(item.get("topic", ""))
     same = [x for x in items if x.get("cat") == item.get("cat")]
     item["cat_position"] = next(
         (i + 1 for i, x in enumerate(same) if x.get("id") == item.get("id")), 0
