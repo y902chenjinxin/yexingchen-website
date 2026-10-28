@@ -65,7 +65,11 @@ export default defineConfig({
             if (id.includes('@element-plus/icons-vue')) return 'element-plus-icons'
             if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vue-vendor'
             if (id.includes('axios')) return 'axios'
-            return 'vendor'
+            /* 🔴 v2.46.267：不再给「其余所有 node_modules」兜一个大 vendor chunk。
+               原来这条 `return 'vendor'` 把 epubjs（小说阅读器）、jszip（压缩工具）、
+               vue-cal（日历页）这些**只有个别页面用**的库一并塞进首屏要加载的
+              604KB 里。去掉后 Vite 按引用关系分割，这些库跟着各自路由懒加载。 */
+            return undefined
           }
         }
       }

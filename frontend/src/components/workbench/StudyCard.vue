@@ -11,7 +11,10 @@
         <span class="sc-date">{{ data.date.slice(5) }}</span>
         <button class="sc-nav-btn" title="看明天" @click="go(1)">›</button>
         <!-- v2.46.252：折叠按钮统一放卡片右上角（原来藏在右栏里，位置和其他卡对不上） -->
-        <FoldBtn :open="open" :open-text="`长句 ${data.word_count} 词`" @toggle="open = !open" />
+        <!-- v2.46.267：原来这里只折「长句」，左栏的词形/记忆法/搭配一直铺着，
+             整卡比定律卡高出一大截（夜星：英文卡片收起时尺寸要跟其它几个一致）。
+             现在收起只留 单词 + 释义，其余整块折叠。 -->
+        <FoldBtn :open="open" open-text="展开全部" @toggle="open = !open" />
       </div>
     </header>
 
@@ -27,7 +30,7 @@
       </span>
     </div>
 
-    <div class="sc-body">
+    <div class="sc-body" :class="{ 'is-folded': !open }">
       <!-- 左：单词本体 -->
       <div class="sc-left">
         <div class="sc-wordline">
@@ -37,7 +40,7 @@
         </div>
         <p class="sc-zh">{{ data.zh }}</p>
 
-        <div class="sc-block">
+        <div v-if="open" class="sc-block">
           <div class="sc-lbl">{{ data.forms_label }}</div>
           <div class="sc-chips">
             <span v-for="f in data.forms" :key="f[0]" class="sc-chip">
@@ -46,7 +49,7 @@
           </div>
         </div>
 
-        <div v-if="data.mnemonic" class="sc-block sc-memo">
+        <div v-if="open && data.mnemonic" class="sc-block sc-memo">
           <div class="sc-lbl">
             记忆法
             <em v-if="data.mnemonic_type">{{ data.mnemonic_type }}</em>
@@ -54,7 +57,7 @@
           <p class="sc-memo-text">{{ data.mnemonic }}</p>
         </div>
 
-        <div class="sc-block">
+        <div v-if="open" class="sc-block">
           <div class="sc-lbl">组词 / 搭配</div>
           <ul class="sc-coll">
             <li v-for="c in data.collocations" :key="c[0]">
@@ -65,8 +68,8 @@
         </div>
       </div>
 
-      <!-- 右：长句（>50 词，默认收起，不占视线） -->
-      <div class="sc-right">
+      <!-- 右：长句（展开后才出现） -->
+      <div v-if="open" class="sc-right">
         <div class="sc-sent-toggle" :class="{ open }">
           <span class="sc-sent-title">
             {{ open ? '长句' : '读一个长句' }}
@@ -160,6 +163,9 @@ onMounted(() => load(0))
 .sc-meta-text { font-size: 10.5px; color: var(--tc-text-3, #5b6f8a); letter-spacing: .01em; }
 
 .sc-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 22px; }
+/* 收起态：只显示单词 + 释义，单栏、底部不留空 —— 整卡高度对齐定律卡 */
+.sc-body.is-folded { grid-template-columns: 1fr; gap: 0; }
+.sc-body.is-folded .sc-zh { margin-bottom: 0; }
 @media (max-width: 860px) { .sc-body { grid-template-columns: 1fr; gap: 14px; } }
 
 .sc-wordline { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }

@@ -101,7 +101,7 @@ def list_lost(
     date_to: str = Query(""),
     q: str = Query(""),
     page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1, le=200),
+    size: int = Query(50, ge=0, le=1000),   # v2.46.267：0 = 一次拉全
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -133,8 +133,8 @@ def list_lost(
     total = query.count()
     rows = (
         query.order_by(LostItem.lost_at.desc().nullslast(), LostItem.id.desc())
-        .offset((page - 1) * size)
-        .limit(size)
+        .offset(0 if size <= 0 else (page - 1) * size)
+        .limit(1000 if size <= 0 else size)
         .all()
     )
     names = name_map(db)

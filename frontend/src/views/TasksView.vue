@@ -265,7 +265,7 @@ function shortDate(s) {
 async function reload() {
   loading.value = true
   try {
-    const params = { page: 1, size: 100 }
+    const params = { page: 1, size: 0 }   // v2.46.267：一次拉全（原来 100 条封顶）
     if (tab.value === 'open') params.status = undefined
     if (keyword.value.trim()) params.q = keyword.value.trim()
     const res = await workbenchApi.tasks.list(params)

@@ -213,7 +213,7 @@ function categoryEmoji(c) {
 async function reload() {
   loading.value = true
   try {
-    const params = { size: 200 }
+    const params = { size: 0 }   // v2.46.267：一次拉全，避免超过 200 条后旧记录消失
     if (filters.uploader_id) params.uploader_id = filters.uploader_id
     if (filters.category) params.category = filters.category
 

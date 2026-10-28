@@ -52,10 +52,20 @@ def _to_iso(dt):
 
 
 def _paginate(page: int, size: int, max_size: int = 100) -> tuple[int, int]:
-    """校验并规范化 page/size。"""
+    """校验并规范化 page/size。
+
+    v2.46.267：`size<=0` 表示「一次拉全」（上限 1000），与 /api/music 同语义。
+    起因是音乐列表被 `size:200` 截断、后面的歌永远不显示；
+    同样的写法在小说 / 遗失物 / 待办里也有，统一给一个「拉全」的出口。
+    """
     page = max(1, int(page or 1))
-    size = max(1, min(int(size or 20), max_size))
-    return page, size
+    try:
+        size = int(size)
+    except (TypeError, ValueError):
+        size = 20
+    if size <= 0:
+        return 1, max(max_size, 1000)
+    return page, min(size, max_size)
 
 
 # ---------- 权限校验 ----------

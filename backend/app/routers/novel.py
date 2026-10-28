@@ -40,7 +40,11 @@ async def list_novels(
             query = query.filter(Novel.tags.contains(tag.strip()))
 
     total = query.count()
-    items = query.order_by(Novel.sort_order.asc(), Novel.created_at.desc()).offset((page - 1) * size).limit(size).all()
+    # v2.46.267：size<=0 = 一次拉全（上限 1000），见 workbench/_common._paginate 的注释
+    if size and size > 0:
+        items = query.order_by(Novel.sort_order.asc(), Novel.created_at.desc()).offset((page - 1) * size).limit(size).all()
+    else:
+        items = query.order_by(Novel.sort_order.asc(), Novel.created_at.desc()).limit(1000).all()
 
     return ResponseBase(data={
         "list": [

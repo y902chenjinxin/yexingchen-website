@@ -501,7 +501,8 @@ onMounted(() => { fetchData() })
 
 async function fetchData() {
   // size=200 一次性拉全（管理页用客户端分页）
-  const params = keyword.value ? { q: keyword.value } : { size: 200 }
+  // v2.46.267：size=0 = 后端一次拉全（原来 200，超过 200 本后面的就再也看不到）
+  const params = keyword.value ? { q: keyword.value } : { size: 0 }
   await novelStore.fetchList(params)
 }
 
