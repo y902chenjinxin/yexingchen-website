@@ -73,6 +73,9 @@
     <!-- 每日思维逻辑（v2.46.269）：谬误 / 偏差 / 模型 / 方法，每天一条 -->
     <LogicCard class="abb-today" />
 
+    <!-- 每日一题（v2.46.270）：四选一，答完才给解析 -->
+    <QuizCard class="abb-today" />
+
   </section>
 </template>
 
@@ -86,6 +89,7 @@ import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
 import SocialCard from '@/components/workbench/SocialCard.vue'
 import LawCard from '@/components/workbench/LawCard.vue'
 import LogicCard from '@/components/workbench/LogicCard.vue'
+import QuizCard from '@/components/workbench/QuizCard.vue'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'

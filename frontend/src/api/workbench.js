@@ -272,4 +272,11 @@ workbenchApi.logic = {
   stats: () => api.get('/logic/stats'),
 }
 
+/** 每日一题（v2.46.270）：七类 77 题，四选一 + 解析 */
+workbenchApi.quiz = {
+  today: (offset = 0) => api.get('/quiz/today', { params: { offset } }),
+  list: (limit = 10, cat = '') => api.get('/quiz/list', { params: { limit, cat } }),
+  stats: () => api.get('/quiz/stats'),
+}
+
 export default workbenchApi

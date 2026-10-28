@@ -118,6 +118,13 @@
       <LogicCard />
     </section>
 
+    <!-- ============ 每日一题（v2.46.270）：四选一，答完才给解析 ============
+         夜星：「脑筋急转弯、考公的题目，绕来绕去但能扩张思维边界的，每天出一题。」
+         上面两张是「读」，这张是「做」—— 被坑一次才记得住。 -->
+    <section class="bento-learn">
+      <QuizCard />
+    </section>
+
     <!-- ============ Bento S3：每日一言 + 历史上的今天（文化小卡） ============ -->
     <section class="bento-s3">
       <div v-mouse-light class="bento-card bento-card--zero">
@@ -150,6 +157,7 @@ import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
 import SocialCard from '@/components/workbench/SocialCard.vue'
 import LawCard from '@/components/workbench/LawCard.vue'
 import LogicCard from '@/components/workbench/LogicCard.vue'
+import QuizCard from '@/components/workbench/QuizCard.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
 import { useAuthStore } from '@/stores/auth'
