@@ -18,6 +18,21 @@
       <p class="qz-q">{{ data.q }}</p>
     </div>
 
+    <!-- 资料分析题带一张小表（v2.46.271）：手机放得下就放，放不下横向滚 -->
+    <div v-if="data.table" class="qz-tablewrap">
+      <table class="qz-table">
+        <caption v-if="data.table.caption">{{ data.table.caption }}</caption>
+        <thead>
+          <tr><th v-for="(h, i) in data.table.head" :key="i">{{ h }}</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, r) in data.table.rows" :key="r">
+            <td v-for="(c, i) in row" :key="i">{{ c }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <ul class="qz-opts">
       <li v-for="(o, i) in data.options" :key="i">
         <button
@@ -169,6 +184,29 @@ onMounted(() => {
 }
 .qz-lv.lv3 { border-color: rgba(201, 105, 74, .5); color: #b4552f; }
 .qz-q { margin: 0; font-size: 14px; line-height: 1.8; color: var(--tc-text, #0b1622); }
+
+/* ---------- 资料分析的小表格 ---------- */
+.qz-tablewrap { margin-top: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.qz-table {
+  width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums;
+  font-size: 12px; line-height: 1.6;
+}
+.qz-table caption {
+  caption-side: top; text-align: left; padding-bottom: 5px;
+  font-size: 11.5px; color: var(--tc-text-3, #5b6f8a); letter-spacing: .01em;
+}
+.qz-table th, .qz-table td {
+  padding: 6px 10px; border-bottom: 1px solid var(--tc-line, rgba(15, 60, 110, .1));
+  text-align: right; white-space: nowrap; color: var(--tc-text-2, #46586e);
+}
+.qz-table th {
+  font-weight: 600; font-size: 11.5px; color: var(--tc-text-3, #5b6f8a);
+  background: rgba(15, 60, 110, .035); border-bottom-color: var(--tc-line, rgba(15, 60, 110, .16));
+}
+.qz-table th:first-child, .qz-table td:first-child {
+  text-align: left; font-weight: 500; color: var(--tc-text, #0b1622);
+}
+.qz-table tbody tr:last-child td { border-bottom: 0; }
 
 /* ---------- 选项 ---------- */
 .qz-opts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 7px; }

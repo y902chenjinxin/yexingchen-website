@@ -93,7 +93,8 @@ def quiz_today(
 
 @router.get("/list")
 def quiz_list(
-    limit: int = Query(10, ge=1, le=120),
+    # v2.46.271：题库扩到 155 条，limit 上限跟着提到 300（原来 120 取不全，验证时踩到 422）
+    limit: int = Query(10, ge=1, le=300),
     cat: str = Query("", description="按类别过滤：逻辑判断 / 数量关系 / 概率直觉 / 思维陷阱 / 脑筋急转弯 / 定义判断 / 类比推理"),
     _user: dict = Depends(get_current_user),
 ):
