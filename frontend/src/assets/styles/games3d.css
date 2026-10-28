@@ -74,6 +74,32 @@
   color: var(--dp-accent, #c7a96b);
   opacity: 1;
 }
+
+/* ================= 大厅 · 在线对局入口（v2.46.262） ================= */
+/* 3D 这两张牌桌是单人练习，在线对局走 2D 牌桌（手牌信息密度 + 进贡/还贡/反应窗口）。
+   这里只做一个入口 + 一句说明，不再让人绕回棋牌大厅找房间。 */
+.g3d-lobby-online {
+  margin: 22px auto 0; max-width: 620px; text-align: center;
+}
+.g3d-online-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 20px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 600;
+  color: var(--dp-text, #2b2b2b);
+  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-line, rgba(20, 30, 40, .12));
+  transition: border-color .16s, transform .16s, box-shadow .16s;
+}
+.g3d-online-btn:hover {
+  border-color: var(--dp-accent, #c7a96b);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -16px rgba(20, 30, 40, .4);
+}
+.g3d-online-btn em { font-style: normal; color: var(--dp-accent, #c7a96b); font-weight: 700; }
+.g3d-online-hint {
+  margin: 10px 0 0; font-size: 12.5px; line-height: 1.7;
+  color: var(--dp-text2, #6b7280);
+}
 /* 夜间（含缺省）：卡片比纯黑页面亮一档，避免"深灰压黑"糊成一片。
    主题开关是 :root[data-theme]，缺省即夜间 —— 所以 :no-theme 走 --dp-surface 也够亮。 */
 html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
@@ -538,6 +564,33 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
   padding: 9px 18px; border-radius: 12px; font-size: 13px;
   background: rgba(12, 20, 36, .92); border: 1px solid rgba(233, 200, 119, .4); color: var(--tc-cyan, #2de2ff);
   box-shadow: 0 14px 30px -14px rgba(0, 0, 0, .9);
+}
+
+/* ================= 牌型浮现（v2.46.262） ================= */
+/* 3D 桌面上远处的牌看不清，光有语音还不够，出牌瞬间在中央亮一下牌型名。
+   炸弹 / 同花顺 / 四大天王走金色，普通牌型墨白。 */
+.g3d-patfx {
+  position: absolute; left: 50%; top: 38%; z-index: 26; pointer-events: none;
+  transform: translate(-50%, -50%);
+  padding: 6px 22px; border-radius: 999px;
+  font-size: 26px; font-weight: 800; letter-spacing: .16em; line-height: 1.2;
+  color: #eaf4ff;
+  background: rgba(8, 16, 30, .74);
+  border: 1px solid rgba(255, 255, 255, .2);
+  box-shadow: 0 14px 34px -16px rgba(0, 0, 0, .9);
+  text-shadow: 0 2px 12px rgba(45, 226, 255, .35);
+  white-space: nowrap;
+}
+.g3d-patfx.gold {
+  color: #ffd977; border-color: rgba(233, 200, 119, .6); background: rgba(46, 32, 8, .82);
+  box-shadow: 0 0 28px rgba(233, 200, 119, .45), 0 14px 34px -16px rgba(0, 0, 0, .9);
+}
+.g3d-patfx-enter-active { transition: opacity .14s ease, transform .24s cubic-bezier(.2, .9, .2, 1); }
+.g3d-patfx-leave-active { transition: opacity .3s ease; }
+.g3d-patfx-enter-from { opacity: 0; transform: translate(-50%, -50%) scale(.7); }
+.g3d-patfx-leave-to { opacity: 0; transform: translate(-50%, -50%) scale(1.06); }
+@media (max-width: 640px) {
+  .g3d-patfx { font-size: 20px; padding: 5px 16px; top: 36%; }
 }
 
 .g3d-over {

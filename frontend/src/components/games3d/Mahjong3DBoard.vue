@@ -189,6 +189,9 @@ import {
 import AppIcon from '@/components/common/AppIcon.vue'
 /* v2.46.154：接 2D 麻将那套音效（摸牌 pick / 打牌 tileDown / 碰 / 杠 / 胡），此前 3D 版全静音 */
 import { sfx, panOf } from '@/utils/games/sfx'
+/* v2.46.262：3D 麻将此前只有「啪」的落桌声，不报牌面（夜星：「只有出牌音效，没有具体牌的内容」）。
+   复用 2D 那套 TTS：按座位分声，打完念「八万」，碰杠胡也各有报词。 */
+import { speak, tileSpeech } from '@/utils/games/tts'
 
 defineEmits(['exit'])
 
@@ -463,6 +466,7 @@ function discardTile(seat, tile) {
     hands.value[seat] = M.sortHand(h)
   }
   sfx.tileDown(panOf(seat, 0))
+  speak(tileSpeech(tile), seat)   // v2.46.262：报牌面「八万 / 红中」
   discards.value[seat].push(tile)
   lastDiscard.value = { seat, tile }
   selId.value = null
@@ -545,6 +549,7 @@ function doPong(seat, tile, from) {
   }
   hands.value[seat] = M.sortHand(h)
   sfx.pong(panOf(seat, 0))
+  speak('碰', seat)
   melds.value[seat].push({ type: 'pong', tile, from })
   takeFromDiscard(from)
   drawn.value = null
@@ -563,6 +568,7 @@ function doKongFromDiscard(seat, tile, from) {
   }
   hands.value[seat] = M.sortHand(h)
   sfx.kong(panOf(seat, 0))
+  speak('杠', seat)
   melds.value[seat].push({ type: 'kong', tile, from })
   takeFromDiscard(from)
   showToast(`${seatName(seat)} 杠 ${tileText(tile)}`)
@@ -587,6 +593,8 @@ function doChi(seat, tile, from) {
   turn.value = seat
   selId.value = null
   showToast(`${seatName(seat)} 吃 ${tileText(tile)}`)
+  sfx.pick()                 // 吃牌此前完全无声（v2.46.262 补上）
+  speak('吃', seat)
   if (isHuman(seat)) return
   scheduleAI()
 }
@@ -651,6 +659,7 @@ function doHu(seat, tile, from, zimo) {
     hand: winning.concat(flatMeldTiles(melds.value[seat])),
   })
   showToast(`${seatName(seat)} ${zimo ? '自摸' : '胡牌'}！${sc.names.join(' · ')} ${sc.fan} 番`)
+  speak(zimo ? '自摸' : '胡', seat)
   endRound('hu')
 }
 

@@ -412,6 +412,8 @@ import { vibrate, hapticsEnabled, setHaptics } from '@/utils/games/haptics'
 import confettiPieces from '@/utils/games/confetti'
 import countUp from '@/utils/games/countUp'
 import { speak, speakPass } from '@/utils/games/tts'
+/* v2.46.262：报牌文案抽成公共模块（2D / 3D 共用） */
+import { describePlay } from '@/utils/games/guandanSpeech'
 import { loadGame, saveGame } from '@/utils/gameSave'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useRootHeight } from '@/composables/useRootHeight'
@@ -1022,37 +1024,9 @@ let patFxTimer = null
 const freeze = ref(false)
 let freezeTimer = null
 let lastPlayKey = ''
-/** 出牌口播文本（v2.46.24，夜星：「报实际出的牌的内容，如三个二带一对五、四个六」）：
- *  按点数分组生成口语描述；逢人配（百搭）按它补进的数量并入「几个 X」。 */
-const TTS_CN = { 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十', 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
-const TTS_COUNT = { 1: '', 2: '一对', 3: '三个', 4: '四个', 5: '五个', 6: '六个' }
-function ttsRank(c) { return c.joker ? (c.joker === 'big' ? '大王' : '小王') : (TTS_CN[c.rank] || c.rank) }
-function describePlay(cards, pat) {
-  const t = pat?.type
-  if (!t) return ''
-  // 按点数分组（大小王各自一组；逢人配不单列，数量并入主组）
-  const groups = new Map()
-  let wildN = 0
-  for (const c of cards) {
-    if (G.isWild(c, roundLevel.value)) { wildN += 1; continue }
-    const k = c.joker ? `j${c.joker}` : c.rank
-    if (!groups.has(k)) groups.set(k, [])
-    groups.get(k).push(c)
-  }
-  const gs = [...groups.values()].sort((a, b) => b.length - a.length)
-  const main = gs[0] || []
-  const mainN = main.length + (gs.length ? 0 : wildN)   // 全百搭时并给主组
-  const mainTxt = `${TTS_COUNT[Math.min(mainN, 6)] || ''}${ttsRank(main[0] || cards[0])}`
-  if (t === 'single') return mainTxt || '单张'
-  if (t === 'pair') return `对${ttsRank(main[0] || cards[0])}`
-  if (t === 'triple') return `三个${ttsRank(main[0] || cards[0])}`
-  if (t === 'triple2') {
-    const kick = gs[1]
-    return `三个${ttsRank(main[0] || cards[0])}，带对${kick ? ttsRank(kick[0]) : ''}`
-  }
-  if (t === 'bomb') return `炸！${TTS_COUNT[Math.min(cards.length, 6)] || ''}${ttsRank(main[0] || cards[0])}`
-  return G.PATTERN_NAME[t] || ''   // 顺子 / 三连对 / 钢板 / 同花顺 / 火箭：报牌型名
-}
+/* 出牌口播文案（v2.46.24）：v2.46.262 抽到 utils/games/guandanSpeech.js，
+   与 3D 板共用同一份实现（原来只有 2D 会念牌面，3D 一声不出）。 */
+
 function playFxFor(p) {
   if (!p || !p.cards || !p.cards.length) return
   const key = `${p.seat}:${p.cards.length}:${p.cards[0]?.id}:${p.cards[p.cards.length - 1]?.id}`
@@ -1060,7 +1034,7 @@ function playFxFor(p) {
   lastPlayKey = key
   const pat = p.pattern || {}
   // 语音报牌（v2.46.24）：口播实际出的牌面内容（本地与在线同走这里，lastPlay 全量投影）
-  const say = describePlay(p.cards, pat)
+  const say = describePlay(p.cards, pat, roundLevel.value)
   if (say) speak(say, p.seat)   // v2.46.28：按座位分声，一人一声
   // 牌型名浮现：普通牌型墨底，炸弹 / 同花顺 / 火箭金底
   const name = G.PATTERN_NAME[pat.type] || ''

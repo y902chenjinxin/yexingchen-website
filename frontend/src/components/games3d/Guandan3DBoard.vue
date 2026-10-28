@@ -176,6 +176,11 @@
     <!-- 提示条 -->
     <div v-if="toast" class="g3d-toast">{{ toast }}</div>
 
+    <!-- 牌型浮现（v2.46.262）：出牌瞬间在中央亮一下牌型名，远处的小牌看不清也不至于漏掉 -->
+    <transition name="g3d-patfx">
+      <span v-if="patFx" class="g3d-patfx" :class="{ gold: patFx.gold }" aria-live="polite">{{ patFx.name }}</span>
+    </transition>
+
     <!-- 结算浮层 -->
     <div v-if="phase === 'settled'" class="g3d-over">
       <div class="ov-card">
@@ -205,6 +210,10 @@ import AppIcon from '@/components/common/AppIcon.vue'
 /* v2.46.154：3D 牌桌此前**完全没接音效**（2D 板有），所以出牌/不要/发牌都是静的。
    这里直接复用 2D 掼蛋那套采样 + 声像，听感一致。 */
 import { sfx, panOf } from '@/utils/games/sfx'
+/* v2.46.262：3D 板此前只有出牌「啪」声，不报牌面内容（夜星：「如 3个3带1对2这种」）。
+   TTS 与文案都复用 2D 那套（tts.js 按座位分声、guandanSpeech.js 生成口语）。 */
+import { speak, speakPass } from '@/utils/games/tts'
+import { describePlay } from '@/utils/games/guandanSpeech'
 
 defineEmits(['exit'])
 
@@ -367,6 +376,19 @@ function toastMsg(t) {
   toastTimer = setTimeout(() => { toast.value = '' }, 1800)
 }
 
+/* 牌型浮现（v2.46.262，从 2D 板移植）：每一手牌在中央短暂显示牌型名 ——
+   3D 桌面上远处的牌看不清，光有语音还不够，得有个一眼能扫到的字。
+   炸弹 / 同花顺 / 四大天王用金色，其余墨白。 */
+const patFx = ref(null)   // { name, gold }
+let patFxTimer = null
+function showPatFx(pat) {
+  const name = G.PATTERN_NAME[pat?.type] || ''
+  if (!name) return
+  patFx.value = { name, gold: (pat?.bombLevel || 0) > 0 || pat?.type === 'flushbomb' || pat?.type === 'rocket' }
+  clearTimeout(patFxTimer)
+  patFxTimer = setTimeout(() => { patFx.value = null }, 1200)
+}
+
 /* ---------- 局流程 ---------- */
 let dealTimer = null
 function newRound() {
@@ -431,6 +453,10 @@ function applyPlay(seat, cards) {
   const pat = G.detectPattern(cards, roundLevel.value)
   if (!pat) return
   sfx.play(panOf(seat, 0), cards.length)   // v2.46.261：按张数叠加，一把牌才有「哗啦」的分量
+  /* v2.46.262：报具体牌面（「三个三，带对二」）+ 中央浮现牌型名 */
+  const say = describePlay(cards, pat, roundLevel.value)
+  if (say) speak(say, seat)
+  showPatFx(pat)
   const ids = new Set(cards.map(c => c.id))
   hands.value[seat] = hands.value[seat].filter(c => !ids.has(c.id))
   // 领出者再次领出 = 新一圈，先清掉上一圈的牌
@@ -450,6 +476,7 @@ function applyPlay(seat, cards) {
 
 function applyPass(seat) {
   sfx.pass(panOf(seat, 0))
+  speakPass(seat)   // v2.46.262：报「要不起 / 不要 / 过」，随机台词池
   passCount.value++
   pushHistory({ kind: 'pass', seat })
   sel.value = []

@@ -29,6 +29,20 @@
           <span class="lc-go">开局</span>
         </button>
       </div>
+
+      <!-- 在线对局入口（v2.46.262）
+           3D 这两张牌桌是**单人练习**（AI 陪打），在线对局走 2D 牌桌 ——
+           手牌信息密度更高、进贡/还贡/反应窗口都在那边做全了。
+           这里把「我的牌桌」入口摆出来，夜星就不用绕回棋牌大厅找房间。 -->
+      <div class="g3d-lobby-online">
+        <button class="g3d-online-btn" @click="roomsOpen = true">
+          <AppIcon icon="👥" :size="18" />
+          <span>我的牌桌<em v-if="roomCount">（{{ roomCount }}）</em></span>
+        </button>
+        <p class="g3d-online-hint">
+          和真人打：邀请家人开局 → 进入 2D 在线牌桌（手牌看得更清，掉线还能续）
+        </p>
+      </div>
     </div>
 
     <!-- 牌局：各自独立的 3D 棋盘（自带顶栏与透明背景） -->
@@ -37,15 +51,24 @@
       :is="game === 'mahjong' ? Mahjong3DBoard : Guandan3DBoard"
       @exit="backToLobby"
     />
+
+    <!-- 我的牌桌（v2.46.262）：复用棋牌大厅那只抽屉，teleport 到 body，层级不受本页影响 -->
+    <MyRoomsDrawer
+      v-model:open="roomsOpen"
+      @update:count="roomCount = $event"
+      @open-room="openRoom"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { useImmersive } from '@/composables/useImmersive'
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
 import Guandan3DBoard from '@/components/games3d/Guandan3DBoard.vue'
 import Mahjong3DBoard from '@/components/games3d/Mahjong3DBoard.vue'
+import MyRoomsDrawer from '@/components/games/MyRoomsDrawer.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import '@/assets/styles/games3d.css'
 
@@ -67,6 +90,16 @@ function syncImmersive() {
 
 const phase = ref('lobby')   // lobby | play
 const game = ref(null)       // 'mahjong' | 'guandan'
+
+/* 我的牌桌（v2.46.262）：3D 这两张是单人练习，在线对局走 2D 牌桌。
+   入口放在大厅，省得夜星再绕回棋牌大厅找房间。 */
+const router = useRouter()
+const roomsOpen = ref(false)
+const roomCount = ref(0)
+function openRoom(it) {
+  roomsOpen.value = false
+  if (it?.route) router.push(it.route)
+}
 
 function start(g) {
   game.value = g
