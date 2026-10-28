@@ -6,7 +6,6 @@
     <!-- 登录卡片 -->
     <div class="login-card">
       <h1 class="site-title font-serif">叶兴辰的个人网站</h1>
-      <p class="site-subtitle">神农遗风，云上洞天</p>
 
       <!-- 登录表单 -->
       <el-form v-if="!isRegistering" class="login-form" :model="loginForm" @submit.prevent="handleLogin" aria-label="登录表单">
@@ -591,19 +590,13 @@ function resetRegister() {
 .site-title {
   font-size: 28px;
   text-align: center;
-  margin-bottom: 8px;
+  /* v2.46.260：副标题「神农遗风，云上洞天」已删（夜星：现在没有这块因素了），
+     间距由原来「8 + 副标题 + 30」收成这里一手管，标题与表单之间不留空洞 */
+  margin-bottom: 22px;
   background: linear-gradient(135deg, #7beeff 0%, #b98bff 50%, #7beeff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 10px rgba(45, 226, 255, .35));
-}
-
-.site-subtitle {
-  font-size: 14px;
-  color: rgba(157, 178, 212, 0.9);
-  text-align: center;
-  margin-bottom: 30px;
-  letter-spacing: 4px;
 }
 
 .login-form {

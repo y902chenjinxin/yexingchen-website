@@ -705,7 +705,7 @@ html:root[data-theme="day"] .login-page .el-input__suffix .el-icon,
 html:root[data-theme="day"] .login-page .el-input__clear {
   color: rgba(200, 214, 208, 0.7) !important;
 }
-html:root[data-theme="day"] .login-page .site-subtitle,
+/* v2.46.260：.site-subtitle 已从登录页删除（夜星：没有这块因素了），选择器同步移除 */
 html:root[data-theme="day"] .login-page .back-link,
 html:root[data-theme="day"] .login-page .text-secondary {
   color: rgba(200, 214, 208, 0.62) !important;

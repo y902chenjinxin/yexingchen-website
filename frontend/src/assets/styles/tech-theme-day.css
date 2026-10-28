@@ -356,7 +356,7 @@
   border-color: var(--tc-line-strong) !important;
   box-shadow: 0 2px 6px rgba(15, 60, 110, .06), 0 24px 56px rgba(15, 60, 110, .12) !important;
 }
-:root[data-theme="day"] .login-page .site-subtitle,
+/* v2.46.260：.site-subtitle 已从登录页删除，选择器同步移除 */
 :root[data-theme="day"] .login-page .back-link,
 :root[data-theme="day"] .login-page .text-secondary { color: var(--tc-text-2) !important; }
 :root[data-theme="day"] .filing-footer {

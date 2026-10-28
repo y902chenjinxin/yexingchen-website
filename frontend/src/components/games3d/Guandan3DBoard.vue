@@ -521,7 +521,9 @@ function toggleSel(c) {
 /* ================= 手牌手势（v2.46.244） =================
  * 三种操作，全部走 pointer 事件（鼠标 / 触摸 / 笔一致）：
  *   ① 点按        —— 切换单张选中（立即响应，不做双击延迟）
- *   ② 左右滑动    —— 划过的牌**追加**到选中（从按下那张到当前那张的区间）
+ *   ② 左右滑动    —— 划过的牌**追加**到选中（从按下那张到当前那张的区间）；
+ *                    若这一片本来都已选，同一次滑动改为**取消**
+ *                    （v2.46.260：夜星「选完再左右滑没法取消」）
  *   ③ 向上滑动    —— 抬起过 50px 就把这张当单张打出
  *   ④ 双击        —— 快速点同一张两次 = 出单张（与向上滑动等价）
  *
@@ -535,32 +537,66 @@ const dragLiftId = ref('')     // 上滑中的那张（CSS 抬起来）
 let drag = null                // { id, idx, x0, y0, mode, base, lastIdx }
 let lastTap = { id: null, t: 0 }
 
-/** 指针 x 落在哪张牌上：后面的牌画在上层，取最后一个命中的 */
-function idxAtX(x) {
+/** 指针 x 落在哪张牌上：后面的牌画在上层，取最后一个命中的。
+ *  clamp=true 时越界钳到两端 —— 滑出手牌区（尤其想整段取消）也能取到边界那张。 */
+function idxAtX(x, clamp = false) {
   const root = handEl.value
   if (!root) return -1
   const els = root.querySelectorAll('.hcard')
+  if (!els.length) return -1
   let idx = -1
   for (let i = 0; i < els.length; i++) {
     const r = els[i].getBoundingClientRect()
     if (x >= r.left && x <= r.right) idx = i
   }
+  if (idx < 0 && clamp) {
+    const first = els[0].getBoundingClientRect()
+    const last = els[els.length - 1].getBoundingClientRect()
+    if (x < first.left) return 0
+    if (x > last.right) return els.length - 1
+  }
   return idx
 }
 
-/** 从 base 出发，把 [a..b] 区间追加进选中 */
-function applyRange(base, a, b) {
+/** 从 base 出发应用 [a..b] 区间。mode：'add' 追加 / 'drop' 取消。
+ *
+ *  v2.46.260 支持「滑动取消」（夜星：选完再左右滑没法取消）：
+ *  手势方向由**第一段区间**决定 —— 区间内全部已选就是取消，否则是追加，
+ *  一旦确定整段手势不再翻转（否则「A 滑到 G 再滑回 C」会莫名其妙全取消）。
+ *  判断用 `base`（按下瞬间的选区快照）而不是实时选区，所以同一手势内稳定。
+ *  于是「选完一段，从任一端滑回来」直接取消，不用先点一下再滑。
+ */
+function applyRange(base, a, b, mode = 'add') {
   const lo = Math.min(a, b)
   const hi = Math.max(a, b)
-  const add = viewHand.value.slice(lo, hi + 1).map(c => c.id)
-  const set = new Set([...base, ...add])
-  sel.value = viewHand.value.filter(c => set.has(c.id)).map(c => c.id)
+  const ids = viewHand.value.slice(lo, hi + 1).map(c => c.id)
+  const baseSet = new Set(base)
+  let next
+  if (mode === 'drop') {
+    const drop = new Set(ids)
+    next = [...baseSet].filter(id => !drop.has(id))
+  } else {
+    next = [...baseSet, ...ids]
+  }
+  const keep = new Set(next)
+  sel.value = viewHand.value.filter(c => keep.has(c.id)).map(c => c.id)
+  return ids
+}
+
+/** [a..b] 区间内的牌是否在 base 里**全部**已选（决定这次滑动是取消还是追加） */
+function rangeAllSelected(base, a, b) {
+  const lo = Math.min(a, b)
+  const hi = Math.max(a, b)
+  const ids = viewHand.value.slice(lo, hi + 1).map(c => c.id)
+  if (!ids.length) return false
+  const set = new Set(base)
+  return ids.every(id => set.has(id))
 }
 
 function onCardDown(c, idx, e) {
   if (!canAct.value) return
   if (e.pointerType === 'mouse' && e.button !== 0) return
-  drag = { id: c.id, idx, x0: e.clientX, y0: e.clientY, mode: '', base: sel.value.slice(), lastIdx: -1 }
+  drag = { id: c.id, idx, x0: e.clientX, y0: e.clientY, mode: '', base: sel.value.slice(), lastIdx: -1, swipeMode: '' }
 }
 
 function onWinMove(e) {
@@ -573,10 +609,14 @@ function onWinMove(e) {
     else return
   }
   if (drag.mode === 'select') {
-    const idx = idxAtX(e.clientX)
+    const idx = idxAtX(e.clientX, true)   // 滑出手牌区也算到边界，整段取消更顺手
     if (idx >= 0 && idx !== drag.lastIdx) {
       drag.lastIdx = idx
-      applyRange(drag.base, drag.idx, idx)
+      if (!drag.swipeMode) {
+        // 第一段区间定方向：全已选 = 取消，否则 = 追加；之后整段手势不再翻转
+        drag.swipeMode = rangeAllSelected(drag.base, drag.idx, idx) ? 'drop' : 'add'
+      }
+      applyRange(drag.base, drag.idx, idx, drag.swipeMode)
     }
   } else if (drag.mode === 'up') {
     // 超过 40px 才抬起示意，避免轻扫就跳起来
