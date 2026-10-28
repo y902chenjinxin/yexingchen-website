@@ -53,36 +53,63 @@
 
 <script setup>
 /**
- * 错题本抽屉（v2.46.273）
+ * 错题本抽屉（v2.46.273，v2.46.274 改跨设备）
+ *
+ * 数据来源两级：
+ *   1. 打开时先读本地快照（毫秒级出内容，不空等）
+ *   2. 同时请求 /api/quiz/mistakes，成功就**用服务器的替换** —— 换设备、清缓存后
+ *      这里仍然是你全部的错题；接口失败（离线/未登录）就保留本地那份。
  *
  * 只读展示：题干 + 你选的（红）+ 正确答案（绿）+ 解析。
  * 不做「重做」——重做要先藏答案，而错题的价值在于**立刻看解析**，
  * 再做一遍反而多一道手续（而且选项顺序固定，第二次必然选对，学不到东西）。
  */
 import { computed, ref } from 'vue'
+import { workbenchApi } from '@/api/workbench'
 import { readWrong, removeWrong, clearWrong } from '@/composables/useQuizWrong'
 
 const KEY = ['A', 'B', 'C', 'D']
 
+const emit = defineEmits(['count'])
+
 const open = ref(false)
 const list = ref([])
+const syncing = ref(false)
 
 // 新的在上：最近错的更该看
 const ordered = computed(() => [...list.value].reverse())
 
-function show() {
+async function show() {
   list.value = readWrong()
   open.value = true
+  syncing.value = true
+  try {
+    const res = await workbenchApi.quiz.mistakes()
+    const items = res?.data?.items
+    if (Array.isArray(items)) list.value = items
+  } catch { /* 接口失败：保留本地那份，不影响看题 */ }
+  syncing.value = false
+  emit('count', list.value.length)
 }
-function close() { open.value = false }
 
-function del(id) {
-  list.value = removeWrong(id)
+function close() {
+  open.value = false
+  emit('count', list.value.length)
+}
+
+async function del(id) {
+  list.value = list.value.filter(x => x.id !== id)
+  removeWrong(id)
+  emit('count', list.value.length)
+  try { await workbenchApi.quiz.dropMistake(id) } catch { /* 本地已删，等下次同步 */ }
   if (!list.value.length) close()
 }
 
-function doClear() {
-  list.value = clearWrong()
+async function doClear() {
+  list.value = []
+  clearWrong()
+  emit('count', 0)
+  try { await workbenchApi.quiz.clearMistakes() } catch { /* 同上 */ }
   close()
 }
 

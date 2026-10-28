@@ -27,6 +27,7 @@ from app.database import Base  # noqa: E402
 from app.models.login_attempt import LoginAttempt  # noqa: F401,E402
 from app.models.user import User, VerificationCode  # noqa: F401,E402
 from app.models.music import Music  # noqa: F401,E402
+from app.models.quiz import QuizAnswer  # noqa: F401,E402  v2.46.274 每日一题答题记录
 from app.models.novel import Novel  # noqa: F401,E402
 from app.models.video import Video  # noqa: F401,E402
 from app.models.tool import Tool  # noqa: F401,E402

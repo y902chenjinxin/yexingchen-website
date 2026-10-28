@@ -31,14 +31,20 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 
-from datetime import date as _date_cls
+from datetime import date as _date_cls, timedelta as _timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
+from app.database import get_db
+from app.models.quiz import QuizAnswer
 from app.routers.workbench._common import ok
 from app.routers.workbench.logic import _load as _load_logic
 from app.utils.security import get_current_user
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 router = APIRouter(prefix="/api/quiz", tags=["工作台-每日一题"])
 
@@ -153,3 +159,159 @@ def quiz_stats(_user: dict = Depends(get_current_user)):
             for lv in (1, 2, 3)
         },
     })
+
+
+# ======================= 答题记录（v2.46.274 跨设备） =======================
+# 夜星：「要支持跨设备，优化下。」——之前错题本和七天格都在 localStorage，
+# 换设备/清缓存就没了。现在按账号落库，本地那份只作接口失败时的兜底。
+
+def _my_stats(db: Session, uid: int, days: int = 7) -> dict:
+    """我的答题统计：累计 + 最近 N 天（每天有错=bad，全对=ok，没答=none）。"""
+    rows = db.query(QuizAnswer).filter(QuizAnswer.user_id == uid).all()
+    total = len(rows)
+    right = sum(1 for r in rows if r.correct)
+
+    by_date: dict[str, list[bool]] = {}
+    for r in rows:
+        by_date.setdefault(r.quiz_date or "", []).append(bool(r.correct))
+
+    today = _date_cls.today()
+    out = []
+    for k in range(days - 1, -1, -1):
+        d = today - _timedelta(days=k)
+        key = d.isoformat()
+        arr = by_date.get(key)
+        state = "none" if not arr else ("bad" if any(not c for c in arr) else "ok")
+        out.append({"date": key, "state": state})
+
+    return {
+        "total": total,
+        "correct": right,
+        "rate": round(right / total * 100) if total else 0,
+        "wrong": total - right,
+        "days": out,
+    }
+
+
+@router.get("/mine")
+def quiz_mine(
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """我的答题统计（跨设备）：累计正确率 + 最近 7 天。"""
+    return ok(_my_stats(db, int(_user["user_id"])))
+
+
+@router.post("/answer")
+def quiz_answer(
+    payload: dict,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """提交一次作答。upsert：同一题再答是更新，答对之后自动离开错题本。"""
+    uid = int(_user["user_id"])
+    try:
+        quiz_id = int(payload.get("quiz_id") or 0)
+        picked = int(payload.get("picked"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="参数不合法")
+
+    item = next((x for x in _load() if x.get("id") == quiz_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="题目不存在")
+    if not 0 <= picked <= 3:
+        raise HTTPException(status_code=400, detail="选项越界")
+
+    raw_date = str(payload.get("date") or "")
+    quiz_date = raw_date if _DATE_RE.match(raw_date) else _date_cls.today().isoformat()
+    correct = picked == int(item.get("answer", -1))
+
+    row = (
+        db.query(QuizAnswer)
+        .filter(QuizAnswer.user_id == uid, QuizAnswer.quiz_id == quiz_id)
+        .first()
+    )
+    if row:
+        row.picked = picked
+        row.correct = correct
+        row.quiz_date = quiz_date
+    else:
+        db.add(QuizAnswer(
+            user_id=uid, quiz_id=quiz_id, quiz_date=quiz_date,
+            picked=picked, correct=correct,
+        ))
+    db.commit()
+
+    return ok({"correct": correct, "stats": _my_stats(db, uid)})
+
+
+@router.get("/mistakes")
+def quiz_mistakes(
+    limit: int = Query(80, ge=1, le=200),
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """错题本（跨设备）：答错且**还没答对**的题，带完整题面与解析。"""
+    uid = int(_user["user_id"])
+    rows = (
+        db.query(QuizAnswer)
+        .filter(QuizAnswer.user_id == uid, QuizAnswer.correct.is_(False))
+        .order_by(QuizAnswer.updated_at.desc(), QuizAnswer.id.desc())
+        .limit(limit)
+        .all()
+    )
+    idx = {int(x.get("id", 0)): x for x in _load()}
+    items = []
+    for r in rows:
+        q = idx.get(int(r.quiz_id))
+        if not q:
+            continue   # 题库里已无此题（下架/改号）：跳过，不留空壳
+        items.append({
+            "id": q.get("id"),
+            "cat": q.get("cat", ""),
+            "level": q.get("level", 2),
+            "q": q.get("q", ""),
+            "table": q.get("table"),
+            "options": q.get("options", []),
+            "answer": q.get("answer", 0),
+            "why": q.get("why", ""),
+            "trick": q.get("trick", ""),
+            "topic": q.get("topic", ""),
+            "picked": int(r.picked),
+            "date": r.quiz_date or "",
+        })
+    return ok({"items": items, "total": len(items)})
+
+
+@router.delete("/mistakes/{quiz_id}")
+def quiz_mistake_drop(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """从错题本移除一道（连记录一起删，统计也跟着少一条）。"""
+    uid = int(_user["user_id"])
+    n = (
+        db.query(QuizAnswer)
+        .filter(QuizAnswer.user_id == uid, QuizAnswer.quiz_id == quiz_id)
+        .delete()
+    )
+    db.commit()
+    return ok({"removed": int(n)})
+
+
+@router.delete("/mistakes")
+def quiz_mistake_clear(
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """清空错题本。"""
+    uid = int(_user["user_id"])
+    n = (
+        db.query(QuizAnswer)
+        .filter(QuizAnswer.user_id == uid, QuizAnswer.correct.is_(False))
+        .delete()
+    )
+    db.commit()
+    return ok({"removed": int(n)})
+

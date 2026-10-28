@@ -83,19 +83,19 @@
         <div class="qz-days" title="最近 7 天">
           <span
             v-for="d in days"
-            :key="d.key"
+            :key="d.date"
             class="qz-day"
-            :class="[d.state, { today: d.today }]"
-            :title="`${d.label} · ${d.state === 'ok' ? '答对' : d.state === 'bad' ? '答错' : '未答'}`"
+            :class="[d.state, { today: d.date === todayStr }]"
+            :title="`${d.date.slice(5)} · ${d.state === 'ok' ? '答对' : d.state === 'bad' ? '答错' : '未答'}`"
           />
         </div>
         <span class="qz-stat">
-          已答 {{ stats.total }} 题 · 正确 {{ stats.correct }} 题<template v-if="stats.total">（{{ Math.round((stats.correct / stats.total) * 100) }}%）</template>
+          已答 {{ stats.total }} 题 · 正确 {{ stats.correct }} 题<template v-if="stats.total">（{{ stats.rate }}%）</template>
         </span>
       </div>
     </div>
 
-    <QuizWrongDrawer ref="drawer" />
+    <QuizWrongDrawer ref="drawer" @count="wrongN = $event" />
   </section>
 </template>
 
@@ -130,7 +130,9 @@ const STATS_KEY = 'xh_quiz_stats'
 const data = ref(null)
 const picked = ref(null)
 const offset = ref(0)
-const stats = ref({ total: 0, correct: 0 })
+const localStats = ref({ total: 0, correct: 0 })
+/** 服务器统计（跨设备，v2.46.274）；null 表示接口不可用 → 回落到本地那份 */
+const mine = ref(null)
 const wrongN = ref(0)
 const drawer = ref(null)
 const relOpen = ref(false)
@@ -140,9 +142,24 @@ const isRight = computed(() => answered.value && picked.value === data.value?.an
 
 const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const dayKey = (d) => `xh_quiz_${d}`
+const todayStr = fmtDate(new Date())
+
+/** 显示口径：服务器优先，接口挂了才用本地 —— 换设备也能看到全部历史 */
+const stats = computed(() => (
+  mine.value
+    ? { total: mine.value.total, correct: mine.value.correct, rate: mine.value.rate }
+    : {
+        total: localStats.value.total,
+        correct: localStats.value.correct,
+        rate: localStats.value.total
+          ? Math.round((localStats.value.correct / localStats.value.total) * 100)
+          : 0,
+      }
+))
 
 /** 最近 7 天（含今天）：对 / 错 / 未答，做连续性反馈 */
 const days = computed(() => {
+  if (Array.isArray(mine.value?.days) && mine.value.days.length) return mine.value.days
   const out = []
   const now = new Date()
   for (let k = 6; k >= 0; k--) {
@@ -154,7 +171,7 @@ const days = computed(() => {
       const rec = JSON.parse(localStorage.getItem(dayKey(key)) || 'null')
       if (rec) state = rec.right ? 'ok' : 'bad'
     } catch { state = 'none' }
-    out.push({ key, label: `${d.getMonth() + 1}/${d.getDate()}`, state, today: k === 0 })
+    out.push({ date: key, state })
   }
   return out
 })
@@ -162,11 +179,22 @@ const days = computed(() => {
 function readStats() {
   try {
     const s = JSON.parse(localStorage.getItem(STATS_KEY) || '{}')
-    stats.value = { total: Number(s.total) || 0, correct: Number(s.correct) || 0 }
-  } catch { stats.value = { total: 0, correct: 0 } }
+    localStats.value = { total: Number(s.total) || 0, correct: Number(s.correct) || 0 }
+  } catch { localStats.value = { total: 0, correct: 0 } }
 }
 
 function refreshWrong() { wrongN.value = readWrong().length }
+
+async function loadMine() {
+  try {
+    const res = await workbenchApi.quiz.mine()
+    const d = res?.data || res
+    if (d && typeof d.total === 'number') {
+      mine.value = d
+      wrongN.value = Number(d.wrong) || 0
+    }
+  } catch { mine.value = null }   // 未登录/断网：回落本地
+}
 
 /** 恢复这一天的作答记录；题目换过（id 对不上）就当没答过 */
 function restore() {
@@ -185,7 +213,9 @@ function choose(i) {
   const right = i === d.answer
   try {
     localStorage.setItem(dayKey(d.date), JSON.stringify({ id: d.id, picked: i, right }))
-    const s = stats.value
+    // 累加必须基于 localStats（本地那份），不能用 stats（可能来自服务器）——
+    // 否则服务器数据会被当成基底再加一次，本地数字越滚越大
+    const s = localStats.value
     localStorage.setItem(STATS_KEY, JSON.stringify({
       total: s.total + 1, correct: s.correct + (right ? 1 : 0),
     }))
@@ -199,6 +229,19 @@ function choose(i) {
   }
   readStats()
   refreshWrong()
+  reportAnswer(d, i)   // 异步上报服务器（跨设备）；失败不影响本次体验
+}
+
+/** 上报作答：成功就用服务器返回的统计覆盖显示口径，失败则回落本地 */
+async function reportAnswer(d, pickedIdx) {
+  try {
+    const res = await workbenchApi.quiz.answer(d.id, pickedIdx, d.date)
+    const st = res?.data?.stats
+    if (st && typeof st.total === 'number') {
+      mine.value = st
+      wrongN.value = Number(st.wrong) || 0
+    }
+  } catch { mine.value = null }
 }
 
 function optClass(i) {
@@ -227,6 +270,7 @@ function go(delta) {
 onMounted(() => {
   readStats()
   refreshWrong()
+  loadMine()   // 跨设备统计：异步补，不影响首屏
   load(0)
 })
 </script>

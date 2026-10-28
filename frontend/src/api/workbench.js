@@ -277,6 +277,13 @@ workbenchApi.quiz = {
   today: (offset = 0) => api.get('/quiz/today', { params: { offset } }),
   list: (limit = 10, cat = '') => api.get('/quiz/list', { params: { limit, cat } }),
   stats: () => api.get('/quiz/stats'),
+
+  // 跨设备（v2.46.274）：答题记录落库，错题本与七天格跟着账号走
+  mine: () => api.get('/quiz/mine'),
+  answer: (quizId, picked, date) => api.post('/quiz/answer', { quiz_id: quizId, picked, date }),
+  mistakes: (limit = 80) => api.get('/quiz/mistakes', { params: { limit } }),
+  dropMistake: (id) => api.delete(`/quiz/mistakes/${id}`),
+  clearMistakes: () => api.delete('/quiz/mistakes'),
 }
 
 export default workbenchApi
