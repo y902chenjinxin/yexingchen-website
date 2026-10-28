@@ -111,6 +111,13 @@
       <LawCard />
     </section>
 
+    <!-- ============ 每日思维逻辑（v2.46.269）：专门练怎么想 ============
+         夜星：「长脑子最快的就是学习思维逻辑，每天都要有。」
+         和定律卡并列，默认收起 —— 只露名字 + 一句话。 -->
+    <section class="bento-learn">
+      <LogicCard />
+    </section>
+
     <!-- ============ Bento S3：每日一言 + 历史上的今天（文化小卡） ============ -->
     <section class="bento-s3">
       <div v-mouse-light class="bento-card bento-card--zero">
@@ -142,6 +149,7 @@ import StudyCard from '@/components/workbench/StudyCard.vue'
 import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
 import SocialCard from '@/components/workbench/SocialCard.vue'
 import LawCard from '@/components/workbench/LawCard.vue'
+import LogicCard from '@/components/workbench/LogicCard.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
 import { useAuthStore } from '@/stores/auth'

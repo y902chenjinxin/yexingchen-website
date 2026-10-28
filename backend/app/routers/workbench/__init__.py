@@ -26,6 +26,7 @@ from app.routers.workbench.study import router as study_router
 from app.routers.workbench.knowledge import router as knowledge_router
 from app.routers.workbench.social import router as social_router
 from app.routers.workbench.laws import router as laws_router
+from app.routers.workbench.logic import router as logic_router
 
 router = APIRouter()
 router.include_router(dashboard_router)
@@ -36,6 +37,7 @@ router.include_router(study_router)   # v2.46.245 每日英语
 router.include_router(knowledge_router)   # v2.46.248 每日知识（跨学科寓言）
 router.include_router(social_router)   # v2.46.249 每日场景（人情世故）
 router.include_router(laws_router)   # v2.46.255 今日定律（瞎猫理论那类）
+router.include_router(logic_router)  # v2.46.269 每日思维逻辑（谬误/偏差/模型/方法）
 router.include_router(weather_router)
 router.include_router(notes_router)
 router.include_router(assets_router)

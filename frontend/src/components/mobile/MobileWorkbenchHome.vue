@@ -70,6 +70,9 @@
     <!-- 今日定律（v2.46.255）：瞎猫理论那类，收起只占两行 -->
     <LawCard class="abb-today" />
 
+    <!-- 每日思维逻辑（v2.46.269）：谬误 / 偏差 / 模型 / 方法，每天一条 -->
+    <LogicCard class="abb-today" />
+
   </section>
 </template>
 
@@ -82,6 +85,7 @@ import StudyCard from '@/components/workbench/StudyCard.vue'
 import KnowledgeCard from '@/components/workbench/KnowledgeCard.vue'
 import SocialCard from '@/components/workbench/SocialCard.vue'
 import LawCard from '@/components/workbench/LawCard.vue'
+import LogicCard from '@/components/workbench/LogicCard.vue'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'

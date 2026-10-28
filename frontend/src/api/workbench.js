@@ -265,4 +265,11 @@ workbenchApi.laws = {
   list: (limit = 30) => api.get('/laws/list', { params: { limit } }),
 }
 
+/** 每日思维逻辑（v2.46.269）：谬误 / 偏差 / 模型 / 方法，127 条轮转 */
+workbenchApi.logic = {
+  today: (offset = 0) => api.get('/logic/today', { params: { offset } }),
+  list: (limit = 30, cat = '') => api.get('/logic/list', { params: { limit, cat } }),
+  stats: () => api.get('/logic/stats'),
+}
+
 export default workbenchApi
