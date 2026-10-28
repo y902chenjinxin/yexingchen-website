@@ -242,7 +242,9 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
 /* v2.46.169：同理，盈亏正/负 = 涨/跌，用 pnl 语义（红涨绿跌） */
 #app.is-mobile .abb-stat strong.positive { color: var(--pnl-up, #e5484d); }
 #app.is-mobile .abb-stat strong.negative { color: var(--pnl-down, #1aa86a); }
-#app.is-mobile .abb-sec { margin-top: 26px; }
+/* v2.46.257 快捷入口上移到「今天」之前：上面接数据带（带 margin-top:10px），
+   下面接内容卡（自带 12px）—— 上 18 下 4 才不会挤在一起 */
+#app.is-mobile .abb-sec { margin: 18px 0 4px; }
 #app.is-mobile .abb-sec__title { color: var(--m-text); letter-spacing: -.02em; font-size: 16px; }
 #app.is-mobile .abb-grid { gap: 8px; }
 #app.is-mobile .abb-cell { padding: 14px 4px 12px; border: 1px solid var(--m-line) !important; border-radius: 14px; background: var(--m-surface) !important; box-shadow: none !important; }

@@ -41,22 +41,9 @@
       </div>
     </div>
 
-    <!-- 今天要做（v2.46.140） -->
-    <TodayHabitsCard class="abb-today" />
-
-    <!-- 每日英语（v2.46.245）：手机上也是「顺手看一眼」的位置 -->
-    <StudyCard class="abb-today" />
-
-    <!-- 每日知识（v2.46.248）：跨学科知识点 + 寓言故事 -->
-    <KnowledgeCard class="abb-today" />
-
-    <!-- 每日场景（v2.46.249）：人情世故，收起状态很轻 -->
-    <SocialCard class="abb-today" />
-
-    <!-- 今日定律（v2.46.255）：瞎猫理论那类，收起只占两行 -->
-    <LawCard class="abb-today" />
-
-    <!-- 快捷入口（精选）＋ 全部模块目录入口 -->
+    <!-- 快捷入口（精选）＋ 全部模块目录入口
+         v2.46.257（夜星）：原来排在 5 张内容卡之后，手机上要滑四五屏才找得到，
+         记账这种高频动作每次都得翻 —— 上移到「今天」卡之前，收支之后第一眼就能点。 -->
     <div class="abb-sec">
       <div class="abb-sec__head">
         <h2 class="abb-sec__title">快捷入口</h2>
@@ -77,6 +64,20 @@
       </div>
     </div>
 
+    <!-- 今天要做（v2.46.140） -->
+    <TodayHabitsCard class="abb-today" />
+
+    <!-- 每日英语（v2.46.245）：手机上也是「顺手看一眼」的位置 -->
+    <StudyCard class="abb-today" />
+
+    <!-- 每日知识（v2.46.248）：跨学科知识点 + 寓言故事 -->
+    <KnowledgeCard class="abb-today" />
+
+    <!-- 每日场景（v2.46.249）：人情世故，收起状态很轻 -->
+    <SocialCard class="abb-today" />
+
+    <!-- 今日定律（v2.46.255）：瞎猫理论那类，收起只占两行 -->
+    <LawCard class="abb-today" />
 
   </section>
 </template>
@@ -259,7 +260,9 @@ onBeforeUnmount(() => {
 .abb-hero__num.dn { color: var(--pnl-down, #1aa86a); }
 
 /* 快捷入口 */
-.abb-sec { margin-top: 28px; }
+/* v2.46.257：上移到「今天」之前后，上下间距按「数据带 → 宫格 → 内容卡」重排，
+   上 20 下 4（下面内容卡自带 margin 12），首屏能露出宫格第一行 */
+.abb-sec { margin: 20px 0 4px; }
 .abb-sec__head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 12px; margin-bottom: 12px;
