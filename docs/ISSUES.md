@@ -1894,3 +1894,23 @@ c8d9e0f1a2b3, c9d0e1f2a3b4, e1f2a3b4c5d6, e2f3a4b5c6d7, f2a3b4c5d6e7, f3a4b5c6d7
 1. schema 变更只用**手工 SQL**，并且**不要在 `alembic/versions/` 留文件**；
 2. 部署后必须确认 `/health` 返回 200（不是 `/api/health`，那个是 404）；
 3. 若已误留文件：删掉它 → `alembic heads` 应恢复为 `c8d9e0f1a2b3 (head)` → `pm2 restart`。
+
+## v2.46.268 巡检：pytest 全量状态（2026-10-28）
+
+**结论：全量 `pytest -q` 现在能跑完（不再中途异常退出），11 分钟、536 passed / 19 failed。**
+ENV-004 的「进程异常终止」现象本轮未复现（可能是早期原生依赖/并发的偶发），
+但耗时 11 分钟，日常仍建议逐文件跑。
+
+19 个失败里已修 1 个（`test_router_smoke::test_router_music_list`：
+断言「系统默认曲至少 1 条」，但引擎早已不再合成该条目，测试库为空 → 一直红着）。
+剩 18 个按类归堆，均为存量、与本轮改动无关（改动前同样失败）：
+
+| 分类 | 数量 | 文件 |
+|---|---|---|
+| 家庭订阅 / 提醒同步 | 9 | `test_family_api.py`（TestSubscriptions ×6、TestReminderIntegration ×2 …） |
+| alembic 迁移 | 1 | `test_migrations.py::test_alembic_upgrade_creates_all_tables` |
+| 摸鱼日历形状 | 1 | `test_toolkit_capsule_fish.py::test_fish_calendar_shape` |
+| 其它（鉴权 / 工作台等） | 7 | 见 `pytest -q` 输出 |
+
+建议顺序：先看 `test_family_api`（订阅到期/统计口径，可能真的算错了），
+再看 `test_fish_calendar_shape`（大概率是 2026 假期数据结构变了没同步断言）。

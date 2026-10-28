@@ -80,12 +80,16 @@ def test_router_video_list(admin_ctx):
 
 
 def test_router_music_list(admin_ctx):
-    """music: 列表（含默认系统曲，至少 1 条）。"""
+    """music: 列表结构正确。
+
+    v2.46.268：原来断言「至少 1 条（系统默认曲）」—— 但引擎早已不再合成
+    「系统默认曲」条目（内置古筝变成一条真实 music 记录，靠迁移写入），
+    测试库是空的，这条断言从那时起就一直红着。这里只校验结构。"""
     response = client.get("/api/music")
     assert response.status_code == 200
     items = response.json()["data"]["list"]
     assert isinstance(items, list)
-    assert len(items) >= 1  # 系统默认曲
+    assert response.json()["data"].get("total") == len(items) or response.json()["data"].get("size")
 
 
 def test_router_tool_list(admin_ctx):

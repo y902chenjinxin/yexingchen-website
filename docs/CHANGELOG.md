@@ -23,6 +23,48 @@
 
 ---
 
+## [v2.46.268] - 2026-10-28
+
+### ① 3D 麻将接入在线对局 ② 技术债收口（lint 清零 / 单测跑通）
+
+#### 3D 麻将在线（夜星：「6、就这次做」）
+
+同一间房切 3D 即可，走的是 2D 那套服务端权威链路。适配要点：
+
+| 项 | 处理 |
+|---|---|
+| 手牌 | `me.hand` 写进 `hands[0]`，各座位张数走 `seatCounts` |
+| 牌河 / 副露 | `players[s].discards / melds` 按绝对座位映射，渲染时按 `povSeat` 摆位 |
+| 轮次 | `view.turn`；`canDiscard` 在线看 `me.options` 是否含 `discard` |
+| 能做什么 | 全部由 `me.options` 决定（hu/pong/kong/chi/pass/ankong/bugang），本地 `pending` 不参与 |
+| 动作 | `pickTile` → `discard + tile_id`；`react(kind)` / `doHuAction` → 只发类型 |
+| 视角 | 座位投影改 `screenPos(s, povSeat)`；**顺手修了一个老 bug**：中央牌河原来用绝对座位当屏幕位（`CENTER_OFF[s]`），坐在非 0 号位时牌河会摆错方向 |
+| 座位名 | 原来写死 `SEAT_LABEL`（0 号叫「你」），在线坐 1/2/3 号位会把我自己画到别人那侧 |
+| 牌墙 | 在线没有本地牌墙 → 顶栏不再显示「剩余 0 张」 |
+| AI | `scheduleAI()` 在线直接 return |
+
+探针：`_probe_online3d_mj.html` + `_probe_online3d_mj.js`（我坐 1 号位，含副露与牌河），
+实测：手牌在下方、四家名字按座位正确（阿明/夜星/小刘/阿华）、
+`options=['discard']` 只出「提示」、切到 `['pong','kong','pass']` 正确出「杠 / 碰 / 过」。
+
+> ⚠️ 还没做真人实战验证 —— 轮询下的牌河刷新、点炮胡的反应窗口时序需要打一局才敢说稳。
+
+#### 技术债
+
+- **前端 lint 清零**：`npx eslint src` 从 4 errors → **0 errors**（17 warnings 是 v-html/console 类既有告警）。
+  修的是 `LudoBoard` / `MonopolyBoard` 的 emoji 正则：
+  `no-misleading-character-class` 报警只是表层，**真实 bug 是 ZWJ 组合 emoji 被截断**
+  （`👨‍👩‍👧 出发` 只提出 `👨‍`）。改成 `\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[肤色])*`，
+  node 实测：🎲/👨‍👩‍👧/🀄/🚀/👍🏽 都能整段提出，无 emoji 的文案不误匹配。
+- **前端单测终于能跑**：补装 `jsdom`（ISSUES 里 ENV-001）。`npx vitest run` → **11 文件 / 164 用例全绿**。
+  顺手修了 3 条过期断言（定缺 v2.46.17 已取消、牌堆早已是 120 张含中发白），
+  它们从那次改动起就一直红着。
+- pytest 全量仍会异常退出（ENV-004），本轮未动，继续逐文件跑。
+
+版本 SW v580→v581、APP_VERSION v2.46.267→v2.46.268。
+
+---
+
 ## [v2.46.267] - 2026-10-28
 
 夜星一次批了 8 项，本轮完成 1/2/4/5/8（3 待政策、6/7 见下条）。

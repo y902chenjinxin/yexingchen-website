@@ -377,12 +377,12 @@ const loading = t.loading
 
 const meta = computed(() => GAME_META[gameKey.value] || GAME_META.guandan)
 
-/* ---------- 3D / 平面视图切换（v2.46.263） ----------
- * 只对掼蛋开放：3D 板已接入在线投影（手牌/轮次/最近一手/进贡还贡）。
+/* ---------- 3D / 平面视图切换（v2.46.263，v2.46.268 加麻将） ----------
+ * 掼蛋 / 麻将都接入了在线投影；大富翁没有 3D 版，按 canUse3d 挡住。
  * 偏好存本地 —— 有人就喜欢 3D 的牌感，有人要 2D 的信息密度，各记各的。 */
 const use3d = ref(false)
 try { use3d.value = localStorage.getItem('xh_table_3d') === '1' } catch { /* 隐私模式 */ }
-const canUse3d = computed(() => gameKey.value === 'guandan')
+const canUse3d = computed(() => ['guandan', 'mahjong'].includes(gameKey.value))
 const threeD = computed(() => canUse3d.value && use3d.value)
 function toggle3d() {
   use3d.value = !use3d.value
@@ -395,9 +395,12 @@ const pageTitle = computed(() => (mode.value === 'create' ? `开桌 · ${gameLab
 const pageSubtitle = computed(() => '服务端权威发牌 · 跨设备同步 · 空位机器人补位')
 const helpRules = computed(() => HELP[gameKey.value] || HELP.guandan)
 
-const boardComp = computed(() => (threeD.value
-  ? defineAsyncComponent(() => import('@/components/games3d/Guandan3DBoard.vue'))
-  : defineAsyncComponent(meta.value.comp)))
+const boardComp = computed(() => {
+  if (!threeD.value) return defineAsyncComponent(meta.value.comp)
+  return gameKey.value === 'mahjong'
+    ? defineAsyncComponent(() => import('@/components/games3d/Mahjong3DBoard.vue'))
+    : defineAsyncComponent(() => import('@/components/games3d/Guandan3DBoard.vue'))
+})
 const seatNames = computed(() => (room.value?.seats || []).map(s => s.name || '家人'))
 const joinedCount = computed(() =>
   (room.value?.seats || []).filter(s => s.is_ai || (s.user_id && s.joined)).length)

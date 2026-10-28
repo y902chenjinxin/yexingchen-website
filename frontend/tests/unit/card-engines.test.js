@@ -11,7 +11,7 @@ import {
 } from '@/utils/games/guandan'
 import {
   buildDeck as mjDeck, counts, isStandardHu, isSevenPairs, isFlush, isAllTriplets,
-  isAllEyes, hasMissing, canHu, scoreHu, tingTiles, shanten, aiDiscard,
+  isAllEyes, canHu, scoreHu, tingTiles, shanten, aiDiscard,
   findAnkongs, findBugangs, dangerOf,
 } from '@/utils/games/mahjong'
 
@@ -169,11 +169,18 @@ describe('掼蛋 · 比大小与升级', () => {
 /* ================= 四川麻将 ================= */
 
 describe('麻将 · 牌堆与和牌判定', () => {
-  it('万/条/筒各 1-9 共四种，合计 108 张', () => {
+  /* v2.46.268：这条断言原来写的是「108 张、只有万条筒」——
+     但引擎 v2.46.15/24 先加了箭牌（中发白）、又移除了风牌，实际是
+     108 数字牌 + 中发白各 4 张 = 120。测试没跟着改，一直红着。 */
+  it('万/条/筒各 1-9 共 108 张，加中发白 12 张 = 120 张', () => {
     const deck = mjDeck()
-    expect(deck.length).toBe(108)
-    expect(deck.every(t => ['m', 's', 'p'].includes(t.suit))).toBe(true)
-    expect(deck.every(t => t.rank >= 1 && t.rank <= 9)).toBe(true)
+    expect(deck.length).toBe(120)
+    const numbers = deck.filter(t => ['m', 's', 'p'].includes(t.suit))
+    const honors = deck.filter(t => t.suit === 'z')
+    expect(numbers.length).toBe(108)
+    expect(numbers.every(t => t.rank >= 1 && t.rank <= 9)).toBe(true)
+    expect(honors.length).toBe(12)
+    expect(honors.every(t => t.rank >= 1 && t.rank <= 3)).toBe(true)   // 只有中/發/白
   })
 
   it('标准型：4 面子 + 1 将可胡', () => {
@@ -190,11 +197,14 @@ describe('麻将 · 牌堆与和牌判定', () => {
     expect(canHu(h, 0, '')).toBe(false)
   })
 
-  it('缺门没打完不能胡', () => {
+  /* v2.46.268：定缺自 v2.46.17 起取消（夜星：「单纯的胡牌规则」），
+     canHu 的 missing 参数保留但恒忽略。这条用例原来断言「缺门不能胡」，
+     与现口径相反 —— 改成确认「无定缺：清一色也能胡」。 */
+  it('无定缺：整手清一色照样能胡', () => {
     const h = hand(['m', 1, 2], ['m', 2, 2], ['m', 3, 2], ['m', 4, 1],
       ['m', 5, 1], ['m', 6, 1], ['m', 7, 1], ['m', 8, 1], ['m', 9, 3])
-    expect(hasMissing(counts(h), 'm')).toBe(true)
-    expect(canHu(h, 0, 'm')).toBe(false)
+    expect(canHu(h, 0, 'm')).toBe(true)
+    expect(canHu(h, 0)).toBe(true)          // 不传 missing 结果一致
   })
 
   it('七对 / 清一色 / 对对胡 / 将将胡 判定', () => {
@@ -265,8 +275,8 @@ describe('麻将 · 听牌 / 向听 / AI', () => {
     expect(t.some(x => x.suit === 'm' && x.rank === 9)).toBe(true)
   })
 
-  it('手牌有缺门时听牌为空', () => {
-    expect(tingTiles(ready13, 0, 'm')).toHaveLength(0)
+  it('无定缺：手牌缺门也照常算听牌', () => {
+    expect(tingTiles(ready13, 0, 'm').length).toBeGreaterThan(0)
   })
 
   it('13 张一向听手牌向听数为 0', () => {

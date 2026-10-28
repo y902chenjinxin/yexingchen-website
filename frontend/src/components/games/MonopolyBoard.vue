@@ -424,7 +424,12 @@ function say(msg) {
   toastTimer = setTimeout(() => { toast.value = '' }, 1800)
 }
 /** 把日志/气泡文案开头的 emoji（+ 其后空格）提成 icon 字段，模板里用 <AppIcon> 渲染；命中不了就原样保留。 */
-const LEAD_ICON = /^([\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1FAFF}][\uFE0F\u200D\u{1F3FB}-\u{1F3FF}]*)\s+/u
+/* v2.46.268：原来是「基字符类 + [变体符/ZWJ/肤色]*」，有两处毛病：
+   ① ZWJ 组合 emoji（👨‍👩‍👧）只吃到第二个基字符前就断，文案被截成 `👨‍` + `‍👩…`；
+   ② eslint 的 no-misleading-character-class 直接报错（字符类里有带修饰符的字符）。
+   改成 Unicode 属性 `\p{Extended_Pictographic}` 一次性覆盖所有 emoji 基字符，
+   配上肤色/ZWJ/VS16 连续消费，组合 emoji 能整段提出来。 */
+const LEAD_ICON = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*)\s+/u
 function splitIcon(msg) {
   const m = LEAD_ICON.exec(msg)
   return m ? { icon: m[1], text: msg.slice(m[0].length) } : { icon: '', text: msg }

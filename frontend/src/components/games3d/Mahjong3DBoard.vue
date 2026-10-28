@@ -1,17 +1,18 @@
 <template>
   <div class="g3d-board">
-    <!-- 顶栏 -->
-    <header class="g3d-topbar">
+    <!-- 顶栏（外层在线牌桌自带顶栏时隐藏，v2.46.268） -->
+    <header v-if="showTopbar" class="g3d-topbar">
       <div class="g3d-title">
         <span class="g3d-logo">3D</span>
         <div class="g3d-tx">
           <b>3D 麻将</b>
-          <i>庄家 {{ seatName(dealer) }} · 剩余 {{ wall.length }} 张{{ tingText }}</i>
+          <!-- 在线没有本地牌墙，别显示「剩余 0 张」误导 -->
+          <i>庄家 {{ seatName(dealer) }}<template v-if="!isOnline"> · 剩余 {{ wall.length }} 张</template>{{ tingText }}</i>
         </div>
       </div>
       <div class="g3d-ops">
         <button class="g3d-op ghost" @click="$emit('exit')">返回</button>
-        <button class="g3d-op" @click="startGame">重新开始</button>
+        <button v-if="!isOnline" class="g3d-op" @click="startGame">重新开始</button>
       </div>
     </header>
 
@@ -44,7 +45,7 @@
           :key="'seat' + s"
           class="gt3-seat"
           :class="{ 'is-turn': isTurn(s) }"
-          :style="seatTF(SEAT_SLOT[screenPos(s, 0)])"
+          :style="seatTF(SEAT_SLOT[screenPos(s, povSeat)])"
         >
           <div class="gt3-ava" :style="{ background: seatColors[s] }"><AppIcon :icon="seatAvatar(s)" /></div>
           <div class="gt3-meta"><b>{{ seatName(s) }}</b><i :class="{ turn: isTurn(s) }">{{ seatSub(s) }}</i></div>
@@ -89,7 +90,7 @@
             v-for="(t, i) in discards[s]"
             :key="'dis' + s + '-' + t.id"
             class="pc3d mj-hand mj-center"
-            :style="pieceBox(dealt, 46, 62, 16, centerTF(i, 40, CENTER_OFF[s]), i, false, false)"
+            :style="pieceBox(dealt, 46, 62, 16, centerTF(i, 40, CENTER_OFF[screenPos(s, povSeat)]), i, false, false)"
           >
             <div class="pc-face pc-front mj-front"><MahjongTileFace :suit="faceSuit(t)" :rank="t.rank" /></div>
             <div class="pc-face pc-back mj-ivory"></div>
@@ -180,7 +181,7 @@
  * 3D 呈现：手牌 / 副露明牌 / 中央牌河 / 三面牌墙全部走 use3dTable 的纯函数变换 +
  * games3d.css 的全局类，组件不自带 <style>。
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as M from '@/utils/games/mahjong.js'
 import MahjongTileFace from '@/components/games/MahjongTileFace.vue'
 import {
@@ -192,8 +193,28 @@ import { sfx, panOf } from '@/utils/games/sfx'
 /* v2.46.262：3D 麻将此前只有「啪」的落桌声，不报牌面（夜星：「只有出牌音效，没有具体牌的内容」）。
    复用 2D 那套 TTS：按座位分声，打完念「八万」，碰杠胡也各有报词。 */
 import { speak, tileSpeech } from '@/utils/games/tts'
+/* 样式必须由组件自己引：在线牌桌是直接异步加载本组件的，不经 Games3DView */
+import '@/assets/styles/games3d.css'
 
-defineEmits(['exit'])
+const props = defineProps({
+  online: { type: Boolean, default: false },
+  onlineView: { type: Object, default: null },
+  onlineSeat: { type: Number, default: 0 },
+  acting: { type: Boolean, default: false },
+  /** 外层（在线牌桌）自带顶栏时传 false */
+  showTopbar: { type: Boolean, default: true },
+  /** 各座位显示名 */
+  seatNames: { type: Array, default: null },
+})
+const emit = defineEmits(['exit', 'act'])
+
+/* ---------- 在线（v2.46.268） ----------
+ * 服务端权威：手牌/牌河/副露/轮次/可选动作全部来自 onlineView，前端只发动作。
+ * 约定同 3D 掼蛋：**我的手牌永远写进 hands[0]**，渲染层统一读 0 号位；
+ * 座位投影用 povSeat，我坐 1/2/3 号位时其余三家跟着转。 */
+const isOnline = computed(() => !!props.online)
+const oSeat = computed(() => (isOnline.value ? Number(props.onlineSeat ?? 0) : 0))
+const povSeat = computed(() => oSeat.value)
 
 /* ---------- 常量 ---------- */
 const SEATS = [0, 1, 2, 3]
@@ -226,6 +247,8 @@ const roundNo = ref(1)
 const dealer = ref(0)
 const wall = ref([])
 const hands = ref([[], [], [], []])
+/* 在线：各座位张数（绝对座位）。单机不用 */
+const seatCounts = ref([0, 0, 0, 0])
 const melds = ref([[], [], [], []])
 const discards = ref([[], [], [], []])
 const out = ref([false, false, false, false])   // 胡牌即结束 → 一局最多一家为 true
@@ -253,8 +276,9 @@ const hand = computed(() => hands.value[0] || [])
 const viewDrawn = computed(() => (turn.value === 0 && !out.value[0] ? drawn.value : null))
 const handTotal = computed(() => hand.value.length + (viewDrawn.value ? 1 : 0))
 const poolOfView = computed(() => (viewDrawn.value ? hand.value.concat([viewDrawn.value]) : hand.value.slice()))
-const canDiscard = computed(() =>
-  phase.value === 'playing' && !pending.value && turn.value === 0 && !out.value[0])
+const canDiscard = computed(() => (isOnline.value
+  ? phase.value === 'playing' && optSet.value.has('discard')
+  : (phase.value === 'playing' && !pending.value && turn.value === 0 && !out.value[0])))
 
 /** 本局积分：按 huResults 现算（自摸三家各付、点炮放炮者付两倍） */
 function seatScore(s) {
@@ -283,13 +307,62 @@ const wallStacks = computed(() => {
   return arr
 })
 
+/* ================= 在线投影（v2.46.268） =================
+ * 服务端一个 view 里给全：我的手牌 / 各家张数 / 牌河 / 副露 / 轮次 / 可选动作。
+ * 约定：**我的手牌写进 hands[0]**（渲染层统一读 0 号位），张数走 seatCounts。
+ */
+const optSet = computed(() => new Set(props.onlineView?.me?.options || []))
+
+function syncFromView(v) {
+  if (!v) return
+  const me = v.me || {}
+  const next = hands.value.slice()
+  next[0] = Array.isArray(me.hand) ? me.hand : []
+  hands.value = next
+  seatCounts.value = [0, 1, 2, 3].map(s => (
+    s === oSeat.value ? (me.hand?.length || 0) : (v.players?.[s]?.hand_count ?? 0)
+  ))
+  // 牌河 / 副露 / 胡牌状态：直接按绝对座位映射（渲染时再按 povSeat 摆位）
+  const ds = [[], [], [], []]
+  const ms = [[], [], [], []]
+  const oo = [false, false, false, false]
+  for (const p of (v.players || [])) {
+    const s = Number(p.seat)
+    if (s < 0 || s > 3) continue
+    ds[s] = p.discards || []
+    ms[s] = p.melds || []
+    oo[s] = !!p.hu
+  }
+  discards.value = ds
+  melds.value = ms
+  out.value = oo
+  turn.value = v.turn ?? 0
+  drawn.value = me.last_draw || null
+  dealt.value = true
+  phase.value = (v.phase === 'playing') ? 'playing' : 'settled'
+  // 最近一张弃牌（中央高亮 / 碰杠胡的来源）
+  const ld = v.last_discard
+  lastDiscard.value = ld ? { seat: ld.seat, tile: ld.tile } : null
+  if (phase.value === 'settled') {
+    const hu = (v.players || []).filter(p => p.hu).map(p => ({ seat: p.seat, ...(p.hu_info || {}) }))
+    huResults.value = hu
+    result.value = v.result || null
+  }
+}
+
+watch(() => props.onlineView, (v) => { if (isOnline.value && v) syncFromView(v) }, { deep: false })
+watch(() => props.online, (on) => { if (on && props.onlineView) syncFromView(props.onlineView) })
+
 /* ---------- 碰杠胡 可操作项 ---------- */
 const zimoReady = computed(() => canDiscard.value && M.canHu(poolOfView.value, melds.value[0].length))
-const canHu = computed(() => (!!pending.value && pending.value.kinds.includes('hu')) || zimoReady.value)
-const canPong = computed(() => !!pending.value && pending.value.kinds.includes('pong'))
-const canKong = computed(() => !!pending.value && pending.value.kinds.includes('kong'))
-const canChi = computed(() => !!pending.value && pending.value.kinds.includes('chi'))
-const canPass = computed(() => !!pending.value)
+/* v2.46.268：在线时「能做什么」由服务端 me.options 说了算，本地 pending 不参与 */
+const canHu = computed(() => (isOnline.value
+  ? optSet.value.has('hu')
+  : ((!!pending.value && pending.value.kinds.includes('hu')) || zimoReady.value)))
+const canPong = computed(() => (isOnline.value ? optSet.value.has('pong') : (!!pending.value && pending.value.kinds.includes('pong'))))
+const canKong = computed(() => (isOnline.value ? optSet.value.has('kong') : (!!pending.value && pending.value.kinds.includes('kong'))))
+const canChi = computed(() => (isOnline.value ? optSet.value.has('chi') : (!!pending.value && pending.value.kinds.includes('chi'))))
+const canPass = computed(() => (isOnline.value ? optSet.value.has('pass') : !!pending.value))
 const canHint = computed(() => canDiscard.value)
 /** 自己回合的暗杠候选（手里 4 张相同的牌） */
 const ankongs = computed(() => (canDiscard.value ? M.findAnkongs(hands.value[0]) : []))
@@ -331,13 +404,23 @@ const overTitle = computed(() => {
 
 /* ---------- 小工具 ---------- */
 function isHuman(s) { return s === 0 }
-function seatName(s) { return SEAT_LABEL[s] }
-function seatAvatar(s) { return isHuman(s) ? '🙂' : (AI_AVATARS[s] || '🤖') }
+/* v2.46.268：座位名/头像跟着「我的座位」走。在线时我可能坐 1/2/3 号位，
+   写死 SEAT_LABEL（0 号叫「你」）会把我自己的铭牌画在别人那侧。 */
+function seatName(s) {
+  const n = props.seatNames?.[s]
+  if (n) return n
+  if (isOnline.value) return s === oSeat.value ? '你' : SEAT_LABEL[s]
+  return SEAT_LABEL[s]
+}
+function seatAvatar(s) {
+  if (isOnline.value) return s === oSeat.value ? '🙂' : (AI_AVATARS[s] || '🤖')
+  return isHuman(s) ? '🙂' : (AI_AVATARS[s] || '🤖')
+}
 function isTurn(s) { return phase.value === 'playing' && turn.value === s && !out.value[s] }
 function seatSub(s) {
   if (out.value[s]) return '已胡'
   if (isTurn(s)) return '出牌中'
-  const n = hands.value[s].length
+  const n = isOnline.value ? (seatCounts.value[s] ?? 0) : hands.value[s].length
   return `${n} 张${melds.value[s].length ? ` · 副露${melds.value[s].length}` : ''}`
 }
 function faceSuit(t) {
@@ -674,15 +757,23 @@ function flatMeldTiles(list) {
 /** 自己回合点手牌即打出（摸到的那张也可打） */
 function pickTile(t) {
   if (!canDiscard.value || !t) return
+  if (isOnline.value) {
+    // 服务端权威：只上报 tile_id（本地不改状态，等 view 回来）
+    emit('act', { type: 'discard', tile_id: t.id })
+    selId.value = null
+    return
+  }
   discardTile(0, t)
 }
 
 function doHuAction() {
+  if (isOnline.value) { emit('act', { type: 'hu' }); return }
   if (pending.value && pending.value.kinds.includes('hu')) { react('hu'); return }
   if (zimoReady.value) doHu(0, null, null, true)
 }
 
 function react(kind) {
+  if (isOnline.value) { emit('act', { type: kind }); return }
   const p = pending.value
   if (!p) return
   if (kind === 'pass') {
@@ -718,6 +809,7 @@ function doHint() {
 /* ---------- AI ---------- */
 function scheduleAI() {
   clearTimeout(aiTimer)
+  if (isOnline.value) return          // 在线：轮到谁由服务端决定，前端不跑 AI
   if (phase.value !== 'playing') return
   if (isHuman(turn.value) || out.value[turn.value]) return
   aiTimer = setTimeout(aiTurn, AI_THINK_MIN + Math.floor(Math.random() * (AI_THINK_MAX - AI_THINK_MIN)))
@@ -773,7 +865,12 @@ function endRound(reason) {
 /* ---------- 生命周期 ---------- */
 onMounted(() => {
   sfx.preload()   // 预热采样
-  startGame()
+  // 在线：状态全部来自服务端投影，绝不本地发牌（否则先亮一手假牌再被覆盖）
+  if (isOnline.value) {
+    if (props.onlineView) syncFromView(props.onlineView)
+  } else {
+    startGame()
+  }
 })
 onBeforeUnmount(() => {
   clearTimeout(aiTimer)
