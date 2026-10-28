@@ -417,8 +417,16 @@ const returnPending = computed(() => isOnline.value && !!props.onlineView?.me?.r
 const returnOptions = computed(() => props.onlineView?.me?.return_options || [])
 const giftPhase = computed(() => (tributePending.value ? 'tribute' : returnPending.value ? 'return' : ''))
 /** 面板提示：进贡/还贡阶段抢占底部操作区 */
+/* 剩余时间按 mm:ss 显示（服务端给的是 5 分钟）。
+   写「300 秒」很像倒计时很短，写成「4:12」才符合直觉；
+   出牌阶段服务端**不设时限**（deadline 只给进贡/还贡），所以这里只在贡牌阶段出现。 */
+const fmtLeft = (sec) => {
+  const s = Math.max(0, Math.round(sec))
+  if (s < 60) return `${s} 秒`
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
 const giftTip = computed(() => {
-  const tail = leftSec.value > 0 ? `（${leftSec.value} 秒后自动代选）` : ''
+  const tail = leftSec.value > 0 ? ` · 剩 ${fmtLeft(leftSec.value)} 会自动代选一张` : ''
   if (tributePending.value) return `进贡：点一张牌交给 ${seatName(tributeTo.value)}（逢人配不能进贡）${tail}`
   if (returnPending.value) return `还贡：点一张 10 及以下的非王牌还回去${tail}`
   return ''
