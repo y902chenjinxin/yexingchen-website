@@ -482,11 +482,13 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 /* 逢人配（红桃级牌）保持原样：靠 .wild 的既有描边 */
 
 /* ================= 手牌工具条（v2.46.239 / 整合 v2.46.261） ================= */
-/* 位置：底栏（自己 HUD bottom:18）上方一行。
+/* 位置：**顶部**（v2.46.263 从底部改上来）。原来 bottom:200 会压住 3D 透视投影后的
+   中央出牌区（探针实测牌被工具条切成两半），而底部又挤着手牌 —— 竖直空间不够。
+   放桌面之上、铭牌之下那把空隙里，既不挡牌也不挡手。
    v2.46.261：把原来右下角的「提示/不要/出牌」并进来，一条搞定所有操作 ——
    选牌类在左、出牌类在右，中间一道细线分组。 */
 .g3d-handtools {
-  position: absolute; left: 50%; bottom: 200px; transform: translateX(-50%); z-index: 22;
+  position: absolute; left: 50%; top: 84px; transform: translateX(-50%); z-index: 22;
   display: flex; flex-wrap: nowrap; justify-content: center; gap: 8px; align-items: center;
   /* 🔴 v2.46.261：absolute + left:50% 的元素，shrink-to-fit 的可用宽度只剩右半边，
      7 个按钮会被挤成两行（实测 820 宽容器里条子只有 410）。必须显式 width: max-content。 */
@@ -514,7 +516,7 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 .g3d-pat.is-ok { color: #ffd977; font-weight: 700; }
 .g3d-pat.is-bad { color: #ff8f8f; }
 @media (max-width: 640px) {
-  .g3d-handtools { bottom: 172px; gap: 5px; padding: 6px 8px; }
+  .g3d-handtools { top: 76px; gap: 5px; padding: 6px 8px; }
   .g3d-pat { min-width: 56px; font-size: 12px; }
   .g3d-btn.sm { padding: 5px 9px; font-size: 12px; }
   .g3d-toolsep { margin: 0 1px; }
@@ -566,6 +568,20 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
   box-shadow: 0 14px 30px -14px rgba(0, 0, 0, .9);
 }
 
+/* ================= 进贡 / 还贡提示（v2.46.263 在线） ================= */
+/* 作为工具条的**第一行**（不是浮层）：绝对定位的浮层在 420 高视口里必然压到牌或手牌，
+   塞进同一条里就只多 26px 高度，谁都不挡。 */
+/* 两行时给一个固定宽度区间：`flex-basis:100%` 会把 max-content 撑成整屏通栏，
+   连左右两侧的对手铭牌都被压住（探针截图看出来的）。 */
+.g3d-handtools.has-tip {
+  flex-wrap: wrap; row-gap: 6px;
+  width: min(560px, calc(100% - 24px));
+}
+.g3d-gifttip {
+  flex: 1 0 100%; margin: 0; padding: 0 2px 6px; text-align: center;
+  font-size: 12.5px; line-height: 1.4; color: #ffd977;
+  border-bottom: 1px solid rgba(233, 200, 119, .28);
+}
 /* ================= 牌型浮现（v2.46.262） ================= */
 /* 3D 桌面上远处的牌看不清，光有语音还不够，出牌瞬间在中央亮一下牌型名。
    炸弹 / 同花顺 / 四大天王走金色，普通牌型墨白。 */

@@ -1,7 +1,7 @@
 <template>
   <div class="g3d-board">
     <!-- 顶栏 -->
-    <header class="g3d-topbar">
+    <header v-if="showTopbar" class="g3d-topbar">
       <div class="g3d-title">
         <span class="g3d-logo">3D</span>
         <div class="g3d-tx">
@@ -11,7 +11,7 @@
       </div>
       <div class="g3d-ops">
         <button class="g3d-op ghost" @click="$emit('exit')">返回</button>
-        <button class="g3d-op" @click="restart">重新开始</button>
+        <button v-if="!isOnline" class="g3d-op" @click="restart">重新开始</button>
       </div>
     </header>
 
@@ -41,11 +41,11 @@
         <!-- 座位铭牌：头像 / 名字 / 积分 分栏 -->
         <!-- v2.46.154：自己的铭牌不再走 3D 世界（手牌占满底部，它必然压牌），改到左下角 HUD -->
         <div
-          v-for="s in OPP_SEATS"
+          v-for="s in oppSeats"
           :key="s"
           class="gt3-seat"
           :class="{ 'is-turn': isTurn(s) }"
-          :style="seatTF(SEAT_SLOT[screenPos(s, 0)])"
+          :style="seatTF(SEAT_SLOT[screenPos(s, povSeat)])"
         >
           <div class="gt3-ava" :style="{ background: seatColors[s] }"><AppIcon :icon="seatAvatar(s)" /></div>
           <div class="gt3-meta">
@@ -81,7 +81,7 @@
             :key="c.id"
             class="pc3d gd-hand mj-center"
             :class="{ wild: isWildCard(c) }"
-            :style="pieceBox(dealt, 52, 74, 12, centerTF(i, 40, CENTER_OFF[screenPos(seat, 0)]), i, false, false)"
+            :style="pieceBox(dealt, 52, 74, 12, centerTF(i, 40, CENTER_OFF[screenPos(seat, povSeat)]), i, false, false)"
           >
             <!-- 出牌区的牌少（一手 1~8 张）、间距大，保留右下角大花色做视觉重心 -->
             <div class="pc-face pc-front card-front" :class="[isRed(c) ? 'red' : 'blk', c.joker ? 'joker' : '']">
@@ -137,7 +137,8 @@
          右下角另有一条（提示 / 不要 / 出牌）—— 视线要来回跳，手机上还容易被手牌挡。
          夜星：「按钮整合到一块，都放在上面。」现在合成一条：选牌类操作在左，
          出牌类操作在右，用一道细线分组，出牌仍是最醒目的那个。 -->
-    <div class="g3d-handtools">
+    <div class="g3d-handtools" :class="{ 'has-tip': !!giftPhase }">
+      <p v-if="giftPhase" class="g3d-gifttip">{{ giftTip }}</p>
       <span
         class="g3d-pat"
         :class="{ 'is-ok': sel.length && canPlay, 'is-bad': sel.length && !canPlay }"
@@ -157,19 +158,26 @@
       >挪右</button>
       <button class="g3d-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
       <span class="g3d-toolsep" aria-hidden="true"></span>
-      <button class="g3d-btn ghost sm" :disabled="!canAct || !target" @click="doPass">不要</button>
-      <button class="g3d-btn primary sm" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
+      <!-- 进贡 / 还贡（在线）：这一阶段不能出牌，把出牌键换成贡牌键 -->
+      <button v-if="giftPhase" class="g3d-btn primary sm" :disabled="!giftCard" @click="doGift">
+        {{ giftPhase === 'tribute' ? '进贡' : '还贡' }}
+      </button>
+      <template v-else>
+        <button class="g3d-btn ghost sm" :disabled="!canAct || !target" @click="doPass">不要</button>
+        <button class="g3d-btn primary sm" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
+      </template>
     </div>
 
+
     <!-- 我：左下角 HUD（屏幕坐标系，不参与 3D 变换） -->
-    <div class="gt3-seat gt3-self" :class="{ 'is-turn': isTurn(0) }">
-      <div class="gt3-ava" :style="{ background: seatColors[0] }"><AppIcon :icon="seatAvatar(0)" /></div>
+    <div class="gt3-seat gt3-self" :class="{ 'is-turn': isTurn(oSeat) }">
+      <div class="gt3-ava" :style="{ background: seatColors[oSeat] }"><AppIcon :icon="seatAvatar(oSeat)" /></div>
       <div class="gt3-meta">
-        <b>{{ seatName(0) }}</b>
-        <i :class="{ turn: isTurn(0) }">{{ seatSub(0) }}</i>
+        <b>{{ isOnline ? '你' : seatName(0) }}</b>
+        <i :class="{ turn: isTurn(oSeat) }">{{ seatSub(oSeat) }}</i>
       </div>
       <div class="gt3-score is-you">
-        <span class="snum">{{ G.levelText(scores[0]) }}</span><span class="slbl">级</span>
+        <span class="snum">{{ G.levelText(scores[oSeat]) }}</span><span class="slbl">级</span>
       </div>
     </div>
 
@@ -188,8 +196,13 @@
         <p>名次：{{ roundResult.order.map(seatName).join(' > ') }}</p>
         <p>升 {{ roundResult.up }} 级 · {{ matchOver ? '整场结束（打过 A）' : '继续下一局' }}</p>
         <div class="ov-acts">
-          <button class="g3d-btn ghost" @click="restart">重新开始</button>
-          <button class="g3d-btn primary" @click="nextRound">再来一局</button>
+          <template v-if="isOnline">
+            <p class="ov-wait">在顶栏点「再来一局」开下一局</p>
+          </template>
+          <template v-else>
+            <button class="g3d-btn ghost" @click="restart">重新开始</button>
+            <button class="g3d-btn primary" @click="nextRound">再来一局</button>
+          </template>
         </div>
       </div>
     </div>
@@ -197,8 +210,11 @@
 </template>
 
 <script setup>
-/* 3D 掼蛋：复用 2D 单机对局循环（components/games/GuandanBoard.vue solo 分支）+ 规则引擎 utils/games/guandan.js。
-   人类固定坐座位 0（HUMAN_SEATS=[0]），1/2/3 为 AI；无任何 online 分支。 */
+/* 3D 掼蛋：两套驱动
+ *  ① 单人练习（默认）：本地 AI 循环，人类固定坐 0 号位（复用 guandan.js 规则引擎）。
+ *  ② 在线对局（v2.46.263）：由 GameTableView 传 online / online-view / online-seat，
+ *     状态全部来自服务端投影（view），出牌/不要/进贡只发动作不改本地状态。
+ *     座位视角跟着自己座位转（povSeat），否则坐在 1/2/3 号位时手牌会画到别人那侧。 */
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as G from '@/utils/games/guandan.js'
 import {
@@ -214,13 +230,39 @@ import { sfx, panOf } from '@/utils/games/sfx'
    TTS 与文案都复用 2D 那套（tts.js 按座位分声、guandanSpeech.js 生成口语）。 */
 import { speak, speakPass } from '@/utils/games/tts'
 import { describePlay } from '@/utils/games/guandanSpeech'
+/* 🔴 样式必须由组件自己引：在线牌桌（GameTableView）是直接异步加载本组件的，
+   而 games3d.css 原来只写在 Games3DView.vue 里 —— 那样在线 3D 会是一堆无样式方块。
+   与 Games3DView 的 import 重复也会被构建去重，不影响单机页。 */
+import '@/assets/styles/games3d.css'
 
-defineEmits(['exit'])
+const props = defineProps({
+  online: { type: Boolean, default: false },
+  onlineView: { type: Object, default: null },
+  onlineSeat: { type: Number, default: 0 },
+  acting: { type: Boolean, default: false },
+  /** 外层（在线牌桌）自带顶栏时传 false，避免两条顶栏叠在一起 */
+  showTopbar: { type: Boolean, default: true },
+  /** 服务端给的操作截止时间（进贡/还贡超时会自动代选） */
+  deadlineAt: { type: String, default: '' },
+  /** 各座位显示名（在线由房间座位表给出；缺省回落到本地默认名） */
+  seatNames: { type: Array, default: null },
+})
+const emit = defineEmits(['exit', 'act'])
+
+/* ---------- 在线模式的基础量 ---------- */
+const isOnline = computed(() => !!props.online)
+/** 我的座位（在线来自服务端，单机固定 0） */
+const oSeat = computed(() => (isOnline.value ? Number(props.onlineSeat ?? 0) : 0))
+/** 视角座位：3D 世界永远把「我」放在下方，其他座位按 (s - pov + 4) % 4 投影 */
+const povSeat = computed(() => oSeat.value)
+/** 桌面上要渲染铭牌的座位（除我以外的三个），顺序稳定 */
+const oppSeats = computed(() => [0, 1, 2, 3].filter(s => s !== oSeat.value))
 
 /* ---------- 常量 ---------- */
 const HUMAN_SEATS = [0]
-/** 对手座位（自己的铭牌走左下角 HUD，不再参与 3D 座位循环） */
-const OPP_SEATS = [1, 2, 3]
+/* 对手座位不写死：在线时「我」可能坐 0/1/2/3 任意位，
+   用 oppSeats（见下行）按我的座位实时算 —— 写死 [1,2,3] 会把我自己的铭牌
+   也画到桌上，还显示成别人的名字（v2.46.263 探针实测发现）。 */
 const AI_AVATARS = { 1: '🐯', 2: '🦊', 3: '🐼' }
 const seatColors = [
   'linear-gradient(160deg,#e9c877,#a9812f)', // 0 你
@@ -248,6 +290,8 @@ const teamLevel = ref([2, 2])
 const roundLevel = ref(2)
 const roundNo = ref(1)
 const hands = ref([[], [], [], []])
+/* 在线：各座位张数（绝对座位）。单机不用，handCount() 会走本地数组 */
+const seatCounts = ref([0, 0, 0, 0])
 const turn = ref(0)
 const target = ref(null)        // { seat, cards, pattern }
 const seatThrows = ref({})
@@ -269,16 +313,137 @@ const pinnedGroups = ref([])
 const rightDocks = ref([])
 
 /* ---------- 派生 ---------- */
-const myLevel = computed(() => teamLevel.value[0])
-const oppLevel = computed(() => teamLevel.value[1])
-const iWon = computed(() => roundResult.value.winTeam === 0)
+/* 队伍口径跟着「我的座位」走（v2.46.263）：在线时我可能坐 1/2/3 号位，
+   原来写死 [0] / [1] 会让顶栏把对手的级数当成我方。 */
+const myTeam = computed(() => G.TEAM_OF[oSeat.value] ?? 0)
+const myLevel = computed(() => teamLevel.value[myTeam.value])
+const oppLevel = computed(() => teamLevel.value[1 - myTeam.value])
+const iWon = computed(() => roundResult.value.winTeam === myTeam.value)
 /** 积分栏：各座位所属队伍当前级数 */
 const scores = computed(() => [0, 1, 2, 3].map(s => teamLevel.value[G.TEAM_OF[s]]))
 const throwSeats = computed(() => Object.keys(seatThrows.value).map(Number))
 const selCards = computed(() => hands.value[0].filter(c => sel.value.includes(c.id)))
 const selPattern = computed(() => G.detectPattern(selCards.value, roundLevel.value))
 const canPlay = computed(() => !!selPattern.value && G.canBeat(selPattern.value, target.value?.pattern ?? null))
-const canAct = computed(() => phase.value === 'playing' && turn.value === 0 && !finished.value.includes(0))
+const canAct = computed(() => phase.value === 'playing' && turn.value === oSeat.value && !finished.value.includes(oSeat.value) && !props.acting)
+
+/* ================= 在线对局（v2.46.263） =================
+ * 服务端权威：所有状态都来自 onlineView，前端只发动作。
+ * 关键约定：**自己的手牌永远写进 hands[0]**，渲染层（handParts / selCards / seqGroups）
+ * 一律读 0 号位 —— 这样不用把 3D 的渲染逻辑改成「按座位取」，只在这里做映射。
+ * 座位号与视角：服务端座位是绝对座位，3D 世界按 povSeat 投影（见上）。
+ */
+/** 服务端牌型 {type,len,key,bomb_level} → 本地引擎格式 {type,len,key,bombLevel} */
+function mapPattern(pub) {
+  if (!pub) return null
+  const p = pub.pattern || pub
+  return {
+    type: p.type,
+    len: p.len ?? (pub.cards?.length || 0),
+    key: p.key,
+    bombLevel: p.bomb_level ?? p.bombLevel ?? 0,
+  }
+}
+
+function syncFromView(v) {
+  if (!v) return
+  const me = v.me || {}
+  /* 🔴 hands 的两个用途必须分开：
+   *   hands[0]     → 只放「我的手牌」（渲染层统一读 0 号位）
+   *   seatCounts   → 绝对座位的张数（座位铭牌用），否则我坐在 2 号位时
+   *                  0 号位对手的张数会被我的手牌顶掉（v2.46.263 踩过）。
+   */
+  const next = hands.value.slice()
+  next[0] = Array.isArray(me.hand) ? me.hand : []
+  hands.value = next
+  dealt.value = true    // 在线没有本地发牌动画：直接展开，否则手牌一直收拢在中央
+  seatCounts.value = [0, 1, 2, 3].map(s => (
+    s === oSeat.value ? (me.hand?.length || 0) : (v.players?.[s]?.hand_count ?? 0)
+  ))
+
+  roundLevel.value = Number(v.level) || roundLevel.value
+  if (Array.isArray(v.team_levels)) teamLevel.value = v.team_levels.slice()
+  roundNo.value = v.round_no || 1
+  turn.value = v.turn ?? 0
+  passCount.value = v.pass_count || 0
+  finished.value = (v.players || []).filter(p => p.finished).map(p => p.seat)
+
+  // 中央出牌区：last_play = 最近一手（谁出的什么），target = 当前需要压的牌
+  const last = v.last_play
+  if (last && last.cards?.length) {
+    const pat = mapPattern(last)
+    seatThrows.value = { [last.seat]: { seat: last.seat, cards: last.cards, pattern: pat } }
+    target.value = { seat: last.seat, cards: last.cards, pattern: pat }
+    // 报牌只在「这一手是新的」时响（轮询 1.6s 一轮，不判重会复读）
+    const key = `${last.seat}:${last.cards.length}:${last.cards[0]?.id}:${last.cards[last.cards.length - 1]?.id}`
+    if (key !== lastPlayKey) {
+      lastPlayKey = key
+      const say = describePlay(last.cards, pat, roundLevel.value)
+      if (say) speak(say, last.seat)
+      showPatFx(pat)
+      sfx.play(panOf(last.seat, povSeat.value), last.cards.length)
+    }
+  } else {
+    seatThrows.value = {}
+    target.value = null
+    lastPlayKey = ''
+  }
+
+  const ph = String(v.phase || '')
+  phase.value = (ph === 'playing' || ph === 'tribute' || ph === 'return') ? 'playing' : 'settled'
+  if (phase.value === 'settled') {
+    const r = v.result || {}
+    const order = r.order || finished.value.slice(0, 4)
+    roundResult.value = {
+      up: r.up ?? 0,
+      winTeam: r.win_team ?? (order.length ? G.TEAM_OF[order[0]] : 0),
+      order,
+    }
+    matchOver.value = !!r.match_over
+  }
+}
+
+let lastPlayKey = ''
+watch(() => props.onlineView, (v) => { if (isOnline.value && v) syncFromView(v) }, { deep: false })
+watch(() => props.online, (on) => {
+  if (on && props.onlineView) syncFromView(props.onlineView)
+})
+
+/* ---------- 进贡 / 还贡（在线） ---------- */
+const tributePending = computed(() => isOnline.value && !!props.onlineView?.me?.tribute_pending)
+const tributeOptions = computed(() => props.onlineView?.me?.tribute_options || [])
+const tributeTo = computed(() => props.onlineView?.me?.tribute_to ?? null)
+const returnPending = computed(() => isOnline.value && !!props.onlineView?.me?.return_pending)
+const returnOptions = computed(() => props.onlineView?.me?.return_options || [])
+const giftPhase = computed(() => (tributePending.value ? 'tribute' : returnPending.value ? 'return' : ''))
+/** 面板提示：进贡/还贡阶段抢占底部操作区 */
+const giftTip = computed(() => {
+  const tail = leftSec.value > 0 ? `（${leftSec.value} 秒后自动代选）` : ''
+  if (tributePending.value) return `进贡：点一张牌交给 ${seatName(tributeTo.value)}（逢人配不能进贡）${tail}`
+  if (returnPending.value) return `还贡：点一张 10 及以下的非王牌还回去${tail}`
+  return ''
+})
+/* 进贡 / 还贡倒计时（在线）：服务端超时会自动代选，得让人看见还剩几秒 */
+const nowTick = ref(Date.now())
+let tickTimer = null
+const leftSec = computed(() => {
+  if (!props.deadlineAt) return 0
+  const t = Date.parse(props.deadlineAt)
+  if (!Number.isFinite(t)) return 0
+  return Math.max(0, Math.round((t - nowTick.value) / 1000))
+})
+const giftCard = computed(() => {
+  if (!giftPhase.value) return null
+  const opts = giftPhase.value === 'tribute' ? tributeOptions.value : returnOptions.value
+  const hit = opts.find(c => c.id === sel.value[0])
+  return hit || null
+})
+function doGift() {
+  const c = giftCard.value
+  if (!c) return
+  emit('act', { type: giftPhase.value, card_id: c.id })
+  sel.value = []
+}
 
 /* ---------- 手牌展示顺序：左区（钉组 + 同花顺组）| 散牌区 ----------
  * 与 2D GuandanBoard.vue 的 handParts 同口径（那边注释里有更详细的历史），规则：
@@ -356,9 +521,16 @@ function cardText(c) { return c.joker ? (c.joker === 'big' ? '大' : '小') : G.
 function cardSuit(c) { return c.joker ? '' : c.suit }
 function isRed(c) { return !c.joker && (c.suit === '♥' || c.suit === '♦') }
 function isWildCard(c) { return G.isWild(c, roundLevel.value) }
-function seatName(s) { return G.SEAT_NAME[s] }
-function seatAvatar(s) { return s === 0 ? '🙂' : (AI_AVATARS[s] || '🤖') }
-function handCount(s) { return hands.value[s].length }
+function seatName(s) {
+  const n = props.seatNames?.[s]
+  if (n) return n
+  return isOnline.value ? `座位 ${s + 1}` : G.SEAT_NAME[s]
+}
+function seatAvatar(s) { return s === oSeat.value ? '🙂' : (AI_AVATARS[s] || '🤖') }
+function handCount(s) {
+  // 在线：张数来自服务端投影（绝对座位）；单机：本地手牌数组
+  return isOnline.value ? (seatCounts.value[s] ?? 0) : hands.value[s].length
+}
 function isTurn(s) { return phase.value === 'playing' && turn.value === s }
 function seatSub(s) {
   if (finished.value.includes(s)) return `第 ${finished.value.indexOf(s) + 1} 名`
@@ -452,7 +624,7 @@ function advance() {
 function applyPlay(seat, cards) {
   const pat = G.detectPattern(cards, roundLevel.value)
   if (!pat) return
-  sfx.play(panOf(seat, 0), cards.length)   // v2.46.261：按张数叠加，一把牌才有「哗啦」的分量
+  sfx.play(panOf(seat, povSeat), cards.length)   // v2.46.261：按张数叠加，一把牌才有「哗啦」的分量
   /* v2.46.262：报具体牌面（「三个三，带对二」）+ 中央浮现牌型名 */
   const say = describePlay(cards, pat, roundLevel.value)
   if (say) speak(say, seat)
@@ -475,7 +647,7 @@ function applyPlay(seat, cards) {
 }
 
 function applyPass(seat) {
-  sfx.pass(panOf(seat, 0))
+  sfx.pass(panOf(seat, povSeat))
   speakPass(seat)   // v2.46.262：报「要不起 / 不要 / 过」，随机台词池
   passCount.value++
   pushHistory({ kind: 'pass', seat })
@@ -515,6 +687,7 @@ let aiTimer = null
 function aiThink() { return AI_THINK_MIN + Math.floor(Math.random() * (AI_THINK_MAX - AI_THINK_MIN)) }
 function scheduleAI() {
   clearTimeout(aiTimer)
+  if (isOnline.value) return          // 在线：轮到谁由服务端决定，前端不跑 AI（v2.46.263）
   if (phase.value !== 'playing') return
   if (HUMAN_SEATS.includes(turn.value)) return
   aiTimer = setTimeout(aiTurn, aiThink())
@@ -682,7 +855,7 @@ function handleTap(id) {
 
 /** 把某一张当单张打出去（双击 / 上滑共用） */
 function playSingleById(id) {
-  if (!canAct.value) return
+  if (!canAct.value || giftPhase.value) return
   const c = hands.value[0].find(x => x.id === id)
   if (!c) return
   const pat = G.detectPattern([c], roundLevel.value)
@@ -693,19 +866,27 @@ function playSingleById(id) {
     return
   }
   sel.value = [id]
+  if (isOnline.value) { emit('act', { type: 'play', card_ids: [id] }); sel.value = []; return }
   applyPlay(0, [c])
 }
 
 function doPlay() {
-  if (!canAct.value) return
+  if (!canAct.value || giftPhase.value) return
   if (!selPattern.value) { toastMsg('这不是合法牌型'); return }
   if (!G.canBeat(selPattern.value, target.value?.pattern ?? null)) { toastMsg('压不过上一手'); return }
+  if (isOnline.value) {
+    // 在线：只发动作，等 view 回来再更新画面（本地改状态会和服务端不一致）
+    emit('act', { type: 'play', card_ids: selCards.value.map(c => c.id) })
+    sel.value = []
+    return
+  }
   applyPlay(0, selCards.value)
 }
 
 function doPass() {
-  if (!canAct.value) return
+  if (!canAct.value || giftPhase.value) return
   if (!target.value) { toastMsg('本轮由你先出，必须出牌'); return }
+  if (isOnline.value) { emit('act', { type: 'pass' }); sel.value = []; return }
   applyPass(0)
 }
 
@@ -800,19 +981,25 @@ function restart() {
  * 视线在牌上时完全察觉不到（夜星：「出牌的声音等等」）。
  * 用 sfx.alert（双音 + 轻震），只在**从别人转到自己**时响，新开局也响一次。 */
 watch(turn, (now, prev) => {
-  if (now !== 0 || phase.value !== 'playing') return
-  if (prev === 0) return
+  if (now !== oSeat.value || phase.value !== 'playing') return
+  if (prev === oSeat.value) return
   sfx.alert()
 })
 
 /* ---------- 生命周期 ---------- */
 onMounted(() => {
   sfx.preload()   // 预热采样，消掉第一手出牌的取包延迟
-  newRound()
+  // 在线：状态全部来自服务端投影，绝不本地发牌（否则先亮出一手假牌再被覆盖）
+  if (isOnline.value) {
+    if (props.onlineView) syncFromView(props.onlineView)
+  } else {
+    newRound()
+  }
   // 手牌手势：move/up 挂 window，划出牌面也不会丢事件
   window.addEventListener('pointermove', onWinMove, { passive: true })
   window.addEventListener('pointerup', onWinUp)
   window.addEventListener('pointercancel', onWinUp)
+  tickTimer = setInterval(() => { nowTick.value = Date.now() }, 1000)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onWinMove)
@@ -821,5 +1008,6 @@ onBeforeUnmount(() => {
   clearTimeout(aiTimer)
   clearTimeout(dealTimer)
   clearTimeout(toastTimer)
+  clearInterval(tickTimer)
 })
 </script>
