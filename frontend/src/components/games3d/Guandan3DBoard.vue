@@ -132,8 +132,11 @@
       <div class="gt3-handbed"></div>
     </div>
 
-    <!-- 手牌工具条（v2.46.239）：牌型识别 / 提示 / 挪左 / 挪右 / 重选
-         2D 板这套工具在「手牌上方」，3D 放在底栏上方一行，视线落点一致。 -->
+    <!-- 手牌工具条（v2.46.239 / 整合 v2.46.261）
+         原来分成两处：牌上方一条（牌型 / 提示 / 挪左 / 挪右 / 重选），
+         右下角另有一条（提示 / 不要 / 出牌）—— 视线要来回跳，手机上还容易被手牌挡。
+         夜星：「按钮整合到一块，都放在上面。」现在合成一条：选牌类操作在左，
+         出牌类操作在右，用一道细线分组，出牌仍是最醒目的那个。 -->
     <div class="g3d-handtools">
       <span
         class="g3d-pat"
@@ -153,13 +156,9 @@
         @click="pinToRight"
       >挪右</button>
       <button class="g3d-btn ghost sm" :disabled="!sel.length" @click="clearSel">重选</button>
-    </div>
-
-    <!-- 操作条 -->
-    <div class="g3d-ctl right">
-      <button class="g3d-btn ghost" :disabled="!canAct" @click="doHint">提示</button>
-      <button class="g3d-btn" :disabled="!canAct || !target" @click="doPass">不要</button>
-      <button class="g3d-btn primary" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
+      <span class="g3d-toolsep" aria-hidden="true"></span>
+      <button class="g3d-btn ghost sm" :disabled="!canAct || !target" @click="doPass">不要</button>
+      <button class="g3d-btn primary sm" :disabled="!canAct || !canPlay" @click="doPlay">出牌</button>
     </div>
 
     <!-- 我：左下角 HUD（屏幕坐标系，不参与 3D 变换） -->
@@ -431,7 +430,7 @@ function advance() {
 function applyPlay(seat, cards) {
   const pat = G.detectPattern(cards, roundLevel.value)
   if (!pat) return
-  sfx.play(panOf(seat, 0))
+  sfx.play(panOf(seat, 0), cards.length)   // v2.46.261：按张数叠加，一把牌才有「哗啦」的分量
   const ids = new Set(cards.map(c => c.id))
   hands.value[seat] = hands.value[seat].filter(c => !ids.has(c.id))
   // 领出者再次领出 = 新一圈，先清掉上一圈的牌

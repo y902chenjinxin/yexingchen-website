@@ -455,17 +455,26 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 }
 /* 逢人配（红桃级牌）保持原样：靠 .wild 的既有描边 */
 
-/* ================= 手牌工具条（v2.46.239） ================= */
-/* 位置：底栏（操作条 bottom:18 / 自己 HUD bottom:18）上方一行。
-   不放在手牌正上方是因为手牌抬起来后位置随牌数变，会撞；固定在这里视线也顺。 */
+/* ================= 手牌工具条（v2.46.239 / 整合 v2.46.261） ================= */
+/* 位置：底栏（自己 HUD bottom:18）上方一行。
+   v2.46.261：把原来右下角的「提示/不要/出牌」并进来，一条搞定所有操作 ——
+   选牌类在左、出牌类在右，中间一道细线分组。 */
 .g3d-handtools {
   position: absolute; left: 50%; bottom: 200px; transform: translateX(-50%); z-index: 22;
-  display: flex; gap: 8px; align-items: center;
+  display: flex; flex-wrap: nowrap; justify-content: center; gap: 8px; align-items: center;
+  /* 🔴 v2.46.261：absolute + left:50% 的元素，shrink-to-fit 的可用宽度只剩右半边，
+     7 个按钮会被挤成两行（实测 820 宽容器里条子只有 410）。必须显式 width: max-content。 */
+  width: max-content; max-width: calc(100% - 24px);
   padding: 7px 12px; border-radius: 14px;
   background: rgba(8, 16, 30, .78);
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, .16);
   box-shadow: 0 14px 34px -16px rgba(0, 0, 0, .85);
+}
+/* 选牌类 / 出牌类之间的分隔线 */
+.g3d-toolsep {
+  flex: none; width: 1px; height: 18px; margin: 0 3px;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .34), transparent);
 }
 .g3d-btn.sm { padding: 6px 13px; font-size: 13px; border-radius: 9px; }
 /* 牌型提示：窄但给一个最小宽度，避免选牌/不选牌时条子左右跳 */
@@ -479,9 +488,17 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 .g3d-pat.is-ok { color: #ffd977; font-weight: 700; }
 .g3d-pat.is-bad { color: #ff8f8f; }
 @media (max-width: 640px) {
-  .g3d-handtools { bottom: 172px; gap: 6px; padding: 6px 8px; }
-  .g3d-pat { min-width: 62px; font-size: 12px; }
+  .g3d-handtools { bottom: 172px; gap: 5px; padding: 6px 8px; }
+  .g3d-pat { min-width: 56px; font-size: 12px; }
   .g3d-btn.sm { padding: 5px 9px; font-size: 12px; }
+  .g3d-toolsep { margin: 0 1px; }
+}
+/* 480 以下的极窄兜底（7 个按钮 + 牌型标签挤不进一行时再收一档） */
+@media (max-width: 520px) {
+  .g3d-handtools { gap: 4px; padding: 5px 6px; }
+  .g3d-pat { min-width: 40px; font-size: 11px; padding: 0 3px; }
+  .g3d-btn.sm { padding: 4px 7px; font-size: 11px; border-radius: 7px; }
+  .g3d-toolsep { display: none; }
 }
 
 /* 左区（钉组 / 同花顺组）标记：牌底一条金色细线，扫一眼就知道这几张是成组的 */
@@ -493,14 +510,8 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
 }
 
 /* ================= 操作条 / 提示 / 结算 ================= */
-/* 操作条靠右下（掼蛋用，v2.46.154）：原来居中 bottom:20 正好压在手牌和「你」的铭牌上 */
-.g3d-ctl.right {
-  left: auto; right: 22px; bottom: 18px; transform: none;
-}
-@media (max-width: 640px) {
-  .g3d-ctl.right { right: 12px; bottom: 12px; }
-}
-
+/* v2.46.261：`.g3d-ctl.right` 那套（掼蛋右下角操作条）已并入 .g3d-handtools，规则删除。
+   剩下的 .g3d-ctl 给麻将等仍用居中底栏的游戏。 */
 .g3d-ctl {
   position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 22;
   display: flex; gap: 10px; align-items: center;

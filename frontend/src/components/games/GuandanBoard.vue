@@ -1251,7 +1251,7 @@ function applyPlay(seat, cards) {
   lastPlay.value = { seat, cards, pattern: pat }
   passCount.value = 0
   pushHistory({ kind: 'play', seat, cards, pattern: pat })
-  sfx.play()
+  sfx.play(0, cards.length)   // v2.46.261：按张数叠加，一把牌才有「哗啦」的分量
   if (hands.value[seat].length === 0 && !finished.value.includes(seat)) {
     finished.value.push(seat)
     firstSeat.value = seat
@@ -1521,7 +1521,7 @@ function doPlay() {
   const pat = selPattern.value
   if (!pat) { toastMsg('这不是合法牌型'); return }
   if (!G.canBeat(pat, target.value?.pattern ?? null)) { toastMsg('压不过上一手'); return }
-  if (isOnline.value) { sfx.play(); actOnline({ type: 'play', card_ids: selCards.value.map(c => c.id) }); return }
+  if (isOnline.value) { sfx.play(0, selCards.value.length); actOnline({ type: 'play', card_ids: selCards.value.map(c => c.id) }); return }
   applyPlay(turn.value, selCards.value)
 }
 function doPass() {

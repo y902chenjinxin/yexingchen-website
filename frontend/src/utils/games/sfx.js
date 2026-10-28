@@ -42,19 +42,48 @@ function ac() {
   return ctx
 }
 
-/** 采样缓存：url → AudioBuffer | null（null=加载失败，不再重试） */
+/** 采样缓存：url → Promise<AudioBuffer|null>（null=加载/解码失败，不再重试） */
 const bufCache = new Map()
+
+/** 解码带超时（v2.46.261）：**这是「出牌没声音」的真正原因**。
+ *
+ *  部分安卓 / 鸿蒙 WebView 不认识 OGG，`decodeAudioData` 既不回调 success 也不回调 error，
+ *  Promise 永远 pending。原来只有「明确失败」才回落到合成音 —— 于是：
+ *  选牌有轻响（纯合成 blip 正常），出牌一声没有（永远等不到 buffer）。
+ *  这里 1.5 秒拿不到就判 null 并缓存，之后该设备永久走合成音，零延迟。 */
+function decodeWithTimeout(ab, ms = 1500) {
+  const a = ctx
+  if (!a) return Promise.resolve(null)
+  return new Promise(resolve => {
+    let done = false
+    const finish = (buf) => {
+      if (done) return
+      done = true
+      clearTimeout(t)
+      resolve(buf || null)
+    }
+    const t = setTimeout(() => finish(null), ms)
+    try {
+      a.decodeAudioData(ab, buf => finish(buf), () => finish(null))
+    } catch {
+      finish(null)
+    }
+  })
+}
 
 function loadSample(url) {
   if (bufCache.has(url)) return bufCache.get(url)
-  const p = ac()?.decodeAudioData
-    ? fetch(url).then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
-      .then(ab => new Promise((res, rej) => {
-        // decodeAudioData 回调式与 Promise 式兼容差异 → 包一层
-        ctx.decodeAudioData(ab, res, rej)
-      }))
-      .catch(() => null)
-    : Promise.resolve(null)
+  const p = (async () => {
+    if (!ac()) return null
+    try {
+      const r = await fetch(url)
+      if (!r.ok) return null
+      const ab = await r.arrayBuffer()
+      return await decodeWithTimeout(ab)
+    } catch {
+      return null
+    }
+  })()
   bufCache.set(url, p)
   return p
 }
@@ -135,13 +164,23 @@ function noiseBurst(pan = 0, delay = 0, dur = 0.05, freq = 3000, q = 1.2, gain =
 }
 
 /** 真实采样播放（v2.46.40）：urls 里随机挑一个变体，±rateJitter 变调 + 声像。
- *  采样未就绪时先播 fallback()（合成音）顶上，同时后台加载，下一发就是真声。 */
-function playSample(urls, pan, { gain = 0.6, rateJitter = 0.06, delay = 0, fallback } = {}) {
+ *  采样未就绪时先播 fallback()（合成音）顶上，同时后台加载，下一发就是真声。
+ *
+ *  v2.46.261：加 timeout 兜底 —— 采样加载/解码挂住时不能「什么都不响」，
+ *  超过 700ms 直接用合成音顶上；真声到位但已经响过的不再补一声（避免双响）。 */
+function playSample(urls, pan, { gain = 0.6, rateJitter = 0.06, delay = 0, fallback, timeout = 700 } = {}) {
   if (muted) return
   const a = ac()
   if (!a) return
   const url = urls[Math.floor(Math.random() * urls.length)]
   const bufP = loadSample(url)
+  let settled = false
+  const useFallback = () => {
+    if (settled) return
+    settled = true
+    if (fallback) fallback()
+  }
+  const timer = setTimeout(useFallback, timeout)
   const startBuf = buf => {
     if (!buf) return
     try {
@@ -165,9 +204,12 @@ function playSample(urls, pan, { gain = 0.6, rateJitter = 0.06, delay = 0, fallb
     } catch { /* 静默 */ }
   }
   Promise.resolve(bufP).then(buf => {
+    clearTimeout(timer)
+    if (settled) return          // 已经用合成音顶过了，不再补一声
+    settled = true
     if (buf) startBuf(buf)
-    else if (fallback) fallback() // 未就绪 / 加载失败：合成音顶一次，加载成功后下次是真声
-  })
+    else if (fallback) fallback()
+  }).catch(() => { clearTimeout(timer); useFallback() })
 }
 
 export function setMuted(v) {  muted = !!v
@@ -188,13 +230,24 @@ export const sfx = {
       playSample(SAMPLES.cardSlide, pan, { gain: 0.38, delay: i * 0.06, fallback: i === 0 ? synthDeal : undefined })
     }
   },
-  /** 出牌（v2.46.40 真实采样）：card-place 随机 4 变体之一（+ 轻触感 10ms） */
-  play(pan = 0) {
-    playSample(SAMPLES.cardPlace, pan, {
-      gain: 0.55,
-      fallback: () => { blip(520, 0.07, 'triangle', 0.055, 0, pan); blip(760, 0.06, 'sine', 0.03, 0.04, pan) },
-    })
-    vibrate(10)
+  /** 出牌（v2.46.40 真实采样）：card-place 随机 4 变体之一（+ 轻触感 10ms）
+   *  v2.46.261：按张数叠加 —— 出一把牌应该是「哗啦」几层，而不是一声。
+   *  count 是本次出的张数（多张错开 55ms、逐渐轻），≥4 张再补一层低频压桌底噪。 */
+  play(pan = 0, count = 1) {
+    const n = Math.max(1, Math.min(5, Math.round(count) || 1))
+    for (let i = 0; i < n; i++) {
+      playSample(SAMPLES.cardPlace, pan, {
+        gain: Math.max(0.22, 0.55 - i * 0.08),
+        delay: i * 0.055,
+        fallback: () => {
+          // 合成兜底也按层给音：单张是清脆「啪」，多张是逐层压低的一串
+          blip(520 - i * 26, 0.07, 'triangle', 0.05, 0, pan)
+          blip(760 - i * 30, 0.055, 'sine', 0.028, 0.035, pan)
+        },
+      })
+    }
+    if (n >= 4) noiseBurst(pan, 0.02, 0.06, 1400, 0.9, 0.05)
+    vibrate(n >= 4 ? 16 : 10)
   },
   /** 麻将牌拍在桌上（v2.46.40 真实采样：autotable 的骨牌落桌录音，CC0）：
    *  ±6% 变调，拍面瞬态是真实录音；采样未就绪时回落 v2.46.26 三层合成。 */
