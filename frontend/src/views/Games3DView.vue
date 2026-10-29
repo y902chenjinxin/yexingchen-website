@@ -11,10 +11,26 @@
     <div v-if="phase === 'lobby'" class="g3d-lobby">
       <div class="g3d-lobby-head">
         <h1>3D 棋牌</h1>
-        <p>选择一款牌局，体验真 3D 透视牌桌</p>
+        <p>四张桌：象棋 / 五子棋 是单人挑战，麻将 / 掼蛋 是四人牌局</p>
       </div>
 
       <div class="g3d-lobby-cards">
+        <!-- 棋类（v2.46.277）：这两张是**单人 vs AI**，不接在线 ——
+             棋类的在线要走服务端权威走子校验，掼蛋那套是牌桌事件流，不是一回事。 -->
+        <button class="g3d-lobby-card" @click="start('xiangqi')">
+          <div class="lc-icon"><AppIcon icon="♟" :size="46" /></div>
+          <span class="lc-name">3D 象棋</span>
+          <div class="lc-desc">标准九路十行 · 红先<br />三档 AI · 悔棋 / 将死提示</div>
+          <span class="lc-go">开局</span>
+        </button>
+
+        <button class="g3d-lobby-card" @click="start('gomoku')">
+          <div class="lc-icon"><AppIcon icon="⚫" :size="46" /></div>
+          <span class="lc-name">3D 五子棋</span>
+          <div class="lc-desc">15 路标准盘 · 无禁手<br />四层搜索 AI · 五连高亮</div>
+          <span class="lc-go">开局</span>
+        </button>
+
         <button class="g3d-lobby-card" @click="start('mahjong')">
           <div class="lc-icon"><AppIcon icon="🀄" :size="46" /></div>
           <span class="lc-name">3D 麻将</span>
@@ -48,7 +64,7 @@
     <!-- 牌局：各自独立的 3D 棋盘（自带顶栏与透明背景） -->
     <component
       v-else
-      :is="game === 'mahjong' ? Mahjong3DBoard : Guandan3DBoard"
+      :is="boardComp"
       @exit="backToLobby"
     />
 
@@ -62,12 +78,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useImmersive } from '@/composables/useImmersive'
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
 import Guandan3DBoard from '@/components/games3d/Guandan3DBoard.vue'
 import Mahjong3DBoard from '@/components/games3d/Mahjong3DBoard.vue'
+import Xiangqi3DBoard from '@/components/games3d/Xiangqi3DBoard.vue'
+import Gomoku3DBoard from '@/components/games3d/Gomoku3DBoard.vue'
 import MyRoomsDrawer from '@/components/games/MyRoomsDrawer.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import '@/assets/styles/games3d.css'
@@ -89,7 +107,16 @@ function syncImmersive() {
 }
 
 const phase = ref('lobby')   // lobby | play
-const game = ref(null)       // 'mahjong' | 'guandan'
+const game = ref(null)       // 'mahjong' | 'guandan' | 'xiangqi' | 'gomoku'
+
+/* 4 张桌按需挂载：牌桌和棋盘是两套完全不同的舞台，不要一次全 import 进来 */
+const BOARDS = {
+  mahjong: Mahjong3DBoard,
+  guandan: Guandan3DBoard,
+  xiangqi: Xiangqi3DBoard,
+  gomoku: Gomoku3DBoard,
+}
+const boardComp = computed(() => BOARDS[game.value] || Guandan3DBoard)
 
 /* 我的牌桌（v2.46.262）：3D 这两张是单人练习，在线对局走 2D 牌桌。
    入口放在大厅，省得夜星再绕回棋牌大厅找房间。 */

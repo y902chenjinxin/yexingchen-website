@@ -630,3 +630,224 @@ html[data-theme="night"] .g3d-root.is-lobby .g3d-lobby-card {
   .g3d-ctl { bottom: 12px; padding: 6px 9px; }
   .g3d-btn { padding: 8px 14px; font-size: 13px; }
 }
+
+/* =====================================================================
+   3D 棋盘（五子棋 / 象棋，v2.46.277）
+   ---------------------------------------------------------------------
+   与牌桌同一套坐标语言：.g3d-stage 给透视、.g3d-world 绕 X 倾斜，
+   板子是「宽 w(X) × 深 h(Y) × 厚 t(Z)」的平躺长方体，
+   所以顶面在 translateZ(t/2)、朝镜头那侧在 rotateX(90) translateZ(h/2)。
+   ===================================================================== */
+
+/* ---------- 板体 ---------- */
+.gk3-slab,
+.xq3-slab { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+.gk3-face,
+.xq3-face { position: absolute; left: 50%; top: 50%; }
+
+.gk3-top,
+.xq3-top {
+  width: var(--w); height: var(--h);
+  transform: translate(-50%, -50%) translateZ(calc(var(--t) / 2));
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 2px rgba(108, 74, 34, .38),
+    inset 0 0 0 11px rgba(255, 255, 255, .07),
+    inset 0 0 52px rgba(92, 58, 18, .26);
+}
+/* 木纹底：五子棋偏榉木（浅），象棋偏红木（深），两者共用结构只换色 */
+.gk3-top {
+  background:
+    radial-gradient(120% 90% at 50% 26%, rgba(255, 255, 255, .17), transparent 64%),
+    linear-gradient(158deg, #dcbf90 0%, #cbaa76 55%, #b18d5b 100%);
+}
+.xq3-top {
+  background:
+    radial-gradient(120% 90% at 50% 26%, rgba(255, 232, 198, .15), transparent 64%),
+    linear-gradient(158deg, #c69a63 0%, #b3844f 55%, #9a6c3c 100%);
+}
+
+/* 四个面：朝镜头那侧 + 左右两侧（底面与背面在 50~54° 视角下永远看不到，不做） */
+.gk3-front,
+.xq3-front {
+  width: var(--w); height: var(--t);
+  transform: translate(-50%, -50%) rotateX(90deg) translateZ(calc(var(--h) / 2));
+  background: linear-gradient(90deg, #7d5a2b 0%, #4d3516 100%);
+  border-radius: 3px;
+}
+.gk3-left,
+.xq3-left {
+  width: var(--t); height: var(--h);
+  transform: translate(-50%, -50%) rotateY(-90deg) translateZ(calc(var(--w) / 2));
+  background: linear-gradient(180deg, #7d5a2b, #452d12);
+}
+.gk3-right,
+.xq3-right {
+  width: var(--t); height: var(--h);
+  transform: translate(-50%, -50%) rotateY(90deg) translateZ(calc(var(--w) / 2));
+  background: linear-gradient(180deg, #7d5a2b, #452d12);
+}
+
+/* ---------- 棋盘线 ---------- */
+.gk3-grid,
+.xq3-grid { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gk3-grid line,
+.xq3-grid line { stroke: rgba(74, 48, 18, .58); stroke-width: 1.2; stroke-linecap: round; }
+.gk3-star { fill: rgba(74, 48, 18, .7); }
+.xq3-river {
+  fill: rgba(74, 48, 18, .42);
+  font-size: 26px;
+  font-family: "Songti SC", "STSong", "SimSun", serif;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* ---------- 五子棋：命中层与棋子 ---------- */
+.gk3-hit {
+  position: absolute; left: 0; top: 0; width: 30px; height: 30px;
+  cursor: pointer;
+}
+.gk3-stone {
+  position: absolute; left: 0; top: 0; width: 29px; height: 29px;
+  transform-style: preserve-3d;
+  /* 落子从高处落下：--bx/--by 由行内给出，动画只改 z 与缩放 */
+  animation: gk3Drop .26s cubic-bezier(.3, 1.5, .5, 1) both;
+}
+@keyframes gk3Drop {
+  from { transform: translate(-50%, -50%) translate3d(var(--bx), var(--by), 150px) rotateX(-90deg) scale(1.55); opacity: .25; }
+  to   { transform: translate(-50%, -50%) translate3d(var(--bx), var(--by), 13px) rotateX(-90deg) scale(1); opacity: 1; }
+}
+.gk3-stone-side,
+.gk3-stone-top { position: absolute; inset: 0; border-radius: 50%; }
+.gk3-stone-side { transform: translateZ(-6px); }
+.gk3-stone.black .gk3-stone-side { background: #04060a; }
+.gk3-stone.white .gk3-stone-side { background: #9b9280; }
+.gk3-stone.black .gk3-stone-top {
+  background: radial-gradient(circle at 36% 28%, #565c66 0%, #2a2f37 38%, #0c0e12 100%);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, .22), 0 0 6px -1px rgba(0, 0, 0, .7);
+}
+.gk3-stone.white .gk3-stone-top {
+  background: radial-gradient(circle at 36% 28%, #ffffff 0%, #f3eee1 42%, #cec6b2 100%);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, .9), 0 0 6px -1px rgba(0, 0, 0, .45);
+}
+/* 最后一手：顶面中心一个金点（rotateX(-90) 之后它就在盘面上，是正圆） */
+.gk3-stone.is-last .gk3-stone-top::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%;
+  background: #ffd977; box-shadow: 0 0 7px rgba(255, 217, 119, .9);
+}
+/* 五连：金色光环 + 呼吸 */
+.gk3-stone.is-win .gk3-stone-top {
+  box-shadow: 0 0 0 2.5px #ffd977, 0 0 16px 2px rgba(255, 217, 119, .75);
+  animation: gk3WinPulse 1.1s ease-in-out infinite;
+}
+@keyframes gk3WinPulse {
+  0%, 100% { box-shadow: 0 0 0 2.5px #ffd977, 0 0 12px 1px rgba(255, 217, 119, .55); }
+  50% { box-shadow: 0 0 0 3px #fff0bd, 0 0 22px 4px rgba(255, 217, 119, .9); }
+}
+
+/* ---------- 象棋：命中层、提示点、棋子 ---------- */
+.xq3-hit {
+  position: absolute; left: 0; top: 0; width: 40px; height: 40px;
+  display: grid; place-items: center; cursor: pointer;
+}
+.xq3-dot {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: rgba(45, 226, 255, .82);
+  box-shadow: 0 0 9px rgba(45, 226, 255, .8);
+  animation: xq3Dot 1.2s ease-in-out infinite;
+}
+@keyframes xq3Dot {
+  0%, 100% { transform: scale(.85); opacity: .75; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+.xq3-piece {
+  position: absolute; left: 0; top: 0; width: 44px; height: 44px;
+  transform-style: preserve-3d;
+  transition: transform .17s cubic-bezier(.3, 1.4, .5, 1);
+}
+.xq3-pc-side,
+.xq3-pc-top { position: absolute; inset: 0; border-radius: 50%; }
+/* 圆柱侧壁：一块沉在下面的深色圆，制造厚度 */
+.xq3-pc-side {
+  transform: translateZ(-8px);
+  background: radial-gradient(circle at 40% 34%, #a67f4a, #6b4a22 70%);
+  box-shadow: 0 0 8px -2px rgba(0, 0, 0, .6);
+}
+.xq3-pc-top {
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 38% 30%, #fbeed3 0%, #ecd9b4 56%, #d8bf92 100%);
+  box-shadow:
+    inset 0 0 0 1.6px rgba(122, 86, 40, .55),
+    inset 0 0 0 4.5px rgba(255, 255, 255, .45),
+    inset 0 -2px 4px rgba(120, 86, 40, .18);
+}
+.xq3-pc-top b {
+  font-family: "Songti SC", "STSong", "SimSun", serif;
+  font-size: 25px; font-weight: 800; line-height: 1;
+  /* 盘面平躺 + 世界 50° 倾斜 → 字被纵向压缩，回补一点才不至于扁掉 */
+  transform: scaleY(1.16);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .55);
+}
+.xq3-piece.red .xq3-pc-top b { color: #b3202a; }
+.xq3-piece.black .xq3-pc-top b { color: #1c1e23; }
+.xq3-piece.red .xq3-pc-top { box-shadow: inset 0 0 0 1.6px rgba(179, 32, 42, .5), inset 0 0 0 4.5px rgba(255, 255, 255, .45), inset 0 -2px 4px rgba(120, 86, 40, .18); }
+/* 选中：金圈 + 抬升（transform 由行内给，这里只补光） */
+.xq3-piece.is-sel .xq3-pc-top { box-shadow: inset 0 0 0 2px #ffd977, 0 0 16px 2px rgba(255, 217, 119, .8); }
+/* 刚走的那一手：底部一圈淡光 */
+.xq3-piece.is-last .xq3-pc-side { box-shadow: 0 0 0 2px rgba(45, 226, 255, .55), 0 0 12px rgba(45, 226, 255, .45); }
+
+/* ---------- 终局震动 ---------- */
+.gk3-slab.is-shake,
+.xq3-slab.is-shake { animation: g3dBoardShake .6s ease-in-out; }
+@keyframes g3dBoardShake {
+  0%, 100% { margin-left: 0; }
+  12% { margin-left: -7px; }
+  28% { margin-left: 6px; }
+  44% { margin-left: -5px; }
+  62% { margin-left: 4px; }
+  80% { margin-left: -2px; }
+}
+
+/* ---------- 座位头像（这两张桌只有 2 人，不需要掼蛋那套配色表） ---------- */
+.gt3-ava.ai { background: linear-gradient(150deg, #4a5568, #2d3748); }
+.gt3-ava.me { background: linear-gradient(150deg, #b98b5a, #8a6534); }
+
+@media (max-width: 640px) {
+  .xq3-pc-top b { font-size: 22px; }
+  .gk3-hit { width: 26px; height: 26px; }
+  .xq3-hit { width: 34px; height: 34px; }
+}
+
+/* ---------- 大厅：四张桌后的矮屏适配（v2.46.277） ----------
+   2×2 排布在 390 高的手机横屏里会顶到边，矮屏下收掉副标题与卡片描述，
+   一行图标 + 名字就够认；竖屏/桌面保持完整样子。 */
+.g3d-lobby { overflow-y: auto; }
+@media (max-height: 560px) {
+  .g3d-lobby { justify-content: flex-start; gap: 16px; padding: 16px; }
+  .g3d-lobby-head p { display: none; }
+  .g3d-lobby-head h1 { font-size: 22px; }
+  .g3d-lobby-card { width: 196px; padding: 14px 12px 12px; border-radius: 16px; }
+  .g3d-lobby-card .lc-desc { display: none; }
+  .g3d-lobby-card .lc-icon { margin-bottom: 6px; }
+  .g3d-lobby-online { margin-top: 0; }
+}
+
+/* 棋类结算浮层（v2.46.277）
+   掼蛋/麻将结束时桌面没有信息价值，全屏压暗没问题；棋类正相反 ——
+   玩家最想看的就是「五连连在哪 / 怎么被将死」，所以遮罩压到很淡。
+   （浮层本身还延迟 0.9s 出现，先让高亮呼吸一轮。） */
+.g3d-over.is-chess { background: rgba(4, 8, 16, .28); backdrop-filter: blur(1.5px); }
+.g3d-over.is-chess .ov-card { min-width: 264px; padding: 20px 24px; }
+.g3d-over.is-chess .ov-card h2 { font-size: 20px; }
+
+/* 3D 棋盘顶栏窄屏（v2.46.277）
+   400 宽竖屏下「3D 象棋」+ 四个按钮放不进一行，标题被挤成两行、按钮掉到第二排。
+   做法：窄屏收掉标题文字（只留左边那块 3D 徽标），按钮 padding 收紧。 */
+@media (max-width: 560px) {
+  .g3d-board .g3d-title .g3d-tx { display: none; }
+  .g3d-board .g3d-ops { flex-wrap: nowrap; gap: 6px; }
+  .g3d-board .g3d-op { padding: 7px 10px; font-size: 12.5px; }
+}

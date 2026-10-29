@@ -94,3 +94,33 @@ export const SEAT_SLOT = [
   { pos: [0, -318], lift: 96 },  // 2 上
   { pos: [-392, 0], lift: 80 },  // 3 左
 ]
+
+/** 棋类棋盘的世界变换（v2.46.277）
+ *
+ * 与牌桌的区别：牌桌 4 人围坐、桌面铺满视野；棋盘只有一块，必须整块装进视口，
+ * 否则边角的子会被顶栏或左下 HUD 吃掉。
+ *
+ * 横屏用固定 scale（实测标定：象棋 .78 时底边 338，正好避开 HUD 的 348）。
+ * 竖屏不能沿用 —— 竖屏的瓶颈是**宽度**，不是高度。实测 400 宽时沿用 0.96
+ * 会把 516 宽的棋盘投成 577，左右各溢出 88px。所以竖屏按视口宽反算：
+ *   可见宽 ≈ boardW × scale × PERSPECTIVE_GAIN（透视会放大近处约 1.16 倍）
+ * 旋到 92% 视口宽，剩下的留给圆角与安全区。
+ */
+const PERSPECTIVE_GAIN = 1.16
+export function boardWorld(deg, boardW, scaleLand, scalePort) {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 720
+  const portrait = vh > vw
+  const fit = (vw * 0.92) / (boardW * PERSPECTIVE_GAIN)
+  const s = portrait ? Math.min(scalePort ?? 1, fit) : scaleLand
+  /* 竖屏把倾角放平 8°：横屏纵向只有 420，倾斜越大越省高度；
+     竖屏反过来 —— 高度富裕、宽度吃紧，角度放平能让棋盘纵向从 212 长到约 300，
+     否则 820 高的屏幕上只有一小块悬在中间。 */
+  const d = portrait ? deg - 8 : deg
+  return {
+    tf: `rotateX(${d}deg) scale3d(${s},${s},${s})`,
+    top: portrait ? '50%' : '47.5%',
+    portrait,
+    scale: Number(s.toFixed(3)),
+  }
+}
