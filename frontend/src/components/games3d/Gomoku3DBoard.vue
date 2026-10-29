@@ -7,13 +7,21 @@
         <span class="g3d-logo">3D</span>
         <div class="g3d-tx">
           <b>3D 五子棋</b>
-          <i>电脑 {{ count.white }} 子 · {{ over ? '已结束' : (thinking ? '思考中…' : (turn === BLACK ? '轮到你走' : '轮到电脑')) }}</i>
+          <i v-if="online">{{ onlineHint }}</i>
+          <i v-else>电脑 {{ count.white }} 子 · {{ over ? '已结束' : (thinking ? '思考中…' : (turn === BLACK ? '轮到你走' : '轮到电脑')) }}</i>
         </div>
       </div>
       <div class="g3d-ops">
-        <button class="g3d-op ghost" title="点击切换难度" @click="cycleDiff">{{ diffLabel }}</button>
-        <button class="g3d-op ghost" :disabled="!canUndo" @click="undo">悔棋</button>
-        <button class="g3d-op" @click="restart">重开</button>
+        <template v-if="!online">
+          <button class="g3d-op ghost" title="点击切换难度" @click="cycleDiff">{{ diffLabel }}</button>
+          <button class="g3d-op ghost" :disabled="!canUndo" @click="undo">悔棋</button>
+          <button class="g3d-op" @click="restart">重开</button>
+        </template>
+        <template v-else>
+          <button v-if="!room" class="g3d-op primary" @click="panelOpen = true">邀人对局</button>
+          <button v-else-if="canUndoOnline" class="g3d-op ghost" @click="undoOnline">悔棋（余 {{ room.undo_left ?? gRoom.undoLeft.value }}）</button>
+          <button v-if="room" class="g3d-op ghost" @click="leaveRoom">退出对局</button>
+        </template>
         <button class="g3d-op ghost" @click="$emit('exit')">返回</button>
       </div>
     </header>
@@ -82,6 +90,27 @@
       </div>
     </div>
 
+    <!-- 在线邀请面板：只在「在线模式且还没房间」时出现，盖在棋盘上方居中 -->
+    <div v-if="online && panelOpen && !room" class="g3d-invite">
+      <div class="g3d-invite-card">
+        <h3>在线邀请对战</h3>
+        <p>选一位家人发出邀请，对方接受后进入对局。落子自动同步，约 2 秒可见。</p>
+        <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
+        <div class="g3d-invite-row">
+          <span>先手</span>
+          <button class="g3d-op ghost" :class="{ on: firstPick === 'me' }" @click="firstPick = 'me'">我执黑</button>
+          <button class="g3d-op ghost" :class="{ on: firstPick === 'other' }" @click="firstPick = 'other'">对方执黑</button>
+        </div>
+        <div class="g3d-invite-acts">
+          <button class="g3d-btn ghost" @click="panelOpen = false">取消</button>
+          <button class="g3d-btn primary" :disabled="!inviteeId || joining" @click="invite">
+            {{ joining ? '创建中…' : '发出邀请' }}
+          </button>
+        </div>
+        <p v-if="!families.length" class="g3d-invite-tip">家庭里还没有其他账号可以邀请。</p>
+      </div>
+    </div>
+
     <div v-if="toast" class="g3d-toast">{{ toast }}</div>
 
     <!-- 结算：延迟 0.9s 才弹，先让五连的金色呼吸高亮被看见（v2.46.277） -->
@@ -111,16 +140,27 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { boxVars, boardWorld } from './use3dTable'
 import { sfx } from '@/utils/games/sfx'
-import { BLACK, WHITE, EMPTY, SIZE, checkWinFrom, bestMove } from '@/utils/games/gomokuAI'
+import { runAI, invalidateAI } from '@/composables/useAiWorker'
+import { useGameRoom } from '@/composables/useGameRoom'
+import { familyMembers } from '@/api/lifeExtra'
+import { gameRoomsApi } from '@/api/gameRooms'
+import MemberPicker from '@/components/games/MemberPicker.vue'
+import { ElMessage } from 'element-plus'
+import { BLACK, WHITE, EMPTY, SIZE, checkWinFrom } from '@/utils/games/gomokuAI'
 import AppIcon from '@/components/common/AppIcon.vue'
 /* 样式由组件自己引：别的入口（棋类大厅直达）不经过 Games3DView，
    否则在线/直达场景会渲染成一堆无样式方块（v2.46.263 踩过） */
 import '@/assets/styles/games3d.css'
 
-defineProps({
+const props = defineProps({
   showTopbar: { type: Boolean, default: true },
+  /** 在线对局（走 game_rooms 事件流，对手是真人） */
+  online: { type: Boolean, default: false },
+  /** 从「我的棋局」点进来时带房间号，挂载即加入 */
+  joinRoomId: { type: Number, default: 0 },
 })
 defineEmits(['exit'])
+const online = computed(() => props.online)
 
 /* ---------- 几何 ---------- */
 const CELL = 32                              // 格距
@@ -208,8 +248,13 @@ function say(t) {
 /* ---------- 落子 ---------- */
 function play(i) {
   if (over.value || thinking.value) return
-  if (turn.value !== BLACK) { say('等电脑落子'); return }
   if (board.value[i]) return
+  if (online.value) {
+    if (!onlineMyTurn.value) { say('还没轮到你'); return }
+    drop(i, myColorCode.value, false)
+    return
+  }
+  if (turn.value !== BLACK) { say('等电脑落子'); return }
   drop(i, BLACK)
 }
 
@@ -217,7 +262,7 @@ function drop(i, color) {
   board.value[i] = color
   history.value.push(i)
   lastIdx.value = i
-  sfx.stone()
+  if (!replaying) sfx.stone()
 
   const line = checkWinFrom(board.value, i, color)
   if (line) {
@@ -225,7 +270,12 @@ function drop(i, color) {
     winner.value = color
     over.value = true
     thinking.value = false
-    sfx.win()
+    if (!replaying) sfx.win()
+    /* 在线：由我方判定胜负后上报服务端（五子棋服务端也会重放校验，双保险） */
+    if (online.value && !replaying && color === myColorCode.value) {
+      const uid = Number(gRoom.myUserId.value)
+      if (uid) gRoom.finish(uid).catch(() => {})
+    }
     shake.value = true
     clearTimeout(shakeTimer)
     shakeTimer = setTimeout(() => { shake.value = false }, 620)
@@ -242,19 +292,135 @@ function drop(i, color) {
   }
 
   turn.value = color === BLACK ? WHITE : BLACK
+  /* 在线：落子要上报，但不跑本地 AI（对手是真人） */
+  if (online.value) {
+    if (!replaying && color === myColorCode.value) gRoom.send({ idx: i }).catch(() => {})
+    return
+  }
   if (turn.value === WHITE) scheduleAI()
 }
 
 function scheduleAI() {
   clearTimeout(aiTimer)
   thinking.value = true
-  /* 先让浏览器把这一手画出来再算 —— AI 在主线程，同步搜索会把落子动画卡住 */
-  aiTimer = setTimeout(() => {
-    const i = bestMove(board.value, depth())
+  /* v2.46.278：搜索搬进 Web Worker。原来在主线程跑 depth 4，
+     点完到落子之间整页卡 0.5~1.5 秒（夜星：「忍不了」）。
+     先等 140ms 让这一手先画出来，再派给 worker。
+     棋盘必须拷贝成普通数组 —— postMessage 不认 reactive proxy。 */
+  aiTimer = setTimeout(async () => {
+    const i = await runAI('gomoku', { board: [...board.value], depth: depth() })
     thinking.value = false
-    if (i < 0 || board.value[i]) return
+    /* i === null 表示这次计算被作废（重开/悔棋），或者算失败 —— 都不能落子 */
+    if (i == null || i < 0 || board.value[i]) return
     drop(i, WHITE)
   }, 140)
+}
+
+/* ================= 在线对局（v2.46.278） =================
+ * 服务端是 game_rooms 的事件流：进房时 join() 会把**全部历史**重放一遍
+ * （自己和对手的都在里面），所以这里不能按「现在轮到我」过滤，
+ * 必须按 userId 归色重放，否则恢复回来的棋盘会缺子。
+ * 坐标：服务端就是 15×15 扁平下标，与 3D 棋盘完全一致，不需要任何映射。
+ */
+const families = ref([])
+const inviteeId = ref(null)
+const firstPick = ref('me')
+const panelOpen = ref(false)
+const joining = ref(false)
+let replaying = false     // 重放期间静音 + 不上报
+
+const room = computed(() => gRoom.room.value)
+const myColorCode = computed(() => (gRoom.mySeat.value === 'white' ? WHITE : BLACK))
+const onlineMyTurn = computed(() => gRoom.status.value === 'playing' && gRoom.myTurn.value)
+const canUndoOnline = computed(() => gRoom.status.value === 'playing' && !over.value && gRoom.undoPlies.value > 0)
+
+const onlineHint = computed(() => {
+  if (!room.value) return '还没开局 · 点右上「邀人对局」'
+  const st = gRoom.status.value
+  const who = gRoom.opponentName.value || '对方'
+  if (st === 'waiting') return `等「${who}」接受邀请…`
+  if (st === 'playing') {
+    return gRoom.myTurn.value
+      ? `轮到你（${myColorCode.value === BLACK ? '黑' : '白'}）`
+      : `等「${who}」落子…`
+  }
+  return '对局已结束'
+})
+
+/** 按服务端座位表把 userId 换算成颜色（重放与实时都走这里） */
+function seatColorOf(userId) {
+  const blackId = room.value?.black_user_id
+  if (blackId == null || userId == null) return BLACK
+  return Number(userId) === Number(blackId) ? BLACK : WHITE
+}
+
+function onRemoteMove(action, userId) {
+  if (!action) return
+  if (action.undo) {
+    const plies = action.undo === 2 ? 2 : 1
+    for (let k = 0; k < plies; k++) {
+      const i = history.value.pop()
+      if (typeof i === 'number') board.value[i] = EMPTY
+    }
+    over.value = false
+    showResult.value = false
+    winner.value = 0
+    winLine.value = []
+    lastIdx.value = history.value.length ? history.value[history.value.length - 1] : -1
+    turn.value = seatColorOf(userId)
+    return
+  }
+  const i = action.idx
+  if (typeof i !== 'number' || i < 0 || i >= SIZE * SIZE) return
+  if (board.value[i]) return
+  drop(i, seatColorOf(userId))
+}
+
+function onRoomStatus(st) {
+  if (st?.status !== 'finished') return
+  over.value = true
+  thinking.value = false
+  const uid = Number(gRoom.myUserId.value)
+  if (!st.winner_id) { winner.value = 0; return }
+  winner.value = Number(st.winner_id) === uid ? myColorCode.value : (myColorCode.value === BLACK ? WHITE : BLACK)
+  const reason = gRoom.endReason.value || room.value?.end_reason || ''
+  if (Number(st.winner_id) === uid && (reason === 'leave' || reason === 'timeout')) {
+    ElMessage.info(reason === 'timeout' ? '对方已掉线，对局结束' : '对方已离开，对局结束')
+  }
+  showResult.value = true
+}
+
+const gRoom = useGameRoom('gomoku', { onRemoteMove, onStatus: onRoomStatus })
+
+async function loadFamilies() {
+  try {
+    const res = await familyMembers()
+    families.value = (res?.data?.list || []).filter(m => m.user_id && Number(m.user_id) !== Number(gRoom.myUserId.value))
+  } catch { families.value = [] }
+}
+
+async function invite() {
+  if (!inviteeId.value) { ElMessage.warning('先选一位家人'); return }
+  joining.value = true
+  try {
+    await gRoom.createInvite(inviteeId.value, firstPick.value)
+    panelOpen.value = false
+    ElMessage.success('邀请已发出，等对方接受')
+  } catch (e) {
+    ElMessage.warning(e?.response?.data?.detail || e?.msg || '邀请失败')
+  } finally {
+    joining.value = false
+  }
+}
+
+function leaveRoom() {
+  gRoom.resign().catch(() => {})
+  gRoom.reset()
+  restart()
+}
+
+async function undoOnline() {
+  try { await gRoom.undo() } catch { /* 服务端会拒绝并给原因，下一轮轮询自然对齐 */ }
 }
 
 /* ---------- 操作 ---------- */
@@ -267,6 +433,7 @@ function cycleDiff() {
 function undo() {
   if (!canUndo.value) return
   clearTimeout(aiTimer)
+  invalidateAI()
   thinking.value = false
   /* 单机每轮是 黑→白，所以撤到「轮到黑」为止：
      最后一手是白就撤两手，否则撤一手。 */
@@ -289,6 +456,7 @@ function undo() {
 function restart() {
   clearTimeout(aiTimer)
   clearTimeout(resultTimer)
+  invalidateAI()
   thinking.value = false
   board.value = new Array(SIZE * SIZE).fill(EMPTY)
   history.value = []
@@ -301,12 +469,34 @@ function restart() {
   toast.value = ''
 }
 
-onMounted(() => {
+onMounted(async () => {
   sfx.preload()
   window.addEventListener('resize', onResize)
   window.addEventListener('orientationchange', onResize)
+  if (!online.value) return
+  await loadFamilies()
+  if (props.joinRoomId) {
+    replaying = true
+    try { await gRoom.join(props.joinRoomId, { autoAccept: true }) } catch { /* 房间可能已结束 */ }
+    replaying = false
+    return
+  }
+  /* 没有指定房间：接回进行中的那局（刷新/换设备不丢） */
+  try {
+    const res = await gameRoomsApi.mine()
+    const active = (res?.data?.list || []).find(x => x.game === 'gomoku' && ['waiting', 'playing'].includes(x.status))
+    if (active) {
+      replaying = true
+      await gRoom.join(active.id, { autoAccept: active.status === 'playing' })
+      replaying = false
+      ElMessage.success(`已接回与「${gRoom.opponentName.value}」的对局`)
+      return
+    }
+  } catch { /* 没有进行中的对局 */ }
+  panelOpen.value = true
 })
 onBeforeUnmount(() => {
+  invalidateAI()
   window.removeEventListener('resize', onResize)
   window.removeEventListener('orientationchange', onResize)
   clearTimeout(aiTimer)
@@ -316,5 +506,5 @@ onBeforeUnmount(() => {
 })
 
 /* 本地渲染探针用：直接摆一个局面，省得手点 20 手 */
-defineExpose({ board, history, drop, restart })
+defineExpose({ board, history, drop, restart, setDiff: (k) => { diff.value = k }, getDiff: () => diff.value })
 </script>

@@ -165,11 +165,12 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import { familyMembers } from '@/api/lifeExtra'
 import { loadGame, saveGame, clearGame } from '@/utils/gameSave'
 import { sfx } from '@/utils/games/sfx'
+import { runAI, invalidateAI } from '@/composables/useAiWorker'
 import confettiPieces from '@/utils/games/confetti'
 import {
   COLS, ROWS, RED, BLACK, GLYPH,
   xOf, yOf, other,
-  initialBoard, pieceTargets, findGeneral, applyMove, inCheck, legalMoves, aiPick,
+  initialBoard, pieceTargets, findGeneral, applyMove, inCheck, legalMoves,
 } from '@/utils/xiangqiRules'
 
 const emit = defineEmits(['room-lock', 'room-unlock', 'exit'])
@@ -421,11 +422,13 @@ function triggerMateFx() {
 function scheduleAI() {
   thinking.value = true
   clearTimeout(timer)
-  timer = setTimeout(() => {
+  timer = setTimeout(async () => {
     const depth = mode.value === 'hard' ? 5 : 2   // v2.46.31：迭代加深+置换表后 hard 拉到 5 层（1.2s 预算内）
-    const m = aiPick(board.value, aiSide.value, depth)
+    /* v2.46.278：搬进 Worker —— 原来这 1.2 秒里页面是僵的（3D 版抱怨「忍不了」，
+       平面版同一份 aiPick，卡的程度一样） */
+    const m = await runAI('xiangqi', { board: [...board.value], side: aiSide.value, depth })
     thinking.value = false
-    if (!m) return
+    if (!m) return                // null = 被作废（重开/悔棋）或算失败
     doMove(m.from, m.to)      // 统一走 doMove：轮次/将军/终局判定与动效都在里面
   }, 260)
 }
@@ -721,6 +724,7 @@ function setMode(k) {
   if (k === 'online') loadFamilies()
 }
 function restart() {
+  invalidateAI()
   if (mode.value === 'online') { ElMessage.info('在线模式请用「再来一局」或「退出对局」'); return }
   clearTimeout(saveTimer)
   clearGame(SAVE_KEY)

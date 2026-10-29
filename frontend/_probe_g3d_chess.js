@@ -7,11 +7,15 @@
  * 暴露 window.__probe.{ ref, setup, describe } 供 playwright 调用。
  */
 import { createApp, h, ref, onMounted } from 'vue'
+import { createPinia } from 'pinia'
 import Xiangqi3DBoard from '@/components/games3d/Xiangqi3DBoard.vue'
 import Gomoku3DBoard from '@/components/games3d/Gomoku3DBoard.vue'
 import '@/assets/styles/games3d.css'
 
-const which = new URLSearchParams(location.search).get('g') === 'gomoku' ? 'gomoku' : 'xiangqi'
+const qs = new URLSearchParams(location.search)
+const which = qs.get('g') === 'gomoku' ? 'gomoku' : 'xiangqi'
+/** 在线模式：没有登录态时后端会 401，正好验证「邀请面板」的渲染与布局 */
+const onlineMode = qs.get('online') === '1'
 const comp = which === 'gomoku' ? Gomoku3DBoard : Xiangqi3DBoard
 const boardRef = ref(null)
 
@@ -68,6 +72,42 @@ const App = {
           const after = document.querySelectorAll(which === 'gomoku' ? '.gk3-stone' : '.xq3-piece').length
           return `点击 ${sel}：${before} → ${after}`
         },
+        /** 测 AI：真实走一步，量「耗时」和「期间主线程还画了多少帧」。
+         *  主线程被同步搜索占住时帧数会掉到个位数；Worker 正常 40+ 帧。
+         *  象棋从「选中马」之后的落点开始走，否则点的只是选子不算一手。 */
+        async measureAI() {
+          const isG = which === 'gomoku'
+          const sel = isG ? '.gk3-stone' : '.xq3-piece'
+          const before = document.querySelectorAll(sel).length
+          const target = document.querySelector(isG ? '.gk3-hit' : '.xq3-hit')
+          if (!target) return { error: 'no target to click' }
+          const t0 = performance.now()
+          let frames = 0
+          let run = true
+          const tick = () => { if (run) { frames++; requestAnimationFrame(tick) } }
+          requestAnimationFrame(tick)
+          target.click()
+          await new Promise(r => setTimeout(r, 100))   // 让「思考中」先亮起来
+          let done = false
+          while (performance.now() - t0 < 8000) {
+            await new Promise(r => setTimeout(r, 40))
+            if (isG) {
+              if (document.querySelectorAll(sel).length >= before + 2) { done = true; break }
+            } else {
+              const t = document.querySelector('.g3d-title i')?.textContent || ''
+              if (t.includes('轮到') && !t.includes('思考')) { done = true; break }
+            }
+          }
+          run = false
+          return { ms: Math.round(performance.now() - t0), frames, done }
+        },
+        /** 切到困难档：直接调组件的 setDiff（点按钮会循环，很难点准） */
+        setHard() {
+          const vm = boardRef.value
+          if (!vm?.setDiff) return 'no setDiff'
+          vm.setDiff('hard')
+          return vm.getDiff ? vm.getDiff() : 'hard'
+        },
         describe() {
           const q = s => document.querySelector(s)
           const rect = el => {
@@ -103,8 +143,10 @@ const App = {
         },
       }
     })
-    return () => h(comp, { ref: boardRef, showTopbar: true })
+    return () => h(comp, { ref: boardRef, showTopbar: true, online: onlineMode })
   },
 }
 
-createApp(App).mount(document.getElementById('probe'))
+/* useGameRoom 内部要用 auth store（拿当前用户 id），探针必须装 pinia，
+   否则组件一挂载就报 getActivePinia —— 真实应用在 main.js 里已经 use 过了 */
+createApp(App).use(createPinia()).mount(document.getElementById('probe'))

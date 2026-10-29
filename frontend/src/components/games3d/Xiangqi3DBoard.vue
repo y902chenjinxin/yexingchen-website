@@ -6,13 +6,21 @@
         <span class="g3d-logo">3D</span>
         <div class="g3d-tx">
           <b>3D 象棋</b>
-          <i>电脑 {{ alive.black }} 子 · {{ statusText }}</i>
+          <i v-if="online">{{ onlineHint }}</i>
+          <i v-else>电脑 {{ alive.black }} 子 · {{ statusText }}</i>
         </div>
       </div>
       <div class="g3d-ops">
-        <button class="g3d-op ghost" title="点击切换难度" @click="cycleDiff">{{ diffLabel }}</button>
-        <button class="g3d-op ghost" :disabled="!canUndo" @click="undo">悔棋</button>
-        <button class="g3d-op" @click="restart">重开</button>
+        <template v-if="!online">
+          <button class="g3d-op ghost" title="点击切换难度" @click="cycleDiff">{{ diffLabel }}</button>
+          <button class="g3d-op ghost" :disabled="!canUndo" @click="undo">悔棋</button>
+          <button class="g3d-op" @click="restart">重开</button>
+        </template>
+        <template v-else>
+          <button v-if="!room" class="g3d-op primary" @click="panelOpen = true">邀人对局</button>
+          <button v-else-if="canUndoOnline" class="g3d-op ghost" @click="undoOnline">悔棋（余 {{ gRoom.undoLeft.value }}）</button>
+          <button v-if="room" class="g3d-op ghost" @click="leaveRoom">退出对局</button>
+        </template>
         <button class="g3d-op ghost" @click="$emit('exit')">返回</button>
       </div>
     </header>
@@ -93,6 +101,27 @@
       </div>
     </div>
 
+    <!-- 在线邀请面板（未建房时） -->
+    <div v-if="online && panelOpen && !room" class="g3d-invite">
+      <div class="g3d-invite-card">
+        <h3>在线邀请对战</h3>
+        <p>选一位家人发出邀请，对方接受后进入对局。走子自动同步，约 2 秒可见。</p>
+        <MemberPicker v-model="inviteeId" :members="families" placeholder="选择一位家人…" />
+        <div class="g3d-invite-row">
+          <span>先手</span>
+          <button class="g3d-op ghost" :class="{ on: firstPick === 'me' }" @click="firstPick = 'me'">我执红</button>
+          <button class="g3d-op ghost" :class="{ on: firstPick === 'other' }" @click="firstPick = 'other'">对方执红</button>
+        </div>
+        <div class="g3d-invite-acts">
+          <button class="g3d-btn ghost" @click="panelOpen = false">取消</button>
+          <button class="g3d-btn primary" :disabled="!inviteeId || joining" @click="invite">
+            {{ joining ? '创建中…' : '发出邀请' }}
+          </button>
+        </div>
+        <p v-if="!families.length" class="g3d-invite-tip">家庭里还没有其他账号可以邀请。</p>
+      </div>
+    </div>
+
     <div v-if="toast" class="g3d-toast">{{ toast }}</div>
 
     <div v-if="showResult" class="g3d-over is-chess">
@@ -123,17 +152,26 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { boxVars, boardWorld } from './use3dTable'
 import { sfx } from '@/utils/games/sfx'
+import { runAI, invalidateAI } from '@/composables/useAiWorker'
+import { useGameRoom } from '@/composables/useGameRoom'
+import { familyMembers } from '@/api/lifeExtra'
+import { gameRoomsApi } from '@/api/gameRooms'
+import MemberPicker from '@/components/games/MemberPicker.vue'
+import { ElMessage } from 'element-plus'
 import {
   COLS, ROWS, RED, BLACK, GLYPH,
-  xOf, yOf, initialBoard, pieceTargets, applyMove, aiPick, inCheck, legalMoves, other,
+  xOf, yOf, initialBoard, pieceTargets, applyMove, inCheck, legalMoves, other,
 } from '@/utils/xiangqiRules'
 import AppIcon from '@/components/common/AppIcon.vue'
 import '@/assets/styles/games3d.css'
 
-defineProps({
+const props = defineProps({
   showTopbar: { type: Boolean, default: true },
+  online: { type: Boolean, default: false },
+  joinRoomId: { type: Number, default: 0 },
 })
 defineEmits(['exit'])
+const online = computed(() => props.online)
 
 /* ---------- 几何 ---------- */
 const CELL_X = 56
@@ -229,10 +267,125 @@ function say(t) {
   toastTimer = setTimeout(() => { toast.value = '' }, 1400)
 }
 
+/* ================= 在线对局（v2.46.278） =================
+ * 服务端 game_rooms 只存 {from,to} 事件、不重放校验（象棋规则比五子棋复杂得多），
+ * 胜负由客户端上报 —— 家人之间的荣誉制，与 2D 版同一口径。
+ * 座位约定：服务端 black_user_id = 黑方（棋盘上方），另一人红方（下方）。
+ */
+const families = ref([])
+const inviteeId = ref(null)
+const firstPick = ref('me')
+const panelOpen = ref(false)
+const joining = ref(false)
+let replaying = false
+
+const room = computed(() => gRoom.room.value)
+/* 🔴 单机必须固定执红：gRoom.mySeat 在没有房间时默认返回 'black'，
+   照搬过来会让单机变成「我执黑」→ 红方棋子一个都点不动（探针实测）。 */
+const mySide = computed(() => ((online.value && gRoom.mySeat.value === 'black') ? BLACK : RED))
+const onlineMyTurn = computed(() => gRoom.status.value === 'playing' && gRoom.myTurn.value)
+const canUndoOnline = computed(() => gRoom.status.value === 'playing' && !over.value && gRoom.undoPlies.value > 0)
+
+const onlineHint = computed(() => {
+  if (!room.value) return '还没开局 · 点右上「邀人对局」'
+  const st = gRoom.status.value
+  const who = gRoom.opponentName.value || '对方'
+  if (st === 'waiting') return `等「${who}」接受邀请…`
+  if (st === 'playing') {
+    return gRoom.myTurn.value
+      ? `轮到你（${mySide.value === RED ? '红' : '黑'}）`
+      : `等「${who}」走子…`
+  }
+  return '对局已结束'
+})
+
+function sideOf(userId) {
+  const blackId = room.value?.black_user_id
+  if (blackId == null || userId == null) return RED
+  return Number(userId) === Number(blackId) ? BLACK : RED
+}
+
+/** 撤销一手：to 上的子挪回 from，被吃的子放回 to */
+function undoOne(b, h) {
+  const nb = b.slice()
+  nb[h.from] = nb[h.to]
+  nb[h.to] = h.cap || ''
+  return nb
+}
+
+function onRemoteMove(action, userId) {
+  if (!action) return
+  if (action.undo) {
+    const plies = action.undo === 2 ? 2 : 1
+    for (let k = 0; k < plies; k++) {
+      const h = history.value.pop()
+      if (h) board.value = undoOne(board.value, h)
+    }
+    over.value = false
+    showResult.value = false
+    winner.value = ''
+    sel.value = -1
+    lastIdx.value = history.value.length ? history.value[history.value.length - 1].to : -1
+    turn.value = sideOf(userId)
+    return
+  }
+  const { from, to } = action
+  if (typeof from !== 'number' || typeof to !== 'number') return
+  if (!board.value[from]) return
+  const cap = board.value[to]
+  history.value.push({ from, to, cap })
+  board.value = applyMove(board.value, from, to)
+  lastIdx.value = to
+  turn.value = board.value[to][0] === RED ? BLACK : RED
+  if (inCheck(board.value, turn.value)) sfx.check()
+}
+
+function onRoomStatus(st) {
+  if (st?.status !== 'finished') return
+  over.value = true
+  thinking.value = false
+  void st
+  showResult.value = true
+}
+
+const gRoom = useGameRoom('xiangqi', { onRemoteMove, onStatus: onRoomStatus })
+
+async function loadFamilies() {
+  try {
+    const res = await familyMembers()
+    families.value = (res?.data?.list || []).filter(m => m.user_id && Number(m.user_id) !== Number(gRoom.myUserId.value))
+  } catch { families.value = [] }
+}
+
+async function invite() {
+  if (!inviteeId.value) { ElMessage.warning('先选一位家人'); return }
+  joining.value = true
+  try {
+    await gRoom.createInvite(inviteeId.value, firstPick.value)
+    panelOpen.value = false
+    ElMessage.success('邀请已发出，等对方接受')
+  } catch (e) {
+    ElMessage.warning(e?.response?.data?.detail || e?.msg || '邀请失败')
+  } finally {
+    joining.value = false
+  }
+}
+
+function leaveRoom() {
+  gRoom.resign().catch(() => {})
+  gRoom.reset()
+  restart()
+}
+
+async function undoOnline() {
+  try { await gRoom.undo() } catch { /* 服务端会拒绝，下一轮轮询自然对齐 */ }
+}
+
 /* ---------- 交互 ---------- */
 function tap(i) {
   if (over.value || thinking.value) return
-  if (turn.value !== RED) return
+  if (online.value && !onlineMyTurn.value) { say('还没轮到你'); return }
+  if (turn.value !== mySide.value) return
   if (sel.value >= 0) {
     if (i === sel.value) { sel.value = -1; return }
     if (targets.value.includes(i)) { doMove(sel.value, i); return }
@@ -248,10 +401,32 @@ function doMove(from, to) {
   board.value = applyMove(board.value, from, to)
   sel.value = -1
   lastIdx.value = to
-  cap ? sfx.capture() : sfx.wood()
+  if (!replaying) cap ? sfx.capture() : sfx.wood()
   turn.value = other(turn.value)
   if (inCheck(board.value, turn.value)) sfx.check()
+  if (online.value) {
+    /* 在线：上报这一手，然后只判「对方还有没有合法着法」，不跑本地 AI */
+    if (!replaying && board.value[to][0] === mySide.value) gRoom.send({ from, to }).catch(() => {})
+    settleOnline()
+    return
+  }
   settle()
+}
+
+/** 在线判负：对方无合法着法 = 将死，由我方上报胜负 */
+function settleOnline() {
+  const opponent = turn.value
+  if (legalMoves(board.value, opponent).length) return
+  over.value = true
+  winner.value = other(opponent)
+  sfx.mate()
+  shake.value = true
+  clearTimeout(shakeTimer)
+  shakeTimer = setTimeout(() => { shake.value = false }, 700)
+  clearTimeout(resultTimer)
+  resultTimer = setTimeout(() => { showResult.value = true }, 900)
+  const uid = Number(gRoom.myUserId.value)
+  if (uid && winner.value === mySide.value) gRoom.finish(uid).catch(() => {})
 }
 
 function settle() {
@@ -275,9 +450,12 @@ function scheduleAI() {
   clearTimeout(aiTimer)
   thinking.value = true
   /* 让这一手先画出来再搜索：aiPick 是同步的，困难档 5 层约 1.2 秒 */
-  aiTimer = setTimeout(() => {
-    const m = aiPick(board.value, BLACK, depth())
+  aiTimer = setTimeout(async () => {
+    /* v2.46.278：5 层迭代加深搬进 Worker。原来主线程跑约 1.2 秒，
+       这段时间整个页面是僵的（连悔棋按钮都点不动）。 */
+    const m = await runAI('xiangqi', { board: [...board.value], side: BLACK, depth: depth() })
     thinking.value = false
+    if (m === null) return          // 被作废（重开/悔棋）
     if (!m) { settle(); return }
     const cap = board.value[m.to]
     history.value.push({ from: m.from, to: m.to, cap })
@@ -299,6 +477,7 @@ function cycleDiff() {
 function undo() {
   if (!canUndo.value) return
   clearTimeout(aiTimer)
+  invalidateAI()
   thinking.value = false
   /* 撤到「轮到红方」。canUndo 已排除「AI 思考中」，所以此刻一定刚走完黑棋 →
      连续撤两手（黑 + 红）。只剩一手时退化成撤一手。 */
@@ -328,6 +507,7 @@ function applyMoveRev(b, h) {
 function restart() {
   clearTimeout(aiTimer)
   clearTimeout(resultTimer)
+  invalidateAI()
   thinking.value = false
   board.value = initialBoard()
   history.value = []
@@ -340,12 +520,33 @@ function restart() {
   toast.value = ''
 }
 
-onMounted(() => {
+onMounted(async () => {
   sfx.preload()
   window.addEventListener('resize', onResize)
   window.addEventListener('orientationchange', onResize)
+  if (!online.value) return
+  await loadFamilies()
+  if (props.joinRoomId) {
+    replaying = true
+    try { await gRoom.join(props.joinRoomId, { autoAccept: true }) } catch { /* 房间可能已结束 */ }
+    replaying = false
+    return
+  }
+  try {
+    const res = await gameRoomsApi.mine()
+    const active = (res?.data?.list || []).find(x => x.game === 'xiangqi' && ['waiting', 'playing'].includes(x.status))
+    if (active) {
+      replaying = true
+      await gRoom.join(active.id, { autoAccept: active.status === 'playing' })
+      replaying = false
+      ElMessage.success(`已接回与「${gRoom.opponentName.value}」的对局`)
+      return
+    }
+  } catch { /* 无进行中对局 */ }
+  panelOpen.value = true
 })
 onBeforeUnmount(() => {
+  invalidateAI()
   window.removeEventListener('resize', onResize)
   window.removeEventListener('orientationchange', onResize)
   clearTimeout(aiTimer)
@@ -354,5 +555,5 @@ onBeforeUnmount(() => {
   clearTimeout(resultTimer)
 })
 
-defineExpose({ board, history, doMove, restart })
+defineExpose({ board, history, doMove, restart, setDiff: (k) => { diff.value = k }, getDiff: () => diff.value })
 </script>

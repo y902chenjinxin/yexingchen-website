@@ -21,14 +21,16 @@
           <div class="lc-icon"><AppIcon icon="♟" :size="46" /></div>
           <span class="lc-name">3D 象棋</span>
           <div class="lc-desc">标准九路十行 · 红先<br />三档 AI · 悔棋 / 将死提示</div>
-          <span class="lc-go">开局</span>
+          <span class="lc-go">单人开局</span>
+          <span class="lc-go alt" @click.stop="start('xiangqi', true)">邀人对局</span>
         </button>
 
         <button class="g3d-lobby-card" @click="start('gomoku')">
           <div class="lc-icon"><AppIcon icon="⚫" :size="46" /></div>
           <span class="lc-name">3D 五子棋</span>
           <div class="lc-desc">15 路标准盘 · 无禁手<br />四层搜索 AI · 五连高亮</div>
-          <span class="lc-go">开局</span>
+          <span class="lc-go">单人开局</span>
+          <span class="lc-go alt" @click.stop="start('gomoku', true)">邀人对局</span>
         </button>
 
         <button class="g3d-lobby-card" @click="start('mahjong')">
@@ -65,6 +67,7 @@
     <component
       v-else
       :is="boardComp"
+      :online="onlineGame"
       @exit="backToLobby"
     />
 
@@ -108,6 +111,8 @@ function syncImmersive() {
 
 const phase = ref('lobby')   // lobby | play
 const game = ref(null)       // 'mahjong' | 'guandan' | 'xiangqi' | 'gomoku'
+/** 棋类的在线模式：牌类两张没有 online，传下去会被忽略（落在根元素当属性） */
+const onlineGame = ref(false)
 
 /* 4 张桌按需挂载：牌桌和棋盘是两套完全不同的舞台，不要一次全 import 进来 */
 const BOARDS = {
@@ -128,13 +133,15 @@ function openRoom(it) {
   if (it?.route) router.push(it.route)
 }
 
-function start(g) {
+function start(g, online = false) {
   game.value = g
+  onlineGame.value = !!online && (g === 'xiangqi' || g === 'gomoku')
   phase.value = 'play'
 }
 function backToLobby() {
   phase.value = 'lobby'
   game.value = null
+  onlineGame.value = false
 }
 
 onMounted(() => {
