@@ -55,6 +55,10 @@
       </div>
     </div>
 
+    <!-- 本周回顾（v2.46.276）：记账/习惯/体重/任务串成一段话，收起只占一行。
+         放在宫格之后 —— 快捷入口是高频动作（记账），不能被挡。 -->
+    <WeeklyCard class="abb-today" />
+
     <!-- 今天要做（v2.46.140） -->
     <TodayHabitsCard class="abb-today" />
 
@@ -71,6 +75,7 @@ import { useRouter } from 'vue-router'
 import { financeApi } from '@/api/finance'
 import TodayHabitsCard from '@/components/workbench/TodayHabitsCard.vue'
 import DailyDeck from '@/components/workbench/DailyDeck.vue'
+import WeeklyCard from '@/components/workbench/WeeklyCard.vue'
 import countUp from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'

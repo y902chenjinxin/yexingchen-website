@@ -15,7 +15,7 @@
 
       <header class="dh-head">
         <h1 class="dh-title">数据中心</h1>
-        <p class="dh-sub">帐目 · 持仓 · 足迹 · 笔记 · 资讯 —— 一处一览</p>
+        <p class="dh-sub">帐目 · 持仓 · 足迹 · 笔记 —— 一处一览</p>
       </header>
 
       <p v-if="loading" class="dh-loading">数据装载中…</p>
@@ -129,21 +129,6 @@
             </div>
           </section>
 
-          <!-- 资讯 -->
-          <section class="dh-card glass" v-if="feeds">
-            <div class="dh-card-head"><span class="dh-card-title">资讯</span></div>
-            <div class="dh-feeds">
-              <div class="dh-feed big">
-                <span class="dh-feed-tag unread">未读</span>
-                <b>{{ feeds.unread }}</b><em>篇</em>
-              </div>
-              <div class="dh-feed">
-                <span class="dh-feed-tag">订阅源</span>
-                <b>{{ feeds.sources }}</b><em>个</em>
-              </div>
-              <p class="dh-feed-caption">订阅源持续为你汇聚信息，点击进入阅读。</p>
-            </div>
-          </section>
         </div>
 
         <!-- AI 对话链接 -->
@@ -186,7 +171,6 @@ const stocks = ref(null)
 const travels = ref(null)
 const notes = ref(null)
 const task = ref(null)
-const feeds = ref(null)
 const ai_conversations = ref(null)
 
 const padT = 12
@@ -291,7 +275,6 @@ onMounted(async () => {
     travels.value = d.travels || null
     notes.value = d.notes || null
     task.value = d.task || null
-    feeds.value = d.feeds || null
     ai_conversations.value = d.ai_conversations ?? null
   } catch (e) {
     /* 数据未就绪保持空态 */

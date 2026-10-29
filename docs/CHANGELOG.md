@@ -23,6 +23,73 @@
 
 ---
 
+## [v2.46.276] - 2026-10-29
+
+### A. 新增「本周回顾」卡：把散在五个页面的数据串成一段话
+
+夜星：「我现在买了 workbuddy 的积分，用不完…我感觉我的系统已经很完善了，
+可是我不知道还应该加些什么了，没有应用场景了。」
+
+诊断：不是缺功能（83 路由 / 60 视图 / 93 张表），是**缺汇总**。
+记账 164 笔、打卡 33 次、体重 9 条、任务、答题都在产生，但「这周过得怎么样」只能靠回忆。
+
+#### 新表 `weekly_reviews`（迁移 `w2e3e4k5l6y7`）
+
+`(user_id, week_start)` 唯一；`metrics` 存指标 JSON，`body` 存一段 150~220 字正文。
+
+#### 取数与口径
+
+| 数据源 | 口径 |
+|---|---|
+| 记账 | 按 `occurred_at`（非 created_at），排除 `deleted_at` |
+| 习惯 | 应做次数用 `habit_schedule.due_dates`（与罚金同一套）；完成数按 `checkin_date`（**整数** 20261029）去重 |
+| 体重 | 按 `member_id / created_by`，不按 user_id |
+| 任务 | `completed_at` 落在窗口内 + 当前 `status != done` |
+| 答题 | `quiz_answers.quiz_date` 在窗口内 |
+| 日志 | `xuanhuang_logs.created_at` |
+
+#### 正文先用规则模板，不依赖 LLM
+
+零成本、必定有产出、断网也能跑。要接 AI 只换 `compose()` 这一步，指标与存储都不动。
+语气不写鸡汤：只陈述数字 + 一句判断 + 下周一个具体动作（优先点名断得最多的那个习惯）。
+
+#### 不挂定时任务
+
+服务器没有 crontab；`GET /api/weekly/latest` 时若上周那条不存在就**当场算一次**。
+打开即得，没有空窗，也不用管进程存活。
+
+#### 形态
+
+收起只有一行（`本周 10-19~10-25  支出 ¥1,240 · 习惯 19/21 · 体重 -0.4kg`），
+点开才看正文与六格明细。位置：手机在宫格之后、今天要做之前（不挡记账入口）；
+桌面在核心数字之后、六张每日卡之前。
+
+### C. 资讯（RSS）模块整块删除
+
+夜星：「将资讯入口删除、内容删除、数据删除、代码删除。」
+
+删之前先备份：`artifacts/_backup/feed_backup_20261029.json.gz`
+（10 条订阅源 + 14093 篇文章，21.8MB）。要恢复就从这个 gz 导入。
+
+| 层 | 删了什么 |
+|---|---|
+| 入口 | 侧栏「财经 › 资讯」、路由 `/finance/news` 与 `/feeds` 重定向、命令面板「资讯流」、快捷键 `g e`、`EXACT_MATCH_PATHS` |
+| 内容 | `views/FeedsView.vue`、`api/feeds.js`、`DataHubView` 的资讯卡片与 `feeds` 状态 |
+| 代码 | 后端 `routers/feed/`（7 文件）、`models/feed.py`、`services/feed_sync.py`、`main.py` 的启动/停止钩子与轮询循环 |
+| 数据 | 迁移 `d1e2l3f4e5e6`：drop `feed_article_fts`（先删，否则留下悬空全文索引）→ `xuanhuang_feed_articles` → `xuanhuang_feed_sources`；同时删 `xuanhuang_menus` 里的资讯项 |
+
+#### 三处隐式依赖要一起处理（否则 import 就挂）
+
+1. `workbench/_kb.py`：知识库检索把资讯当检索源 → 删掉那一段
+2. `routers/datahub.py`：统计「未读文章 / 订阅源数」 → 删字段
+3. `routers/stocks.py` 两处 + `services/stock_analysis.py`：股票「相关资讯」查本库
+
+第 3 点保留了**现场抓 RSS** 的能力（`_fetch_rss`，与本模块无关），
+只去掉"查本地库"；`_related_news()` 保留函数签名恒返回空数组，
+这样股票 AI 研判链路不用改。
+
+---
+
 ## [v2.46.275] - 2026-10-29
 
 ### 习惯页：给「排在别的日子」的习惯补上入口

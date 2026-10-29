@@ -286,4 +286,11 @@ workbenchApi.quiz = {
   clearMistakes: () => api.delete('/quiz/mistakes'),
 }
 
+/** 每周回顾（v2.46.276）：消费记账/习惯/体重/任务/答题，生成一段总结 */
+workbenchApi.weekly = {
+  latest: () => api.get('/weekly/latest'),
+  list: (limit = 12) => api.get('/weekly/list', { params: { limit } }),
+  generate: (weekStart = '', force = true) => api.post('/weekly/generate', null, { params: { week_start: weekStart, force } }),
+}
+
 export default workbenchApi

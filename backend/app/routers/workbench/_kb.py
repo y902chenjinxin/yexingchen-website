@@ -10,7 +10,6 @@ from typing import List, Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.models.feed import FeedArticle
 from app.models.travels import Travel
 from app.models.workbench import Note, Task
 from app.models.finance import FinanceTransaction
@@ -144,33 +143,7 @@ def build_knowledge_context(db: Session, user_id: int, query: str) -> Optional[s
     except Exception:  # noqa: BLE001
         logger.debug("knowledge: note search failed", exc_info=True)
 
-    # 2) 资讯文章
-    try:
-        like = [
-            or_(
-                FeedArticle.title.contains(t),
-                FeedArticle.title_zh.contains(t),
-                FeedArticle.summary_zh.contains(t),
-                FeedArticle.content_zh.contains(t),
-            )
-            for t in tokens
-        ]
-        arts = (
-            db.query(FeedArticle)
-            .filter(FeedArticle.household_id == HOUSEHOLD_ID, or_(*like))
-            .order_by(FeedArticle.updated_at.desc())
-            .limit(KB_SOURCE_LIMIT)
-            .all()
-        )
-        for a in arts:
-            title = a.title_zh or a.title or ""
-            body = _strip_html(a.summary_zh or (a.content_zh or "")[:200])
-            pieces = [title]
-            if body:
-                pieces.append(body[:300])
-            chunks.append("【资讯】" + "：".join(pieces))
-    except Exception:  # noqa: BLE001
-        logger.debug("knowledge: feed search failed", exc_info=True)
+    # 2) 资讯文章（v2.46.276：RSS 资讯模块整块删除，知识库不再把它当检索源）
 
     # 3) 旅行足迹
     try:

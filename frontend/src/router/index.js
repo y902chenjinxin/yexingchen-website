@@ -314,12 +314,6 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/finance/news',
-    name: 'FinanceNews',
-    component: () => import('@/views/FeedsView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/finance/book',
     name: 'FinanceBook',
     component: () => import('@/views/FinanceView.vue'),
@@ -328,7 +322,6 @@ const routes = [
   // 旧路由重定向到新财经路径
   { path: '/stocks', redirect: '/finance/market' },
   { path: '/stocks/:code', redirect: '/finance/market/stock/:code' },
-  { path: '/feeds', redirect: '/finance/news' },
   {
     path: '/history',
     name: 'History',

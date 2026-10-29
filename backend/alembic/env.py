@@ -28,6 +28,7 @@ from app.models.login_attempt import LoginAttempt  # noqa: F401,E402
 from app.models.user import User, VerificationCode  # noqa: F401,E402
 from app.models.music import Music  # noqa: F401,E402
 from app.models.quiz import QuizAnswer  # noqa: F401,E402  v2.46.274 每日一题答题记录
+from app.models.weekly import WeeklyReview  # noqa: F401,E402  v2.46.276 每周回顾
 from app.models.novel import Novel  # noqa: F401,E402
 from app.models.video import Video  # noqa: F401,E402
 from app.models.tool import Tool  # noqa: F401,E402
@@ -54,7 +55,6 @@ from app.models.workbench import (  # noqa: F401,E402
     AiConversationLink,
     WorkbenchLog,
 )
-from app.models.feed import FeedSource, FeedArticle  # noqa: F401,E402
 from app.models.admin import Role, Menu  # noqa: F401,E402
 from app.models.travels import Travel, TravelCity  # noqa: F401,E402
 from app.models.family import Contact, Subscription  # noqa: F401,E402

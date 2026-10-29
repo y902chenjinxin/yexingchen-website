@@ -84,6 +84,13 @@
       </div>
     </section>
 
+    <!-- ============ 本周回顾（v2.46.276）：消费已有数据 ============
+         夜星：「我不知道还应该加些什么了。」——不缺功能，缺汇总。
+         记账/习惯/体重/任务/答题串成一段话，收起只占一行。 -->
+    <section class="bento-learn">
+      <WeeklyCard />
+    </section>
+
     <!-- ============ 六张每日卡（v2.46.273 重新组织） ============
          原来六张各占一整行 section：1440 屏下一张卡横跨全宽，中文一行 70-90 字，
          超过舒适阅读宽度；而且视觉上六张同形同重，没有落点。
@@ -139,6 +146,7 @@ import SocialCard from '@/components/workbench/SocialCard.vue'
 import LawCard from '@/components/workbench/LawCard.vue'
 import LogicCard from '@/components/workbench/LogicCard.vue'
 import QuizCard from '@/components/workbench/QuizCard.vue'
+import WeeklyCard from '@/components/workbench/WeeklyCard.vue'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { usePrefsStore } from '@/stores/prefs'
 import { useAuthStore } from '@/stores/auth'

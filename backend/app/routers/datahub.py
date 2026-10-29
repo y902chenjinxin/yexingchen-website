@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.finance import FinanceTransaction
-from app.models.feed import FeedSource, FeedArticle
 from app.models.travels import Travel, TravelCity
 from app.models.workbench import Note, Task, AiConversation
 from app.utils.security import get_current_user
@@ -167,19 +166,7 @@ async def overview(
         ),
     }
 
-    # 资讯
-    feeds = {
-        "unread": (
-            db.query(FeedArticle)
-            .filter(FeedArticle.household_id == HOUSEHOLD_ID, FeedArticle.read == 0)
-            .count()
-        ),
-        "sources": (
-            db.query(FeedSource)
-            .filter(FeedSource.household_id == HOUSEHOLD_ID, FeedSource.deleted_at.is_(None))
-            .count()
-        ),
-    }
+    # 资讯（v2.46.276 已整块删除：RSS 模块不再存在，这里也就不再统计）
 
     # AI 对话数
     ai_conversations = (
@@ -194,7 +181,6 @@ async def overview(
         "travels": travels,
         "notes": notes,
         "task": task,
-        "feeds": feeds,
         "ai_conversations": ai_conversations,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
     })

@@ -70,31 +70,12 @@ def _kline_stats(klines) -> str:
 
 
 def _related_news(uid: int, db: Session, name: str, company: str, size: int = 5) -> list[str]:
-    """聚合相关资讯标题（复用资讯文章，按名称/代码模糊匹配最近若干条）。"""
-    if not name:
-        return []
-    try:
-        from sqlalchemy import or_
-        from app.models.feed import FeedArticle
-        rows = (
-            db.query(FeedArticle)
-            .filter(
-                FeedArticle.household_id == HOUSEHOLD_ID,
-                or_(FeedArticle.title_zh.ilike(f"%{name}%"), FeedArticle.title.ilike(f"%{name}%")),
-            )
-            .order_by(FeedArticle.published_at.desc())
-            .limit(size)
-            .all()
-        )
-        titles = []
-        for r in rows:
-            t = r.title_zh or r.title
-            if t:
-                titles.append(t)
-        return titles
-    except Exception:  # noqa: BLE001
-        logger.warning("聚合股票相关资讯失败", exc_info=True)
-        return []
+    """相关资讯（v2.46.276：RSS 资讯模块已整块删除，这里恒返回空）。
+
+    保留函数签名：调用方（股票研判、stocks 兜底）仍按这个接口走，删掉会让整条链路都要改。
+    现场抓 RSS 的能力还在 stocks.py 的 _fetch_rss 里，不受影响。
+    """
+    return []
 
 
 STOCK_SYSTEM = (

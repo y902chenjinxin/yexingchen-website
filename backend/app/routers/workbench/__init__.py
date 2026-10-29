@@ -28,6 +28,7 @@ from app.routers.workbench.social import router as social_router
 from app.routers.workbench.laws import router as laws_router
 from app.routers.workbench.logic import router as logic_router
 from app.routers.workbench.quiz import router as quiz_router
+from app.routers.workbench.weekly import router as weekly_router
 
 router = APIRouter()
 router.include_router(dashboard_router)
@@ -40,6 +41,7 @@ router.include_router(social_router)   # v2.46.249 每日场景（人情世故�
 router.include_router(laws_router)   # v2.46.255 今日定律（瞎猫理论那类）
 router.include_router(logic_router)  # v2.46.269 每日思维逻辑（谬误/偏差/模型/方法）
 router.include_router(quiz_router)   # v2.46.270 每日一题（带选项的选择题）
+router.include_router(weekly_router)  # v2.46.276 每周回顾（消费记账/习惯/体重/任务）
 router.include_router(weather_router)
 router.include_router(notes_router)
 router.include_router(assets_router)

@@ -694,50 +694,8 @@ async def stock_news(
             "items": items,
         })
 
-    # 2) 工作台 FeedArticle 模糊匹配（用代码 + 名字）
+    # 2) 相关资讯（v2.46.276：资讯模块整块删除，不再查库；related 字段保留给前端）
     related = []
-    try:
-        from sqlalchemy import or_
-
-        from app.models.feed import FeedArticle
-        from app.models.stocks import StockWatchlist
-
-        hid = HOUSEHOLD_ID
-
-        w = (
-            db.query(StockWatchlist)
-            .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None),
-                    StockWatchlist.market == market, StockWatchlist.code == code_upper)
-            .first()
-        )
-        name = (w.name if w else "") or code_upper
-        rows = (
-            db.query(FeedArticle)
-            .filter(
-                FeedArticle.household_id == hid,
-                or_(
-                    FeedArticle.title.ilike(f"%{name}%"),
-                    FeedArticle.title.ilike(f"%{code_upper}%"),
-                    FeedArticle.title_zh.ilike(f"%{name}%"),
-                    FeedArticle.title_zh.ilike(f"%{code_upper}%"),
-                ),
-            )
-            .order_by(FeedArticle.published_at.desc())
-            .limit(8)
-            .all()
-        )
-        for r in rows:
-            t = r.title_zh or r.title or ""
-            if not t:
-                continue
-            related.append({
-                "title": t,
-                "url": r.url or "",
-                "pub": (r.published_at.isoformat() if r.published_at else ""),
-                "summary": "",
-            })
-    except Exception as e:  # noqa: BLE001
-        logger.info("[stock-news] related fetch failed: %s", e)
 
     payload = {
         "code": code_upper,
@@ -815,42 +773,11 @@ async def stock_insight(
                 for it in _fetch_rss(src["url"], limit=4):
                     if it.get("title"):
                         news_titles.append(it["title"])
-            from sqlalchemy import or_
+            # v2.46.276：不再从本地资讯库匹配（模块已删），只留上面的现场抓取
 
-            from app.models.feed import FeedArticle
-            from app.models.stocks import StockWatchlist
-
-            w = (
-                db.query(StockWatchlist)
-                .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None),
-                        StockWatchlist.market == market, StockWatchlist.code == code)
-                .first()
-            )
-            name = (w.name if w else "") or code
-            for r in (db.query(FeedArticle)
-                      .filter(FeedArticle.household_id == hid,
-                              or_(FeedArticle.title.ilike(f"%{name}%"), FeedArticle.title_zh.ilike(f"%{name}%")))
-                      .order_by(FeedArticle.published_at.desc()).limit(8).all()):
-                t = r.title_zh or r.title or ""
-                if t:
-                    news_titles.append(t)
         except Exception:
             logger.info("[stock-insight] 现场抓资讯失败", exc_info=True)
-    if not news_titles:
-        # 兜底：复用 _related_news
-        try:
-            from app.models.stocks import StockWatchlist
-
-            w = (
-                db.query(StockWatchlist)
-                .filter(StockWatchlist.household_id == hid, StockWatchlist.deleted_at.is_(None),
-                        StockWatchlist.market == market, StockWatchlist.code == code)
-                .first()
-            )
-            if w:
-                news_titles = _related_news(uid, db, w.name or code, code, size=8)
-        except Exception:
-            pass
+    # v2.46.276：兜底资讯已移除（资讯模块删除）
 
     level, summary, suggestion = rule_lv, rule_sum, rule_sum
     model_name = ""

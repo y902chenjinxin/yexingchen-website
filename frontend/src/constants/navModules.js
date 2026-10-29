@@ -103,7 +103,6 @@ export const NAV_GROUPS = [
     label: '财经',
     items: [
       { path: '/finance/market', title: '行情', icon: TrendCharts },
-      { path: '/finance/news', title: '资讯', icon: Connection },
     ],
   },
   {
@@ -166,7 +165,6 @@ export function formatKbd(kbd) {
 const EXACT_MATCH_PATHS = new Set([
   '/workbench',
   '/finance/market',
-  '/finance/news',
   '/finance/book',
   '/admin/users',
 ])
