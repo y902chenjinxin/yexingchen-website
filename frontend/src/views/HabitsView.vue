@@ -4,9 +4,14 @@
       <header class="hb-head">
         <BackButton class="hb-back" />
         <div class="hb-titles">
-          <h1 class="hb-title">今天</h1>
+          <h1 class="hb-title">{{ managing ? '全部习惯' : '今天' }}</h1>
           <p class="hb-sub">
-            {{ doneCount }}/{{ total }} 已完成<template v-if="bestStreak"> · 最长连续 {{ bestStreak }} 天</template>
+            <template v-if="managing">
+              共 {{ list.length }} 条 · 点行尾的笔与垃圾桶可以修改或删除
+            </template>
+            <template v-else>
+              {{ doneCount }}/{{ total }} 已完成<template v-if="bestStreak"> · 最长连续 {{ bestStreak }} 天</template>
+            </template>
           </p>
         </div>
         <div class="hb-head-right">
@@ -109,15 +114,17 @@
         </ul>
       </section>
 
-      <!-- 今日清单 -->
-      <section v-if="total" class="hb-card glass-card">
+      <!-- 今日清单 / 全部习惯（v2.46.275 补管理入口与分组） -->
+      <section v-if="total || restCount || managing" class="hb-card glass-card">
         <ul class="hb-list">
-          <!-- 🔴 v2.46.266：原来 v-for 用的是全量 list —— 月/年/周频的习惯全被列进「今天」，
-               而顶上的 total 走的是 todayList（已按 is_due_today 过滤），
-               于是出现「0/3 已完成」下面却躺着 6 条。日常只看今天该做的；
-               管理模式才列全量（否则今天不该做的习惯连编辑都点不到）。 -->
-          <li v-for="h in (managing ? list : todayList)" :key="h.id" class="hb-row" :class="{ done: h.checked_today }">
-            <div v-if="!managing" class="hb-line">
+          <!-- 日常：只列今天该做的。v2.46.266 起不再把月/年/周频塞进「今天」 -->
+          <template v-if="!managing">
+            <!-- 今天确实没有安排（比如只剩月频习惯），别留一张空卡片 -->
+            <li v-if="!todayList.length" class="hb-row hb-row--empty">
+              今天没有安排要做的事<template v-if="restCount"> · 其余 {{ restCount }} 个在别的日子</template>
+            </li>
+            <li v-for="h in todayList" :key="h.id" class="hb-row" :class="{ done: h.checked_today }">
+            <div class="hb-line">
             <button
               class="hb-hit"
               :aria-pressed="h.checked_today ? 'true' : 'false'"
@@ -154,16 +161,46 @@
               @click.stop="onStep(h)"
             >＋</button>
             </div>
+            </li>
+          </template>
 
-            <!-- 管理模式：改 / 删 -->
-            <div v-else class="hb-manage">
-              <span class="hb-ico"><AppIcon :icon="h.icon || '✓'" :size="17" /></span>
-              <span class="hb-main"><span class="hb-name">{{ h.name }}</span></span>
-              <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(h)" />
-              <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="onRemove(h)" />
-            </div>
-          </li>
+          <!-- 管理模式（v2.46.275）：按「今天 / 排在其他日子」分组。
+               夜星：「排在别的日子里的习惯，我如果需要修改或删除，该怎么操作，要有个入口。」
+               原来管理态只多几行、且看不出哪条是「每月 15 号」—— 现在每行都带周期。 -->
+          <template v-else>
+            <template v-for="g in manageGroups" :key="g.key">
+              <li class="hb-grouphd" :class="{ 'hb-grouphd--rest': g.key === 'rest' }">
+                {{ g.title }}
+                <em v-if="g.hint">{{ g.hint }}</em>
+              </li>
+              <li v-for="h in g.items" :key="h.id" class="hb-row">
+                <div class="hb-manage">
+                  <span class="hb-ico" :style="h.color ? { color: h.color } : null">
+                    <AppIcon :icon="h.icon || '✓'" :size="17" />
+                  </span>
+                  <span class="hb-main">
+                    <span class="hb-name">{{ h.name }}</span>
+                    <span class="hb-meta">
+                      {{ h.freq_text || '每天' }}
+                      <template v-if="h.is_due_today === false"> · 今天不做</template>
+                      <template v-if="isCount(h)"> · 一天 {{ h.daily_target }} 次</template>
+                      <template v-if="h.account"> · {{ accountLabel(h.account) }}</template>
+                    </span>
+                  </span>
+                  <IconButton icon="edit" size="sm" label="编辑" @click="openEdit(h)" />
+                  <IconButton icon="trash" size="sm" label="删除" variant="danger" @click="onRemove(h)" />
+                </div>
+              </li>
+            </template>
+          </template>
         </ul>
+
+        <!-- 入口：今天只该做 N 条时，明确告诉其余的在哪儿 —— 原来只有右上角一个「管理」，
+             看不出「点它能找到每月 15 号那条」。 -->
+        <button v-if="!managing && restCount" class="hb-more" @click="managing = true">
+          <span>还有 {{ restCount }} 个习惯排在别的日子</span>
+          <span class="hb-more-go">管理全部 ›</span>
+        </button>
       </section>
 
       <!-- 空态 -->
@@ -391,6 +428,7 @@ const store = useHabitsStore()
 const {
   list, todayList, weekly, radar, household, reviews,
   loading, doneCount, total, progress, pending, bestStreak, allDone,
+  restCount,
 } = storeToRefs(store)
 
 /** 六账户（顺序与后端 ACCOUNTS 一致，雷达图按这个顺序画） */
@@ -456,6 +494,32 @@ const radarLabels = computed(() => {
 })
 
 const managing = ref(false)
+
+/**
+ * 管理模式的分组（v2.46.275）
+ *
+ * 夜星：「排在别的日子里的习惯，我如果需要修改或删除，该怎么操作，要有个入口。」
+ * 原来管理态只是把全量 list 直接铺开 —— 看不出哪条是「每月 15 号」，
+ * 也不知道「今天不做」是为什么。现在按 is_due_today 分成两组，各带条数，
+ * 其他日子那组还显式写一句「改或删都在这里」。
+ */
+const manageGroups = computed(() => {
+  const todayItems = list.value.filter((h) => h.is_due_today !== false)
+  const restItems = list.value.filter((h) => h.is_due_today === false)
+  const out = []
+  if (todayItems.length) {
+    out.push({ key: 'today', title: `今天该做 · ${todayItems.length} 条`, hint: '', items: todayItems })
+  }
+  if (restItems.length) {
+    out.push({
+      key: 'rest',
+      title: `排在别的日子 · ${restItems.length} 条`,
+      hint: '平时不出现在「今天」，要改要删都在这里',
+      items: restItems,
+    })
+  }
+  return out
+})
 const dialog = ref(false)
 const saving = ref(false)
 const form = reactive({
@@ -731,6 +795,41 @@ async function maybeWeekendReview() {
 
 .hb-list { list-style: none; margin: 0; padding: 0; }
 .hb-row + .hb-row { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .14)); }
+
+/* ---------- 管理模式的分组小标题（v2.46.275） ---------- */
+.hb-grouphd {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding: 12px 2px 6px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
+  color: var(--tc-text-3, #5b6f8a);
+  border-top: 1px solid var(--tc-line, rgba(15, 60, 110, .1));
+}
+.hb-grouphd:first-child { border-top: 0; padding-top: 4px; }
+.hb-grouphd em {
+  font-style: normal; font-weight: 400; font-size: 11px;
+  color: var(--tc-text-3, #5b6f8a); opacity: .85;
+}
+.hb-grouphd--rest { color: var(--lj-seal, #a9812f); }
+
+/* 管理行也带周期（原来只显示名字，看不出「每月 15 号」是哪条） */
+.hb-manage .hb-meta { display: block; margin-top: 1px; }
+
+.hb-row--empty {
+  display: block; padding: 14px 2px;
+  font-size: 12.5px; color: var(--tc-text-3, #5b6f8a);
+}
+
+/* ---------- 「还有 N 个排在别的日子」入口 ---------- */
+.hb-more {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 10px; padding: 10px 2px 2px;
+  border: 0; border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .14));
+  background: transparent; cursor: pointer; font: inherit;
+  font-size: 12px; color: var(--tc-text-3, #5b6f8a); text-align: left;
+  transition: color .15s;
+}
+.hb-more:hover { color: var(--tc-cyan-deep, #0a708c); }
+.hb-more-go { flex: none; font-weight: 600; color: var(--tc-cyan-deep, #0a708c); }
 .hb-hit, .hb-manage {
   width: 100%; display: flex; align-items: center; gap: 11px;
   padding: 12px 10px; border: 0; background: transparent; border-radius: 10px;
