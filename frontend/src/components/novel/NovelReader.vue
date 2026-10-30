@@ -332,6 +332,8 @@ const FONTS = [
   { key: 'songb', label: '宋粗', stack: '"Source Han Serif SC VF", "Songti SC", serif', webfont: 'Source Han Serif SC VF', file: '/fonts/SourceHanSerifSC-Bold.ttf' },
   { key: 'heim', label: '黑中', stack: '"Source Han Sans SC Medium", "PingFang SC", "Microsoft YaHei", sans-serif', webfont: 'Source Han Sans SC Medium', file: '/fonts/SourceHanSansSC-Medium.otf' },
   { key: 'wenyuan', label: '文源宋', stack: '"WenYuan Serif SC", "Songti SC", serif', webfont: 'WenYuan Serif SC', file: '/fonts/WenYuanSerifSC-Regular.ttf' },
+  // v2.46.283：方正楷体简体（GB2312 6763 字，方正免费商用清单内）
+  { key: 'fzkai', label: '方正楷', stack: '"FZKai-Z03S", "Kaiti SC", "KaiTi", serif', webfont: 'FZKai-Z03S', file: '/fonts/FZKai-Z03S.ttf' },
 ]
 
 const SET_KEY = 'xuanhuang:reader:settings'
@@ -532,13 +534,21 @@ function measurePages() {
   })
 }
 
-/** 滚动模式：按需把 0..idx 的章节塞进 DOM */
-function loadUntil(idx) {
-  const target = Math.min(idx, txtChapters.value.length - 1)
-  for (let k = loadedSecs.value.length; k <= target; k++) {
-    const c = txtChapters.value[k]
-    if (!c) break
-    loadedSecs.value.push({ idx: k, title: c.title, paras: c.paras })
+/** 滚动模式：按需把 0..idx 的章节塞进 DOM（章节正文按需从后端取，v2.46.283） */
+let secLoading = false
+async function loadUntil(idx) {
+  if (secLoading) return
+  secLoading = true
+  try {
+    const target = Math.min(idx, txtChapters.value.length - 1)
+    for (let k = loadedSecs.value.length; k <= target; k++) {
+      const c = txtChapters.value[k]
+      if (!c) break
+      await loadChapterData(k)
+      loadedSecs.value.push({ idx: k, title: c.title, paras: c.paras || [] })
+    }
+  } finally {
+    secLoading = false
   }
 }
 
@@ -570,6 +580,64 @@ async function fetchBuffer() {
   return await res.arrayBuffer()
 }
 
+/* ---------------- TXT 后端预解析：索引 + 按章取（v2.46.283） ----------------
+   旧做法每次打开都全量拉文件、在手机上切几十万行、整本段落驻内存 —— 13MB 的书
+   直接卡死。现在后端一次解析成「归一化 UTF-8 + 字节偏移索引」，前端只拉章节目录
+   （几十 KB）和当前章正文（几十 KB），滚动模式往后预取。 */
+const txtStatus = ref('')       // '' / pending / done / failed
+const chapterLoading = ref(false)
+
+function authHeaders() {
+  return { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
+}
+
+async function novelApi(path, opts = {}) {
+  const res = await fetch(`/api/novels/${props.novel.id}${path}`, {
+    ...opts,
+    headers: { ...authHeaders(), ...(opts.headers || {}) },
+  })
+  const json = await res.json().catch(() => null)
+  if (!res.ok || !json || json.code !== 0) {
+    throw new Error((json && (json.msg || json.detail)) || `HTTP ${res.status}`)
+  }
+  return json.data
+}
+
+/** 拉章节索引；若后端还没解析过（老书），先同步触发一次解析再拉。 */
+async function loadChapterIndex() {
+  let d = await novelApi('/chapters')
+  txtStatus.value = d.status || ''
+  if (d.status !== 'done') {
+    // 解析 12MB 约 0.3~0.6s，同步等一次比让用户自己点更好
+    await novelApi('/parse', { method: 'POST' })
+    d = await novelApi('/chapters')
+    txtStatus.value = d.status || ''
+  }
+  if (d.status !== 'done' || !(d.chapters || []).length) {
+    throw new Error('解析失败，请重试或换一个 TXT 文件')
+  }
+  txtChapters.value = d.chapters.map((c) => ({ title: c.t, paras: null }))
+  return d
+}
+
+/** 按章取正文（幂等：已加载直接返回）。返回 false 表示失败。 */
+async function loadChapterData(idx) {
+  const c = txtChapters.value[idx]
+  if (!c) return false
+  if (c.paras) return true
+  chapterLoading.value = true
+  try {
+    const d = await novelApi(`/chapters/${idx}`)
+    c.paras = d.paras && d.paras.length ? d.paras : ['（本章无内容）']
+    return true
+  } catch {
+    c.paras = ['（本章加载失败，滑走再回来可重试）']
+    return false
+  } finally {
+    chapterLoading.value = false
+  }
+}
+
 function pickKind(name) {
   const n = String(name || props.novel.original_filename || '').toLowerCase()
   if (n.endsWith('.epub')) return 'epub'
@@ -578,53 +646,9 @@ function pickKind(name) {
   return ''
 }
 
-/** TXT 解码：BOM → 严格 UTF-8 → GBK 兜底 */
-function decodeText(buf) {
-  const u8 = new Uint8Array(buf)
-  if (u8[0] === 0xef && u8[1] === 0xbb && u8[2] === 0xbf) {
-    return new TextDecoder('utf-8').decode(u8.subarray(3))
-  }
-  if (u8[0] === 0xff && u8[1] === 0xfe) return new TextDecoder('utf-16le').decode(u8.subarray(2))
-  if (u8[0] === 0xfe && u8[1] === 0xff) return new TextDecoder('utf-16be').decode(u8.subarray(2))
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(u8)
-  } catch {
-    try { return new TextDecoder('gbk').decode(u8) } catch { return new TextDecoder('utf-8').decode(u8) }
-  }
-}
-
-/** TXT 分章：匹配「第x章/回/节/卷」「卷x」「序章/楔子/番外」 */
-const CHAPTER_RE = /^[\s\u3000]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章回节卷篇]|卷\s*[0-9零一二三四五六七八九十百千万两]+|序章|楔子|引子|尾声|后记|番外)[^\n]{0,40}$/
-
-function splitChapters(text) {
-  const lines = text.replace(/\r\n?/g, '\n').split('\n')
-  const chapters = []
-  let cur = { title: '开始', paras: [] }
-  let buf = []
-
-  const flushPara = () => {
-    const t = buf.join('').trim()
-    if (t) cur.paras.push(t)
-    buf = []
-  }
-
-  for (const raw of lines) {
-    const line = raw.replace(/\u00a0/g, ' ').trim()
-    if (!line) { flushPara(); continue }
-    if (CHAPTER_RE.test(line) && line.length <= 42) {
-      flushPara()
-      if (cur.paras.length || cur.title !== '开始') chapters.push(cur)
-      cur = { title: line, paras: [] }
-      continue
-    }
-    buf.push(line)
-  }
-  flushPara()
-  if (cur.paras.length || cur.title !== '开始') chapters.push(cur)
-
-  if (!chapters.length) chapters.push({ title: props.novel.title || '正文', paras: [text.trim()] })
-  return chapters
-}
+/* v2.46.283：TXT 的解码与分章已全部移到后端（app/services/novel_parser.py），
+   前端只拿「章节索引 + 按章正文」。原 decodeText / splitChapters 已删除
+   —— 13MB 的书在手机上 split 几十万行会把页面卡死，这是本次改造的根因。 */
 
 /* ---------------- PDF（v2.46.215） ---------------- */
 const pdfUrl = ref('')
@@ -873,10 +897,12 @@ function txtNext() {
 }
 
 /** 切章（分页模式重置到第一页；toLast=true 时落到最后一页） */
-function goChapter(i, toLast = false) {
+async function goChapter(i, toLast = false) {
   if (i < 0 || i >= txtChapters.value.length) return
+  if (chapterLoading.value) return   // 正在取正文，忽略连点
   txtIndex.value = i
   tocActive.value = i
+  await loadChapterData(i)           // v2.46.283：正文按需取
   if (flow.value === 'paginated') {
     txtPage.value = 0
     nextTick(() => {
@@ -935,28 +961,25 @@ const findQ = ref('')
 const findResults = ref([])
 const findTip = ref('')
 
-function runFind() {
+async function runFind() {
   const q = findQ.value.trim()
   findResults.value = []
   if (!q) { findTip.value = ''; return }
 
   if (kind.value === 'txt') {
-    const out = []
-    txtChapters.value.forEach((c, ci) => {
-      c.paras.forEach((p) => {
-        let idx = p.indexOf(q)
-        while (idx >= 0 && out.length < 300) {
-          out.push({
-            ci,
-            chapter: c.title,
-            snippet: p.slice(Math.max(0, idx - 24), idx + q.length + 34),
-          })
-          idx = p.indexOf(q, idx + q.length)
-        }
-      })
-    })
-    findResults.value = out
-    findTip.value = out.length ? `共 ${out.length} 处` : ''
+    // v2.46.283：全文在服务器（归一化缓存），搜索走接口 —— 前端不再持全书正文
+    findTip.value = '搜索中…'
+    try {
+      const d = await novelApi(`/search?q=${encodeURIComponent(q)}&limit=300`)
+      findResults.value = (d.items || []).map((it) => ({
+        ci: it.i,
+        chapter: it.title,
+        snippet: it.snippet,
+      }))
+      findTip.value = d.count ? `共 ${d.count} 处` : '没有找到'
+    } catch {
+      findTip.value = '搜索失败，请重试'
+    }
     return
   }
 
@@ -1146,14 +1169,9 @@ onMounted(async () => {
   try {
     kind.value = pickKind()
     if (!kind.value) throw new Error('只支持 EPUB 和 TXT 格式')
-    const buf = await fetchBuffer()
-    if (kind.value === 'pdf') {
-      openPdf(buf)
-    } else if (kind.value === 'epub') {
-      await openEpub(buf)
-    } else {
-      const text = decodeText(buf)
-      txtChapters.value = splitChapters(text)
+    if (kind.value === 'txt') {
+      // v2.46.283：先取后端解析好的章节目录，正文按章拉 —— 不再全量下载 + 前端切章
+      await loadChapterIndex()
       toc.value = txtChapters.value.map((c) => ({ label: c.title }))
       let saved = null
       try { saved = JSON.parse(localStorage.getItem(PROG_KEY.value) || 'null') } catch { /* 忽略 */ }
@@ -1165,8 +1183,8 @@ onMounted(async () => {
         if (idx >= 0) ci = idx
       }
       txtIndex.value = Math.min(Math.max(0, ci), txtChapters.value.length - 1)
-      // 进度统一由 syncTxtPercent 算（含章内页比）；这里先给个粗值，nextTick 后再校准
       percent.value = Math.round((txtIndex.value / txtChapters.value.length) * 100)
+      await loadChapterData(txtIndex.value)   // 当前章正文
       await nextTick()
       syncTxtPercent()
       if (flow.value === 'paginated') {
@@ -1179,9 +1197,16 @@ onMounted(async () => {
           })
         }
       } else {
-        loadUntil(txtIndex.value)
+        await loadUntil(txtIndex.value)
         await nextTick()
         if (saved?.scrollTop && txtRef.value) txtRef.value.scrollTop = saved.scrollTop
+      }
+    } else {
+      const buf = await fetchBuffer()
+      if (kind.value === 'pdf') {
+        openPdf(buf)
+      } else {
+        await openEpub(buf)
       }
     }
   } catch (e) {

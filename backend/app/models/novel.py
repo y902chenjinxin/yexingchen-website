@@ -30,6 +30,10 @@ class Novel(Base):
 
     # v2.46.188：管理列表拖拽排序用；值越小越靠前
     sort_order = Column(Integer, nullable=False, default=0, index=True)
+    # v2.46.283：TXT 后端预解析状态（''=未解析 / pending / done / failed）
+    # 章节索引与归一化正文缓存在 uploads/novels/.cache/{id}.{json,txt}
+    parse_status = Column(String(16), default="")
+    chapter_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

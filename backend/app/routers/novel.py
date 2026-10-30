@@ -1,22 +1,67 @@
 from app.models.novel import Novel, NovelBookmark
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional, List
 import io
 import csv
+import logging
 import os
 from datetime import datetime
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.schemas.common import *
 from app.schemas.errors import ErrCode, raise_error
 from app.utils.security import get_current_user, check_owner_or_admin
 from app.services.log_service import log_action
+from app.services import novel_parser
 from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_NOVEL_EXTENSIONS, ALLOWED_COVER_EXTENSIONS
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/novels", tags=["小说岛"])
+
+
+def _is_txt(name: str) -> bool:
+    return str(name or '').lower().endswith('.txt')
+
+
+def parse_in_background(novel_id: int, file_path: str) -> None:
+    """后台解析 TXT（v2.46.283）。上传响应先返回，解析在这里跑。
+
+    必须自建 SessionLocal：BackgroundTasks 执行时请求级 db 已关闭。
+    """
+    db = SessionLocal()
+    try:
+        n = db.query(Novel).filter(Novel.id == novel_id).first()
+        if not n:
+            return
+        n.parse_status = 'pending'
+        db.commit()
+        meta = novel_parser.parse_novel_txt(novel_id, file_path)
+        n.parse_status = 'done'
+        n.chapter_count = len(meta.get('chapters') or [])
+        db.commit()
+        logger.info("novel %s 解析完成：%s 章，%sms",
+                    novel_id, n.chapter_count, meta.get('cost_ms'))
+    except Exception:  # noqa: BLE001
+        logger.exception("novel %s 解析失败", novel_id)
+        try:
+            n = db.query(Novel).filter(Novel.id == novel_id).first()
+            if n:
+                n.parse_status = 'failed'
+                db.commit()
+        except Exception:  # noqa: BLE001
+            db.rollback()
+    finally:
+        db.close()
+
+
+def enqueue_parse(background: BackgroundTasks, novel_id: int, file_path: str, filename: str) -> None:
+    """只有 TXT 需要预解析；EPUB/PDF 交给前端库处理。"""
+    if _is_txt(filename):
+        background.add_task(parse_in_background, novel_id, file_path)
 
 
 @router.get("", response_model=ResponseBase)
@@ -59,6 +104,8 @@ async def list_novels(
                 "tags": n.tags,
                 "uploader_id": n.uploader_id,
                 "file_size": n.file_size,
+                "parse_status": n.parse_status or "",
+                "chapter_count": n.chapter_count or 0,
                 "created_at": str(n.created_at)
             }
             for n in items
@@ -71,6 +118,7 @@ async def list_novels(
 
 @router.post("", response_model=ResponseBase)
 async def upload_novel(
+    background: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(...),
     author: str = Form(""),
@@ -112,6 +160,9 @@ async def upload_novel(
 
     log_action(db, current_user["user_id"], "upload", "novel", novel.id,
                detail=f"上传小说：{title}", ip_address="")
+
+    # v2.46.283：TXT 上传后立即后台预解析，省掉每次打开再解析
+    enqueue_parse(background, novel.id, file_path, file.filename or "")
 
     return ResponseBase(msg="上传成功", data={"id": novel.id})
 
@@ -173,10 +224,11 @@ async def delete_novel(
     current_user: dict = Depends(get_current_user)
 ):
     novel = db.query(Novel).filter(Novel.id == novel_id).first()
-    check_owner_or_admin(current_user, novel.uploader_id)
     if not novel:
         raise_error(ErrCode.NOVEL_NOT_FOUND)
+    check_owner_or_admin(current_user, novel.uploader_id)
 
+    novel_parser.drop_cache(novel_id, novel.file_path)   # v2.46.283 解析缓存
     delete_file(novel.file_path)
     if novel.cover_path:
         delete_file(novel.cover_path)
@@ -195,6 +247,7 @@ async def delete_novel(
 # covers 为可选封面列表，与 files 一一对应；不够长度则视为空
 @router.post("/batch", response_model=ResponseBase)
 async def batch_upload_novel(
+    background: BackgroundTasks,
     files: List[UploadFile] = File(..., description="小说文件列表"),
     titles: List[str] = Form(..., description="与文件一一对应的标题"),
     authors: List[str] = Form(default_factory=list, description="与文件一一对应的作者（可选）"),
@@ -292,6 +345,13 @@ async def batch_upload_novel(
             db, current_user["user_id"], "upload", "novel", 0,
             detail=f"批量上传小说：成功 {success_count}/{len(files)}", ip_address="",
         )
+
+    # v2.46.283：TXT 统一在 commit 之后排队后台解析（逐本，失败互不影响）
+    for entry in results:
+        if entry.get("ok") and entry.get("id") and _is_txt(entry.get("filename")):
+            n = db.query(Novel).filter(Novel.id == entry["id"]).first()
+            if n:
+                enqueue_parse(background, n.id, n.file_path, entry["filename"])
 
     failed = sum(1 for r in results if not r["ok"])
     msg = f"批量导入完成：成功 {success_count}"
@@ -497,6 +557,118 @@ async def get_novel_file(
         filename=n.original_filename or os.path.basename(full),
         headers={"Cache-Control": "private, max-age=3600"},
     )
+
+
+# ========== TXT 预解析：章节索引 / 单章正文 / 全文搜索 / 手动重解析（v2.46.283）==========
+@router.get("/{novel_id}/chapters", response_model=ResponseBase)
+async def list_novel_chapters(
+    novel_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """章节索引（只有标题，几 KB）。未解析返回 status=unparsed，前端据此触发解析。"""
+    n = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not n:
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
+
+    meta = novel_parser.load_index(novel_id, n.file_path)
+    if not meta:
+        return ResponseBase(data={
+            "status": n.parse_status or "unparsed",
+            "count": 0,
+            "encoding": "",
+            "chapters": [],
+        })
+    return ResponseBase(data={
+        "status": "done",
+        "count": len(meta.get("chapters") or []),
+        "encoding": meta.get("encoding", ""),
+        "chapters": [
+            {"i": i, "t": c["t"]}
+            for i, c in enumerate(meta.get("chapters") or [])
+        ],
+    })
+
+
+@router.get("/{novel_id}/chapters/{idx}", response_model=ResponseBase)
+async def get_novel_chapter(
+    novel_id: int,
+    idx: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """单章正文（几十 KB，seek+read 毫秒级）。"""
+    n = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not n:
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
+    data = novel_parser.read_chapter(novel_id, n.file_path, idx)
+    if not data:
+        raise_error(ErrCode.NOVEL_NOT_FOUND, "章节不存在或尚未解析")
+    return ResponseBase(data=data)
+
+
+@router.get("/{novel_id}/search", response_model=ResponseBase)
+async def search_novel(
+    novel_id: int,
+    q: str,
+    limit: int = 300,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """全文搜索（跑在后端归一化缓存上，不再依赖前端全量正文）。"""
+    n = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not n:
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
+    q = (q or "").strip()
+    if not q:
+        return ResponseBase(data={"items": [], "count": 0})
+    items = novel_parser.search(novel_id, n.file_path, q, max(1, min(limit, 500)))
+    return ResponseBase(data={"items": items, "count": len(items)})
+
+
+@router.post("/{novel_id}/parse", response_model=ResponseBase)
+async def parse_novel_now(
+    novel_id: int,
+    force: int = 0,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """手动/首次解析（同步执行，13MB 约 1~2 秒）。force=1 忽略已有缓存重解。"""
+    n = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not n:
+        raise_error(ErrCode.NOVEL_NOT_FOUND)
+    if not _is_txt(n.original_filename or n.file_path):
+        raise_error(ErrCode.INVALID_PARAM, "只有 TXT 需要解析")
+
+    if not force:
+        meta = novel_parser.load_index(novel_id, n.file_path)
+        if meta:
+            n.parse_status = 'done'
+            n.chapter_count = len(meta.get("chapters") or [])
+            db.commit()
+            return ResponseBase(msg="已解析", data={
+                "status": "done",
+                "count": n.chapter_count,
+                "encoding": meta.get("encoding", ""),
+                "cost_ms": 0,
+            })
+
+    try:
+        meta = novel_parser.parse_novel_txt(novel_id, n.file_path)
+    except Exception as e:  # noqa: BLE001
+        n.parse_status = 'failed'
+        db.commit()
+        raise_error(ErrCode.INVALID_PARAM, f"解析失败：{e!s}")
+
+    n.parse_status = 'done'
+    n.chapter_count = len(meta.get("chapters") or [])
+    db.commit()
+    return ResponseBase(msg="解析完成", data={
+        "status": "done",
+        "count": n.chapter_count,
+        "encoding": meta.get("encoding", ""),
+        "cost_ms": meta.get("cost_ms", 0),
+    })
 
 
 @router.get("/{novel_id}", response_model=ResponseBase)

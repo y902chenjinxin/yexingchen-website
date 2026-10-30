@@ -49,7 +49,7 @@
           </div>
           <div class="ns-meta">
             <span class="ns-title">{{ n.title }}</span>
-            <span class="ns-sub">{{ n.author || '未知作者' }}</span>
+            <span class="ns-sub">{{ n.author || '未知作者' }}<template v-if="n.chapter_count"> · {{ n.chapter_count }} 章</template><template v-else-if="n.parse_status === 'pending'"> · 解析中</template></span>
             <span class="ns-pct">{{ progressOf(n) }}%</span>
           </div>
         </button>
@@ -65,8 +65,13 @@
           </template>
         </el-table-column>
         <el-table-column v-if="!isMobile" prop="tags" label="标签" min-width="120" show-overflow-tooltip />
-        <el-table-column v-if="!isMobile" label="文件大小" width="100">
-          <template #default="{ row }">{{ formatSize(row.file_size) }}</template>
+        <el-table-column v-if="!isMobile" label="文件大小" width="130">
+          <template #default="{ row }">
+            {{ formatSize(row.file_size) }}
+            <el-tag v-if="row.parse_status === 'pending'" size="small" type="warning">解析中</el-tag>
+            <el-tag v-else-if="row.parse_status === 'failed'" size="small" type="danger">解析失败</el-tag>
+            <span v-else-if="row.chapter_count" class="nv-chaps">{{ row.chapter_count }} 章</span>
+          </template>
         </el-table-column>
         <el-table-column v-if="!isMobile" label="上传时间" width="150">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
@@ -612,10 +617,32 @@ function progressOf(n) {
 }
 
 
+/** v2.46.283：手动重解析 TXT（后端同步跑，12MB 约 0.3~0.6s） */
+async function reparseNovel(row) {
+  const tk = localStorage.getItem('token') || ''
+  try {
+    const r = await fetch(`/api/novels/${row.id}/parse?force=1`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tk}` },
+    })
+    const json = await r.json().catch(() => null)
+    if (!r.ok || !json || json.code !== 0) throw new Error((json && json.msg) || `HTTP ${r.status}`)
+    const d = json.data || {}
+    row.chapter_count = d.count || 0
+    row.parse_status = 'done'
+    ElMessage.success(`解析完成：${d.count || 0} 章（${d.cost_ms || 0}ms）`)
+  } catch (e) {
+    row.parse_status = 'failed'
+    ElMessage.error(`解析失败：${e.message || e}`)
+  }
+}
+
 const rowActions = [
   // v2.46.196：点「阅读」进阅读器（epub.js / TXT 分章），直接读 novels 表的原始文件
   { icon: 'book', label: '阅读', onClick: openReader },
   { icon: 'edit', label: '编辑', onClick: openEdit },
+  // v2.46.283：TXT 解析失败/换算法后可手动重解（后端同步执行，13MB 约 0.5s）
+  { icon: 'refresh', label: '重解析', onClick: reparseNovel, show: (row) => String(row.original_filename || '').toLowerCase().endsWith('.txt') },
   { icon: 'trash', label: '删除', danger: true, onClick: handleDelete },
 ]
 
