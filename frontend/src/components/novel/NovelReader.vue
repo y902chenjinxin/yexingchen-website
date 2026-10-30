@@ -475,15 +475,10 @@ const curTheme = computed(() => {
 })
 const curFont = computed(() => FONTS.find((f) => f.key === font.value) || FONTS[0])
 
-/* 手机浏览器的 layout viewport 比可视区高（地址栏/工具栏占位），
-   `position: fixed; inset: 0` 会按 layout viewport 撑高 → 底栏被推到浏览器工具栏
-   后面、点不到（v2.46.288 夜星反馈「底部目录/设置按钮点不到」）。
-   用 visualViewport 的实时高度给容器定高，底部按钮才落在可视区内。 */
-const vpHeight = ref(0)
-function syncVpHeight() {
-  const vv = window.visualViewport
-  vpHeight.value = Math.round((vv && vv.height) || window.innerHeight || 0)
-}
+/* v2.46.290：容器高度改回纯 CSS（inset:0 + height:100dvh）。
+   🔴 别再拿 visualViewport.height 硬写 px：实测它比实际屏幕小一截（浏览器底部工具栏
+   + 系统导航栏都没算进去），容器变矮 → 底部露出 body 白底（夜星「调暗看到白块」），
+   而且首帧取值不稳定 → 第一次打开抽屉位置错乱（「要先点搜索再点页面才正常」）。 */
 
 const cssVars = computed(() => {
   const veil = 'rgba(251, 247, 238, .78)'
@@ -502,8 +497,6 @@ const cssVars = computed(() => {
     '--nrd-indent': indent.value ? '2em' : '0em',
     '--nrd-pgap': paraGap.value + 'em',
     '--nrd-bg-image': bgImageStyle,
-    // 有实测值就写死像素，否则回落到 CSS 的 100dvh
-    height: vpHeight.value ? `${vpHeight.value}px` : undefined,
   }
 })
 
@@ -1512,8 +1505,6 @@ onMounted(async () => {
   // 当前选中的 webfont 异步加载（不阻塞正文渲染，加载完 applyAll 里自动重注入）
   ensureFont(curFont.value)
   loadReaderBg()
-  syncVpHeight()
-  window.visualViewport?.addEventListener('resize', syncVpHeight)
   window.addEventListener('keydown', onKey)
   window.addEventListener('resize', onResize)
   enterTouchMode()
@@ -1581,7 +1572,6 @@ onBeforeUnmount(() => {
   flushProgress()
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('resize', onResize)
-  window.visualViewport?.removeEventListener('resize', syncVpHeight)
 
   clearTimeout(scrollTimer)
   try { rendition?.destroy() } catch { /* 忽略 */ }
@@ -1613,7 +1603,9 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   z-index: 1900;
   display: block;
   overflow: hidden;
-  /* 兜底高度：visualViewport 不支持时靠 dvh；两行都被忽略就回到 inset:0 的老行为 */
+  /* 高度：dvh 优先（已扣掉浏览器工具栏），不支持时退回 vh（layout viewport），
+     两行都被忽略则回到 inset:0 的老行为。绝不用 JS 写 px —— 见上文注释。 */
+  height: 100vh;
   height: 100dvh;
   background-color: var(--nrd-bg);
   /* v2.46.286：自定义背景图（半透明底色已叠在图上方，保证正文可读） */

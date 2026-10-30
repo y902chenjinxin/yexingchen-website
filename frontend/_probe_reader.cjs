@@ -28,6 +28,35 @@ async function main() {
     return el ? getComputedStyle(el).transform : 'no-bar'
   })
 
+  // 1.5) 刚进入就点页面中部 + 目录（复现「刚进去抽屉不对」）
+  await page.mouse.click(195, 420)
+  await page.waitForTimeout(250)
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.nrd-foot-tools button')).find((b) => b.textContent.includes('目录'))?.click()
+  })
+  await page.waitForTimeout(450)
+  result.firstEntryToc = await page.evaluate(() => {
+    const sheet = document.querySelector('.nrd-sheet-toc')
+    const nrd = document.querySelector('.nrd')
+    if (!sheet || !nrd) return { open: false }
+    const sr = sheet.getBoundingClientRect()
+    const nr = nrd.getBoundingClientRect()
+    return {
+      open: true,
+      sheetTop: Math.round(sr.top),
+      sheetBottom: Math.round(sr.bottom),
+      nrdBottom: Math.round(nr.bottom),
+      innerH: window.innerHeight,
+      // 抽屉底边应贴容器底（±2px），不能悬空
+      flushBottom: Math.abs(sr.bottom - nr.bottom) <= 2,
+      gapToViewport: Math.round(window.innerHeight - sr.bottom),
+    }
+  })
+  await page.screenshot({ path: `${OUT}/reader-first-entry-toc.png` })
+  // 收起，继续原流程
+  await page.mouse.click(195, 200)
+  await page.waitForTimeout(300)
+
   // 2) 点击页面中部 → 应唤出 chrome
   await page.mouse.click(195, 420)
   await page.waitForTimeout(400)
