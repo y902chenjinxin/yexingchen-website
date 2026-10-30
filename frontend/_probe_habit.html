@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>习惯弹窗渲染沙盒（本地，仅开发用）</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; }
+      #app { min-height: 100%; }
+    </style>
+  </head>
+  <body>
+    <!-- 复刻线上手机外壳：#app.is-mobile + html.m-app（teleport 到 body 的浮层靠后者兜底） -->
+    <div id="app" class="is-mobile"><div id="probe"></div></div>
+    <script type="module" src="/_probe_habit.js"></script>
+  </body>
+</html>

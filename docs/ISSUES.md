@@ -7,6 +7,28 @@
 
 ---
 
+## v2.46.279 新建习惯弹窗手机端一屏化（2026-10-30）
+
+- **V246279-001 `mobile-deink.css` 的「手机弹窗 90% 宽」其实是死规则**：
+  `#app.is-mobile .el-dialog { width: 90% !important }` 要求 dialog 在 `#app` 内部，
+  但项目里弹窗基本都写了 `append-to-body`，实际 DOM 在 `<body>` 下 →
+  这条从上线起就没命中过任何弹窗，所有弹窗在手机端都是模板里写死的 420px。
+  **新弹窗要么别写死宽度，要么显式加移动端覆盖；改移动浮层只能挂 `html.m-app` 前缀**
+  （App.vue 给 `<html>` 打的标记，v2.46.79 起就有）。
+- **V246279-002 量「有没有横滑」不能只看 `document.documentElement.scrollWidth`**：
+  dialog 溢出的滚动发生在 `.el-overlay-dialog` 这个 fixed 容器里，html/body 的
+  scrollWidth 一直是干净的。探针要直接量 `.el-dialog` 的 `getBoundingClientRect()`
+  与 `innerWidth` 比较（本次实测 390 屏 `right=420`）。
+- **V246279-003 对照组别把 className 整个清空**：`dlg.className = ''` 连 `el-dialog`
+  一起删了，元素的 width 规则全失效退化成块级 100%，会得出「修复前也是 390、
+  根本不溢出」的错误结论。做 before/after 对比只 `classList.remove(自己加的类)`。
+- **V246279-004 `el-input-number` 默认 150px 定宽**：并排两个（「每年」的月/日）
+  在 360 屏必被撑破；要么 `flex: 1 1 0 + min-width: 0`，要么整行 `width: 100%`。
+- `frontend/_probe_habit.html|js|cjs` 是这套弹窗的本地量测夹具（三档视口 +
+  修复前对照组 + 每年档位），后续改表单再加字段时直接跑它。
+
+---
+
 ## v2.46.162 暴力摩托：原版像素风重制（2026-10-21）
 
 - **V246162-001 像素风不能靠后期滤镜**：在主画布上叠噪点、扫描线、马赛克只会「脏」。

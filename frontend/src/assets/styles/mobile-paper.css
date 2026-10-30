@@ -1293,3 +1293,59 @@ html.m-app .life-dlg-compact .el-form-item__content { line-height: 34px !importa
 html.m-app .life-dlg-compact .el-input__wrapper { padding: 1px 10px !important; }
 /* 底部按钮：等宽两分，拇指区好点 */
 html.m-app .life-dlg-compact .el-dialog__footer .el-button { min-width: 96px; margin-left: 10px; }
+
+/* ================= v2.46.279 新建/编辑习惯弹窗一屏化（html.m-app） =================
+ * 夜星反馈：手机端新建习惯要左右滑才能操作。
+ * 根因两条：
+ *   1) 弹窗写死 width="420px"，append-to-body 后挂在 body 下，
+ *      mobile-deink.css 的 `#app.is-mobile .el-dialog{width:90%}` **不命中**
+ *      （不在 #app 作用域）→ 390 视口左右各溢 15px，必须横滑；
+ *   2) 「每年」档位里两个 el-input-number 默认各 150px 定宽，
+ *      150*2 + 月/日 + gap ≈ 352 > 内容宽 318 → 窄屏进一步撑破。
+ * 口径复用 .life-dlg-compact：absolute inset:0 + margin:auto 双向居中，
+ * 宽 min(420, 100vw-24) 封顶，高 fit-content 且不超 100dvh-24，
+ * body 内部纵向滚动、header/footer 常驻 → 弹窗永远在一屏内，不用横滑。 */
+html.m-app .hb-dlg-compact {
+  position: absolute !important;
+  inset: 0 !important;
+  margin: auto !important;
+  width: min(420px, calc(100vw - 24px)) !important;
+  padding: 0 !important;
+  height: fit-content !important;
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  display: flex; flex-direction: column;
+  border-radius: 18px !important;
+  overflow: hidden;
+}
+html.m-app .hb-dlg-compact .el-dialog__header {
+  padding: 12px 16px 4px !important; margin-right: 0 !important; flex: none;
+}
+html.m-app .hb-dlg-compact .el-dialog__title { font-size: 16px !important; font-weight: 700 !important; }
+html.m-app .hb-dlg-compact .el-dialog__headerbtn { top: 6px !important; right: 4px !important; width: 36px; height: 36px; }
+html.m-app .hb-dlg-compact .el-dialog__body {
+  padding: 2px 16px 0 !important; flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+html.m-app .hb-dlg-compact .el-dialog__footer { padding: 10px 16px 14px !important; flex: none; }
+html.m-app .hb-dlg-compact .el-dialog__footer .el-button {
+  min-width: 96px; height: 38px; margin: 0 0 0 10px;
+}
+/* 字段间距 14 → 10，标签 12.5 → 12：默认「每天」档整表约省 60px */
+html.m-app .hb-dlg-compact .hb-form { gap: 10px; }
+html.m-app .hb-dlg-compact .hb-field { gap: 5px; font-size: 12px; }
+html.m-app .hb-dlg-compact .hb-acc-pick,
+html.m-app .hb-dlg-compact .hb-seg,
+html.m-app .hb-dlg-compact .hb-week,
+html.m-app .hb-dlg-compact .hb-icons { gap: 5px; }
+html.m-app .hb-dlg-compact .hb-acc-btn,
+html.m-app .hb-dlg-compact .hb-seg-btn { padding: 5px 10px; }
+html.m-app .hb-dlg-compact .hb-wd-btn { min-width: 40px; padding: 5px 6px; }
+/* 数值框拉满一列（原来 150px 悬在左边，右边留白还容易和长标签错位） */
+html.m-app .hb-dlg-compact .hb-field > .el-input-number { width: 100%; }
+/* 「每年」：两框等比收缩，禁止定宽撑破 */
+html.m-app .hb-dlg-compact .hb-year { gap: 5px; }
+html.m-app .hb-dlg-compact .hb-year .el-input-number { flex: 1 1 0; width: auto; min-width: 0; }
+html.m-app .hb-dlg-compact .hb-year em { flex: none; font-size: 12px; }
+html.m-app .hb-dlg-compact .hb-hint { margin-left: 0; font-size: 11px; line-height: 1.5; }
+html.m-app .hb-dlg-compact .hb-form-tip { font-size: 11px; line-height: 1.55; }

@@ -283,8 +283,14 @@
       </section>
     </div>
 
-    <!-- 新建 / 编辑 -->
-    <el-dialog v-model="dialog" :title="form.id ? '编辑习惯' : '新建习惯'" width="420px" append-to-body>
+    <!-- 新建 / 编辑（hb-dlg-compact：v2.46.279 手机端一屏化，见 mobile-paper.css） -->
+    <el-dialog
+      v-model="dialog"
+      class="hb-dlg-compact"
+      :title="form.id ? '编辑习惯' : '新建习惯'"
+      width="420px"
+      append-to-body
+    >
       <div class="hb-form">
         <label class="hb-field">
           <span>名称</span>
