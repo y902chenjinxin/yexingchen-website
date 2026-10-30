@@ -51,7 +51,7 @@
 
     <!-- 加载 / 错误 -->
     <div v-if="loading" class="nrd-mask">
-      <div class="nrd-loading">正在解析《{{ novel.title }}》…</div>
+      <div class="nrd-loading">正在打开《{{ novel.title }}》…</div>
     </div>
     <div v-else-if="error" class="nrd-mask">
       <div class="nrd-err">
@@ -86,6 +86,7 @@
       class="nrd-stage nrd-txt"
       :class="{ 'is-paged': flow === 'paginated' }"
       @scroll.passive="onTxtScroll"
+      @wheel="onWheel"
       @touchstart.passive="onTouchStart"
       @touchend.passive="onTouchEnd"
     >
@@ -96,7 +97,7 @@
           <div v-if="txtChapter && txtIndex >= txtChapters.length - 1" class="nrd-end">— 全书完 —</div>
         </template>
         <template v-else>
-          <section v-for="sec in loadedSecs" :key="'s' + sec.idx" class="nrd-sec">
+          <section v-for="sec in loadedSecs" :key="'s' + sec.idx" class="nrd-sec" :data-idx="sec.idx">
             <h2 class="nrd-ch-title">{{ sec.title }}</h2>
             <p v-for="(para, i) in sec.paras" :key="'q' + i" class="nrd-p">{{ para }}</p>
           </section>
@@ -459,10 +460,14 @@ function setFlow(v) {
   saveSettings()
   if (kind.value === 'epub') { rebuildEpub(); return }
   if (kind.value === 'txt') {
-    // 分页 ↔ 滚动：分页要重新量页宽；滚动要确保当前章已加载
-    nextTick(() => {
+    // 分页 ↔ 滚动：分页要重新量页宽；滚动要确保当前章 ± 邻章在 DOM 里
+    nextTick(async () => {
       if (v === 'paginated') { txtPage.value = 0; measurePages() }
-      else { loadUntil(txtIndex.value); syncTxtPercent() }
+      else {
+        await ensureSec(txtIndex.value)
+        await ensureSec(txtIndex.value + 1)
+        syncTxtPercent()
+      }
     })
   }
 }
@@ -487,7 +492,10 @@ const toc = ref([])
 const tocActive = ref(0)
 const tocOpen = ref(false)
 const setOpen = ref(false)
-const atStart = ref(true)
+/* EPUB 的「是否在开头」由 epub.js relocated 事件给；TXT 得自己算。
+   🔴 v2.46.284：原来只有 ref 且只在 EPUB 事件里赋值 → TXT 模式下永远是 true，
+   「上一页」按钮永久禁用（夜星反馈「点不了上一页」正是这个）。 */
+const epubAtStart = ref(true)
 
 const epubRef = ref(null)
 const txtRef = ref(null)
@@ -504,6 +512,12 @@ const txtParas = computed(() => (txtChapter.value ? txtChapter.value.paras : [])
    翻页 = 整块 translateX；滚动模式按章懒加载，不再一次渲染全书。 */
 const txtPage = ref(0)        // 分页模式：章内第几页
 const txtPageCount = ref(1)   // 分页模式：本章总页数
+
+/** 「上一页」禁用判定：EPUB 用 epub.js 的位置，TXT 看「第0章第0页」 */
+const atStart = computed(() => {
+  if (kind.value === 'epub') return epubAtStart.value
+  return txtIndex.value === 0 && txtPage.value === 0
+})
 const pageWidth = ref(0)      // 一页可用宽度（容器宽 - 左右边距）
 const loadedSecs = ref([])    // 滚动模式：已加载的章节段
 const colsRef = ref(null)
@@ -534,19 +548,46 @@ function measurePages() {
   })
 }
 
-/** 滚动模式：按需把 0..idx 的章节塞进 DOM（章节正文按需从后端取，v2.46.283） */
+/** 滚动模式：确保第 idx 章已渲染（稀疏加载 —— 只取需要的章）。
+    🔴 v2.46.284：旧实现 `loadUntil(curIdx)` 会把 0..curIdx 全部塞进 DOM。
+    改成按章请求后这就成了「打开时串行发 curIdx 个请求」——上次读到第 800 章
+    就要跑 800 个网络请求，表现为一直转圈 + 卡死（夜星反馈「一直在解析」）。
+    现在只加载当前章 ± 邻章。 */
+async function ensureSec(idx) {
+  if (idx < 0 || idx >= txtChapters.value.length) return false
+  if (loadedSecs.value.some((s) => s.idx === idx)) return true
+  const c = txtChapters.value[idx]
+  if (!c) return false
+  await loadChapterData(idx)
+  loadedSecs.value = [...loadedSecs.value, { idx, title: c.title, paras: c.paras || [] }]
+    .sort((a, b) => a.idx - b.idx)
+  return true
+}
+
+/** 加载已渲染的最后一章的下一章 */
 let secLoading = false
-async function loadUntil(idx) {
+async function ensureNext() {
   if (secLoading) return
+  const last = loadedSecs.value[loadedSecs.value.length - 1]
+  const next = last ? last.idx + 1 : 0
+  if (next >= txtChapters.value.length) return
+  secLoading = true
+  try { await ensureSec(next) } finally { secLoading = false }
+}
+
+/** 往前加载一章，并补偿滚动位置（否则插入内容会把读者视野顶走） */
+async function ensurePrev() {
+  if (secLoading) return
+  const first = loadedSecs.value[0]
+  if (!first || first.idx <= 0) return
+  const el = txtRef.value
+  const prevH = el ? el.scrollHeight : 0
+  const prevTop = el ? el.scrollTop : 0
   secLoading = true
   try {
-    const target = Math.min(idx, txtChapters.value.length - 1)
-    for (let k = loadedSecs.value.length; k <= target; k++) {
-      const c = txtChapters.value[k]
-      if (!c) break
-      await loadChapterData(k)
-      loadedSecs.value.push({ idx: k, title: c.title, paras: c.paras || [] })
-    }
+    await ensureSec(first.idx - 1)
+    await nextTick()
+    if (el) el.scrollTop = prevTop + (el.scrollHeight - prevH)
   } finally {
     secLoading = false
   }
@@ -592,15 +633,26 @@ function authHeaders() {
 }
 
 async function novelApi(path, opts = {}) {
-  const res = await fetch(`/api/novels/${props.novel.id}${path}`, {
-    ...opts,
-    headers: { ...authHeaders(), ...(opts.headers || {}) },
-  })
-  const json = await res.json().catch(() => null)
-  if (!res.ok || !json || json.code !== 0) {
-    throw new Error((json && (json.msg || json.detail)) || `HTTP ${res.status}`)
+  // v2.46.284：加超时 —— 后端解析卡住时不能无限转圈（夜星遇到「一直在解析」）
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), opts.timeout || 30000)
+  try {
+    const res = await fetch(`/api/novels/${props.novel.id}${path}`, {
+      ...opts,
+      signal: ctrl.signal,
+      headers: { ...authHeaders(), ...(opts.headers || {}) },
+    })
+    const json = await res.json().catch(() => null)
+    if (!res.ok || !json || json.code !== 0) {
+      throw new Error((json && (json.msg || json.detail)) || `HTTP ${res.status}`)
+    }
+    return json.data
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('请求超时（30s），请稍后重试')
+    throw e
+  } finally {
+    clearTimeout(timer)
   }
-  return json.data
 }
 
 /** 拉章节索引；若后端还没解析过（老书），先同步触发一次解析再拉。 */
@@ -692,7 +744,7 @@ async function openEpub(buffer) {
     if (typeof p === 'number') percent.value = Math.round(p * 100)
     saveProgress({ cfi: loc?.start?.cfi || '', percent: p || 0 })
     syncTocActive(loc?.start?.href || '')
-    atStart.value = !!loc?.atStart
+    epubAtStart.value = !!loc?.atStart
   })
   rendition.on('keyup', onKey)
   // 给每章 iframe 内部挂触摸手势（外部监听收不到 iframe 里的 touch）
@@ -888,8 +940,8 @@ function txtNext() {
   }
   const el = txtRef.value
   if (!el) return
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 60 && loadedSecs.value.length < txtChapters.value.length) {
-    loadUntil(loadedSecs.value.length)
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 60) {
+    ensureNext()
     nextTick(() => el.scrollBy({ top: el.clientHeight * 0.9, behavior: 'smooth' }))
     return
   }
@@ -897,12 +949,14 @@ function txtNext() {
 }
 
 /** 切章（分页模式重置到第一页；toLast=true 时落到最后一页） */
+let navSeq = 0
 async function goChapter(i, toLast = false) {
   if (i < 0 || i >= txtChapters.value.length) return
-  if (chapterLoading.value) return   // 正在取正文，忽略连点
+  const my = ++navSeq          // 连点防乱序：只有最后一次生效（不再直接 return 吞点击）
   txtIndex.value = i
   tocActive.value = i
-  await loadChapterData(i)           // v2.46.283：正文按需取
+  await loadChapterData(i)     // v2.46.283：正文按需取
+  if (my !== navSeq) return
   if (flow.value === 'paginated') {
     txtPage.value = 0
     nextTick(() => {
@@ -915,13 +969,12 @@ async function goChapter(i, toLast = false) {
       } else syncTxtPercent()
     })
   } else {
-    loadUntil(i)
-    nextTick(() => {
-      const el = txtRef.value
-      const sec = el?.querySelectorAll('.nrd-sec')?.[i]
-      if (sec && el) el.scrollTop = sec.offsetTop
-      syncTxtPercent()
-    })
+    await ensureSec(i)
+    await nextTick()
+    const el = txtRef.value
+    const sec = el?.querySelector(`.nrd-sec[data-idx="${i}"]`)
+    if (sec && el) el.scrollTop = sec.offsetTop
+    syncTxtPercent()
   }
 }
 
@@ -929,22 +982,45 @@ function switchChapter(i) {
   return goChapter(i, false)
 }
 
+/** 桌面端分页模式：鼠标滚轮 → 上一页/下一页（v2.46.284，夜星「上下滑动不了」） */
+let wheelLock = 0
+function onWheel(e) {
+  if (kind.value !== 'txt' || flow.value !== 'paginated') return   // 滚动模式交给浏览器原生
+  if (Math.abs(e.deltaY) < 10) return
+  e.preventDefault()
+  const now = Date.now()
+  if (now - wheelLock < 380) return     // 触控板一次滑动会连发几十个事件，必须锁
+  wheelLock = now
+  if (e.deltaY > 0) txtNext()
+  else txtPrev()
+}
+
 let scrollTimer = 0
+let scrollRaf = 0
 function onTxtScroll() {
   const el = txtRef.value
   if (!el) return
 
   if (flow.value === 'scroll') {
-    // 接近底部：追加下一章（按章懒加载）
-    if (loadedSecs.value.length < txtChapters.value.length &&
-        el.scrollTop + el.clientHeight > el.scrollHeight - 800) {
-      loadUntil(loadedSecs.value.length)
+    // 滚动事件每帧都来，DOM 查询（querySelectorAll + offsetTop）必须节流到 rAF 里做，
+    // 否则桌面上快速滚动会明显掉帧（v2.46.284）
+    if (!scrollRaf) {
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0
+        const cur = txtRef.value
+        if (!cur) return
+        // 接近底部：追加下一章；接近顶部：往前补一章（稀疏加载，只按需取）
+        if (cur.scrollTop + cur.clientHeight > cur.scrollHeight - 800) ensureNext()
+        else if (cur.scrollTop < 80) ensurePrev()
+        // 反推当前章节：必须读 data-idx（稀疏加载后渲染序号 ≠ 章节号）
+        const secs = cur.querySelectorAll('.nrd-sec')
+        let idx = txtIndex.value
+        secs.forEach((sd) => {
+          if (sd.offsetTop <= cur.scrollTop + 8) idx = Number(sd.dataset.idx ?? idx)
+        })
+        if (idx !== txtIndex.value) { txtIndex.value = idx; tocActive.value = idx }
+      })
     }
-    // 反推当前章节
-    const secs = el.querySelectorAll('.nrd-sec')
-    let cur = 0
-    secs.forEach((sd, k) => { if (sd.offsetTop <= el.scrollTop + 8) cur = k })
-    if (cur !== txtIndex.value) { txtIndex.value = cur; tocActive.value = cur }
   }
 
   clearTimeout(scrollTimer)
@@ -1197,7 +1273,9 @@ onMounted(async () => {
           })
         }
       } else {
-        await loadUntil(txtIndex.value)
+        // 滚动模式：只铺当前章 + 后一章（不再 0..curIdx 全量铺开）
+        await ensureSec(txtIndex.value)
+        await ensureSec(txtIndex.value + 1)
         await nextTick()
         if (saved?.scrollTop && txtRef.value) txtRef.value.scrollTop = saved.scrollTop
       }
@@ -1234,8 +1312,6 @@ onBeforeUnmount(() => {
   try { book?.destroy() } catch { /* 忽略 */ }
   if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value)
 })
-
-watch(atStart, (v) => { atStart.value = v })
 
 /* 窗口尺寸 / 边距 / 字号变化 → 分页模式要重新切页 */
 let resizeTimer = 0
