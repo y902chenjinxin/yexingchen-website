@@ -116,6 +116,7 @@ EXPECTED_TABLES = {
     "xuanhuang_travel_cities",
     "xuanhuang_travels",
     "xuanhuang_user_facts",
+    "xuanhuang_user_prefs",
 }
 
 

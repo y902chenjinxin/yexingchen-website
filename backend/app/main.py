@@ -7,7 +7,7 @@ import logging
 from app.database import engine, Base
 from app.routers import (
     admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, crawler, datahub, finance, fish, idphoto, life, log, lost, music, novel,
-    ocr, poem, quick, search, settings as settings_router, subscriptions,
+    ocr, poem, prefs, quick, search, settings as settings_router, subscriptions,
     day_calendar, game_economy, game_rooms, game_tables, relations, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
 from app.routers.workbench import router as workbench_router
@@ -83,6 +83,7 @@ app.include_router(relations.router)
 app.include_router(log.router)
 app.include_router(search.router)
 app.include_router(settings_router.router)
+app.include_router(prefs.router)
 app.include_router(workbench_router)
 app.include_router(video_parse.router)
 app.include_router(finance.router)

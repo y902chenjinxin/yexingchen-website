@@ -257,10 +257,19 @@
         </div>
 
         <div class="nrd-set-row">
-          <span>&nbsp;</span>
+          <span>自动</span>
           <div class="nrd-seg">
-            <button type="button" :class="{ on: followSys }" @click="toggleFollowSys">跟随系统日/夜</button>
+            <button type="button" :class="{ on: autoTheme === 'off' }" @click="setAutoTheme('off')">关闭</button>
+            <button type="button" :class="{ on: autoTheme === 'system' }" @click="setAutoTheme('system')">跟随系统</button>
+            <button type="button" :class="{ on: autoTheme === 'time' }" @click="setAutoTheme('time')">按时间</button>
           </div>
+        </div>
+        <div v-if="autoTheme !== 'off'" class="nrd-set-row nrd-set-note">
+          <span></span>
+          <em class="nrd-hint">
+            <template v-if="autoTheme === 'time'">19:00–7:00 夜间，其余日间 · 当前：{{ autoThemeNow === 'night' ? '夜间' : '日间' }}</template>
+            <template v-else>当前判定：{{ autoThemeNow === 'night' ? '夜间' : '日间' }}<template v-if="!sysDarkSupported">（本机系统未上报深浅色，建议改用「按时间」）</template></template>
+          </em>
         </div>
 
         <div class="nrd-set-row">
@@ -439,6 +448,9 @@ const SET_KEY = 'xuanhuang:reader:settings'
 const defaultSettings = {
   theme: 'day', font: 'song', size: 19, lineHeight: 1.9, padding: 28, flow: 'paginated',
   brightness: 100, followSys: false,
+  // v2.46.298 自动日夜：off / system（跟随系统深浅色）/ time（19:00–7:00 夜间）
+  // followSys 保留只为读旧存档，逻辑一律走 autoTheme
+  autoTheme: 'off',
   // v2.46.285 排版（Kindle 风）：首行缩进 2 字、段间距 0.85em
   indent: true, paraGap: 0.85,
   // v2.46.286 自定义底色
@@ -452,7 +464,7 @@ const lineHeight = computed({ get: () => settings.value.lineHeight, set: (v) => 
 const padding = computed({ get: () => settings.value.padding, set: (v) => (settings.value.padding = v) })
 const flow = computed({ get: () => settings.value.flow, set: (v) => (settings.value.flow = v) })
 const brightness = computed({ get: () => settings.value.brightness ?? 100, set: (v) => (settings.value.brightness = v) })
-const followSys = computed({ get: () => !!settings.value.followSys, set: (v) => (settings.value.followSys = v) })
+const autoTheme = computed({ get: () => settings.value.autoTheme || 'off', set: (v) => (settings.value.autoTheme = v) })
 const indent = computed({ get: () => settings.value.indent !== false, set: (v) => (settings.value.indent = v) })
 const paraGap = computed({ get: () => settings.value.paraGap ?? 0.85, set: (v) => (settings.value.paraGap = v) })
 const autoPlay = ref(false)   // 自动翻页：运行态不进 localStorage，翻页档位「自动」= paginated + autoPlay
@@ -553,10 +565,66 @@ function loadSettings() {
     const raw = localStorage.getItem(SET_KEY)
     settings.value = raw ? { ...base, ...JSON.parse(raw) } : { ...base }
   } catch { /* 忽略 */ }
+  // 兼容 v2.46.297 及更早的存档：只有 followSys 布尔值
+  if (!settings.value.autoTheme) {
+    settings.value.autoTheme = settings.value.followSys ? 'system' : 'off'
+  }
   if (settings.value.customColor) customColor.value = settings.value.customColor
 }
+/* ---- 设置持久化：本地立即写 + 服务器防抖同步（v2.46.298）----
+   本地 localStorage 保证「秒开、离线可用」；服务器那份保证换设备/清缓存后还在。
+   冲突用 updatedAt 比大小：谁新用谁，避免旧设备把新设置盖回去。 */
+const PREF_KEY = 'reader_settings'
+let pushTimer = 0
+let lastPushedJson = ''
+
 function saveSettings() {
+  settings.value.updatedAt = Date.now()
   try { localStorage.setItem(SET_KEY, JSON.stringify(settings.value)) } catch { /* 忽略 */ }
+  queuePushSettings()
+}
+
+function queuePushSettings(delay = 1500) {
+  clearTimeout(pushTimer)
+  pushTimer = setTimeout(() => { pushSettings() }, delay)
+}
+
+async function pushSettings() {
+  const payload = JSON.stringify(settings.value)
+  if (payload === lastPushedJson) return          // 没变化不重复推
+  try {
+    const res = await fetch(`/api/prefs/${PREF_KEY}`, {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: payload }),
+    })
+    if (res.ok) lastPushedJson = payload
+  } catch { /* 离线就等下次保存再推 */ }
+}
+
+async function pullSettings() {
+  try {
+    const res = await fetch(`/api/prefs/${PREF_KEY}`, { headers: authHeaders() })
+    const j = await res.json().catch(() => null)
+    if (!j || j.code !== 0) return
+    const raw = (j.data && j.data.value) || ''
+    if (!raw) { queuePushSettings(400); return }   // 服务器还没有 → 把本机这份推上去
+    let remote = null
+    try { remote = JSON.parse(raw) } catch { return }
+    if (!remote || typeof remote !== 'object') return
+
+    const remoteAt = Number(remote.updatedAt) || 0
+    const localAt = Number(settings.value.updatedAt) || 0
+    if (localAt > remoteAt) { queuePushSettings(400); return }   // 本机更新，反向上传
+
+    settings.value = { ...defaultSettings, ...remote }
+    lastPushedJson = raw
+    try { localStorage.setItem(SET_KEY, JSON.stringify(settings.value)) } catch { /* 忽略 */ }
+    if (settings.value.customColor) customColor.value = settings.value.customColor
+    applyAutoTheme()
+    if (kind.value === 'epub') applyEpubTheme()
+    ensureFont(curFont.value)
+  } catch { /* 静默：拿不到就按本地那份走 */ }
 }
 function setTheme(k) { settings.value.theme = k; saveSettings(); applyAll() }
 
@@ -584,23 +652,70 @@ async function setFont(k) {
   await ensureFont(FONTS.find((f) => f.key === k) || FONTS[0])
 }
 
-function toggleFollowSys() {
-  followSys.value = !followSys.value
-  saveSettings()
-  if (followSys.value) applySysTheme()
-}
+/* ---- 自动日夜（v2.46.298）----
+   原来的「跟随系统日/夜」在夜星手机上没反应，原因是安卓/鸿蒙浏览器普遍不上报
+   prefers-color-scheme（恒为 light）→ 判定永远是白天，等于开关无效。
+   改成三档，并把「按时间」作为不依赖系统设置的可靠选项：
+     off    —— 手动（默认）
+     system —— 跟随系统深浅色（能取到时才有效）
+     time   —— 19:00 至次日 7:00 用夜间，其余日间
+   每分钟复查一次 + 页面回到前台时复查，跨过 19:00 / 7:00 会自动切换。 */
+const sysDarkSupported = ref(false)      // 本机系统是否真的上报深浅色
+const autoThemeNow = ref('day')          // 当前自动判定结果（用于面板提示）
 let sysMq = null
-function applySysTheme() {
-  if (!followSys.value || !sysMq) return
-  settings.value.theme = sysMq.matches ? 'night' : 'day'
-  saveSettings(); applyAll()
+let autoThemeTimer = 0
+
+function readSysDark() {
+  if (!window.matchMedia) return false
+  try { return window.matchMedia('(prefers-color-scheme: dark)').matches } catch { return false }
+}
+function autoThemeTarget() {
+  if (autoTheme.value === 'system') return readSysDark() ? 'night' : 'day'
+  if (autoTheme.value === 'time') {
+    const h = new Date().getHours()
+    return (h >= 19 || h < 7) ? 'night' : 'day'
+  }
+  return null
+}
+function applyAutoTheme() {
+  const t = autoThemeTarget()
+  if (!t) return
+  autoThemeNow.value = t
+  if (settings.value.theme !== t) {
+    settings.value.theme = t
+    saveSettings()
+    applyAll()
+  }
+}
+function setAutoTheme(m) {
+  settings.value.autoTheme = m
+  settings.value.followSys = m === 'system'   // 旧字段同步，兼容历史存档
+  saveSettings()
+  applyAutoTheme()
+  startAutoThemeTimer()
+}
+function startAutoThemeTimer() {
+  clearInterval(autoThemeTimer)
+  autoThemeTimer = setInterval(() => {
+    if (document.hidden) return
+    applyAutoTheme()
+  }, 60 * 1000)
+}
+function stopAutoThemeTimer() {
+  clearInterval(autoThemeTimer)
+  autoThemeTimer = 0
 }
 function watchSysTheme() {
   if (!window.matchMedia) return
-  sysMq = window.matchMedia('(prefers-color-scheme: dark)')
-  const h = () => applySysTheme()
+  try {
+    sysMq = window.matchMedia('(prefers-color-scheme: dark)')
+  } catch { return }
+  // 探测系统是否真的会上报：某些浏览器 media query 能建但恒为 false
+  sysDarkSupported.value = !(sysMq.matches === false && window.matchMedia('(prefers-color-scheme: light)').matches === false)
+  const h = () => applyAutoTheme()
   if (sysMq.addEventListener) sysMq.addEventListener('change', h)
   else if (sysMq.addListener) sysMq.addListener(h)   // 旧 WebView
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) applyAutoTheme() })
 }
 
 /* ---- 自动翻页：12 秒一页，任何触摸/翻页操作即停 ---- */
@@ -1576,7 +1691,9 @@ useFullscreenPage({ keepOverlays: true })
 onMounted(async () => {
   loadSettings()
   watchSysTheme()
-  if (followSys.value) applySysTheme()
+  applyAutoTheme()
+  startAutoThemeTimer()
+  pullSettings()   // 服务器上的设置（跨设备）异步拉，不阻塞首屏
   // 当前选中的 webfont 异步加载（不阻塞正文渲染，加载完 applyAll 里自动重注入）
   ensureFont(curFont.value)
   loadReaderBg()
@@ -1650,6 +1767,7 @@ onBeforeUnmount(() => {
   flushProgress()
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('resize', onResize)
+  stopAutoThemeTimer()
   window.visualViewport?.removeEventListener('resize', syncBrowserUi)
   window.visualViewport?.removeEventListener('scroll', syncBrowserUi)
 
@@ -2186,6 +2304,14 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   color: var(--nrd-sub);
   font-size: 12.5px;
   letter-spacing: .02em;
+}
+.nrd-set-note { margin-top: -8px; align-items: flex-start; }
+.nrd-hint {
+  flex: 1;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--nrd-sub);
+  font-style: normal;
 }
 .nrd-btn.ghost.armed {
   color: #c0503f;
