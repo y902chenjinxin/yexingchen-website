@@ -9,7 +9,10 @@
   <Teleport to="body">
   <div class="nrd" :class="[`theme-${theme}`, { 'is-chrome': showChrome }]" :style="cssVars" @click="onRootClick">
     <!-- 菜单遮罩（点空白收起；顶栏/底栏本身不冒泡到这里） -->
-    <div v-if="showChrome" class="nrd-scrim" @click.stop="showChrome = false" />
+    <div v-if="showChrome && !anyPanelOpen()" class="nrd-scrim" @click.stop="showChrome = false" />
+
+    <!-- 抽屉遮罩：抽屉打开时盖住正文，点它关抽屉（同时导航条已收起） -->
+    <div v-if="anyPanelOpen()" class="nrd-scrim nrd-scrim-panel" @click.stop="closeAllPanels" />
 
     <!-- 顶栏：默认隐藏，点击页面中部滑出（番茄式） -->
     <header class="nrd-bar">
@@ -616,10 +619,27 @@ function setIndent(v) {
 const showChrome = ref(false)
 const tocQ = ref('')
 
+/** 是否有任一抽屉打开（目录/设置/搜索/书签） */
+/* 🔴 必须是函数不是 computed：tocOpen(748) / findOpen(1304) / marksOpen(1352) 都定义在
+   这里之后，computed 被 watch 立即求值会撞 TDZ（Cannot access 'tocOpen' before initialization）。 */
+function anyPanelOpen() {
+  return tocOpen.value || setOpen.value || findOpen.value || marksOpen.value
+}
+
+function closeAllPanels() {
+  tocOpen.value = false
+  setOpen.value = false
+  findOpen.value = false
+  marksOpen.value = false
+}
+
 function onRootClick(e) {
   // 点在交互元素上不当作「翻页/唤菜单」
   if (e.target.closest('button, input, label, a, .nrd-sheet, .nrd-bar, .nrd-foot, .nrd-set, .nrd-toc, .nrd-dim')) return
   if (window.getSelection && String(window.getSelection())) return   // 正在划线选字
+  // v2.46.287：抽屉开着时点空白 = 关抽屉（番茄行为），不能反过来把顶栏底栏唤出来
+  // —— 否则两侧同时出现，导航条会压着抽屉（夜星截图反馈）
+  if (anyPanelOpen()) { closeAllPanels(); return }
   if (showChrome.value) { showChrome.value = false; return }
   if (flow.value === 'paginated' && kind.value !== 'pdf') {
     const w = window.innerWidth || 1
@@ -633,16 +653,14 @@ function onRootClick(e) {
 function openPanel(which) {
   showChrome.value = false
   const cur = { toc: tocOpen.value, marks: marksOpen.value, set: setOpen.value, find: findOpen.value }
-  tocOpen.value = false
-  marksOpen.value = false
-  setOpen.value = false
-  findOpen.value = false
+  closeAllPanels()
   if (cur[which]) return
   if (which === 'toc') tocOpen.value = true
   else if (which === 'marks') { marksOpen.value = true; loadMarks() }
   else if (which === 'find') { findOpen.value = true; nextTick(() => document.querySelector('.nrd-find-input')?.focus()) }
   else setOpen.value = true
 }
+
 
 /** 目录搜索过滤（保留原始索引，跳转要用） */
 const filteredToc = computed(() => {
@@ -1563,6 +1581,12 @@ function onResize() {
   resizeTimer = setTimeout(() => { measurePages() }, 180)
 }
 watch([size, lineHeight, padding], () => { onResize() })
+
+/* 抽屉一打开就收掉导航条（防止顶栏/底栏压着抽屉，v2.46.287 夜星反馈）。
+   放文件末尾：tocOpen/findOpen/marksOpen 都在上方定义完毕，不会撞 TDZ。 */
+watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
+  if (vals.some(Boolean)) showChrome.value = false
+})
 </script>
 
 <style scoped>
@@ -1589,6 +1613,11 @@ watch([size, lineHeight, padding], () => { onResize() })
   inset: 0;
   background: rgba(0, 0, 0, .1);
   z-index: 11;
+}
+/* 抽屉遮罩：压暗正文并把点击焦点交给「关抽屉」，层级夹在 chrome(12) 与抽屉(14) 之间 */
+.nrd-scrim-panel {
+  z-index: 13;
+  background: rgba(0, 0, 0, .22);
 }
 
 /* 顶栏：默认隐藏，点页面中部滑出（番茄式） */

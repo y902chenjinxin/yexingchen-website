@@ -49,6 +49,16 @@ async function main() {
   })
   await page.waitForTimeout(500)
   result.tocOpen = await q('.nrd-sheet-toc')
+  // v2.46.287：抽屉打开时导航条必须收起（不能压着抽屉）
+  result.chromeHiddenWithToc = await page.evaluate(() => {
+    const el = document.querySelector('.nrd')
+    const bar = document.querySelector('.nrd-bar')
+    return {
+      isChrome: el?.classList.contains('is-chrome') || false,
+      barOpacity: bar ? getComputedStyle(bar).opacity : 'no-bar',
+      hasPanelScrim: !!document.querySelector('.nrd-scrim-panel'),
+    }
+  })
   result.tocItems = await page.evaluate(() => document.querySelectorAll('.nrd-sheet-toc .nrd-toc-item').length)
   result.tocRect = await page.evaluate(() => {
     const el = document.querySelector('.nrd-sheet-toc')
@@ -63,9 +73,14 @@ async function main() {
   await page.waitForTimeout(300)
   result.tocFiltered = await page.evaluate(() => document.querySelectorAll('.nrd-sheet-toc .nrd-toc-item').length)
 
-  // 5) 点遮罩外的内容区 → 目录应保持（点抽屉内部不关）
-  //    关闭目录：点顶栏区域外空白
+  // 5) 点抽屉遮罩（空白）→ 目录应关闭，且不唤出导航条
   await page.evaluate(() => { document.querySelector('.nrd-sheet-q').value = '' })
+  await page.mouse.click(195, 200)
+  await page.waitForTimeout(400)
+  result.afterBlankClick = await page.evaluate(() => ({
+    tocOpen: !!document.querySelector('.nrd-sheet-toc'),
+    isChrome: document.querySelector('.nrd')?.classList.contains('is-chrome') || false,
+  }))
 
   // 6) 切到设置抽屉
   await page.evaluate(() => {

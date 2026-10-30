@@ -23,6 +23,30 @@
 
 ---
 
+## [v2.46.287] - 2026-10-30
+
+### 阅读器：抽屉打开时收起导航条（修「导航压着抽屉」）
+
+夜星截图：设置/目录抽屉弹出时，顶栏和底栏仍在，导航条压着抽屉；「番茄也有导航
+按钮，但是多点一下页面，导航按钮就消失了」。
+
+- 根因：抽屉开着时点正文空白，`onRootClick` 会走「唤出 chrome」分支 →
+  顶栏底栏滑出，与抽屉同时出现。
+- 修法：点空白先判抽屉 —— 有抽屉就**关抽屉**（番茄行为），不唤 chrome；
+  抽屉打开瞬间也由 `watch` 强制收起 chrome；再加一层 `.nrd-scrim-panel`
+  （z-index 13，夹在 chrome 12 与抽屉 14 之间）压暗正文并接管点击。
+- 🔴 顺手修掉一个 TDZ 崩溃：`anyPanelOpen` 原本写成 computed 并被 watch 立即求值，
+  而 `tocOpen` / `findOpen` / `marksOpen` 都定义在它之后 →
+  `Cannot access 'tocOpen' before initialization`，整个阅读器白屏（探针抓到的）。
+  改成普通函数 + 把 watch 移到文件末尾（所有 ref 定义完毕之后）。
+
+探针复验（390×844）：抽屉打开时 `isChrome=false`、`barOpacity=0`、
+`hasPanelScrim=true`；点空白后 `tocOpen=false` 且 `isChrome=false`（不会误唤导航）。
+
+版本 SW v599→v600、APP_VERSION v2.46.286→v2.46.287。
+
+---
+
 ## [v2.46.286] - 2026-10-30
 
 ### 阅读器按番茄小说重构交互 + 背景色自定义/上传
