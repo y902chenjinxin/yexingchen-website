@@ -40,6 +40,24 @@ async function main() {
   })
   result.hasPrevChap = await page.evaluate(() => !!Array.from(document.querySelectorAll('.nrd-foot-nav')).find((b) => b.textContent.includes('上一章')))
   result.hasNextChap = await page.evaluate(() => !!Array.from(document.querySelectorAll('.nrd-foot-nav')).find((b) => b.textContent.includes('下一章')))
+  // v2.46.288：容器高度必须按 visualViewport 实测，底栏要完整落在视口内
+  result.viewportFit = await page.evaluate(() => {
+    const nrd = document.querySelector('.nrd')
+    const foot = document.querySelector('.nrd-foot')
+    if (!nrd || !foot) return null
+    const nr = nrd.getBoundingClientRect()
+    const fr = foot.getBoundingClientRect()
+    return {
+      nrdInlineHeight: nrd.style.height || '(none)',
+      nrdH: Math.round(nr.height),
+      innerH: window.innerHeight,
+      footTop: Math.round(fr.top),
+      footBottom: Math.round(fr.bottom),
+      footH: Math.round(fr.height),
+      toolsBottom: Math.round(document.querySelector('.nrd-foot-tools')?.getBoundingClientRect().bottom || 0),
+      fullyInside: fr.bottom <= window.innerHeight + 1 && fr.top >= 0,
+    }
+  })
   result.hasOldPager = await page.evaluate(() => !!Array.from(document.querySelectorAll('button')).find((b) => b.textContent.trim() === '上一页'))
   await page.screenshot({ path: `${OUT}/reader-chrome.png` })
 

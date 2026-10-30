@@ -7,6 +7,18 @@
 
 ---
 
+## v2.46.288 全屏容器高度要按 visualViewport（2026-10-30）
+
+- **V246288-001 `fixed; inset: 0` 在移动浏览器上取的是 layout viewport**：它比
+  可视区高出一个地址栏/工具栏的高度（本次实测约 75px），底部贴底的元素（底栏、
+  按钮）会被浏览器 UI 挡住、点不到。全屏覆盖层要用
+  `window.visualViewport.height` 实测写 px（并监听 resize），CSS `100dvh` 只作兜底。
+- **V246288-002 判断要量几何而不是看截图**：探针里直接读
+  `foot.getBoundingClientRect()` 的 top/bottom 与 `window.innerHeight` 比较，
+  `fullyInside` 为真才算修好；只看「有没有这个元素」会漏掉这类位移问题。
+
+---
+
 ## v2.46.287 抽屉与导航条的互斥（2026-10-30）
 
 - **V246287-001 computed 被 watch 立即求值会撞 TDZ**：`const anyPanelOpen = computed(

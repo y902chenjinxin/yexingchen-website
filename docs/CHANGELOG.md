@@ -23,6 +23,26 @@
 
 ---
 
+## [v2.46.288] - 2026-10-30
+
+### 阅读器底栏被浏览器工具栏顶出屏幕（「目录/设置点不到」）
+
+夜星截图：手机端底栏只露出「第 2/1463 章 … 0%」一行，下面的上一章/下一章与
+目录/夜间/设置点不到。
+
+- 根因：`.nrd` 用 `position: fixed; inset: 0`，高度取的是**布局视口**（layout
+  viewport），比实际可视区（visualViewport）高出一个「浏览器地址栏/工具栏」的
+  高度 ≈ 75px。底栏贴的是容器底部 → 被推到工具栏后面，只露出一行。
+- 修法：容器高度改由 `window.visualViewport.height` 实测后写成行内 px
+  （`syncVpHeight()` + 监听 `visualViewport.resize`），CSS 加 `height: 100dvh`
+  兜底。视口变化（地址栏收放、横竖屏、软键盘）自动跟随。
+- 探针复验（390×844）：`nrdInlineHeight=844px`、`footTop=704 / footBottom=844 /
+  footH=140`、`fullyInside=true`（底栏完整落在视口内）。
+
+版本 SW v600→v601、APP_VERSION v2.46.287→v2.46.288。
+
+---
+
 ## [v2.46.287] - 2026-10-30
 
 ### 阅读器：抽屉打开时收起导航条（修「导航压着抽屉」）
