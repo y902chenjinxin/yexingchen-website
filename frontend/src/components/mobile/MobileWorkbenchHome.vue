@@ -1,26 +1,24 @@
 <template>
   <section class="abb" aria-label="主页">
-    <!-- 顶部：Logo + 品牌（v2.46.289：换成「星阁」墨底鎏金标，站名同步） -->
+    <!-- 顶部：Logo + 品牌（v2.46.291：直接复用桌面侧栏的「曜石方壳」标，不再另设） -->
     <header class="abb-top">
       <div class="abb-brand" @click="go('/workbench')" aria-label="星阁">
         <span class="abb-logo" aria-hidden="true">
-          <svg class="abb-logo__svg" viewBox="0 0 28 28" role="presentation">
+          <svg class="abb-logo__svg" viewBox="0 0 100 100" role="presentation">
             <defs>
-              <linearGradient id="abbLogoGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#3b352b" />
-                <stop offset="1" stop-color="#15130f" />
+              <radialGradient id="abbRuneCore" cx="0.34" cy="0.26" r="0.94">
+                <stop offset="0" stop-color="#5a7590" />
+                <stop offset="0.42" stop-color="#1a2530" />
+                <stop offset="1" stop-color="#05090c" />
+              </radialGradient>
+              <linearGradient id="abbRuneSpec" x1="0" y1="0" x2="0.45" y2="1">
+                <stop offset="0" stop-color="#ffffff" stop-opacity="0.52" />
+                <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
               </linearGradient>
             </defs>
-            <rect width="28" height="28" rx="8" fill="url(#abbLogoGrad)" />
-            <!-- 阁檐 -->
-            <path d="M6.2 12.6 14 7.3l7.8 5.3" fill="none" stroke="#dcb264"
-                  stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M8.4 16.3h11.2" stroke="#dcb264" stroke-width="1.2"
-                  stroke-linecap="round" opacity=".72" />
-            <!-- 星 -->
-            <circle cx="14" cy="20.2" r="1.85" fill="#f2d190" />
-            <path d="M9.8 24.1h8.4" stroke="#dcb264" stroke-width="1.1"
-                  stroke-linecap="round" opacity=".55" />
+            <path d="M50 4h26a20 20 0 0 1 20 20v52a20 20 0 0 1-20 20H24a20 20 0 0 1-20-20V24A20 20 0 0 1 24 4z" fill="url(#abbRuneCore)" />
+            <ellipse cx="37" cy="30" rx="21" ry="12.5" transform="rotate(-28 37 30)" fill="url(#abbRuneSpec)" />
+            <path d="M31 75c7 9 16 12.5 25 10" fill="none" stroke="#5fc9e8" stroke-width="2.6" stroke-linecap="round" opacity="0.6" />
           </svg>
         </span>
         <span class="abb-title">星阁</span>
@@ -223,7 +221,8 @@ onBeforeUnmount(() => {
 .abb-brand { display: flex; align-items: center; gap: 10px; border: none; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .abb-logo {
   position: relative; width: 28px; height: 28px; border-radius: 8px; overflow: hidden;
-  box-shadow: 0 6px 14px rgba(28, 24, 18, 0.35), inset 0 1px 0 rgba(255,255,255,.14);
+  /* 与桌面侧栏同一枚「曜石方壳」标，只是尺寸缩到 28（SVG 自带圆角，这里不再加阴影） */
+  filter: drop-shadow(0 4px 10px rgba(12, 20, 28, 0.28));
 }
 .abb-logo__svg { display: block; width: 100%; height: 100%; }
 .abb-title {

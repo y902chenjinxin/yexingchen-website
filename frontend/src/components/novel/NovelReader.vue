@@ -7,7 +7,7 @@
        position:fixed 会相对那个祖先定位而不是视口，实测阅读器只占了右侧内容区、
        左边被侧边栏压住一半。挂到 body 才是真正的全屏。 -->
   <Teleport to="body">
-  <div class="nrd" :class="[`theme-${theme}`, { 'is-chrome': showChrome }]" :style="cssVars" @click="onRootClick">
+  <div ref="nrdRef" class="nrd" :class="[`theme-${theme}`, { 'is-chrome': showChrome }]" :style="cssVars" @click="onRootClick">
     <!-- 菜单遮罩（点空白收起；顶栏/底栏本身不冒泡到这里） -->
     <div v-if="showChrome && !anyPanelOpen()" class="nrd-scrim" @click.stop="showChrome = false" />
 
@@ -480,6 +480,27 @@ const curFont = computed(() => FONTS.find((f) => f.key === font.value) || FONTS[
    + 系统导航栏都没算进去），容器变矮 → 底部露出 body 白底（夜星「调暗看到白块」），
    而且首帧取值不稳定 → 第一次打开抽屉位置错乱（「要先点搜索再点页面才正常」）。 */
 
+/* v2.46.291：浏览器底部工具栏 / 系统导航栏的遮挡补偿。
+   🔴 容器高度**不交给 JS**（v2.46.288 用 visualViewport.height 写死高度反而露白 +
+   首帧抖动）。这里只算「底部被浏览器 UI 吃掉多少」，作为**额外内边距**补回去，
+   容器尺寸仍由 CSS（inset:0 + 100dvh）决定，所以不会抖动也不会露底。
+   - innerHeight = 布局视口（含浏览器工具栏位置）
+   - visualViewport.height = 真正看得见的区域
+   - 两者差值就是底部被吃掉的像素；键盘弹出时差值很大（>180），排除掉
+   - 若容器高度已经等于可视高度（dvh 生效），说明 CSS 已扣过，不再重复补偿 */
+const nrdRef = ref(null)
+const browserUiBottom = ref(0)
+function syncBrowserUi() {
+  const vv = window.visualViewport
+  const el = nrdRef.value
+  if (!vv || !el) return
+  const gap = Math.round((window.innerHeight || 0) - vv.height)
+  if (gap <= 4 || gap >= 180) { browserUiBottom.value = 0; return }   // 0=无工具栏；>=180 多半是键盘
+  const containerH = el.clientHeight || 0
+  const alreadyFits = Math.abs(containerH - vv.height) < 4
+  browserUiBottom.value = alreadyFits ? 0 : Math.min(gap, 160)
+}
+
 const cssVars = computed(() => {
   const veil = 'rgba(251, 247, 238, .78)'
   const bgImageStyle = theme.value === 'image' && bgImage.value
@@ -497,6 +518,7 @@ const cssVars = computed(() => {
     '--nrd-indent': indent.value ? '2em' : '0em',
     '--nrd-pgap': paraGap.value + 'em',
     '--nrd-bg-image': bgImageStyle,
+    '--bui-bottom': browserUiBottom.value + 'px',
   }
 })
 
@@ -1505,6 +1527,9 @@ onMounted(async () => {
   // 当前选中的 webfont 异步加载（不阻塞正文渲染，加载完 applyAll 里自动重注入）
   ensureFont(curFont.value)
   loadReaderBg()
+  syncBrowserUi()
+  window.visualViewport?.addEventListener('resize', syncBrowserUi)
+  window.visualViewport?.addEventListener('scroll', syncBrowserUi)
   window.addEventListener('keydown', onKey)
   window.addEventListener('resize', onResize)
   enterTouchMode()
@@ -1572,6 +1597,8 @@ onBeforeUnmount(() => {
   flushProgress()
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('resize', onResize)
+  window.visualViewport?.removeEventListener('resize', syncBrowserUi)
+  window.visualViewport?.removeEventListener('scroll', syncBrowserUi)
 
   clearTimeout(scrollTimer)
   try { rendition?.destroy() } catch { /* 忽略 */ }
@@ -1742,7 +1769,7 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 12px 16px calc(30px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(24px + var(--bui-bottom, 0px) + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--nrd-line);
   background: var(--nrd-bg);
   z-index: 12;
@@ -1814,6 +1841,8 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   max-height: 74vh;
   display: flex;
   flex-direction: column;
+  /* 抽屉整体上抬「被浏览器工具栏吃掉的高度」，否则底部按钮会被压住 */
+  padding-bottom: var(--bui-bottom, 0px);
   background: var(--nrd-bg);
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -14px 40px -18px rgba(0, 0, 0, .45);
@@ -1842,10 +1871,12 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   outline: none;
   font-family: inherit;
 }
-.nrd-sheet-toc .nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 40px; }
+.nrd-sheet-toc .nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 24px; }
 .nrd-sheet-set {
-  padding: 0 18px calc(34px + env(safe-area-inset-bottom, 0px));
+  padding: 0 18px calc(22px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
+  /* flex item 默认 min-height:auto，内容会把抽屉撑破 max-height → 底部被容器裁掉 */
+  min-height: 0;
 }
 .nrd-prog {
   flex: 1;
