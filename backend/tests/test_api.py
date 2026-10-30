@@ -195,12 +195,6 @@ def test_router_finance_summary(admin_ctx):
     assert response.status_code == 200
 
 
-def test_router_stocks_watchlist(admin_ctx):
-    """stocks：自选股列表。"""
-    response = client.get("/api/stocks/watchlist")
-    assert response.status_code == 200
-
-
 def test_router_travels_list(admin_ctx):
     """travels：列表。"""
     response = client.get("/api/travels")
@@ -210,11 +204,5 @@ def test_router_travels_list(admin_ctx):
 def test_router_travels_stats(admin_ctx):
     """travels：统计。"""
     response = client.get("/api/travels/stats")
-    assert response.status_code == 200
-
-
-def test_router_feed_dashboard(admin_ctx):
-    """feed：dashboard。"""
-    response = client.get("/api/feeds/dashboard")
     assert response.status_code == 200
 

@@ -43,15 +43,7 @@
 /* 顶部工具条的导入/导出在移动端消失后，工具条与日期选择有留白 */
 #app.is-mobile .fin-toolbar { flex-wrap: wrap; gap: 10px; }
 
-/* ---------- P2 · 股票 /stocks（已是 KPI+趋势+列表，仅收行内编辑/删除） ---------- */
-#app.is-mobile .st-td-edit { display: none !important; }
-/* 移动卡片每行右上角的「删除」→ 管理操作移回桌面，只留查看 + 加自选 */
-#app.is-mobile .st-card-h .st-btn.danger { display: none !important; }
-#app.is-mobile .st-card-h { justify-content: flex-start; }
-#app.is-mobile .st-kpi-card { padding: 16px 14px; border-radius: 20px; }
-#app.is-mobile .st-kpi-v { font-size: 20px; font-weight: 800; }
-#app.is-mobile .st-kpi-s { font-size: 10.5px; }
-#app.is-mobile .st-kpi { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+/* ---------- P2 · 股票 /stocks 的移动端覆盖已随股票模块下线（v2.46.280） ---------- */
 
 /* ---------- 桌面管理类对话框在移动端若被误触发，改为占满全屏更亲近 ---------- */
 @media (max-width: 767px) {

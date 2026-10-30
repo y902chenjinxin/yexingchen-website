@@ -1,7 +1,7 @@
 """菜单二级分组（数据一览）：/api/admin/menus/public 的角色过滤 + 父级继承。
 
 场景（需求 1）：
-- 「数据一览」为一级分组，行情/账本/旅行足迹/资讯/数据中心 为其二级
+- 「数据一览」为一级分组，足迹/账本/资讯/数据中心 为其二级
 - 角色只勾了某个二级菜单（如「账本」）→ 返回该子项 + 父级「数据一览」
   （否则前端连分组入口都渲染不出来）
 - 角色未配置 menu_ids → 全部启用菜单
@@ -47,11 +47,11 @@ def _seed():
         Role(id=2, name="只看账本", code="finance_only", menu_ids="[3]", is_builtin=0),
         Role(id=3, name="空配置", code="empty_ids", menu_ids="[]", is_builtin=0),
     ])
-    # 1=数据一览(父) 2=行情 3=账本 4=资讯 5=音乐(独立一级) 6=禁用菜单
+    # 1=数据一览(父) 2=足迹 3=账本 4=资讯 5=音乐(独立一级) 6=禁用菜单
     s.add_all([
         Menu(id=1, parent_id=0, title="数据一览", path="/overview", icon="DataAnalysis",
              sort_order=10, is_enabled=1, is_builtin=1),
-        Menu(id=2, parent_id=1, title="行情", path="/stocks", icon="TrendCharts",
+        Menu(id=2, parent_id=1, title="足迹", path="/travels", icon="MapLocation",
              sort_order=11, is_enabled=1, is_builtin=1),
         Menu(id=3, parent_id=1, title="账本", path="/finance", icon="Money",
              sort_order=12, is_enabled=1, is_builtin=1),
@@ -74,7 +74,7 @@ def _run(db, user):
 def test_super_admin_sees_all_enabled():
     db = _seed()
     paths = {m["path"] for m in _run(db, SUPER)}
-    assert paths == {"/overview", "/stocks", "/finance", "/feeds", "/music"}
+    assert paths == {"/overview", "/travels", "/finance", "/feeds", "/music"}
     # 禁用菜单对超管也不可见
     assert "/disabled" not in paths
 

@@ -15,7 +15,7 @@
 
       <header class="dh-head">
         <h1 class="dh-title">数据中心</h1>
-        <p class="dh-sub">帐目 · 持仓 · 足迹 · 笔记 —— 一处一览</p>
+        <p class="dh-sub">帐目 · 足迹 · 笔记 —— 一处一览</p>
       </header>
 
       <p v-if="loading" class="dh-loading">数据装载中…</p>
@@ -27,13 +27,6 @@
             <b class="dh-kpi-val" :class="balanceCls">{{ money(finance.balance) }}</b>
             <span class="dh-kpi-sub">
               收入 {{ money(finance.month_income) }} · 支出 {{ money(finance.month_expense) }}
-            </span>
-          </div>
-          <div class="dh-kpi glass" v-if="stocks">
-            <span class="dh-kpi-label">持仓市值</span>
-            <b class="dh-kpi-val">{{ money(stocks.market_value) }}</b>
-            <span class="dh-kpi-sub" :class="pnlCls(stocks.hold_pnl)">
-              浮动盈亏 {{ money(stocks.hold_pnl) }}（{{ fmtPct(stocks.hold_pct) }}）
             </span>
           </div>
           <div class="dh-kpi glass" v-if="travels">
@@ -167,7 +160,6 @@ import AppIcon from '@/components/common/AppIcon.vue'
 
 const loading = ref(true)
 const finance = ref(null)
-const stocks = ref(null)
 const travels = ref(null)
 const notes = ref(null)
 const task = ref(null)
@@ -251,14 +243,6 @@ function money(v) {
 function moneyShort(v) {
   return Number(v || 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 })
 }
-function fmtPct(v) {
-  if (v == null) return '—'
-  return Number(v).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%'
-}
-function pnlCls(v) {
-  if (v == null) return ''
-  return v >= 0 ? 'pos' : 'neg'
-}
 function pctOfTop(c, rank) {
   // 简单按名次递减条宽，视觉分档
   return Math.max(18, 100 - (rank - 1) * 14)
@@ -271,7 +255,6 @@ onMounted(async () => {
     const res = await datahubApi.overview()
     const d = res.data || {}
     finance.value = d.finance || null
-    stocks.value = d.stocks || null
     travels.value = d.travels || null
     notes.value = d.notes || null
     task.value = d.task || null

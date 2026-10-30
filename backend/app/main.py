@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import asyncio
 import os
 import logging
 
@@ -9,13 +8,12 @@ from app.database import engine, Base
 from app.routers import (
     admin_menus, admin_roles, admin_users, asr, auth, capsule, contacts, cover, countdown, crawler, datahub, finance, fish, idphoto, life, log, lost, music, novel,
     ocr, poem, quick, search, settings as settings_router, subscriptions,
-    day_calendar, game_economy, game_rooms, game_tables, relations, stocks, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
+    day_calendar, game_economy, game_rooms, game_tables, relations, thumb, tool, travels, vault, video, video_parse, voice_clone, wardrobe,
 )
 from app.routers.workbench import router as workbench_router
 from app.config import settings
 from app.models.login_attempt import LoginAttempt  # 登录限流模型
 from app.services import schema_guard
-from app.services.stock_analysis import run_daily_scheduler_once
 from app.services.logging_config import configure_logging
 from app.services.life_bootstrap import bootstrap_life
 from app.database import SessionLocal
@@ -49,44 +47,6 @@ app = FastAPI(
 
 
 
-# ---------- 股票每日研判（AI）后台自动任务（仅生产环境） ----------
-_stock_daily_task: "asyncio.Task | None" = None
-
-# 检查间隔（秒）：每 5 分钟看一次是否到收盘窗口；启动预热 2 分钟避免抢在行情稳定前。
-STOCK_DAILY_INTERVAL = 5 * 60
-STOCK_DAILY_WARMUP = 120
-
-
-async def _stock_daily_loop() -> None:
-    await asyncio.sleep(STOCK_DAILY_WARMUP)
-    while True:
-        try:
-            await asyncio.to_thread(run_daily_scheduler_once)
-        except Exception:  # noqa: BLE001
-            logger.exception("股票每日研判自动任务失败")
-        await asyncio.sleep(STOCK_DAILY_INTERVAL)
-
-
-if schema_guard.is_production_env():
-
-    @app.on_event("startup")
-    async def _start_stock_daily() -> None:
-        global _stock_daily_task
-        if _stock_daily_task is None:
-            _stock_daily_task = asyncio.create_task(_stock_daily_loop())
-            logger.info("股票每日研判后台任务已启动（每 %d 秒检查一次）", STOCK_DAILY_INTERVAL)
-
-    @app.on_event("shutdown")
-    async def _stop_stock_daily() -> None:
-        global _stock_daily_task
-        if _stock_daily_task is not None:
-            _stock_daily_task.cancel()
-            try:
-                await _stock_daily_task
-            except asyncio.CancelledError:
-                pass
-            _stock_daily_task = None
-            logger.info("股票每日研判后台任务已停止")
 
 # CORS - 严格配置，禁止通配符
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "https://yexingchen.cn").split(",")
@@ -126,7 +86,6 @@ app.include_router(settings_router.router)
 app.include_router(workbench_router)
 app.include_router(video_parse.router)
 app.include_router(finance.router)
-app.include_router(stocks.router)
 app.include_router(travels.router)
 app.include_router(datahub.router)
 app.include_router(quick.router)

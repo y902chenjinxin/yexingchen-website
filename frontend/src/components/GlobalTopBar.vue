@@ -35,7 +35,8 @@
         </template>
       </el-dropdown>
 
-      <!-- 提醒中心：目标价预警 + 待办提醒（v2.14.3 合并；v2.14.4 角标分色） -->
+      <!-- 提醒中心：对局邀请 + 待办提醒 + 即将到来（v2.14.3 合并；v2.14.4 角标分色；
+           v2.46.280 目标价预警随股票模块下线） -->
       <el-dropdown trigger="click" placement="bottom-end" :show-arrow="false" @visible-change="onAlertPanelToggle">
         <button class="tb-icon-btn tb-alert-btn" :title="alertTitle" aria-label="提醒中心">
           <el-icon><Bell /></el-icon>
@@ -149,40 +150,6 @@
                 </span>
               </div>
             </div>
-
-            <div class="tb-alert-divider"></div>
-
-            <!-- 段 3：目标价预警 -->
-            <div class="tb-alert-section">
-              <div class="tb-panel-title">
-                <span>
-                  <el-icon><TrendCharts /></el-icon>
-                  目标价预警
-                  <span v-if="alertUnread > 0" class="tb-section-count tb-section-count--alert">{{ alertUnread }}</span>
-                </span>
-                <button v-if="alertUnread > 0" class="tb-alert-clear" @click="markAllRead">全部已读</button>
-              </div>
-              <div v-if="!alertItems.length" class="tb-alert-empty">
-                <EmptyState title="暂无预警" sub="在「行情」点开自选股的编辑按钮即可设置目标价" />
-              </div>
-              <div
-                v-for="a in alertItems"
-                :key="'alert-' + a.id"
-                class="tb-alert-item"
-                :class="['kind-' + a.kind, { unread: !a.read }]"
-                @click="onAlertItemClick(a)"
-              >
-                <span class="tb-alert-kind" :class="'kind-' + a.kind">
-                  {{ a.kind === 'up' ? '涨破' : '跌破' }}
-                </span>
-                <span class="tb-alert-name">{{ a.name }} <i>{{ a.code }}</i></span>
-                <span class="tb-alert-meta">
-                  目标 ¥{{ fmtPrice(a.target_price) }} · 现价 ¥{{ fmtPrice(a.hit_price) }}
-                </span>
-                <span class="tb-alert-date">{{ shortDate(a.date) }}</span>
-                <span v-if="!a.read" class="tb-alert-newdot" aria-label="未读"></span>
-              </div>
-            </div>
           </div>
         </template>
       </el-dropdown>
@@ -234,13 +201,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElNotification, ElMessage } from 'element-plus'
 import {
-  User, SwitchButton, Headset, CaretBottom, Cellphone, Promotion, Calendar, Bell, List, TrendCharts, Trophy,
+  User, SwitchButton, Headset, CaretBottom, Cellphone, Promotion, Calendar, Bell, List, Trophy,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerStore } from '@/stores/player'
 import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { listHomeCountdowns } from '@/api/countdown'
-import { stocksApi } from '@/api/stocks'
 import { workbenchApi } from '@/api/workbench'
 import { useGameInvites, agoLabel } from '@/composables/useGameInvites'
 import EmptyState from '@/components/EmptyState.vue'
@@ -283,15 +249,10 @@ async function loadCountdowns() {
   } catch { /* 未登录/网络失败则不显示徽章 */ }
 }
 
-/* ---- 目标价预警 ---- */
-const alertItems = ref([])
-const alertUnread = ref(0)
-const ALERT_POLL_MS = 60 * 1000
-let alertTimer = null
-let lastSeenIds = new Set()
-
 /* ---- 待办提醒 ---- */
 const taskItems = ref([])
+const POLL_MS = 60 * 1000
+let pollTimer = null
 function isOverdue(due) {
   if (!due) return false
   return new Date(due).getTime() < Date.now() - 24 * 3600 * 1000
@@ -347,56 +308,26 @@ async function onInviteDecline(inv) {
   }
 }
 
-const totalUnread = computed(() => alertUnread.value + taskItems.value.length + inviteItems.value.length)
+const totalUnread = computed(() => taskItems.value.length + inviteItems.value.length)
 const alertDotTone = computed(() => {
-  if (alertUnread.value > 0 || inviteItems.value.length > 0) return 'is-alert'
+  if (inviteItems.value.length > 0) return 'is-alert'
   return 'is-task'
 })
 const alertTitle = computed(() => {
   const parts = []
   if (inviteItems.value.length) parts.push(`对局邀请 ${inviteItems.value.length}`)
   if (taskItems.value.length) parts.push(`待办 ${taskItems.value.length}`)
-  if (alertUnread.value) parts.push(`目标价预警 ${alertUnread.value}`)
   if (parts.length) return `提醒：${parts.join(' · ')} 条`
   return '提醒中心'
 })
-function fmtPrice(v) {
-  return v == null ? '--' : Number(v).toFixed(2)
-}
-async function loadAlerts(showNotifications = false) {
-  try {
-    const res = await stocksApi.alerts({ limit: 30 })
-    const data = res?.data || { unread: 0, items: [] }
-    const newItems = data.items || []
-    alertItems.value = newItems
-    alertUnread.value = data.unread || 0
-
-    if (showNotifications) {
-      for (const it of newItems) {
-        if (it.read) continue
-        if (lastSeenIds.has(it.id)) continue
-        lastSeenIds.add(it.id)
-        const isUp = it.kind === 'up'
-        ElNotification({
-          title: isUp ? '涨破目标价' : '跌破目标价',
-          message: `${it.name || it.code} 触达目标价：现价 ¥${fmtPrice(it.hit_price)}（目标 ¥${fmtPrice(it.target_price)}）`,
-          type: isUp ? 'success' : 'warning',
-          duration: 6000,
-          position: 'top-right',
-        })
-      }
-    }
-  } catch { /* 静默 */ }
-}
-function startAlertPolling() {
-  if (alertTimer) return
-  alertTimer = setInterval(() => {
-    loadAlerts(true)
+function startPolling() {
+  if (pollTimer) return
+  pollTimer = setInterval(() => {
     loadTasks(true)
-  }, ALERT_POLL_MS)
+  }, POLL_MS)
 }
-function stopAlertPolling() {
-  if (alertTimer) { clearInterval(alertTimer); alertTimer = null }
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
 }
 
 async function loadTasks() {
@@ -447,7 +378,6 @@ function onTaskItemClick(t) {
 
 function onAlertPanelToggle(open) {
   if (open) {
-    loadAlerts(false)
     loadTasks(false)
     refreshInvites()
   } else {
@@ -457,18 +387,6 @@ function onAlertPanelToggle(open) {
 }
 /* 账号下拉开关不做事（命令由 li 自带 click 处理），保留占位避免后续忘记 */
 function onUserPanelToggle() { /* 暂无需刷新的数据 */ }
-async function markAllRead() {
-  try {
-    await stocksApi.markAllAlertsRead()
-    await loadAlerts(false)
-  } catch { /* 静默 */ }
-}
-async function onAlertItemClick(a) {
-  try {
-    if (!a.read) await stocksApi.markAlertRead(a.id)
-  } catch { /* 静默 */ }
-  router.push({ path: `/stocks/${a.code}`, query: { market: a.market } })
-}
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -503,11 +421,7 @@ onMounted(async () => {
   await bgm.initBgm()
   window.addEventListener('scroll', onTopbarScroll, { passive: true })
   loadCountdowns()
-  await loadAlerts(false)
-  for (const it of alertItems.value) {
-    if (!it.read) lastSeenIds.add(it.id)
-  }
-  startAlertPolling()
+  startPolling()
   await loadTasks(false)
   for (const it of taskItems.value) {
     if (isOverdue(it.due_date)) lastSeenTaskIds.add(it.id)
@@ -515,7 +429,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  stopAlertPolling()
+  stopPolling()
   window.removeEventListener('scroll', onTopbarScroll)
 })
 </script>
@@ -590,7 +504,7 @@ onUnmounted(() => {
 .tb-cd-days { font-size: 12px; color: var(--lj-dai); font-variant-numeric: tabular-nums; flex: none; }
 .tb-cd-empty { padding: 12px 8px; text-align: center; font-size: 12px; color: var(--lj-text-3); }
 
-/* ---- 目标价预警 ---- */
+/* ---- 提醒中心（邀请 / 待办 / 即将到来） ---- */
 .tb-alert-btn { position: relative; }
 .tb-alert-dot {
   position: absolute;
@@ -612,13 +526,6 @@ onUnmounted(() => {
 .tb-alert-panel .tb-panel-title {
   display: flex; justify-content: space-between; align-items: center;
 }
-.tb-alert-clear {
-  background: transparent; border: 1px solid var(--lj-line);
-  color: var(--lj-text-2); font-size: 11px;
-  padding: 3px 10px; border-radius: 999px; cursor: pointer;
-  transition: all 0.18s;
-}
-.tb-alert-clear:hover { color: var(--lj-seal); border-color: var(--lj-seal); }
 .tb-alert-empty {
   padding: 0 4px;
   text-align: center; font-size: 12px;
@@ -644,8 +551,6 @@ onUnmounted(() => {
   height: 22px; padding: 0 8px; border-radius: 999px;
   font-size: 11px; font-weight: 600;
 }
-.tb-alert-kind.kind-up { background: rgba(216, 80, 79, 0.12); color: var(--dp-up); }
-.tb-alert-kind.kind-down { background: rgba(63, 150, 142, 0.12); color: #3F968E; }
 .tb-alert-name {
   font-size: 13px; color: var(--lj-text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

@@ -831,10 +831,6 @@
 :root[data-theme="day"] .spirit-quiz {
   background: rgba(255, 255, 255, 0.86);
 }
-/* 股票 K 线浮窗提示 */
-:root[data-theme="day"] .kc-tip {
-  background: rgba(255, 255, 255, 0.88);
-}
 /* 旅行足迹 · 迷你地图/玻璃浮卡/幽灵标签 */
 :root[data-theme="day"] .tm-mini,
 :root[data-theme="day"] .tm-card {
@@ -855,16 +851,12 @@
 :root[data-theme="day"] .chat-save-body {
   background: rgba(20, 36, 42, 0.05);
 }
-/* 日志/记账/股票 输入框群 */
+/* 日志/记账 输入框群 */
 :root[data-theme="day"] .fd-input,
 :root[data-theme="day"] .fd-search,
 :root[data-theme="day"] .fd-select,
 :root[data-theme="day"] .fin-note-input,
 :root[data-theme="day"] .fin-filter-input,
-:root[data-theme="day"] .st-input,
-:root[data-theme="day"] .st-sug-item,
-:root[data-theme="day"] .st-cell-input,
-:root[data-theme="day"] .sd-input,
 :root[data-theme="day"] .idp-num {
   background: rgba(255, 255, 255, 0.55);
 }
@@ -943,7 +935,7 @@ html:root[data-theme="day"] .filing-divider {
 
 /* =====================================================================
  * 涨跌语义色（国内习惯：红涨 / 绿跌，与欧美相反）
- * 股票看板、账本等一切「盈/亏」着色统一走这套 token，禁止再散写 hex。
+ * 账本等一切「盈/亏」着色统一走这套 token，禁止再散写 hex。
  * ===================================================================== */
 :root {
   --pnl-up: #D8504F;              /* 涨 / 盈利 */

@@ -60,10 +60,10 @@ def sanitize_payload(payload: Any) -> Any:
 class AiRequest:
     """单次 AI 调用的入参。"""
 
-    ability: str  # organize / summarize / suggest_tags / suggest_task / stock_analysis / rewrite / explain / extract_entities / memory_distill / agent_plan / agent_step
+    ability: str  # organize / summarize / suggest_tags / suggest_task / rewrite / explain / extract_entities / memory_distill / agent_plan / agent_step
     content: str
     options: Optional[Dict[str, Any]] = None
-    # 可选：覆盖默认"笔记助手"系统提示，用于非笔记场景（如股票研判）
+    # 可选：覆盖默认"笔记助手"系统提示，用于非笔记场景
     system: Optional[str] = None
     # 可选：OpenAI 兼容的 tools 列表（function calling schema）；后端会执行工具并二轮调用
     tools: Optional[List[Dict[str, Any]]] = None
@@ -212,12 +212,6 @@ _ABILITY_SCHEMAS = {
         ],
         "skipped": ["无法识别或无效的一行的简短说明"],
     },
-    "stock_analysis": {
-        "reply": "面向用户的每日研判中文说明（1~3句，直接可用）",
-        "level": "只填一个档位：up(强/偏多)/hold(持/中性偏多)/watch(观/中性)/down(减/偏空)/danger(避/空头)",
-        "summary": "该股当日技术形态总结（中文，1~2句）",
-        "suggestion": "具体可操作建议（中文，1~2句）",
-    },
     # ====== v2.39 新增能力 ======
     "rewrite": {
         # style: casual / formal / concise / emoji / polish / critical
@@ -355,7 +349,7 @@ class HttpProvider(AiProvider):
             _ABILITY_SCHEMAS.get(ability, {}), ensure_ascii=False, indent=2
         )
         if req.system:
-            # 非笔记场景（如股票研判）使用调用方给定角色/原则
+            # 非笔记场景使用调用方给定角色/原则
             intro = req.system
         else:
             intro = "你是用户的贴心笔记助手，陪他整理生活和工作。"

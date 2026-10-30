@@ -23,6 +23,39 @@
 
 ---
 
+## [v2.46.280] - 2026-10-30
+
+### 股票模块整体下线（前端 + 后端 + 数据表）
+
+夜星：「将股票模块全部删除，数据、代码」。
+
+#### 删除范围
+- **前端**：`StocksView.vue`、`StockDetailView.vue`、`api/stocks.js`、`components/stocks/`（K 线图 + 持仓面板）整体删除；
+  路由 `/finance`、`/finance/market`、`/finance/market/stock/:code`、`/stocks*` 全部移除；
+  导航「财经/行情」组、命令面板「自选股」、顶栏提醒中心「目标价预警」段（含轮询与通知）、
+  工作台「自选股」卡片（左列改两段网格）、数据中心「持仓市值」KPI、
+  移动端 `st-*` 样式与 `variables.css` 里股票 token、App 快捷键 `s` 一并清掉。
+- **后端**：`models/stocks.py`、`routers/stocks.py`、`services/stock_fetcher.py`、
+  `services/stock_analysis.py` 删除；`main.py` 路由注册与「股票每日研判」定时任务
+  （asyncio 轮询 + production startup/shutdown 钩子）移除；`ai_providers` 的
+  `stock_analysis` 能力、`datahub` / `workbench dashboard` 的股票聚合、
+  `server_monitor` 备份分组、`tests` 同步清理（顺带清掉 drop_feed 漏删的
+  `test_router_feed_dashboard`）。
+- **数据**：alembic 迁移 `s1t2o3c4k5d6_drop_stock_module` 删除 4 张表
+  （`xuanhuang_stock_alert_logs` → `xuanhuang_stock_daily_analysis` →
+  `xuanhuang_portfolio_snapshots` → `xuanhuang_stock_watchlist`，外键引用者先删），
+  并清掉菜单表里的行情入口。删表前已导出线上数据备份：
+  `artifacts/_backup/stocks_backup_20261030-102552.json.gz`
+  （2 自选股 / 34 市值快照 / 42 每日研判 / 0 预警日志，共 78 行）。
+
+#### 顺带修复
+- `tests/test_migrations.py` 的 `EXPECTED_TABLES` 长期失修（多 8 张已删的 feed 表、
+  缺 23 张后来新增的表），按 `alembic upgrade head` 实际结果重建。
+
+版本 SW v592→v593、APP_VERSION v2.46.279→v2.46.280。
+
+---
+
 ## [v2.46.279] - 2026-10-30
 
 ### 新建/编辑习惯弹窗：手机端一屏装下，不再左右滑

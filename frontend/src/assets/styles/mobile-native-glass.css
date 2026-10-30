@@ -168,7 +168,7 @@ html[data-theme="day"] #app.is-mobile {
   -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
 }
 
-/* ============ 5 · Form 玻璃化（行情加自选/通讯录新增等） ============ */
+/* ============ 5 · Form 玻璃化（通讯录新增等） ============ */
 #app.is-mobile :is(.st-form, .ct-form, .tv-form) {
   background: var(--ls-glass);
   -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);

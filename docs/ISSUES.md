@@ -7,6 +7,29 @@
 
 ---
 
+## v2.46.280 股票模块整体下线（2026-10-30）
+
+- **V246280-001 删模块先查「能力注册表」再查引用**：`stock_analysis` 除了路由/模型，
+  还注册在 `ai_providers.py` 的能力字典和 `main.py` 的每日研判 asyncio 定时任务里
+  （production startup/shutdown 钩子）——只 grep `stocks` 会漏掉 `stock_analysis`
+  这个不带 s 结尾的键。删能力时同步改了 `AIRequest.system_prompt` 的注释枚举。
+- **V246280-002 删表迁移的外键顺序**：`xuanhuang_stock_alert_logs` 有 FK 指向
+  `xuanhuang_stock_watchlist`，必须先删；四张表全部 `DROP TABLE IF EXISTS` +
+  迁移里顺手 `DELETE xuanhuang_menus WHERE path LIKE '/finance/market%'`，
+  线上 alembic upgrade 一次到位，不用再单独跑 sync_menus。
+- **V246280-003 删数据前先导备份**：`scripts/_export_stocks_backup.py` 通过 SSH
+  读线上 4 张表导出 JSON.gz 到 `artifacts/_backup/`（2 自选股/34 快照/42 研判/0 预警），
+  downgrade 只重建空表，数据回灌靠这份备份。
+- **V246280-004 `test_migrations.py` 的 EXPECTED_TABLES 已失修数月**：
+  多 8 张 feed 表（drop_feed 迁移删了表但没同步清单）、缺 23 张后来新增的表
+  （游戏/衣橱/习惯/金库等），一直在假绿——只要没人跑这个文件就发现不了。
+  本次按 `upgrade head` 实际输出重建。**新增表时记得同步这份清单**。
+- **V246280-005 drop_feed 漏删的测试**：`test_router_feed_dashboard` 在 feed 路由
+  删除后一直 404 失败（或从未跑过），本次一并清掉。删路由要同步删 `test_api.py`
+  里对应的 `test_router_*`。
+
+---
+
 ## v2.46.279 新建习惯弹窗手机端一屏化（2026-10-30）
 
 - **V246279-001 `mobile-deink.css` 的「手机弹窗 90% 宽」其实是死规则**：

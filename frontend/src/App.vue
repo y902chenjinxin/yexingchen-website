@@ -193,7 +193,7 @@ provide('navAction', {
 let gPressedAt = 0
 const G_ROUTES = {
   w: '/workbench', n: '/notes', f: '/finance/book', t: '/tasks', l: '/tool',
-  m: '/music', c: '/tool/countdown', s: '/finance/market', p: '/profile', d: '/diary',
+  m: '/music', c: '/tool/countdown', p: '/profile', d: '/diary',
   r: '/travels',
 }
 function onGlobalKey(e) {

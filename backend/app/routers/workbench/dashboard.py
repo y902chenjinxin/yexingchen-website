@@ -12,7 +12,6 @@ from app.models.workbench import Note, Task
 from app.models.countdown import Countdown
 from app.models.travels import Travel, TravelCity
 from app.models.finance import FinanceTransaction
-from app.models.stocks import StockWatchlist
 from app.utils.security import get_current_user
 from app.routers.workbench._common import (
     _note_to_out,
@@ -166,35 +165,6 @@ def _finance_summary(db: Session, uid: int) -> dict:
     }
 
 
-def _stocks_summary(db: Session, uid: int) -> dict:
-    """自选股：symbol 数 / 持仓明细（成本/数量/目标价）（家庭共享）。"""
-    rows = (
-        db.query(StockWatchlist)
-        .filter(StockWatchlist.household_id == HOUSEHOLD_ID, StockWatchlist.deleted_at.is_(None))
-        .order_by(StockWatchlist.sort_order, StockWatchlist.id)
-        .all()
-    )
-    holdings = []
-    for h in rows:
-        try:
-            shares = float(h.quantity or 0)
-            cost = float(h.cost_price or 0)
-            target = float(h.target_price) if h.target_price is not None else None
-        except (TypeError, ValueError):
-            shares, cost, target = 0.0, 0.0, None
-        holdings.append({
-            "code": h.code,
-            "name": h.name or h.code,
-            "shares": shares,
-            "cost": round(cost, 4),
-            "target_price": target,
-        })
-    return {
-        "symbol_count": len(holdings),
-        "holdings": holdings,
-    }
-
-
 @router.get("/summary")
 def workbench_summary(
     db: Session = Depends(get_db),
@@ -250,7 +220,6 @@ def workbench_summary(
         ("countdown", _countdown_summary),
         ("travel", _travel_summary),
         ("finance", _finance_summary),
-        ("stocks", _stocks_summary),
     ):
         try:
             sections[name] = fn(db, uid)
@@ -268,5 +237,4 @@ def workbench_summary(
         "countdown": sections["countdown"],
         "travel": sections["travel"],
         "finance": sections["finance"],
-        "stocks": sections["stocks"],
     })

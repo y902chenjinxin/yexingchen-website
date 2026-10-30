@@ -311,11 +311,6 @@ _MODULE_TREE: list[tuple[str, str, list[tuple[str, str, list[str], list[str]]]]]
     ("fun", "娱乐", [
         ("games", "棋类游戏", [], ["game_rooms", "game_moves"]),
     ]),
-    ("finance_mkt", "财经", [
-        ("stocks", "行情自选", [], [
-            "xuanhuang_stock_*", "xuanhuang_portfolio_snapshots",
-        ]),
-    ]),
     ("ai", "智能", [
         ("ai_chat", "AI 对话", [], [
             "xuanhuang_ai_*", "xuanhuang_agent_jobs", "user_ai_providers", "xuanhuang_user_facts",

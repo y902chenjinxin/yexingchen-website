@@ -18,9 +18,10 @@
 
     <!-- ============ Bento S1：核心数字 + 记账趋势（不对称大块） ============ -->
     <section class="bento-s1">
-      <!-- 左列：净流入（大块）+ 足迹 + 自选股
+      <!-- 左列：净流入（大块）+ 足迹
            v2.38 精简：笔记 / 即将到来 / 今日待办 / 资讯流移出工作台，
-           待办与即将到来的事件统一收进顶栏「提醒中心」 -->
+           待办与即将到来的事件统一收进顶栏「提醒中心」
+           v2.46.280：自选股随股票模块下线，左列只剩两块 -->
       <div class="bento-s1-left">
         <!-- Hero KPI：净流入 -->
         <button
@@ -46,22 +47,6 @@
           <div class="bento-mini-num">{{ kpi.travel.province_count }}<span class="bento-mini-unit">/ 34 省</span></div>
           <div class="bento-mini-foot">{{ kpi.travel.travel_count }} 段旅程 · {{ kpi.travel.city_count }} 城</div>
         </button>
-
-        <!-- 自选股 -->
-        <div v-mouse-light class="bento-card bento-stocks">
-          <div class="bento-card-head">
-            <div class="bento-card-title">自选股</div>
-            <RouterLink class="bento-card-link" to="/finance/market">管理 →</RouterLink>
-          </div>
-          <ul class="bento-card-list stock-list">
-            <li v-for="h in kpi.stocks.holdings" :key="h.code">
-              <span class="st-name">{{ h.name }}</span>
-              <span class="st-code">{{ h.code }}</span>
-              <span class="st-meta">{{ h.shares }} · ¥{{ h.cost }}</span>
-            </li>
-            <li v-if="!kpi.stocks.holdings.length" class="bento-empty">尚未添加</li>
-          </ul>
-        </div>
       </div>
 
       <!-- 右列：记账 30 天（大块）+ 天气（小块） -->
@@ -171,7 +156,6 @@ const moduleVisible = computed(() => prefs.moduleVisible)
 const kpi = ref({
   travel: { travel_count: 0, province_count: 0, city_count: 0 },
   finance: { net: 0, month_income: 0, month_expense: 0, trend: [] },
-  stocks: { holdings: [] },
 })
 
 // 只挑工作台用得到的三个区块，其余（笔记 / 待办 / 倒计时）已交给顶栏提醒中心
@@ -179,7 +163,6 @@ function applySummary(s) {
   kpi.value = {
     travel: s.travel || kpi.value.travel,
     finance: s.finance || kpi.value.finance,
-    stocks: s.stocks || kpi.value.stocks,
   }
 }
 
@@ -230,11 +213,12 @@ onMounted(async () => {
   margin-bottom: 16px;
 }
 
-/* 左列：Hero 净流入 + 足迹 + 自选股，纵向三段 */
+/* 左列：Hero 净流入 + 足迹，纵向两段 */
 .bento-s1-left {
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: auto auto 1fr;
+  /* 自选股删掉后只剩「净流入 + 足迹」：hero 定高，足迹吃掉剩余高度 */
+  grid-template-rows: auto 1fr;
   gap: 16px;
   min-height: 520px;
 }
@@ -299,9 +283,7 @@ onMounted(async () => {
 .bento-mini-unit { font-size: 13px; color: var(--dp-text3); font-weight: 400; margin-left: 4px; }
 .bento-mini-foot { font-size: 11.5px; color: var(--dp-text3); margin-top: 6px; }
 
-/* 自选股：左列第三段，列表超出时自身滚动 */
-.bento-stocks { min-height: 0; }
-.stock-list { overflow-y: auto; scrollbar-width: thin; }
+/* 自选股已随股票模块下线（v2.46.280） */
 .bento-empty { color: var(--dp-text3); font-size: 12px; padding: 8px 0; text-align: center; }
 
 /* 右列：记账趋势（大块）+ 天气（小块堆叠） */
@@ -402,10 +384,6 @@ onMounted(async () => {
   cursor: pointer; font-size: 12.5px; transition: background .15s;
 }
 .bento-card-list li:hover { background: var(--dp-accent-faint, rgba(167,139,250,.08)); }
-.st-name { flex: 1; color: var(--dp-text); }
-.st-code { color: var(--dp-text3); font-size: 11px; margin-right: 4px; }
-.st-meta { color: var(--dp-text3); font-size: 11px; font-variant-numeric: tabular-nums; }
-
 /* ===== 自适应 ===== */
 @media (max-width: 1280px) {
   .bento-s1 { grid-template-columns: 1fr 1.2fr; }

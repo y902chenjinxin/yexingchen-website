@@ -296,22 +296,11 @@ const routes = [
     component: () => import('@/views/CountdownDetailView.vue'),
     meta: { requiresAuth: true, hideGlobalTopBar: true }
   },
-  // v2.16 财经模块：行情 / 资讯 / 记账（v2.37 移除「综合」总览，重定向改指行情）
+  // v2.16 财经模块：行情 / 资讯 / 记账
+  // v2.46.280 股票（行情）整块下线，/finance 直接进记账
   {
     path: '/finance',
-    redirect: '/finance/market'
-  },
-  {
-    path: '/finance/market',
-    name: 'FinanceMarket',
-    component: () => import('@/views/StocksView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/finance/market/stock/:code',
-    name: 'FinanceStockDetail',
-    component: () => import('@/views/StockDetailView.vue'),
-    meta: { requiresAuth: true }
+    redirect: '/finance/book'
   },
   {
     path: '/finance/book',
@@ -319,9 +308,9 @@ const routes = [
     component: () => import('@/views/FinanceView.vue'),
     meta: { requiresAuth: true }
   },
-  // 旧路由重定向到新财经路径
-  { path: '/stocks', redirect: '/finance/market' },
-  { path: '/stocks/:code', redirect: '/finance/market/stock/:code' },
+  // 旧路由重定向到新财经路径（股票已删，统一回记账）
+  { path: '/stocks', redirect: '/finance/book' },
+  { path: '/stocks/:code', redirect: '/finance/book' },
   {
     path: '/history',
     name: 'History',

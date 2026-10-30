@@ -21,7 +21,6 @@ import {
   Bell,
   MapLocation,
   Money,
-  TrendCharts,
   Notebook,
   Calendar,
   ChatLineRound,
@@ -100,12 +99,6 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    label: '财经',
-    items: [
-      { path: '/finance/market', title: '行情', icon: TrendCharts },
-    ],
-  },
-  {
     label: '智能',
     items: [
       { path: '/assistant', title: 'AI 对话', icon: ChatLineRound },
@@ -164,7 +157,6 @@ export function formatKbd(kbd) {
  */
 const EXACT_MATCH_PATHS = new Set([
   '/workbench',
-  '/finance/market',
   '/finance/book',
   '/admin/users',
 ])

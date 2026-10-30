@@ -1,4 +1,4 @@
-"""个人数据中心：聚合记账 / 股票 / 足迹 / 笔记 / 资讯 / 任务 的关键指标与迷你趋势。
+"""个人数据中心：聚合记账 / 足迹 / 笔记 / 资讯 / 任务 的关键指标与迷你趋势。
 
 供「数据总览看板」前端一次性拉取，避免逐模块并发请求。
 全部按当前用户隔离，任一子模块统计失败均降级为缺省值，不阻塞整体。
@@ -18,7 +18,6 @@ from app.models.finance import FinanceTransaction
 from app.models.travels import Travel, TravelCity
 from app.models.workbench import Note, Task, AiConversation
 from app.utils.security import get_current_user
-from app.routers.stocks import _summary as stocks_summary
 from app.schemas.common import ResponseBase
 
 logger = logging.getLogger(__name__)
@@ -98,20 +97,6 @@ async def overview(
     # 记账
     finance = _finance_block(db, uid)
 
-    # 股票（实时行情，失败降级为 null）
-    stocks = None
-    try:
-        s = stocks_summary(uid, db)
-        stocks = {
-            "symbol_count": s["symbol_count"],
-            "market_value": s["market_value"],
-            "hold_pnl": s["hold_pnl"],
-            "hold_pct": s["hold_pct"],
-            "today_pnl": s["today_pnl"],
-        }
-    except Exception:  # noqa: BLE001
-        logger.debug("datahub: stocks summary failed", exc_info=True)
-
     # 足迹
     travels = None
     try:
@@ -177,7 +162,6 @@ async def overview(
 
     return ResponseBase(data={
         "finance": finance,
-        "stocks": stocks,
         "travels": travels,
         "notes": notes,
         "task": task,
