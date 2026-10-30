@@ -7,6 +7,32 @@
 
 ---
 
+## v2.46.281 阅读器字体/设置面板/登录页改名（2026-10-30）
+
+- **V246281-001 nginx 前缀 location 会被正则 location 抢跑**：`location /fonts/`
+  写了却 404，因为 `~* \.(mjs|onnx|wasm)$` 这类正则 location 优先级高于普通前缀；
+  另外字体目录在 dist 外，`try_files $uri` 拼的是 server root（dist），必然 404。
+  正解：`location ^~ /fonts/ { root /var/www/yexingchen; }` —— ^~ 压过正则、
+  root 拼接正好落 /var/www/yexingchen/fonts/（别用 alias+try_files，拼接有坑）。
+- **V246281-002 GitHub release 资产名不能凭记忆猜**：朱雀仿宋 latest 资产是
+  `ZhuqueFangsong-v0.212.zip`（zip 包）而不是 `ZhuqueFangsong-Regular.ttf`。
+  先 `GET /repos/:owner/:repo/releases/latest` 看资产名再下。
+- **V246281-003 并行 curl 抢代理会集体截断**：四个 20MB+ 文件同时走
+  127.0.0.1:7890，全部下到一半断掉（HTTP code 000/截断文件）。串行 +
+  `--retry 3 -C -`（断点续传）才稳。下载的字体务必用 fontTools 验一遍
+  cmap CJK 字数再上服务器。
+- **V246281-004 大字体必须 FontFace 按需加载**：4 款字体 74MB，若无条件
+  @font-face 打开阅读器就是 70MB 白拉。`new FontFace(name, url()).load()` →
+  `document.fonts.add(face)`，只加载当前选中款；EPUB iframe 继承父页注册，
+  加载完成后要重新 applyAll 注入主题。
+- **V246281-005 环境变量代理不生效时用 `-x` 显式参数**：`export https_proxy=...`
+  在部分 Git Bash 会话里传不进 curl（code 56），`curl -x http://127.0.0.1:7890`
+  显式参数稳。
+- Windows Python 看不到 Git Bash 的 `/tmp`（映射在 AppData\Local\Temp 下），
+  用 `cygpath -w` 转换或 `$TEMP` 拼路径。
+
+---
+
 ## v2.46.280 股票模块整体下线（2026-10-30）
 
 - **V246280-001 删模块先查「能力注册表」再查引用**：`stock_analysis` 除了路由/模型，

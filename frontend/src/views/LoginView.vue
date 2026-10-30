@@ -5,7 +5,7 @@
 
     <!-- 登录卡片 -->
     <div class="login-card">
-      <h1 class="site-title font-serif">叶兴辰的个人网站</h1>
+      <h1 class="site-title font-serif">星阁</h1>
 
       <!-- 登录表单 -->
       <el-form v-if="!isRegistering" class="login-form" :model="loginForm" @submit.prevent="handleLogin" aria-label="登录表单">

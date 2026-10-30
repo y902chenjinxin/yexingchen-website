@@ -200,26 +200,44 @@
     <transition name="nrd-fade">
       <div v-if="setOpen" class="nrd-set">
         <div class="nrd-set-row">
-          <span>主题</span>
+          <span>亮度</span>
+          <div class="nrd-slider">
+            <input v-model.number="brightness" type="range" min="35" max="100" step="1" @input="saveSettings" />
+            <em>{{ brightness }}%</em>
+          </div>
+        </div>
+
+        <div class="nrd-set-row">
+          <span>&nbsp;</span>
           <div class="nrd-seg">
+            <button type="button" :class="{ on: followSys }" @click="toggleFollowSys">跟随系统日/夜</button>
+          </div>
+        </div>
+
+        <div class="nrd-set-row">
+          <span>背景</span>
+          <div class="nrd-dots">
             <button
               v-for="t in THEMES"
               :key="t.key"
               type="button"
+              class="nrd-dot"
               :class="{ on: theme === t.key }"
+              :style="{ background: t.bg }"
+              :title="t.label"
               @click="setTheme(t.key)"
-            >{{ t.label }}</button>
+            />
           </div>
         </div>
 
         <div class="nrd-set-row">
           <span>字体</span>
-          <div class="nrd-seg">
+          <div class="nrd-seg nrd-seg-fonts">
             <button
               v-for="f in FONTS"
               :key="f.key"
               type="button"
-              :class="{ on: font === f.key }"
+              :class="{ on: font === f.key, loading: fontLoading === f.key }"
               :style="{ fontFamily: f.stack }"
               @click="setFont(f.key)"
             >{{ f.label }}</button>
@@ -255,8 +273,9 @@
         <div class="nrd-set-row">
           <span>翻页</span>
           <div class="nrd-seg">
-            <button type="button" :class="{ on: flow === 'paginated' }" @click="setFlow('paginated')">左右翻页</button>
-            <button type="button" :class="{ on: flow === 'scroll' }" @click="setFlow('scroll')">上下滚动</button>
+            <button type="button" :class="{ on: flow === 'paginated' && !autoPlay }" @click="setFlow('paginated')">左右</button>
+            <button type="button" :class="{ on: flow === 'scroll' }" @click="setFlow('scroll')">上下</button>
+            <button type="button" :class="{ on: autoPlay }" @click="setFlow('auto')">自动</button>
           </div>
         </div>
 
@@ -272,6 +291,14 @@
       <button class="nrd-edge left" type="button" aria-label="上一页" @click="goPrev" />
       <button class="nrd-edge right" type="button" aria-label="下一页" @click="goNext" />
     </template>
+
+    <!-- 亮度遮罩（纯压暗，不挡交互；brightness < 100 时出现） -->
+    <div
+      v-if="brightness < 100"
+      class="nrd-dim"
+      :style="{ opacity: (100 - brightness) / 100 * 0.78 }"
+      aria-hidden="true"
+    />
   </div>
   </Teleport>
 </template>
@@ -289,17 +316,22 @@ const emit = defineEmits(['close'])
 /* ---------------- 设置（全部持久化） ---------------- */
 const THEMES = [
   { key: 'day', label: '白天', bg: '#fbfaf7', text: '#2b2b2b', sub: '#8a8a8a', line: 'rgba(0,0,0,.1)' },
-  { key: 'eye', label: '护眼', bg: '#e8e0c8', text: '#3a3428', sub: '#7d7458', line: 'rgba(90,75,40,.16)' },
+  { key: 'eye', label: '护眼', bg: '#f3ecd2', text: '#3a3428', sub: '#7d7458', line: 'rgba(90,75,40,.16)' },
+  { key: 'blue', label: '蓝', bg: '#e8eff5', text: '#2c3540', sub: '#75828e', line: 'rgba(40,70,100,.14)' },
+  { key: 'green', label: '绿', bg: '#e6efdf', text: '#2e3a2c', sub: '#75816f', line: 'rgba(60,100,50,.14)' },
   { key: 'night', label: '夜间', bg: '#16181c', text: '#cfd4da', sub: '#7c848e', line: 'rgba(255,255,255,.1)' },
 ]
+// v2.46.281：宋/黑/楷三档首选换成 GitHub 开源字体（服务器 /fonts/ 下，FontFace 按需加载），
+// 系统栈保留做兜底 —— 鸿蒙等无宋/楷字库的设备不再整体退化成黑体。
 const FONTS = [
-  { key: 'song', label: '宋体', stack: '"Songti SC", "SimSun", "Noto Serif SC", serif' },
-  { key: 'hei', label: '黑体', stack: '"PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif' },
-  { key: 'kai', label: '楷体', stack: '"Kaiti SC", "KaiTi", "STKaiti", serif' },
+  { key: 'song', label: '宋体', stack: '"Noto Serif CJK SC", "Songti SC", "SimSun", serif', webfont: 'Noto Serif CJK SC', file: '/fonts/NotoSerifSC-Regular.otf' },
+  { key: 'hei', label: '黑体', stack: '"Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif', webfont: 'Noto Sans CJK SC', file: '/fonts/NotoSansSC-Regular.otf' },
+  { key: 'kai', label: '楷体', stack: '"LXGW WenKai", "Kaiti SC", "KaiTi", serif', webfont: 'LXGW WenKai', file: '/fonts/LXGWWenKai-Regular.ttf' },
+  { key: 'fang', label: '仿宋', stack: '"Zhuque Fangsong", "FangSong", "STFangsong", serif', webfont: 'Zhuque Fangsong', file: '/fonts/ZhuqueFangsong-Regular.ttf' },
 ]
 
 const SET_KEY = 'xuanhuang:reader:settings'
-const defaultSettings = { theme: 'day', font: 'song', size: 19, lineHeight: 1.9, padding: 28, flow: 'paginated' }
+const defaultSettings = { theme: 'day', font: 'song', size: 19, lineHeight: 1.9, padding: 28, flow: 'paginated', brightness: 100, followSys: false }
 const settings = ref({ ...defaultSettings })
 const theme = computed(() => settings.value.theme)
 const font = computed(() => settings.value.font)
@@ -307,6 +339,10 @@ const size = computed({ get: () => settings.value.size, set: (v) => (settings.va
 const lineHeight = computed({ get: () => settings.value.lineHeight, set: (v) => (settings.value.lineHeight = v) })
 const padding = computed({ get: () => settings.value.padding, set: (v) => (settings.value.padding = v) })
 const flow = computed({ get: () => settings.value.flow, set: (v) => (settings.value.flow = v) })
+const brightness = computed({ get: () => settings.value.brightness ?? 100, set: (v) => (settings.value.brightness = v) })
+const followSys = computed({ get: () => !!settings.value.followSys, set: (v) => (settings.value.followSys = v) })
+const autoPlay = ref(false)   // 自动翻页：运行态不进 localStorage，翻页档位「自动」= paginated + autoPlay
+const fontLoading = ref('')   // 正在加载的 webfont key（按钮转圈提示）
 
 const curTheme = computed(() => THEMES.find((t) => t.key === theme.value) || THEMES[0])
 const curFont = computed(() => FONTS.find((f) => f.key === font.value) || FONTS[0])
@@ -340,8 +376,78 @@ function saveSettings() {
   try { localStorage.setItem(SET_KEY, JSON.stringify(settings.value)) } catch { /* 忽略 */ }
 }
 function setTheme(k) { settings.value.theme = k; saveSettings(); applyAll() }
-function setFont(k) { settings.value.font = k; saveSettings(); applyAll() }
+
+/* ---- webfont 按需加载（v2.46.281）----
+   字体文件 8~25MB，绝不能在 <head> 里无条件 @font-face（打开阅读器就白拉 70MB）。
+   用 FontFace API 只加载「当前选中」的那一款，成功后加入 document.fonts。
+   epub.js 的 iframe 里字体继承父页注册（同源 /fonts/），加载完成要重新 applyAll 注入。 */
+const loadedFonts = new Set()
+async function ensureFont(f) {
+  if (!f.webfont || !f.file || loadedFonts.has(f.key)) return
+  loadedFonts.add(f.key)
+  fontLoading.value = f.key
+  try {
+    const face = new FontFace(f.webfont, `url(${f.file})`, { display: 'swap' })
+    await face.load()
+    document.fonts.add(face)
+    applyAll()   // 字体真正可用后重注入（EPUB iframe / TXT 立即生效）
+  } catch { /* 加载失败退回系统字体栈，不阻塞阅读 */ }
+  if (fontLoading.value === f.key) fontLoading.value = ''
+}
+async function setFont(k) {
+  settings.value.font = k
+  saveSettings()
+  applyAll()
+  await ensureFont(FONTS.find((f) => f.key === k) || FONTS[0])
+}
+
+function toggleFollowSys() {
+  followSys.value = !followSys.value
+  saveSettings()
+  if (followSys.value) applySysTheme()
+}
+let sysMq = null
+function applySysTheme() {
+  if (!followSys.value || !sysMq) return
+  settings.value.theme = sysMq.matches ? 'night' : 'day'
+  saveSettings(); applyAll()
+}
+function watchSysTheme() {
+  if (!window.matchMedia) return
+  sysMq = window.matchMedia('(prefers-color-scheme: dark)')
+  const h = () => applySysTheme()
+  if (sysMq.addEventListener) sysMq.addEventListener('change', h)
+  else if (sysMq.addListener) sysMq.addListener(h)   // 旧 WebView
+}
+
+/* ---- 自动翻页：12 秒一页，任何触摸/翻页操作即停 ---- */
+let autoTimer = null
+function stopAutoPlay() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null }
+  autoPlay.value = false
+}
+function startAutoPlay() {
+  stopAutoPlay()
+  autoPlay.value = true
+  autoTimer = setInterval(() => {
+    if (document.hidden) return   // 后台标签页不空翻
+    goNext()
+  }, 12000)
+}
 function setFlow(v) {
+  if (v === 'auto') {
+    // 自动 = 分页模式 + 定时翻页；当前在滚动模式时先切回分页
+    if (settings.value.flow !== 'paginated') {
+      settings.value.flow = 'paginated'
+      saveSettings()
+      if (kind.value === 'epub') rebuildEpub()
+      else if (kind.value === 'txt') nextTick(() => { txtPage.value = 0; measurePages() })
+    }
+    startAutoPlay()
+    setOpen.value = false   // 挂机模式直接收起面板
+    return
+  }
+  stopAutoPlay()
   if (settings.value.flow === v) return
   settings.value.flow = v
   saveSettings()
@@ -359,8 +465,10 @@ function bump(key, d) {
   saveSettings(); applyAll()
 }
 function resetAll() {
+  stopAutoPlay()
   settings.value = { ...defaultSettings }
   saveSettings(); applyAll()
+  ensureFont(curFont.value)
   if (kind.value === 'epub') rebuildEpub()
 }
 
@@ -713,11 +821,15 @@ function onTouchEnd(e) {
   else goPrev()
 }
 
+/* 自动翻页器自己调 goNext 时置位，避免用户 goNext 处理器把自动翻页杀掉 */
+let autoStepping = false
 function goPrev() {
+  if (!autoStepping) stopAutoPlay()
   if (kind.value === 'epub') { rendition?.prev(); return }
   txtPrev()
 }
 function goNext() {
+  if (!autoStepping) stopAutoPlay()
   if (kind.value === 'epub') { rendition?.next(); return }
   txtNext()
 }
@@ -1020,6 +1132,10 @@ useFullscreenPage()
 /* ---------------- 初始化 ---------------- */
 onMounted(async () => {
   loadSettings()
+  watchSysTheme()
+  if (followSys.value) applySysTheme()
+  // 当前选中的 webfont 异步加载（不阻塞正文渲染，加载完 applyAll 里自动重注入）
+  ensureFont(curFont.value)
   window.addEventListener('keydown', onKey)
   window.addEventListener('resize', onResize)
   enterTouchMode()
@@ -1078,6 +1194,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   stopSpeak()
+  stopAutoPlay()
   clearTimeout(remoteTimer)
   flushProgress()
   window.removeEventListener('keydown', onKey)
@@ -1335,6 +1452,25 @@ watch([size, lineHeight, padding], () => { onResize() })
   box-shadow: 0 18px 40px -20px rgba(0, 0, 0, .4);
   z-index: 6;
 }
+/* 手机端：底部抽屉（对齐主流阅读 App 的设置面板习惯，拇指好够） */
+@media (max-width: 640px) {
+  .nrd-set {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 72vh;
+    overflow-y: auto;
+    border-radius: 18px 18px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    padding: 18px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -12px 40px -18px rgba(0, 0, 0, .5);
+  }
+}
 .nrd-set-row {
   display: flex;
   align-items: center;
@@ -1346,6 +1482,37 @@ watch([size, lineHeight, padding], () => { onResize() })
   width: 36px;
   font-size: 12.5px;
   color: var(--nrd-sub);
+}
+/* 背景 5 色圆点 */
+.nrd-dots {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+}
+.nrd-dot {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--nrd-line);
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.nrd-dot.on {
+  box-shadow: 0 0 0 2px var(--nrd-bg), 0 0 0 3.5px var(--nrd-text);
+  transform: scale(1.05);
+}
+.nrd-seg-fonts button.loading {
+  opacity: .55;
+  pointer-events: none;
+}
+/* 亮度遮罩：盖住整个阅读器压暗画面，pointer-events:none 不挡任何交互 */
+.nrd-dim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  z-index: 30;
 }
 .nrd-seg {
   flex: 1;

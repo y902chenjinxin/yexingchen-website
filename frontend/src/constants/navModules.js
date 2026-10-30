@@ -58,7 +58,6 @@ export const NAV_GROUPS = [
       { path: '/music', title: '音乐', icon: Headset },
       { path: '/novel', title: '小说', icon: Reading },
       { path: '/video', title: '视频', icon: VideoPlay },
-      { path: '/log', title: '日志', icon: EditPen },
       { path: '/tool', title: '工具', icon: Bell },
       { path: '/notes', title: '笔记云台', icon: Notebook },
     ],
@@ -113,6 +112,7 @@ export const NAV_GROUPS = [
 const ADMIN_GROUP = {
   label: '管理',
   items: [
+    { path: '/log', title: '日志', icon: EditPen },  // v2.46.281 由「内容」组迁入（夜星：日志在内容里不合适）
     { path: '/admin/users', title: '用户管理', icon: UserFilled, superOnly: true },
     { path: '/admin/roles', title: '角色管理', icon: Lock, superOnly: true },
     { path: '/admin/menus', title: '菜单管理', icon: Menu, superOnly: true },
