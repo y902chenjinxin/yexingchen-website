@@ -92,7 +92,7 @@ async def login(req: LoginRequest, request: Request, db: Session = Depends(get_d
 
 
 @router.get("/me", response_model=ResponseBase)
-async def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == current_user["user_id"]).first()
     if not user:
         raise_error(ErrCode.AUTH_USER_NOT_EXIST)
@@ -117,7 +117,7 @@ class UserProfileUpdateRequest(BaseModel):
 
 
 @router.put("/me", response_model=ResponseBase)
-async def update_me(
+def update_me(
     req: UserProfileUpdateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)

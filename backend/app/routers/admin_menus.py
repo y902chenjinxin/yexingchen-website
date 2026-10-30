@@ -67,7 +67,7 @@ async def list_menus(
 
 
 @router.get("/menus/public", response_model=ResponseBase)
-async def list_public_menus(
+def list_public_menus(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):

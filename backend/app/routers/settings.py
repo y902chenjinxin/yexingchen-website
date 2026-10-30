@@ -103,7 +103,7 @@ async def update_bg_music(
 
 
 @router.get("/bgm_choice", response_model=ResponseBase)
-async def get_bgm_choice(
+def get_bgm_choice(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -120,7 +120,7 @@ async def get_bgm_choice(
 
 
 @router.put("/bgm_choice", response_model=ResponseBase)
-async def update_bgm_choice(
+def update_bgm_choice(
     req: BgmChoiceUpdate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)

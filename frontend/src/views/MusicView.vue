@@ -57,7 +57,7 @@
         ref="tableRef"
        
         :data="pagedRows"
-        v-loading="musicStore.loading"
+        v-loading="musicStore.loading && !musicStore.list.length"
         stripe
         style="width: 100%"
         :row-class-name="rowClassName"
@@ -144,6 +144,13 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- v2.46.299：手机端分块渲染，避免一次铺几百行 -->
+      <div v-if="isMobile && mobileRestCount > 0" class="mu-more">
+        <button type="button" class="mu-more-btn" @click="showMoreMobile">
+          显示更多（还剩 {{ mobileRestCount }} 首）
+        </button>
+      </div>
 
       <EmptyState v-if="!musicStore.loading && musicStore.list.length === 0" size="sm" title="暂无歌曲" description="到管理后台上传音乐，或稍后刷新重试" />
       <div v-else-if="!musicStore.loading" class="pager-wrap">
@@ -370,11 +377,21 @@ const uploadForm = ref({ title: '', artist: '', category: '', tags: '' })
 /* ---- 管理分页（客户端，默认10条；手机端已隐藏分页控件，故一次展示全量） ---- */
 const page = ref(1)
 const pageSize = ref(10)
+/* v2.46.299：手机端原来是「list.length」= 全部渲染（254 首时 el-table 要建两千多个
+   单元格，中低端机直接卡两三秒）。改成先渲染 40 条，点「显示更多」再加 40。 */
+const MOBILE_STEP = 40
+const mobileRenderLimit = ref(MOBILE_STEP)
 const pagedRows = computed(() => {
-  const size = isMobile.value ? Math.max(musicStore.list.length, 1) : pageSize.value
-  const start = isMobile.value ? 0 : (page.value - 1) * size
-  return musicStore.list.slice(start, start + size)
+  if (isMobile.value) return musicStore.list.slice(0, mobileRenderLimit.value)
+  const start = (page.value - 1) * pageSize.value
+  return musicStore.list.slice(start, start + pageSize.value)
 })
+const mobileRestCount = computed(() =>
+  isMobile.value ? Math.max(0, musicStore.list.length - mobileRenderLimit.value) : 0
+)
+function showMoreMobile() {
+  mobileRenderLimit.value = Math.min(mobileRenderLimit.value + MOBILE_STEP, musicStore.list.length)
+}
 /* v2.46.188：PC 端按住左键上下拖拽调顺序（手机端不启用，避免和滚动冲突） */
 useRowDragSort({
   getTableEl: () => tableRef.value?.$el,
@@ -550,9 +567,32 @@ async function onDownloadTemplate() {
 }
 
 onMounted(() => {
+  // v2.46.299：先用上次的列表立刻铺满（sessionStorage，仅本站会话内有效），
+  // 再把网络请求的结果覆盖上去 —— 再次进音乐页几乎零等待。
+  if (!keyword.value && !uploaderId.value) loadListCache()
   fetchData()
   loadUploaders()
 })
+
+/* ---- 列表缓存（只缓存「无搜索/无筛选」的完整列表） ---- */
+const LIST_CACHE_KEY = 'xuanhuang:music:list'
+function loadListCache() {
+  try {
+    const raw = sessionStorage.getItem(LIST_CACHE_KEY)
+    if (!raw) return false
+    const d = JSON.parse(raw)
+    if (!d || !Array.isArray(d.list) || !d.list.length) return false
+    musicStore.list = d.list
+    musicStore.total = d.total || d.list.length
+    syncQueueWithList()
+    return true
+  } catch { return false }
+}
+function saveListCache() {
+  try {
+    sessionStorage.setItem(LIST_CACHE_KEY, JSON.stringify({ list: musicStore.list, total: musicStore.total, at: Date.now() }))
+  } catch { /* 超配额就放弃缓存，不影响功能 */ }
+}
 
 async function loadUploaders() {
   try {
@@ -570,7 +610,19 @@ async function fetchData() {
   if (uploaderId.value) params.uploader_id = uploaderId.value
   await musicStore.fetchList(params)
   syncQueueWithList()
-  healDurations()
+  if (!keyword.value && !uploaderId.value) saveListCache()
+  // v2.46.299：时长补全会对每首 duration=0 的歌发 Range 请求读音频头，
+  // 一进页面就跑会和首屏抢带宽/连接（实测单条 0.5~1.7s）。推迟到首屏空闲后再补。
+  scheduleHealDurations()
+}
+
+let healTimer = 0
+function scheduleHealDurations() {
+  clearTimeout(healTimer)
+  healTimer = setTimeout(() => {
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => healDurations(), { timeout: 4000 })
+    else healDurations()
+  }, 2500)
 }
 
 /* 进页面后把播放队列换成这张真实列表（v2.46.259）：
@@ -614,6 +666,7 @@ async function healDurations() {
 function doSearch() {
   musicStore.page = 1
   page.value = 1
+  mobileRenderLimit.value = MOBILE_STEP
   fetchData()
 }
 
@@ -793,6 +846,19 @@ function formatSize(bytes) {
 </script>
 
 <style scoped>
+/* v2.46.299：手机端「显示更多」 */
+.mu-more { display: flex; justify-content: center; padding: 14px 0 8px; }
+.mu-more-btn {
+  padding: 9px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .06);
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mu-more-btn:active { background: rgba(255, 255, 255, .12); }
+
 .manage-pane {
   background: var(--dp-surface);
   border: 1px solid var(--dp-line);

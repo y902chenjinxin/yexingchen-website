@@ -59,7 +59,7 @@ async def _stream_file(file_path: str):
 
 
 @router.get("/uploaders", response_model=ResponseBase)
-async def list_music_uploaders(
+def list_music_uploaders(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -105,7 +105,7 @@ async def stream_music(music_id: str):
 
 
 @router.get("", response_model=ResponseBase)
-async def list_music(
+def list_music(
     q: Optional[str] = None,
     category: Optional[str] = None,
     tags: Optional[str] = None,
@@ -223,7 +223,7 @@ async def upload_music(
 #    否则 PUT /api/music/playback 会被 `PUT /{music_id}` 吃掉（music_id="playback"）。
 
 @router.get("/playback", response_model=ResponseBase)
-async def get_music_playback(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def get_music_playback(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """返回本账号上次听的曲目与进度。没有记录 / 曲目已被删 → track 为 null。"""
     row = db.query(MusicPlayback).filter(MusicPlayback.user_id == current_user["user_id"]).first()
     if not row:
@@ -247,7 +247,7 @@ async def get_music_playback(db: Session = Depends(get_db), current_user: dict =
 
 
 @router.put("/playback", response_model=ResponseBase)
-async def save_music_playback(payload: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def save_music_playback(payload: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """记住上次听到哪。前端每 10 秒 + 暂停/切歌时上报，单行 upsert，开销可忽略。"""
     uid = current_user["user_id"]
     try:
@@ -269,7 +269,7 @@ async def save_music_playback(payload: dict, db: Session = Depends(get_db), curr
 
 
 @router.put("/reorder", response_model=ResponseBase)
-async def reorder_music_list(payload: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def reorder_music_list(payload: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """拖拽排序（v2.46.188）：按传入的 id 顺序重写 sort_order。
     只处理确实存在的 id，前端传多/传错不会 500。"""
     ids = payload.get("ids") or []

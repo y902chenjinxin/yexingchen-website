@@ -8,7 +8,11 @@ import { getMusicPlayback, saveMusicPlayback, getMusicList } from '@/api/music'
  */
 export const usePlayerStore = defineStore('player', () => {
   const audio = new Audio()
-  audio.preload = 'auto'
+  /* v2.46.299：原来是 preload='auto' —— 只要恢复「上次播放的歌」，浏览器立刻把整首
+     音频拉下来（实测 3.4MB），在手机上占满带宽和 HTTP 连接，导致同一时刻要加载的
+     页面 chunk 排队 4 秒以上（进音乐页慢的真凶）。
+     改成 metadata：只读文件头几 KB（够拿到时长），真正点了播放才拉音频正文。 */
+  audio.preload = 'metadata'
 
   const mode = ref('idle')            // 'idle' | 'bgm' | 'playlist'
   const curItem = ref(null)           // 当前播放曲目

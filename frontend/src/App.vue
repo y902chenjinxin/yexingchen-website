@@ -231,6 +231,14 @@ onMounted(async () => {
   window.addEventListener('keydown', onGlobalKey)
   // 应用用户主题覆盖（默认跟随时间）
   applyTheme(prefs.themeOverride)
+  /* v2.46.300：空闲时预取音乐页的代码。音乐页由 MusicView + IconButton +
+     IslandInnerBase + useCrudStore 等 5~6 个 chunk 组成，浏览器只能按依赖顺序
+     一个一个发现（实测首次点击要 3.8s）。趁用户还在别的页面时就下好，点进去直接渲染。 */
+  setTimeout(() => {
+    const warm = () => { import('@/views/MusicView.vue').catch(() => { /* 预取失败不影响正常打开 */ }) }
+    if ('requestIdleCallback' in window) requestIdleCallback(warm, { timeout: 4000 })
+    else warm()
+  }, 2500)
   if (auth.token) {
     try {
       await auth.fetchUser()

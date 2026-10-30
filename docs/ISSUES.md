@@ -7,6 +7,24 @@
 
 ---
 
+## v2.46.301 音乐页慢：音频预加载 / 后端单线程（2026-10-31）
+
+- **V246301-001 `<audio preload="auto">` 会毁掉首屏**：只要设置 src（比如恢复上次播放），
+  浏览器立刻拉整首歌（实测 3.4MB / 13s），占满带宽与连接，同期 chunk 排队到 4s。
+  全局播放器一律 `preload = 'metadata'`，真正 play() 时才全量加载。
+- **V246301-002 `async def` 路由里跑同步 ORM = 全站串行**：FastAPI 的 async 路由在
+  事件循环里直接执行，同步 SQLAlchemy 一阻塞，所有请求排队。判据：单发 0.25s、
+  并发 5 个就 1.3s+。修法：热点接口写 `def`（走线程池），或加 `uvicorn workers=N`。
+- **V246301-003 `uvicorn workers` 改了没生效，先查部署白名单**：`run.py` 在 backend
+  根目录，`deploy_backend_full.py` 的白名单不含它 —— 改完等于没改。改这类入口文件
+  必须手动 sftp 上传并 `pm2 restart`，用 `ps -ef | grep multiprocessing.spawn` 验证。
+- **V246301-004 多 worker 后 SQLite 要加 `busy_timeout`**，否则并发写直接
+  `database is locked`（默认只等 5ms）。
+- **V246301-005 手机端列表别一次渲染全部**：`slice(0, list.length)` 在 254 条时
+  要建两千多个 el-table 单元格，中低端机卡 2~3 秒。分块 40 条 + 「显示更多」。
+
+---
+
 ## v2.46.298 用户偏好表 / 自动日夜（2026-10-31）
 
 - **V246298-001 「跟随系统深色」在国产安卓/鸿蒙上基本不可用**：`prefers-color-scheme`
