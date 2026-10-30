@@ -1742,13 +1742,15 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   color: var(--nrd-sub);
 }
 
-/* 底栏（番茄式三段：进度 / 上一章下一章 / 目录-夜间-设置） */
+/* 底栏（番茄式三段：进度 / 上一章下一章 / 目录-夜间-设置）
+   v2.46.289：底部余量从 8px 拉到 30px —— 手机浏览器底部工具栏/系统手势条会盖住
+   最底一段，视觉上就是「目录/设置按钮点不到」。宁可多留白也要保证能点。 */
 .nrd-foot {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 12px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(30px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--nrd-line);
   background: var(--nrd-bg);
   z-index: 12;
@@ -1848,9 +1850,9 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   outline: none;
   font-family: inherit;
 }
-.nrd-sheet-toc .nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 20px; }
+.nrd-sheet-toc .nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 40px; }
 .nrd-sheet-set {
-  padding: 0 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 0 18px calc(34px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
 }
 .nrd-prog {

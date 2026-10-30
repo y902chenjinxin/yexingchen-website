@@ -7,6 +7,17 @@
 
 ---
 
+## v2.46.289 手机端入口/Logo/底栏留白（2026-10-30）
+
+- **V246289-001 全屏底栏要按「最坏情况」留底部余量**：`visualViewport` 能解决
+  layout/visual viewport 差，但部分手机浏览器（鸿蒙、微信内置）底部工具栏是
+  overlay、不进 `visualViewport`，`env(safe-area-inset-bottom)` 也常为 0。
+  底栏直接用 **30px + safe-area** 的硬留白，宁可多留白也要保证按钮可点。
+- 手机端品牌名容易和站点新名脱节：改名（玄黄→星阁）时 grep 一遍
+  `MobileWorkbenchHome` 的 `.abb-title` 与 `aria-label`。
+
+---
+
 ## v2.46.288 全屏容器高度要按 visualViewport（2026-10-30）
 
 - **V246288-001 `fixed; inset: 0` 在移动浏览器上取的是 layout viewport**：它比

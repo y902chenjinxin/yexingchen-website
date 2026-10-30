@@ -1,13 +1,29 @@
 <template>
   <section class="abb" aria-label="主页">
-    <!-- 顶部：几何 Logo + 品牌 -->
+    <!-- 顶部：Logo + 品牌（v2.46.289：换成「星阁」墨底鎏金标，站名同步） -->
     <header class="abb-top">
-      <div class="abb-brand" @click="go('/workbench')" aria-label="玄黄">
+      <div class="abb-brand" @click="go('/workbench')" aria-label="星阁">
         <span class="abb-logo" aria-hidden="true">
-          <span class="abb-logo__l"></span>
-          <span class="abb-logo__r"></span>
+          <svg class="abb-logo__svg" viewBox="0 0 28 28" role="presentation">
+            <defs>
+              <linearGradient id="abbLogoGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#3b352b" />
+                <stop offset="1" stop-color="#15130f" />
+              </linearGradient>
+            </defs>
+            <rect width="28" height="28" rx="8" fill="url(#abbLogoGrad)" />
+            <!-- 阁檐 -->
+            <path d="M6.2 12.6 14 7.3l7.8 5.3" fill="none" stroke="#dcb264"
+                  stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M8.4 16.3h11.2" stroke="#dcb264" stroke-width="1.2"
+                  stroke-linecap="round" opacity=".72" />
+            <!-- 星 -->
+            <circle cx="14" cy="20.2" r="1.85" fill="#f2d190" />
+            <path d="M9.8 24.1h8.4" stroke="#dcb264" stroke-width="1.1"
+                  stroke-linecap="round" opacity=".55" />
+          </svg>
         </span>
-        <span class="abb-title">玄黄</span>
+        <span class="abb-title">星阁</span>
       </div>
     </header>
 
@@ -92,6 +108,8 @@ const NAV_EXEMPT = new Set(['/workbench'])
 /* 快捷入口：线性描边图标 + 模块语义色（工具已含：证件照/倒计时） */
 const ICONS = {
   music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><path d="M9.5 9.5 14.5 12l-5 2.5z"/></svg>',
+  // v2.46.289：小说（翻开的书 + 书签）
+  novel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10.4 5.3 8.6 4.8 6.5 5A2 2 0 0 0 4.7 7v9.6a1.4 1.4 0 0 0 1.5 1.4c1.9-.2 3.7.2 5.8 1.5 2.1-1.3 3.9-1.7 5.8-1.5a1.4 1.4 0 0 0 1.5-1.4V7a2 2 0 0 0-1.8-2c-2.1-.2-3.9.3-5.5 1.5z"/><path d="M12 6.5v13"/></svg>',
   notes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
   finance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 5V3.5A1 1 0 0 1 9 2.5h6a1 1 0 0 1 1 1V5"/><path d="M8 12h8M8 16h5"/></svg>',
   travels: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 2 6 5 6 9a6 6 0 0 1-12 0c0-4 2.5-7 6-9z"/><path d="M9.5 19h5"/></svg>',
@@ -122,6 +140,8 @@ const ICONS = {
 const QUICK = [
   { label:'记账',   path:'/finance/book', acc:'--ab-grn', icon:ICONS.finance },
   { label:'音乐',   path:'/music',   acc:'--ab-blu', icon:ICONS.music },
+  // v2.46.289：小说紧挨音乐（夜星要求），其余顺延
+  { label:'小说',   path:'/novel',   acc:'--ab-cor', icon:ICONS.novel },
   { label:'棋牌游戏', path:'/tool/games', acc:'--ab-cyn', icon:ICONS.games },
   { label:'足迹',   path:'/travels', acc:'--ab-cyn', icon:ICONS.travels },
   { label:'通讯录', path:'/contacts',acc:'--ab-amb', icon:ICONS.contacts },
@@ -203,12 +223,9 @@ onBeforeUnmount(() => {
 .abb-brand { display: flex; align-items: center; gap: 10px; border: none; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .abb-logo {
   position: relative; width: 28px; height: 28px; border-radius: 8px; overflow: hidden;
-  box-shadow: 0 6px 14px rgba(80, 95, 200, 0.30), inset 0 1px 0 rgba(255,255,255,.4);
+  box-shadow: 0 6px 14px rgba(28, 24, 18, 0.35), inset 0 1px 0 rgba(255,255,255,.14);
 }
-.abb-logo__l { position: absolute; inset: 0; transform: skewX(-18deg); transform-origin: top left; left: -4%; width: 115%;
-  background: linear-gradient(150deg, var(--lj-dai, #5b6ae0), var(--lj-seal, #8b5cf6)); }
-.abb-logo__r { position: absolute; inset: 0; transform: skewX(18deg); transform-origin: top right; right: -10%; width: 118%;
-  background: linear-gradient(150deg, var(--lj-ochre, #5b6ae0), var(--color-accent, #8b5cf6)); opacity: .9; }
+.abb-logo__svg { display: block; width: 100%; height: 100%; }
 .abb-title {
   font-size: 20px; font-weight: 800; letter-spacing: .16em; color: var(--lj-text, #0f1530);
 }
