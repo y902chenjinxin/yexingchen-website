@@ -365,7 +365,15 @@
         </div>
 
         <div class="nrd-set-foot">
-          <button class="nrd-btn" type="button" @click="resetAll">恢复默认</button>
+          <!-- v2.46.297：原来「恢复默认」紧挨着「完成」（间距 8px）且单击即重置，
+               手机上点字体按钮时面板一滚就误触 → 夜星「切字体把我的边距行距弄回默认了」。
+               改成：左下角弱化小字 + 二次点击确认（3.2s 内不点自动撤销）。 -->
+          <button
+            class="nrd-btn ghost"
+            :class="{ armed: resetArmed }"
+            type="button"
+            @click="onResetClick"
+          >{{ resetArmed ? '再点一次确认' : '恢复默认' }}</button>
           <button class="nrd-btn primary" type="button" @click="setOpen = false">完成</button>
         </div>
     </div>
@@ -664,6 +672,7 @@ function anyPanelOpen() {
 }
 
 function closeAllPanels() {
+  disarmReset()
   tocOpen.value = false
   setOpen.value = false
   findOpen.value = false
@@ -778,6 +787,25 @@ function bump(key, d) {
   settings.value[key] = Math.max(14, Math.min(30, settings.value[key] + d * 1))
   saveSettings(); applyAll()
 }
+/* 恢复默认：单击先「上膛」，3.2 秒内再点一次才真正重置。
+   面板里字体按钮就在它上方，滚动后极易误触 —— 这个确认是防误触的关键。 */
+const resetArmed = ref(false)
+let resetArmTimer = 0
+function disarmReset() {
+  clearTimeout(resetArmTimer)
+  resetArmed.value = false
+}
+function onResetClick() {
+  if (!resetArmed.value) {
+    resetArmed.value = true
+    clearTimeout(resetArmTimer)
+    resetArmTimer = setTimeout(() => { resetArmed.value = false }, 3200)
+    return
+  }
+  disarmReset()
+  resetAll()
+}
+
 function resetAll() {
   stopAutoPlay()
   settings.value = { ...defaultSettings }
@@ -2142,10 +2170,28 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 }
 .nrd-set-foot {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
+  align-items: center;
+  /* 破坏性按钮靠左、确认靠右，中间留出大间距，避免手指误触 */
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--nrd-line);
 }
+.nrd-btn.ghost {
+  margin-top: 0;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--nrd-sub);
+  font-size: 12.5px;
+  letter-spacing: .02em;
+}
+.nrd-btn.ghost.armed {
+  color: #c0503f;
+  font-weight: 600;
+}
+.nrd-set-foot .nrd-btn.primary { margin-top: 0; }
 
 .nrd-fade-enter-active, .nrd-fade-leave-active { transition: opacity .16s ease; }
 .nrd-fade-enter-from, .nrd-fade-leave-to { opacity: 0; }
