@@ -383,8 +383,18 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import ePub from 'epubjs'
+/* v2.46.294：epubjs 是 300KB+ 的大库，之前静态 import 让它被打进阅读器 chunk，
+   读 TXT 也要先下完 —— 改成真正打开 EPUB 时才动态加载，TXT 路径 chunk 立省 300KB。 */
+let ePubLib = null
+async function ensureEpubLib() {
+  if (!ePubLib) {
+    const mod = await import('epubjs')
+    ePubLib = mod.default || mod
+  }
+  return ePubLib
+}
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
+import { takeToc, takeChapter } from '@/utils/novelPrefetch'
 
 const props = defineProps({
   novel: { type: Object, required: true },
@@ -677,8 +687,17 @@ function onRootClick(e) {
 }
 
 /** 打开某个面板（收起 chrome，保证抽屉独占视线） */
+/** 音乐条是站点级浮层（z 1960 > 抽屉 14），会压住抽屉底部。开面板前量一下它的实际高度，
+    作为抽屉的底部内边距补偿；没在播放时自然为 0。 */
+function syncNpbarPad() {
+  const bar = document.querySelector('.npbar')
+  const h = bar ? Math.round(bar.getBoundingClientRect().height) + 10 : 0
+  nrdRef.value?.style.setProperty('--npbar-pad', h + 'px')
+}
+
 function openPanel(which) {
   showChrome.value = false
+  syncNpbarPad()
   const cur = { toc: tocOpen.value, marks: marksOpen.value, set: setOpen.value, find: findOpen.value }
   closeAllPanels()
   if (cur[which]) return
@@ -941,7 +960,10 @@ async function novelApi(path, opts = {}) {
 
 /** 拉章节索引；若后端还没解析过（老书），先同步触发一次解析再拉。 */
 async function loadChapterIndex() {
-  let d = await novelApi('/chapters')
+  // v2.46.294：优先取 NovelReadView 预取的目录（与详情请求并行发的），省一次往返
+  const pre = takeToc(props.novel.id)
+  let d = pre ? await pre : null
+  if (!d) d = await novelApi('/chapters')
   txtStatus.value = d.status || ''
   if (d.status !== 'done') {
     // 解析 12MB 约 0.3~0.6s，同步等一次比让用户自己点更好
@@ -963,7 +985,9 @@ async function loadChapterData(idx) {
   if (c.paras) return true
   chapterLoading.value = true
   try {
-    const d = await novelApi(`/chapters/${idx}`)
+    // v2.46.295：优先用进页面时并发预取的那一章（多数情况正好命中所读章节）
+    const pre = takeChapter(props.novel.id, idx)
+    const d = (pre ? await pre : null) || await novelApi(`/chapters/${idx}`)
     c.paras = d.paras && d.paras.length ? d.paras : ['（本章无内容）']
     return true
   } catch {
@@ -1004,7 +1028,8 @@ function openPdf(buf) {
 
 /* ---------------- EPUB ---------------- */
 async function openEpub(buffer) {
-  book = ePub(buffer)
+  const E = await ensureEpubLib()
+  book = E(buffer)
   await book.ready
   await renderEpub()
 
@@ -1630,10 +1655,12 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   z-index: 1900;
   display: block;
   overflow: hidden;
-  /* 高度：dvh 优先（已扣掉浏览器工具栏），不支持时退回 vh（layout viewport），
-     两行都被忽略则回到 inset:0 的老行为。绝不用 JS 写 px —— 见上文注释。 */
-  height: 100vh;
-  height: 100dvh;
+  /* v2.46.292：高度只交给 inset:0（= layout viewport，永远 ≥ 可视区，不会露白底）。
+     🔴 绝不再写 100dvh / JS px —— 实测鸿蒙、微信内置浏览器里 100dvh 比真实屏幕
+     小一截（底部工具栏没算进去），容器变矮 → 底部露出 #app 的白底（夜星「白块」），
+     而且首帧取值不稳 → 第一次打开抽屉位置错乱（「要先点搜索才正常」）。
+     顶栏/底栏/抽屉已改为 position:fixed 贴屏幕，不再依赖容器高度。 */
+  min-height: 100vh;
   background-color: var(--nrd-bg);
   /* v2.46.286：自定义背景图（半透明底色已叠在图上方，保证正文可读） */
   background-image: var(--nrd-bg-image, none);
@@ -1645,7 +1672,8 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 
 /* 菜单遮罩：点空白收起顶栏/底栏（番茄只是轻微压暗，不要压太重） */
 .nrd-scrim {
-  position: absolute;
+  /* v2.46.292：fixed 覆盖整个屏幕（含被浏览器工具栏压住的那段），不再跟容器高度走 */
+  position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, .1);
   z-index: 11;
@@ -1658,7 +1686,8 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 
 /* 顶栏：默认隐藏，点页面中部滑出（番茄式） */
 .nrd-bar {
-  position: absolute;
+  /* v2.46.292：fixed 贴屏幕顶，不贴容器 —— 容器高度在手机上不可靠（见 .nrd 注释） */
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -1765,11 +1794,15 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
    v2.46.289：底部余量从 8px 拉到 30px —— 手机浏览器底部工具栏/系统手势条会盖住
    最底一段，视觉上就是「目录/设置按钮点不到」。宁可多留白也要保证能点。 */
 .nrd-foot {
-  position: absolute;
+  /* v2.46.292：fixed 贴屏幕底（浏览器自己躲工具栏），不再贴容器底；
+     高度由三段内容自然撑开，🔴 不许再写死 height —— coarse 那条 height:54px
+     是底栏还只有一行时的老规则，把三行底栏压剩一行、后两行溢到屏幕外，
+     夜星手机上「目录/设置点不到」就是它。 */
+  position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 12px 16px calc(24px + var(--bui-bottom, 0px) + env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(28px + var(--bui-bottom, 0px) + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--nrd-line);
   background: var(--nrd-bg);
   z-index: 12;
@@ -1834,11 +1867,14 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 
 /* 底部抽屉（目录 / 设置共用） */
 .nrd-sheet {
-  position: absolute;
+  /* v2.46.292：fixed 贴屏幕底。旧的 max-height:74vh 用 vh（layout viewport，
+     比手机上可视区大）→ 抽屉顶到屏幕外、顶部搜索框被裁，夜星说的「展示不全」。 */
+  position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  max-height: 74vh;
+  max-height: 72vh;
+  max-height: 72dvh;
   display: flex;
   flex-direction: column;
   /* 抽屉整体上抬「被浏览器工具栏吃掉的高度」，否则底部按钮会被压住 */
@@ -1873,7 +1909,9 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 }
 .nrd-sheet-toc .nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 24px; }
 .nrd-sheet-set {
-  padding: 0 18px calc(22px + env(safe-area-inset-bottom, 0px));
+  /* v2.46.292：底部预留音乐播放条的高度（--npbar-pad 由 openPanel 实测注入），
+     否则滚到底时「恢复默认/完成」被浮在最上的音乐条压住点不到。 */
+  padding: 0 18px calc(22px + var(--npbar-pad, 0px) + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   /* flex item 默认 min-height:auto，内容会把抽屉撑破 max-height → 底部被容器裁掉 */
   min-height: 0;
@@ -2050,7 +2088,8 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 }
 /* 亮度遮罩：盖住整个阅读器压暗画面，pointer-events:none 不挡任何交互 */
 .nrd-dim {
-  position: absolute;
+  /* v2.46.292：fixed 铺满屏幕，否则容器矮时会漏出一条没压暗的亮条（夜星「白块」） */
+  position: fixed;
   inset: 0;
   background: #000;
   pointer-events: none;
@@ -2114,34 +2153,22 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 /* ================= 移动端 / 触摸设备（v2.46.202） =================
    用 pointer: coarse 判断而不是屏幕宽度 —— 本站手机浏览器 viewport 被覆写成 1280，
    @media (max-width: 767px) 在手机上根本不触发。 */
-.nrd {
-  padding-top: env(safe-area-inset-top, 0);
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
+/* v2.46.292：安全区改由 .nrd-bar / .nrd-foot 各自处理（它们是 fixed，不再受容器
+   padding 影响）。容器这里若再留 padding，min-height:100vh 会被撑出滚动条。 */
 .nrd-bar { padding-left: calc(12px + env(safe-area-inset-left, 0)); padding-right: calc(12px + env(safe-area-inset-right, 0)); }
 
 @media (pointer: coarse) {
   /* 手指目标放大到 42px 以上 */
-  .nrd-bar { height: 56px; }
+  .nrd-bar {
+    height: calc(56px + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+  }
   .nrd-ic { width: 42px; height: 42px; font-size: 17px; }
   .nrd-name { font-size: 15px; }
-  .nrd-foot { height: 54px; }
-  .nrd-nav { padding: 10px 18px; font-size: 14px; }
-
-  /* 点击翻页热区扩到两侧 30%：手机上比 12% 好按得多 */
-  .nrd-edge { top: 56px; bottom: 54px; width: 30%; }
-
-  /* 设置面板改成底部弹出，占满宽度，拇指够得着 */
-  .nrd-set {
-    left: 8px;
-    right: 8px;
-    top: auto;
-    bottom: 0;
-    width: auto;
-    max-width: none;
-    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0));
-    border-radius: 18px 18px 0 0;
-  }
+  /* 🔴 v2.46.292：这里曾有一条 `.nrd-foot { height: 54px }`（底栏只有一行时的定高），
+     底栏改成三段后它把容器锁死在 54px，后两行溢出到屏幕外 ——
+     夜星手机上「目录/夜间/设置点不到」的真凶。底栏高度必须由内容决定，别再写死。 */
+  .nrd-foot-nav { padding: 11px 0; font-size: 14px; }
   .nrd-set-row > span { width: 34px; font-size: 13px; }
   .nrd-seg button { padding: 10px 4px; font-size: 13px; }
   .nrd-slider input[type='range'] { height: 28px; }

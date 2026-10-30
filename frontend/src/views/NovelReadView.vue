@@ -24,6 +24,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import NovelReader from '@/components/novel/NovelReader.vue'
+import { prefetchToc, prefetchChapter, guessChapterIndex } from '@/utils/novelPrefetch'
 
 const route = useRoute()
 const router = useRouter()
@@ -40,6 +41,11 @@ function close() {
 onMounted(async () => {
   const id = Number(route.params.id)
   if (!id) { error.value = '缺少书籍 ID'; loading.value = false; return }
+  // v2.46.294：目录与详情同时发（目录 1000+ 章约 30KB，和详情无依赖），
+  // Reader 挂载时直接取，省掉一次串行往返。
+  prefetchToc(id)
+  // 首章也一起发：本地进度里存着章节下标，不用等目录回来才知道读哪章
+  prefetchChapter(id, guessChapterIndex(id))
   try {
     const tk = localStorage.getItem('token') || ''
     const res = await fetch(`/api/novels/${id}`, { headers: { Authorization: `Bearer ${tk}` } })

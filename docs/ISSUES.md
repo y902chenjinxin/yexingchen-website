@@ -7,6 +7,31 @@
 
 ---
 
+## v2.46.296 底栏 54px 真凶 / 容器高度 / gzip（2026-10-30）
+
+- **V246296-001 改版后必须 grep 旧定高**：`.nrd-foot` 从「一行」改「三段」时，
+  `@media (pointer: coarse)` 里那条 `height: 54px` 没人删 → 后两行溢出容器、
+  按钮永远在屏幕外。**凡是把「单行 → 多行」的结构改版，必须全项目 grep 该类名的
+  `height:`**，尤其 media query 里的。
+- **V246296-002 探针必须开触摸模拟**：`pointer: coarse` 只在真触摸设备命中。
+  playwright 要 `isMobile: true, hasTouch: true`，否则手机上坏的规则本地永远测不出来
+  （本次因此连续 4 轮「本地通过、真机不行」）。
+- **V246296-003 全屏浮层的定位锚点**：容器高度在移动浏览器上不可靠
+  （`100dvh` 偏小、`visualViewport` 更小）。顶栏/底栏/抽屉/遮罩一律
+  `position: fixed` 贴屏幕，容器只做背景板（`inset:0 + min-height:100vh`）。
+- **V246296-004 抽屉的 max-height 别用 vh**：在手机上 `vh` = layout viewport，
+  比可视区高，`74vh` 会把抽屉顶出屏幕（顶部搜索框被裁 = 「展示不全」）。用 `dvh`。
+- **V246296-005 站点从来没开 gzip**：`nginx.conf` 里 `#gzip on;` 一直是注释状态，
+  所有 JS/CSS/JSON 明文传输（168KB / 97KB）。开启后 -68%。
+  以后新建站点先跑一遍 `curl -H 'Accept-Encoding: gzip' -I`。
+- **V246296-006 大库必须懒加载**：`import ePub from 'epubjs'` 静态引入会把 300KB+
+  打进阅读器 chunk，读 TXT 也要先下完。改 `await import('epubjs')` 后 379KB→38.7KB。
+- **V246296-007 打开链能并发的别串行**：详情 / 目录 / 首章三者无依赖
+  （首章下标取自 localStorage 进度），全部提前到进路由那一刻并发发，
+  14.3s → 2.1s。
+
+---
+
 ## v2.46.291 浏览器底部 UI 补偿（2026-10-30）
 
 - **V246291-001 「点了没反应」先怀疑点在浏览器工具栏上**：底栏贴底、`dvh` 未扣掉
