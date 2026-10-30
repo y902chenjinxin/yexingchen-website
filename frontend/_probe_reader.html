@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>阅读器交互探针</title>
+  <script>
+    // 先拦截 fetch：阅读器只依赖这几个接口
+    const PARAS = [
+      '这是第一段的正文内容，用来验证排版效果。',
+      '这是第二段，检查首行缩进与段间距是否生效。',
+      '这是第三段，文字长度稍微长一点，方便看两端对齐的表现。'
+    ]
+    const INDEX = { code: 0, data: { status: 'done', count: 3, encoding: 'utf-8', chapters: [
+      { i: 0, t: '第001章 起始' }, { i: 1, t: '第002章 中间' }, { i: 2, t: '第003章 结尾' }
+    ] } }
+    function jp(obj) {
+      return Promise.resolve(new Response(JSON.stringify(obj), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    }
+    const realFetch = window.fetch.bind(window)
+    window.fetch = (url, opts = {}) => {
+      const u = String(url)
+      if (u.includes('/chapters/')) {
+        const idx = Number(u.split('/chapters/')[1])
+        return jp({ code: 0, data: { i: idx, title: '第00' + (idx + 1) + '章 测试', paras: PARAS, total: 3 } })
+      }
+      if (u.includes('/chapters')) return jp(INDEX)
+      if (u.includes('/reader-bg')) return jp({ code: 0, data: { url: '' } })
+      if (u.includes('/bookmarks')) return jp({ code: 0, data: { list: [] } })
+      if (u.includes('/parse')) return jp({ code: 0, data: { status: 'done', count: 3 } })
+      return realFetch(url, opts)
+    }
+    localStorage.setItem('token', 'probe-token')
+  </script>
+</head>
+<body>
+  <div id="probe-root"></div>
+  <script type="module" src="/_probe_reader.js"></script>
+</body>
+</html>

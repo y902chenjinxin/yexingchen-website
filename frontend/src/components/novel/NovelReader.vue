@@ -7,23 +7,25 @@
        position:fixed 会相对那个祖先定位而不是视口，实测阅读器只占了右侧内容区、
        左边被侧边栏压住一半。挂到 body 才是真正的全屏。 -->
   <Teleport to="body">
-  <div class="nrd" :class="`theme-${theme}`" :style="cssVars">
-    <!-- 顶栏 -->
+  <div class="nrd" :class="[`theme-${theme}`, { 'is-chrome': showChrome }]" :style="cssVars" @click="onRootClick">
+    <!-- 菜单遮罩（点空白收起；顶栏/底栏本身不冒泡到这里） -->
+    <div v-if="showChrome" class="nrd-scrim" @click.stop="showChrome = false" />
+
+    <!-- 顶栏：默认隐藏，点击页面中部滑出（番茄式） -->
     <header class="nrd-bar">
-      <button class="nrd-ic" type="button" title="返回" @click="$emit('close')">←</button>
+      <button class="nrd-ic" type="button" title="返回" @click.stop="$emit('close')">←</button>
       <div class="nrd-title">
         <span class="nrd-name">{{ novel.title }}</span>
         <span class="nrd-pct">{{ percent }}%</span>
       </div>
-      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="目录" @click="togglePanel('toc')">☰</button>
-      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="搜索" @click="togglePanel('find')">
+      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="搜索" @click.stop="openPanel('find')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
           <circle cx="10.5" cy="10.5" r="6.2" />
           <path d="M15.2 15.2 20 20" />
         </svg>
       </button>
-      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="书签" @click="togglePanel('marks')">
+      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="书签" @click.stop="openPanel('marks')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
           <path d="M7 4.5h10v15l-5-3.4-5 3.4v-15Z" />
@@ -35,7 +37,7 @@
         :class="{ on: speaking }"
         type="button"
         :title="speaking ? '停止朗读' : '朗读'"
-        @click="toggleSpeak"
+        @click.stop="toggleSpeak"
       >
         <svg v-if="speaking" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <rect x="6.5" y="5" width="4" height="14" rx="1" />
@@ -46,7 +48,6 @@
           <path d="M8.5 5.5 18 12l-9.5 6.5v-13Z" />
         </svg>
       </button>
-      <button v-if="kind !== 'pdf'" class="nrd-ic" type="button" title="设置" @click="togglePanel('set')">Aa</button>
     </header>
 
     <!-- 加载 / 错误 -->
@@ -106,43 +107,84 @@
       </div>
     </div>
 
-    <!-- 底部：进度 + 翻页 -->
+    <!-- 底部导航（番茄式）：进度 + 上一章/下一章 + 目录/夜间/设置 -->
     <footer v-if="kind !== 'pdf'" class="nrd-foot">
-      <button class="nrd-nav" type="button" :disabled="atStart" @click="goPrev">上一页</button>
-      <div class="nrd-prog">
-        <i :style="{ width: percent + '%' }" />
+      <div class="nrd-foot-prog">
+        <span class="nrd-foot-chap">
+          <template v-if="kind === 'txt'">第 {{ txtIndex + 1 }}/{{ txtChapters.length }} 章</template>
+          <template v-else>目录 {{ tocActive + 1 }}/{{ toc.length }}</template>
+        </span>
+        <div class="nrd-prog"><i :style="{ width: percent + '%' }" /></div>
+        <span class="nrd-foot-pct">{{ percent }}%</span>
       </div>
-      <button class="nrd-nav" type="button" @click="goNext">下一页</button>
+
+      <div class="nrd-foot-row">
+        <button class="nrd-foot-nav" type="button" :disabled="atStart" @click.stop="prevChapter">上一章</button>
+        <button class="nrd-foot-nav" type="button" @click.stop="nextChapter">下一章</button>
+      </div>
+
+      <div class="nrd-foot-tools">
+        <button type="button" @click.stop="openPanel('toc')">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <span>目录</span>
+        </button>
+        <button type="button" @click.stop="toggleDayNight">
+          <svg v-if="theme === 'night'" width="19" height="19" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6" />
+          </svg>
+          <svg v-else width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.4 14.6A8.6 8.6 0 0 1 9.4 3.6a8.6 8.6 0 1 0 11 11Z" />
+          </svg>
+          <span>{{ theme === 'night' ? '白天' : '夜间' }}</span>
+        </button>
+        <button type="button" @click.stop="openPanel('set')">
+          <b class="nrd-aa">Aa</b>
+          <span>设置</span>
+        </button>
+      </div>
     </footer>
 
-    <!-- 目录抽屉 -->
-    <transition name="nrd-fade">
-      <aside v-if="tocOpen" class="nrd-toc">
-        <div class="nrd-toc-head">
-          <span>目录</span>
-          <button class="nrd-ic" type="button" @click="tocOpen = false">×</button>
-        </div>
-        <div class="nrd-toc-list">
-          <button
-            v-for="(item, i) in toc"
-            :key="i"
-            class="nrd-toc-item"
-            :class="{ active: i === tocActive }"
-            type="button"
-            @click="jumpTo(i)"
-          >
-            {{ item.label }}
-          </button>
-          <p v-if="!toc.length" class="nrd-toc-empty">这本没有可用目录</p>
-        </div>
-      </aside>
-    </transition>
+    <!-- 目录抽屉（底部滑出，可搜索标题） -->
+    <div v-if="tocOpen" class="nrd-sheet nrd-sheet-toc" @click.stop>
+      <div class="nrd-sheet-head">
+        <input
+          v-model="tocQ"
+          class="nrd-sheet-q"
+          type="search"
+          placeholder="搜索章节标题"
+          aria-label="搜索章节标题"
+        />
+        <button class="nrd-ic" type="button" @click="tocOpen = false">×</button>
+      </div>
+      <div class="nrd-toc-list">
+        <button
+          v-for="item in filteredToc"
+          :key="item.i"
+          class="nrd-toc-item"
+          :class="{ active: item.i === tocActive }"
+          type="button"
+          @click="jumpTo(item.i)"
+        >
+          <span class="nrd-toc-label">{{ item.label }}</span>
+          <span class="nrd-toc-idx">{{ item.i + 1 }}</span>
+        </button>
+        <p v-if="!filteredToc.length" class="nrd-toc-empty">
+          {{ tocQ ? '没有匹配的章节' : '这本没有可用目录' }}
+        </p>
+      </div>
+    </div>
 
     <!-- 全文搜索抽屉（v2.46.215） -->
     <transition name="nrd-fade">
-      <aside v-if="findOpen" class="nrd-toc nrd-find">
-        <div class="nrd-toc-head">
-          <span>搜索</span>
+      <aside v-if="findOpen" class="nrd-sheet nrd-sheet-toc nrd-find" @click.stop>
+        <div class="nrd-sheet-head">
+          <span class="nrd-sheet-title">搜索</span>
           <button class="nrd-ic" type="button" @click="findOpen = false">×</button>
         </div>
         <div class="nrd-find-box">
@@ -174,9 +216,9 @@
 
     <!-- 书签 / 笔记抽屉 -->
     <transition name="nrd-fade">
-      <aside v-if="marksOpen" class="nrd-toc nrd-marks">
-        <div class="nrd-toc-head">
-          <span>书签与笔记</span>
+      <aside v-if="marksOpen" class="nrd-sheet nrd-sheet-toc nrd-marks" @click.stop>
+        <div class="nrd-sheet-head">
+          <span class="nrd-sheet-title">书签与笔记</span>
           <button class="nrd-ic" type="button" @click="marksOpen = false">×</button>
         </div>
         <div class="nrd-mark-add">
@@ -198,8 +240,11 @@
     </transition>
 
     <!-- 设置面板 -->
-    <transition name="nrd-fade">
-      <div v-if="setOpen" class="nrd-set">
+    <div v-if="setOpen" class="nrd-sheet nrd-sheet-set" @click.stop>
+      <div class="nrd-sheet-head">
+        <span class="nrd-sheet-title">阅读设置</span>
+        <button class="nrd-ic" type="button" @click="setOpen = false">×</button>
+      </div>
         <div class="nrd-set-row">
           <span>亮度</span>
           <div class="nrd-slider">
@@ -223,11 +268,31 @@
               :key="t.key"
               type="button"
               class="nrd-dot"
-              :class="{ on: theme === t.key }"
-              :style="{ background: t.bg }"
+              :class="{ on: theme === t.key, 'is-custom': t.key === 'custom' }"
+              :style="t.key === 'custom'
+                ? { background: `linear-gradient(135deg, ${customColor} 55%, #fff 55%)` }
+                : t.key === 'image'
+                  ? { background: bgImage ? `center/cover url(${bgImage})` : 'repeating-linear-gradient(45deg, #ddd 0 4px, #bbb 4px 8px)' }
+                  : { background: t.bg }"
               :title="t.label"
               @click="setTheme(t.key)"
             />
+          </div>
+        </div>
+
+        <!-- 自定义背景（v2.46.286）：取色 / 传图 / 清除 -->
+        <div class="nrd-set-row">
+          <span>底色</span>
+          <div class="nrd-bg-tools">
+            <label class="nrd-bg-btn" :title="'取色 ' + customColor">
+              <input v-model="customColor" type="color" class="nrd-color-input" @input="onCustomColor" />
+              颜色
+            </label>
+            <button class="nrd-bg-btn" type="button" :disabled="bgUploading" @click="pickBgImage">
+              {{ bgUploading ? '上传中…' : '上传图片' }}
+            </button>
+            <button v-if="bgImage" class="nrd-bg-btn" type="button" @click="clearBgImage">清除图片</button>
+            <input ref="bgFileRef" type="file" accept="image/*" class="nrd-file-hidden" @change="onBgFile" />
           </div>
         </div>
 
@@ -300,14 +365,7 @@
           <button class="nrd-btn" type="button" @click="resetAll">恢复默认</button>
           <button class="nrd-btn primary" type="button" @click="setOpen = false">完成</button>
         </div>
-      </div>
-    </transition>
-
-    <!-- 点击左右边缘翻页（分页模式） -->
-    <template v-if="!loading && !error && flow === 'paginated'">
-      <button class="nrd-edge left" type="button" aria-label="上一页" @click="goPrev" />
-      <button class="nrd-edge right" type="button" aria-label="下一页" @click="goNext" />
-    </template>
+    </div>
 
     <!-- 亮度遮罩（纯压暗，不挡交互；brightness < 100 时出现） -->
     <div
@@ -337,6 +395,9 @@ const THEMES = [
   { key: 'blue', label: '蓝', bg: '#e8eff5', text: '#2c3540', sub: '#75828e', line: 'rgba(40,70,100,.14)' },
   { key: 'green', label: '绿', bg: '#e6efdf', text: '#2e3a2c', sub: '#75816f', line: 'rgba(60,100,50,.14)' },
   { key: 'night', label: '夜间', bg: '#16181c', text: '#cfd4da', sub: '#7c848e', line: 'rgba(255,255,255,.1)' },
+  // v2.46.286：自定义底色 / 自定义背景图（bg 与文字色由 curTheme 动态算）
+  { key: 'custom', label: '自定义色', bg: '#f0e6cd', text: '#2b2b2b', sub: '#8a8a8a', line: 'rgba(0,0,0,.1)' },
+  { key: 'image', label: '背景图', bg: '#fbf7ee', text: '#2b2b2b', sub: '#7b7368', line: 'rgba(0,0,0,.12)' },
 ]
 // v2.46.281：宋/黑/楷三档首选换成 GitHub 开源字体（服务器 /fonts/ 下，FontFace 按需加载），
 // 系统栈保留做兜底 —— 鸿蒙等无宋/楷字库的设备不再整体退化成黑体。
@@ -359,6 +420,8 @@ const defaultSettings = {
   brightness: 100, followSys: false,
   // v2.46.285 排版（Kindle 风）：首行缩进 2 字、段间距 0.85em
   indent: true, paraGap: 0.85,
+  // v2.46.286 自定义底色
+  customColor: '#f0e6cd',
 }
 const settings = ref({ ...defaultSettings })
 const theme = computed(() => settings.value.theme)
@@ -374,21 +437,60 @@ const paraGap = computed({ get: () => settings.value.paraGap ?? 0.85, set: (v) =
 const autoPlay = ref(false)   // 自动翻页：运行态不进 localStorage，翻页档位「自动」= paginated + autoPlay
 const fontLoading = ref('')   // 正在加载的 webfont key（按钮转圈提示）
 
-const curTheme = computed(() => THEMES.find((t) => t.key === theme.value) || THEMES[0])
+/* ---- 自定义背景（v2.46.286）---- */
+const customColor = ref(settings.value.customColor || '#f0e6cd')
+const bgImage = ref('')          // 服务器返回的 url（带 token 的接口路径）
+const bgUploading = ref(false)
+const bgFileRef = ref(null)
+
+/** #rrggbb → 是否偏亮（决定文字用深色还是浅色） */
+function isLightColor(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''))
+  if (!m) return true
+  const n = parseInt(m[1], 16)
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 148
+}
+
+const curTheme = computed(() => {
+  const t = THEMES.find((x) => x.key === theme.value) || THEMES[0]
+  if (t.key === 'custom') {
+    const c = customColor.value
+    const light = isLightColor(c)
+    return {
+      ...t, bg: c,
+      text: light ? '#2b2b2b' : '#e9e9e9',
+      sub: light ? '#8a8a8a' : '#9aa0a6',
+      line: light ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.16)',
+    }
+  }
+  if (t.key === 'image') {
+    // 图片上压一层主题底色，保证正文始终可读（按白天底算，字深）
+    return { ...t, bg: '#fbf7ee', text: '#2b2b2b', sub: '#7b7368', line: 'rgba(0,0,0,.12)' }
+  }
+  return t
+})
 const curFont = computed(() => FONTS.find((f) => f.key === font.value) || FONTS[0])
 
-const cssVars = computed(() => ({
-  '--nrd-bg': curTheme.value.bg,
-  '--nrd-text': curTheme.value.text,
-  '--nrd-sub': curTheme.value.sub,
-  '--nrd-line': curTheme.value.line,
-  '--nrd-size': size.value + 'px',
-  '--nrd-lh': String(lineHeight.value),
-  '--nrd-pad': padding.value + 'px',
-  '--nrd-font': curFont.value.stack,
-  '--nrd-indent': indent.value ? '2em' : '0em',
-  '--nrd-pgap': paraGap.value + 'em',
-}))
+const cssVars = computed(() => {
+  const veil = 'rgba(251, 247, 238, .78)'
+  const bgImageStyle = theme.value === 'image' && bgImage.value
+    ? `linear-gradient(${veil}, ${veil}), url("${bgImage.value}")`
+    : 'none'
+  return {
+    '--nrd-bg': curTheme.value.bg,
+    '--nrd-text': curTheme.value.text,
+    '--nrd-sub': curTheme.value.sub,
+    '--nrd-line': curTheme.value.line,
+    '--nrd-size': size.value + 'px',
+    '--nrd-lh': String(lineHeight.value),
+    '--nrd-pad': padding.value + 'px',
+    '--nrd-font': curFont.value.stack,
+    '--nrd-indent': indent.value ? '2em' : '0em',
+    '--nrd-pgap': paraGap.value + 'em',
+    '--nrd-bg-image': bgImageStyle,
+  }
+})
 
 function isTouchDevice() {
   return (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window
@@ -403,6 +505,7 @@ function loadSettings() {
     const raw = localStorage.getItem(SET_KEY)
     settings.value = raw ? { ...base, ...JSON.parse(raw) } : { ...base }
   } catch { /* 忽略 */ }
+  if (settings.value.customColor) customColor.value = settings.value.customColor
 }
 function saveSettings() {
   try { localStorage.setItem(SET_KEY, JSON.stringify(settings.value)) } catch { /* 忽略 */ }
@@ -505,6 +608,106 @@ function setIndent(v) {
   indent.value = v
   saveSettings()
   onResize()
+}
+
+/* ---------------- 番茄式交互（v2.46.286） ----------------
+   点击页面：左 1/3 上一页、右 1/3 下一页、中间 / 滚动模式任意处 → 唤出顶栏+底栏。
+   再点空白（或遮罩）收起。目录与设置都是底部抽屉。 */
+const showChrome = ref(false)
+const tocQ = ref('')
+
+function onRootClick(e) {
+  // 点在交互元素上不当作「翻页/唤菜单」
+  if (e.target.closest('button, input, label, a, .nrd-sheet, .nrd-bar, .nrd-foot, .nrd-set, .nrd-toc, .nrd-dim')) return
+  if (window.getSelection && String(window.getSelection())) return   // 正在划线选字
+  if (showChrome.value) { showChrome.value = false; return }
+  if (flow.value === 'paginated' && kind.value !== 'pdf') {
+    const w = window.innerWidth || 1
+    if (e.clientX < w * 0.3) { txtPrev(); return }
+    if (e.clientX > w * 0.7) { txtNext(); return }
+  }
+  showChrome.value = true
+}
+
+/** 打开某个面板（收起 chrome，保证抽屉独占视线） */
+function openPanel(which) {
+  showChrome.value = false
+  const cur = { toc: tocOpen.value, marks: marksOpen.value, set: setOpen.value, find: findOpen.value }
+  tocOpen.value = false
+  marksOpen.value = false
+  setOpen.value = false
+  findOpen.value = false
+  if (cur[which]) return
+  if (which === 'toc') tocOpen.value = true
+  else if (which === 'marks') { marksOpen.value = true; loadMarks() }
+  else if (which === 'find') { findOpen.value = true; nextTick(() => document.querySelector('.nrd-find-input')?.focus()) }
+  else setOpen.value = true
+}
+
+/** 目录搜索过滤（保留原始索引，跳转要用） */
+const filteredToc = computed(() => {
+  const q = tocQ.value.trim()
+  const all = toc.value.map((x, i) => ({ ...x, i }))
+  if (!q) return all
+  return all.filter((x) => String(x.label || '').includes(q))
+})
+
+function prevChapter() {
+  if (kind.value === 'epub') { rendition?.prev(); return }
+  if (txtIndex.value > 0) goChapter(txtIndex.value - 1, flow.value === 'paginated')
+}
+
+function nextChapter() {
+  if (kind.value === 'epub') { rendition?.next(); return }
+  if (txtIndex.value < txtChapters.value.length - 1) goChapter(txtIndex.value + 1)
+}
+
+/** 底栏「夜间/白天」：当前是夜间就回白天，否则进夜间 */
+function toggleDayNight() {
+  setTheme(theme.value === 'night' ? 'day' : 'night')
+}
+
+/* ---- 自定义背景：取色 / 传图 / 清除 ---- */
+function onCustomColor() {
+  settings.value.customColor = customColor.value
+  setTheme('custom')
+}
+function pickBgImage() {
+  bgFileRef.value?.click()
+}
+async function onBgFile(e) {
+  const f = e.target.files && e.target.files[0]
+  if (!f) return
+  bgUploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', f)
+    const r = await fetch('/api/novels/reader-bg', { method: 'POST', headers: authHeaders(), body: fd })
+    const j = await r.json().catch(() => null)
+    if (!r.ok || !j || j.code !== 0) throw new Error((j && j.msg) || `HTTP ${r.status}`)
+    bgImage.value = j.data.url
+    setTheme('image')
+  } catch (err) {
+    error.value = `背景上传失败：${err.message || err}`
+    setTimeout(() => { error.value = '' }, 2500)
+  } finally {
+    bgUploading.value = false
+    e.target.value = ''
+  }
+}
+async function clearBgImage() {
+  bgImage.value = ''
+  if (theme.value === 'image') setTheme('eye')
+  try {
+    await fetch('/api/novels/reader-bg/img', { method: 'DELETE', headers: authHeaders() })
+  } catch { /* 忽略 */ }
+}
+async function loadReaderBg() {
+  try {
+    const r = await fetch('/api/novels/reader-bg', { headers: authHeaders() })
+    const j = await r.json()
+    if (j && j.code === 0 && j.data && j.data.url) bgImage.value = j.data.url
+  } catch { /* 忽略 */ }
 }
 
 function bump(key, d) {
@@ -750,6 +953,8 @@ function openPdf(buf) {
   const mobile = /Android|iPhone|iPad|iPod|HarmonyOS|Mobile|MicroMessenger/i.test(ua)
   pdfBlocked.value = mobile
   percent.value = 0
+  // PDF 内嵌在 iframe 里，点击冒泡不出来 → 让顶栏常显，否则唤不出菜单
+  showChrome.value = true
 }
 
 /* ---------------- EPUB ---------------- */
@@ -789,6 +994,18 @@ async function openEpub(buffer) {
     if (!doc) return
     doc.addEventListener('touchstart', onTouchStart, { passive: true })
     doc.addEventListener('touchend', onTouchEnd, { passive: true })
+    // v2.46.286：iframe 内的点击不会冒泡到父页面 —— 必须单独挂，
+    // 否则 EPUB 看书点页面出不来顶栏/底栏（TXT 没有 iframe 所以之前没暴露）
+    doc.addEventListener('click', (ev) => {
+      if (showChrome.value) { showChrome.value = false; return }
+      const vw = contents.window?.innerWidth || window.innerWidth || 1
+      const x = ev.clientX ?? 0
+      if (flow.value === 'paginated') {
+        if (x < vw * 0.3) { rendition?.prev(); return }
+        if (x > vw * 0.7) { rendition?.next(); return }
+      }
+      showChrome.value = true
+    })
     // 分页模式下禁止 iframe 内横向滚动干扰
     try { doc.documentElement.style.touchAction = 'pan-y' } catch { /* 忽略 */ }
   })
@@ -1120,20 +1337,8 @@ const marksOpen = ref(false)
 const marks = ref([])
 const MARK_LABEL = { bookmark: '书签', highlight: '划线', note: '笔记' }
 
-/** 三个面板互斥（目录 / 书签 / 设置），避免叠在一起 */
-function togglePanel(which) {
-  // 🔴 必须取 .value：直接放 ref 对象，`!ref` 恒为 false，面板永远打不开
-  const cur = { toc: tocOpen.value, marks: marksOpen.value, set: setOpen.value, find: findOpen.value }
-  const next = !cur[which]
-  tocOpen.value = false
-  marksOpen.value = false
-  setOpen.value = false
-  findOpen.value = false
-  if (which === 'toc') tocOpen.value = next
-  else if (which === 'marks') { marksOpen.value = next; if (next) loadMarks() }
-  else if (which === 'find') { findOpen.value = next; if (next) nextTick(() => document.querySelector('.nrd-find-input')?.focus()) }
-  else setOpen.value = next
-}
+/* v2.46.286：面板开关统一走 openPanel（见上），旧的 togglePanel 已删除 ——
+   顶栏/底栏都改成「打开指定面板」，不再需要 toggle 语义。 */
 
 async function loadMarks() {
   const tk = localStorage.getItem('token') || ''
@@ -1276,6 +1481,7 @@ onMounted(async () => {
   if (followSys.value) applySysTheme()
   // 当前选中的 webfont 异步加载（不阻塞正文渲染，加载完 applyAll 里自动重注入）
   ensureFont(curFont.value)
+  loadReaderBg()
   window.addEventListener('keydown', onKey)
   window.addEventListener('resize', onResize)
   enterTouchMode()
@@ -1366,22 +1572,48 @@ watch([size, lineHeight, padding], () => { onResize() })
   /* v2.46.205：1600 会被站点侧栏/桌宠(1800)压住，实测手机上左侧被侧栏挡掉一半。
      提到 1900（仍低于全局提示层 9999 与 ElMessage 2000）。 */
   z-index: 1900;
-  display: flex;
-  flex-direction: column;
-  background: var(--nrd-bg);
+  display: block;
+  overflow: hidden;
+  background-color: var(--nrd-bg);
+  /* v2.46.286：自定义背景图（半透明底色已叠在图上方，保证正文可读） */
+  background-image: var(--nrd-bg-image, none);
+  background-size: cover;
+  background-position: center;
   color: var(--nrd-text);
   font-family: var(--nrd-font);
 }
 
-/* 顶栏 */
+/* 菜单遮罩：点空白收起顶栏/底栏（番茄只是轻微压暗，不要压太重） */
+.nrd-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .1);
+  z-index: 11;
+}
+
+/* 顶栏：默认隐藏，点页面中部滑出（番茄式） */
 .nrd-bar {
-  flex-shrink: 0;
-  height: 50px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 12px;
   border-bottom: 1px solid var(--nrd-line);
+  background: var(--nrd-bg);
+  z-index: 12;
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .22s cubic-bezier(.22, .61, .36, 1), opacity .16s;
+}
+.nrd.is-chrome .nrd-bar {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
 }
 .nrd-ic {
   width: 34px;
@@ -1412,7 +1644,8 @@ watch([size, lineHeight, padding], () => { onResize() })
 .nrd-pct { flex-shrink: 0; font-size: 12px; color: var(--nrd-sub); }
 
 /* 内容舞台 */
-.nrd-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+/* 内容舞台：铺满整个视口（顶栏/底栏是浮层，不占位） */
+.nrd-stage { position: absolute; inset: 0; overflow: hidden; }
 .nrd-txt { overflow-y: auto; overflow-x: hidden; }
 .nrd-txt-cols {
   font-size: var(--nrd-size);
@@ -1463,26 +1696,117 @@ watch([size, lineHeight, padding], () => { onResize() })
   color: var(--nrd-sub);
 }
 
-/* 底栏 */
+/* 底栏（番茄式三段：进度 / 上一章下一章 / 目录-夜间-设置） */
 .nrd-foot {
-  flex-shrink: 0;
-  height: 46px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--nrd-line);
+  background: var(--nrd-bg);
+  z-index: 12;
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .22s cubic-bezier(.22, .61, .36, 1), opacity .16s;
+}
+.nrd.is-chrome .nrd-foot {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+.nrd-foot-prog {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 12px;
-  border-top: 1px solid var(--nrd-line);
+  font-size: 11.5px;
+  color: var(--nrd-sub);
+  font-variant-numeric: tabular-nums;
 }
-.nrd-nav {
-  padding: 6px 14px;
-  border-radius: 8px;
+.nrd-foot-chap { flex-shrink: 0; }
+.nrd-foot-pct { flex-shrink: 0; width: 34px; text-align: right; }
+.nrd-foot-row {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+.nrd-foot-nav {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: 10px;
   border: 1px solid var(--nrd-line);
   background: transparent;
   color: var(--nrd-text);
   font-size: 13px;
   cursor: pointer;
 }
-.nrd-nav:disabled { opacity: .4; cursor: default; }
+.nrd-foot-nav:disabled { opacity: .35; cursor: default; }
+.nrd-foot-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin-top: 6px;
+}
+.nrd-foot-tools button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--nrd-text);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.nrd-foot-tools button:hover { background: rgba(127, 127, 127, .12); }
+.nrd-aa { font-size: 16px; line-height: 19px; font-weight: 600; }
+
+/* 底部抽屉（目录 / 设置共用） */
+.nrd-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 74vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--nrd-bg);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -14px 40px -18px rgba(0, 0, 0, .45);
+  z-index: 14;
+  animation: nrd-sheet-up .2s cubic-bezier(.22, .61, .36, 1);
+}
+@keyframes nrd-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+.nrd-sheet-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--nrd-line);
+}
+.nrd-sheet-title { flex: 1; font-size: 14px; font-weight: 500; }
+.nrd-sheet-q {
+  flex: 1;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--nrd-line);
+  background: transparent;
+  color: var(--nrd-text);
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+}
+.nrd-sheet-toc .nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 20px; }
+.nrd-sheet-set {
+  padding: 0 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
 .nrd-prog {
   flex: 1;
   height: 3px;
@@ -1499,26 +1823,14 @@ watch([size, lineHeight, padding], () => { onResize() })
 }
 
 /* 翻页热区 */
-.nrd-edge {
-  position: absolute;
-  top: 50px;
-  bottom: 46px;
-  width: 12%;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-.nrd-edge.left { left: 0; }
-.nrd-edge.right { right: 0; }
-
 /* 遮罩 */
 .nrd-mask {
   position: absolute;
-  inset: 50px 0 46px;
+  inset: 0;
   display: grid;
   place-items: center;
   background: var(--nrd-bg);
-  z-index: 2;
+  z-index: 20;
 }
 .nrd-loading { font-size: 13px; color: var(--nrd-sub); }
 .nrd-err { text-align: center; max-width: 380px; padding: 0 20px; }
@@ -1539,35 +1851,14 @@ watch([size, lineHeight, padding], () => { onResize() })
   border-color: transparent;
 }
 
-/* 目录 */
-.nrd-toc {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 300px;
-  max-width: 82vw;
-  display: flex;
-  flex-direction: column;
-  background: var(--nrd-bg);
-  border-right: 1px solid var(--nrd-line);
-  z-index: 5;
-}
-.nrd-toc-head {
-  flex-shrink: 0;
-  height: 50px;
+/* 目录列表（放在底部抽屉 .nrd-sheet-toc 里） */
+.nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 20px; }
+.nrd-toc-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 8px 0 18px;
-  font-size: 14px;
-  border-bottom: 1px solid var(--nrd-line);
-}
-.nrd-toc-list { flex: 1; overflow-y: auto; padding: 8px 0 20px; }
-.nrd-toc-item {
-  display: block;
+  gap: 10px;
   width: 100%;
-  padding: 9px 18px;
+  padding: 10px 18px;
   border: 0;
   background: transparent;
   color: var(--nrd-text);
@@ -1575,72 +1866,83 @@ watch([size, lineHeight, padding], () => { onResize() })
   line-height: 1.5;
   text-align: left;
   cursor: pointer;
+}
+.nrd-toc-label {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.nrd-toc-idx {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--nrd-sub);
+  font-variant-numeric: tabular-nums;
+}
 .nrd-toc-item:hover { background: rgba(127, 127, 127, .12); }
-.nrd-toc-item.active { font-weight: 500; background: rgba(127, 127, 127, .16); }
+.nrd-toc-item.active { font-weight: 600; background: rgba(127, 127, 127, .16); }
+.nrd-toc-item.active .nrd-toc-label { color: var(--nrd-text); }
 .nrd-toc-empty { padding: 20px 18px; font-size: 12.5px; color: var(--nrd-sub); }
 
-/* 设置面板 */
-.nrd-set {
-  position: absolute;
-  right: 12px;
-  top: 56px;
-  width: 330px;
-  max-width: calc(100vw - 24px);
-  /* v2.46.285：排版设置行变多（亮度/背景/字体/字号/行距/段距/边距/缩进/翻页），
-     限高 + 内部滚动，避免小窗口下面板顶出视口 */
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--nrd-bg);
-  border: 1px solid var(--nrd-line);
-  box-shadow: 0 18px 40px -20px rgba(0, 0, 0, .4);
-  z-index: 6;
-}
-/* 手机端：底部抽屉（对齐主流阅读 App 的设置面板习惯，拇指好够） */
-@media (max-width: 640px) {
-  .nrd-set {
-    top: auto;
-    right: 0;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    max-width: none;
-    max-height: 72vh;
-    overflow-y: auto;
-    border-radius: 18px 18px 0 0;
-    border-left: 0;
-    border-right: 0;
-    border-bottom: 0;
-    padding: 18px 18px calc(16px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -12px 40px -18px rgba(0, 0, 0, .5);
-  }
-}
+/* 设置抽屉内部（外层是 .nrd-sheet-set） */
 .nrd-set-row {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
 }
+.nrd-set-row:first-of-type { margin-top: 12px; }
 .nrd-set-row > span {
   flex-shrink: 0;
   width: 36px;
   font-size: 12.5px;
   color: var(--nrd-sub);
 }
-/* 背景 5 色圆点 */
+/* 自定义背景工具行 */
+.nrd-bg-tools {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.nrd-bg-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--nrd-line);
+  background: transparent;
+  color: var(--nrd-text);
+  font-size: 12.5px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.nrd-bg-btn:hover { background: rgba(127, 127, 127, .12); }
+.nrd-color-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+}
+.nrd-file-hidden { display: none; }
+/* 背景色圆点（5 主题 + 自定义色 + 背景图 = 7 个，gap 收紧 + 允许换行） */
 .nrd-dots {
   flex: 1;
   display: flex;
-  gap: 12px;
+  gap: 9px;
+  flex-wrap: wrap;
 }
 .nrd-dot {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   border-radius: 50%;
   border: 1px solid var(--nrd-line);
@@ -1808,7 +2110,7 @@ watch([size, lineHeight, padding], () => { onResize() })
 }
 
 /* 搜索抽屉（v2.46.215） */
-.nrd-find { width: 340px; max-width: 88vw; }
+/* 搜索抽屉（底部）：宽度交给 .nrd-sheet，这里只调内部间距 */
 .nrd-find-box {
   display: flex;
   gap: 8px;

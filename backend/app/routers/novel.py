@@ -671,6 +671,75 @@ async def parse_novel_now(
     })
 
 
+# ========== 阅读器自定义背景（v2.46.286）==========
+# 🔴 必须定义在 `@router.get("/{novel_id}")` 之前，否则 "reader-bg" 会被当成 novel_id
+#    走 int 校验直接 422。
+READER_BG_DIR = "reader-bg"
+READER_BG_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+@router.get("/reader-bg", response_model=ResponseBase)
+async def get_reader_bg(current_user: dict = Depends(get_current_user)):
+    """返回当前用户的自定义阅读背景图 URL（没有则 url 为空）。"""
+    uid = current_user["user_id"]
+    base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", READER_BG_DIR)
+    if not os.path.isdir(base):
+        return ResponseBase(data={"url": ""})
+    for ext in READER_BG_EXTS:
+        if os.path.isfile(os.path.join(base, f"{uid}{ext}")):
+            return ResponseBase(data={"url": f"/api/novels/reader-bg/img?v={int(os.path.getmtime(os.path.join(base, f'{uid}{ext}')))}"})
+    return ResponseBase(data={"url": ""})
+
+
+@router.get("/reader-bg/img")
+async def get_reader_bg_file(current_user: dict = Depends(get_current_user)):
+    """取背景图本体（带 token，避免裸静态目录）。"""
+    uid = current_user["user_id"]
+    base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", READER_BG_DIR)
+    for ext in READER_BG_EXTS:
+        p = os.path.join(base, f"{uid}{ext}")
+        if os.path.isfile(p):
+            return FileResponse(p, headers={"Cache-Control": "private, max-age=600"})
+    raise_error(ErrCode.NOVEL_NOT_FOUND, "没有自定义背景")
+
+
+@router.post("/reader-bg", response_model=ResponseBase)
+async def upload_reader_bg(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """上传自定义阅读背景图（覆盖旧的；限 6MB，仅图片）。"""
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in READER_BG_EXTS:
+        raise_error(ErrCode.INVALID_PARAM, "只支持 jpg / png / webp 图片")
+    raw = await file.read()
+    if len(raw) > 6 * 1024 * 1024:
+        raise_error(ErrCode.INVALID_PARAM, "图片不要超过 6MB")
+
+    uid = current_user["user_id"]
+    base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", READER_BG_DIR)
+    os.makedirs(base, exist_ok=True)
+    for old in READER_BG_EXTS:      # 换格式时清掉旧的，避免 get 命中旧图
+        p = os.path.join(base, f"{uid}{old}")
+        if os.path.isfile(p):
+            os.remove(p)
+    path = os.path.join(base, f"{uid}{ext}")
+    with open(path, "wb") as f:
+        f.write(raw)
+    return ResponseBase(msg="已设置背景图", data={"url": f"/api/novels/reader-bg/img?v={int(os.path.getmtime(path))}"})
+
+
+@router.delete("/reader-bg/img", response_model=ResponseBase)
+async def delete_reader_bg(current_user: dict = Depends(get_current_user)):
+    uid = current_user["user_id"]
+    base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", READER_BG_DIR)
+    for ext in READER_BG_EXTS:
+        p = os.path.join(base, f"{uid}{ext}")
+        if os.path.isfile(p):
+            os.remove(p)
+    return ResponseBase(msg="已清除背景图")
+
+
 @router.get("/{novel_id}", response_model=ResponseBase)
 async def get_novel_detail(
     novel_id: int,

@@ -7,6 +7,28 @@
 
 ---
 
+## v2.46.286 阅读器番茄式重构（2026-10-30）
+
+- **V246286-001 FastAPI 路径参数路由会吞掉同形状的静态路径**：
+  `GET /api/novels/reader-bg/file` 被先定义的 `/{novel_id}/file` 抢走 →
+  `novel_id="reader-bg"` int 校验失败 422；`DELETE /reader-bg` 同理被
+  `DELETE /{novel_id}` 抢。静态路径要么定义在动态路由之前，要么换一段
+  （本次用 `/reader-bg` + `/reader-bg/img` 避开 `/{id}`、`/{id}/file`）。
+- **V246286-002 iframe 里的点击不冒泡到父页面**：epub.js 阅读区的点击、
+  PDF 内嵌查看器的点击都收不到，表现为「点了没反应、唤不出菜单」。
+  EPUB 要在 `rendition.hooks.content` 里对 `contents.document` 单独挂 click；
+  PDF 干脆打开时让 chrome 常显。
+- **V246286-003 布局从 flex 改 absolute 要一起改子项**：`.nrd` 原来是
+  `display:flex` 纵向，顶栏/底栏/内容各占一段；改成沉浸浮层后 `.nrd-stage`
+  必须 `position:absolute; inset:0`，否则内容塌成 0 高（白屏）。
+- **V246286-004 平铺圆点放不下就换 wrap**：5 主题 + 自定义 + 背景图 = 7 个
+  26px 圆点在 306px 宽里溢出最后一个（含 border 2px）。gap 12→9、dot 26→24
+  并加 `flex-wrap: wrap` 兜底。
+- 交互用 `_probe_reader.html|js|cjs` 探针验证（mock fetch 注入章节数据，
+  不依赖后端）：点击分区、chrome 显隐、抽屉位置、目录过滤、翻页百分比。
+
+---
+
 ## v2.46.285 阅读器字体行/浮层/排版（2026-10-30）
 
 - **V246285-001 单类选择器压不过同特异性的既有规则**：`.nrd-seg button{flex:1}`
