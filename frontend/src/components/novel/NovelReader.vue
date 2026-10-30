@@ -328,6 +328,10 @@ const FONTS = [
   { key: 'hei', label: '黑体', stack: '"Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif', webfont: 'Noto Sans CJK SC', file: '/fonts/NotoSansSC-Regular.otf' },
   { key: 'kai', label: '楷体', stack: '"LXGW WenKai", "Kaiti SC", "KaiTi", serif', webfont: 'LXGW WenKai', file: '/fonts/LXGWWenKai-Regular.ttf' },
   { key: 'fang', label: '仿宋', stack: '"Zhuque Fangsong", "FangSong", "STFangsong", serif', webfont: 'Zhuque Fangsong', file: '/fonts/ZhuqueFangsong-Regular.ttf' },
+  // 夜星自找的三款（v2.46.282）：思源宋体 VF 实例化 Bold、思源黑体 Medium、文源宋体
+  { key: 'songb', label: '宋粗', stack: '"Source Han Serif SC VF", "Songti SC", serif', webfont: 'Source Han Serif SC VF', file: '/fonts/SourceHanSerifSC-Bold.ttf' },
+  { key: 'heim', label: '黑中', stack: '"Source Han Sans SC Medium", "PingFang SC", "Microsoft YaHei", sans-serif', webfont: 'Source Han Sans SC Medium', file: '/fonts/SourceHanSansSC-Medium.otf' },
+  { key: 'wenyuan', label: '文源宋', stack: '"WenYuan Serif SC", "Songti SC", serif', webfont: 'WenYuan Serif SC', file: '/fonts/WenYuanSerifSC-Regular.ttf' },
 ]
 
 const SET_KEY = 'xuanhuang:reader:settings'
@@ -1505,6 +1509,16 @@ watch([size, lineHeight, padding], () => { onResize() })
 .nrd-seg-fonts button.loading {
   opacity: .55;
   pointer-events: none;
+}
+/* 7 档字体：flex:1 平分太挤，换 wrap 三列布局 */
+.nrd-seg-fonts {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.nrd-seg-fonts button {
+  flex: 1 1 calc(33.33% - 6px);
+  min-width: 0;
+  white-space: nowrap;
 }
 /* 亮度遮罩：盖住整个阅读器压暗画面，pointer-events:none 不挡任何交互 */
 .nrd-dim {

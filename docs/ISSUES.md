@@ -7,6 +7,16 @@
 
 ---
 
+## v2.46.282 夜星自找字体接入（2026-10-30）
+
+- **V246282-001 可变字体别直接上服务器**：思源宋体 VF 单文件 57MB（全字重），
+  用 fontTools varLib.instancer 固定目标字重（wght=700 + updateFontNames=True）
+  实例化成静态 Bold（33MB）再接入，加载逻辑与其他静态字体完全一致。
+- **V246282-002 字体选择器超 4 档要换布局**：.nrd-seg 默认 flex:1 平分，
+  7 档时每个按钮窄到放不下两个字；.nrd-seg-fonts 改 flex-wrap 三列。
+
+---
+
 ## v2.46.281 阅读器字体/设置面板/登录页改名（2026-10-30）
 
 - **V246281-001 nginx 前缀 location 会被正则 location 抢跑**：`location /fonts/`
