@@ -30,6 +30,10 @@ import { onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
  */
 
 const BODY_CLASS = 'fs-page'
+/* v2.46.285：保留音乐条 + 桌宠的全屏页（阅读器）。
+   fs-page 默认把这些常驻浮层一起 display:none（牌桌要绝对沉浸），
+   但看小说时夜星想要边听歌边看 —— 用这个 class 单独放行，并允许抬层。 */
+const KEEP_OVERLAYS_CLASS = 'fs-keep-overlays'
 const ORIGINAL_VIEWPORT = 'width=1280, viewport-fit=cover'
 const DEVICE_VIEWPORT =
   'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
@@ -42,9 +46,10 @@ function isTouchDevice() {
   return (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window
 }
 
-function enterShellHide(switchViewport) {
+function enterShellHide(switchViewport, keepOverlays = false) {
   depth += 1
   document.body.classList.add(BODY_CLASS)
+  if (keepOverlays) document.body.classList.add(KEEP_OVERLAYS_CLASS)
   if (!switchViewport || !isTouchDevice()) return
   const meta = document.querySelector('meta[name="viewport"]')
   if (!meta) return
@@ -56,6 +61,7 @@ function exitShellHide() {
   depth = Math.max(0, depth - 1)
   if (depth > 0) return
   document.body.classList.remove(BODY_CLASS)
+  document.body.classList.remove(KEEP_OVERLAYS_CLASS)
   if (!savedViewport) return
   const meta = document.querySelector('meta[name="viewport"]')
   if (meta) meta.setAttribute('content', savedViewport)
@@ -66,6 +72,7 @@ function exitShellHide() {
 export function forceExitFullscreenPage() {
   depth = 0
   document.body.classList.remove(BODY_CLASS)
+  document.body.classList.remove(KEEP_OVERLAYS_CLASS)
   if (!savedViewport) return
   const meta = document.querySelector('meta[name="viewport"]')
   if (meta) meta.setAttribute('content', savedViewport)
@@ -116,7 +123,7 @@ export function pushFullscreenHistory() {
 }
 
 export function useFullscreenPage(options = {}) {
-  const { viewport = true } = options
+  const { viewport = true, keepOverlays = false } = options
   const inst = getCurrentInstance()
   // 组件里没 setup 上下文时（理论上不会有）就退化成不处理，别炸
   if (!inst) return { exit: () => {} }
@@ -126,7 +133,7 @@ export function useFullscreenPage(options = {}) {
   onMounted(() => {
     if (active) return
     active = true
-    enterShellHide(viewport)
+    enterShellHide(viewport, keepOverlays)
   })
 
   onBeforeUnmount(() => {

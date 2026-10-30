@@ -89,8 +89,22 @@ def split_chapters(text: str) -> list[dict]:
     return chapters
 
 
+"""段落结尾判定用的标点（句末 + 右引号/右括号）。
+   行尾是这些字符 → 认为这句/这段写完了；否则是硬换行，要和下一行合并。"""
+_SENT_END = '。！？…!?．.』」”"）)～~'
+
+
 def _paras(seg: str) -> list[str]:
-    """章节正文切段：逐行拼接，空行分段（与前端旧口径一致）。"""
+    """章节正文切段（Kindle/Calibre 口径，v2.46.285）。
+
+    TXT 小说的换行有两种常见格式：
+    ① 段与段之间有空行；② 每行后面都跟一个空行，但句子在 40 字处被**硬换行**
+       截断（万妖之祖就是这种：「…王级高手不如狗！恍若两」/「世啊…」）。
+    只按空行切 → 每个半句都成一段，读起来满屏碎片（夜星反馈的「格式问题」）。
+
+    正确做法：按行累积，**行尾是句末标点才收段**，否则继续拼下一行；
+    空行也收段（兼容 ① 格式）。这样硬换行的半句会自动接回去。
+    """
     out: list[str] = []
     buf: list[str] = []
     for line in seg.split('\n'):
@@ -99,8 +113,11 @@ def _paras(seg: str) -> list[str]:
             if buf:
                 out.append(''.join(buf))
                 buf = []
-        else:
-            buf.append(line)
+            continue
+        buf.append(line)
+        if line[-1] in _SENT_END:
+            out.append(''.join(buf))
+            buf = []
     if buf:
         out.append(''.join(buf))
     return out

@@ -264,10 +264,26 @@
         </div>
 
         <div class="nrd-set-row">
+          <span>段距</span>
+          <div class="nrd-slider">
+            <input v-model.number="paraGap" type="range" min="0" max="1.6" step="0.05" @input="onTypesetChange" />
+            <em>{{ paraGap.toFixed(2) }}</em>
+          </div>
+        </div>
+
+        <div class="nrd-set-row">
           <span>边距</span>
           <div class="nrd-slider">
             <input v-model.number="padding" type="range" min="8" max="64" step="2" @input="applyAll" />
             <em>{{ padding }}px</em>
+          </div>
+        </div>
+
+        <div class="nrd-set-row">
+          <span>缩进</span>
+          <div class="nrd-seg">
+            <button type="button" :class="{ on: indent }" @click="setIndent(true)">首行缩进 2 字</button>
+            <button type="button" :class="{ on: !indent }" @click="setIndent(false)">不缩进</button>
           </div>
         </div>
 
@@ -338,7 +354,12 @@ const FONTS = [
 ]
 
 const SET_KEY = 'xuanhuang:reader:settings'
-const defaultSettings = { theme: 'day', font: 'song', size: 19, lineHeight: 1.9, padding: 28, flow: 'paginated', brightness: 100, followSys: false }
+const defaultSettings = {
+  theme: 'day', font: 'song', size: 19, lineHeight: 1.9, padding: 28, flow: 'paginated',
+  brightness: 100, followSys: false,
+  // v2.46.285 排版（Kindle 风）：首行缩进 2 字、段间距 0.85em
+  indent: true, paraGap: 0.85,
+}
 const settings = ref({ ...defaultSettings })
 const theme = computed(() => settings.value.theme)
 const font = computed(() => settings.value.font)
@@ -348,6 +369,8 @@ const padding = computed({ get: () => settings.value.padding, set: (v) => (setti
 const flow = computed({ get: () => settings.value.flow, set: (v) => (settings.value.flow = v) })
 const brightness = computed({ get: () => settings.value.brightness ?? 100, set: (v) => (settings.value.brightness = v) })
 const followSys = computed({ get: () => !!settings.value.followSys, set: (v) => (settings.value.followSys = v) })
+const indent = computed({ get: () => settings.value.indent !== false, set: (v) => (settings.value.indent = v) })
+const paraGap = computed({ get: () => settings.value.paraGap ?? 0.85, set: (v) => (settings.value.paraGap = v) })
 const autoPlay = ref(false)   // 自动翻页：运行态不进 localStorage，翻页档位「自动」= paginated + autoPlay
 const fontLoading = ref('')   // 正在加载的 webfont key（按钮转圈提示）
 
@@ -363,6 +386,8 @@ const cssVars = computed(() => ({
   '--nrd-lh': String(lineHeight.value),
   '--nrd-pad': padding.value + 'px',
   '--nrd-font': curFont.value.stack,
+  '--nrd-indent': indent.value ? '2em' : '0em',
+  '--nrd-pgap': paraGap.value + 'em',
 }))
 
 function isTouchDevice() {
@@ -471,6 +496,17 @@ function setFlow(v) {
     })
   }
 }
+/** 排版类改动（段距/缩进）：存盘 + 重新分页（页数会变，不重算会翻页错位） */
+function onTypesetChange() {
+  saveSettings()
+  onResize()
+}
+function setIndent(v) {
+  indent.value = v
+  saveSettings()
+  onResize()
+}
+
 function bump(key, d) {
   settings.value[key] = Math.max(14, Math.min(30, settings.value[key] + d * 1))
   saveSettings(); applyAll()
@@ -1229,8 +1265,9 @@ function applyAll() {
   if (kind.value === 'epub') applyEpubTheme()
 }
 
-/* 真全屏页：隐藏站点外壳 + 手机切真机 viewport（统一实现，见 useFullscreenPage） */
-useFullscreenPage()
+/* 真全屏页：隐藏站点外壳 + 手机切真机 viewport（统一实现，见 useFullscreenPage）
+   keepOverlays：看小说时保留音乐条与桌宠（夜星要求），牌桌那类全屏仍全收 */
+useFullscreenPage({ keepOverlays: true })
 
 /* ---------------- 初始化 ---------------- */
 onMounted(async () => {
@@ -1411,10 +1448,13 @@ watch([size, lineHeight, padding], () => { onResize() })
   letter-spacing: .04em;
 }
 .nrd-p {
-  margin: 0 0 .85em;
-  text-indent: 2em;
+  margin: 0 0 var(--nrd-pgap, .85em);
+  text-indent: var(--nrd-indent, 2em);
   text-align: justify;
   word-break: break-word;
+  /* 中文正文排版细节（v2.46.285）：标点挤压 + 更好的字形渲染 */
+  text-justify: inter-ideograph;
+  -webkit-font-smoothing: antialiased;
 }
 .nrd-end {
   margin: 2.4em 0 1em;
@@ -1550,6 +1590,10 @@ watch([size, lineHeight, padding], () => { onResize() })
   top: 56px;
   width: 330px;
   max-width: calc(100vw - 24px);
+  /* v2.46.285：排版设置行变多（亮度/背景/字体/字号/行距/段距/边距/缩进/翻页），
+     限高 + 内部滚动，避免小窗口下面板顶出视口 */
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   padding: 16px;
   border-radius: 14px;
   background: var(--nrd-bg);
@@ -1611,14 +1655,24 @@ watch([size, lineHeight, padding], () => { onResize() })
   opacity: .55;
   pointer-events: none;
 }
-/* 7 档字体：flex:1 平分太挤，换 wrap 三列布局 */
-.nrd-seg-fonts {
-  flex-wrap: wrap;
+/* 字体 8 档：横向滑动展示（v2.46.285，夜星给的方案）。
+   🔴 必须用双类提高特异性 —— `.nrd-seg button{flex:1}` 是 (0,1,1)，
+   单类写法 `.nrd-seg-fonts button` 也是 (0,1,1) 且定义在前，会被它压回去，
+   表现就是 8 个按钮挤成一行还被面板裁掉。 */
+.nrd-seg.nrd-seg-fonts {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
   gap: 6px;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
-.nrd-seg-fonts button {
-  flex: 1 1 calc(33.33% - 6px);
-  min-width: 0;
+.nrd-seg.nrd-seg-fonts button {
+  flex: 0 0 auto;          /* 不被压缩，宽度按文字撑开 */
+  min-width: 52px;
+  padding: 7px 11px;
   white-space: nowrap;
 }
 /* 亮度遮罩：盖住整个阅读器压暗画面，pointer-events:none 不挡任何交互 */

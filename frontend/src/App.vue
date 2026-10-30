@@ -393,13 +393,20 @@ body.fs-page {
 }
 body.fs-page .lj-topbar,
 body.fs-page .mt-tabbar,
-body.fs-page .npbar,
-body.fs-page .whale-stage,
 body.fs-page .dsb,
 body.fs-page .site-footer,
 body.fs-page .mid {
   display: none !important;
 }
+/* v2.46.285：阅读器这类「保留浮层」的全屏页（body 带 fs-keep-overlays）
+   不收起音乐条与桌宠，并把它们抬到阅读器（1900）之上，否则看不见。
+   牌桌全屏没这个 class，仍然全收 —— 对局时不该被浮层干扰。 */
+body.fs-page:not(.fs-keep-overlays) .npbar,
+body.fs-page:not(.fs-keep-overlays) .whale-stage {
+  display: none !important;
+}
+body.fs-keep-overlays .npbar { z-index: 1960 !important; }
+body.fs-keep-overlays .whale-stage { z-index: 1955 !important; }
 /* 外壳收起后，内容区不该再给 TabBar / 侧栏让位 */
 body.fs-page #app,
 body.fs-page #app.is-mobile {
