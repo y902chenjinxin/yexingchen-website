@@ -13,9 +13,13 @@
         <button class="qz-nav-btn" title="看昨天" @click="go(-1)">‹</button>
         <span class="qz-date">{{ (data.date || '').slice(5) }}</span>
         <button class="qz-nav-btn" title="看明天" @click="go(1)">›</button>
+        <FoldBtn :open="open" open-text="答题" @toggle="open = !open" />
       </div>
     </header>
 
+    <p v-if="!open" class="qz-hint">点「答题」看今天的题 —— 先自己想，再对答案。</p>
+
+    <template v-else>
     <div class="qz-hd">
       <span class="qz-lv" :class="'lv' + data.level">{{ LV[data.level] || '中等' }}</span>
       <p class="qz-q">{{ data.q }}</p>
@@ -94,6 +98,7 @@
         </span>
       </div>
     </div>
+    </template>
 
     <QuizWrongDrawer ref="drawer" @count="wrongN = $event" />
   </section>
@@ -122,6 +127,7 @@ import { computed, onMounted, ref } from 'vue'
 import { workbenchApi } from '@/api/workbench'
 import { addWrong, readWrong } from '@/composables/useQuizWrong'
 import QuizWrongDrawer from '@/components/workbench/QuizWrongDrawer.vue'
+import FoldBtn from '@/components/workbench/FoldBtn.vue'
 
 const KEY = ['A', 'B', 'C', 'D']
 const LV = { 1: '简单', 2: '中等', 3: '烧脑' }
@@ -136,6 +142,7 @@ const mine = ref(null)
 const wrongN = ref(0)
 const drawer = ref(null)
 const relOpen = ref(false)
+const open = ref(false)   // v2.46.307：默认收起，点「答题」再看今天的题
 
 const answered = computed(() => picked.value !== null)
 const isRight = computed(() => answered.value && picked.value === data.value?.answer)
@@ -301,6 +308,13 @@ onMounted(() => {
 }
 .qz-wrong:hover { background: rgba(201, 105, 74, .14); }
 
+/* v2.46.307：收起态的一行提示 */
+.qz-hint {
+  margin: 8px 0 2px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--dp-text3, #8a8a8a);
+}
 .qz-hd { display: flex; align-items: flex-start; gap: 9px; }
 .qz-lv {
   flex: none; margin-top: 2px; padding: 1px 7px; border-radius: 5px;

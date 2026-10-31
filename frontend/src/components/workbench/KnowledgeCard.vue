@@ -47,15 +47,16 @@
  * 夜星：「每天在里面找一个知识点，用通俗易懂的话编一个寓言故事，能让我快速理解的，
  *        主要就是想形成被动学习的效果。」
  *
- * 所以主体是**故事**，不是名词解释。默认展开 —— 折叠起来就失去意义了；
- * 但他想安静的时候可以收起，收起后只剩一句话，不占视线。
+ * 主体是**故事**，不是名词解释。
+ * v2.46.307：夜星要求「默认收起，点击后再展开」—— 工作台一屏要放好几张卡，
+ * 默认摊开一张长文会把下面的内容全挤下去。收起时只露概念 + 一句话，想看再点。
  */
 import { onMounted, ref } from 'vue'
 import { workbenchApi } from '@/api/workbench'
 import FoldBtn from '@/components/workbench/FoldBtn.vue'
 
 const data = ref(null)
-const open = ref(true)
+const open = ref(false)
 const offset = ref(0)
 
 async function load(off = 0) {
