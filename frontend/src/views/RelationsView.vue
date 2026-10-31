@@ -529,11 +529,16 @@ onMounted(async () => {
 .rl-cues { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .rl-cue {
   padding: 10px 12px; border-radius: 12px;
-  background: var(--tc-paper-2, rgba(255, 255, 255, .6));
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .1));
+  /* 🔴 v2.46.312：原来写 `var(--tc-paper-2, rgba(255,255,255,.6))`，
+     而这个 --tc-paper-2 **全站从未定义过**（全项目唯一引用点）—— 于是永远走白色 fallback，
+     深色主题下就是页面上两块刺眼的白卡。改用 currentColor 混色：
+     浅色主题（深字）→ 淡灰卡，深色主题（浅字）→ 淡白玻璃卡，自动跟随。 */
+  background: rgba(255, 255, 255, .06);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
 }
-.rl-cue--bday { border-color: rgba(169, 129, 47, .3); }
-.rl-cue--late { border-color: rgba(180, 85, 47, .25); }
+/* 语义靠标题里的 🎂 / 🎲 区分，不再给边框单独上金色/砖红（那两种颜色和整站的紫青体系不搭） */
 .rl-cue-h { display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--tc-text-3, #5b6f8a); margin-bottom: 6px; }
 .rl-cue-row {
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;

@@ -1804,8 +1804,11 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-btn { border: none; cursor: pointer; border-radius: 10px; font-family: var(--font-serif);
   color: var(--lj-text); background: var(--lj-glass); border: 1px solid var(--lj-line); padding: 9px 16px; transition: border-color .22s ease, background-color .22s ease, color .22s ease, box-shadow .22s ease, transform .22s ease; }
 .fin-btn:hover { border-color: var(--lj-line-strong); }
-.fin-btn.primary { background: var(--lj-ink, #18181b); color: var(--lj-paper, #fff); border-color: transparent; transition: filter .16s ease, transform .1s ease; }
-.fin-btn.primary:hover { filter: brightness(1.14); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+/* v2.46.312：主操作改用站内统一的主按钮渐变（紫→青）。
+   原来是「白底 + 深字」的反转按钮 —— 夜星截图里整页就它一块纯白，跟旁边的紫青体系断层；
+   IconButton variant="primary" 用的就是这支 --tc-btn-grad，这里对齐。 */
+.fin-btn.primary { background: var(--tc-btn-grad, linear-gradient(135deg, #8b5cff, #2de2ff)); color: var(--tc-btn-fg, #04121c); border-color: transparent; font-weight: 600; transition: filter .16s ease, transform .1s ease; }
+.fin-btn.primary:hover { filter: brightness(1.12); box-shadow: 0 6px 18px color-mix(in srgb, var(--lj-seal) 35%, transparent); }
 .fin-btn.ghost { background: transparent; }
 .fin-btn.small { padding: 6px 12px; font-size: 13px; }
 
@@ -1898,7 +1901,10 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-date { width: 100%; }
 .fin-cats { display: flex; flex-wrap: wrap; gap: 8px; }
 .fin-cat { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; font-family: var(--font-serif); font-size: 13px; }
-.fin-cat.active { border-color: var(--lj-ochre); color: var(--lj-ochre); background: rgba(199,169,107,.14); }
+/* v2.46.312：选中色统一到 --lj-seal（与资金池 chip 同一支强调色）。
+   原来用 --lj-ochre —— 桌面主题两者都是紫看不出来，手机上 ochre 被重映射成蓝、seal 是青，
+   同一屏里两行 chip 亮起来是两种颜色。 */
+.fin-cat.active { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.12); background: color-mix(in srgb, var(--lj-seal) 13%, transparent); }
 .fin-f-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .fin-cat-manage { background: none; border: none; padding: 0; cursor: pointer; font-size: 12px; color: var(--lj-ochre); font-family: var(--font-serif); letter-spacing: .04em; }
 .fin-cat-manage:hover { text-decoration: underline; }
@@ -2073,10 +2079,13 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   background: transparent; color: var(--lj-text-2); cursor: pointer; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease;
   font-family: var(--font-serif); font-size: 13px; }
 .fin-fund:hover { border-color: var(--lj-line-strong); color: var(--lj-text); }
-.fin-fund.active { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.12); }
-.fin-fund.active.savings { border-color: var(--yq-accent); color: var(--yq-accent); background: rgba(199,169,107,.14); }
-.fin-fund.active.public { border-color: var(--yq-rain); color: var(--yq-rain); background: rgba(127,168,163,.16); }
-.fin-fund.active.personal { border-color: #8d7fa8; color: #8d7fa8; background: rgba(141,127,168,.14); }
+.fin-fund.active { border-color: var(--lj-seal); color: var(--lj-seal); background: rgba(127,168,163,.12); background: color-mix(in srgb, var(--lj-seal) 13%, transparent); }
+/* v2.46.312：资金池选中不再按池上色 —— 桌面/手机两套映射下 savings 金、public 青绿、personal 灰紫，
+   和旁边「分类」那行（seal 一色）站一起就是三种高亮。公私账的区分交给下方资金池卡片，
+   chip 行只表达「当前选的是哪个」。 */
+.fin-fund.active.savings { border-color: var(--lj-seal); color: var(--lj-seal); background: color-mix(in srgb, var(--lj-seal) 13%, transparent); }
+.fin-fund.active.public { border-color: var(--lj-seal); color: var(--lj-seal); background: color-mix(in srgb, var(--lj-seal) 13%, transparent); }
+.fin-fund.active.personal { border-color: var(--lj-seal); color: var(--lj-seal); background: color-mix(in srgb, var(--lj-seal) 13%, transparent); }
 
 /* 家人账目：人员标签 + 汇总表 */
 .fin-members { border-radius: 16px; padding: 18px; margin-bottom: 18px; }

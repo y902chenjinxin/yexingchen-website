@@ -34,4 +34,7 @@ const boxStyle = computed(() => ({ width: `${props.size}px`, height: `${props.si
 /* 图标本身零颜色：stroke 走 currentColor，完全继承所在容器的文字色 */
 .ledger-icon { display: inline-block; vertical-align: -0.125em; flex: none; }
 .ledger-icon.is-raw { width: auto; height: auto; font-size: inherit; line-height: 1; }
+/* 表里没有的 emoji（自建分类随手挑的）原本会带自己的彩色，
+   在一排线性图标里非常跳。统一去色压暗，至少和整行的灰阶一致。 */
+.ledger-icon.is-raw { filter: grayscale(1); opacity: .78; }
 </style>
