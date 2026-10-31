@@ -36,16 +36,12 @@ from app.utils.security import get_current_user
 router = APIRouter(prefix="/api/games", tags=["生活岛-棋类游戏"])
 
 GAMES = {
+    # v2.46.310：围棋 / 象棋翻棋 / 军棋 / 军棋翻棋 / 飞行棋 / 大富翁 全部下线，
+    # 双人棋局只剩五子棋与象棋（明棋）；牌桌三件套只剩掼蛋与麻将。
     "gomoku": "五子棋",
     "xiangqi": "象棋",
-    "xiangqi_flip": "象棋翻棋",
-    "junqi": "军棋",
-    "junqi_flip": "军棋翻棋",
-    "ludo": "飞行棋",
-    # v2.43 棋牌三件套
     "guandan": "掼蛋",
     "mahjong": "麻将",
-    "monopoly": "大富翁",
 }
 
 # 底注档位（豆）
@@ -173,21 +169,6 @@ def _replay_action_stack(db: Session, r: GameRoom) -> list[tuple[int, int]]:
     return stack
 
 
-def _ludo_turn_uid(db: Session, r: GameRoom) -> int:
-    """飞行棋轮次：客户端把「掷骰 / 走子 / 跳过」都上报成事件，这里按流推导。
-
-    规则：一次 move/skip 结束后换人；若该次动作带 `extra=true`（掷 6 或吃子奖励）
-    则同一人继续。掷骰本身不换人（同一回合的第二段动作）。
-    """
-    cur = _black_id(r)
-    other = r.invitee_id if cur == r.owner_id else r.owner_id
-    for mv in _moves(db, r.id):
-        a = json.loads(mv.action or "{}")
-        if a.get("t") in ("move", "skip") and not a.get("extra"):
-            cur = other if cur == r.owner_id else r.owner_id
-    return cur
-
-
 def _undo_plies(r: GameRoom, uid: int, stack: list) -> int:
     """我能悔几手 —— 0 = 不可悔，1 = 撤自己刚下的那一手，2 = 对方已应招、连应招一起撤。
 
@@ -263,10 +244,8 @@ def _decorate_seat(r: GameRoom, out: dict, uid: int, db: Session, replay=None) -
         return out
     if r.status != "playing":
         out["my_turn"] = False
-    elif r.game == "ludo":
-        out["my_turn"] = uid == _ludo_turn_uid(db, r)
     else:
-        # 象棋 / 翻棋 / 军棋等「一步换人」的客户端权威游戏：按栈重放（含悔棋弹出）
+        # 象棋等「一步换人」的客户端权威游戏：按栈重放（含悔棋弹出）
         stack = _replay_action_stack(db, r)
         last_uid = stack[-1][1] if stack else None
         out["my_turn"] = (uid == _black_id(r)) if last_uid is None else (last_uid != uid)

@@ -52,7 +52,6 @@ EXPECTED_TABLES = {
     "login_attempts",
     "lost_items",
     "meal_photo",
-    "monopoly_map",
     "music",
     "music_playback",
     "note_fts",

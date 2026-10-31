@@ -53,19 +53,6 @@
             </div>
           </div>
 
-          <div v-if="gameKey === 'monopoly'" class="gtv-field">
-            <label class="gtv-label">席位</label>
-            <div class="gtv-chips">
-              <button
-                v-for="n in [2, 3, 4, 5, 6, 7, 8]"
-                :key="n"
-                class="gtv-chip"
-                :class="{ on: seatCount === n }"
-                @click="seatCount = n"
-              >{{ n }} 人</button>
-            </div>
-          </div>
-
           <div class="gtv-field">
             <label class="gtv-label">底注（每人开局预扣一份）</label>
             <div class="gtv-chips">
@@ -296,7 +283,6 @@ const t = useGameTable()
 const GAME_META = {
   guandan: { label: '掼蛋', comp: () => import('@/components/games/GuandanBoard.vue'), seats: 4 },
   mahjong: { label: '四川麻将', comp: () => import('@/components/games/MahjongBoard.vue'), seats: 4 },
-  monopoly: { label: '大富翁', comp: () => import('@/components/games/MonopolyBoard.vue'), seats: 4 },
 }
 const stakes = [
   { value: 100, label: '100 豆 · 轻松' },
@@ -335,7 +321,6 @@ const invitees = ref([])
 /** 掼蛋 2v2：这批被邀请人里谁是「队友」（服务端把人排到房主正对的 2 号位） */
 const mateIds = ref([])
 const baseStake = ref(100)
-const seatCount = ref(4)
 const families = ref([])
 const error = ref('')
 const showHelp = ref(false)
@@ -516,13 +501,11 @@ async function loadFamilies() {
 async function doCreate() {
   error.value = ''
   try {
-    const seat = gameKey.value === 'monopoly' ? seatCount.value : null
     await t.create(gameKey.value, {
       inviteeUserIds: invitees.value,
       // 只有 2v2 的掼蛋才带队伍信息；其余游戏传空数组
       teammateUserIds: isTeamGame.value ? mateIds.value : [],
       baseStake: baseStake.value,
-      seatCount: seat,
     })
     if (room.value?.id) {
       mode.value = 'room'

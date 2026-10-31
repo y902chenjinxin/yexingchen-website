@@ -1,4 +1,4 @@
-/** 棋牌三件套 · 积分 / 欢乐豆经济系统 API（v2.43）。 */
+/** 棋牌 · 积分 / 欢乐豆经济系统 API（v2.43；v2.46.310 大富翁下线，自定义地图接口一并删除）。 */
 import api from './index'
 
 export const gameEconomyApi = {
@@ -12,10 +12,6 @@ export const gameEconomyApi = {
   ledger: (kind = 'bean', limit = 30) => api.get('/game/ledger', { params: { kind, limit } }),
   stats: () => api.get('/game/stats'),
   leaderboard: () => api.get('/game/leaderboard'),
-  maps: () => api.get('/game/maps'),
-  createMap: (data) => api.post('/game/maps', data),
-  updateMap: (id, data) => api.put(`/game/maps/${id}`, data),
-  deleteMap: (id) => api.delete(`/game/maps/${id}`),
 }
 
 /** 对局结算：静默上报，失败不打断游戏体验。 */

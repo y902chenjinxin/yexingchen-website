@@ -165,13 +165,13 @@ BACKEND_FILES = [
      f"{REMOTE_BASE}/backend/alembic/versions/c9d0e1f2a3b4_game_economy.py"),
     (os.path.join(ROOT, "backend", "alembic", "versions", "e2f3a4b5c6d7_game_room_stake.py"),
      f"{REMOTE_BASE}/backend/alembic/versions/e2f3a4b5c6d7_game_room_stake.py"),
-    # ---- v2.44 牌类在线对局：多席牌桌引擎（掼蛋/麻将/大富翁）+ 路由 + 迁移 ----
+    # ---- v2.44 牌类在线对局：多席牌桌引擎（掼蛋/麻将）+ 路由 + 迁移 ----
     #      引擎是新增目录 app/games/，不登记则线上 import 直接失败（路由 404/500）。
+    #      v2.46.310：大富翁引擎下线，monopoly.py 从白名单移除。
     (os.path.join(ROOT, "backend", "app", "games", "__init__.py"),      f"{REMOTE_BASE}/backend/app/games/__init__.py"),
     (os.path.join(ROOT, "backend", "app", "games", "base.py"),          f"{REMOTE_BASE}/backend/app/games/base.py"),
     (os.path.join(ROOT, "backend", "app", "games", "guandan.py"),       f"{REMOTE_BASE}/backend/app/games/guandan.py"),
     (os.path.join(ROOT, "backend", "app", "games", "mahjong.py"),       f"{REMOTE_BASE}/backend/app/games/mahjong.py"),
-    (os.path.join(ROOT, "backend", "app", "games", "monopoly.py"),      f"{REMOTE_BASE}/backend/app/games/monopoly.py"),
     (os.path.join(ROOT, "backend", "app", "routers", "game_tables.py"), f"{REMOTE_BASE}/backend/app/routers/game_tables.py"),
     # ---- v2.46.150 暴力摩托在线一起玩（房号 + 轮询，进程内房态，无迁移）----
     (os.path.join(ROOT, "backend", "app", "routers", "roadrash_rooms.py"), f"{REMOTE_BASE}/backend/app/routers/roadrash_rooms.py"),

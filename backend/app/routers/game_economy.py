@@ -31,7 +31,6 @@ from app.models.game_economy import (
     BeanLedger,
     GameStats,
     GameWallet,
-    MonopolyMap,
     PointLedger,
 )
 from app.schemas.errors import ErrCode, raise_error
@@ -44,7 +43,6 @@ router = APIRouter(prefix="/api/game", tags=["棋牌三件套"])
 GAME_LABELS = {
     "guandan": "掼蛋",
     "mahjong": "麻将",
-    "monopoly": "大富翁",
 }
 
 # 对局结算的豆子涨落上限（按底注倍数），防止客户端上报异常值刷豆
@@ -69,13 +67,6 @@ class GiftIn(BaseModel):
 
 class BehaviorIn(BaseModel):
     action: str = ""            # finance / note / weight …（仅作流水备注）
-
-
-class MapIn(BaseModel):
-    name: str = "未命名地图"
-    description: str = ""
-    content: dict = {}
-    is_shared: int = 1
 
 
 def _today() -> str:
@@ -425,88 +416,3 @@ def leaderboard(db: Session = Depends(get_db), current_user: dict = Depends(get_
     bean_list.sort(key=lambda x: -x["beans"])
 
     return {"code": 0, "msg": "ok", "data": {"games": games, "beans": bean_list[:10]}}
-
-
-# ---------- 大富翁自定义地图（家庭共享） ----------
-
-def _map_view(m: MonopolyMap) -> dict:
-    try:
-        content = json.loads(m.content or "{}")
-    except Exception:  # noqa: BLE001
-        content = {}
-    return {
-        "id": m.id, "name": m.name, "description": m.description,
-        "owner_id": m.owner_id, "is_shared": int(m.is_shared or 0),
-        "content": content,
-        "updated_at": m.updated_at.strftime("%Y-%m-%d %H:%M") if m.updated_at else "",
-    }
-
-
-@router.get("/maps")
-def list_maps(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    rows = (
-        db.query(MonopolyMap)
-        .filter(MonopolyMap.household_id == HOUSEHOLD_ID)
-        .order_by(MonopolyMap.id.desc())
-        .all()
-    )
-    uid = current_user["user_id"]
-    return {
-        "code": 0, "msg": "ok",
-        "data": {"list": [_map_view(m) for m in rows if m.is_shared or m.owner_id == uid]},
-    }
-
-
-@router.post("/maps")
-def create_map(payload: MapIn, db: Session = Depends(get_db),
-               current_user: dict = Depends(get_current_user)):
-    uid = current_user["user_id"]
-    m = MonopolyMap(
-        household_id=HOUSEHOLD_ID, owner_id=uid,
-        name=(payload.name or "未命名地图")[:60],
-        description=(payload.description or "")[:200],
-        content=json.dumps(payload.content or {}, ensure_ascii=False),
-        is_shared=1 if payload.is_shared else 0,
-    )
-    db.add(m)
-    db.commit()
-    return {"code": 0, "msg": "ok", "data": _map_view(m)}
-
-
-@router.put("/maps/{map_id}")
-def update_map(map_id: int, payload: MapIn, db: Session = Depends(get_db),
-               current_user: dict = Depends(get_current_user)):
-    uid = current_user["user_id"]
-    m = (
-        db.query(MonopolyMap)
-        .filter(MonopolyMap.id == map_id, MonopolyMap.household_id == HOUSEHOLD_ID)
-        .first()
-    )
-    if not m:
-        raise_error(ErrCode.NOT_FOUND, "地图不存在")
-    if m.owner_id != uid:
-        raise_error(ErrCode.FORBIDDEN, "只能修改自己创建的地图")
-    m.name = (payload.name or m.name)[:60]
-    m.description = (payload.description or "")[:200]
-    m.content = json.dumps(payload.content or {}, ensure_ascii=False)
-    m.is_shared = 1 if payload.is_shared else 0
-    db.commit()
-    return {"code": 0, "msg": "ok", "data": _map_view(m)}
-
-
-@router.delete("/maps/{map_id}")
-def delete_map(map_id: int, db: Session = Depends(get_db),
-               current_user: dict = Depends(get_current_user)):
-    uid = current_user["user_id"]
-    m = (
-        db.query(MonopolyMap)
-        .filter(MonopolyMap.id == map_id, MonopolyMap.household_id == HOUSEHOLD_ID)
-        .first()
-    )
-    if not m:
-        raise_error(ErrCode.NOT_FOUND, "地图不存在")
-    if m.owner_id != uid:
-        raise_error(ErrCode.FORBIDDEN, "只能删除自己创建的地图")
-    db.delete(m)
-    db.commit()
-    return {"code": 0, "msg": "ok", "data": {"id": map_id}}

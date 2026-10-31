@@ -1,16 +1,17 @@
-"""棋牌三件套 · 经济系统与战绩（v2.43）。
+"""棋牌 · 经济系统与战绩（v2.43）。
 
 - `GameWallet`   每人一个钱包：积分 + 欢乐豆 + 签到/救济/日常行为的状态位
 - `PointLedger`  积分流水
 - `BeanLedger`   欢乐豆流水
-- `GameStats`    三款游戏的家庭战绩（按 user × game 聚合）
-- `MonopolyMap`  大富翁自定义地图（家庭共享）
+- `GameStats`    游戏战绩（按 user × game 聚合）
+
+v2.46.310：大富翁下线，`MonopolyMap`（自定义地图）随之删除。
 
 设计沿用全站 household 约定：`household_id` 负责共享可见性，`user_id` 只作创建者溯源。
 """
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint
 
 from app.database import Base
 
@@ -82,7 +83,7 @@ class GameStats(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     household_id = Column(Integer, nullable=False, default=1, index=True)
     user_id = Column(Integer, nullable=False, index=True)
-    game_key = Column(String(30), nullable=False, index=True)  # guandan/mahjong/monopoly
+    game_key = Column(String(30), nullable=False, index=True)  # guandan/mahjong
     plays = Column(Integer, nullable=False, default=0)
     wins = Column(Integer, nullable=False, default=0)
     draws = Column(Integer, nullable=False, default=0)
@@ -92,15 +93,5 @@ class GameStats(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
-class MonopolyMap(Base):
-    __tablename__ = "monopoly_map"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    household_id = Column(Integer, nullable=False, default=1, index=True)
-    owner_id = Column(Integer, nullable=False, index=True)
-    name = Column(String(60), nullable=False, default="未命名地图")
-    description = Column(String(200), nullable=False, default="")
-    content = Column(Text, nullable=False, default="{}")       # JSON：格子/角色/事件
-    is_shared = Column(Integer, nullable=False, default=1)     # 1=家庭成员可见
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+# v2.46.310：MonopolyMap（大富翁自定义地图，monopoly_map 表）随大富翁下线删除。
+# 迁移 `t310u311v312w313` 负责 DROP TABLE。

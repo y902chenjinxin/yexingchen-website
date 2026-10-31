@@ -33,7 +33,7 @@ from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api/game", tags=["牌类在线对局"])
 
-TABLE_GAMES = {"guandan": "掼蛋", "mahjong": "麻将", "monopoly": "大富翁"}
+TABLE_GAMES = {"guandan": "掼蛋", "mahjong": "麻将"}
 
 # 掉线 30s → AI 接管；房间 30 分钟无心跳 → 销毁
 OFFLINE_SECONDS = 30
@@ -46,12 +46,10 @@ RETURN_DEADLINE = 30            # 其他牌桌的还贡倒计时（秒）
 GUANDAN_TRIBUTE_DEADLINE = 300
 GUANDAN_RETURN_DEADLINE = 300
 
-# 预扣底注的游戏（结算时「退还底注 + 净输赢」）；大富翁按资产净变化直接结算
+# 预扣底注的游戏（结算时「退还底注 + 净输赢」）
+# v2.46.310：大富翁下线，SETTLE_UNIT 只剩按底注结算的掼蛋与麻将
 PRE_DEDUCT = {"guandan", "mahjong"}
-SETTLE_UNIT = {"guandan": "stake", "mahjong": "stake", "monopoly": "bean"}
-
-# 交易类动作不受「轮到谁」限制（大富翁随时可发起）
-ANYTIME_ACTS = {"trade_offer", "trade_accept", "trade_reject"}
+SETTLE_UNIT = {"guandan": "stake", "mahjong": "stake"}
 
 
 class CreateIn(BaseModel):
@@ -99,12 +97,9 @@ def _parse_dt(raw) -> datetime | None:
 
 # ---------- 席位 ----------
 
-def _seat_count_for(game: str, requested: int | None) -> int:
-    eng = get_engine(game)
-    if game == "monopoly":
-        n = int(requested or 4)
-        return max(2, min(8, n))
-    return int(eng.seat_count)
+def _seat_count_for(game: str, _requested: int | None = None) -> int:
+    """席位固定由引擎决定（v2.46.310：大富翁下线后不再有 2–8 人可变席位）"""
+    return int(get_engine(game).seat_count)
 
 
 def _make_seats(host_id: int, invitees: list[int], seat_count: int,
@@ -820,8 +815,7 @@ def table_act(room_id: int, req: ActIn, db: Session = Depends(get_db),
     room.seats = seats
 
     action = req.action or {}
-    act_type = str(action.get("type") or "")
-    if act_type not in ANYTIME_ACTS and room.game_state.get("turn") != seat:
+    if room.game_state.get("turn") != seat:
         raise_error(ErrCode.INVALID_PARAM, "还没轮到你")
     eng = get_engine(room.game)
     try:

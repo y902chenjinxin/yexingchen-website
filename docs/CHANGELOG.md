@@ -23,6 +23,60 @@
 
 ---
 
+## [v2.46.310] - 2026-10-31
+
+### 8 个游戏整批下线 + 项目文件精简
+
+夜星：「将围棋、象棋翻棋、军旗、军旗翻棋、飞行棋、数独、扫雷、大富翁全部删除，
+代码处理干净，然后整理项目文件做精简」。
+
+棋类大厅从 12 项砍到 5 项：**五子棋 / 象棋 / 掼蛋 / 麻将 / 植物大战僵尸**。
+
+#### 前端删除
+| 游戏 | 组件 | 备注 |
+|---|---|---|
+| 围棋 | `GoBoard.vue` | 含 9/13/19 路、数子规则 |
+| 象棋翻棋 | `XiangqiFlipBoard.vue` | 暗棋 |
+| 军棋 / 军棋翻棋 | `JunqiBoard.vue` | 两态共用同一组件，一次删净 |
+| 飞行棋 | `LudoBoard.vue` | 事件格/加速带 |
+| 大富翁 | `MonopolyBoard.vue` + `MonopolyDice.vue` | 等距 3D 棋盘 + 骰子 |
+| 数独 / 扫雷 | `SudokuBoard.vue` / `MineGame.vue` | — |
+
+连带清理：
+- `GamesView.vue` 1301 → 1125 行：8 个 gamelist 条目、8 个 ICON、`TABLE_GAMES` 去 monopoly、
+  页面副标题改写（益智分组自动消失，`groups` 本来就过滤空组）
+- `GameTableView.vue`：`GAME_META.monopoly`、大富翁专属「席位 2–8 人」选择器、
+  `seatCount` / `doCreate` 里的座位参数
+- `api/gameEconomy.js`：`maps / createMap / updateMap / deleteMap`（大富翁自定义地图）
+
+#### 后端删除
+- `app/games/monopoly.py`（1239 行，含等距棋盘/角色/道具卡/交易拍卖引擎）+ `__init__` 注册
+- `app/routers/game_rooms.py`：`GAMES` 从 9 项砍到 4 项、`_ludo_turn_uid()` 与 ludo 轮次分支
+- `app/routers/game_tables.py`：`TABLE_GAMES` / `SETTLE_UNIT` 去 monopoly、
+  `_seat_count_for()` 的可变席位分支、`ANYTIME_ACTS`（大富翁交易动作不受轮次限制）与调用处
+- `app/routers/game_economy.py`：`GAME_LABELS` 去 monopoly、`MapIn` 与
+  `/api/game/maps` 四个接口（−94 行）
+- `app/models/game_economy.py`：`MonopolyMap` 模型（monopoly_map 表）
+- 迁移 `t310u311v312w313`：`DROP TABLE monopoly_map` + 清 `game_rooms` / `game_stats`
+  里这 8 种游戏的死数据（否则「我的对局」留一堆点不开的僵尸房间）
+- `tests/test_migrations.py` 的 `EXPECTED_TABLES` 去掉 `monopoly_map`
+- `scripts/deploy_backend.py` 白名单去掉 `monopoly.py`（否则上传直接报文件不存在）
+
+#### 项目文件精简
+- `frontend/_probe*`：39 → 11。保留通用工具（`_probe.html/js` 牌桌沙盒、`_live_panel.cjs`
+  实时面板、`_probe_live.cjs` 现网量测、`_probe_shot/wide.cjs` 竖横屏截图、
+  `_probe_shelf/mask.cjs` 书架与抽屉、`_probe_reader.*` 阅读器三件套），
+  其余一次性调试脚本清掉
+- `scripts/`：67 → 37。删 18 个 `_probe_*.js`、12 个一次性 `_*.py`、
+  `verify_ludo_*` 与 `verify_games_online.py`（含飞行棋断言）
+- `artifacts/`：72MB → 40MB。清 71 张历史截图（29MB）与 16 份旧样式/页面快照；
+  `yexingchen.db.bak-finpurge-*`（40MB 数据库备份）与 `fin_purge_dump-*.jsonl`
+  归档进 `artifacts/_backup/`
+
+版本 SW v622→v623、APP_VERSION v2.46.309→v2.46.310。
+
+---
+
 ## [v2.46.309] - 2026-10-31
 
 ### 3D 棋牌整模块下线（断舍离）
