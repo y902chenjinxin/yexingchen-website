@@ -1334,6 +1334,14 @@ function selectRange(from, to, state) {
   sel.value = [...ids]
 }
 
+/* v2.46.311：双击出牌（夜星）。
+ * 取消/加入选择的老逻辑不动，只在「同一张牌 320ms 内被点第二下」时把这一下解释成「出牌」：
+ *   · 第一下没选中的：先并入选择，再出 —— 单张永远合法，等于双击直接甩牌
+ *   · 已经选了一组（对子/顺子）：双击其中任意一张 → 出整组，不拆牌
+ * 出牌仍走 doPlay()，回合/牌型/压不过的校验都在里面（不合法只 toast，不会乱出）。 */
+const DBL_MS = 320
+let lastPick = { id: null, at: 0 }
+
 function onPick(c, idx, ev) {
   /* v2.46.36：理牌选牌不再限自己回合——攒顺子/挪牌随时可做（夜星）。
      出牌入口仍有 canAct 把守（按钮 disabled + swipeUpPlay/doPlay 校验），不会误出。 */
@@ -1342,6 +1350,17 @@ function onPick(c, idx, ev) {
   if (ev && ev.shiftKey && anchorIdx.value !== null) {
     selectRange(anchorIdx.value, idx, !sel.value.includes(c.id))
     sfx.pick()
+    return
+  }
+  const now = Date.now()
+  const isDouble = lastPick.id === c.id && now - lastPick.at < DBL_MS
+  lastPick = { id: c.id, at: now }
+  if (isDouble) {
+    lastPick = { id: null, at: 0 }
+    if (!sel.value.includes(c.id)) sel.value.push(c.id)
+    anchorIdx.value = idx
+    if (canAct.value) doPlay()
+    else toastMsg('还没轮到你出牌')
     return
   }
   const i = sel.value.indexOf(c.id)
@@ -1425,6 +1444,14 @@ function applySwipe(idx) {
  * （往上飘、划到牌桌上）也持续收得到事件，划回起点同样不断。 */
 let dragId = null
 let swipeCovered = new Set()
+/* v2.46.311：双击出牌。**必须在 pointerdown 层判**，不能只写在 click 里 ——
+   手牌的选牌走的是 onHandDown → applySwipe（选中），随后 click 一律被 suppressClick
+   吞掉（防触控补发），所以 onclick 根本轮不到。 */
+let lastDown = { idx: -1, at: 0 }
+/* 双击前那一刻的选择快照：用来判断「双击的这张原本选没选中」——
+   没选中 → 只出这一张（单张永远合法，别被之前残留的选择拖成非法牌型）；
+   已选中 → 保持整组（玩家是选好对子/顺子再双击确认的）。 */
+let selSnapshot = []
 function onHandDown(e) {
   /* v2.46.36：划选理牌同样不限回合（与 onPick 同 gate）；上滑出牌由 swipeUpPlay 的 canAct 校验兜底 */
   if (tributePending.value || returnPending.value) return
@@ -1432,6 +1459,29 @@ function onHandDown(e) {
   cacheCardRects()
   const idx = cardIndexAt(e.clientX, e.clientY)
   if (idx < 0) return
+  const now = Date.now()
+  const isDouble = lastDown.idx === idx && now - lastDown.at < DBL_MS
+  if (!isDouble) {
+    lastDown = { idx, at: now }
+    selSnapshot = sel.value.slice()
+  }
+  if (isDouble) {
+    /* 双击：这一下解释成「出牌」，不再走选牌。 */
+    lastDown = { idx: -1, at: 0 }
+    const c = viewHand.value[idx]
+    if (c) {
+      if (!selSnapshot.includes(c.id)) sel.value = [c.id]        // 双击前没选它 → 单张
+      else if (!sel.value.includes(c.id)) sel.value.push(c.id)   // 第一下把它取消了 → 补回
+      anchorIdx.value = idx
+    }
+    sfx.pick()
+    if (canAct.value) doPlay()
+    else toastMsg('还没轮到你出牌')
+    // 触控还会补发 click，压掉它，否则 onPick 会再把这张牌取消掉
+    suppressClick = true
+    setTimeout(() => { suppressClick = false }, 350)
+    return
+  }
   swipeMode = !sel.value.includes(viewHand.value[idx].id)
   swipeLast = -1
   swipeCovered = new Set()
@@ -1449,6 +1499,11 @@ function onHandDown(e) {
 function onHandMove(e) {
   if (swipeMode === null || dragId !== e.pointerId) return
   if (e.cancelable) e.preventDefault()
+  /* v2.46.311：真划动了就不是「双击的第一下」—— 立刻作废双击计时，
+     否则「快速划两张 → 抬手 → 再点其中一张」会被误判成双击出牌。 */
+  if (swipeStart && (Math.abs(e.clientX - swipeStart.x) > 10 || Math.abs(e.clientY - swipeStart.y) > 10)) {
+    lastDown = { idx: -1, at: 0 }
+  }
   // 上滑出牌：只在手牌横排时启用（排列轴为 x），纵向位移显著大于横向才算
   if (swipeStart && handAxis() === 'x') {
     const dy = e.clientY - swipeStart.y

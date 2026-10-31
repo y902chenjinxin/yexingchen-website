@@ -1220,8 +1220,20 @@ function doZimo() {
 
 /* ---------- 人类操作 ---------- */
 let suppressClick = false        // 上滑出牌后抑制一次补发的 click（否则会把刚打出的牌又选中）
+/* v2.46.311：双击手牌 = 直接打出（夜星）。第一下选中、第二下（同一张、320ms 内）出牌，
+   与「点选中 → 点出牌按钮」和「上滑出牌」走同一条 playTile() 路径。 */
+const DBL_MS = 320
+let lastPick = { id: null, at: 0 }
 function pick(t) {
   if (!canDiscard.value || suppressClick) return
+  const now = Date.now()
+  const isDouble = lastPick.id === t.id && now - lastPick.at < DBL_MS
+  lastPick = { id: t.id, at: now }
+  if (isDouble) {
+    lastPick = { id: null, at: 0 }
+    playTile(t)
+    return
+  }
   selId.value = selId.value === t.id ? null : t.id
   sfx.pick()
 }
