@@ -1795,10 +1795,12 @@ watch(showChrome, (open) => { if (open) syncNpbarPad() })
   background: rgba(0, 0, 0, .1);
   z-index: 11;
 }
-/* 抽屉遮罩：压暗正文并把点击焦点交给「关抽屉」，层级夹在 chrome(12) 与抽屉(14) 之间 */
+/* 抽屉遮罩：压暗正文并把点击焦点交给「关抽屉」，层级夹在 chrome(12) 与抽屉(14) 之间。
+   v2.46.308：夜星「弹底部抽屉时遮罩不够灰，学下番茄」——番茄抽屉起来时正文压得明显重，
+   这里从 .22 提到 .5，抽屉与正文的层次一下就分开了。 */
 .nrd-scrim-panel {
   z-index: 13;
-  background: rgba(0, 0, 0, .22);
+  background: rgba(0, 0, 0, .55);
 }
 
 /* 顶栏：默认隐藏，点页面中部滑出（番茄式） */
@@ -2009,6 +2011,18 @@ watch(showChrome, (open) => { if (open) syncNpbarPad() })
   animation: nrd-sheet-up .2s cubic-bezier(.22, .61, .36, 1);
 }
 @keyframes nrd-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+/* 顶部小把手（番茄抽屉都有）：让它一眼看出来是「能往下拖走的浮层」 */
+.nrd-sheet::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 34px;
+  height: 4px;
+  margin: 7px 0 1px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: .16;
+}
 .nrd-sheet-head {
   flex-shrink: 0;
   display: flex;
@@ -2030,6 +2044,8 @@ watch(showChrome, (open) => { if (open) syncNpbarPad() })
   outline: none;
   font-family: inherit;
 }
+/* 目录抽屉给到近全屏（番茄的目录就是整页翻出来的），章数多时一屏能看十几条 */
+.nrd-sheet-toc { max-height: 86dvh; }
 .nrd-sheet-toc .nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 24px; }
 .nrd-sheet-set {
   /* v2.46.304：根只负责「头 + 滚动区 + 底栏」三段布局，自己不滚动；

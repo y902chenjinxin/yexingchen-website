@@ -1,7 +1,7 @@
 <template>
   <IslandInnerBase type="novel" title="小说" subtitle="书卷悠长">
-    <div class="manage-pane">
-      <PageToolbar>
+    <div class="manage-pane" :class="{ 'is-shelf-pane': isTouch }">
+      <PageToolbar v-if="!isTouch">
         <!-- v2.46.159：统一下拉/搜索组件（SearchField 内含查询按钮与清除） -->
         <SearchField v-model="keyword" placeholder="搜索标题/作者" width="260px" @search="doSearch" />
         <span v-if="keyword" class="search-count">匹配 {{ novelStore.list.length }} 条</span>
@@ -14,33 +14,102 @@
           <IconButton icon="folder" label="批量导入" @click="openBatch" />
         </template>
       </PageToolbar>
+
+      <!-- 手机端（v2.46.308）：番茄式书架头 —— 只有一条搜索，
+           上传/导入/管理收成三个圆形图标，批量删除进「管理」选择态 -->
+      <div v-else class="nv-head">
+        <div v-if="!selecting" class="nv-bar">
+          <label class="nv-search">
+            <svg class="nv-search-ic" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+              <circle cx="10.5" cy="10.5" r="6.4" />
+              <path d="M15.4 15.4 20 20" />
+            </svg>
+            <input
+              v-model="keyword"
+              type="search"
+              enterkeyhint="search"
+              placeholder="搜索书名、作者"
+              autocomplete="off"
+              @search="keyword = ''"
+            />
+            <button v-if="keyword" class="nv-x" type="button" aria-label="清除" @click="keyword = ''">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </label>
+          <button class="nv-ic-btn" type="button" aria-label="上传小说" @click="openUpload">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" /><path d="M4.5 15v3.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V15" />
+            </svg>
+          </button>
+          <button class="nv-ic-btn" type="button" aria-label="批量导入" @click="openBatch">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.7" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3.5 7.5a1.5 1.5 0 0 1 1.5-1.5h4l1.6 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 18.6 19H5a1.5 1.5 0 0 1-1.5-1.5v-10Z" />
+            </svg>
+          </button>
+          <button class="nv-ic-btn" type="button" aria-label="管理书架" @click="toggleSelecting">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- 选择态：取消 / 已选 / 删除（番茄「管理」模式同构） -->
+        <div v-else class="nv-bar nv-bar-sel">
+          <button class="nv-txt-btn" type="button" @click="toggleSelecting">取消</button>
+          <span class="nv-sel-count">已选 {{ picked.length }} 本</span>
+          <button class="nv-txt-btn is-danger" type="button" :disabled="!picked.length" @click="askDeletePicked">
+            删除
+          </button>
+        </div>
+      </div>
       <!-- 加载中：鎏金光扫骨架行，替代默认旋转圈 -->
       <div v-if="novelStore.loading" class="sk-skeleton-rows">
         <SkeletonBlock v-for="i in 6" :key="i" width="100%" height="42px" style="margin-bottom: 8px;" />
       </div>
-      <!-- 手机端：书架（卡片网格 + 封面 + 进度）。桌面端仍走下面的表格。
+      <!-- 手机端：书架（一直往下滑，不分页）。桌面端仍走下面的表格。
            v2.46.209：夜星要「PC 列表 / 手机书架」，用触摸能力判断而不是宽度
-           （本站手机浏览器 viewport 是 1280，max-width 媒体查询不触发）。 -->
-      <div v-if="isTouch && !novelStore.loading && pagedRows.length" class="novel-shelf">
+           （本站手机浏览器 viewport 是 1280，max-width 媒体查询不触发）。
+           v2.46.308：改番茄式书墙 —— 三列、无外框、副行「读至 x% · n 章」。 -->
+      <div
+        v-if="isTouch && !novelStore.loading && shelfRows.length"
+        class="novel-shelf"
+        :class="{ 'is-selecting': selecting }"
+      >
         <button
-          v-for="n in pagedRows"
+          v-for="n in shelfRows"
           :key="n.id"
           class="ns-card"
+          :class="{ 'is-picked': isPicked(n) }"
           type="button"
-          @click="openReader(n)"
+          @click="onCardTap(n)"
         >
           <div class="ns-cover" :style="coverStyle(n)">
             <img v-if="n.cover_url" :src="n.cover_url" :alt="n.title" loading="lazy" />
             <span v-else class="ns-initial">{{ (n.title || '书').slice(0, 1) }}</span>
-            <span class="ns-prog" :style="{ width: progressOf(n) + '%' }" />
+            <span v-if="n.parse_status === 'pending'" class="ns-flag">解析中</span>
+            <!-- 选择态：右上角圆形勾选；非选择态：淡淡的收藏星（已收藏才实心金） -->
+            <span v-if="selecting" class="ns-tick" :class="{ on: isPicked(n) }">
+              <svg v-if="isPicked(n)" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4.5 12.5l5 5 10-11" />
+              </svg>
+            </span>
             <span
+              v-else
               class="ns-star"
               :class="{ on: Number(n.is_favorite) === 1 }"
               role="button"
               :aria-label="Number(n.is_favorite) === 1 ? '取消收藏' : '收藏'"
               @click.stop="toggleFav(n)"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24"
+              <svg width="12" height="12" viewBox="0 0 24 24"
                    :fill="Number(n.is_favorite) === 1 ? 'currentColor' : 'none'"
                    stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
                 <path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8L12 3.6Z" />
@@ -49,8 +118,9 @@
           </div>
           <div class="ns-meta">
             <span class="ns-title">{{ n.title }}</span>
-            <span class="ns-sub">{{ n.author || '未知作者' }}<template v-if="n.chapter_count"> · {{ n.chapter_count }} 章</template><template v-else-if="n.parse_status === 'pending'"> · 解析中</template></span>
-            <span class="ns-pct">{{ progressOf(n) }}%</span>
+            <span class="ns-sub">
+              {{ progressOf(n) > 0 ? `读至 ${progressOf(n)}%` : (n.chapter_count ? `${n.chapter_count} 章` : '解析中') }}
+            </span>
           </div>
         </button>
       </div>
@@ -91,7 +161,8 @@
         action-label="↑ 上传小说"
         @action="openUpload"
       />
-      <div v-else-if="!novelStore.loading" class="pager-wrap">
+      <!-- 手机端不做分页：书墙一直往下滑（v2.46.308 夜星要求） -->
+      <div v-else-if="!novelStore.loading && !isTouch" class="pager-wrap">
         <el-pagination
           background
           layout="total, sizes, prev, pager, next"
@@ -285,7 +356,7 @@
 
     <!-- 批量删除确认（管理页内） -->
     <el-dialog v-model="showBatchDelete" title="批量删除" width="360px" append-to-body>
-      <p>确定删除选中的 <b>{{ selectedRows.length }}</b> 项吗？此操作不可恢复。</p>
+      <p>确定删除选中的 <b>{{ deleteCount }}</b> 项吗？此操作不可恢复。</p>
       <template #footer>
         <el-button @click="showBatchDelete = false">取消</el-button>
         <el-button type="danger" :loading="batchDeleting" @click="confirmBatchDelete">一键删除</el-button>
@@ -623,6 +694,47 @@ function progressOf(n) {
   } catch { return 0 }
 }
 
+/* ---------------- 手机端书墙（v2.46.308） ----------------
+   夜星：「不要有分页，就一直往下滑」+「整体学番茄」。
+   - 一次渲染全部（列表本来就 size=0 全量拉回来了），不分页
+   - 搜索在本地过滤（不再打接口），输入即筛，番茄就是这样
+   - 「管理」= 选择态：点封面勾选，底部不出来回跳的勾选框，顶部一条操作栏 */
+const selecting = ref(false)
+const picked = ref([])
+
+const shelfRows = computed(() => {
+  if (!isTouch.value) return pagedRows.value
+  const kw = String(keyword.value || '').trim().toLowerCase()
+  const all = novelStore.list || []
+  if (!kw) return all
+  return all.filter(
+    (n) =>
+      String(n.title || '').toLowerCase().includes(kw) ||
+      String(n.author || '').toLowerCase().includes(kw),
+  )
+})
+
+function toggleSelecting() {
+  selecting.value = !selecting.value
+  picked.value = []
+}
+
+function isPicked(n) {
+  return picked.value.includes(n.id)
+}
+
+function onCardTap(n) {
+  if (!selecting.value) { openReader(n); return }
+  const i = picked.value.indexOf(n.id)
+  if (i >= 0) picked.value.splice(i, 1)
+  else picked.value.push(n.id)
+}
+
+function askDeletePicked() {
+  if (!picked.value.length) return
+  showBatchDelete.value = true
+}
+
 
 /** v2.46.283：手动重解析 TXT（后端同步跑，12MB 约 0.3~0.6s） */
 async function reparseNovel(row) {
@@ -739,12 +851,14 @@ const batchDeleting = ref(false)
 function onSelectionChange(rows) {
   selectedRows.value = rows
 }
+/** 手机走「管理」选择态（picked），桌面走表格勾选（selectedRows） */
+const deleteCount = computed(() => (isTouch.value ? picked.value.length : selectedRows.value.length))
 function handleBatchDelete() {
   if (!selectedRows.value.length) return
   showBatchDelete.value = true
 }
 async function confirmBatchDelete() {
-  const ids = selectedRows.value.map(r => r.id)
+  const ids = isTouch.value ? [...picked.value] : selectedRows.value.map(r => r.id)
   if (!ids.length) return
   batchDeleting.value = true
   try {
@@ -754,6 +868,8 @@ async function confirmBatchDelete() {
     ElMessage.success(`已删除 ${ids.length} 项`)
     showBatchDelete.value = false
     tableRef.value?.clearSelection()
+    picked.value = []
+    selecting.value = false
     fetchData()
   } catch {
     // 错误已由api拦截器处理
@@ -916,14 +1032,114 @@ function formatTime(timeStr) {
   --el-table-border-color: var(--ls-line, rgba(127, 127, 127, 0.18));
 }
 
-/* ================= 手机端书架（v2.46.209） =================
-   夜星要「PC 列表 / 手机书架」。卡片靠封面撑视觉，不加边框，
-   进度用封面底部一条细线表示，比数字更直观。 */
-.novel-shelf { padding: 4px 2px 12px; }
+/* ================= 手机端书架（v2.46.308 · 番茄式） =================
+   夜星两轮反馈：①「外面有个框」②「学番茄、不要分页」。
+   所以这里整页去框 + 三列书墙 + 一直在同一屏里往下滑。
+   🔴 去框必须带 !important：mobile-product.css 里
+   `#app.is-mobile .island-inner:not(.island-inner-music) .manage-pane`
+   是 (1,3,0) 特异性，scoped 的 `.manage-pane.is-shelf-pane[data-v]` 只有 (0,3,0)。 */
+.manage-pane.is-shelf-pane {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  /* 左右 16px 是书架唯一的内边距（番茄的呼吸感），上下交给页头/滚动容器 */
+  padding: 0 16px !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* ---- 顶部：一条搜索 + 三个圆形图标（番茄书架头） ---- */
+.nv-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.nv-search {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  /* 番茄搜索框是浅灰实底，不用描边；用 currentColor 混出来，深浅主题都自适应 */
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+.nv-search-ic { flex: none; opacity: .42; }
+.nv-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.nv-search input::placeholder { color: currentColor; opacity: .42; }
+/* 去掉 type=search 的原生 ✕（Safari/Chrome 都有，位置还不一样） */
+.nv-search input::-webkit-search-cancel-button { display: none; }
+.nv-x {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: inherit;
+  opacity: .55;
+  cursor: pointer;
+}
+.nv-ic-btn {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: inherit;
+  opacity: .8;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.nv-ic-btn:active { background: color-mix(in srgb, currentColor 14%, transparent); }
+
+/* 选择态那一条：取消 —— 已选 n 本 —— 删除 */
+.nv-bar-sel { justify-content: space-between; }
+.nv-txt-btn {
+  height: 34px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.nv-txt-btn.is-danger { color: #d9534f; font-weight: 500; }
+.nv-txt-btn:disabled { opacity: .35; }
+.nv-sel-count { font-size: 13px; opacity: .6; }
+
+/* ---- 书墙：三列、无框、一直往下滑 ---- */
 .novel-shelf {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-  gap: 22px 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px 13px;
+  padding: 0 0 28px;
 }
 .ns-card {
   display: flex;
@@ -939,75 +1155,36 @@ function formatTime(timeStr) {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-/* v2.46.302：书架重做（夜星「外面有个框，不好看，重新设计成书架样式」）。
-   书封按实体书做：左侧书脊压暗、底部留出纸张厚度、投影贴着搁板，不再是纯色卡片的观感。 */
+/* 封面：番茄就是「一张图 + 轻投影」，没有书脊没有纸厚白边（白边看着像又一层框） */
 .ns-cover {
   position: relative;
   aspect-ratio: 3 / 4;
   width: 100%;
-  /* 左侧（书脊）方一点、右侧圆一点，才像一本立着的书 */
-  border-radius: 3px 5px 5px 3px;
+  border-radius: 6px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow:
-    /* 书页厚度的两条白边（书立在架上，底下看得见纸） */
-    0 1px 0 rgba(255, 255, 255, .75),
-    0 2px 0 rgba(120, 108, 92, .18),
-    /* 贴台面的硬阴影 + 远处柔和投影 */
-    0 3px 6px -3px rgba(30, 24, 16, .28),
-    0 14px 22px -16px rgba(30, 24, 16, .55),
-    inset 0 0 0 .5px rgba(255, 255, 255, .35);
-  transition: transform .18s ease, box-shadow .18s ease;
-}
-/* 书脊压暗：从左侧 7px 渐变到透明，模拟硬壳书的折痕 */
-.ns-cover::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-  background: linear-gradient(90deg, rgba(0, 0, 0, .18), rgba(0, 0, 0, .05) 55%, rgba(255, 255, 255, .1));
-  pointer-events: none;
-  z-index: 1;
-}
-/* 顶部一层极淡的高光，像光从上方打在书壳上 */
-.ns-cover::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 38%);
-  pointer-events: none;
-  z-index: 1;
+    0 1px 2px rgba(16, 20, 26, .14),
+    0 8px 16px -12px rgba(16, 20, 26, .5);
+  transition: transform .16s ease;
 }
 .ns-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ns-initial {
-  font-size: 34px;
-  font-weight: 500;
-  color: rgba(70, 58, 46, .5);
+  font-size: 32px;
+  font-weight: 400;
+  color: rgba(70, 58, 46, .42);
   letter-spacing: .04em;
   user-select: none;
 }
-.ns-prog {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  z-index: 2;
-  height: 3px;
-  background: rgba(60, 50, 40, .55);
-  border-radius: 0 2px 2px 0;
-  transition: width .3s ease;
-}
-.ns-card:active .ns-cover {
-  transform: scale(.965);
-  box-shadow: 0 3px 10px -6px rgba(20, 30, 40, .4);
-}
-.ns-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ns-card:active .ns-cover { transform: scale(.97); }
+.ns-card.is-picked .ns-cover { transform: scale(.93); }
+
+.ns-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .ns-title {
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 14px;
+  line-height: 1.32;
   /* 跟随主题：项目有多套 token（--ls-* / --lj-* / --dp-*），用 inherit 最稳 */
   color: inherit;
   display: -webkit-box;
@@ -1017,53 +1194,32 @@ function formatTime(timeStr) {
   word-break: break-word;
 }
 .ns-sub {
-  font-size: 11.5px;
-  opacity: .62;
+  font-size: 12px;
+  opacity: .5;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ns-pct { font-size: 11px; opacity: .55; }
 
-/* 手机（触摸）上给书架多留点呼吸空间，并让网格更密 */
-@media (pointer: coarse) {
-  /* v2.46.302：原来的 .manage-pane 是一张玻璃卡（1px 边框 + 30px 内边距 + 圆角），
-     书架被塞在「框」里，夜星觉得不好看。手机端直接去掉这层框，让书通栏铺开。 */
-  .manage-pane {
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    padding: 0;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  .novel-shelf {
-    /* 父容器（IslandInnerBase）在窄屏仍有约 57px 内边距，撑不出 3 列，
-       用负 margin 往回收一点 */
-    margin: 0 -14px;
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-    gap: 24px 16px;
-    padding: 8px 0 20px;
-  }
-  .ns-initial { font-size: 30px; }
-  .ns-title { font-size: 13px; font-weight: 500; }
-  .ns-sub { font-size: 11px; }
+/* 解析中角标 */
+.ns-flag {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: #fff;
+  background: rgba(30, 26, 20, .5);
+  border-radius: 0 6px 0 6px;
 }
 
-/* 书架模式（手机）：侧栏在 390 宽下会把内容挤没，直接隐藏 */
-:global(body.novel-shelf-mode .dsb),
-:global(body.novel-shelf-mode .tab-bar),
-:global(body.novel-shelf-mode .app-tabbar) {
-  display: none !important;
-}
-
-/* 书架星标（收藏） */
+/* 收藏星：番茄没有，但收藏是本站功能 —— 做得很淡，已收藏才实心金 */
 .ns-star {
   z-index: 3;
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 3px;
+  right: 3px;
   width: 24px;
   height: 24px;
   display: flex;
@@ -1071,13 +1227,49 @@ function formatTime(timeStr) {
   justify-content: center;
   border-radius: 50%;
   color: #fff;
-  background: rgba(30, 26, 20, .28);
-  opacity: 0;
+  opacity: .42;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .35));
   transition: opacity .16s ease;
 }
-.ns-star.on { opacity: 1; color: #ffe9a8; }
-@media (pointer: coarse) {
-  /* 触摸设备没有 hover，收藏按钮常显，否则永远点不到 */
-  .ns-star { opacity: .92; }
+.ns-star.on { opacity: 1; color: #ffd76e; }
+
+/* 选择态勾选圈 */
+.ns-tick {
+  z-index: 3;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 19px;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, .9);
+  background: rgba(0, 0, 0, .22);
+  color: #fff;
+}
+.ns-tick.on { background: #d9534f; border-color: #d9534f; }
+
+/* 选择态：番茄只加勾选圈，不把整面墙压灰（压灰会像「全部禁用」）。
+   选中项用一圈红描边 + 实心勾，扫一眼就知道选了哪几本。 */
+.novel-shelf.is-selecting .ns-card.is-picked .ns-cover {
+  outline: 2px solid #d9534f;
+  outline-offset: 2px;
+}
+
+/* 书架模式（手机）：viewport 被切成 device-width 后侧栏会把内容挤没，直接隐藏。
+   底部 Tab 栏保留（番茄书架也有底部导航）。
+   —— 原来这里还有 .tab-bar / .app-tabbar 两条，全项目根本没有这两个类，是死规则，已删。 */
+:global(body.novel-shelf-mode .dsb),
+:global(body.novel-shelf-mode .dsb-open-fab) {
+  display: none !important;
+}
+/* 🔴 .island-inner 在手机上仍带着桌面的左右 40px 内边距（探针实测 390 → 内容只剩 310，
+   卡片被压到 95px 宽）。这里**不动外层**（动了会连带把刊头标题顶到屏幕边），
+   改成让书架自己负 margin 外扩，视觉上正好是 16px 边距。 */
+.manage-pane.is-shelf-pane {
+  margin-left: -40px;
+  margin-right: -40px;
 }
 </style>
