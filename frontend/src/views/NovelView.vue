@@ -923,7 +923,7 @@ function formatTime(timeStr) {
 .novel-shelf {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-  gap: 16px 11px;
+  gap: 22px 14px;
 }
 .ns-card {
   display: flex;
@@ -939,17 +939,48 @@ function formatTime(timeStr) {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* v2.46.302：书架重做（夜星「外面有个框，不好看，重新设计成书架样式」）。
+   书封按实体书做：左侧书脊压暗、底部留出纸张厚度、投影贴着搁板，不再是纯色卡片的观感。 */
 .ns-cover {
   position: relative;
   aspect-ratio: 3 / 4;
   width: 100%;
-  border-radius: 10px;
+  /* 左侧（书脊）方一点、右侧圆一点，才像一本立着的书 */
+  border-radius: 3px 5px 5px 3px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 16px -8px rgba(20, 30, 40, .38), 0 1px 0 rgba(255, 255, 255, .5) inset;
+  box-shadow:
+    /* 书页厚度的两条白边（书立在架上，底下看得见纸） */
+    0 1px 0 rgba(255, 255, 255, .75),
+    0 2px 0 rgba(120, 108, 92, .18),
+    /* 贴台面的硬阴影 + 远处柔和投影 */
+    0 3px 6px -3px rgba(30, 24, 16, .28),
+    0 14px 22px -16px rgba(30, 24, 16, .55),
+    inset 0 0 0 .5px rgba(255, 255, 255, .35);
   transition: transform .18s ease, box-shadow .18s ease;
+}
+/* 书脊压暗：从左侧 7px 渐变到透明，模拟硬壳书的折痕 */
+.ns-cover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, .18), rgba(0, 0, 0, .05) 55%, rgba(255, 255, 255, .1));
+  pointer-events: none;
+  z-index: 1;
+}
+/* 顶部一层极淡的高光，像光从上方打在书壳上 */
+.ns-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 38%);
+  pointer-events: none;
+  z-index: 1;
 }
 .ns-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ns-initial {
@@ -963,6 +994,7 @@ function formatTime(timeStr) {
   position: absolute;
   left: 0;
   bottom: 0;
+  z-index: 2;
   height: 3px;
   background: rgba(60, 50, 40, .55);
   border-radius: 0 2px 2px 0;
@@ -995,16 +1027,28 @@ function formatTime(timeStr) {
 
 /* 手机（触摸）上给书架多留点呼吸空间，并让网格更密 */
 @media (pointer: coarse) {
+  /* v2.46.302：原来的 .manage-pane 是一张玻璃卡（1px 边框 + 30px 内边距 + 圆角），
+     书架被塞在「框」里，夜星觉得不好看。手机端直接去掉这层框，让书通栏铺开。 */
+  .manage-pane {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
   .novel-shelf {
     /* 父容器（IslandInnerBase）在窄屏仍有约 57px 内边距，撑不出 3 列，
        用负 margin 往回收一点 */
     margin: 0 -14px;
-    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
-    gap: 18px 10px;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 24px 16px;
     padding: 8px 0 20px;
   }
   .ns-initial { font-size: 30px; }
-  .ns-title { font-size: 12.5px; }
+  .ns-title { font-size: 13px; font-weight: 500; }
+  .ns-sub { font-size: 11px; }
 }
 
 /* 书架模式（手机）：侧栏在 390 宽下会把内容挤没，直接隐藏 */
@@ -1016,6 +1060,7 @@ function formatTime(timeStr) {
 
 /* 书架星标（收藏） */
 .ns-star {
+  z-index: 3;
   position: absolute;
   top: 5px;
   right: 5px;

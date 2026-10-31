@@ -246,8 +246,12 @@
     <div v-if="setOpen" class="nrd-sheet nrd-sheet-set" @click.stop>
       <div class="nrd-sheet-head">
         <span class="nrd-sheet-title">阅读设置</span>
-        <button class="nrd-ic" type="button" @click="setOpen = false">×</button>
+        <!-- v2.46.305：关闭按钮从底部移到右上角。底部永远会被音乐条压住/滚走，
+             放头上既不用滚到底，也不会点不到。 -->
+        <button class="nrd-sheet-done" type="button" @click="setOpen = false">完成</button>
       </div>
+      <!-- v2.46.304：中间各项单独滚动，头尾固定 —— 「完成」永远贴在抽屉底部可见 -->
+      <div class="nrd-set-scroll">
         <div class="nrd-set-row">
           <span>亮度</span>
           <div class="nrd-slider">
@@ -373,18 +377,7 @@
           </div>
         </div>
 
-        <div class="nrd-set-foot">
-          <!-- v2.46.297：原来「恢复默认」紧挨着「完成」（间距 8px）且单击即重置，
-               手机上点字体按钮时面板一滚就误触 → 夜星「切字体把我的边距行距弄回默认了」。
-               改成：左下角弱化小字 + 二次点击确认（3.2s 内不点自动撤销）。 -->
-          <button
-            class="nrd-btn ghost"
-            :class="{ armed: resetArmed }"
-            type="button"
-            @click="onResetClick"
-          >{{ resetArmed ? '再点一次确认' : '恢复默认' }}</button>
-          <button class="nrd-btn primary" type="button" @click="setOpen = false">完成</button>
-        </div>
+      </div>
     </div>
 
     <!-- 亮度遮罩（纯压暗，不挡交互；brightness < 100 时出现） -->
@@ -419,15 +412,18 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 /* ---------------- 设置（全部持久化） ---------------- */
+/* v2.46.302：底栏/抽屉的次要文字与分隔线原来太淡（夜星「颜色比较淡，看着不舒服」）。
+   sub 是「章数 / 滑块数值 / 各项标签」用色，line 是「按钮边框 / 进度条轨道 / 分隔线」用色，
+   统一下调到更有存在感的值；夜间主题反过来提亮。 */
 const THEMES = [
-  { key: 'day', label: '白天', bg: '#fbfaf7', text: '#2b2b2b', sub: '#8a8a8a', line: 'rgba(0,0,0,.1)' },
-  { key: 'eye', label: '护眼', bg: '#f3ecd2', text: '#3a3428', sub: '#7d7458', line: 'rgba(90,75,40,.16)' },
-  { key: 'blue', label: '蓝', bg: '#e8eff5', text: '#2c3540', sub: '#75828e', line: 'rgba(40,70,100,.14)' },
-  { key: 'green', label: '绿', bg: '#e6efdf', text: '#2e3a2c', sub: '#75816f', line: 'rgba(60,100,50,.14)' },
-  { key: 'night', label: '夜间', bg: '#16181c', text: '#cfd4da', sub: '#7c848e', line: 'rgba(255,255,255,.1)' },
+  { key: 'day', label: '白天', bg: '#fbfaf7', text: '#2b2b2b', sub: '#67625a', line: 'rgba(0,0,0,.16)' },
+  { key: 'eye', label: '护眼', bg: '#f3ecd2', text: '#3a3428', sub: '#635a41', line: 'rgba(90,75,40,.26)' },
+  { key: 'blue', label: '蓝', bg: '#e8eff5', text: '#2c3540', sub: '#56646f', line: 'rgba(40,70,100,.24)' },
+  { key: 'green', label: '绿', bg: '#e6efdf', text: '#2e3a2c', sub: '#56614f', line: 'rgba(60,100,50,.24)' },
+  { key: 'night', label: '夜间', bg: '#16181c', text: '#cfd4da', sub: '#9aa4b0', line: 'rgba(255,255,255,.18)' },
   // v2.46.286：自定义底色 / 自定义背景图（bg 与文字色由 curTheme 动态算）
-  { key: 'custom', label: '自定义色', bg: '#f0e6cd', text: '#2b2b2b', sub: '#8a8a8a', line: 'rgba(0,0,0,.1)' },
-  { key: 'image', label: '背景图', bg: '#fbf7ee', text: '#2b2b2b', sub: '#7b7368', line: 'rgba(0,0,0,.12)' },
+  { key: 'custom', label: '自定义色', bg: '#f0e6cd', text: '#2b2b2b', sub: '#67625a', line: 'rgba(0,0,0,.16)' },
+  { key: 'image', label: '背景图', bg: '#fbf7ee', text: '#2b2b2b', sub: '#5f584d', line: 'rgba(0,0,0,.2)' },
 ]
 // v2.46.281：宋/黑/楷三档首选换成 GitHub 开源字体（服务器 /fonts/ 下，FontFace 按需加载），
 // 系统栈保留做兜底 —— 鸿蒙等无宋/楷字库的设备不再整体退化成黑体。
@@ -787,7 +783,6 @@ function anyPanelOpen() {
 }
 
 function closeAllPanels() {
-  disarmReset()
   tocOpen.value = false
   setOpen.value = false
   findOpen.value = false
@@ -902,33 +897,6 @@ function bump(key, d) {
   settings.value[key] = Math.max(14, Math.min(30, settings.value[key] + d * 1))
   saveSettings(); applyAll()
 }
-/* 恢复默认：单击先「上膛」，3.2 秒内再点一次才真正重置。
-   面板里字体按钮就在它上方，滚动后极易误触 —— 这个确认是防误触的关键。 */
-const resetArmed = ref(false)
-let resetArmTimer = 0
-function disarmReset() {
-  clearTimeout(resetArmTimer)
-  resetArmed.value = false
-}
-function onResetClick() {
-  if (!resetArmed.value) {
-    resetArmed.value = true
-    clearTimeout(resetArmTimer)
-    resetArmTimer = setTimeout(() => { resetArmed.value = false }, 3200)
-    return
-  }
-  disarmReset()
-  resetAll()
-}
-
-function resetAll() {
-  stopAutoPlay()
-  settings.value = { ...defaultSettings }
-  saveSettings(); applyAll()
-  ensureFont(curFont.value)
-  if (kind.value === 'epub') rebuildEpub()
-}
-
 /* ---------------- 状态 ---------------- */
 const loading = ref(true)
 const error = ref('')
@@ -1790,6 +1758,9 @@ watch([size, lineHeight, padding], () => { onResize() })
 watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   if (vals.some(Boolean)) showChrome.value = false
 })
+
+/* 底栏滑出前先量音乐条高度（它可能随时出现/消失），底栏据此上移 */
+watch(showChrome, (open) => { if (open) syncNpbarPad() })
 </script>
 
 <style scoped>
@@ -1948,7 +1919,9 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 12px 16px calc(28px + var(--bui-bottom, 0px) + env(safe-area-inset-bottom, 0px));
+  /* v2.46.302：底部要给音乐条让位。音乐条是站点级浮层（z 1960 > 底栏 12），
+     不给内边距的话「目录/夜间/设置」那一行会被整条盖住点不到（夜星截图为证）。 */
+  padding: 12px 16px calc(28px + var(--npbar-pad, 0px) + var(--bui-bottom, 0px) + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--nrd-line);
   background: var(--nrd-bg);
   z-index: 12;
@@ -1979,12 +1952,16 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 }
 .nrd-foot-nav {
   flex: 1;
-  padding: 9px 0;
+  padding: 10px 0;
   border-radius: 10px;
   border: 1px solid var(--nrd-line);
-  background: transparent;
+  /* 给一点极淡填充：纯透明+淡边框在米色底上像「按不到」，加一层底就明显了。
+     先给 rgba 兜底，老内核不认 color-mix 时也不至于没有底色 */
+  background: rgba(127, 127, 127, .07);
+  background: color-mix(in srgb, currentColor 5%, transparent);
   color: var(--nrd-text);
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
 }
 .nrd-foot-nav:disabled { opacity: .35; cursor: default; }
@@ -2055,17 +2032,24 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 }
 .nrd-sheet-toc .nrd-toc-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 24px; }
 .nrd-sheet-set {
-  /* v2.46.292：底部预留音乐播放条的高度（--npbar-pad 由 openPanel 实测注入），
-     否则滚到底时「恢复默认/完成」被浮在最上的音乐条压住点不到。 */
-  padding: 0 18px calc(22px + var(--npbar-pad, 0px) + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  /* flex item 默认 min-height:auto，内容会把抽屉撑破 max-height → 底部被容器裁掉 */
+  /* v2.46.304：根只负责「头 + 滚动区 + 底栏」三段布局，自己不滚动；
+     滚动交给 .nrd-set-scroll，这样「完成」不会被滚走、也不会被音乐条压住。 */
+  padding: 0;
+  overflow: hidden;
   min-height: 0;
+}
+.nrd-set-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 18px calc(18px + var(--npbar-pad, 0px));
 }
 .nrd-prog {
   flex: 1;
-  height: 3px;
+  height: 4px;
   border-radius: 2px;
+  /* 轨道用实心淡墨，别用半透明线 —— 米色底上原来几乎看不见 */
   background: var(--nrd-line);
   overflow: hidden;
 }
@@ -2073,7 +2057,7 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   display: block;
   height: 100%;
   background: currentColor;
-  opacity: .45;
+  opacity: .62;
   transition: width .25s;
 }
 
@@ -2145,7 +2129,7 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .nrd-set-row:first-of-type { margin-top: 12px; }
 .nrd-set-row > span {
@@ -2153,6 +2137,7 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   width: 36px;
   font-size: 12.5px;
   color: var(--nrd-sub);
+  font-weight: 500;
 }
 /* 自定义背景工具行 */
 .nrd-bg-tools {
@@ -2248,7 +2233,7 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
 }
 .nrd-seg button {
   flex: 1;
-  padding: 7px 4px;
+  padding: 8px 4px;
   border-radius: 8px;
   border: 1px solid var(--nrd-line);
   background: transparent;
@@ -2267,7 +2252,44 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   align-items: center;
   gap: 8px;
 }
-.nrd-slider input[type='range'] { flex: 1; accent-color: currentColor; }
+/* v2.46.302：滑块原来只写了 accent-color: currentColor，Chromium 会渲染成
+   一条又粗又黑的实心条（截图里非常笨重）。改成自绘轨道 + 精致圆点。 */
+.nrd-slider input[type='range'] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+}
+.nrd-slider input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--nrd-line);
+}
+.nrd-slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--nrd-text);
+  border: 2px solid var(--nrd-bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+}
+.nrd-slider input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--nrd-line);
+}
+.nrd-slider input[type='range']::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--nrd-text);
+  border: 2px solid var(--nrd-bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+}
 .nrd-slider em {
   flex-shrink: 0;
   width: 42px;
@@ -2286,24 +2308,17 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   font-size: 12px;
   cursor: pointer;
 }
-.nrd-set-foot {
-  display: flex;
-  align-items: center;
-  /* 破坏性按钮靠左、确认靠右，中间留出大间距，避免手指误触 */
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--nrd-line);
-}
-.nrd-btn.ghost {
-  margin-top: 0;
-  padding: 8px 4px;
-  border: 0;
-  background: transparent;
-  color: var(--nrd-sub);
-  font-size: 12.5px;
-  letter-spacing: .02em;
+/* 抽屉右上角的「完成」：实心按钮，一眼能找到 */
+.nrd-sheet-done {
+  flex-shrink: 0;
+  padding: 7px 16px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: var(--nrd-text);
+  color: var(--nrd-bg);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
 }
 .nrd-set-note { margin-top: -8px; align-items: flex-start; }
 .nrd-hint {
@@ -2313,11 +2328,6 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   color: var(--nrd-sub);
   font-style: normal;
 }
-.nrd-btn.ghost.armed {
-  color: #c0503f;
-  font-weight: 600;
-}
-.nrd-set-foot .nrd-btn.primary { margin-top: 0; }
 
 .nrd-fade-enter-active, .nrd-fade-leave-active { transition: opacity .16s ease; }
 .nrd-fade-enter-from, .nrd-fade-leave-to { opacity: 0; }
@@ -2343,7 +2353,7 @@ watch([tocOpen, setOpen, findOpen, marksOpen], (vals) => {
   .nrd-foot-nav { padding: 11px 0; font-size: 14px; }
   .nrd-set-row > span { width: 34px; font-size: 13px; }
   .nrd-seg button { padding: 10px 4px; font-size: 13px; }
-  .nrd-slider input[type='range'] { height: 28px; }
+  .nrd-slider input[type='range'] { height: 30px; }
   .nrd-btn { padding: 11px 20px; font-size: 14px; }
 
   /* 目录抽屉占满更多宽度，条目更高 */
