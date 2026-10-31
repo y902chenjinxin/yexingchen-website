@@ -162,10 +162,8 @@
             <span v-if="view && view.turn !== null && view.turn !== undefined" class="gtv-turnpill" :class="{ mine: isMyTurn }">
               {{ isMyTurn ? '轮到你' : `等 ${seatName(view.turn)} 行动` }}
             </span>
-            <!-- v2.46.263：同一间房可切 3D / 平面渲染（规则与状态都在服务端，只换画法） -->
-            <button v-if="canUse3d" class="gtv-btn ghost" @click="toggle3d">
-              {{ threeD ? '平面视图' : '3D 视图' }}
-            </button>
+            <!-- v2.46.309：3D 视图开关随 3D 模块一起下线（夜星「断舍离」），
+                 这里只保留平面牌桌，规则与状态本来就在服务端，与画法无关。 -->
             <button class="gtv-btn ghost" @click="enterFullscreen">全屏</button>
             <button class="gtv-btn ghost danger" @click="dissolveRoom">解散牌桌</button>
             <button class="gtv-btn ghost" title="退出＝认输，本局立即按当前名次结算" @click="leaveRoom">退出对局（认输）</button>
@@ -180,7 +178,7 @@
             >
               <component
                 :is="boardComp"
-                :key="room.id + '-' + room.round_no + '-' + (threeD ? '3d' : '2d')"
+                :key="room.id + '-' + room.round_no"
                 online
                 :online-view="view"
                 :online-seat="room.my_seat ?? 0"
@@ -189,7 +187,7 @@
                 :deadline-at="room.deadline_at || ''"
                 :acting="busy"
                 :big="true"
-                :show-topbar="!threeD"
+                :show-topbar="true"
                 @act="onAct"
                 @rematch="doRematch"
                 @exit="leaveRoom"
@@ -377,17 +375,10 @@ const loading = t.loading
 
 const meta = computed(() => GAME_META[gameKey.value] || GAME_META.guandan)
 
-/* ---------- 3D / 平面视图切换（v2.46.263，v2.46.268 加麻将） ----------
- * 掼蛋 / 麻将都接入了在线投影；大富翁没有 3D 版，按 canUse3d 挡住。
- * 偏好存本地 —— 有人就喜欢 3D 的牌感，有人要 2D 的信息密度，各记各的。 */
-const use3d = ref(false)
-try { use3d.value = localStorage.getItem('xh_table_3d') === '1' } catch { /* 隐私模式 */ }
-const canUse3d = computed(() => ['guandan', 'mahjong'].includes(gameKey.value))
-const threeD = computed(() => canUse3d.value && use3d.value)
-function toggle3d() {
-  use3d.value = !use3d.value
-  try { localStorage.setItem('xh_table_3d', use3d.value ? '1' : '0') } catch { /* 忽略 */ }
-}
+/* v2.46.309：3D / 平面渲染切换随 3D 模块一起删除（夜星「断舍离」）。
+ * 在线牌桌只剩平面渲染，规则与状态本来都在服务端，无影响。
+ * 顺便清掉本地残留偏好，避免老用户带着 xh_table_3d=1 进来看不到任何 3D 效果。 */
+try { localStorage.removeItem('xh_table_3d') } catch { /* 隐私模式 */ }
 const gameLabel = computed(() => meta.value.label)
 /** 只有掼蛋是 2v2（麻将 / 大富翁都是各自为战），队伍选择仅对它出现 */
 const isTeamGame = computed(() => gameKey.value === 'guandan')
@@ -395,12 +386,7 @@ const pageTitle = computed(() => (mode.value === 'create' ? `开桌 · ${gameLab
 const pageSubtitle = computed(() => '服务端权威发牌 · 跨设备同步 · 空位机器人补位')
 const helpRules = computed(() => HELP[gameKey.value] || HELP.guandan)
 
-const boardComp = computed(() => {
-  if (!threeD.value) return defineAsyncComponent(meta.value.comp)
-  return gameKey.value === 'mahjong'
-    ? defineAsyncComponent(() => import('@/components/games3d/Mahjong3DBoard.vue'))
-    : defineAsyncComponent(() => import('@/components/games3d/Guandan3DBoard.vue'))
-})
+const boardComp = computed(() => defineAsyncComponent(meta.value.comp))
 const seatNames = computed(() => (room.value?.seats || []).map(s => s.name || '家人'))
 const joinedCount = computed(() =>
   (room.value?.seats || []).filter(s => s.is_ai || (s.user_id && s.joined)).length)

@@ -7,6 +7,22 @@
 
 ---
 
+## v2.46.309 3D 棋牌下线（2026-10-31）
+
+- **V246309-001 删模块前先查「谁在 import 它」**：3D 棋牌看着是个独立页面，其实
+  `GameTableView.vue`（在线掼蛋/麻将牌桌）用 `components/games3d/Mahjong3DBoard.vue`
+  和 `Guandan3DBoard.vue` 做「3D 视图」开关 —— 只删页面不删这个开关，构建能过、
+  点开就白屏。**删模块的标准动作：grep 目录名 → 逐个确认引用方 → 连带删开关/分支。**
+- **V246309-002 删路由要留 redirect**：老书签 `/tool/games-3d` 在路由被删后会落在
+  空白页（Vue Router 无匹配不报错）。留一条 `{ path: '/tool/games-3d', redirect: '/tool/games' }`
+  成本一行，体验不断。
+- **V246309-003 菜单/角色授权走超管 API，别写迁移**：`xuanhuang_menus` 的 id 是运营数据，
+  各环境不一样；按 path 定位再 DELETE，顺手把角色 `menu_ids` 里的孤儿 id 清掉
+  （PUT 角色必须回传 `description/permissions/sort_order` 原值）。
+  脚本：`artifacts/_probe/purge_games3d_menus.py`（默认 dry-run，`--apply` 才写）。
+
+---
+
 ## v2.46.308 手机书架番茄化 / 抽屉遮罩（2026-10-31）
 
 - **V246308-001 🔴 `@media (pointer: coarse)` 在国产手机浏览器可能不命中**：v2.46.302

@@ -261,14 +261,10 @@ const routes = [
     component: () => import('@/views/GameTableView.vue'),
     meta: { requiresAuth: true }
   },
-  // v2.46.105：3D 棋牌（腾讯棋牌风真 3D 透视牌桌：麻将 + 掼蛋）。纯前端展示，不依赖后端；
-  // 与既有「棋类游戏」并列新增，不改任何旧视图 / 路由。
-  {
-    path: '/tool/games-3d',
-    name: 'Games3D',
-    component: () => import('@/views/Games3DView.vue'),
-    meta: { requiresAuth: true }
-  },
+  // v2.46.309：3D 棋牌（/tool/games-3d）整模块下线（夜星「断舍离」）——
+  // 页面 Games3DView、components/games3d/*、styles/games3d.css、侧栏菜单、DB 菜单一并删除。
+  // 只留一条重定向，老书签/收藏点进来不至于白屏，直接送到 2D 棋类大厅。
+  { path: '/tool/games-3d', redirect: '/tool/games' },
   // 内置 打字测速
   {
     path: '/tool/typing',

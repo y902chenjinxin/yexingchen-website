@@ -89,7 +89,7 @@ export const NAV_GROUPS = [
       // v2.46.144 两款单机游戏给侧栏直达入口 —— 此前只挂在「棋类游戏」页内部的休闲分组，
       // 从侧栏根本看不到，等于没接（夜星反馈「侧边栏娱乐模块没有看到」）。
       { path: '/play/pvz', title: '植物大战僵尸', icon: Sunny },
-      { path: '/tool/games-3d', title: '3D 棋牌', icon: Box },
+      // v2.46.309：/tool/games-3d「3D 棋牌」随模块下线（夜星断舍离）
       { path: '/tools/liferestart/index.html', title: '人生重开模拟器', icon: Refresh, external: true },
       // 第三方站（Sprite Fusion「Destroy Any Website」）：输入网址后横版闯关把该站砸到 100%。
       // 站方 CSP frame-ancestors 不含本站域名，**不能 iframe 内嵌**（实测被拦），故走外链新标签。

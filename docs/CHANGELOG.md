@@ -23,6 +23,37 @@
 
 ---
 
+## [v2.46.309] - 2026-10-31
+
+### 3D 棋牌整模块下线（断舍离）
+
+夜星：「将 3D 模块所有内容全部删除、包括菜单、权限、页面、文件、代码等等，我要做断舍离」。
+
+3D 棋牌是 v2.46.105 做的实验模块（3D 透视牌桌），维护成本高（一套 CSS 3D 坐标体系
++ 4 张桌的几何标定），实际使用频率低，与 2D 棋类/在线牌桌功能重叠。
+
+#### 删除清单
+- 页面：`views/Games3DView.vue`
+- 组件：`components/games3d/`（Xiangqi3DBoard / Gomoku3DBoard / Mahjong3DBoard /
+  Guandan3DBoard / use3dTable.js）
+- 样式：`assets/styles/games3d.css`（889 行，g3d-/gt3-/pc3d-/gk3-/xq3- 全套）
+- 路由：`/tool/games-3d`（保留一条 `redirect: /tool/games`，老书签不白屏）
+- 菜单：`constants/navModules.js` 娱乐组「3D 棋牌」；生产 DB `xuanhuang_menus` id=39
+- 权限：角色 `lisa` 的 `menu_ids` 里移除 39（走超管 API，`sort_order` 等原值回传）
+- 在线牌桌的「3D 视图」开关：`GameTableView.vue` 删 `use3d/threeD/canUse3d/toggle3d`
+  与 3D 组件分支（它 import 的就是这批组件），并清掉本地 `xh_table_3d` 残留键
+- 探针：`_probe_3d_local.cjs` `_probe_live_3d.cjs` `_probe_g3d_chess.*`
+  `_probe_online3d*.html|js`
+
+#### 保留
+- 2D 棋类（象棋/五子棋/围棋/军棋/飞行棋/数独）与在线牌桌（掼蛋/麻将/大富翁）不受影响
+- `utils/games/gomokuAI.js`、`composables/useGameRoom.js`、`api/gameRooms.js`、
+  `components/games/MemberPicker.vue` 都是 2D 在用的公共件，保留
+
+版本 SW v621→v622、APP_VERSION v2.46.308→v2.46.309。
+
+---
+
 ## [v2.46.308] - 2026-10-31
 
 ### 手机书架改番茄式：去框、三列、一直往下滑、不分页
