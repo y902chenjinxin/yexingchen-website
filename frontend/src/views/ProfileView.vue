@@ -46,7 +46,7 @@
           <div class="info-item">
             <div class="pref-text">
               <span class="info-label">主题外观</span>
-              <span class="pref-hint">切换时从按钮位置圆形揭示铺满全屏；白天 / 夜间 / 自动跟随时间</span>
+              <span class="pref-hint">白天 / 夜间 / 自动跟随时间（切换即时生效）</span>
             </div>
             <div class="theme-seg" role="tablist" aria-label="主题外观">
               <button

@@ -224,3 +224,16 @@ a, button, [role="button"], input, select, textarea, label, .el-button, .el-inpu
 
 /* ========== 动效克制 ========== */
 /* 旧的 prefers-reduced-motion 已合并到上方 S5 收敛块；此处保留供旧调用兼容 */
+/* =====================================================================
+ * 主题切换过渡（v2.46.313）
+ * ---------------------------------------------------------------------
+ * 切白天/黑夜原来是 `document.startViewTransition` 的圆形揭示：整页截两张
+ * 快照再合成，本站满屏 backdrop-filter + 渐变，实测要 4.1 秒才生效。
+ * 现在直切，只给「根三层」做 220ms 背景过渡 —— 页面整体是渐变，
+ * 不逐个给元素加 transition，避免切换瞬间几千个动画同时起跑。
+ * ===================================================================== */
+html.theme-flip,
+html.theme-flip body,
+html.theme-flip #app {
+  transition: background-color .22s ease, color .22s ease;
+}

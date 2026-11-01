@@ -424,18 +424,10 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
   }
 }
 
-/* ---- #10 圆形揭示换肤：View Transitions API（不支持的浏览器直接切换，无感降级） ---- */
-::view-transition-old(root) { animation: none; }
-::view-transition-new(root) {
-  animation: xz-reveal var(--m-dur-in) var(--m-ease-standard);
-}
-@keyframes xz-reveal {
-  from { clip-path: circle(0 at var(--reveal-x, 50%) var(--reveal-y, 50%)); }
-  to { clip-path: circle(160% at var(--reveal-x, 50%) var(--reveal-y, 50%)); }
-}
-/* reduced-motion 下 mobile-product.css 已统一降级；此处显式关闭揭示动画 */
+/* ---- #10 圆形揭示换肤（v2.46.313 已下线）----
+   View Transitions 的整页快照在本站要 4 秒才出第一帧，改成直切 + 根层背景过渡
+   （见 utils/reveal.js / main.css `.theme-flip`），这里只留 reduced-motion 的收敛。 */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-new(root) { animation: none; }
   #app.is-mobile .m-stagger > * { animation: none; }
   #app.is-mobile .xz-shake { animation: none; }
 }
