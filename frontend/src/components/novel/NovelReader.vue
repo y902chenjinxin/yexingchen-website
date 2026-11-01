@@ -97,12 +97,14 @@
       <div ref="colsRef" class="nrd-txt-cols" :style="colsStyle">
         <template v-if="flow === 'paginated'">
           <h2 v-if="txtChapter" class="nrd-ch-title">{{ txtChapter.title }}</h2>
+          <p v-if="txtChapter" class="nrd-ch-meta">本章 {{ countChars(txtParas) }} 字</p>
           <p v-for="(para, i) in txtParas" :key="'p' + i" class="nrd-p">{{ para }}</p>
           <div v-if="txtChapter && txtIndex >= txtChapters.length - 1" class="nrd-end">— 全书完 —</div>
         </template>
         <template v-else>
           <section v-for="sec in loadedSecs" :key="'s' + sec.idx" class="nrd-sec" :data-idx="sec.idx">
             <h2 class="nrd-ch-title">{{ sec.title }}</h2>
+            <p class="nrd-ch-meta">本章 {{ countChars(sec.paras) }} 字</p>
             <p v-for="(para, i) in sec.paras" :key="'q' + i" class="nrd-p">{{ para }}</p>
           </section>
           <div v-if="loadedSecs.length >= txtChapters.length" class="nrd-end">— 全书完 —</div>
@@ -922,6 +924,13 @@ const txtIndex = ref(0)
 const txtChapter = computed(() => txtChapters.value[txtIndex.value] || null)
 const txtParas = computed(() => (txtChapter.value ? txtChapter.value.paras : []))
 
+/** 章节字数（v2.46.318）：番茄 PC 版章节头有一行「本章字数 / 更新时间」，
+    我们章节数据里没有时间戳（不编造），只显示真实可算的字数。 */
+function countChars(paras) {
+  const n = (paras || []).reduce((sum, p) => sum + String(p || '').replace(/\s/g, '').length, 0)
+  return n.toLocaleString('zh-CN')
+}
+
 /* v2.46.201：分页模式改用「CSS 多列」做真实分页（一页正好填满屏幕），
    翻页 = 整块 translateX；滚动模式按章懒加载，不再一次渲染全书。 */
 const txtPage = ref(0)        // 分页模式：章内第几页
@@ -952,7 +961,15 @@ function measurePages() {
   if (flow.value !== 'paginated' || kind.value !== 'txt') return
   const el = txtRef.value
   if (!el) return
-  pageWidth.value = Math.max(120, el.clientWidth - padding.value * 2)
+  /* v2.46.318：页宽改成读**实际计算后的**左右内边距，而不是用户设置的 padding。
+     桌面端为了压住行宽（番茄 PC 版实测正文 800px），.nrd-txt-cols 会在两侧补足留白，
+     实际 padding 远大于设置值 —— 这里若还用 padding.value 算，页宽会比可见宽度大一大截，
+     一页装不下、翻页也会错位。
+     注意 padding 挂在内层 .nrd-txt-cols 上（txtRef 是外层 .nrd-txt，它没有 padding）。 */
+  const colsEl = colsRef.value || el
+  const cs = getComputedStyle(colsEl)
+  const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
+  pageWidth.value = Math.max(120, colsEl.clientWidth - padX)
   requestAnimationFrame(() => {
     const cols = colsRef.value
     if (!cols) return
@@ -1865,6 +1882,12 @@ watch(showChrome, (open) => { if (open) syncNpbarPad() })
   line-height: var(--nrd-lh);
   padding: var(--nrd-pad);
   box-sizing: border-box;
+  /* v2.46.318：桌面端压住行宽 —— 一屏 1440 宽时原来的 28px 边距会让正文铺到 1384px，
+     一行 80 多个汉字，读起来很累。番茄 PC 版实测：正文列宽 800px、容器居中、两侧留白。
+     用 max() 自适应：容器够宽时才补留白，(100% - 800px)/2 为负时自动退回用户设置的边距，
+     所以手机上（390 宽）行为完全不变，不用写媒体查询。 */
+  padding-left: max(var(--nrd-pad), calc((100% - 800px) / 2));
+  padding-right: max(var(--nrd-pad), calc((100% - 800px) / 2));
 }
 /* 分页模式：多列横向排布，一列 = 一页，超出部分隐藏，翻页靠 translateX */
 .nrd-txt.is-paged {
@@ -1892,6 +1915,17 @@ watch(showChrome, (open) => { if (open) syncNpbarPad() })
   font-weight: 500;
   text-align: center;
   letter-spacing: .04em;
+}
+/* 章节头副行（番茄 PC 版也有这一行，只是它写「字数 / 更新时间」）。
+   负 margin 把「本章 N 字」收到标题底下，不额外撑高章节头。 */
+.nrd-ch-meta {
+  margin: -1em 0 1.4em;
+  font-size: .72em;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--nrd-sub);
+  letter-spacing: .02em;
+  break-inside: avoid;
 }
 .nrd-p {
   margin: 0 0 var(--nrd-pgap, .85em);

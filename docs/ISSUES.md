@@ -7,6 +7,24 @@
 
 ---
 
+## v2.46.318 阅读器桌面列宽（2026-11-01）
+
+- **V246318-001 改 padding 必须同步改 JS 的宽度计算**：`.nrd-txt-cols` 的左右 padding
+  改成 `max(设置值, (100% - 800px)/2)` 后，`measurePages()` 里
+  `pageWidth = el.clientWidth - padding.value * 2` 就错了（用设置值 28 算，实际是 320）。
+  症状：页宽比可见宽大 500px → 一页装不下、翻页错位。
+  **定论**：凡是「JS 算尺寸 + CSS 算尺寸」两套逻辑，CSS 侧一旦引入自适应，JS 侧必须改读
+  `getComputedStyle`，不能在 JS 里复刻同一个公式。
+  另外 padding 挂在内层元素上（`.nrd-txt-cols`），`txtRef` 是外层 `.nrd-txt`，
+  取 computed style 要取内层那个 ref。
+- **V246318-002 番茄 APP 界面抓不到，别再浪费时间**：iOS / 应用宝商店给的全是营销合成图；
+  移动 UA 打开 fanqienovel.com 会被引导下载 APP（H5 阅读页进不去，点书封开的是空标签）；
+  原生 APP 无网页层。
+  **可行路径**：PC 网页版（`fanqienovel.com/reader/<id>`）能拿到真实 DOM 与计算样式，
+  手机端的 APP 设计只能靠「官方交互规范的公开描述 + 自己的判断」，不能假装量过。
+
+---
+
 ## v2.46.317 全屏播放页入口（2026-11-01）
 
 - **V246317-001 「功能做好了但没人找得到」**：`/now-playing` 唯一入口是播放条左侧信息区，

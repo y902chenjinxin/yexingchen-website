@@ -1,0 +1,20 @@
+const { chromium } = require('playwright')
+const BASE = process.env.PROBE_BASE || 'http://localhost:5311'
+;(async () => {
+  const b = await chromium.launch()
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 })
+  const p = await ctx.newPage()
+  await p.goto(`${BASE}/_probe_reader.html`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await p.waitForSelector('.nrd', { timeout: 20000 }).catch(() => {})
+  await p.waitForTimeout(2000)
+  const before = await p.evaluate(() => getComputedStyle(document.querySelector('.nrd-txt-cols')).transform)
+  // 点页面右 1/3 区域翻下一页
+  await p.mouse.click(1200, 500)
+  await p.waitForTimeout(700)
+  const after = await p.evaluate(() => getComputedStyle(document.querySelector('.nrd-txt-cols')).transform)
+  const pct = await p.evaluate(() => (document.querySelector('.nrd-pct') || {}).textContent || '')
+  console.log('翻页前 transform:', before)
+  console.log('翻页后 transform:', after)
+  console.log('页码显示:', pct.trim())
+  await b.close()
+})()
