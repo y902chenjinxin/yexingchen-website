@@ -167,15 +167,12 @@ function pickCfg(id) { activeId.value = id; result.value = ''; rot.value = 0; pe
 
 /* ---------- 转盘几何 ---------- */
 /* v2.46.78 配色淡化（夜星：格子颜色太深）：宣纸/鎏金体系浅马卡龙底 + 深墨字，
-   替代原来的深绿/深金段，旋转时整体轻盈、标签可读 */
-const COLORS = [
-  { bg: '#f3e6c8', fg: '#6d4f16' },  // 米金
-  { bg: '#e9f2ea', fg: '#2f5d46' },  // 淡竹青
-  { bg: '#f7e8e0', fg: '#8a4a34' },  // 赭石
-  { bg: '#e9edf6', fg: '#3c4a6b' },  // 黛蓝
-  { bg: '#f2ebf6', fg: '#5e4472' },  // 藕紫
-  { bg: '#fbf3dc', fg: '#7a5c1e' },  // 宣纸金
-]
+   替代原来的深绿/深金段，旋转时整体轻盈、标签可读。
+   v2.46.315：这套浅色是**写死的**，暗夜主题下整块转盘就是一张白饼（夜星：「黑天展示
+   一块白色怪怪的」）。改成只给索引，颜色交给 CSS 变量 --sp-seg-N / --sp-seg-N-fg，
+   由 .sp-play 按主题给两套盘面（白天仍是原来那套马卡龙，夜间换成深色段 + 亮字）。 */
+const SEG_COUNT = 6
+const segVar = (i, suffix = '') => `var(--sp-seg-${(i % SEG_COUNT) + 1}${suffix})`
 const segs = computed(() => {
   const opts = activeCfg.value?.options || []
   const total = opts.reduce((s, o) => s + Math.max(1, o.weight), 0) || 1
@@ -183,12 +180,11 @@ const segs = computed(() => {
   return opts.map((o, i) => {
     const span = (Math.max(1, o.weight) / total) * 360
     const mid = acc + span / 2
-    const col = COLORS[i % COLORS.length]
     const style = {
       // 居中修复（v2.46.80 夜星：标签偏右）：锚点原在径向线上、文字向右展开 → 偏右；
       // translate(-50%,-50%) 把元素自身中心摆到半径 86px 的段中点，径向/切向都居中
       transform: `rotate(${mid}deg) translateY(-86px) translate(-50%, -50%)`,
-      color: col.fg,
+      color: segVar(i, '-fg'),
     }
     acc += span
     return { label: o.label, style }
@@ -201,8 +197,7 @@ const wheelStyle = computed(() => {
   let acc = 0
   opts.forEach((o, i) => {
     const span = (Math.max(1, o.weight) / total) * 360
-    const col = COLORS[i % COLORS.length].bg
-    stops.push(`${col} ${acc}deg ${acc + span}deg`)
+    stops.push(`${segVar(i)} ${acc}deg ${acc + span}deg`)
     acc += span
   })
   return { background: `conic-gradient(${stops.join(', ')})`, transform: `rotate(${rot.value}deg)` }
@@ -265,6 +260,25 @@ function resetRound() { result.value = ''; haptic.light() }
   --sp-blur: var(--glass-blur, blur(16px) saturate(160%));
 }
 .sp-play { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 16px; padding-bottom: 24px; position: relative; }
+/* 盘面配色（v2.46.315）：默认走深色一套（夜间主题），白天主题整组覆盖成原来的马卡龙。
+   之前这六个色是写死在 JS 里的浅色，暗夜主题下整块转盘就是一张白饼。 */
+.sp-play {
+  --sp-seg-1: #3a2f63; --sp-seg-1-fg: #ded4ff;
+  --sp-seg-2: #14414c; --sp-seg-2-fg: #a8e8f4;
+  --sp-seg-3: #4a3123; --sp-seg-3-fg: #f3d6b3;
+  --sp-seg-4: #22314f; --sp-seg-4-fg: #c6d6f8;
+  --sp-seg-5: #1d3a30; --sp-seg-5-fg: #b8e8d0;
+  --sp-seg-6: #3d2740; --sp-seg-6-fg: #f0cde8;
+}
+/* 白天：保留 v2.46.78 那套「宣纸/鎏金浅马卡龙 + 深墨字」（夜星当时要求的淡化配色） */
+html[data-theme="day"] .sp-play {
+  --sp-seg-1: #f3e6c8; --sp-seg-1-fg: #6d4f16;
+  --sp-seg-2: #e9f2ea; --sp-seg-2-fg: #2f5d46;
+  --sp-seg-3: #f7e8e0; --sp-seg-3-fg: #8a4a34;
+  --sp-seg-4: #e9edf6; --sp-seg-4-fg: #3c4a6b;
+  --sp-seg-5: #f2ebf6; --sp-seg-5-fg: #5e4472;
+  --sp-seg-6: #fbf3dc; --sp-seg-6-fg: #7a5c1e;
+}
 .sp-top { display: flex; align-items: center; gap: 12px; width: 100%; justify-content: space-between; padding: 0 2px; }
 .sp-top-lab { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--sp-ink-dim); }
 .sp-icon-btn {
