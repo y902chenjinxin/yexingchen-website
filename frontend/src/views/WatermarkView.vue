@@ -154,7 +154,9 @@ async function downloadAudio() {
   padding: 11px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--ls-line);
-  background: var(--ls-paper-1);
+  /* v2.46.314：--ls-paper-1 全站从未定义且没写 fallback → 整条声明失效（输入框变透明）。
+     归并到已定义的 --ls-paper-2（浮层/hover 底）。 */
+  background: var(--ls-paper-2);
   color: var(--ls-text);
   font-size: 14px;
   outline: none;

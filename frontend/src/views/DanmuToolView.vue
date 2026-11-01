@@ -385,26 +385,49 @@ function startRoll() {
 </script>
 
 <style scoped>
-.dm-tool { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; padding-bottom: 24px; }
+/* v2.46.314：这一页原来用了一套**全站从未定义过**的变量
+   （--ls-card / --color-ink / --color-ink-dim），fallback 又写死 #fff 和深灰字 ——
+   暗夜玻璃主题下就成了「深色页里冒出四块白卡 + 白胶囊」，跟棋牌大厅完全两套观感。
+   现在直接复用棋类大厅那张玻璃卡的全站 token（--color-bg-glass / --glass-border /
+   --glass-blur，夜间是紫调 6%、白天是白 85%），深浅主题都给对，也不会再被缺失变量拖回白底。 */
+.dm-tool {
+  max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; padding-bottom: 24px;
+  --dm-card: var(--color-bg-glass, rgba(255, 255, 255, .06));
+  --dm-line: var(--glass-border, color-mix(in srgb, var(--ls-text) 16%, transparent));
+  --dm-surface: color-mix(in srgb, var(--ls-text) 7%, transparent);
+  --dm-surface-2: color-mix(in srgb, var(--ls-text) 11%, transparent);
+  --dm-ink: var(--ls-text);
+  --dm-ink-dim: var(--ls-text-3);
+  /* 卡面：token 底 + 一道自上而下的薄高光 + 上缘内高光，跟 .ls-card / 大厅卡同一语言 */
+  --dm-glass: linear-gradient(162deg,
+    color-mix(in srgb, var(--ls-text) 7%, transparent),
+    transparent 68%);
+  --dm-blur: var(--glass-blur, blur(16px) saturate(160%));
+}
 .dm-field { display: flex; flex-direction: column; gap: 8px; }
 .dm-field.is-off { opacity: .45; }
 .dm-field-head { display: flex; align-items: baseline; justify-content: space-between; }
-.dm-count { font-size: 11px; color: var(--color-ink-dim, #7a8087); font-variant-numeric: tabular-nums; }
-.dm-count.warn { color: #c08a1e; }
-.dm-label { font-size: 13px; font-weight: 600; color: var(--color-ink, #3a3f45); }
+.dm-count { font-size: 11px; color: var(--dm-ink-dim); font-variant-numeric: tabular-nums; }
+.dm-count.warn { color: #e0a63c; }
+.dm-label { font-size: 13px; font-weight: 600; color: var(--dm-ink); }
 .dm-input-wrap { position: relative; }
 .dm-input {
   width: 100%; box-sizing: border-box; padding: 12px 40px 12px 14px;
-  font-size: 15px; color: var(--color-ink, #3a3f45);
-  background: var(--ls-card, #fff); border: 1px solid var(--ls-line, rgba(0,0,0,.08));
-  border-radius: 12px; outline: none; transition: border-color .2s;
+  font-size: 15px; color: var(--dm-ink);
+  background: var(--dm-surface); border: 1px solid var(--dm-line);
+  border-radius: 12px; outline: none; transition: border-color .2s, background-color .2s;
+  -webkit-backdrop-filter: var(--dm-blur); backdrop-filter: var(--dm-blur);
 }
+.dm-input::placeholder { color: color-mix(in srgb, var(--ls-text) 34%, transparent); }
 .dm-input:focus { border-color: var(--color-accent); }
 .dm-clear {
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
   width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
-  background: rgba(0,0,0,.08); color: inherit; font-size: 15px; line-height: 1;
+  background: color-mix(in srgb, var(--ls-text) 10%, transparent); color: var(--dm-ink-dim);
+  font-size: 15px; line-height: 1;
+  transition: background-color .18s ease, color .18s ease;
 }
+.dm-clear:hover { background: color-mix(in srgb, var(--ls-text) 18%, transparent); color: var(--dm-ink); }
 .dm-slider-row { display: flex; align-items: center; gap: 14px; }
 .dm-range { flex: 1; accent-color: var(--color-accent); height: 4px; }
 .dm-slider-val {
@@ -412,44 +435,70 @@ function startRoll() {
   color: var(--color-accent); border-bottom: 2px solid currentColor; padding-bottom: 1px;
 }
 
-/* 方向 / 类型：胶囊单选组 */
+/* 方向 / 类型：胶囊单选组 —— 未选中是「薄玻璃」，选中才亮强调色 */
 .dm-dirs, .dm-types { display: flex; gap: 10px; }
 .dm-dir, .dm-type {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
   padding: 10px 0; border-radius: 999px; cursor: pointer; font-size: 14px;
-  color: var(--color-ink-dim, #7a8087);
-  background: var(--ls-card, #fff);
-  border: 1px solid var(--ls-line, rgba(0,0,0,.1));
+  color: var(--dm-ink-dim);
+  background: var(--dm-card);
+  border: 1px solid var(--dm-line);
+  -webkit-backdrop-filter: var(--dm-blur); backdrop-filter: var(--dm-blur);
   transition: color .2s, border-color .2s, background .2s;
 }
+.dm-dir:hover, .dm-type:hover { border-color: color-mix(in srgb, var(--ls-text) 24%, transparent); }
 .dm-dir input, .dm-type input { position: absolute; opacity: 0; pointer-events: none; }
 .dm-dir.on, .dm-type.on {
   color: var(--color-accent); font-weight: 700;
   border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 10%, var(--ls-card, #fff));
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--color-accent) 90%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ls-text) 8%, transparent);
 }
 
 /* 颜色：前景/背景两块，块内 = 名称 + 当前色 + 手动输入框 + 预设色板 + 取色器 */
 .dm-color-block {
+  position: relative;
   padding: 12px 14px 14px; border-radius: 14px;
-  background: var(--ls-card, #fff);
-  border: 1px solid var(--ls-line, rgba(0,0,0,.08));
+  background: var(--dm-glass), var(--dm-card);
+  border: 1px solid var(--dm-line);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ls-text) 8%, transparent),
+    0 12px 28px -24px rgba(0, 0, 0, .8);
+  -webkit-backdrop-filter: var(--dm-blur);
+  backdrop-filter: var(--dm-blur);
   display: flex; flex-direction: column; gap: 10px;
 }
+/* 渐变描边：与 .ls-card / 棋类大厅那张玻璃卡同一招（mask 挖出 1px 边），
+   让边角透一点青紫，不再是死板的一圈均匀灰线 */
+.dm-color-block::before {
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--color-accent) 55%, transparent),
+    color-mix(in srgb, var(--ls-dai) 38%, transparent) 46%,
+    transparent 78%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: .75;
+}
 .dm-color-head { display: flex; align-items: center; gap: 8px; }
-.dm-color-name { font-size: 13px; font-weight: 600; color: var(--color-ink, #3a3f45); }
-.dm-color-tip { margin: 2px 2px -4px; font-size: 11px; line-height: 1.6; color: var(--color-ink-dim, #7a8087); }
+.dm-color-name { font-size: 13px; font-weight: 600; color: var(--dm-ink); }
+.dm-color-tip { margin: 2px 2px -4px; font-size: 11px; line-height: 1.6; color: var(--dm-ink-dim); }
 .dm-color-tip code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  padding: 1px 5px; border-radius: 5px; background: rgba(0, 0, 0, .05);
+  padding: 1px 5px; border-radius: 5px;
+  background: color-mix(in srgb, var(--ls-text) 10%, transparent);
+  color: var(--dm-ink);
 }
 .dm-color-text {
   margin-left: auto; width: 150px; box-sizing: border-box;
   padding: 5px 9px; font-size: 11.5px; letter-spacing: .02em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--color-ink, #3a3f45);
-  background: var(--ls-card, #fff);
-  border: 1px solid var(--ls-line, rgba(0,0,0,.12)); border-radius: 8px;
+  color: var(--dm-ink);
+  background: var(--dm-surface-2);
+  border: 1px solid var(--dm-line); border-radius: 8px;
   outline: none; transition: border-color .2s, color .2s;
 }
 .dm-color-text:focus { border-color: var(--color-accent); }
@@ -462,13 +511,15 @@ function startRoll() {
 .dm-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
 .dm-swatch {
   width: 28px; height: 28px; border-radius: 50%; padding: 0; cursor: pointer;
-  border: 1px solid rgba(0,0,0,.12);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+  border: 1px solid color-mix(in srgb, var(--ls-text) 18%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.28);
   transition: transform .15s ease;
 }
 .dm-swatch:active { transform: scale(.92); }
+/* 选中环：中间那圈留白取页面底色（--ls-paper），深色主题下不再是刺眼的白圈 */
 .dm-swatch.on {
-  box-shadow: 0 0 0 2px var(--ls-card, #fff), 0 0 0 3.5px var(--color-accent);
+  box-shadow: 0 0 0 2px var(--ls-paper), 0 0 0 3.5px var(--color-accent),
+    0 6px 14px -8px color-mix(in srgb, var(--color-accent) 85%, transparent);
 }
 .dm-swatch-custom {
   display: grid; place-items: center; overflow: hidden;
@@ -479,15 +530,21 @@ function startRoll() {
   opacity: 0;
 }
 .dm-show-btn {
-  margin-top: 8px; padding: 14px 0; border: none; border-radius: 14px; cursor: pointer;
+  margin-top: 8px; padding: 14px 0; border-radius: 14px; cursor: pointer;
   font-size: 16px; font-weight: 700; letter-spacing: .04em;
   color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-  transition: filter .2s, opacity .2s;
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 42%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ls-text) 10%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  transition: filter .2s, opacity .2s, background-color .2s;
 }
-.dm-show-btn:not(:disabled):hover { filter: brightness(1.06); }
+.dm-show-btn:not(:disabled):hover {
+  filter: brightness(1.06);
+  background: color-mix(in srgb, var(--color-accent) 24%, transparent);
+}
 .dm-show-btn:disabled { opacity: .4; cursor: not-allowed; }
-.dm-hint { text-align: center; font-size: 12px; color: var(--color-ink-dim, #7a8087); }
+.dm-hint { text-align: center; font-size: 12px; color: var(--dm-ink-dim); }
 
 /* ===== 全屏弹幕层 ===== */
 .dm-stage {

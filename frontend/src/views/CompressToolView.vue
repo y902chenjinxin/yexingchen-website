@@ -590,7 +590,8 @@ function loadZip() {
 .dropzone {
   border: 2px dashed var(--ls-line-strong); border-radius: var(--radius);
   padding: 34px 20px; text-align: center; cursor: pointer;
-  background: var(--ls-paper-1); transition: all var(--transition);
+  /* v2.46.314：--ls-paper-1 未定义且无 fallback → 底色整条失效。归并到 --ls-paper-2。 */
+  background: var(--ls-paper-2); transition: all var(--transition);
 }
 .dropzone.dragging { border-color: var(--ls-dai); background: rgba(112, 192, 214, 0.08); }
 .dropzone.locked { opacity: 0.6; cursor: not-allowed; }
@@ -604,7 +605,7 @@ function loadZip() {
   background: var(--ls-paper-2); border: 1px solid var(--ls-line); border-radius: var(--radius-sm);
 }
 .file-row.err { border-color: rgba(226, 138, 120, 0.5); }
-.fr-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex: none; background: var(--ls-paper-1); }
+.fr-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex: none; background: var(--ls-paper-2); }
 .fr-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .fr-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ls-text); }
 .fr-meta { font-size: 12px; color: var(--ls-text-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

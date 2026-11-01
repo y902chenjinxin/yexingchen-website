@@ -7,6 +7,28 @@
 
 ---
 
+## v2.46.314 弹幕/抽签工具改回暗夜玻璃（2026-11-01）
+
+- **V246314-001 「幽灵 CSS 变量 + 浅色 fallback」= 暗色主题下的白卡**：`DanmuToolView` /
+  `SpinToolView` 全篇写着 `var(--ls-card, #fff)`、`var(--color-ink, #3a3f45)`，而
+  `--ls-card` / `--color-ink` / `--color-ink-dim` **全站从未定义**（只有这两个文件引用）→
+  永远取浅色 fallback，夜间主题下四块白卡配深灰字。
+  **排查方法**：`grep -rn -- "--ls-card:" assets/styles` 命中 0 就是没定义；
+  凡 `var(--x, 写死的浅色)` 一律可疑。同类前科：`--tc-paper-2`（v2.46.312）、`--dp-text-3`。
+  **定论**：新页面写样式时，底色用 `--color-bg-glass`（夜间紫调/白天白），
+  描边用 `--glass-border`，模糊用 `--glass-blur`，文字用 `--ls-text` / `--ls-text-3`；
+  需要"更深一层"的底（输入框、胶囊）用 `color-mix(in srgb, var(--ls-text) 7%, transparent)`，
+  深浅主题自动成立，**不要写 #fff / #3a3f45 这类具体色**。
+- **V246314-002 `--ls-paper-1` 连 fallback 都没写**：`var(--ls-paper-1)` 出现在
+  压缩 / PDF / 水印三个工具的拖拽区、结果行、缩略图底座 —— 变量不存在且无 fallback，
+  整条 `background` 声明**直接失效**（不是变白，是什么都没有）。已归并到 `--ls-paper-2`。
+  **注意**：变量不存在 + 无 fallback 时，声明会被丢弃且不报错，比白底更难发现。
+- **V246314-003 转盘外圈写死 `#fff`**：`.sp-wheel` 的 `inset 0 0 0 6px rgba(255,255,255,.85)`
+  与 `.sp-hub` 的 `border: 6px solid #fff` 在暗色下像贴了一张白卡；改 `var(--ls-paper)`
+  后夜间是深环、白天仍是白环。
+
+---
+
 ## v2.46.313 主题切换 4.1s → 125ms（2026-10-31）
 
 - **V246313-001 View Transitions 在「重动效页面」上是性能陷阱**：`startViewTransition`

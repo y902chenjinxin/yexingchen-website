@@ -253,9 +253,20 @@ function resetRound() { result.value = ''; haptic.light() }
 </script>
 
 <style scoped>
+/* v2.46.314：与弹幕页同一处病根 —— --ls-card / --color-ink(--dim) 全站从未定义，
+   fallback 写死白底深字，暗夜玻璃下就是白卡。改复用棋类大厅那张玻璃卡的全站 token。 */
+.sp-play, .sp-edit {
+  --sp-card: var(--color-bg-glass, rgba(255, 255, 255, .06));
+  --sp-line: var(--glass-border, color-mix(in srgb, var(--ls-text) 16%, transparent));
+  --sp-surface: color-mix(in srgb, var(--ls-text) 7%, transparent);
+  --sp-surface-2: color-mix(in srgb, var(--ls-text) 11%, transparent);
+  --sp-ink: var(--ls-text);
+  --sp-ink-dim: var(--ls-text-3);
+  --sp-blur: var(--glass-blur, blur(16px) saturate(160%));
+}
 .sp-play { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 16px; padding-bottom: 24px; position: relative; }
 .sp-top { display: flex; align-items: center; gap: 12px; width: 100%; justify-content: space-between; padding: 0 2px; }
-.sp-top-lab { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--color-ink-dim, #7a8087); }
+.sp-top-lab { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--sp-ink-dim); }
 .sp-icon-btn {
   width: 36px; height: 36px; border-radius: 10px; border: none; cursor: pointer; font-size: 16px;
   background: transparent; color: var(--color-accent);
@@ -269,29 +280,31 @@ function resetRound() { result.value = ''; haptic.light() }
 .sp-cfg-card {
   flex: none; width: 132px; display: flex; flex-direction: column; gap: 6px;
   padding: 10px 12px; border-radius: 14px; cursor: pointer; text-align: left;
-  background: var(--ls-card, #fff);
-  border: 1.5px solid var(--ls-line, rgba(0,0,0,.08));
-  transition: border-color .2s, box-shadow .2s, transform .15s;
+  background: var(--sp-card);
+  border: 1.5px solid var(--sp-line);
+  -webkit-backdrop-filter: var(--sp-blur); backdrop-filter: var(--sp-blur);
+  transition: border-color .2s, box-shadow .2s, transform .15s, background-color .2s;
 }
 .sp-cfg-card:active { transform: scale(.97); }
 .sp-cfg-card.on {
-  border-color: var(--color-accent);
-  box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--color-accent) 80%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 7%, var(--ls-card, #fff));
+  border-color: color-mix(in srgb, var(--color-accent) 62%, transparent);
+  box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--color-accent) 90%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ls-text) 8%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 .sp-cfg-card-name {
-  font-size: 13px; font-weight: 700; color: var(--color-ink, #3a3f45);
+  font-size: 13px; font-weight: 700; color: var(--sp-ink);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .sp-cfg-card.on .sp-cfg-card-name { color: var(--color-accent); }
 .sp-cfg-card-chips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 18px; }
 .sp-cfg-card-chips i {
   font-style: normal; font-size: 10px; line-height: 1; padding: 3px 6px; border-radius: 999px;
-  color: var(--color-ink-dim, #7a8087); background: rgba(0, 0, 0, .05);
+  color: var(--sp-ink-dim); background: color-mix(in srgb, var(--ls-text) 10%, transparent);
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.sp-cfg-card-chips em { font-style: normal; font-size: 10px; color: var(--color-ink-dim, #7a8087); }
-.sp-cfg-card-num { font-size: 10.5px; color: var(--color-ink-dim, #7a8087); font-variant-numeric: tabular-nums; }
+.sp-cfg-card-chips em { font-style: normal; font-size: 10px; color: var(--sp-ink-dim); }
+.sp-cfg-card-num { font-size: 10.5px; color: var(--sp-ink-dim); font-variant-numeric: tabular-nums; }
 .sp-cfg-add {
   width: 52px; align-items: center; justify-content: center;
   font-size: 20px; color: var(--color-accent);
@@ -307,7 +320,9 @@ function resetRound() { result.value = ''; haptic.light() }
 }
 .sp-wheel {
   width: 100%; height: 100%; border-radius: 50%; position: relative; cursor: pointer;
-  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, .45), inset 0 0 0 6px rgba(255, 255, 255, .85);
+  /* v2.46.314：外圈原来是写死的白环 + 白色环缝，暗夜主题下转盘像贴了一张白卡。
+     改成页面底色（--ls-paper）：夜间是深环、白天仍是白环，两种主题都收得住。 */
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, .45), inset 0 0 0 6px var(--ls-paper, #fff);
   transition: transform 4.2s cubic-bezier(.15, .85, .25, 1);
 }
 .sp-seg-label {
@@ -318,60 +333,67 @@ function resetRound() { result.value = ''; haptic.light() }
 }
 .sp-hub {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2;
-  width: 64px; height: 64px; border-radius: 50%; border: 6px solid #fff; cursor: pointer;
+  width: 64px; height: 64px; border-radius: 50%; border: 6px solid var(--ls-paper, #fff); cursor: pointer;
   background: linear-gradient(180deg, #f4dc9c, #d9b65f); color: #2a1d05;
   font-size: 15px; font-weight: 800; letter-spacing: .04em;
   box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .5);
 }
 .sp-hub:disabled { cursor: default; opacity: .8; }
 .sp-result { min-height: 48px; display: grid; place-items: center; }
-.sp-result-text { font-size: 30px; font-weight: 800; color: var(--color-ink, #3a3f45); letter-spacing: .04em; }
-.sp-result-dim { font-size: 14px; color: var(--color-ink-dim, #7a8087); }
+.sp-result-text { font-size: 30px; font-weight: 800; color: var(--sp-ink); letter-spacing: .04em; }
+.sp-result-dim { font-size: 14px; color: var(--sp-ink-dim); }
 .sp-reset {
   display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
   padding: 11px 26px; border-radius: 999px; border: none; font-size: 14px; font-weight: 700;
-  color: #fff; background: linear-gradient(180deg, #6fae90, #4d8f70);
-  box-shadow: 0 8px 18px -8px rgba(77, 143, 112, .8);
+  color: var(--tc-btn-fg, #04121c);
+  background: var(--tc-btn-grad, linear-gradient(135deg, #8b5cff, #2de2ff));
+  box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--color-accent) 90%, transparent);
+  transition: filter .18s ease;
 }
+.sp-reset:not(:disabled):hover { filter: brightness(1.08); }
 .sp-reset:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ===== 编辑配置 ===== */
 .sp-edit { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
 .sp-field { display: flex; flex-direction: column; gap: 8px; }
-.sp-label { font-size: 13px; font-weight: 600; color: var(--color-ink-dim, #7a8087); }
+.sp-label { font-size: 13px; font-weight: 600; color: var(--sp-ink-dim); }
 .sp-input {
   width: 100%; box-sizing: border-box; padding: 11px 14px; font-size: 15px;
-  color: var(--color-ink, #3a3f45); background: var(--ls-card, #fff);
-  border: none; border-bottom: 1.5px solid var(--ls-line, rgba(0,0,0,.12));
-  outline: none; transition: border-color .2s;
+  color: var(--sp-ink); background: var(--sp-surface);
+  border: 1px solid var(--sp-line); border-radius: 12px;
+  outline: none; transition: border-color .2s, background-color .2s;
+  -webkit-backdrop-filter: var(--sp-blur); backdrop-filter: var(--sp-blur);
 }
-.sp-input:focus { border-bottom-color: var(--color-accent); }
+.sp-input::placeholder { color: color-mix(in srgb, var(--ls-text) 34%, transparent); }
+.sp-input:focus { border-color: var(--color-accent); }
 .sp-opts { display: flex; flex-direction: column; gap: 14px; }
 .sp-opt { display: flex; flex-direction: column; gap: 5px; }
-.sp-opt-idx { font-size: 12px; color: var(--color-ink-dim, #7a8087); }
+.sp-opt-idx { font-size: 12px; color: var(--sp-ink-dim); }
 .sp-opt-row { display: flex; align-items: center; gap: 8px; }
 .sp-opt-label { flex: 1; font-weight: 600; }
 .sp-opt-del {
   width: 30px; height: 30px; flex: none; border-radius: 50%; border: none; cursor: pointer;
-  background: rgba(0, 0, 0, .1); color: inherit; font-size: 15px;
+  background: color-mix(in srgb, var(--ls-text) 10%, transparent); color: var(--sp-ink-dim);
+  font-size: 15px; transition: background-color .18s ease, color .18s ease;
 }
+.sp-opt-del:hover { background: color-mix(in srgb, var(--ls-text) 18%, transparent); color: var(--sp-ink); }
 .sp-opt-weight { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-.sp-weight-ico { color: var(--color-ink-dim, #7a8087); }
+.sp-weight-ico { color: var(--sp-ink-dim); }
 .sp-weight-num {
   width: 44px; text-align: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
   color: var(--color-accent); background: none; border: none;
   border-bottom: 2px solid currentColor; outline: none;
 }
 .sp-weight-range { flex: 1; accent-color: var(--color-accent); height: 4px; }
-.sp-opt-stat { margin-left: auto; font-style: normal; font-size: 12px; color: var(--color-ink-dim, #7a8087); }
-.sp-err { font-size: 12px; color: #e5484d; }
+.sp-opt-stat { margin-left: auto; font-style: normal; font-size: 12px; color: var(--sp-ink-dim); }
+.sp-err { font-size: 12px; color: #ff6a63; }
 .sp-edit-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .sp-btn {
   padding: 10px 22px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 600; border: none;
 }
-.sp-btn.primary { background: linear-gradient(180deg, #6fae90, #4d8f70); color: #fff; }
+.sp-btn.primary { background: var(--tc-btn-grad, linear-gradient(135deg, #8b5cff, #2de2ff)); color: var(--tc-btn-fg, #04121c); }
 .sp-btn.ghost {
-  background: transparent; border: 1px solid var(--ls-line, rgba(0,0,0,.12)); color: var(--color-ink, #3a3f45);
+  background: var(--sp-surface); border: 1px solid var(--sp-line); color: var(--sp-ink);
 }
 .sp-btn:disabled { opacity: .4; cursor: not-allowed; }
 .sp-cfg-del {
