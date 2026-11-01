@@ -28,8 +28,14 @@ function onClose() {
   else router.replace('/music')
 }
 
-onMounted(() => {
-  // 没有正在播放的内容（例如直接输 URL 进来）：别留一个空播放器
+onMounted(async () => {
+  /* 没有正在播放的内容（例如直接输 URL / 刷新本页）：先给续播一次机会再判断。
+     v2.46.316：以前这里同步判断，而 App.vue 的 restoreLastPlayback() 是异步的，
+     两者赛跑 —— 刷新播放页几乎必然被踢回 /music，哪怕后端明明记着「上次听到哪」。
+     现在等一次恢复，仍为空才退回列表页。 */
+  if (!player.curItem) {
+    try { await player.restoreLastPlayback() } catch { /* 未登录/网络异常：按空处理 */ }
+  }
   if (!player.curItem) router.replace('/music')
 })
 </script>

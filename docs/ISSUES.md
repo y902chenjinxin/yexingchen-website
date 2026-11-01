@@ -7,6 +7,25 @@
 
 ---
 
+## v2.46.316 播放器按 Folia 重做（2026-11-01）
+
+- **V246316-001 `background-clip: text` + 逐字 `transform` = 整行不可见**：做大字标题的
+  「鎏金流光」时用父级 `background-image` + `-webkit-background-clip: text` +
+  `-webkit-text-fill-color: transparent`，实测**整个 h1 透明**（文字根本不显示，元素尺寸正常）。
+  原因：逐字 `<span>` 带 `transform` 会自建绘制层，父级被裁到文字的渐变覆盖不到它们。
+  **定论**：需要逐字动画的文字，别在父级做 background-clip，把颜色/渐变给到每个字自己。
+  排查时先 `getComputedStyle` 看 `webkitTextFillColor` 是不是 `rgba(0,0,0,0)`，再看元素尺寸是否正常。
+- **V246316-002 刷新 `/now-playing` 被踢回 `/music`**：`MusicPlayingView.onMounted` 里
+  同步判断 `player.curItem`，而 `App.vue` 的 `restoreLastPlayback()` 是异步的，两者赛跑。
+  改成 `onMounted` 里先 `await restoreLastPlayback()` 再判断空。
+- **V246316-003 全屏页漏隐藏 `.dsb-open-fab`**：`body.fs-page` 只收了 `.dsb`，手机侧栏
+  悬浮球是独立元素，全屏页左上角会多一个按钮压着返回键。已补进隐藏清单。
+- **V246316-004 dev 环境测不了 `/music`**：vite.config 把 `/music` 代理到后端（对应 nginx
+  的真实目录），所以本地直接 `goto('/music')` 是 500，不是前端问题。要么走 SPA 内部跳转，
+  要么直接测 `/now-playing`（该路径不被代理）。
+
+---
+
 ## v2.46.315 抽签转盘盘面跟随主题（2026-11-01）
 
 - **V246315-001 「配色写死在 JS 里」= 换肤漏网**：`SpinToolView` 的转盘六个段色是

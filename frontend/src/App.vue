@@ -402,6 +402,7 @@ body.fs-page {
 body.fs-page .lj-topbar,
 body.fs-page .mt-tabbar,
 body.fs-page .dsb,
+body.fs-page .dsb-open-fab,
 body.fs-page .site-footer,
 body.fs-page .mid {
   display: none !important;
