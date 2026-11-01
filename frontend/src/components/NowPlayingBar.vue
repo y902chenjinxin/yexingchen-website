@@ -131,6 +131,16 @@
         />
       </div>
 
+      <!-- 展开全屏播放页（v2.46.317：以前只有手机端点信息区才能进，PC 完全没入口，
+           夜星找不到。现在独立成一个按钮，两端都在，点信息区也照样能进。
+           图标用四角括号（全屏语义），不用 chevron —— 那会跟「下一首」的箭头混） -->
+      <button class="np-btn np-expand" @click="openFull" title="展开全屏播放页" aria-label="展开全屏播放页">
+        <svg viewBox="0 0 24 24" class="np-vol-ic" aria-hidden="true">
+          <path d="M9 4H4v5M15 4h5v5M15 20h5v-5M9 20H4v-5"
+            fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
       <!-- 最小化：收起成浮动小图标（播放条不再占位），点图标再展开 -->
       <button class="np-btn np-min" @click="minimize" title="最小化成小图标（不挡内容，可拖动）" aria-label="最小化播放框">
         <svg viewBox="0 0 24 24" class="np-vol-ic" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -178,11 +188,12 @@ const bgm = useBgmLibraryStore()
 const barRef = ref(null)
 const emit = defineEmits(['open-full'])
 
-const isTouchDevice = typeof window !== 'undefined' &&
-  window.matchMedia('(pointer: coarse)').matches
-
+/* v2.46.317：以前这里 `if (!isTouchDevice) return`，PC 端点信息区没反应 ——
+   夜星「没找到入口」就是这么来的。全屏播放页两端都有，点击也应该两端都生效。 */
 function onInfoClick() {
-  if (!isTouchDevice) return
+  emit('open-full')
+}
+function openFull() {
   emit('open-full')
 }
 
@@ -386,7 +397,14 @@ function fmt(sec) {
   min-width: 0;
   flex: 0 0 auto;
   width: 280px;          /* 标题/作者区给足横向空间 */
+  /* v2.46.317：这块是可点的（进全屏播放页），得给出可点的暗示 —— 以前没有任何反馈，
+     加上原本只有触屏才生效，等于藏了个隐形入口。 */
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color .16s ease;
 }
+.np-info:hover { background: rgba(255, 255, 255, .08); }
+.np-info:active { background: rgba(255, 255, 255, .12); }
 
 .np-cover {
   position: relative;
@@ -482,6 +500,14 @@ function fmt(sec) {
 .np-close:hover { background: rgba(239, 68, 68, 0.18); color: #f87171; }
 .np-min { background: transparent; }
 .np-min:hover { background: rgba(255, 255, 255, 0.14); }
+/* v2.46.317：全屏播放页入口，做成有存在感的描边按钮（其余图标都是透明的，
+   它得能被一眼看见，否则又会变成"藏起来的入口"） */
+.np-expand {
+  background: rgba(255, 255, 255, .1);
+  border: 1px solid rgba(255, 255, 255, .18);
+  color: #fff;
+}
+.np-expand:hover { background: rgba(255, 255, 255, .2); border-color: rgba(255, 255, 255, .32); }
 
 /* ---- 最小化后的浮动图标 ----
    固定在屏幕上（fixed），位置由内联 left/top 控制，可拖动并记忆；
@@ -657,6 +683,7 @@ function fmt(sec) {
   .np-toggle { width: 44px; height: 44px; }
   .np-toggle svg { width: 20px; height: 20px; }
   .np-min { width: 34px; height: 34px; }
+  .np-expand { width: 34px; height: 34px; }
 }
 
 /* ---------- 手机横屏（≈844×390、932×430）：宽度过了 768px，上面的移动端规则不命中，
@@ -686,5 +713,6 @@ function fmt(sec) {
   .np-toggle { width: 42px; height: 42px; }
   .np-toggle svg { width: 19px; height: 19px; }
   .np-min { width: 32px; height: 32px; }
+  .np-expand { width: 32px; height: 32px; }
 }
 </style>
