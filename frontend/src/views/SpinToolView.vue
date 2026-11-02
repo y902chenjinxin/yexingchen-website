@@ -27,30 +27,48 @@
         <button class="sp-cfg-card sp-cfg-add" aria-label="新建签组" title="新建签组" @click="createCfg"><AppIcon icon="＋" :size="20" /></button>
       </div>
 
-      <!-- 转盘：conic-gradient 依权重分段，标签沿径向排布 -->
+      <!-- 转盘：conic-gradient 依权重分段，标签沿径向排布。
+           v2.46.330 起支持手指拖着转：按住盘面绕圆心划，松手带惯性滑行，
+           速度衰减后吸附到指针所指扇区的正中。粒子画在下面的 canvas 上。 -->
       <div class="sp-wheel-wrap">
+        <canvas ref="fxCanvas" class="sp-fx" aria-hidden="true"></canvas>
         <i class="sp-pointer" aria-hidden="true"></i>
         <div
+          ref="wheelEl"
           class="sp-wheel"
-          :class="{ spinning }"
+          :class="{ spinning, dragging, 'is-fast': fast }"
           :style="wheelStyle"
           role="button"
-          :aria-label="spinning ? '转盘旋转中' : '开始抽签'"
-          @click="spin"
-          @transitionend="onSpinEnd"
+          tabindex="0"
+          :aria-label="spinning ? '转盘旋转中' : '按住盘面拖动旋转，松手出结果'"
+          @keydown.enter.prevent="spin"
+          @keydown.space.prevent="spin"
         >
           <span
             v-for="(seg, i) in segs" :key="i"
             class="sp-seg-label"
             :style="seg.style"
           >{{ seg.label }}</span>
-          <button class="sp-hub" :disabled="spinning" aria-label="开始抽签" @click.stop="spin">GO</button>
+          <!-- 中心 GO：只负责"随机一甩"，拖拽交给盘面。pointerdown.stop 保证
+               按在中心时不会被当成拖拽起点 -->
+          <button
+            class="sp-hub"
+            :disabled="spinning"
+            aria-label="随机抽一次"
+            @pointerdown.stop
+            @click.stop="spin"
+          >GO</button>
         </div>
       </div>
 
       <div class="sp-result" aria-live="polite">
-        <span v-if="result" class="sp-result-text">{{ result }}</span>
-        <span v-else class="sp-result-dim">{{ spinning ? '转动中…' : '点转盘开始' }}</span>
+        <Transition name="sp-pop" mode="out-in">
+          <span v-if="result" :key="'r' + result" class="sp-result-text">{{ result }}</span>
+          <span v-else-if="hint" :key="'h' + hint" class="sp-result-hint">{{ hint }}</span>
+          <span v-else :key="'d'" class="sp-result-dim">
+            {{ spinning ? '转动中…' : '按住盘面转一圈，松手看结果' }}
+          </span>
+        </Transition>
       </div>
 
       <button class="sp-reset" :disabled="!result" @click="resetRound">
@@ -95,8 +113,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
-import { haptic } from '@/utils/haptic'
+import { haptic, tick } from '@/utils/haptic'
 import { useSnapTicks } from '@/composables/useSnapTicks'
+import { useFlickWheel } from '@/composables/useFlickWheel'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 /* ---------- 数据模型（localStorage，多套配置 + 抽中统计） ---------- */
@@ -151,6 +170,9 @@ function saveDraft() {
   if (idx >= 0) configs.value[idx] = clean; else configs.value.push(clean)
   activeId.value = clean.id
   persist()
+  cancelWheel()
+  rot.value = 0
+  result.value = ''
   mode.value = 'play'
 }
 function cancelEdit() { mode.value = 'play' }
@@ -168,7 +190,15 @@ function removeCfg() {
   persist()
   mode.value = 'play'
 }
-function pickCfg(id) { activeId.value = id; result.value = ''; rot.value = 0; persist() }
+function pickCfg(id) {
+  if (id === activeId.value) return
+  cancelWheel()          // 换签组：段数/权重都变了，正在转的动画必须停
+  rot.value = 0
+  result.value = ''
+  hint.value = ''
+  activeId.value = id
+  persist()
+}
 
 /* ---------- 转盘几何 ---------- */
 /* v2.46.78 配色淡化（夜星：格子颜色太深）：宣纸/鎏金体系浅马卡龙底 + 深墨字，
@@ -195,6 +225,10 @@ const segs = computed(() => {
     return { label: o.label, style }
   })
 })
+/* ⚠️ 这里**不要**带 transform（v2.46.330）：旋转由 useFlickWheel 命令式写在
+   el.style.transform 上，60fps 逐帧写。若同时保留 style 绑定，Vue 每次重渲染
+   都会把 transform 覆盖回旧值 —— 表现为"转起来一顿一顿"。
+   背景只跟配置有关，单独提出来，逐帧不受影响。 */
 const wheelStyle = computed(() => {
   const opts = activeCfg.value?.options || []
   const total = opts.reduce((s, o) => s + Math.max(1, o.weight), 0) || 1
@@ -205,51 +239,80 @@ const wheelStyle = computed(() => {
     stops.push(`${segVar(i)} ${acc}deg ${acc + span}deg`)
     acc += span
   })
-  return { background: `conic-gradient(${stops.join(', ')})`, transform: `rotate(${rot.value}deg)` }
+  return { background: `conic-gradient(${stops.join(', ')})` }
 })
 
-/* ---------- 抽签 ---------- */
-const spinning = ref(false)
+/* ---------- 抽签（v2.46.330：物理惯性转盘） ---------- */
+const wheelEl = ref(null)
+const fxCanvas = ref(null)
 const result = ref('')
-const rot = ref(0)
-let pendingIdx = -1
+const hint = ref('')
+let hintTimer = 0
 
-function spin() {
-  if (spinning.value) return
+/** 各扇区跨度（度，合计 360），抽签与转盘几何共用同一份权重口径。 */
+function spansForWheel() {
   const opts = activeCfg.value?.options || []
-  if (opts.length < 2) return
-  haptic.light()
-  // 按权重随机选中段，再让该段中点转到顶部指针处（额外 5 整圈保证观感）
-  const total = opts.reduce((s, o) => s + Math.max(1, o.weight), 0)
-  let r = Math.random() * total
-  pendingIdx = 0
-  for (let i = 0; i < opts.length; i++) {
-    r -= Math.max(1, opts[i].weight)
-    if (r < 0) { pendingIdx = i; break }
-  }
-  const span = (Math.max(1, opts[pendingIdx].weight) / total) * 360
-  const segStart = opts.slice(0, pendingIdx).reduce((s, o) => s + (Math.max(1, o.weight) / total) * 360, 0)
-  const jitter = (Math.random() - 0.5) * span * 0.6
-  const target = (360 - (segStart + span / 2 + jitter)) % 360
-  spinning.value = true
-  result.value = ''
-  rot.value = rot.value + 5 * 360 + ((target - (rot.value % 360)) + 360) % 360
+  const total = opts.reduce((s, o) => s + Math.max(1, o.weight), 0) || 1
+  return opts.map((o) => (Math.max(1, o.weight) / total) * 360)
 }
 
-function onSpinEnd() {
-  if (!spinning.value) return
-  spinning.value = false
-  const opt = activeCfg.value?.options[pendingIdx]
+const {
+  rot, spinning, dragging, fast,
+  launchTo, cancel: cancelWheel,
+} = useFlickWheel({
+  wheelRef: wheelEl,
+  canvasRef: fxCanvas,
+  getSpans: spansForWheel,
+  /* 跨扇区「哒」一声 —— 跟阅读设置滑杆、模块条带同一套刻度反馈 */
+  onCross: () => tick(0.8),
+  onHint: showHint,
+  onSettle: onWheelSettle,
+})
+
+/** 轻点一下没滑 → 提示，不转（防误触） */
+function showHint() {
+  hint.value = '请滑动手势转动命运'
+  clearTimeout(hintTimer)
+  hintTimer = setTimeout(() => { hint.value = '' }, 1800)
+  haptic.light()
+}
+
+/** 落定：结果来自"指针压着哪块"，不是预先随机出来的 */
+function onWheelSettle(idx) {
+  const opt = activeCfg.value?.options?.[idx]
   if (!opt) return
   result.value = opt.label
-  haptic.medium?.()
+  haptic.medium()
+  tick(1)
   const cfg = activeCfg.value
   cfg.stats = { ...(cfg.stats || {}) }
   cfg.stats[opt.label] = (cfg.stats[opt.label] || 0) + 1
   persist()
 }
 
-function resetRound() { result.value = ''; haptic.light() }
+/** 中心 GO：按权重随机挑一块，强推 5 圈落到正中 */
+function spin() {
+  if (spinning.value) return
+  const opts = activeCfg.value?.options || []
+  if (opts.length < 2) return
+  haptic.light()
+  result.value = ''
+  hint.value = ''
+  const total = opts.reduce((s, o) => s + Math.max(1, o.weight), 0)
+  let r = Math.random() * total
+  let idx = 0
+  for (let i = 0; i < opts.length; i++) {
+    r -= Math.max(1, opts[i].weight)
+    if (r < 0) { idx = i; break }
+  }
+  launchTo(idx)
+}
+
+function resetRound() {
+  result.value = ''
+  hint.value = ''
+  haptic.light()
+}
 </script>
 
 <style scoped>
@@ -340,18 +403,41 @@ html[data-theme="day"] .sp-play {
 }
 
 .sp-wheel-wrap { position: relative; width: min(320px, 82vw); aspect-ratio: 1; margin-top: 6px; }
+/* 粒子画布：比转盘大一圈，火星才有地方往外飞。
+   pointer-events:none —— 它盖在盘面上，不能挡住手指拖拽。 */
+.sp-fx {
+  position: absolute; left: -26%; top: -26%; width: 152%; height: 152%;
+  pointer-events: none; z-index: 3;
+}
 .sp-pointer {
-  position: absolute; left: 50%; top: -4px; transform: translateX(-50%); z-index: 3;
+  position: absolute; left: 50%; top: -4px; transform: translateX(-50%); z-index: 4;
   border-left: 9px solid transparent; border-right: 9px solid transparent;
   border-top: 16px solid var(--color-accent);
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25));
 }
 .sp-wheel {
-  width: 100%; height: 100%; border-radius: 50%; position: relative; cursor: pointer;
+  width: 100%; height: 100%; border-radius: 50%; position: relative;
   /* v2.46.314：外圈原来是写死的白环 + 白色环缝，暗夜主题下转盘像贴了一张白卡。
      改成页面底色（--ls-paper）：夜间是深环、白天仍是白环，两种主题都收得住。 */
   box-shadow: 0 14px 34px -14px rgba(0, 0, 0, .45), inset 0 0 0 6px var(--ls-paper, #fff);
-  transition: transform 4.2s cubic-bezier(.15, .85, .25, 1);
+  /* 🔴 v2.46.330：这里原来是 `transition: transform 4.2s`（CSS 自动旋转）。
+     手指拖拽要求"拖到哪盘到哪"，有 transition 就会拖出 4.2s 的尾巴完全跟不上。
+     现在整套动画由 useFlickWheel 的 rAF 逐帧驱动，transition 必须去掉。 */
+  transition: none;
+  /* 触摸设备上必须禁掉浏览器的滚动/缩放手势，否则竖向拖动会滚页面而不是转盘 */
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  cursor: grab;
+  will-change: transform;
+}
+.sp-wheel.dragging { cursor: grabbing; }
+.sp-wheel.spinning { cursor: default; }
+/* 高速态：外缘泛一层金色光，配合 canvas 的光轨，把"转起来了"传达出去 */
+.sp-wheel.is-fast {
+  box-shadow:
+    0 14px 34px -14px rgba(0, 0, 0, .45),
+    inset 0 0 0 6px var(--ls-paper, #fff),
+    0 0 30px -2px color-mix(in srgb, var(--color-accent) 62%, transparent);
 }
 .sp-seg-label {
   position: absolute; left: 50%; top: 50%; z-index: 1;
@@ -367,9 +453,29 @@ html[data-theme="day"] .sp-play {
   box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .5);
 }
 .sp-hub:disabled { cursor: default; opacity: .8; }
-.sp-result { min-height: 48px; display: grid; place-items: center; }
-.sp-result-text { font-size: 30px; font-weight: 800; color: var(--sp-ink); letter-spacing: .04em; }
-.sp-result-dim { font-size: 14px; color: var(--sp-ink-dim); }
+.sp-result { min-height: 58px; display: grid; place-items: center; text-align: center; padding: 0 8px; }
+.sp-result-text {
+  font-size: clamp(26px, 8vw, 34px); font-weight: 800; color: var(--sp-ink);
+  letter-spacing: .04em;
+  text-shadow: 0 0 26px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+/* 轻点一下没滑：用鎏金小字提示，不做弹窗（全站无弹窗约定） */
+.sp-result-hint {
+  font-size: 13.5px; font-weight: 700; color: var(--color-accent);
+  animation: sp-nudge .46s cubic-bezier(.36, .07, .19, .97);
+}
+.sp-result-dim { font-size: 13.5px; color: var(--sp-ink-dim); }
+@keyframes sp-nudge {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  55% { transform: translateX(4px); }
+  80% { transform: translateX(-2px); }
+}
+/* 结果切场的弹入（v2.46.330）：数字/文字从下方顶上来，配"咔"一下的落定感 */
+.sp-pop-enter-active { transition: opacity .2s ease, transform .34s cubic-bezier(.2, 1.4, .35, 1); }
+.sp-pop-leave-active { transition: opacity .14s ease, transform .14s ease; }
+.sp-pop-enter-from { opacity: 0; transform: translateY(8px) scale(.9); }
+.sp-pop-leave-to { opacity: 0; transform: translateY(-4px) scale(.98); }
 .sp-reset {
   display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
   padding: 11px 26px; border-radius: 999px; border: none; font-size: 14px; font-weight: 700;
