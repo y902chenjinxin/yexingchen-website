@@ -44,15 +44,24 @@ export function parseLrc(text) {
 /**
  * 当前该高亮哪一行 —— 二分找「最后一个 t <= sec」。
  * 歌词动辄上百行、每帧都调，线性扫在低端机上会掉帧。
+ *
+ * ⚠️ 偏移方向（v2.46.328）：**必须略滞后，不能提前**。
+ * 之前写了 `sec + 0.15`（提前 150ms），夜星反馈「刚唱到这，就跑下一句了」——
+ * 提前量会让人在上一句还唱完时就滑到下一句，比"慢半拍"难受得多。
+ * 现在改成 `sec - 0.12`：等这一句真的唱出来再切。LRC 行时间本身是句首，
+ * 留 120ms 让字先出声、再位移，观感最稳。
  */
+const LINE_LAG = 0.12
+
 export function findLine(lines, sec) {
   if (!lines || !lines.length) return -1
   let lo = 0
   let hi = lines.length - 1
   let ans = -1
+  const at = sec - LINE_LAG
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    if (lines[mid].t <= sec + 0.15) {   // 150ms 提前量：人耳对「字先到声音后到」不敏感，反之很别扭
+    if (lines[mid].t <= at) {
       ans = mid
       lo = mid + 1
     } else {

@@ -33,6 +33,7 @@
             ref="lyricBox"
             class="fp-lyric"
             :class="{ 'no-sync': !lyricSynced }"
+            @scroll.passive="onLyricScroll"
           >
             <p
               v-for="(l, i) in lyricLines"
@@ -138,7 +139,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { fmtClock } from '@/utils/format'
 import { parseLrc, plainLines, findLine } from '@/utils/lrc'
 import { getLyric } from '@/api/music'
@@ -212,23 +213,53 @@ function applyLyric(content) {
 watch(() => player.curItem?.id, (id) => { if (visible.value) loadLyric(id) }, { immediate: true })
 watch(visible, (v) => { if (v && player.curItem?.id) loadLyric(player.curItem.id) })
 
-/** 播放进度 → 当前行（150ms 提前量在 findLine 里处理） */
-watch(() => player.progress, (sec) => {
-  if (!lyricSynced.value || !lyricLines.value.length) return
+/* 播放进度 → 当前行。
+   ⚠️ 不用 `watch(player.progress)`：progress 只跟着 audio 的 timeupdate 走（约 4Hz），
+   250ms 一格，歌词会"跳格"；而且用户感觉的快慢也被这个粒度放大。
+   这里用 rAF 直接读 audio.currentTime（60fps），行切换才精确。
+   偏移量（略滞后 120ms）在 utils/lrc.js 的 findLine 里统一处理。 */
+let rafId = 0
+function followLoop() {
+  rafId = 0
+  if (!visible.value || !lyricSynced.value || !lyricLines.value.length) return
+  const a = player.audio
+  const sec = a && Number.isFinite(a.currentTime) ? a.currentTime : (player.progress || 0)
   const i = findLine(lyricLines.value, sec)
   if (i !== lineIdx.value) lineIdx.value = i
-})
+  rafId = requestAnimationFrame(followLoop)
+}
+function startFollow() {
+  if (!rafId && visible.value && lyricSynced.value) rafId = requestAnimationFrame(followLoop)
+}
+function stopFollow() {
+  if (rafId) cancelAnimationFrame(rafId)
+  rafId = 0
+}
+watch([visible, lyricSynced], ([v, synced]) => { if (v && synced) startFollow(); else stopFollow() })
+watch(() => player.isPlaying, () => startFollow())
+onBeforeUnmount(stopFollow)
+
+/* 手动上下滑：暂停自动跟随 5 秒，别让"我在看前一句"被拽回去 */
+let selfScrolling = false
+let userScrollAt = 0
+function onLyricScroll() {
+  if (selfScrolling) return
+  userScrollAt = Date.now()
+}
 
 /** 当前行滚到中间（用 scrollTop 而不是 transform：行高会随缩放变，transform 会越滚越偏） */
 watch(lineIdx, async (i) => {
   if (i < 0) return
+  if (Date.now() - userScrollAt < 5000) return   // 用户正在手动翻，别抢
   await nextTick()
   const box = lyricBox.value
   if (!box) return
   const el = box.children[i]
   if (!el) return
   const target = el.offsetTop - box.clientHeight / 2 + el.offsetHeight / 2
+  selfScrolling = true
   box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+  setTimeout(() => { selfScrolling = false }, 700)
 })
 
 function seekToTime(t) {
@@ -398,22 +429,37 @@ function fmt(sec) {
    当前行要放大，行高是变的；用 transform 平移会随缩放越滚越偏，
    而 scrollTop 跟着真实布局走，第 100 句和第 3 句一样准。
    上下用 mask 渐隐代替可见边框 —— 歌词从雾里进出，比一条硬裁切线高级。 */
+/* 🔴 v2.46.328 两个坑：
+   1) 原先是 `padding: 38% 0` —— 百分比内边距是按**宽度**算的，横屏/平板上
+      等于上下各加几百像素，滚动区高度远超可视区，歌词从控制条底下穿过去，
+      隔着半透明卡片还能看见（夜星截图里"执迷不悟坠入"压在卡片上）。
+   2) 歌词一屏铺十几行，没有"正在唱"的聚焦感。
+   改成：固定高度 ≈ 6 行 + 上下用伪元素留白（伪元素的 height % 相对容器高度，是对的），
+   一屏只看到 6~7 行，其余靠上下滑。 */
 .fp-lyric {
   width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 1 auto;
+  height: min(44vh, 320px);
+  min-height: 132px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
   overscroll-behavior: contain;
-  padding: 38% 0;
+  padding: 0;
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 84%, transparent 100%);
   mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+}
+/* 上下留白：让第一句和最后一句也能滚到正中（height % 相对容器高度） */
+.fp-lyric::before,
+.fp-lyric::after {
+  content: '';
+  display: block;
+  height: 44%;
 }
 .fp-lyric::-webkit-scrollbar { display: none; }
 .fp-lyric-line {
   margin: 0;
-  padding: 7px 2px;
+  padding: 8px 2px;
   text-align: center;
   font-size: 15.5px;
   line-height: 1.5;
