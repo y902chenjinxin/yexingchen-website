@@ -145,11 +145,16 @@
         </el-table-column>
       </el-table>
 
-      <!-- v2.46.299：手机端分块渲染，避免一次铺几百行 -->
-      <div v-if="isMobile && mobileRestCount > 0" class="mu-more">
-        <button type="button" class="mu-more-btn" @click="showMoreMobile">
-          显示更多（还剩 {{ mobileRestCount }} 首）
-        </button>
+      <!-- v2.46.299：手机端分块渲染，避免一次铺几百行。
+           v2.46.319：哨兵常驻 —— 滚到它就自动补 40 条（原来要手动点「显示更多」）。 -->
+      <div v-if="isMobile" ref="moreSentinelRef" class="mu-more">
+        <span v-if="mobileRestCount > 0" class="mu-more-loading">
+          <i class="mu-more-dot" /><i class="mu-more-dot" /><i class="mu-more-dot" />
+          正在加载，还有 {{ mobileRestCount }} 首
+        </span>
+        <span v-else-if="musicStore.list.length" class="mu-more-done">
+          已全部加载 · 共 {{ musicStore.list.length }} 首
+        </span>
       </div>
 
       <EmptyState v-if="!musicStore.loading && musicStore.list.length === 0" size="sm" title="暂无歌曲" description="到管理后台上传音乐，或稍后刷新重试" />
@@ -340,7 +345,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed, watch, nextTick } from 'vue'
 import IslandInnerBase from './islands/IslandInnerBase.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -377,8 +382,10 @@ const uploadForm = ref({ title: '', artist: '', category: '', tags: '' })
 /* ---- 管理分页（客户端，默认10条；手机端已隐藏分页控件，故一次展示全量） ---- */
 const page = ref(1)
 const pageSize = ref(10)
-/* v2.46.299：手机端原来是「list.length」= 全部渲染（254 首时 el-table 要建两千多个
-   单元格，中低端机直接卡两三秒）。改成先渲染 40 条，点「显示更多」再加 40。 */
+/* v2.46.299：手机端分块渲染（一次铺 254 行 el-table 要建两千多个单元格，中低端机卡两三秒）。
+   v2.46.319：改成滚动到底自动加载 —— 底部哨兵进视口（提前 240px）就补一批，
+   不再需要点「显示更多」。40 行约 2200px，远超一屏，所以每次加载后哨兵必然离开视口，
+   不会出现「一次把所有条都灌进去」。 */
 const MOBILE_STEP = 40
 const mobileRenderLimit = ref(MOBILE_STEP)
 const pagedRows = computed(() => {
@@ -389,9 +396,43 @@ const pagedRows = computed(() => {
 const mobileRestCount = computed(() =>
   isMobile.value ? Math.max(0, musicStore.list.length - mobileRenderLimit.value) : 0
 )
-function showMoreMobile() {
+function loadMoreMobile() {
+  if (!isMobile.value) return
+  if (mobileRenderLimit.value >= musicStore.list.length) return
   mobileRenderLimit.value = Math.min(mobileRenderLimit.value + MOBILE_STEP, musicStore.list.length)
 }
+
+/* 哨兵观察：只在手机端挂。观察器本身很轻，但桌面上没这个元素，挂着会空转。 */
+const moreSentinelRef = ref(null)
+let moreObserver = null
+function teardownMoreObserver() {
+  if (moreObserver) { moreObserver.disconnect(); moreObserver = null }
+}
+function setupMoreObserver() {
+  teardownMoreObserver()
+  if (!isMobile.value) return
+  const el = moreSentinelRef.value
+  // 老浏览器（含部分鸿蒙内嵌 WebView）没有 IntersectionObserver：退回监听滚动容器
+  if (!el || typeof IntersectionObserver === 'undefined') return
+  moreObserver = new IntersectionObserver((entries) => {
+    if (!entries.some((e) => e.isIntersecting)) return
+    const before = mobileRenderLimit.value
+    loadMoreMobile()
+    /* 🔴 IntersectionObserver 只在「进入/离开」时回调，状态不变就不再通知。
+       滚到底加载 40 行后，如果哨兵仍然在视口里（一屏装得下 = 内容还没把页面撑开），
+       它会一直 intersecting，等到用户再滚也不会有新回调 —— 表现就是「只加载了一次」。
+       所以每次真加载了就重挂观察器：重新 observe 会立刻回报当前状态，还有剩余就继续补。
+       加载到上限后 loadMoreMobile 直接 return，before 不变，不再重挂，自然收敛。 */
+    if (mobileRenderLimit.value !== before) nextTick(() => { setupMoreObserver() })
+  }, { root: null, rootMargin: '240px 0px', threshold: 0 })
+  moreObserver.observe(el)
+}
+onMounted(() => { nextTick(setupMoreObserver) })
+onBeforeUnmount(teardownMoreObserver)
+/* 语义上的「移动端」是用 useIsMobile 切的，可能运行中变化（APK WebView / ?m=1），
+   哨兵重挂一次；同时列表换了一批数据（搜索、切分类）要回到 40 条。 */
+watch(isMobile, () => nextTick(setupMoreObserver))
+watch(() => musicStore.list.length, () => { nextTick(setupMoreObserver) })
 /* v2.46.188：PC 端按住左键上下拖拽调顺序（手机端不启用，避免和滚动冲突） */
 useRowDragSort({
   getTableEl: () => tableRef.value?.$el,
@@ -846,18 +887,32 @@ function formatSize(bytes) {
 </script>
 
 <style scoped>
-/* v2.46.299：手机端「显示更多」 */
-.mu-more { display: flex; justify-content: center; padding: 14px 0 8px; }
-.mu-more-btn {
-  padding: 9px 22px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, .16);
-  background: rgba(255, 255, 255, .06);
-  color: inherit;
-  font-size: 13px;
-  cursor: pointer;
+/* v2.46.319：底部哨兵（滚到自动加载）。原来是个「显示更多」按钮，现在只作加载指示。 */
+.mu-more {
+  display: flex; justify-content: center; align-items: center;
+  padding: 18px 0 10px; min-height: 22px;
 }
-.mu-more-btn:active { background: rgba(255, 255, 255, .12); }
+.mu-more-loading,
+.mu-more-done {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; opacity: .62;
+}
+.mu-more-done { opacity: .42; letter-spacing: .04em; }
+/* 三个点依次呼吸，代替转圈 —— 比 spinner 轻，跟站内其他 loading 语言一致 */
+.mu-more-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: currentColor; opacity: .3;
+  animation: muDot 1.05s ease-in-out infinite;
+}
+.mu-more-dot:nth-child(2) { animation-delay: .16s; }
+.mu-more-dot:nth-child(3) { animation-delay: .32s; }
+@keyframes muDot {
+  0%, 80%, 100% { opacity: .25; transform: scale(.85); }
+  40% { opacity: .9; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mu-more-dot { animation: none; opacity: .6; }
+}
 
 .manage-pane {
   background: var(--dp-surface);

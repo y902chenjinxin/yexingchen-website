@@ -7,6 +7,18 @@
 
 ---
 
+## v2.46.319 音乐列表滚动自动加载（2026-11-02）
+
+- 手机端音乐页底部「显示更多」按钮 → 常驻哨兵 + `IntersectionObserver`（rootMargin 240px）。
+- 🔴 **IntersectionObserver 只在状态变化时回调**：加载一批后哨兵若仍在视口内（清单没撑开页面），
+  `isIntersecting` 一直是 true，**不会再通知**。表现「只加载一次，之后滚死也不动」。
+  修法：每次真加载 `nextTick` 重挂观察器（重新 observe 会立刻回报当前状态），加载到上限自然收敛。
+- 探针 `_probe_music_lazy.cjs`：**dev 里 /music 被 vite 代理到后端音频目录**，
+  且移动端外壳没有侧栏锚点、`#app.__vue_app__` 也没暴露 → 用 `route.fulfill` 把
+  `/music` 请求替换成根页 HTML 再直接 goto，这是本站验证 SPA 路由最省事的办法。
+- 移动端判定只认 APK UA 或 `localStorage.xuanhuang_force_mobile='1'`（`?m=1` 写的就是它），
+  探针直接塞这个键即可，不用改 UA。
+
 ## v2.46.318 阅读器桌面列宽（2026-11-01）
 
 - **V246318-001 改 padding 必须同步改 JS 的宽度计算**：`.nrd-txt-cols` 的左右 padding
