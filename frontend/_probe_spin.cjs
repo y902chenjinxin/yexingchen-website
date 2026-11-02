@@ -64,6 +64,17 @@ const state = () => {
     hitLabel: hit ? hit.label : '',
     offsetFromMid: hit ? Math.round((a - hit.mid) * 100) / 100 : null,
     wheelRect: (() => { const r = w.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height } })(),
+    canvas: (() => {
+      const c = document.querySelector('.sp-fx')
+      if (!c) return null
+      const r = c.getBoundingClientRect()
+      return {
+        size: [Math.round(r.width), Math.round(r.height)],
+        dx: Math.round((r.x + r.width / 2) - (w.getBoundingClientRect().x + w.getBoundingClientRect().width / 2)),
+        dy: Math.round((r.y + r.height / 2) - (w.getBoundingClientRect().y + w.getBoundingClientRect().height / 2)),
+        dpr: window.devicePixelRatio,
+      }
+    })(),
   }
 }
 
@@ -122,14 +133,15 @@ const state = () => {
     await page.mouse.move(p.x, p.y)
     await page.waitForTimeout(12)
   }
+  // 松手要贴着最后一次 move：真机也是抬手即触发，中间不能有长间隔
   await page.mouse.up()
   const atRelease = await page.evaluate(state)
   console.log('松手：', JSON.stringify({ rot: atRelease.rot, spinning: atRelease.spinning, fast: atRelease.fast }))
 
-  // 等停稳（v2.46.331 起是"变速自行车"，最长 30s，这里给 34s 余量）
+  // 等停稳（v2.46.332 起上限 15s，这里给 19s 余量）
   const t0 = Date.now()
   let settled = atRelease
-  while (Date.now() - t0 < 34000) {
+  while (Date.now() - t0 < 19000) {
     settled = await page.evaluate(state)
     if (!settled.spinning) break
     await page.waitForTimeout(150)
@@ -145,8 +157,8 @@ const state = () => {
 
   // ---- 断言 ----
   const problems = []
-  if (fin.spinning) problems.push('34 秒还没停')
-  if (fin.ms > 30500) problems.push('超过 30 秒上限：' + fin.ms + 'ms')
+  if (fin.spinning) problems.push('19 秒还没停')
+  if (fin.ms > 15500) problems.push('超过 15 秒上限：' + fin.ms + 'ms')
   if (fin.offsetFromMid == null || Math.abs(fin.offsetFromMid) > 0.8) problems.push('落点没对准中线：' + fin.offsetFromMid)
   if (!fin.result) problems.push('没有展示结果')
   if (fin.result !== fin.hitLabel) problems.push(`结果(${fin.result}) ≠ 指针所指(${fin.hitLabel})`)

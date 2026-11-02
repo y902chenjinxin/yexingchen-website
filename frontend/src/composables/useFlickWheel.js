@@ -27,26 +27,25 @@ const MAX_SPEED = 1800
 /**
  * 指数衰减系数（1/秒）：`v *= exp(-K·dt)`。
  *
- * v2.46.331 夜星要的是「变速自行车」：蹬起来以后松手能溜很久。
- * 原来的 0.985/帧 ≈ exp(-0.91·dt)，满速 1.2 秒就停了；
- * 现在 K=0.135，满速从 1800 掉到 40 要 ln(45)/0.135 ≈ 28 秒，
- * 正好卡在「最多 30 秒」以内。K 越小溜得越久，但太小会变成永动机。
+ * 夜星要「变速自行车」：蹬起来松手能溜很久。v2.46.332 把上限收到 15 秒，
+ * 所以 K 从 0.135 提到 0.255：满速 1800 掉到 40 要 ln(45)/0.255 ≈ 15 秒。
+ * K 越小溜得越久，但太小会变成永动机。
  */
-const SLOW_K = 0.135
+const SLOW_K = 0.255
 /**
  * 弱推的衰减更狠一点。
  *
- * 纯指数衰减的时长只随初速**对数**变化：轻轻一拨（300°/s）也会溜 17 秒，
- * 那就不像自行车了。所以让 K 随初速在 0.135~0.255 之间插值：
- *   · 满速 1800 → K=0.135 → 约 28 秒
- *   · 中等 900  → K=0.195 → 约 16 秒
- *   · 轻推 300  → K=0.255 → 约 8 秒
+ * 纯指数衰减的时长只随初速**对数**变化：固定一个 K 的话，轻轻一拨也会溜十几秒，
+ * 那就不像自行车了。K 随初速线性插值后：
+ *   · 满速 1800 → K=0.255 → 约 15 秒
+ *   · 中等 900  → K=0.34  → 约 9 秒
+ *   · 轻推 300  → K=0.42  → 约 5 秒
  */
-const SLOW_K_WEAK = 0.255
+const SLOW_K_WEAK = 0.42
 /** 低于这个角速度就放弃惯性，进入吸附（deg/s）。 */
 const MIN_SPEED = 40
-/** 惯性最长持续时间，到点强制收尾（夜星要求的上限）。 */
-const MAX_SPIN_MS = 30000
+/** 惯性最长持续时间，到点强制收尾（夜星要求的上限：v2.46.332 从 30s 收到 15s）。 */
+const MAX_SPIN_MS = 15000
 
 /* ---------- 飞轮「变速」参数 ----------
  * 前期慢、越转越快：齿轮比 gear 从 0.55 起步（比手指慢，像刚起步踩不动），
@@ -119,10 +118,13 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
   let ctx = null
   let cw = 0
   let ch = 0
+  let rimR = 0            // 转盘半径（火花从这里往外飞）
   let emitAcc = 0
   let reduceMotion = false
-  const PALETTE = ['#ffe9a8', '#ffd274', '#ffb04a', '#ff8a3d', '#ff6b3d']
-  const GRAVITY = 340
+  const GRAVITY = 320
+  /** 发光精灵：预渲染三档色温的小圆图，绘制时用 drawImage 缩放。
+   *  比每帧 arc()+shadowBlur 快一个量级，也比纯色圆点"有质感"得多。 */
+  let sprites = []
 
   /* ============================ 几何 ============================ */
 
@@ -164,48 +166,91 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
 
   /* ============================ 粒子：Canvas ============================ */
 
+  /**
+   * 画布尺寸用 JS 按轮径算死，不用 CSS 百分比。
+   *
+   * 🔴 踩过：`.sp-fx { width: 152%; height: 152% }` 被全局
+   * `@media(max-width:768px){ .island-inner-tool canvas { max-width:100% } }` 压住 ——
+   * 宽度被砍回 100%、高度仍是 152%，画布变成 300×456 的竖条，
+   * 圆心从 (150,150) 跑到 (72,150)，于是"光圈歪了、没对上转盘"。
+   * 现在宽高/位置一律写 px，并给 `.sp-fx` 加 max-width:none 兜底。
+   */
   function resizeCanvas() {
     const c = canvasRef.value
-    if (!c) return
-    const r = c.getBoundingClientRect()
-    if (!r.width || !r.height) return
-    // 高分屏：先把画布像素放大到 dpr 倍，再用 setTransform 把坐标系换回 CSS 像素，
-    // 这样绘制代码里不用到处乘 dpr，也不会在 2x/3x 屏上发虚。
+    const w = wheelRef.value
+    if (!c || !w) return
+    const r = w.getBoundingClientRect()
+    if (!r.width) return
+
+    const box = Math.round(r.width * 1.5)   // 画布 = 轮径 × 1.5，给火花飞出盘外的余量
+    cw = ch = box
+    rimR = r.width / 2
+    c.style.width = box + 'px'
+    c.style.height = box + 'px'
+    c.style.left = Math.round((r.width - box) / 2) + 'px'
+    c.style.top = Math.round((r.height - box) / 2) + 'px'
+
+    // 高分屏：缓冲放大 dpr 倍，再用 setTransform 把坐标系换回 CSS 像素，
+    // 绘制代码里不用到处乘 dpr，也不会在 2x/3x 屏上发虚。
     const dpr = Math.min(3, window.devicePixelRatio || 1)
-    cw = r.width
-    ch = r.height
-    c.width = Math.round(cw * dpr)
-    c.height = Math.round(ch * dpr)
+    c.width = Math.round(box * dpr)
+    c.height = Math.round(box * dpr)
     ctx = c.getContext('2d')
     if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    if (!sprites.length) sprites = buildSprites()
+  }
+
+  /** 三档色温的发光精灵：白炽芯 / 鎏金 / 琥珀 */
+  function buildSprites() {
+    const make = (inner, mid) => {
+      const S = 64
+      const cv = document.createElement('canvas')
+      cv.width = S
+      cv.height = S
+      const g = cv.getContext('2d')
+      const rg = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2)
+      rg.addColorStop(0, inner)
+      rg.addColorStop(0.18, mid)
+      rg.addColorStop(0.45, mid.replace(/[\d.]+\)$/, '0.25)'))
+      rg.addColorStop(1, 'rgba(255,180,80,0)')
+      g.fillStyle = rg
+      g.fillRect(0, 0, S, S)
+      return cv
+    }
+    return [
+      make('rgba(255,255,255,1)', 'rgba(255,246,214,1)'),
+      make('rgba(255,247,222,1)', 'rgba(255,206,110,1)'),
+      make('rgba(255,214,150,1)', 'rgba(255,150,64,1)'),
+    ]
   }
 
   /** 按"当前角速度"决定这一帧撒几颗火星：速度越高越密，且封顶防糊屏。 */
   function spawn(dt, v) {
-    if (!ctx || reduceMotion) return
-    if (v < FX_SPEED) return
-    const R = (Math.min(cw, ch) / 2) * 0.955
-    const rate = Math.min(110, 6 + ((v - FX_SPEED) / 900) * 74)
+    if (!ctx || reduceMotion || !rimR) return
+    const sp = Math.abs(v)
+    if (sp < FX_SPEED) return
+    const rate = Math.min(170, 12 + ((sp - FX_SPEED) / 700) * 128)
     emitAcc += rate * dt
     const dir = v >= 0 ? 1 : -1
     while (emitAcc >= 1) {
       emitAcc -= 1
       if (particles.length >= 260) break
       const th = Math.random() * Math.PI * 2
-      const x = cw / 2 + Math.sin(th) * R
-      const y = ch / 2 - Math.cos(th) * R
+      const rr = rimR * (0.97 + Math.random() * 0.03)
+      const x = cw / 2 + Math.sin(th) * rr
+      const y = ch / 2 - Math.cos(th) * rr
       // 甩出去的方向 = 径向向外 + 切向（跟转盘同向）的拖拽感
-      const out = 70 + Math.random() * 210 * Math.min(1, v / 1100)
-      const tang = v * 0.075 * dir
+      const out = 40 + Math.random() * 190 * Math.min(1, sp / 1200)
+      const tang = sp * 0.05 * dir
       particles.push({
         x,
         y,
         vx: Math.sin(th) * out + Math.cos(th) * tang,
         vy: -Math.cos(th) * out + Math.sin(th) * tang,
-        life: 0.38 + Math.random() * 0.3,
+        life: 0.55 + Math.random() * 0.6,   // 长一点才看得到"飞出去"的轨迹
         age: 0,
-        size: 0.9 + Math.random() * 1.9,
-        c: PALETTE[(Math.random() * PALETTE.length) | 0],
+        size: 7 + Math.random() * 13,       // 精灵绘制边长（px），大一点才"发光"
+        sp: sprites[(Math.random() * 3) | 0],
       })
     }
   }
@@ -219,7 +264,8 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
         continue
       }
       p.vy += GRAVITY * dt
-      p.vx *= 0.985
+      p.vx *= 0.975
+      p.vy *= 0.995
       p.x += p.vx * dt
       p.y += p.vy * dt
     }
@@ -230,28 +276,57 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
     ctx.clearRect(0, 0, cw, ch)
     if (reduceMotion) return
 
-    // 高速时的外缘光轨：一条随速度加深的金色细环
-    if (speed.value > FX_SPEED) {
-      const R = (Math.min(cw, ch) / 2) * 0.94
-      ctx.globalAlpha = Math.min(0.3, speed.value / 3200)
-      ctx.strokeStyle = '#ffd48a'
-      ctx.lineWidth = 2.2
+    const cx0 = cw / 2
+    const cy0 = ch / 2
+
+    /* 光轨：一圈随速度加深的细环 + 一段跟着转的亮弧。
+       都是"加法混合"，所以叠在深色盘上会自然发光，不会像描边。 */
+    const sp = speed.value
+    if (sp > 120 && rimR) {
+      const k = Math.min(1, (sp - 120) / 1400)
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.globalAlpha = 0.08 + k * 0.28
+      ctx.strokeStyle = '#ffdca0'
+      ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.arc(cw / 2, ch / 2, R, 0, Math.PI * 2)
+      ctx.arc(cx0, cy0, rimR + 3, 0, Math.PI * 2)
       ctx.stroke()
+
+      // 亮弧跟着转盘走：读的是 rot，所以视觉上"贴"在盘沿一起扫
+      const head = (mod(-rot.value, 360) - 90) * D2R
+      ctx.globalAlpha = 0.16 + k * 0.58
+      ctx.lineWidth = 5
+      ctx.lineCap = 'round'
+      const grd = ctx.createLinearGradient(
+        cx0 + Math.cos(head - 0.9) * rimR, cy0 + Math.sin(head - 0.9) * rimR,
+        cx0 + Math.cos(head) * rimR, cy0 + Math.sin(head) * rimR,
+      )
+      grd.addColorStop(0, 'rgba(255,214,140,0)')
+      grd.addColorStop(1, 'rgba(255,246,214,0.95)')
+      ctx.strokeStyle = grd
+      ctx.beginPath()
+      ctx.arc(cx0, cy0, rimR + 3, head - 1.15, head)
+      ctx.stroke()
+      ctx.globalCompositeOperation = 'source-over'
     }
 
-    for (const p of particles) {
-      const a = 1 - p.age / p.life
-      ctx.globalAlpha = a * 0.55
-      ctx.fillStyle = p.c
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, p.size * 2.1, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.globalAlpha = a
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-      ctx.fill()
+    /* 火花：发光精灵 + lighter 混合。每颗画两遍 —— 一遍拖尾、一遍本体，
+       拖尾位置取上一帧的位移方向，看起来才是"飞出去"而不是"原地闪"。 */
+    if (particles.length) {
+      ctx.globalCompositeOperation = 'lighter'
+      for (const p of particles) {
+        const k = 1 - p.age / p.life
+        const sz = p.size * (0.4 + k * 1.0)
+        ctx.globalAlpha = k * 0.95
+        const tx = p.x - p.vx * 0.014
+        const ty = p.y - p.vy * 0.014
+        ctx.globalAlpha = k * 0.5
+        ctx.drawImage(p.sp, tx - sz * 0.6, ty - sz * 0.6, sz * 1.2, sz * 1.2)
+        ctx.globalAlpha = k * 0.95
+        ctx.globalAlpha = k * k * 1.0
+        ctx.drawImage(p.sp, p.x - sz / 2, p.y - sz / 2, sz, sz)
+      }
+      ctx.globalCompositeOperation = 'source-over'
     }
     ctx.globalAlpha = 1
   }
@@ -484,7 +559,7 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
     ensure()
   }
 
-  /** 只取最后 110ms 的样本算速度：包含起手的停顿会让松手速度偏低很多。 */
+  /** 只取最后 110ms 的样本算速度：把起手的停顿算进去会让松手速度偏低很多。 */
   function estimateVel(now) {
     if (samples.length < 2) return 0
     const last = samples[samples.length - 1]
@@ -492,6 +567,15 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
     for (let i = samples.length - 1; i >= 0; i--) {
       if (now - samples[i].t <= 110) first = samples[i]
       else break
+    }
+    /* 窗口里只剩最后一个样本（手指停了一下才抬起）→ dt≈0 会算出 0，
+       甩不出去。真实触摸里 pointerup 比最后一次 move 晚 100~200ms 很常见，
+       所以退一步取倒数第二个样本，但**只在间隔 <250ms 时** ——
+       真的停手超过 250ms 再松，就该判成"停住"，不许再甩。 */
+    if (first === last) {
+      const prev = samples[samples.length - 2]
+      if (prev && now - last.t < 250) first = prev
+      else return 0
     }
     const dt = (last.t - first.t) / 1000
     if (dt <= 0.002) return 0

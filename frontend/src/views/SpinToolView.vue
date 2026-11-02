@@ -31,6 +31,7 @@
            v2.46.330 起支持手指拖着转：按住盘面绕圆心划，松手带惯性滑行，
            速度衰减后吸附到指针所指扇区的正中。粒子画在下面的 canvas 上。 -->
       <div class="sp-wheel-wrap">
+        <i class="sp-bezel" aria-hidden="true"></i>
         <canvas ref="fxCanvas" class="sp-fx" aria-hidden="true"></canvas>
         <i class="sp-pointer" aria-hidden="true"></i>
         <div
@@ -113,6 +114,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
+import confetti from 'canvas-confetti'
 import { haptic, tick } from '@/utils/haptic'
 import { useSnapTicks } from '@/composables/useSnapTicks'
 import { useFlickWheel } from '@/composables/useFlickWheel'
@@ -279,6 +281,31 @@ function showHint() {
   haptic.light()
 }
 
+/**
+ * 落定的一小把金色礼花（v2.46.332）。
+ * 用 canvas-confetti（github.com/catdad/canvas-confetti，MIT，3KB gzip）——
+ * 比自己画纸屑省事太多，而且它自带重力/阻力/形状抖动，落感比手写好。
+ * `disableForReducedMotion` 会在系统开了"减弱动态效果"时自动不撒。
+ */
+function fireConfetti() {
+  try {
+    confetti({
+      particleCount: 34,
+      spread: 66,
+      startVelocity: 30,
+      gravity: 0.85,
+      ticks: 140,
+      scalar: 0.82,
+      zIndex: 2000,
+      origin: { x: 0.5, y: 0.46 },
+      colors: ['#fff8e6', '#ffe9a8', '#ffd274', '#e3b664', '#ffb04a'],
+      disableForReducedMotion: true,
+    })
+  } catch {
+    /* 老内核缺 OffscreenCanvas / 2d 上下文时静默降级，不影响结果展示 */
+  }
+}
+
 /** 落定：结果来自"指针压着哪块"，不是预先随机出来的 */
 function onWheelSettle(idx) {
   const opt = activeCfg.value?.options?.[idx]
@@ -286,6 +313,7 @@ function onWheelSettle(idx) {
   result.value = opt.label
   haptic.medium()
   tick(1)
+  fireConfetti()
   const cfg = activeCfg.value
   cfg.stats = { ...(cfg.stats || {}) }
   cfg.stats[opt.label] = (cfg.stats[opt.label] || 0) + 1
@@ -408,9 +436,32 @@ html[data-theme="day"] .sp-play {
 /* 粒子画布：比转盘大一圈，火星才有地方往外飞。
    pointer-events:none —— 它盖在盘面上，不能挡住手指拖拽。 */
 .sp-fx {
-  position: absolute; left: -26%; top: -26%; width: 152%; height: 152%;
+  /* 尺寸与位置由 useFlickWheel 按轮径写 px（不用百分比）。
+     🔴 必须 max-width:none：tool-mobile.css 在 ≤768px 有一条
+     `.island-inner-tool canvas { max-width:100% }`，百分比宽度会被它砍回 100%
+     而高度仍是 152% —— 画布变竖条，圆心跑偏，"光圈歪了"就是这么来的。 */
+  position: absolute; left: 0; top: 0;
+  max-width: none; max-height: none;
   pointer-events: none; z-index: 3;
 }
+/* 机加工质感外圈：一点点金属渐变高光 + 内阴影，代替原来那圈糊光 */
+.sp-bezel {
+  position: absolute; inset: -9px; border-radius: 50%; z-index: 2; pointer-events: none;
+  background: conic-gradient(from 210deg,
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(255, 238, 196, .55) 38deg,
+    rgba(255, 255, 255, .10) 88deg,
+    rgba(255, 255, 255, 0) 176deg,
+    rgba(255, 238, 196, .30) 246deg,
+    rgba(255, 255, 255, 0) 320deg);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.2px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.2px));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sp-bezel { transition: opacity .3s ease, filter .3s ease; }
+}
+/* 注：高速时的发光交给 .sp-wheel.is-fast 的 box-shadow（金色），
+   这里不用 :has() —— 鸿蒙 4 的 WebView 内核可能不支持，会变成死规则。 */
 .sp-pointer {
   position: absolute; left: 50%; top: -4px; transform: translateX(-50%); z-index: 4;
   border-left: 9px solid transparent; border-right: 9px solid transparent;
@@ -434,12 +485,14 @@ html[data-theme="day"] .sp-play {
 }
 .sp-wheel.dragging { cursor: grabbing; }
 .sp-wheel.spinning { cursor: default; }
-/* 高速态：外缘泛一层金色光，配合 canvas 的光轨，把"转起来了"传达出去 */
+/* 高速态：外缘泛一层**暖金**光（原来用 --color-accent，夜间是紫色，
+   跟鎏金盘面撞在一起很脏）。这里写死暖色，两套主题都成立。 */
 .sp-wheel.is-fast {
   box-shadow:
     0 14px 34px -14px rgba(0, 0, 0, .45),
     inset 0 0 0 6px var(--ls-paper, #fff),
-    0 0 30px -2px color-mix(in srgb, var(--color-accent) 62%, transparent);
+    0 0 34px -4px rgba(255, 208, 120, .5);
+  transition: box-shadow .35s ease;
 }
 .sp-seg-label {
   position: absolute; left: 50%; top: 50%; z-index: 1;
