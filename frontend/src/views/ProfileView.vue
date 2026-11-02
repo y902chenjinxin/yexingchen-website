@@ -109,16 +109,22 @@
           <div class="info-item">
             <div class="pref-text">
               <span class="info-label">刻度反馈</span>
-              <span class="pref-hint">滑动选择跨格时的「哒」声与轻震，按钮点击也有震感；关掉即全站静默</span>
+              <span class="pref-hint">滑动跨格的「咔哒」声与轻震，按钮点击也有震感；关掉即全站静默</span>
+              <span v-if="hapticsNoMotor" class="pref-hint pref-warn">
+                这台设备没有可用的马达震动（iOS / 部分鸿蒙浏览器），已用声音代替
+              </span>
             </div>
-            <el-switch
-              v-model="hapticsOn"
-              class="pref-switch"
-              inline-prompt
-              active-text="开"
-              inactive-text="关"
-              aria-label="刻度反馈开关"
-            />
+            <div class="pref-side">
+              <button type="button" class="pref-test" @click="testHaptics">试一下</button>
+              <el-switch
+                v-model="hapticsOn"
+                class="pref-switch"
+                inline-prompt
+                active-text="开"
+                inactive-text="关"
+                aria-label="刻度反馈开关"
+              />
+            </div>
           </div>
 
           <!-- 工作台模块显示/隐藏 -->
@@ -266,6 +272,7 @@ import BackButton from '@/components/BackButton.vue'
 import GameWalletPanel from '@/components/games/GameWalletPanel.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePrefsStore } from '@/stores/prefs'
+import { tick } from '@/utils/haptic'
 import { revealTheme } from '@/utils/reveal'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 import { getMe, updateMe } from '@/api/auth'
@@ -328,6 +335,22 @@ const hapticsOn = computed({
   get: () => prefs.haptics,
   set: (v) => prefs.setHaptics(v),
 })
+
+/* 「试一下」（v2.46.324）：夜星反馈"手指没感觉"，需要一个当场验证的入口。
+   先直接调 navigator.vibrate 拿返回值（false = 没硬件/没权限/没用户激活），
+   再放一声刻度音 —— 震不到至少听得到，并明说出原因，不用猜。 */
+const hapticsNoMotor = ref(false)
+function testHaptics() {
+  if (!prefs.haptics) return
+  let ok = false
+  try {
+    ok = typeof navigator.vibrate === 'function' && navigator.vibrate(24) !== false
+  } catch {
+    ok = false
+  }
+  hapticsNoMotor.value = !ok
+  tick()
+}
 
 // 主题外观
 const themeOverride = computed(() => prefs.themeOverride)
@@ -620,6 +643,33 @@ async function savePassword() {
 
 .pref-switch {
   flex: none;
+}
+/* 刻度反馈：右侧「试一下」+ 开关（v2.46.324） */
+.pref-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.pref-test {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, rgba(150, 160, 180, .32));
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background-color .15s;
+}
+.pref-test:hover {
+  color: var(--color-accent, #c7a96b);
+  border-color: var(--color-accent, #c7a96b);
+}
+.pref-warn {
+  color: var(--color-warning, #c98a3c);
+  opacity: 1;
 }
 
 /* 主题外观分段控件 */

@@ -77,7 +77,7 @@ import SiteFooter from '@/components/SiteFooter.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import AiToolsDrawer from '@/components/workbench/AiToolsDrawer.vue'
 import { checkFestivalNotice } from '@/utils/festivalNotice'
-import { installUnlock as installHapticsUnlock, installTapFeedback } from '@/utils/haptic'
+import { installUnlock as installHapticsUnlock, installTapFeedback, installRangeTicks } from '@/utils/haptic'
 import { ElNotification } from 'element-plus'
 import { useGameInvites } from '@/composables/useGameInvites'
 import { useIsMobile } from '@/composables/useIsMobile'
@@ -304,7 +304,8 @@ onMounted(async () => {
    *   （没有马达的 iOS 用一声极轻的「嗒」兜底）。 */
   installHapticsUnlock()
   const stopTap = installTapFeedback()
-  onBeforeUnmount(() => stopTap())
+  const stopRange = installRangeTicks()
+  onBeforeUnmount(() => { stopTap(); stopRange() })
 })
 </script>
 

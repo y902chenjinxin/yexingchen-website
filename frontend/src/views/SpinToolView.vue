@@ -9,12 +9,12 @@
 
       <!-- 配置卡片条：多套签组并列常驻（v2.46.78 夜星：多个任务一起存在，切换不丢数据），
            点卡片切换、末位 ＋ 新建 -->
-      <div class="sp-cfg-strip">
+      <div ref="cfgStrip" class="sp-cfg-strip">
         <button
-          v-for="c in configs"
+          v-for="(c, ci) in configs"
           :key="c.id"
           class="sp-cfg-card"
-          :class="{ on: c.id === activeId }"
+          :class="{ on: c.id === activeId, 'is-center': cfgCenter === ci }"
           @click="pickCfg(c.id)"
         >
           <b class="sp-cfg-card-name">{{ c.name }}</b>
@@ -96,6 +96,7 @@
 import { ref, computed, watch } from 'vue'
 import IslandInnerBase from '@/views/islands/IslandInnerBase.vue'
 import { haptic } from '@/utils/haptic'
+import { useSnapTicks } from '@/composables/useSnapTicks'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 /* ---------- 数据模型（localStorage，多套配置 + 抽中统计） ---------- */
@@ -114,6 +115,10 @@ const SEED = {
 }
 let saved = {}
 try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') } catch { /* 忽略坏档 */ }
+/* v2.46.324：签组卡片条改成吸附 + 刻度反馈（滑到哪张哪张抬起来） */
+const cfgStrip = ref(null)
+const { activeIndex: cfgCenter } = useSnapTicks(() => cfgStrip.value)
+
 const configs = ref(Array.isArray(saved.configs) && saved.configs.length ? saved.configs : JSON.parse(JSON.stringify(SEED.configs)))
 const activeId = ref(saved.activeId && configs.value.some(c => c.id === saved.activeId) ? saved.activeId : configs.value[0].id)
 
@@ -289,6 +294,9 @@ html[data-theme="day"] .sp-play {
 .sp-cfg-strip {
   display: flex; gap: 10px; width: 100%; overflow-x: auto; padding: 2px 2px 6px;
   scrollbar-width: none;
+  /* v2.46.324：吸附 + 刻度反馈，滑到哪张哪张抬起 */
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 .sp-cfg-strip::-webkit-scrollbar { display: none; }
 .sp-cfg-card {
@@ -300,6 +308,12 @@ html[data-theme="day"] .sp-play {
   transition: border-color .2s, box-shadow .2s, transform .15s, background-color .2s;
 }
 .sp-cfg-card:active { transform: scale(.97); }
+/* 刻度吸附的视觉联动（v2.46.324）：居中那张抬起来，配跨格「哒」声 */
+.sp-cfg-card { scroll-snap-align: start; }
+.sp-cfg-card.is-center {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 22px -14px rgba(0, 0, 0, .6);
+}
 .sp-cfg-card.on {
   border-color: color-mix(in srgb, var(--color-accent) 62%, transparent);
   box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--color-accent) 90%, transparent),
