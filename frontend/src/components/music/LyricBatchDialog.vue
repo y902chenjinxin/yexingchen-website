@@ -37,9 +37,32 @@
           <AppIcon icon="✨" :size="15" />
           {{ busy ? fetchingLabel || '抓取中…' : `在线补全（还剩 ${stats.missing} 首）` }}
         </button>
+        <button class="lyb-btn lyb-btn--align" type="button" :disabled="alignJob.running" @click="startAlign">
+          <AppIcon icon="🎧" :size="15" />
+          {{ alignJob.running ? '对齐中…' : '按音频重新对齐' }}
+        </button>
         <span class="lyb-spacer"></span>
         <button class="lyb-btn" type="button" @click="reload">刷新</button>
       </div>
+
+      <!-- v2.46.343 按音频重新对齐：网上抓的时间轴对不上 DJ/翻唱版，用识别重算 -->
+      <p class="lyb-tip lyb-tip--align">
+        在线补全拿的是<strong>官方版时间轴</strong>，你的音频如果是 DJ 版 / 翻唱版 / 钢琴版，
+        歌词就会整体偏 0.2~1.5 秒、每句还各偏各的。「按音频重新对齐」会用语音识别
+        找出<strong>每一句在这段音频里真正被唱出来的时刻</strong>，文本不动、只改时间。
+      </p>
+
+      <div v-if="alignJob.running || alignJob.done" class="lyb-progress lyb-progress--align">
+        <div class="lyb-bar"><i :style="{ width: alignPercent + '%' }"></i></div>
+        <span>
+          {{ alignJob.done }} / {{ alignJob.total }} 首
+          <template v-if="alignJob.running && alignJob.eta"> · 剩余约 {{ Math.ceil(alignJob.eta / 60) }} 分钟</template>
+          <template v-if="!alignJob.running && alignJob.done"> · 已完成</template>
+        </span>
+        <button v-if="alignJob.running" class="lyb-mini" type="button" @click="stopAlignNow">停止</button>
+      </div>
+      <div v-if="alignJob.running && alignJob.current" class="lyb-current">正在处理：{{ alignJob.current }}</div>
+      <div v-if="alignJob.last_error" class="lyb-err">{{ alignJob.last_error }}</div>
 
       <p class="lyb-tip">
         文件名与歌名相同即可自动关联（「晴天.lrc」「01 晴天 - 周杰伦.lrc」都认）。
@@ -86,10 +109,11 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import AppIcon from '@/components/common/AppIcon.vue'
 import {
   getLyricStats, fetchLyricMissing, uploadLyricFiles, saveLyric, getMusicList,
+  alignAllLyrics, getAlignProgress, stopAlignLyrics,
 } from '@/api/music'
 
 const props = defineProps({ modelValue: Boolean })
@@ -105,6 +129,66 @@ const fetchedOk = ref(0)
 const fetchedTotal = ref(0)
 
 const okCount = computed(() => results.value.filter((r) => r.ok).length)
+
+/* ---------- 按音频重新对齐（v2.46.343）---------- */
+const alignJob = ref({ running: false, total: 0, done: 0, ok: 0, fail: 0, current: '', eta: 0, last_error: '' })
+const alignPercent = computed(() =>
+  alignJob.value.total ? Math.round((alignJob.value.done / alignJob.value.total) * 100) : 0
+)
+let alignTimer = 0
+
+/**
+ * @param {boolean} silent 打开弹窗时的「看一眼状态」不该弹提示
+ *   （否则关掉页面再回来，每次都弹一句「对齐完成」）
+ */
+async function pollAlign(silent = false) {
+  try {
+    const res = await getAlignProgress()
+    alignJob.value = res?.data || res || {}
+    if (!alignJob.value.running) {
+      clearInterval(alignTimer)
+      alignTimer = 0
+      if (!silent && alignJob.value.done) {
+        ElMessage.success(`对齐完成：成功 ${alignJob.value.ok} 首${alignJob.value.fail ? `，失败 ${alignJob.value.fail} 首` : ''}`)
+        reload()
+        emit('changed')
+      }
+    }
+  } catch { /* 轮询失败静默，下一轮再试 */ }
+}
+
+function ensurePoll() {
+  if (!alignTimer) alignTimer = setInterval(() => pollAlign(), 3000)
+}
+
+async function startAlign() {
+  const ok = await ElMessageBox.confirm(
+    '会用语音识别逐首重新计算时间轴（文本不变）。整库约 1~2 小时，跑在服务器后台，可以关掉页面。如果音频不是原唱（纯音乐/伴奏），那首会保留原时间。',
+    '按音频重新对齐',
+    { confirmButtonText: '开始', cancelButtonText: '取消', type: 'info' },
+  ).catch(() => false)
+  if (!ok) return
+  try {
+    const res = await alignAllLyrics()
+    const d = res?.data || res || {}
+    if (d.running === false && d.done === 0 && res?.msg === '已经在跑了') {
+      ElMessage.info('已经在跑了')
+    } else {
+      ElMessage.success('已开始，可以关掉这个页面')
+    }
+    await pollAlign()
+    ensurePoll()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.detail || '启动失败')
+  }
+}
+
+async function stopAlignNow() {
+  try {
+    await stopAlignLyrics()
+    ElMessage.info('已请求停止，当前这首跑完就停')
+  } catch { /* 忽略 */ }
+}
 const fetchPercent = computed(() =>
   fetchedTotal.value ? Math.round((fetchedOk.value / fetchedTotal.value) * 100) : 0
 )
@@ -126,6 +210,10 @@ async function loadTracks() {
 }
 
 watch(() => props.modelValue, (v) => {
+  if (v) {
+    // 关掉页面再回来：先看一眼后台还在不在跑，在跑才开轮询
+    pollAlign(true).then(() => { if (alignJob.value.running) ensurePoll() })
+  }
   if (v) {
     results.value = []
     fetchedOk.value = 0
@@ -268,4 +356,10 @@ async function onFetchAll() {
   border: 1px solid var(--yq-rain, #0a708c); background: transparent; color: var(--yq-rain, #0a708c);
 }
 .lyb-mini:disabled { opacity: .45; cursor: default; }
+.lyb-tip--align { margin-top: 6px; }
+.lyb-btn--align { border-color: var(--lj-seal, #c7a96b); color: var(--lj-seal, #c7a96b); }
+.lyb-btn--align:hover:not(:disabled) { background: color-mix(in srgb, var(--lj-seal, #c7a96b) 12%, transparent); }
+.lyb-progress--align { margin-top: 8px; flex-wrap: wrap; }
+.lyb-current { margin-top: 4px; font-size: 12px; opacity: .68; }
+.lyb-err { margin-top: 4px; font-size: 12px; color: var(--lj-vermilion, #b4513f); }
 </style>

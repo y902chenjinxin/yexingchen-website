@@ -75,3 +75,13 @@ export const getLyricMissing = (limit = 200) => api.get('/music/lyric/missing', 
 /** 批量抓缺失（一次 20 首，前端循环调用） */
 export const fetchLyricMissing = (limit = 20) =>
   api.post('/music/lyric/fetch-missing', null, { params: { limit }, timeout: 3 * 60 * 1000 })
+
+/* ---------- 歌词对齐（v2.46.343）----------
+ * 用音频本身（ASR 逐段识别）重新定时间轴。
+ * 网上抓的 LRC 是官方版时间轴，DJ 版/翻唱版对不上，只能按音频重算。
+ */
+export const alignAllLyrics = () => api.post('/music/lyric/align-all')
+export const getAlignProgress = () => api.get('/music/lyric/align-progress')
+export const stopAlignLyrics = () => api.post('/music/lyric/align-stop')
+/** 单首重新对齐（约 20 秒，超时给足） */
+export const alignOneLyric = (id) => api.post(`/music/${id}/lyric/align`, {}, { timeout: 5 * 60 * 1000 })

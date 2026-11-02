@@ -8,6 +8,9 @@ from typing import Optional, List
 import os
 import io
 import csv
+import json
+import threading
+import time
 from datetime import datetime
 from app.schemas.common import *
 from app.database import get_db, SessionLocal
@@ -17,6 +20,7 @@ from app.services.log_service import log_action
 from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_MUSIC_EXTENSIONS, ALLOWED_COVER_EXTENSIONS
 from app.config import settings
 from app.services import lyrics as lyric_svc
+from app.services import lyric_align
 
 router = APIRouter(prefix="/api/music", tags=["音乐岛"])
 
@@ -791,4 +795,264 @@ def lyric_missing(
     return ResponseBase(data={
         "items": [{"id": m.id, "title": m.title, "artist": m.artist or "", "duration": m.duration or 0} for m in rows],
         "count": len(rows),
+    })
+
+
+# ==================== 歌词对齐（v2.46.343） ====================
+# 夜星：「不要偷懒找现成的…有些资源是我在网上找的，不是原版」「现在歌词老是慢了一拍」。
+# 网上抓的 LRC 是官方版时间轴，而他的音频是 DJ 版/翻唱版 → 每行都偏。
+# 这里用音频本身（SenseVoice 逐段识别）重新定时间，见 services/lyric_align.py。
+
+def _audio_abs_path(m) -> str:
+    """Music.file_path（/music/xxx.mp3）→ 磁盘绝对路径"""
+    rel = (m.file_path or "").lstrip("/")
+    for base in (settings.UPLOAD_DIR, "/var/www/yexingchen/backend/uploads"):
+        p = os.path.join(base, rel)
+        if os.path.isfile(p):
+            return p
+    raise_error(ErrCode.NOT_FOUND, "音频文件找不到（可能已被清理）")
+
+
+@router.post("/{music_id}/lyric/align", response_model=ResponseBase)
+def align_lyric(
+    music_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """用音频重新对齐这首歌的歌词时间轴（文本不变，只改时间）。
+
+    单首约 18 秒（19x 实时）。前端超时给到 3 分钟。
+    """
+    m = _find_track(db, music_id)
+    if not lyric_svc.has_timeline(m.lyric or ""):
+        raise_error(ErrCode.INVALID_PARAM, "这首歌还没有带时间轴的歌词，先用「识别生成」")
+    try:
+        res = lyric_align.align_audio(_audio_abs_path(m), m.lyric)
+    except RuntimeError as exc:
+        raise_error(ErrCode.INVALID_PARAM, str(exc)[:180])
+
+    m.lyric = res["lyric"][:MAX_LYRIC_CHARS]
+    m.lyric_source = "aligned"
+    m.lyric_at = datetime.now()
+    db.commit()
+    return ResponseBase(msg=f"已对齐 {res['stats']['aligned']}/{res['stats']['lines']} 行", data={
+        "id": m.id, "stats": res["stats"], "lyric": m.lyric,
+    })
+
+
+@router.post("/{music_id}/lyric/transcribe", response_model=ResponseBase)
+def transcribe_lyric(
+    music_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """没有歌词（或彻底对不上）时：识别音频生成歌词。
+
+    有 LRC 文本就保留用户/原曲的文本、只重定时间；完全没有就用识别文本。
+    """
+    m = _find_track(db, music_id)
+    hint = m.lyric or ""
+    try:
+        res = lyric_align.transcribe_to_lrc(_audio_abs_path(m), hint if lyric_svc.has_timeline(hint) else "")
+    except RuntimeError as exc:
+        raise_error(ErrCode.INVALID_PARAM, str(exc)[:180])
+
+    m.lyric = res["lyric"][:MAX_LYRIC_CHARS]
+    m.lyric_source = "asr"
+    m.lyric_at = datetime.now()
+    db.commit()
+    return ResponseBase(msg=f"已生成 {res['stats']['lines']} 行", data={
+        "id": m.id, "stats": res["stats"], "lyric": m.lyric,
+    })
+
+
+# ---------- 批量：后台线程跑，前端轮询进度 ----------
+# 为什么不用「前端循环调单曲接口」：280 首 × 22 秒 ≈ 100 分钟，
+# 用户关掉页面就断了。后台线程 + 进度接口才能关页面也继续跑。
+#
+# 🔴 状态必须落**文件**，不能放模块全局：run.py 里 workers=2，
+# 两个进程各有自己的一份模块变量 —— 请求打到 A 起线程、progress 打到 B 就看到空状态。
+# 同理，起跑前必须抢一个跨进程锁文件，否则两个 worker 会各跑一遍全库（双倍 CPU + 互相覆盖）。
+_JOB_FILE = "/tmp/xh_lyric_align_job.json"
+_LOCK_FILE = "/tmp/xh_lyric_align.lock"
+
+
+def _job_init() -> dict:
+    return {"running": False, "total": 0, "done": 0, "ok": 0, "fail": 0,
+            "current": "", "started_at": 0.0, "last_error": "", "finished_at": 0.0, "pid": 0}
+
+
+def _job_read() -> dict:
+    try:
+        with open(_JOB_FILE, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        base = _job_init()
+        if isinstance(d, dict):
+            base.update({k: v for k, v in d.items() if k in base})
+        return base
+    except Exception:  # noqa: BLE001
+        return _job_init()
+
+
+def _job_write(d: dict) -> None:
+    try:
+        tmp = f"{_JOB_FILE}.{os.getpid()}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False)
+        os.replace(tmp, _JOB_FILE)      # 原子替换，读的一侧不会读到半截 JSON
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _lock_acquire() -> bool:
+    """抢跨进程锁；顺带清理「进程已经没了但锁还在」的陈旧锁。"""
+    try:
+        with open(_LOCK_FILE, "r", encoding="utf-8") as f:
+            pid = int((f.read() or "0").strip() or 0)
+        if pid and not os.path.exists(f"/proc/{pid}"):
+            os.remove(_LOCK_FILE)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        fd = os.open(_LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        return False
+
+
+def _lock_release() -> None:
+    try:
+        os.remove(_LOCK_FILE)
+    except OSError:
+        pass
+
+
+def _align_worker(only_missing: bool) -> None:
+    from app.database import SessionLocal
+    db = SessionLocal()
+    job = None
+    try:
+        q = db.query(Music)
+        if only_missing:
+            q = q.filter(or_(Music.lyric.is_(None), Music.lyric == ""))
+        rows = q.order_by(Music.sort_order.asc(), Music.id.asc()).all()
+
+        job = _job_read()
+        job["total"] = len(rows)
+        job["running"] = True
+        _job_write(job)
+
+        for m in rows:
+            if not _job_read().get("running"):
+                break
+            job["current"] = f"{m.id} · {m.title}"
+            _job_write(job)
+            try:
+                path = _audio_abs_path(m)
+                if lyric_svc.has_timeline(m.lyric or ""):
+                    res = lyric_align.align_audio(path, m.lyric)
+                    m.lyric = res["lyric"][:MAX_LYRIC_CHARS]
+                    m.lyric_source = "aligned"
+                else:
+                    res = lyric_align.transcribe_to_lrc(path, "")
+                    m.lyric = res["lyric"][:MAX_LYRIC_CHARS]
+                    m.lyric_source = "asr"
+                m.lyric_at = datetime.now()
+                db.commit()
+                job["ok"] += 1
+            except Exception as exc:  # noqa: BLE001
+                db.rollback()
+                job["fail"] += 1
+                job["last_error"] = f"{m.title}: {str(exc)[:120]}"
+            finally:
+                job["done"] += 1
+                _job_write(job)
+    finally:
+        db.close()
+        if job is not None:
+            job["running"] = False
+            job["finished_at"] = time.time()
+            job["current"] = ""
+            _job_write(job)
+        _lock_release()
+
+
+@router.post("/lyric/align-all", response_model=ResponseBase)
+def align_all(
+    only_missing: bool = False,
+    current_user: dict = Depends(get_current_user),
+):
+    """把整个曲库重新对齐一遍（后台线程，关页面也会继续跑）。"""
+    if not lyric_align.available():
+        raise_error(ErrCode.INVALID_PARAM, "服务端未部署语音识别模型")
+    if not _lock_acquire():
+        return ResponseBase(msg="已经在跑了", data=_job_read())
+    d = _job_init()
+    d.update({"running": True, "started_at": time.time(), "pid": os.getpid(), "current": "准备中…"})
+    _job_write(d)
+    threading.Thread(target=_align_worker, args=(only_missing,), daemon=True).start()
+    return ResponseBase(msg="已开始", data=d)
+
+
+@router.get("/lyric/align-progress", response_model=ResponseBase)
+def align_progress(current_user: dict = Depends(get_current_user)):
+    d = _job_read()
+    d["eta"] = 0
+    if d["running"] and d["done"] > 0:
+        per = (time.time() - d["started_at"]) / d["done"]
+        d["eta"] = int(per * max(0, d["total"] - d["done"]))
+    return ResponseBase(data=d)
+
+
+@router.post("/lyric/align-stop", response_model=ResponseBase)
+def align_stop(current_user: dict = Depends(get_current_user)):
+    """停止：只改文件里的 running 标志，worker 每首开始前读一次就会退出。"""
+    d = _job_read()
+    d["running"] = False
+    _job_write(d)
+    return ResponseBase(msg="已请求停止（当前这首跑完就停）")
+
+
+@router.post("/lyric/align-upload", response_model=ResponseBase)
+async def align_upload(
+    file: UploadFile = File(...),
+    lyrics: str = Form(""),
+    current_user: dict = Depends(get_current_user),
+):
+    """上传一个音频文件 → 生成/对齐歌词，直接返回 LRC 文本（不落库）。
+
+    给「视频去水印 → 下载音频」之后用：拿到 mp3 想配一份对得上的歌词。
+    `lyrics` 可选：贴了歌词文本就以它为准（识别只用来定时间），
+    不贴就直接用识别结果（会有错别字，但时间是对的）。
+    """
+    if not lyric_align.available():
+        raise_error(ErrCode.INVALID_PARAM, "服务端未部署语音识别模型")
+    name = file.filename or "audio.mp3"
+    ext = os.path.splitext(name)[1].lower()
+    if ext not in (".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".wma", ".mp4", ".mkv", ".webm"):
+        raise_error(ErrCode.INVALID_PARAM, "不支持的音频格式")
+
+    raw = await file.read()
+    if len(raw) > 120 * 1024 * 1024:
+        raise_error(ErrCode.INVALID_PARAM, "文件超过 120MB")
+
+    tmp = os.path.join("/tmp", f"align_{int(time.time())}_{abs(hash(name)) % 10000}{ext}")
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(raw)
+        res = lyric_align.transcribe_to_lrc(tmp, lyrics or "")
+    except RuntimeError as exc:
+        raise_error(ErrCode.INVALID_PARAM, str(exc)[:180])
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+    return ResponseBase(msg=f"生成 {res['stats']['lines']} 行", data={
+        "lyric": res["lyric"],
+        "stats": res["stats"],
+        "filename": os.path.splitext(name)[0],
     })
