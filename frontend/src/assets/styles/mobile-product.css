@@ -293,6 +293,17 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
   border: 1px solid var(--m-line) !important; border-radius: 16px !important;
   background: var(--m-surface) !important; box-shadow: none !important; }
 #app.is-mobile .fin-pool::after { display: none !important; }
+/* 刻度吸附的视觉联动（v2.46.323）：滑到哪张哪张抬起来，邻居压暗一点。
+   配 useSnapTicks 的跨格「哒」声，形成指南针式的三合一反馈。 */
+#app.is-mobile .fin-pool {
+  transition: transform .26s cubic-bezier(.22, .61, .36, 1), opacity .26s ease, box-shadow .26s ease;
+  opacity: .84;
+}
+#app.is-mobile .fin-pool.is-center {
+  opacity: 1;
+  transform: translateY(-2px) scale(1.012);
+  box-shadow: 0 12px 28px rgba(4, 8, 14, .38) !important;
+}
 #app.is-mobile .fin-pool-name { color: var(--m-text-2); }
 #app.is-mobile .fin-pool-val { color: var(--m-text); font-size: 22px; }
 #app.is-mobile .fin-pool-val.neg, #app.is-mobile .fin-pcard-val.neg,

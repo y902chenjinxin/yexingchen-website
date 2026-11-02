@@ -77,6 +77,7 @@ import SiteFooter from '@/components/SiteFooter.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import AiToolsDrawer from '@/components/workbench/AiToolsDrawer.vue'
 import { checkFestivalNotice } from '@/utils/festivalNotice'
+import { installUnlock as installHapticsUnlock, installTapFeedback } from '@/utils/haptic'
 import { ElNotification } from 'element-plus'
 import { useGameInvites } from '@/composables/useGameInvites'
 import { useIsMobile } from '@/composables/useIsMobile'
@@ -295,6 +296,15 @@ onMounted(async () => {
    * 这里只负责「新到一条时弹一个非阻塞角标提示」。
    * 旧实现用 ElMessageBox 居中确认框：一次性、错过就没了，且违反全站无弹窗约定。 */
   gameInvites.start(onInviteArrivals)
+
+  /* ---------- 触感反馈引擎（v2.46.323）----------
+   * installHapticsUnlock：iOS 只允许在用户手势栈内 resume AudioContext，
+   *   这里挂一次 pointerdown/touchstart 预热，之后的滚动「哒」声才出得来。
+   * installTapFeedback：document 级事件委托，全站按钮点一下都带震感
+   *   （没有马达的 iOS 用一声极轻的「嗒」兜底）。 */
+  installHapticsUnlock()
+  const stopTap = installTapFeedback()
+  onBeforeUnmount(() => stopTap())
 })
 </script>
 

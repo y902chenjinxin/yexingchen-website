@@ -105,6 +105,22 @@
             />
           </div>
 
+          <!-- 刻度反馈（v2.46.323）：滑动跨格的「哒」声 + 轻震，按钮点击也在内 -->
+          <div class="info-item">
+            <div class="pref-text">
+              <span class="info-label">刻度反馈</span>
+              <span class="pref-hint">滑动选择跨格时的「哒」声与轻震，按钮点击也有震感；关掉即全站静默</span>
+            </div>
+            <el-switch
+              v-model="hapticsOn"
+              class="pref-switch"
+              inline-prompt
+              active-text="开"
+              inactive-text="关"
+              aria-label="刻度反馈开关"
+            />
+          </div>
+
           <!-- 工作台模块显示/隐藏 -->
           <div v-for="m in moduleOptions" :key="m.key" class="info-item">
             <div class="pref-text">
@@ -305,6 +321,12 @@ async function doInstall() {
 const petVisible = computed({
   get: () => prefs.petVisible,
   set: (v) => prefs.setPetVisible(v),
+})
+
+// 刻度/点击反馈开关（v2.46.323）：store 里 setHaptics 会同时调 haptic.setEnabled
+const hapticsOn = computed({
+  get: () => prefs.haptics,
+  set: (v) => prefs.setHaptics(v),
 })
 
 // 主题外观

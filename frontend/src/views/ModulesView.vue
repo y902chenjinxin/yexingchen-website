@@ -13,13 +13,19 @@
       </div>
 
       <div ref="strips" class="mdl-stripwrap">
-        <div class="mdl-strip" @scroll="onStripScroll">
-          <template v-for="it in g.items" :key="it.path || it.actionId">
+        <div
+          class="mdl-strip"
+          :class="{ 'at-end': atEnd[gkey(g)] }"
+          :data-gk="gkey(g)"
+          @scroll="onStripScroll"
+        >
+          <template v-for="(it, i) in g.items" :key="it.path || it.actionId">
             <!-- v2.41.2：与桌面侧栏同源——kind:'action' 项点击触发命令面板 / AI 抽屉 -->
             <button
               v-if="it.kind === 'action'"
               type="button"
               class="mdl-card mdl-action"
+              :class="{ 'is-center': centerOf(g) === i }"
               @click="onActionClick(it)"
             >
               <span class="mdl-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
@@ -31,6 +37,7 @@
               :target="it.newTab ? '_blank' : undefined"
               :rel="it.newTab ? 'noopener noreferrer' : undefined"
               class="mdl-card"
+              :class="{ 'is-center': centerOf(g) === i }"
               @click="buzz"
             >
               <span class="mdl-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
@@ -40,7 +47,7 @@
               v-else
               :to="it.path"
               class="mdl-card"
-              :class="{ active: isActive(it.path) }"
+              :class="{ active: isActive(it.path), 'is-center': centerOf(g) === i }"
               :aria-current="isActive(it.path) ? 'page' : undefined"
               @click="buzz"
             >
@@ -100,10 +107,12 @@
 
 <script setup>
 defineOptions({ name: 'ModulesView' })
-import { computed, nextTick, onMounted, ref, inject } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, inject } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { centeredIndex } from '@/composables/useSnapTicks'
+import { tick as tickFeedback } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'
 import { buildNavModules, countNavItems, isNavItemActive, formatKbd } from '@/constants/navModules'
 
@@ -147,16 +156,38 @@ const isActive = (path) => isNavItemActive(path, route.path)
 
 const strips = ref([])
 
+/* ---- 条带刻度反馈（v2.46.323）----
+ * 每条带各自记「最近中心的索引」，跨格时响一声 + 卡片微放大。
+ * 状态用 reactive 对象按分组 key 存，避免为一堆条带建一堆 ref。 */
+const atEnd = reactive({})
+const centerMap = reactive({})
+const stripRaf = new Map()   // stripEl -> raf 句柄
+const stripLast = new Map()  // stripEl -> 上次索引
+
+const gkey = (g) => g.label || '__home__'
+const centerOf = (g) => (centerMap[gkey(g)] ?? -1)
+
 /** 滑到末尾就隐去右缘渐隐，避免「还有内容」的错觉 */
-function syncStrip(el) {
-  const s = el.querySelector?.('.mdl-strip')
-  if (!s) return
-  const atEnd = s.scrollLeft + s.clientWidth >= s.scrollWidth - 4
-  s.classList.toggle('at-end', atEnd)
+function syncStrip(strip) {
+  const el = strip?.querySelector?.('.mdl-strip') || strip
+  if (!el) return
+  atEnd[el.dataset.gk || ''] = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4
 }
 
 function onStripScroll(e) {
-  syncStrip(e.currentTarget.parentElement)
+  const strip = e.currentTarget
+  syncStrip(strip.parentElement)
+
+  if (stripRaf.get(strip)) return
+  stripRaf.set(strip, requestAnimationFrame(() => {
+    stripRaf.delete(strip)
+    const idx = centeredIndex(strip)
+    if (idx < 0 || stripLast.get(strip) === idx) return
+    const first = !stripLast.has(strip)
+    stripLast.set(strip, idx)
+    if (!first) tickFeedback()   // 落位那一下不响，只有"跨格"才响
+    centerMap[strip.dataset.gk || ''] = idx
+  }))
 }
 
 function buzz() {
@@ -269,6 +300,26 @@ onMounted(async () => {
   -webkit-tap-highlight-color: transparent;
 }
 .mdl-card:active { transform: scale(.95); }
+
+/* 刻度吸附的视觉联动（v2.46.323）：滑到中心的那张微微抬起 + 图标弹一下。
+   图标弹跳用 animation 而不是 transition —— 类切换只发生一次，
+   animation 天然"播一遍就停"，不需要额外重置计时器。 */
+.mdl-card.is-center {
+  transform: translateY(-2px) scale(1.045);
+  border-color: var(--m-accent, rgba(199, 169, 107, .55));
+  box-shadow: 0 8px 20px rgba(2, 6, 12, .34);
+}
+.mdl-card.is-center .mdl-card__ico {
+  animation: mdl-tick-bounce .17s cubic-bezier(.34, 1.56, .64, 1);
+}
+@keyframes mdl-tick-bounce {
+  0% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mdl-card.is-center { transform: none; }
+  .mdl-card.is-center .mdl-card__ico { animation: none; }
+}
 .mdl-action {
   background: var(--m-surface, #141c26);
   font: inherit;

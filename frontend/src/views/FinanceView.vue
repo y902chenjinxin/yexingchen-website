@@ -284,12 +284,13 @@
       </transition>
 
       <!-- 资金池卡片（公私账核心视觉锚点）：点击切到对应 Tab -->
-      <section class="fin-pools m-stagger" aria-label="资金池">
+      <!-- v2.46.323：手机端池子是横向吸附条，滑到哪张哪张"亮"起来（刻度阻尼手感） -->
+      <section ref="poolsEl" class="fin-pools m-stagger" aria-label="资金池">
         <button
-          v-for="p in poolCards"
+          v-for="(p, pi) in poolCards"
           :key="p.fund"
           class="fin-pool glass"
-          :class="[p.fund, { on: activeTab === p.fund }]"
+          :class="[p.fund, { on: activeTab === p.fund, 'is-center': poolCenter === pi }]"
           @click="openPool(p.fund)"
         >
           <span class="fin-pool-top">
@@ -888,6 +889,7 @@ import Stepper from '@/components/common/Stepper.vue'
 import { countUp } from '@/utils/games/countUp'
 import { haptic } from '@/utils/haptic'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { useSnapTicks } from '@/composables/useSnapTicks'
 import { financeApi, exportFinanceCsv } from '@/api/finance'
 import { listMembers } from '@/api/life'
 import { useAuthStore } from '@/stores/auth'
@@ -1027,6 +1029,10 @@ const saving = ref(false)
 /* ---- 交互升级（v2.46.33 · APP_design.md 对齐） ---- */
 const { isMobile } = useIsMobile()
 const isMobileLayout = isMobile
+
+/* 池子横滑的刻度反馈：只在手机端绑定（桌面是三列网格，没有滚动可言） */
+const poolsEl = ref(null)
+const { activeIndex: poolCenter } = useSnapTicks(() => (isMobile.value ? poolsEl.value : null))
 // 数字滚动（#26）：四张 KPI 卡
 const animIncome = countUp(() => summary.value.income || 0, 620, 2)
 const animExpense = countUp(() => summary.value.expense || 0, 620, 2)

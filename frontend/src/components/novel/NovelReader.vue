@@ -257,7 +257,7 @@
         <div class="nrd-set-row">
           <span>亮度</span>
           <div class="nrd-slider">
-            <input v-model.number="brightness" type="range" min="35" max="100" step="1" @input="saveSettings" />
+            <input v-model.number="brightness" type="range" min="35" max="100" step="1" @input="onSlide($event, saveSettings)" />
             <em>{{ brightness }}%</em>
           </div>
         </div>
@@ -332,7 +332,7 @@
           <span>字号</span>
           <div class="nrd-slider">
             <button class="nrd-step" type="button" @click="bump('size', -1)">A-</button>
-            <input v-model.number="size" type="range" min="14" max="30" step="1" @input="applyAll" />
+            <input v-model.number="size" type="range" min="14" max="30" step="1" @input="onSlide($event, applyAll)" />
             <button class="nrd-step" type="button" @click="bump('size', 1)">A+</button>
             <em>{{ size }}px</em>
           </div>
@@ -341,7 +341,7 @@
         <div class="nrd-set-row">
           <span>行距</span>
           <div class="nrd-slider">
-            <input v-model.number="lineHeight" type="range" min="1.4" max="2.4" step="0.1" @input="applyAll" />
+            <input v-model.number="lineHeight" type="range" min="1.4" max="2.4" step="0.1" @input="onSlide($event, applyAll)" />
             <em>{{ lineHeight.toFixed(1) }}</em>
           </div>
         </div>
@@ -349,7 +349,7 @@
         <div class="nrd-set-row">
           <span>段距</span>
           <div class="nrd-slider">
-            <input v-model.number="paraGap" type="range" min="0" max="1.6" step="0.05" @input="onTypesetChange" />
+            <input v-model.number="paraGap" type="range" min="0" max="1.6" step="0.05" @input="onSlide($event, onTypesetChange)" />
             <em>{{ paraGap.toFixed(2) }}</em>
           </div>
         </div>
@@ -357,7 +357,7 @@
         <div class="nrd-set-row">
           <span>边距</span>
           <div class="nrd-slider">
-            <input v-model.number="padding" type="range" min="8" max="64" step="2" @input="applyAll" />
+            <input v-model.number="padding" type="range" min="8" max="64" step="2" @input="onSlide($event, applyAll)" />
             <em>{{ padding }}px</em>
           </div>
         </div>
@@ -407,6 +407,7 @@ async function ensureEpubLib() {
 }
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
 import { takeToc, takeChapter } from '@/utils/novelPrefetch'
+import { stepTick } from '@/utils/haptic'
 
 const props = defineProps({
   novel: { type: Object, required: true },
@@ -893,6 +894,13 @@ async function loadReaderBg() {
     const j = await r.json()
     if (j && j.code === 0 && j.data && j.data.url) bgImage.value = j.data.url
   } catch { /* 忽略 */ }
+}
+
+/* v2.46.323：滑杆每跨一档「哒」一声（指南针刻度感）。
+   stepTick 内部按元素记上次值，只有档位真的变了才响 —— 鼠标按住不动不会连响。 */
+function onSlide(e, fn) {
+  stepTick(e)
+  fn()
 }
 
 function bump(key, d) {

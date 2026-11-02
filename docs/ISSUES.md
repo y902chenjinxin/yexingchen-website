@@ -7,6 +7,38 @@
 
 ---
 
+## v2.46.323 刻度阻尼反馈（2026-11-02）
+
+### V246323-001：滚动反馈不能用 IntersectionObserver 判「居中」
+
+- **根因**：IO 只在阈值穿越时回调，快速滑动**一次跨多张只回 1 次**（中间项直接丢），
+  且 rootMargin 按视口算，容器带 safe-area / 标题偏移时整体偏位。
+- **定论**：横向吸附一律 `scroll` + `requestAnimationFrame`，每帧算
+  `|子元素中心 - 容器中心|` 最小的索引（`composables/useSnapTicks.js`）。
+- **也别用 `scrollLeft / 卡宽`**：两侧 padding + 末尾撞 `maxScroll` 会让除法偏 1 格。
+
+### V246323-002：合成音的三条硬规则
+
+1. 限流 50ms（`MIN_GAP_MS`）：1 秒跨 5 格不限流会叠成刺耳电流声。
+2. envelope 起止都要 `exponentialRampToValueAtTime(0.0001, …)`；
+   `gain=0.2 直接 stop` = 波形硬切在非零位置 = "啪"的爆音。
+3. AudioContext 必须在**用户手势栈内** resume（iOS）：滚动里 resume 会被拒，
+   首个 pointerdown/touchstart 预热一次（`installUnlock()`）。
+
+### V246323-003：全局按钮震感 ≠ 覆盖语义反馈
+
+- 项目 8 处已自己调 `haptic.medium/heavy`。全局委托若挂 pointerdown，
+  会和这些"连震两下"（8ms + 18ms）。
+- 定论：**挂 click、挂在 document 冒泡末端**，组件处理先跑并更新 `lastFireAt`，
+  全局判断 80ms 内已有反馈就跳过。`buzz()`/`haptic.*` 都走同一个 `fire()` 才成立。
+
+### V246323-004：别再新建 `haptics.js`
+
+已有 `utils/haptic.js`（分级震动）。新引擎是**并进同一个文件**的，
+曾经短暂存在 `haptics.js` 与 `haptic.js` 并存 —— 两个只差一个 s 的模块必然踩错。
+
+---
+
 ## v2.46.322 表格操作列被裁 + 全量重解析（2026-11-02）
 
 ### V246322-001：`fixed="right"` 列 width 写死后动作按钮被静默裁掉

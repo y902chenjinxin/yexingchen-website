@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { setEnabled as setHapticEnabled } from '@/utils/haptic'
 
 /**
  * 界面偏好（按用户隔离，存 localStorage）。
@@ -44,6 +45,8 @@ export const usePrefsStore = defineStore('prefs', () => {
   const fontScale = ref(1)
   // 工作台模块显隐（v2.38 起工作台只剩「天气」一个可开关模块）
   const moduleVisible = ref({ weather: true })
+  // 刻度/点击反馈（v2.46.323）：震动 + 合成「哒」声。默认开
+  const haptics = ref(true)
   // 当前偏好归属的用户 id（null = 尚未绑定 / 未登录）
   const boundUid = ref(null)
 
@@ -56,6 +59,9 @@ export const usePrefsStore = defineStore('prefs', () => {
     applyFontScale(fontScale.value)
     // 只保留仍在用的 key，旧版本存下的 habits/feeds/brief 一并丢弃
     moduleVisible.value = { weather: saved?.moduleVisible?.weather !== false }
+    // 没存过就是开（老用户升级后立刻能感受到），存过 false 才是关
+    haptics.value = saved?.haptics !== false
+    setHapticEnabled(haptics.value)
   }
 
   // 模块加载即同步 hydrate：先用上次登录用户的偏好，避免桌宠闪现
@@ -63,7 +69,7 @@ export const usePrefsStore = defineStore('prefs', () => {
   applyPrefs(lastUid ? Number(lastUid) : null)
 
   function persist() {
-    write(boundUid.value, { petVisible: petVisible.value, theme: themeOverride.value, fontScale: fontScale.value, moduleVisible: moduleVisible.value })
+    write(boundUid.value, { petVisible: petVisible.value, theme: themeOverride.value, fontScale: fontScale.value, moduleVisible: moduleVisible.value, haptics: haptics.value })
     try {
       localStorage.setItem(LAST_UID_KEY, boundUid.value == null ? '' : String(boundUid.value))
     } catch {
@@ -117,13 +123,20 @@ export const usePrefsStore = defineStore('prefs', () => {
   }
 
   /** 工作台模块显示/隐藏（当前仅 weather） */
+  /** 刻度/点击反馈开关（v2.46.323）：立刻生效，不需要刷新 */
+  function setHaptics(on) {
+    haptics.value = !!on
+    setHapticEnabled(haptics.value)
+    persist()
+  }
+
   function setModuleVisible(key, visible) {
     if (!(key in moduleVisible.value)) return
     moduleVisible.value = { ...moduleVisible.value, [key]: !!visible }
     persist()
   }
 
-  return { petVisible, themeOverride, fontScale, moduleVisible, boundUid, bindUser, setPetVisible, togglePet, setTheme, setFontScale, setModuleVisible }
+  return { petVisible, themeOverride, fontScale, moduleVisible, haptics, boundUid, bindUser, setPetVisible, togglePet, setTheme, setFontScale, setModuleVisible, setHaptics }
 })
 
 /* 主题 → 系统状态栏/浏览器 chrome 颜色。
