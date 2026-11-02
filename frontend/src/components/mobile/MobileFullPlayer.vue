@@ -141,7 +141,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { fmtClock } from '@/utils/format'
-import { parseLrc, plainLines, findLine } from '@/utils/lrc'
+import { parseLrc, plainLines, findLine, isMetaLine } from '@/utils/lrc'
 import { getLyric } from '@/api/music'
 import { usePlayerStore } from '@/stores/player'
 
@@ -177,9 +177,30 @@ const lyricCache = new Map()
 const lyricLines = computed(() => {
   if (!lyricText.value) return []
   const synced = parseLrc(lyricText.value)
-  if (synced.length) return synced
-  // 没有时间轴的纯文本：照样展示，但不跟随、不高亮
-  return plainLines(lyricText.value)
+  const src = synced.length ? synced : plainLines(lyricText.value)
+  // 过滤制作信息（作词/作曲/编曲…）与「歌手 - 歌名」这种标题行（v2.46.329）：
+  // 它们跟着时间轴滚，会让"正在唱"的那行变成「作曲：张超」，观感很怪。
+  const title = (player.curItem?.title || '').trim()
+  const artist = (player.curItem?.artist || '').trim()
+  const isTitleLine = (t) => {
+    const x = String(t || '').trim().replace(/\s+/g, '')
+    if (!title) return false
+    const tt = title.replace(/\s+/g, '')
+    const aa = artist.replace(/\s+/g, '')
+    if (x === tt) return true
+    if (aa && (x === aa + '-' + tt || x === tt + '-' + aa || x === aa + tt)) return true
+    /* 「凤凰传奇 - 最炫民族风」这类「歌手 - 歌名」行：LRC 头一行几乎都是它。
+       曲库里 artist 常为空（界面兜底成「佚名」），所以不能只靠 artist 拼串判断。
+       用「有分隔符 + 以歌名结尾(或开头) + 长度只比歌名长一点」来认，
+       避免误杀正文里提到歌名的那句。 */
+    const sep = /[-－—·・]/.test(x)
+    if (sep && x.length <= tt.length + 14) {
+      if (x.endsWith(tt) || x.startsWith(tt)) return true
+    }
+    return false
+  }
+  const kept = src.filter((l) => !isMetaLine(l.text) && !isTitleLine(l.text))
+  return kept.length ? kept : src
 })
 
 async function loadLyric(id) {
@@ -256,9 +277,15 @@ watch(lineIdx, async (i) => {
   if (!box) return
   const el = box.children[i]
   if (!el) return
-  const target = el.offsetTop - box.clientHeight / 2 + el.offsetHeight / 2
+  /* 🔴 不能用 el.offsetTop：它是相对**最近的定位祖先**（.fp-inner）算的，
+     而这个容器自己的 offsetParent 不在滚动区内 —— 实测差 160px，
+     滚动落点偏高，当前行被顶到可视区外（夜星看到的"全在下面、没高亮"）。
+     用 getBoundingClientRect 求「当前行中心 - 容器中心」的差值，跟 offsetParent 无关。 */
+  const br = box.getBoundingClientRect()
+  const er = el.getBoundingClientRect()
+  const delta = (er.top + er.height / 2) - (br.top + box.clientHeight / 2)
   selfScrolling = true
-  box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+  box.scrollTo({ top: box.scrollTop + delta, behavior: 'smooth' })
   setTimeout(() => { selfScrolling = false }, 700)
 })
 

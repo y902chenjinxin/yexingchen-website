@@ -71,6 +71,23 @@ export function findLine(lines, sec) {
   return ans
 }
 
+/**
+ * 这行是「制作信息」还是真歌词（v2.46.329）。
+ *
+ * 从网易云/酷狗抓来的 LRC 里，前几行常常是
+ *   [00:00.22]凤凰传奇 - 最炫民族风
+ *   [00:07.79]作词：张超
+ *   [00:08.35]作曲：张超
+ * 这些跟着时间轴一起滚，会让"正在唱"的那一行变成「作曲：张超」——很怪。
+ * 播放页只展示真歌词，制作信息直接丢掉。
+ */
+const META_RE = /^(作词|作曲|编曲|混音|母带|制作人|监制|出品|录音|和声|吉他|贝斯|鼓|键盘|弦乐|OP|SP|发行|统筹|策划|纯音乐|此歌曲|这首歌|请欣赏|未经许可)\s*[:：]/i
+export function isMetaLine(text) {
+  const t = String(text || '').trim()
+  if (!t) return true
+  return META_RE.test(t)
+}
+
 /** 没有时间轴的纯文本歌词：按行拆开，供播放页静态展示。 */
 export function plainLines(text) {
   if (!text) return []

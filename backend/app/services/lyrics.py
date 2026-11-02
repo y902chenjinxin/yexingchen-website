@@ -35,6 +35,14 @@ _NOISE_RE = re.compile(
     r"|\s*[-—_]\s*[^-—_]*$"            # 晴天 - 周杰伦
     r"|\.(lrc|txt|krc|srt)$"
 )
+# 元信息行：只有这些的行不算歌词。网易云对没版权的纯音乐会给一条
+# 「[00:00.00] 作曲 : xxx / [00:05.00]纯音乐，请欣赏」—— 有时间轴，但是垃圾。
+_META_LINE = re.compile(
+    r"^(作词|作曲|编曲|混音|母带|制作人|监制|出品|录音|和声|吉他|贝斯|鼓|键盘|弦乐|"
+    r"OP|SP|发行|统筹|策划|纯音乐|此歌曲|这首歌|请欣赏|未经许可)"
+    , re.I
+)
+
 _UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/122.0 Safari/537.36"
@@ -54,6 +62,26 @@ def normalize_lrc(text: str) -> str:
 
 def has_timeline(text: str) -> bool:
     return bool(text) and bool(TIME_RE.search(text))
+
+
+def effective_lines(text: str) -> int:
+    """去掉元信息行后的真实歌词行数（判断这份歌词是不是"纯音乐，请欣赏"）。"""
+    n = 0
+    for raw in (text or "").split("\n"):
+        line = TIME_RE.sub("", raw).strip()
+        if not line or _META_LINE.match(line):
+            continue
+        n += 1
+    return n
+
+
+def is_usable(text: str, min_lines: int = 3) -> bool:
+    """能用的歌词 = 有时间轴 + 至少有 min_lines 行真歌词。
+
+    为什么必须挡：网易云对无版权纯音乐返回的正是带时间轴的
+    「作曲/编曲/纯音乐，请欣赏」，不挡就会铺满整个歌词区（夜星反馈「爱河dj」）。
+    """
+    return has_timeline(text) and effective_lines(text) >= min_lines
 
 
 def clean_name(name: str) -> str:
@@ -206,10 +234,18 @@ def _kugou(title: str, artist: str) -> Optional[dict]:
 
 
 def fetch_online(title: str, artist: str = "", duration: int = 0) -> Optional[dict]:
-    """在线抓歌词：网易云 → 酷狗。返回 {lyric, source, title, artist} 或 None。"""
+    """在线抓歌词：网易云 → 酷狗。
+
+    ⚠️ 不能写 `a or b`：网易云经常返回「纯音乐，请欣赏」这种**有时间轴但没内容**的结果，
+    直接 or 就吃掉兜底机会。这里逐个校验，不合格的继续找下一个源。
+    """
     if not (title or "").strip():
         return None
-    return _netease_best(title, artist, duration) or _kugou(title, artist)
+    for fn in (_netease_best, _kugou):
+        cand = fn(title, artist, duration) if fn is _netease_best else fn(title, artist)
+        if cand and is_usable(cand.get("lyric") or ""):
+            return cand
+    return None
 
 
 def parse_lrc_lines(text: str) -> list:
