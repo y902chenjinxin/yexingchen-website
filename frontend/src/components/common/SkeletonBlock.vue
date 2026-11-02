@@ -1,6 +1,6 @@
 <!--
   SkeletonBlock.vue
-  玄黄 · 通用骨架屏
+  星阁 · 通用骨架屏
   - 自动根据 width/height/round 渲染鎏金底色 + 鎏金光扫过的占位
   - theme-aware：跟随 --yq-accent 自动适配昼夜
 -->

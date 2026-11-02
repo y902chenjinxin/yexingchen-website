@@ -1,6 +1,6 @@
 <!--
   StepIndicator.vue
-  玄黄 · 步骤指示器
+  星阁 · 步骤指示器
   - 用于工具页（Watermark / Pdf / Compress / Idphoto / Cover / Voice）的步骤引导
   - 当前步骤高亮（鎏金），已完成步骤打勾，未到达步骤灰色
   - 主题感知：昼夜双套配色

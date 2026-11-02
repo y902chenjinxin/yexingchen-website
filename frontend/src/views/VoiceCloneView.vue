@@ -1,9 +1,9 @@
 <!--
   VoiceCloneView.vue
-  玄黄・音色克隆工具
+  星阁・音色克隆工具
   - 三块面板：① 复刻音色（左）/ ② 文字转语音（左下）/ ③ 我的音色（右）
   - 全部控件统一为 ElementPlus（移动端有 native-glass 兜底）
-  - 玄黄主题：鎏金主色 + 雨青辅色 + 玄灰描边
+  - 星阁主题：鎏金主色 + 雨青辅色 + 玄灰描边
 -->
 <template>
   <IslandInnerBase type="tool" title="音色克隆" subtitle="上传一段录音，复刻专属音色 · 输入文字即可开口说话">

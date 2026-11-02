@@ -59,7 +59,7 @@
             <div v-for="(m, i) in messages" :key="m.key" :class="['chat-msg', m.role]">
               <div class="chat-bubble">
                 <div class="chat-name">
-                  {{ m.role === 'user' ? '我' : '玄黄 AI' }}
+                  {{ m.role === 'user' ? '我' : '星阁 AI' }}
                   <template v-if="m.role === 'assistant' && m.provider"> · {{ m.provider }}</template>
                 </div>
                 <div class="chat-text" v-html="renderText(m.content)"></div>

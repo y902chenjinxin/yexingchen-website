@@ -1,4 +1,4 @@
-/* 玄黄 Service Worker
+/* 星阁 Service Worker
  *
  * 仅缓存静态壳与稳定资源：
  *   - /index.html
@@ -10,7 +10,7 @@
  * 不缓存：跨源资源（CDN/字体/统计）。
  * 注册失败不应阻塞应用启动（main.js 中已 try/catch）。
  */
-const VERSION = 'xuanhuang-v639'
+const VERSION = 'xuanhuang-v640'
 const STATIC_CACHE = `${VERSION}-static`
 
 self.addEventListener('install', (event) => {

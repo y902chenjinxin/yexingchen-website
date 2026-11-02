@@ -2,7 +2,7 @@
 
 ## 口径（重要，别被「内存」两个字误导）
 
-- **内存只做「系统级 + 进程级」**：玄黄后端是**一个** Python 进程（PM2 托管），
+- **内存只做「系统级 + 进程级」**：星阁后端是**一个** Python 进程（PM2 托管），
   音乐、视频等业务模块都跑在同一个进程里 —— 操作系统层面**无法把 RSS 摊到业务模块**，
   任何「音乐占多少内存」的数字都是编的。
 - **模块维度用「存储占用」**：该模块的上传文件 + 它名下的数据库表。
@@ -212,7 +212,7 @@ def _classify(cwd: str, cmd: str, comm: str) -> str:
     """把进程归到「哪个服务」。顺序即优先级，先具体后笼统。"""
     blob = f"{cwd} {cmd}".lower()
     if "yexingchen/backend" in cwd:
-        return "玄黄后端"
+        return "星阁后端"
     if "parse-service" in cwd:
         return "视频解析服务"
     if "hivisionidphotos" in blob or "deploy_api.py" in blob:

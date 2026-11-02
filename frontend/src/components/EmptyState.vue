@@ -1,6 +1,6 @@
 <!--
   EmptyState.vue
-  玄黄 · 通用空态组件（v194 升级）
+  星阁 · 通用空态组件（v194 升级）
   - 6 种主题插画（data / search / net / deny / time / generic）
   - 鎏金图标 + 玄灰文字 + 主按钮 + 跟随光斑
   - 主题感知：昼夜两套配色

@@ -75,7 +75,7 @@
   --lj-bg-deep: var(--dp-bg2);
   --lj-paper: var(--dp-surface);
   --lj-paper-2: var(--dp-surface2);
-  /* 玄黄主题：玻璃、强调色统一走鎏金 + 雨青，不再用紫罗兰 */
+  /* 星阁主题：玻璃、强调色统一走鎏金 + 雨青，不再用紫罗兰 */
   --lj-glass: var(--color-bg-glass, rgba(167, 139, 250, .06));
   --lj-glass-blur: saturate(160%) blur(16px);
   --lj-panel: rgba(22, 19, 38, .78);

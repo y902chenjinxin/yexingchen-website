@@ -9,9 +9,11 @@ export const deleteMusic = (id) => api.delete(`/music/${id}`)
 export const getMusicUploaders = () => api.get('/music/uploaders')
 
 // 批量导入：传入 { files: File[], items: [{ title, artist, category, tags }] }，items 与 files 一一对应
-export const batchUploadMusic = ({ files, items }) => {
+export const batchUploadMusic = ({ files, items, lyricFiles = [] }) => {
   const formData = new FormData()
   files.forEach((f) => formData.append('files', f))
+  // v2.46.327：歌词文件按同名自动配对（音频 x.mp3 ↔ 歌词 x.lrc）
+  lyricFiles.forEach((f) => formData.append('lyric_files', f))
   items.forEach((it) => {
     formData.append('titles', it.title || '')
     formData.append('artists', it.artist || '')
@@ -50,3 +52,26 @@ export const reorderMusic = (ids) => api.put('/music/reorder', { ids })
 export const getMusicPlayback = () => api.get('/music/playback')
 export const saveMusicPlayback = (trackId, position) =>
   api.put('/music/playback', { track_id: Number(trackId), position: Math.max(0, Math.round(position || 0)) })
+
+/* ---------- 歌词（v2.46.327） ---------- */
+export const getLyric = (id) => api.get(`/music/${id}/lyric`)
+export const saveLyric = (id, content, source = 'manual') =>
+  api.put(`/music/${id}/lyric`, { content, source })
+export const deleteLyric = (id) => api.delete(`/music/${id}/lyric`)
+/** 在线抓一首（网易云 → 酷狗兜底） */
+export const fetchLyric = (id) => api.post(`/music/${id}/lyric/fetch`)
+/** 上传歌词文件：单首（musicId）或批量（按文件名同名匹配） */
+export const uploadLyricFiles = ({ files, musicId = null }) => {
+  const fd = new FormData()
+  files.forEach((f) => fd.append('files', f))
+  if (musicId) fd.append('music_id', String(musicId))
+  return api.post('/music/lyric/upload', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 3 * 60 * 1000,
+  })
+}
+export const getLyricStats = () => api.get('/music/lyric/stats')
+export const getLyricMissing = (limit = 200) => api.get('/music/lyric/missing', { params: { limit } })
+/** 批量抓缺失（一次 20 首，前端循环调用） */
+export const fetchLyricMissing = (limit = 20) =>
+  api.post('/music/lyric/fetch-missing', null, { params: { limit }, timeout: 3 * 60 * 1000 })

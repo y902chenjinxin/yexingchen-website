@@ -1,5 +1,5 @@
 /*
- * 玄黄桌面端产品化收敛层 —— 骨架与组件层（不写颜色 token）
+ * 星阁桌面端产品化收敛层 —— 骨架与组件层（不写颜色 token）
  *
  * 颜色 token 已拆分到：
  *   - desktop-theme-night.css  :root / :root[data-theme="night"]  紫罗兰夜间
@@ -753,7 +753,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
 }
 
 /* ==============================================================
- * 玄黄 · 全站控件统一层（v190）
+ * 星阁 · 全站控件统一层（v190）
  * 作用：所有非 .is-mobile 页面，未单独覆写控件的，按下面规则自动适配。
  * 仅作用于页面的 ElementPlus 输入/选择/原生 input 等通用控件；
  * 不影响各页面自定义按钮/卡片等。
@@ -904,7 +904,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
 }
 
 /* ==============================================================
- * 玄黄 · 鼠标聚光层（v191）
+ * 星阁 · 鼠标聚光层（v191）
  * 任何带 v-mouse-light 的元素自动获得：
  *   - 鎏金聚光（跟随鼠标位置）
  *   - 3D 微倾斜（已由指令 transform 实现）
@@ -959,7 +959,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
 }
 
 /* ==============================================================
- * 玄黄 · 全站通用 hover 增强层（v193）
+ * 星阁 · 全站通用 hover 增强层（v193）
  * 任何带 .glass 的卡片、所有 el-button、所有 el-card 在 hover 时
  * 自动获得鎏金描边 + 阴影提升，无需逐文件改样式
  * ============================================================== */
@@ -1027,7 +1027,7 @@ html:root[data-theme="day"] .login-page .filing-links a {
   left: 0; top: 0; bottom: 0;
   width: 3px;
   /* 渐变收在鎏金系内：原先第二色用了 --yq-rain（名字是「雨青」，实际值却是靛蓝 #5b6ae0），
-     在鎏金竖条尾巴上透出一截冷紫，跟玄黄调性不符。 */
+     在鎏金竖条尾巴上透出一截冷紫，跟星阁调性不符。 */
   background: linear-gradient(180deg, var(--yq-accent), var(--yq-accent-bright, #e5c477));
   opacity: 0;
   transform: scaleY(.4);

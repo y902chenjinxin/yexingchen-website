@@ -1,6 +1,6 @@
 <!--
   HistoryView.vue
-  玄黄・历史上的今天 独立岛页（v2.46）
+  星阁・历史上的今天 独立岛页（v2.46）
   - 两栏：左侧自绘月度日历（毛玻璃 + 月切换 + 今天/选中高亮）；右侧铺列所选日期事件。
   - 文字统一用主题感知变量 --lj-*（夜间浅色 / 白天深色），避免白天白字。
   - 提供「回到今天」「刷新」。
@@ -253,7 +253,7 @@ onMounted(() => load())
 .ht-date :deep(.el-input__inner) { color: var(--lj-text); font-size: 13px; }
 .ht-date :deep(.el-input__prefix) { color: var(--lj-text-2); }
 
-/* vue-cal 主题覆盖 — 玄黄暗调，与项目卡片融合 */
+/* vue-cal 主题覆盖 — 星阁暗调，与项目卡片融合 */
 .ht-vuecal.vuecal {
   /* 主色统一为玄灰，主色不参与装饰（self title-bar 已关闭） */
   --vuecal-primary-color: var(--c-gold);

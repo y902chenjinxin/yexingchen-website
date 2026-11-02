@@ -388,7 +388,7 @@ MANIFEST = r'''<?xml version="1.0" encoding="utf-8"?>
 '''
 
 STRINGS = r'''<resources>
-    <string name="app_name">玄黄</string>
+    <string name="app_name">星阁</string>
 </resources>
 '''
 

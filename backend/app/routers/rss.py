@@ -1,6 +1,6 @@
 """RSS 公开订阅源。
 
-F9: 给玄黄个人站提供一份公开的 RSS 2.0 输出。
+F9: 给星阁个人站提供一份公开的 RSS 2.0 输出。
 - 暴露最近 status='completed' 的笔记作为 channel item
 - 不需要鉴权（公开内容）
 - 末尾带 published/updated 时间、link 回到笔记详情页
@@ -65,7 +65,7 @@ def rss_public_notes(db: Session = Depends(get_db)):
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
         '<channel>\n'
-        '<title>玄黄 · 叶兴辰的笔记</title>\n'
+        '<title>星阁 · 叶兴辰的笔记</title>\n'
         '<link>https://yexingchen.cn/notes</link>\n'
         '<description>把零散念头，沉淀为数据。— 已完成笔记的 RSS 订阅源。</description>\n'
         '<language>zh-cn</language>\n'

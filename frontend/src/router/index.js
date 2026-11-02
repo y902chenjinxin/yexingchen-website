@@ -442,7 +442,7 @@ const routes = [
     component: () => import('@/views/ProfileView.vue'),
     meta: { requiresAuth: true }
   },
-  // 玄黄装饰组件预览（仅登录可见；用于在浏览器中预览 uiverse 改造后的 loader 效果）
+  // 星阁装饰组件预览（仅登录可见；用于在浏览器中预览 uiverse 改造后的 loader 效果）
   {
     path: '/decor-preview',
     name: 'DecorPreview',

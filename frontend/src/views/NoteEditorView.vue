@@ -75,7 +75,7 @@
 
 <script setup>
 /**
- * 玄黄工作台 · 笔记编辑器（容器组件）。
+ * 星阁工作台 · 笔记编辑器（容器组件）。
  *
  * - 持有编辑器 DOM ref、当前选区、保存状态、AI 状态等共享数据；
  * - 暴露 exec / saveSelection / restoreSelection / ensureNote 等核心能力；

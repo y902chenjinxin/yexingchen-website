@@ -5,12 +5,12 @@
     <div class="dsb-head">
       <div class="dsb-head-row">
         <div class="dsb-brand" @click="go('/workbench')" title="返回工作台">
-          <!-- 品牌标：玄黄 · 曜石方壳（内联 SVG）。
+          <!-- 品牌标：星阁 · 曜石方壳（内联 SVG）。
                白天/夜间是两套，共用同一轮廓与高光走向，只换材质极性：
                白天走「黑曜石」= 深体压浅底；夜间走「夜曜石」= 同体加深，但内嵌青光 + 环绕棱光，
                否则深色标在夜间深底上会被吞成一团黑。28px 下描边按比例放大，避免细线糊成灰边。
                白天不画外描边：浅底上亮棱光会读成一圈白边，改成只留体内高光 + 一道冷青光。 -->
-          <svg class="dsb-brand-rune rune-day" viewBox="0 0 100 100" role="img" aria-label="玄黄" focusable="false">
+          <svg class="dsb-brand-rune rune-day" viewBox="0 0 100 100" role="img" aria-label="星阁" focusable="false">
             <defs>
               <radialGradient id="dsbDayCore" cx="0.34" cy="0.26" r="0.94">
                 <stop offset="0" stop-color="#5a7590" />
@@ -26,7 +26,7 @@
             <ellipse cx="37" cy="30" rx="21" ry="12.5" transform="rotate(-28 37 30)" fill="url(#dsbDaySpec)" />
             <path d="M31 75c7 9 16 12.5 25 10" fill="none" stroke="#5fc9e8" stroke-width="2.6" stroke-linecap="round" opacity="0.6" />
           </svg>
-          <svg class="dsb-brand-rune rune-night" viewBox="0 0 100 100" role="img" aria-label="玄黄" focusable="false">
+          <svg class="dsb-brand-rune rune-night" viewBox="0 0 100 100" role="img" aria-label="星阁" focusable="false">
             <defs>
               <radialGradient id="dsbNightCore" cx="0.33" cy="0.26" r="0.95">
                 <stop offset="0" stop-color="#33475a" />

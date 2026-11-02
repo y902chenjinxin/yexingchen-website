@@ -6,7 +6,7 @@
         <div v-if="loading" class="pt-loading">研墨中…</div>
         <div v-else-if="text" class="pt-text">{{ text }}</div>
         <div v-else class="pt-loading">今日尚未求签</div>
-        <div class="pt-seal">玄黄</div>
+        <div class="pt-seal">星阁</div>
       </div>
       <div class="pt-actions">
         <button class="pt-btn primary" :disabled="loading" @click="draw(false)">{{ text ? '查看今日' : '求一签' }}</button>

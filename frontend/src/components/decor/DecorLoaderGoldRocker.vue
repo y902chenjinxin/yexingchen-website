@@ -1,7 +1,7 @@
 <!--
   DecorLoaderGoldRocker.vue
   来源：uiverse.io/Shoh2008/cold-walrus-85（MIT License）
-  玄黄改造：
+  星阁改造：
     - 颜色全走 --yq-accent（鎏金）与 --yq-rain（雨青）变量
     - 昼夜双套自动跟随 data-theme 切换
     - prefers-reduced-motion 收敛动画
@@ -28,7 +28,7 @@ const sizeStyle = computed(() => ({ fontSize: `${Number(props.size) / 16}px` }))
   width: 5.5em;
   height: 5.5em;
 }
-/* 中心纵向条纹（原"白色"立柱）— 玄黄：鎏金深浅 */
+/* 中心纵向条纹（原"白色"立柱）— 星阁：鎏金深浅 */
 .dloader__bar {
   position: absolute;
   transform: translate(-50%, -50%) rotate(45deg);
@@ -42,7 +42,7 @@ const sizeStyle = computed(() => ({ fontSize: `${Number(props.size) / 16}px` }))
     var(--yq-accent-dark, #8a6d3f));
   border-radius: 2px;
 }
-/* 跳跃骰子（原 orange）— 玄黄：鎏金 */
+/* 跳跃骰子（原 orange）— 星阁：鎏金 */
 .dloader__rock {
   position: absolute;
   left: 0.2em;

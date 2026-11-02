@@ -24,11 +24,31 @@
           <span class="fp-top-spacer"></span>
         </header>
 
-        <!-- ===== 主视觉：歌名当歌词（Folia 是全屏歌词，我们没有歌词数据，就用曲目名占这个位） ===== -->
+        <!-- ===== 主视觉：有歌词就滚动歌词，没有就留空（v2.46.327）=====
+             夜星：「没有歌词在播放页面时就空着，有就展示」「播放到对应位置歌词需要放大展示」。
+             没有歌词时保留歌名当主视觉（这是原本的设计身份），只是不再伪造歌词行。 -->
         <main class="fp-stage">
-          <h1 :key="'t' + (player.curItem?.id || '')" class="fp-title" :class="{ 'is-playing': player.isPlaying }">
-            <span v-for="(c, i) in titleChars" :key="i" class="fp-ch" :style="{ '--i': i }">{{ c }}</span>
-          </h1>
+          <div
+            v-if="lyricLines.length"
+            ref="lyricBox"
+            class="fp-lyric"
+            :class="{ 'no-sync': !lyricSynced }"
+          >
+            <p
+              v-for="(l, i) in lyricLines"
+              :key="i"
+              class="fp-lyric-line"
+              :class="{ on: lyricSynced && i === lineIdx, past: lyricSynced && i < lineIdx }"
+              @click="lyricSynced && seekToTime(l.t)"
+            ><span>{{ l.text }}</span></p>
+          </div>
+
+          <template v-else>
+            <h1 :key="'t' + (player.curItem?.id || '')" class="fp-title" :class="{ 'is-playing': player.isPlaying }">
+              <span v-for="(c, i) in titleChars" :key="i" class="fp-ch" :style="{ '--i': i }">{{ c }}</span>
+            </h1>
+          </template>
+
           <p class="fp-sub">
             <span class="fp-sub-artist">{{ player.curItem?.artist || '佚名' }}</span>
             <template v-if="queueText"><span class="fp-dot">·</span>{{ queueText }}</template>
@@ -118,8 +138,10 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { fmtClock } from '@/utils/format'
+import { parseLrc, plainLines, findLine } from '@/utils/lrc'
+import { getLyric } from '@/api/music'
 import { usePlayerStore } from '@/stores/player'
 
 const player = usePlayerStore()
@@ -137,6 +159,80 @@ const visible = computed({
 
 function close() {
   emit('update:modelValue', false)
+}
+
+/* ================= 歌词（v2.46.327） =================
+ * 抓取策略：进播放页时按当前曲目 id 拉一次 GET /api/music/{id}/lyric，
+ * 结果进 Map 缓存（同一首来回切不重复请求）。歌词是「有就展示、没有就空着」，
+ * 所以这里**不做**任何在线抓取的兜底 —— 抓取是用户动作（管理页/去水印工具），
+ * 播放时偷偷打外网接口会让进页面变慢，也会抓到不匹配的歌词。
+ */
+const lyricText = ref('')
+const lyricSynced = ref(false)
+const lineIdx = ref(-1)
+const lyricBox = ref(null)
+const lyricCache = new Map()
+
+const lyricLines = computed(() => {
+  if (!lyricText.value) return []
+  const synced = parseLrc(lyricText.value)
+  if (synced.length) return synced
+  // 没有时间轴的纯文本：照样展示，但不跟随、不高亮
+  return plainLines(lyricText.value)
+})
+
+async function loadLyric(id) {
+  lyricText.value = ''
+  lineIdx.value = -1
+  lyricSynced.value = false
+  if (!id) return
+  if (lyricCache.has(id)) {
+    applyLyric(lyricCache.get(id))
+    return
+  }
+  try {
+    const res = await getLyric(id)
+    const data = res?.data || res || {}
+    const content = data.content || ''
+    lyricCache.set(id, content)
+    // 请求期间可能又换歌了，别把上一首的歌词贴到这一首上
+    if (player.curItem?.id === id) applyLyric(content)
+  } catch {
+    /* 没歌词/接口失败：保持空着 */
+  }
+}
+
+function applyLyric(content) {
+  lyricText.value = content || ''
+  lyricSynced.value = parseLrc(content || '').length > 0
+  lineIdx.value = -1
+  nextTick(() => { if (lyricBox.value) lyricBox.value.scrollTop = 0 })
+}
+
+watch(() => player.curItem?.id, (id) => { if (visible.value) loadLyric(id) }, { immediate: true })
+watch(visible, (v) => { if (v && player.curItem?.id) loadLyric(player.curItem.id) })
+
+/** 播放进度 → 当前行（150ms 提前量在 findLine 里处理） */
+watch(() => player.progress, (sec) => {
+  if (!lyricSynced.value || !lyricLines.value.length) return
+  const i = findLine(lyricLines.value, sec)
+  if (i !== lineIdx.value) lineIdx.value = i
+})
+
+/** 当前行滚到中间（用 scrollTop 而不是 transform：行高会随缩放变，transform 会越滚越偏） */
+watch(lineIdx, async (i) => {
+  if (i < 0) return
+  await nextTick()
+  const box = lyricBox.value
+  if (!box) return
+  const el = box.children[i]
+  if (!el) return
+  const target = el.offsetTop - box.clientHeight / 2 + el.offsetHeight / 2
+  box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+})
+
+function seekToTime(t) {
+  if (Number.isFinite(t)) player.seek(t)
 }
 
 const modeLabel = computed(() => (player.mode === 'bgm' ? '背景 · 天籁' : '点播 · 宫商'))
@@ -297,6 +393,52 @@ function fmt(sec) {
   gap: 20px; padding: 8px 26px 46px;
   overflow: hidden;
 }
+/* ===== 歌词（v2.46.327）=====
+   为什么用 overflow:auto + scrollTop 而不是整体 transform：
+   当前行要放大，行高是变的；用 transform 平移会随缩放越滚越偏，
+   而 scrollTop 跟着真实布局走，第 100 句和第 3 句一样准。
+   上下用 mask 渐隐代替可见边框 —— 歌词从雾里进出，比一条硬裁切线高级。 */
+.fp-lyric {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+  padding: 38% 0;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+}
+.fp-lyric::-webkit-scrollbar { display: none; }
+.fp-lyric-line {
+  margin: 0;
+  padding: 7px 2px;
+  text-align: center;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, .46);
+  transition: color .26s ease, opacity .26s ease;
+  cursor: pointer;
+}
+.fp-lyric-line > span {
+  display: inline-block;
+  transition: transform .3s cubic-bezier(.22, 1, .36, 1), font-weight .2s;
+  transform-origin: center center;
+}
+/* 当前行放大（夜星：「播放到对应位置歌词需要放大展示」）：
+   用 transform 缩放而不是改 font-size —— 改字号会触发整段重排，
+   上一行还没滑走就被撑开，滚动位置会跳。 */
+.fp-lyric-line.on { color: #fff; }
+.fp-lyric-line.on > span {
+  transform: scale(1.24);
+  font-weight: 700;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .45);
+}
+.fp-lyric-line.past { color: rgba(255, 255, 255, .30); }
+/* 没有时间轴的纯文本：不放大、不可点，避免"点了没反应" */
+.fp-lyric.no-sync .fp-lyric-line { cursor: default; color: rgba(255, 255, 255, .62); }
+
 .fp-title {
   margin: 0; text-align: center;
   font-family: var(--font-serif);

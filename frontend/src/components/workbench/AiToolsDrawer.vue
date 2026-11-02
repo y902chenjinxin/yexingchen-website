@@ -1,6 +1,6 @@
 <!--
   AiToolsDrawer.vue
-  玄黄 AI 高级工具抽屉（v2.39）—— 给笔记/对话场景用的「AI 万能面板」。
+  星阁 AI 高级工具抽屉（v2.39）—— 给笔记/对话场景用的「AI 万能面板」。
 
   能力：
   - 改写（rewrite）：6 种风格
@@ -178,7 +178,7 @@
           <section v-if="active === 'agent'" class="aid-section">
             <label class="aid-label">目标</label>
             <textarea v-model="ag.goal" class="aid-textarea" rows="3"
-              placeholder="例如：帮我把上周关于玄黄项目的笔记都整理成一份摘要并新建一条笔记"></textarea>
+              placeholder="例如：帮我把上周关于星阁项目的笔记都整理成一份摘要并新建一条笔记"></textarea>
             <div class="aid-row">
               <button class="aid-btn" :disabled="ag.busy || !ag.goal" @click="runAgent">
                 {{ ag.busy ? '执行中…' : '启动 Agent' }}

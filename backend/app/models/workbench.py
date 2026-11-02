@@ -1,4 +1,4 @@
-"""玄黄工作台数据模型。
+"""星阁工作台数据模型。
 
 包含 Note / Asset / Tag / Task / AiConversation / AiMessage / WorkbenchLog，
 以及 AI 对话与笔记/资产/任务的关联表 AiConversationLink。

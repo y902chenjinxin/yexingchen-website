@@ -1,6 +1,6 @@
 <!--
   CommandPalette.vue
-  玄黄·全局命令面板（Cmd/Ctrl+K）
+  星阁·全局命令面板（Cmd/Ctrl+K）
   - 聚合路由跳转、工具、动作三类命令
   - 模糊匹配（name + alias + keyword），按优先级排序
   - ⌘K / Ctrl+K 唤起；Esc 关闭；↑↓ 选择；Enter 触发
@@ -56,7 +56,7 @@
           <span class="cp-foot-hint"><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
           <span class="cp-foot-hint"><kbd>↵</kbd> 执行</span>
           <span class="cp-foot-hint"><kbd>esc</kbd> 关闭</span>
-          <span class="cp-foot-brand">玄黄 · 命令面板</span>
+          <span class="cp-foot-brand">星阁 · 命令面板</span>
         </footer>
       </div>
     </div>

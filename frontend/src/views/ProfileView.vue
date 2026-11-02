@@ -186,10 +186,10 @@
       <!-- 品牌意象 -->
       <div class="info-card">
         <div class="card-header">
-          <h2>玄黄 · 意象</h2>
+          <h2>星阁 · 意象</h2>
         </div>
         <div class="card-body">
-          <p class="pref-hint brand-tip">三款玄黄意象标识：<b>琉璃 · 月光</b>为本应用 2.1.0 正式图标，曜变 / 玄黄为同期设计的蔚蓝备选。</p>
+          <p class="pref-hint brand-tip">三款星阁意象标识：<b>琉璃 · 月光</b>为本应用 2.1.0 正式图标，曜变 / 星阁为同期设计的蔚蓝备选。</p>
           <div class="brand-grid">
             <figure v-for="it in brandIcons" :key="it.tag" class="brand-cell" :class="{ current: it.tag === 'liuli' }">
               <span class="brand-stage"><img :src="it.src" :alt="it.name" loading="lazy" /></span>
@@ -283,7 +283,7 @@ import iconXuanhuang from '@/assets/brand/icon-xuanhuang.png'
 const brandIcons = [
   { tag: 'yaobian', name: '曜变', src: iconYaobian },
   { tag: 'liuli', name: '琉璃 · 月光', src: iconLiuli },
-  { tag: 'xuanhuang', name: '玄黄 · 辉光', src: iconXuanhuang },
+  { tag: 'xuanhuang', name: '星阁 · 辉光', src: iconXuanhuang },
 ]
 
 const auth = useAuthStore()

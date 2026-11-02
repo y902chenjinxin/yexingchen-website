@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
   margin: 0; font-size: 12px; letter-spacing: .06em;
   color: var(--ls-text-3, #8a8f98);
 }
-/* 重进全屏按钮（× 退出后的工具页回入口），鎏金描边黑胶囊贴玄黄语言 */
+/* 重进全屏按钮（× 退出后的工具页回入口），鎏金描边黑胶囊贴星阁语言 */
 .fc-enter {
   display: inline-flex; align-items: center; gap: 8px;
   margin-top: 4px; padding: 10px 22px; border-radius: 999px;
@@ -118,7 +118,7 @@ onBeforeUnmount(() => {
 }
 .fc-enter svg { width: 17px; height: 17px; }
 
-/* ===== 全屏舞台：深墨渐变 + 时钟后极淡鎏金光晕（呼应玄黄 accent，克制不喧宾） ===== */
+/* ===== 全屏舞台：深墨渐变 + 时钟后极淡鎏金光晕（呼应星阁 accent，克制不喧宾） ===== */
 .fc-stage {
   position: fixed; inset: 0; z-index: 1600; /* 项目全屏统一 1600（>Tab 1500，<ElMessage 2000） */
   background:

@@ -8,7 +8,7 @@ const MQ = '(max-width: 767px)'
  * 是否走**移动端外壳**。
  *
  * v2.40.30 政策调整（夜星拍板）：
- *   **只有玄黄自己的 APK（WebView 注入 UA `XuanHuangApp/x.y.z`）才用移动端样式**；
+ *   **只有星阁自己的 APK（WebView 注入 UA `XuanHuangApp/x.y.z`）才用移动端样式**；
  *   手机浏览器（含鸿蒙自带浏览器、微信等）一律走**桌面版**布局 ——
  *   配合入口处的 viewport 覆写（宽 1280），手机上看到的是可缩放的完整桌面站。
  *

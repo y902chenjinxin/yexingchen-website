@@ -47,6 +47,8 @@
           <!-- v2.46.148：主操作从标题下挪进工具栏（手机端是纯播放列表，不显示） -->
           <span class="mg-toolbar-spacer"></span>
           <template v-if="!isMobile">
+            <!-- v2.46.327：歌词管理（批量上传 / 在线补全 / 未匹配手动指定） -->
+            <IconButton icon="lyric" label="歌词" @click="lyricBatchOpen = true" />
             <IconButton icon="upload" label="上传音乐" variant="primary" @click="openUpload" />
             <IconButton icon="folder" label="批量导入" @click="openBatch" />
           </template>
@@ -94,6 +96,14 @@
               <AppIcon v-else icon="▶" :size="12" /></button>
               <span class="tt">{{ row.title || '未知曲目' }}</span>
               <el-tag v-if="Number(row.is_default) === 1" size="small" type="warning">内置</el-tag>
+              <!-- v2.46.327：点这个标记直接进单曲歌词（有=可查看/改，无=可以补） -->
+              <button
+                class="ly-badge"
+                :class="{ on: row.has_lyric }"
+                type="button"
+                :title="row.has_lyric ? '有歌词，点击查看/编辑' : '还没有歌词，点击补充'"
+                @click.stop="openLyric(row)"
+              >{{ row.has_lyric ? '词' : '无词' }}</button>
             </div>
           </template>
         </el-table-column>
@@ -137,6 +147,7 @@
               <IconButton v-else icon="star" label="设为背景乐" icon-only @click="setAsBg(row)" />
 
               <template v-if="!isMobile">
+                <IconButton icon="lyric" size="sm" label="歌词" icon-only @click="openLyric(row)" />
                 <IconButton icon="edit" size="sm" label="编辑" icon-only @click="openEdit(row)" />
                 <IconButton icon="trash" size="sm" label="删除" variant="danger" icon-only @click="handleDelete(row)" />
               </template>
@@ -244,6 +255,16 @@
         </el-form-item>
       </el-form>
 
+      <!-- v2.46.327：可选歌词文件，按同名配对（音频「晴天.mp3」↔ 歌词「晴天.lrc」） -->
+      <div class="batch-lyric-row">
+        <span class="batch-lyric-lab">歌词文件</span>
+        <label class="batch-lyric-pick">
+          <AppIcon icon="📄" :size="14" />{{ batchLyricFiles.length ? `已选 ${batchLyricFiles.length} 份` : '选择（可选）' }}
+          <input type="file" multiple hidden accept=".lrc,.txt,.krc,.srt,.ass" @change="onPickBatchLyrics" />
+        </label>
+        <span class="batch-lyric-hint">与音频同名即自动关联；时间轴原样保留，播放页能对位</span>
+      </div>
+
       <el-upload
         ref="batchUploadRef"
         :auto-upload="false"
@@ -341,6 +362,9 @@
         <el-button type="danger" :loading="batchDeleting" @click="confirmBatchDelete">一键删除</el-button>
       </template>
     </el-dialog>
+    <!-- 歌词：单曲编辑 + 批量管理（v2.46.327） -->
+    <LyricDialog v-model="lyricOpen" :track="lyricTrack" @saved="onLyricSaved" />
+    <LyricBatchDialog v-model="lyricBatchOpen" @changed="onLyricSaved()" />
   </IslandInnerBase>
 </template>
 
@@ -361,9 +385,25 @@ import { useBgmLibraryStore } from '@/stores/bgmLibrary'
 import { downloadMusicTemplate, getMusicUploaders } from '@/api/music'
 import { reorderMusic } from '@/api/music'
 import { useRowDragSort } from '@/composables/useRowDragSort'
+import LyricDialog from '@/components/music/LyricDialog.vue'
+import LyricBatchDialog from '@/components/music/LyricBatchDialog.vue'
 
 const { isMobile } = useIsMobile()
 const musicStore = useMusicStore()
+
+/* ---------- 歌词（v2.46.327） ---------- */
+const lyricOpen = ref(false)
+const lyricBatchOpen = ref(false)
+const lyricTrack = ref(null)
+function openLyric(row) {
+  lyricTrack.value = { id: row.id, title: row.title, artist: row.artist || '' }
+  lyricOpen.value = true
+}
+/** 歌词变了 → 重拉列表（has_lyric 标记要跟着变） */
+async function onLyricSaved() {
+  // size=0：跟列表页一致，一次拉全（后端上限 1000），否则分页时徽标会错位
+  try { await musicStore.fetchList({ size: 0 }) } catch { /* 失败不提示，下次进页面会刷 */ }
+}
 const player = usePlayerStore()
 const bgm = useBgmLibraryStore()
 
@@ -454,6 +494,12 @@ const showBatch = ref(false)
 const batchUploading = ref(false)
 const batchUploadRef = ref(null)
 const batchFileList = ref([]) // el-upload 内部 file-list（保留 raw 文件）
+const batchLyricFiles = ref([])   // v2.46.327：随音频一起导入的歌词文件（同名配对）
+
+function onPickBatchLyrics(e) {
+  batchLyricFiles.value = Array.from(e.target.files || [])
+  e.target.value = ''
+}
 const batchItems = ref([])   // [{ raw: File, filename, size, title, artist, category, tags }]
 const batchForm = ref({
   artist: '',
@@ -569,7 +615,7 @@ async function submitBatch() {
       tags: batchForm.value.tags || '',
       duration: it.duration || (await readAudioDuration(it.raw)) || 0,
     })))
-    const res = await musicStore.batchUpload({ files, items })
+    const res = await musicStore.batchUpload({ files, items, lyricFiles: batchLyricFiles.value })
     const data = res?.data || {}
     batchResult.value = {
       success: data.success || 0,
@@ -584,6 +630,7 @@ async function submitBatch() {
         // 全部成功后清空文件选择，便于继续
         batchFileList.value = []
         batchItems.value = []
+        batchLyricFiles.value = []
       }
     } else {
       ElMessage.warning('批量导入未成功，请检查文件或网络')
@@ -961,6 +1008,22 @@ function formatSize(bytes) {
   gap: 10px;
   min-width: 0;
 }
+/* v2.46.327：歌词徽标（有=实心「词」，无=虚线「无词」） */
+.ly-badge {
+  flex: none;
+  height: 20px; min-width: 30px; padding: 0 6px;
+  border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--dp-line, rgba(150, 165, 185, .28));
+  background: transparent; color: var(--dp-text3, #7a8b9c);
+  font: inherit; font-size: 11px; line-height: 1;
+  transition: color .15s, border-color .15s, background-color .15s;
+}
+.ly-badge:hover { color: var(--dp-accent, #c7a96b); border-color: var(--dp-accent, #c7a96b); }
+.ly-badge.on {
+  color: #fff; border-color: transparent;
+  background: var(--dp-accent, #c7a96b);
+}
+
 .cell-title .tt {
   flex: 1;
   min-width: 0;
@@ -1104,6 +1167,20 @@ function formatSize(bytes) {
   box-shadow: 0 4px 16px var(--yq-accent-glow, rgba(199, 169, 107, 0.18));
 }
 .batch-drop { text-align: center; color: var(--dp-text2); }
+.batch-lyric-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 4px 0 10px; font-size: 12px;
+}
+.batch-lyric-lab { color: var(--dp-text2, #46586e); flex: none; }
+.batch-lyric-pick {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  height: 28px; padding: 0 10px; border-radius: 8px;
+  border: 1px dashed var(--dp-line-strong, rgba(21, 48, 59, .24));
+  color: var(--dp-text2, #46586e); font-size: 12px;
+}
+.batch-lyric-pick:hover { color: var(--dp-accent, #c7a96b); border-color: var(--dp-accent, #c7a96b); }
+.batch-lyric-hint { color: var(--dp-text3, #5b6f8a); }
+
 .batch-drop-icon { font-size: 28px; line-height: 1; margin-bottom: 6px; }
 .batch-drop-text { font-size: 13px; }
 .batch-drop-text em { color: var(--yq-accent, #c7a96b); font-style: normal; margin: 0 4px; }

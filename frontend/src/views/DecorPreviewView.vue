@@ -1,6 +1,6 @@
 <!--
   DecorPreviewView.vue
-  玄黄装饰组件预览页 — 仅登录可见（meta.requiresAuth=true）
+  星阁装饰组件预览页 — 仅登录可见（meta.requiresAuth=true）
   - 三个 loader 来源（uiverse.io，MIT License）
   - 三个尺寸：小（按钮内）/ 中（卡片）/ 大（区块）
   - 主题切换：跟随全站 data-theme 同步
@@ -11,7 +11,7 @@
     <header class="dp-head">
       <div>
         <h1 class="dp-title">装饰组件预览</h1>
-        <p class="dp-sub">来自 uiverse.io MIT 协议的 3 个 loader，已按玄黄色系 + 昼夜双套改造</p>
+        <p class="dp-sub">来自 uiverse.io MIT 协议的 3 个 loader，已按星阁色系 + 昼夜双套改造</p>
       </div>
       <div class="dp-meta">
         <span class="dp-tag">主题：<b>{{ theme }}</b></span>
@@ -100,7 +100,7 @@
     </section>
 
     <section class="dp-compare">
-      <h2>在真实玄黄页面里的应用预览</h2>
+      <h2>在真实星阁页面里的应用预览</h2>
       <div class="dp-grid">
         <!-- KPI 卡 -->
         <article class="dp-card dp-card--mock">

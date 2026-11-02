@@ -5,7 +5,7 @@ https://github.com/Calix-L/DanKS —— 源码随包附于 ``app/games/danks_v1/
 （含 LICENSE/NOTICE）。V1 = 结构化候选检索 + 启发式评分引擎（纯 NumPy，
 无训练权重依赖，CPU 单步毫秒级）。
 
-适配器职责：把玄黄掼蛋引擎的手牌/牌型/历史翻译成 DanKS 的
+适配器职责：把星阁掼蛋引擎的手牌/牌型/历史翻译成 DanKS 的
 RetrievalContext + 合法动作列表，用其评分挑最优动作；异常时返回 None
 由调用方回退到旧启发式。夜星的三条出炸规则保留在 ai_choose 里作为
 「DanKS 选择过牌时」的保底覆盖层。

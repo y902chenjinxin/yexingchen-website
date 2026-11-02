@@ -282,9 +282,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* ---- 本页局部玄黄主题 ----
+/* ---- 本页局部星阁主题 ----
    只在本页重定义 Element Plus 主色，不动全局 --dp-accent，其它后台页维持原配色。
-   理由同菜单页：管理后台此前是清一色靛蓝，一点玄黄鎏金都没有，跟工作台放在一起像两套系统。 */
+   理由同菜单页：管理后台此前是清一色靛蓝，一点星阁鎏金都没有，跟工作台放在一起像两套系统。 */
 .section {
   --el-color-primary: var(--yq-accent-bright);
   --el-color-primary-light-3: var(--yq-accent);

@@ -1,4 +1,4 @@
-"""玄黄工作台路由包。
+"""星阁工作台路由包。
 
 将原 workbench.py 按业务模块拆为多个子模块后，统一在这里聚合。
 外部调用方式不变：``from app.routers.workbench import router``，在 main.py 里 ``app.include_router(router)`` 即可。

@@ -1,9 +1,9 @@
 <!--
   DecorLoaderJadeBounce.vue
   来源：uiverse.io/alexruix/white-cat-50（MIT License）
-  玄黄改造：
+  星阁改造：
     - 颜色：鎏金→雨青双色渐变（替代原 #f08080 红）
-    - 投影用玄黄 glass shadow
+    - 投影用星阁 glass shadow
     - 昼夜双套
   用途：按钮内 / 行内 / 小区块加载
 -->
@@ -25,7 +25,7 @@
   margin: 0 auto;
   position: relative;
 }
-/* 原"红色方块" — 玄黄：鎏金→雨青 渐变 */
+/* 原"红色方块" — 星阁：鎏金→雨青 渐变 */
 .dloader__ball {
   width: 100%;
   height: 100%;
@@ -43,7 +43,7 @@
   animation: dloader-bounce 0.5s linear infinite;
   will-change: transform, border-radius;
 }
-/* 原"投影" — 玄黄：冷色半透明 */
+/* 原"投影" — 星阁：冷色半透明 */
 .dloader__shadow {
   content: "";
   width: 100%;

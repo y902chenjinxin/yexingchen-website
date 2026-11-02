@@ -1,6 +1,6 @@
 <!--
   NoteEditorToolbar.vue
-  玄黄 · 笔记富文本工具栏
+  星阁 · 笔记富文本工具栏
   - 鎏金主色 + hover 动效 + v-mouse-light
   - 颜色面板支持 preset / 取色 / HEX / RGB
 -->
@@ -173,7 +173,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
   backdrop-filter: blur(10px);
 }
 
-/* 按钮：玄黄主题 + hover 微动效 */
+/* 按钮：星阁主题 + hover 微动效 */
 .ne-toolbar button, .ne-toolbar .ne-upload-btn {
   position: relative;
   padding: 5px 10px;

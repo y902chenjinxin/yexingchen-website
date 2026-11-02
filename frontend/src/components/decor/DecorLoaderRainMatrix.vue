@@ -1,7 +1,7 @@
 <!--
   DecorLoaderRainMatrix.vue
   来源：uiverse.io/Nawsome/blue-dragon-70（MIT License）
-  玄黄改造：
+  星阁改造：
     - 颜色全走 --yq-rain（雨青）— 取代原 #fff
     - 9 段 keyframes 矩阵移动 + 4s 循环
     - 昼夜双套：日间加深雨青，夜间保留原质感
@@ -38,7 +38,7 @@
   top: 0;
   width: 100%;
   height: 100%;
-  /* 玄黄：雨青主体色 + 鎏金辉光 */
+  /* 星阁：雨青主体色 + 鎏金辉光 */
   background: var(--yq-rain);
   box-shadow: 0 0 8px var(--shadow-glow, rgba(127, 168, 163, 0.55));
   border-radius: 2px;

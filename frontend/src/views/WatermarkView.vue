@@ -61,6 +61,7 @@ import StepIndicator from '@/components/common/StepIndicator.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { parseVideoUrl, parseErrorMsg } from '@/api/videoParse'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const link = ref('')
 const parsing = ref(false)
@@ -92,11 +93,48 @@ function download(e, url) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
+/** 文件名安全化：标题里常有 / : ? 这类不能做文件名的字符 */
+function safeName(s) {
+  return String(s || 'audio').replace(/[\\/:*?"<>|\n\r]/g, '_').trim().slice(0, 60) || 'audio'
+}
+
+/**
+ * 顺手把同名歌词也下下来（v2.46.327）。
+ * 夜星：「在下载音频的时候能自动下载歌词文件，在导入音乐模块时，能与歌曲对应位置匹配上」。
+ * 做法：音频存成「歌名.mp3」、歌词存成「歌名.lrc」——导入音乐模块时同名自动配对，
+ * LRC 里的时间轴原样保留，播放页就能按位置高亮。
+ */
+async function downloadLyricFile(title, artist) {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await axios.post('/api/music/lyric/lookup',
+      { title, artist: artist || '' },
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    const d = res?.data?.data || res?.data || {}
+    if (!d.found || !d.content) return false
+    const blob = new Blob([d.content], { type: 'text/plain;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${safeName(title)}.lrc`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function downloadAudio() {
   const url = (link.value || '').trim()
   if (!url) { audioErr.value = '请先粘贴链接'; return }
+  const title = result.value?.title || ''
+  const artist = result.value?.author?.name || ''
   if (result.value?.music_url) {
     window.open(result.value.music_url, '_blank')
+    // 直链模式下浏览器自己接管下载，我们只能补一份歌词
+    if (await downloadLyricFile(title, artist)) audioErr.value = ''
     return
   }
   if (audioing.value) return
@@ -111,10 +149,17 @@ async function downloadAudio() {
     const blob = new Blob([resp.data], { type: 'audio/mpeg' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = 'audio.mp3'
+    // 用歌名命名：导入音乐模块时「歌名.mp3 + 歌名.lrc」才能同名配对
+    a.download = `${safeName(title)}.mp3`
     document.body.appendChild(a)
     a.click()
     a.remove()
+    const gotLyric = await downloadLyricFile(title, artist)
+    if (gotLyric) {
+      ElMessage.success('音频和歌词都已下载，导入音乐模块会自动关联')
+    } else {
+      ElMessage.warning('音频已下载，但没找到这首歌的歌词（导入后可在音乐页手动补）')
+    }
   } catch (e) {
     audioErr.value = e?.response?.data?.detail || '音频抽取失败，请重试'
   } finally {

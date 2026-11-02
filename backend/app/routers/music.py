@@ -8,6 +8,7 @@ from typing import Optional, List
 import os
 import io
 import csv
+from datetime import datetime
 from app.schemas.common import *
 from app.database import get_db, SessionLocal
 from app.utils.security import get_current_user, check_owner_or_admin
@@ -15,6 +16,7 @@ from app.schemas.errors import ErrCode, raise_error
 from app.services.log_service import log_action
 from app.utils.file_utils import save_upload_file, delete_file, ALLOWED_MUSIC_EXTENSIONS, ALLOWED_COVER_EXTENSIONS
 from app.config import settings
+from app.services import lyrics as lyric_svc
 
 router = APIRouter(prefix="/api/music", tags=["音乐岛"])
 
@@ -165,6 +167,9 @@ def list_music(
             "uploader_name": uploader_names.get(m.uploader_id, ""),
             "file_size": m.file_size,
             "is_default": m.is_default,
+            # v2.46.327：只回布尔，不回正文 —— 254 首全带上歌词会让列表 JSON 涨到几 MB
+            "has_lyric": bool((m.lyric or "").strip()),
+            "lyric_source": m.lyric_source or "",
             "created_at": str(m.created_at)
         }
         for m in items
@@ -355,6 +360,9 @@ async def batch_upload_music(
     tags: List[str] = Form(default_factory=list, description="与文件一一对应的标签（可选）"),
     # v2.46.231：每条音频时长（秒），前端读本地文件得到；缺省按 0 存
     durations: List[str] = Form(default_factory=list, description="与文件一一对应的时长秒数（可选）"),
+    # v2.46.327：随音频一起选的歌词文件。**按文件名配对**（音频 stem == 歌词 stem），
+    # 去水印工具下载的「歌名.mp3 + 歌名.lrc」拖进来就能自动挂上，时间轴原样保留。
+    lyric_files: List[UploadFile] = File(default=[], description="歌词文件（可选，同名自动配对）"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -379,6 +387,19 @@ async def batch_upload_music(
             return max(0, int(float(v)))
         except (TypeError, ValueError):
             return 0
+
+    # 先把歌词读进内存按 stem 建索引（单个 LRC 只有几 KB，一次读完最省事）
+    lyric_pool: dict = {}
+    for lf in (lyric_files or []):
+        try:
+            raw = await lf.read()
+            name = lf.filename or ""
+            stem = os.path.splitext(name)[0].strip().lower()
+            content = lyric_svc.normalize_lrc(_decode_lyric(raw))
+            if stem and content:
+                lyric_pool[stem] = content
+        except Exception:  # noqa: BLE001
+            continue
 
     results: List[dict] = []
     success_count = 0
@@ -417,6 +438,15 @@ async def batch_upload_music(
                 file_size=file_size,
                 duration=_sec(durations_p[idx]),
             )
+            # 同名歌词：先按原始文件名 stem 找，再按标题找（用户可能改过标题）
+            stem = os.path.splitext(file.filename or "")[0].strip().lower()
+            hit = lyric_pool.get(stem) or lyric_pool.get((titles[idx] or "").strip().lower())
+            if hit:
+                music.lyric = hit[:MAX_LYRIC_CHARS]
+                music.lyric_source = "import"
+                music.lyric_at = datetime.now()
+                entry["lyric"] = True
+
             db.add(music)
             db.flush()  # 先取 id，单条失败可回滚而不影响其他
             entry["id"] = music.id
@@ -478,3 +508,287 @@ async def download_music_template(current_user: dict = Depends(get_current_user)
             "Cache-Control": "no-cache",
         },
     )
+
+
+# ==================== 歌词（v2.46.327） ====================
+# 夜星：「音乐播放时没有歌词」「支持上传歌词并能关联到对应歌曲」「同名即可关联」
+#       「也可单个编辑，手动做关联」「下载音频时自动下载歌词」。
+# 存储：music.lyric 存 LRC 原文，一歌一份，跟着歌一起删。
+
+MAX_LYRIC_CHARS = 300 * 1024   # 300KB，正常 LRC 不超过 20KB，这里只挡滥用
+ALLOWED_LYRIC_EXT = {".lrc", ".txt", ".krc", ".srt", ".ass", ".json"}
+
+
+def _decode_lyric(raw: bytes) -> str:
+    """歌词文件常见 GBK（老 txt）/ UTF-8（lrc）/ 带 BOM。逐个试，别只认 UTF-8。"""
+    for enc in ("utf-8-sig", "utf-8", "gb18030", "big5"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", "ignore")
+
+
+def _find_track(db: Session, music_id: int) -> Music:
+    m = db.query(Music).filter(Music.id == music_id).first()
+    if not m:
+        raise_error(ErrCode.MUSIC_NOT_FOUND, "音乐不存在")
+    return m
+
+
+@router.get("/lyric/stats", response_model=ResponseBase)
+def lyric_stats(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """有/无歌词的曲目数（前端顶部显示「X 首还没有歌词」并给批量抓取入口）。"""
+    total = db.query(Music).count()
+    with_lyric = (
+        db.query(Music)
+        .filter(Music.lyric.isnot(None), Music.lyric != "")
+        .count()
+    )
+    return ResponseBase(data={"total": total, "with_lyric": with_lyric, "missing": total - with_lyric})
+
+
+@router.post("/lyric/lookup", response_model=ResponseBase)
+def lyric_lookup(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """按歌名在线查歌词，**不落库**（v2.46.327）。
+
+    给「视频去水印」用：下载音频时顺手把同名 .lrc 一起下下来，
+    之后导入音乐模块时按文件名就能自动关联上（时间轴原样保留，播放页能对位）。
+    """
+    title = (body or {}).get("title") or ""
+    artist = (body or {}).get("artist") or ""
+    duration = int((body or {}).get("duration") or 0)
+    if not title.strip():
+        raise_error(ErrCode.INVALID_PARAM, "缺少歌名")
+    got = lyric_svc.fetch_online(title, artist, duration)
+    if not got:
+        return ResponseBase(msg="没找到带时间轴的歌词", data={"found": False})
+    return ResponseBase(data={
+        "found": True,
+        "content": got["lyric"],
+        "source": got["source"],
+        "matched_title": got.get("title", ""),
+        "matched_artist": got.get("artist", ""),
+    })
+
+
+@router.post("/lyric/fetch-missing", response_model=ResponseBase)
+def lyric_fetch_missing(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """给「还没有歌词」的曲目批量在线抓取。
+
+    为什么要 limit：每首要打 1~2 个外部接口，254 首一次跑完要几分钟，
+    前端请求会超时。默认一次 20 首，前端循环调用直到 missing=0。
+    """
+    limit = max(1, min(50, int(limit or 20)))
+    rows = (
+        db.query(Music)
+        .filter(or_(Music.lyric.is_(None), Music.lyric == ""))
+        .order_by(Music.sort_order.asc(), Music.id.asc())
+        .limit(limit)
+        .all()
+    )
+    ok_items, fail_items = [], []
+    for m in rows:
+        got = lyric_svc.fetch_online(m.title, m.artist or "", int(m.duration or 0))
+        if not got:
+            fail_items.append({"id": m.id, "title": m.title})
+            continue
+        m.lyric = got["lyric"][:MAX_LYRIC_CHARS]
+        m.lyric_source = got["source"]
+        m.lyric_at = datetime.now()
+        ok_items.append({"id": m.id, "title": m.title, "source": got["source"]})
+    db.commit()
+    return ResponseBase(
+        msg=f"成功 {len(ok_items)} 首",
+        data={"ok": ok_items, "failed": fail_items, "remaining": _missing_count(db)},
+    )
+
+
+def _missing_count(db: Session) -> int:
+    return (
+        db.query(Music)
+        .filter(or_(Music.lyric.is_(None), Music.lyric == ""))
+        .count()
+    )
+
+
+@router.get("/{music_id}/lyric", response_model=ResponseBase)
+def get_lyric(
+    music_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    m = _find_track(db, music_id)
+    return ResponseBase(data={
+        "id": m.id,
+        "title": m.title,
+        "artist": m.artist or "",
+        "content": m.lyric or "",
+        "source": m.lyric_source or "",
+        "has_timeline": lyric_svc.has_timeline(m.lyric or ""),
+        "updated_at": str(m.lyric_at) if m.lyric_at else "",
+    })
+
+
+@router.put("/{music_id}/lyric", response_model=ResponseBase)
+def put_lyric(
+    music_id: int,
+    body: dict,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """手动编辑 / 手动关联（前端粘贴歌词、或把某个文件的歌词指定给这首歌）。
+
+    body: {"content": "...", "source": "manual"}
+    传空串 = 清空（等价 DELETE）。
+    """
+    m = _find_track(db, music_id)
+    content = lyric_svc.normalize_lrc((body or {}).get("content") or "")
+    if len(content) > MAX_LYRIC_CHARS:
+        raise_error(ErrCode.INVALID_PARAM, "歌词超过 300KB，请检查文件")
+    if not content:
+        m.lyric = None
+        m.lyric_source = ""
+        m.lyric_at = None
+    else:
+        m.lyric = content
+        m.lyric_source = ((body or {}).get("source") or "manual")[:16]
+        m.lyric_at = datetime.now()
+    db.commit()
+    return ResponseBase(msg="已保存", data={
+        "id": m.id,
+        "has_lyric": bool(content),
+        "has_timeline": lyric_svc.has_timeline(content),
+        "source": m.lyric_source,
+    })
+
+
+@router.delete("/{music_id}/lyric", response_model=ResponseBase)
+def delete_lyric(
+    music_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    m = _find_track(db, music_id)
+    m.lyric = None
+    m.lyric_source = ""
+    m.lyric_at = None
+    db.commit()
+    return ResponseBase(msg="已清除歌词")
+
+
+@router.post("/{music_id}/lyric/fetch", response_model=ResponseBase)
+def fetch_lyric_now(
+    music_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """在线抓一首（网易云 → 酷狗兜底），抓到就落库。"""
+    m = _find_track(db, music_id)
+    got = lyric_svc.fetch_online(m.title, m.artist or "", int(m.duration or 0))
+    if not got:
+        raise_error(ErrCode.INVALID_PARAM, "没找到带时间轴的歌词，可以手动粘贴或上传")
+    m.lyric = got["lyric"][:MAX_LYRIC_CHARS]
+    m.lyric_source = got["source"]
+    m.lyric_at = datetime.now()
+    db.commit()
+    return ResponseBase(msg=f"已从{got['source']}获取", data={
+        "id": m.id,
+        "source": got["source"],
+        "matched_title": got.get("title", ""),
+        "matched_artist": got.get("artist", ""),
+        "content": m.lyric,
+        "has_timeline": True,
+    })
+
+
+@router.post("/lyric/upload", response_model=ResponseBase)
+async def upload_lyrics(
+    files: List[UploadFile] = File(...),
+    music_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """上传歌词：单首（带 music_id）或批量（按文件名自动匹配歌名）。
+
+    返回每一份的结果，前端把「没匹配上」的列出来让用户手动指定 —— 手动关联的入口。
+    """
+    results = []
+    tracks = db.query(Music).all()
+    for f in files[:200]:                      # 一次最多 200 份，防止误选整个文件夹
+        name = f.filename or "lyric.lrc"
+        ext = os.path.splitext(name)[1].lower()
+        raw = await f.read()
+        if ext and ext not in ALLOWED_LYRIC_EXT:
+            results.append({"file": name, "ok": False, "reason": "只支持 txt / lrc / krc / srt / ass"})
+            continue
+        if len(raw) > MAX_LYRIC_CHARS * 2:
+            results.append({"file": name, "ok": False, "reason": "文件过大"})
+            continue
+        content = lyric_svc.normalize_lrc(_decode_lyric(raw))
+        if not content:
+            results.append({"file": name, "ok": False, "reason": "空文件"})
+            continue
+
+        target = None
+        if music_id:
+            target = next((m for m in tracks if m.id == music_id), None)
+        else:
+            # 同名匹配：优先挑「还没有歌词」的那首，避免把已有的覆盖掉
+            cands = [m for m in tracks if lyric_svc.match_title(name, m.title, m.artist or "")]
+            target = next((m for m in cands if not (m.lyric or "").strip()), None) or (
+                cands[0] if cands else None
+            )
+        if not target:
+            results.append({
+                "file": name,
+                "ok": False,
+                "reason": "没有同名歌曲",
+                "content": content,
+                "has_timeline": lyric_svc.has_timeline(content),
+            })
+            continue
+
+        target.lyric = content[:MAX_LYRIC_CHARS]
+        target.lyric_source = "upload"
+        target.lyric_at = datetime.now()
+        results.append({
+            "file": name,
+            "ok": True,
+            "music_id": target.id,
+            "title": target.title,
+            "has_timeline": lyric_svc.has_timeline(content),
+        })
+    db.commit()
+    ok_count = sum(1 for r in results if r.get("ok"))
+    return ResponseBase(
+        msg=f"已关联 {ok_count}/{len(results)} 份",
+        data={"results": results, "ok": ok_count, "total": len(results)},
+    )
+
+
+@router.get("/lyric/missing", response_model=ResponseBase)
+def lyric_missing(
+    limit: int = 200,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """还没有歌词的曲目清单（前端「批量抓取」按钮上显示数量、也能在这里挑着抓）。"""
+    rows = (
+        db.query(Music)
+        .filter(or_(Music.lyric.is_(None), Music.lyric == ""))
+        .order_by(Music.sort_order.asc(), Music.id.asc())
+        .limit(max(1, min(1000, int(limit or 200))))
+        .all()
+    )
+    return ResponseBase(data={
+        "items": [{"id": m.id, "title": m.title, "artist": m.artist or "", "duration": m.duration or 0} for m in rows],
+        "count": len(rows),
+    })

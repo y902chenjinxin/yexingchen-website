@@ -234,7 +234,7 @@ def _draw_seal(img: Image.Image, title: str, subtitle: str, pal: dict) -> None:
     d.rounded_rectangle([x1, y1, x1 + side, y1 + side], radius=6, fill=pal["accent"] + (235,))
     m = side // 8
     d.rectangle([x1 + m, y1 + m, x1 + side - m, y1 + side - m], outline=(255, 255, 255, 190), width=2)
-    chars = (title or "玄黄").replace(" ", "")[:2] or "玄黄"
+    chars = (title or "星阁").replace(" ", "")[:2] or "星阁"
     font_c = _font(int(side * 0.34))
     if font_c:
         for i, ch in enumerate(chars):
@@ -258,7 +258,7 @@ def render_cover(title: str, subtitle: str = "", size: str = "wechat",
         wm = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         wd = ImageDraw.Draw(wm)
         f = _font(int(min(w, h) * 0.5))
-        wd.text((w * 0.62, h * 0.30), (title or "玄黄")[:1], font=f, fill=pal["main"] + (16,))
+        wd.text((w * 0.62, h * 0.30), (title or "星阁")[:1], font=f, fill=pal["main"] + (16,))
         wm = wm.filter(ImageFilter.GaussianBlur(2))
         img = Image.alpha_composite(img, wm)
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512" role="img" aria-label="玄黄">
-  <!-- 玄黄 · 云雷玉璧（maskable 版）
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512" role="img" aria-label="星阁">
+  <!-- 星阁 · 云雷玉璧（maskable 版）
        底色铺满整张画布（无透明边、无圆角），主体缩进 80% 安全圈内，
        交给 PWA / 安卓自适应图标自行裁切成圆形、方形或水滴形。 -->
   <defs>

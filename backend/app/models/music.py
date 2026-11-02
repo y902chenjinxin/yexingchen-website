@@ -1,5 +1,5 @@
 """音乐模型。"""
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -25,6 +25,14 @@ class Music(Base):
     sort_order = Column(Integer, nullable=False, default=0, index=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # ---------- 歌词（v2.46.327）----------
+    # 存 LRC 原文（带 [mm:ss.xx] 时间轴）。空 = 没有歌词，播放页留空不占位。
+    # 为什么不单独建表：一首歌一份歌词，1:1，且要跟着歌一起删；拆表只会多一次 join。
+    lyric = Column(Text, nullable=True)
+    # 来源标记：manual(手填) / upload(上传) / netease / kugou / import(随音频导入)
+    lyric_source = Column(String(16), nullable=False, default="", server_default="")
+    lyric_at = Column(DateTime, nullable=True)
 
     uploader = relationship("User", back_populates="music")
 
