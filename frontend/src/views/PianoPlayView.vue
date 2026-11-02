@@ -9,6 +9,10 @@
       </div>
       <div class="pp-modes">
         <button
+          type="button" class="pp-mode" :class="{ on: mode === 'chord' }"
+          :disabled="phase !== 'playing'" @click="switchMode('chord')"
+        >和弦伴奏</button>
+        <button
           type="button" class="pp-mode" :class="{ on: mode === 'score' }"
           :disabled="phase !== 'playing'" @click="switchMode('score')"
         >看谱弹</button>
@@ -21,9 +25,26 @@
     </header>
 
     <!-- 舞台：曲谱模式（默认）/ 下落模式 -->
-    <main ref="stageEl" class="pp-stage" :class="{ 'is-score': mode === 'score' }">
+    <main ref="stageEl" class="pp-stage" :class="{ 'is-score': mode !== 'fall' }">
+      <!-- 和弦伴奏（默认）：一个格子一个和弦，按一下三个音一起响 -->
+      <template v-if="mode === 'chord'">
+        <div class="pp-scorehd">
+          <span class="pp-hint">
+            按格子上的字母 —— 一次响一整个和弦。按错只是不往下走，照着按就行
+          </span>
+          <span v-if="cursor >= chords.length" class="pp-done-chip">
+            弹完了 · 点行号重来
+          </span>
+          <span class="pp-count-badge">
+            {{ Math.min(cursor, chords.length) }} / {{ chords.length }}
+            <template v-if="chordKinds"> · {{ chordKinds }} 个和弦</template>
+          </span>
+        </div>
+        <PianoChordScore :chords="chords" :active="cursor" @pick="pick" />
+      </template>
+
       <!-- 看谱弹：不赶时间，看着简谱一个一个按；按错也出声 -->
-      <template v-if="mode === 'score'">
+      <template v-else-if="mode === 'score'">
         <div class="pp-scorehd">
           <span class="pp-hint">
             看着谱子慢慢弹，按错也没关系（按对会往下走，想从哪句开始就点那句的编号）
@@ -84,14 +105,16 @@
         <div v-else-if="phase === 'ready'" class="pp-ov-box">
           <p class="pp-ov-lead">{{ song?.title }}</p>
           <p class="pp-ov-sub">
-            <b>看谱弹</b>：简谱摊开，自己慢慢按，按错也没事<br />
+            <b>和弦伴奏</b>：按一个键响一整个和弦，最简单也最好听<br />
+            <b>看谱弹</b>：简谱摊开，一个音一个音慢慢按<br />
             <b>跟着落</b>：音符掉到底线时按对应字母（节奏版）<br />
             白键 <kbd>A S D F G H J K L</kbd> / <kbd>Q W E R T Y U I O</kbd><br />黑键 <kbd>1</kbd> ~ <kbd>0</kbd>
           </p>
           <div class="pp-ov-acts">
-            <button class="pp-btn primary" type="button" :disabled="starting" @click="start('score')">
-              {{ starting ? '正在准备音频…' : '看谱弹' }}
+            <button class="pp-btn primary" type="button" :disabled="starting" @click="start('chord')">
+              {{ starting ? '正在准备音频…' : '和弦伴奏' }}
             </button>
+            <button class="pp-btn" type="button" :disabled="starting" @click="start('score')">看谱弹</button>
             <button class="pp-btn" type="button" :disabled="starting" @click="start('fall')">跟着落</button>
             <button class="pp-btn" type="button" @click="exit">返回</button>
           </div>
@@ -135,10 +158,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 
 import { useRoute } from 'vue-router'
 import PianoKeyboard from '@/components/piano/PianoKeyboard.vue'
 import PianoScore from '@/components/piano/PianoScore.vue'
+import PianoChordScore from '@/components/piano/PianoChordScore.vue'
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
 import { usePiano } from '@/composables/usePiano'
 import { getSong } from '@/api/songs'
 import { keyLayout, KEY_TO_MIDI } from '@/utils/pianoKeys'
+import { deriveChords } from '@/utils/chords'
 
 const route = useRoute()
 const { exit: exitFullscreen } = useFullscreenPage()
@@ -147,9 +172,9 @@ const { ready: audioReady, init: initAudio, noteOn, noteOff, allOff, dispose: di
 
 const song = ref(null)
 const phase = ref('loading')     // loading | ready | countdown | playing | done | error
-/** 演奏形态：score = 看谱慢慢弹（默认）｜fall = 原来的节奏版 */
-const mode = ref('score')
-/** 曲谱模式下「建议你现在按」的音序号（按对才前进，按错不动，也不惩罚） */
+/** 演奏形态：chord = 和弦伴奏（默认）｜score = 看谱慢慢弹｜fall = 节奏版 */
+const mode = ref('chord')
+/** 曲谱/和弦模式下「建议你现在按」的序号（按对才前进，按错不动，也不惩罚） */
 const cursor = ref(0)
 const errMsg = ref('')
 const starting = ref(false)
@@ -162,6 +187,17 @@ const kbEl = ref(null)
 const stageH = ref(0)
 const laneW = ref(0)          // 与键盘同宽
 const layout = shallowRef(keyLayout(1))
+
+/* ---------- 和弦伴奏（v2.46.338）----------
+ * 从当前曲谱实时推导：任何上传的谱子都有和弦模式，不需要人工标和弦。
+ * 1108 个音推 78 个和弦约 16ms，所以直接 computed，不做缓存也不卡界面。
+ * 推导口径见 utils/chords.js 顶部注释。 */
+const chordData = computed(() => deriveChords(song.value?.notes || []))
+const chords = computed(() => chordData.value.chords)
+const chordKeyMap = computed(() => chordData.value.keyMap)
+const chordKinds = computed(() => chordData.value.chordCount || 0)
+/** 当前按住的键 → 它响的和弦音（keyup 要逐个释放，不能只 allOff） */
+const heldChords = new Map()
 
 const activeKeys = ref([])
 const activeSet = computed(() => new Set(activeKeys.value))
@@ -251,6 +287,10 @@ function tickFrame() {
 }
 
 const progressPct = computed(() => {
+  if (mode.value === 'chord') {
+    const len = chords.value.length || 1
+    return Math.min(100, Math.round((cursor.value / len) * 100))
+  }
   if (mode.value === 'score') {
     const len = song.value?.notes?.length || 1
     return Math.min(100, Math.round((cursor.value / len) * 100))
@@ -266,6 +306,7 @@ const duration = computed(() => {
 function finish() {
   phase.value = 'done'
   allOff()
+  heldChords.clear()
   if (rafId) cancelAnimationFrame(rafId)
   rafId = 0
 }
@@ -274,6 +315,25 @@ function finish() {
 function onKeyDown(key) {
   if (activeKeys.value.includes(key)) return
   activeKeys.value = [...activeKeys.value, key]
+
+  // 和弦伴奏：一个键 = 一个和弦，三四个音同时响（这就是"吉他感"的来源）
+  if (mode.value === 'chord') {
+    const info = chordKeyMap.value[key]
+    if (info) {
+      if (audioReady.value) for (const m of info.midis) noteOn(m.midi, m.vel)
+      heldChords.set(key, info.midis.map((m) => m.midi))
+    } else {
+      // 不在和弦表里的键（黑键等）：响单音，保持"随便乱按也有声"
+      const mm = KEY_TO_MIDI.get(key)
+      if (mm != null && audioReady.value) noteOn(mm, 0.75)
+    }
+    if (phase.value === 'playing') {
+      const target = chords.value[cursor.value]
+      if (target && target.key === key) cursor.value += 1
+    }
+    return
+  }
+
   const midi = KEY_TO_MIDI.get(key)
   if (midi != null && audioReady.value) noteOn(midi, 0.9)
 
@@ -290,6 +350,14 @@ function onKeyDown(key) {
 function onKeyUp(key) {
   if (!activeKeys.value.includes(key)) return
   activeKeys.value = activeKeys.value.filter((k) => k !== key)
+
+  // 和弦音和单音混着按的时候要分开释放，否则会和弦音一直挂着（听着像卡住）
+  const ms = heldChords.get(key)
+  if (ms) {
+    for (const m of ms) noteOff(m)
+    heldChords.delete(key)
+    return
+  }
   const midi = KEY_TO_MIDI.get(key)
   if (midi != null) noteOff(midi)
 }
@@ -385,8 +453,8 @@ async function start(m = 'score') {
   }
   starting.value = false
   mode.value = m
-  if (m === 'score') {
-    // 看谱弹：不要倒计时、不要时间轴，直接把谱子摊开
+  if (m !== 'fall') {
+    // 看谱弹 / 和弦伴奏：不要倒计时、不要时间轴，直接把谱子摊开
     cursor.value = 0
     phase.value = 'playing'
     return
@@ -402,25 +470,30 @@ async function start(m = 'score') {
   }, 700)
 }
 
-/** 演奏中切换形态（看谱 ↔ 跟着落） */
+/** 演奏中切换形态（和弦伴奏 / 看谱弹 / 跟着落） */
 function switchMode(m) {
   if (m === mode.value) return
-  if (m === 'score') {
+  if (m !== 'fall') {
     if (rafId) cancelAnimationFrame(rafId)
     rafId = 0
     allOff()
-    mode.value = 'score'
+    heldChords.clear()
+    mode.value = m
     cursor.value = 0
   } else {
+    allOff()
+    heldChords.clear()
     mode.value = 'fall'
     beginPlay()
   }
 }
 
-/** 曲谱模式：点某一句/某个音就从那里开始 */
+/** 点某一句 / 某个和弦就从那里开始（两种谱面共用，靠 mode 决定长度） */
 function pick(i) {
-  cursor.value = Math.max(0, Math.min((song.value?.notes?.length || 1) - 1, i))
+  const len = mode.value === 'chord' ? chords.value.length : (song.value?.notes?.length || 0)
+  cursor.value = Math.max(0, Math.min(Math.max(1, len) - 1, i))
   allOff()
+  heldChords.clear()
 }
 
 function beginPlay() {
@@ -437,7 +510,8 @@ function restart() {
   if (rafId) cancelAnimationFrame(rafId)
   rafId = 0
   activeKeys.value = []
-  if (mode.value === 'score') {
+  heldChords.clear()
+  if (mode.value !== 'fall') {
     cursor.value = 0
     phase.value = 'playing'
     return
@@ -536,7 +610,8 @@ onBeforeUnmount(() => {
   margin-left: auto; flex: none; font-size: 11.5px; font-variant-numeric: tabular-nums;
   color: rgba(255, 225, 160, .9); letter-spacing: .04em;
 }
-.pp-stage.is-score .ps { flex: 1 1 auto; min-height: 0; }
+.pp-stage.is-score .ps,
+.pp-stage.is-score .cs { flex: 1 1 auto; min-height: 0; }
 
 /* 顶栏模式切换 */
 .pp-modes { display: flex; gap: 6px; margin-left: auto; }
