@@ -68,6 +68,8 @@ export const workbenchApi = {
     toggle: (id, data) => api.post(`/habits/${id}/toggle`, data),
     // v2.46.245 每日进度：「今天喝 3 杯水，喝一杯记一下」——delta 默认 +1
     step: (id, delta = 1) => api.post(`/habits/${id}/step`, { delta }),
+    // v2.46.325 不想要做的事：记一次破戒（delta=-1 是撤销误点）
+    slip: (id, delta = 1) => api.post(`/habits/${id}/slip`, { delta }),
     // v2.46.143：断链自罚结算（幂等，进「今天」页调用一次）+ 本周复盘
     settle: () => api.post('/habits/settle'),
     weekly: () => api.get('/habits/weekly'),

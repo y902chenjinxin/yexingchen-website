@@ -13,6 +13,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -33,6 +34,11 @@ router = APIRouter(prefix="/api/habits", tags=["工作台-习惯打卡"])
 # 与 finance 路由保持同一个家（当前单户：HOUSEHOLD_ID = 1）
 HOUSEHOLD_ID = 1
 PENALTY_CATEGORY = "断链罚金"
+# 「不想要做的事」的罚金单独一个分类（v2.46.325）：
+# 和「断链罚金」混在一起时，看账本分不清"没做到"还是"做了不该做的"。
+QUIT_PENALTY_CATEGORY = "戒除恶习罚金"
+KIND_DO = "do"
+KIND_QUIT = "quit"
 # 结算最多回溯多少天：避免某习惯停用半年后进站一次性刷出 180 笔罚单
 SETTLE_MAX_DAYS = 60
 
@@ -106,6 +112,10 @@ class HabitIn(BaseModel):
     account: Optional[str] = None
     # 每天目标次数（v2.46.245）：0/1 = 布尔打卡；>1 = 一天要做 N 次（如喝水 3 杯）
     daily_target: int = Field(default=0, ge=0, le=50)
+    # ---------- 不想要做的事（v2.46.325）----------
+    # kind='quit' 时 daily_target 无意义（目标恒为 0 次），改用 quit_allow 当"每天允许几次"
+    kind: str = Field(default="do")
+    quit_allow: int = Field(default=0, ge=0, le=50)
     # ---------- 周期调度（v2.46.256）----------
     # freq=daily 每 N 天 / weekly 每周固定周几 / monthly 每月固定几号 / yearly 每年某月某日
     freq: str = Field(default="daily")
@@ -194,7 +204,12 @@ def list_habits(
         )
         today_count = int(getattr(row, "count", 0) or 0) if row else 0
         target = int(h.daily_target or 0)
-        checked_today = (today_count >= target) if target > 1 else (row is not None)
+        # 戒除类没有"完成"这个概念（目标恒为 0 次），checked_today 恒 False，
+        # 免得它被算进完成率 —— 否则「今天没扳手指」永远不算完成，「扳了」反而…也不对。
+        if (h.kind or KIND_DO) == KIND_QUIT:
+            checked_today = False
+        else:
+            checked_today = (today_count >= target) if target > 1 else (row is not None)
         stats = _compute_stats(db, h, uid)
         result.append({
             "id": h.id,
@@ -216,6 +231,13 @@ def list_habits(
             "checked_today": checked_today,
             "penalty_cents": h.penalty_cents or 0,
             "penalty_grace": h.penalty_grace or 0,
+            "kind": h.kind or KIND_DO,
+            "quit_allow": int(h.quit_allow or 0),
+            # 今日已罚（按超额次数 × 单次罚金算，和 _settle_quit_day 同一口径）
+            "quit_penalty_today": (
+                max(0, today_count - int(h.quit_allow or 0)) * int(h.penalty_cents or 0)
+                if (h.kind or KIND_DO) == KIND_QUIT else 0
+            ),
             "account": h.account or "",
             "penalty_total_cents": penalty_totals.get(h.id, 0),
             **stats,
@@ -242,6 +264,8 @@ def create_habit(
         penalty_cents=body.penalty_cents,
         penalty_grace=body.penalty_grace,
         account=(body.account if body.account in ACCOUNT_KEYS else ""),
+        kind=(KIND_QUIT if (body.kind or "").lower() == KIND_QUIT else KIND_DO),
+        quit_allow=max(0, min(50, body.quit_allow or 0)),
     )
     db.add(h)
     db.commit()
@@ -373,6 +397,147 @@ def step_checkin(
     })
 
 
+# ---------- 不想要做的事：记一次破戒（v2.46.325） ----------
+
+def _quit_owed(h: Habit, count: int) -> tuple[int, int]:
+    """今天超额几次、该罚多少分。口径唯一，list / slip / settle 三处共用。"""
+    per = int(h.penalty_cents or 0)
+    if per <= 0:
+        return 0, 0
+    over = max(0, int(count) - int(h.quit_allow or 0))
+    return over, over * per
+
+
+def _settle_quit_day(db: Session, h: Habit, uid: int, day_int: int, count: Optional[int] = None) -> dict:
+    """把某天的破戒罚金**对齐**到当天次数（幂等）。
+
+    和断链自罚的区别：
+      · 断链是「该做没做」，按天一次性；
+      · 破戒是「做了不该做的」，**一天内可以涨**（扳了 3 次就 3 份）。
+    所以一天一张罚单（吃 HabitPenalty 的 (habit_id, miss_date) 唯一约束），
+    次数涨了就改金额、撤销了就把钱退回去 —— 不会出现一晚上 10 条流水。
+    """
+    if count is None:
+        row = (
+            db.query(HabitCheckin)
+            .filter(HabitCheckin.habit_id == h.id, HabitCheckin.checkin_date == day_int)
+            .first()
+        )
+        count = int(getattr(row, "count", 0) or 0) if row else 0
+
+    over, owed = _quit_owed(h, count)
+    pen = (
+        db.query(HabitPenalty)
+        .filter(HabitPenalty.habit_id == h.id, HabitPenalty.miss_date == day_int)
+        .first()
+    )
+
+    if owed <= 0:
+        if pen:
+            # 撤销到最后一次以内：罚单和对应流水一起撤掉，别留 0 元记录污染账本
+            if pen.txn_id:
+                db.query(FinanceTransaction).filter(FinanceTransaction.id == pen.txn_id).delete()
+            db.delete(pen)
+        return {"amount_cents": 0, "over": 0, "count": count, "delta_cents": -(pen.amount_cents if pen else 0)}
+
+    day = _to_date(day_int)
+    if pen:
+        delta = owed - int(pen.amount_cents or 0)
+        pen.amount_cents = owed
+        if pen.txn_id:
+            txn = db.query(FinanceTransaction).filter(FinanceTransaction.id == pen.txn_id).first()
+            if txn:
+                txn.amount_cents = owed
+        return {"amount_cents": owed, "over": over, "count": count, "delta_cents": delta}
+
+    txn = FinanceTransaction(
+        user_id=uid,
+        household_id=HOUSEHOLD_ID,
+        type="transfer",
+        amount_cents=owed,
+        category=QUIT_PENALTY_CATEGORY,
+        note=f"戒除恶习 · {h.name} · {day.isoformat()} 第 {count} 次"[:255],
+        fund="personal",
+        fund_to="savings",
+        occurred_at=datetime.combine(day, time(9, 0)),
+    )
+    db.add(txn)
+    db.flush()
+    db.add(
+        HabitPenalty(
+            habit_id=h.id,
+            user_id=uid,
+            miss_date=day_int,
+            amount_cents=owed,
+            txn_id=txn.id,
+        )
+    )
+    return {"amount_cents": owed, "over": over, "count": count, "delta_cents": owed}
+
+
+@router.post("/{habit_id}/slip")
+def record_slip(
+    habit_id: int,
+    body: Optional[dict] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """「不想要做的事」：记一次（delta=1）/ 撤销一次（delta=-1，误点用）。
+
+    只在今天记 —— 破戒是**当场**的动作，补记没意义（情绪早就过了）。
+    返回 {today_count, allow, over, penalty_cents(今日累计), delta_cents(本次变化), checked:false}
+    """
+    uid = current_user["user_id"]
+    delta = 1
+    if body and body.get("delta") is not None:
+        try:
+            delta = int(body["delta"])
+        except (TypeError, ValueError):
+            raise_http(400, "delta 格式不正确", 400)
+    delta = max(-20, min(20, delta)) or 1
+
+    h = (
+        db.query(Habit)
+        .filter(Habit.id == habit_id, Habit.user_id == uid, Habit.deleted_at.is_(None))
+        .first()
+    )
+    if not h:
+        raise_http(404, "习惯不存在", 404)
+    if (h.kind or KIND_DO) != KIND_QUIT:
+        raise_http(400, "这条是「要做的事」，请用打卡接口", 400)
+
+    today_int = _today_int()
+    row = (
+        db.query(HabitCheckin)
+        .filter(HabitCheckin.habit_id == habit_id, HabitCheckin.checkin_date == today_int)
+        .first()
+    )
+    cur = int(getattr(row, "count", 0) or 0) if row else 0
+    nxt = max(0, cur + delta)
+
+    if nxt <= 0:
+        if row:
+            db.query(HabitCheckin).filter(HabitCheckin.id == row.id).delete()
+            db.flush()
+    elif row:
+        row.count = nxt
+    else:
+        db.add(HabitCheckin(habit_id=habit_id, user_id=uid, checkin_date=today_int, count=nxt))
+    db.flush()
+
+    settle = _settle_quit_day(db, h, uid, today_int, nxt)
+    db.commit()
+    return ok({
+        "habit_id": habit_id,
+        "today_count": nxt,
+        "allow": int(h.quit_allow or 0),
+        "over": settle["over"],
+        "penalty_cents": settle["amount_cents"],
+        "delta_cents": settle["delta_cents"],
+        "checked": False,
+    })
+
+
 @router.patch("/{habit_id}")
 def update_habit(
     habit_id: int,
@@ -399,6 +564,8 @@ def update_habit(
     h.penalty_cents = body.penalty_cents
     h.penalty_grace = body.penalty_grace
     h.account = body.account if body.account in ACCOUNT_KEYS else ""
+    h.kind = KIND_QUIT if (body.kind or "").lower() == KIND_QUIT else KIND_DO
+    h.quit_allow = max(0, min(50, body.quit_allow or 0))
     db.commit()
     return ok({"id": h.id})
 
@@ -426,6 +593,10 @@ def _settle_one(db: Session, h: Habit, uid: int, today: date) -> list:
     幂等靠 HabitPenalty 的 (habit_id, miss_date) 唯一约束 + paid 集合双保险。
     grace 语义：**连续**漏掉的前 N 天不罚，第 N+1 天起每天罚一次；中间打过卡就清零。
     """
+    # 「不想要做的事」绝不能走这条路径（v2.46.325）：
+    # 没记录 = 今天没犯，是好事，按「漏打」罚等于反向激励。
+    if (h.kind or KIND_DO) == KIND_QUIT:
+        return []
     start = today - timedelta(days=SETTLE_MAX_DAYS)
     if h.created_at:
         created_day = h.created_at.date() if isinstance(h.created_at, datetime) else h.created_at
@@ -531,9 +702,13 @@ def settle_penalties(
     )
     items = []
     for h in habits:
+        if (h.kind or KIND_DO) == KIND_QUIT:
+            # 破戒罚金在同一接口里「对齐今天」即可（幂等；正常已经在 slip 时结过了，
+            # 这里只是兜住"slip 请求失败/离线补记"的情况）
+            _settle_quit_day(db, h, uid, _to_int(today))
+            continue
         items.extend(_settle_one(db, h, uid, today))
-    if items:
-        db.commit()
+    db.commit()
     return ok(
         {
             "created": len(items),
@@ -558,6 +733,11 @@ def _compute_weekly(db: Session, uid: int, today: date) -> dict:
         .order_by(Habit.sort_order, Habit.id)
         .all()
     )
+
+    # 戒除类（不想要做的事）不参与完成率：目标恒为 0 次，"完成率"这个概念对它没意义，
+    # 混进来只会把整体率拖低（做得好反而显示 0%）。它们单独统计「破戒次数 / 罚金」。
+    quit_habits = [h for h in habits if (h.kind or KIND_DO) == KIND_QUIT]
+    habits = [h for h in habits if (h.kind or KIND_DO) != KIND_QUIT]
 
     rows = []
     for h in habits:
@@ -604,6 +784,33 @@ def _compute_weekly(db: Session, uid: int, today: date) -> dict:
             }
         )
 
+    # ---- 戒除类：本周破了几次、罚了多少 ----
+    quit_items = []
+    for h in quit_habits:
+        slips = (
+            db.query(func.coalesce(func.sum(HabitCheckin.count), 0))
+            .filter(HabitCheckin.habit_id == h.id, HabitCheckin.checkin_date.in_(week_ints))
+            .scalar()
+        ) or 0
+        pens = (
+            db.query(HabitPenalty)
+            .filter(HabitPenalty.habit_id == h.id, HabitPenalty.miss_date.in_(week_ints))
+            .all()
+        )
+        quit_items.append(
+            {
+                "id": h.id,
+                "name": h.name,
+                "icon": h.icon or "✓",
+                "slips": int(slips),
+                "allow": int(h.quit_allow or 0),
+                "penalty_count": len(pens),
+                "penalty_cents": sum(p.amount_cents for p in pens),
+            }
+        )
+    quit_slips = sum(i["slips"] for i in quit_items)
+    quit_penalty_cents = sum(i["penalty_cents"] for i in quit_items)
+
     items = len(rows)
     checked_total = sum(r["checked"] for r in rows)
     possible = sum(r["days"] for r in rows)
@@ -615,7 +822,12 @@ def _compute_weekly(db: Session, uid: int, today: date) -> dict:
     best = max(rows, key=lambda r: (r["checked"], r["streak"]), default=None)
     worst = min(rows, key=lambda r: (r["checked"], r["streak"]), default=None)
 
-    if not items:
+    if not items and quit_items:
+        text = f"这周没有要做的事，只有 {len(quit_items)} 个要戒的：破了 {quit_slips} 次" + (
+            f"，付了 ¥{(quit_penalty_cents / 100):.0f}。" if quit_penalty_cents else "。"
+        )
+        suggestion = "把罚金调大一点，或者换成「想抽的时候先喝一杯水」这类替代动作。"
+    elif not items:
         text = "还没有每天要做的事。先设 1 个，比设 6 个有用。"
         suggestion = "去「今天」页建第一个习惯，只要一个。"
     elif rate >= 90:
@@ -646,6 +858,9 @@ def _compute_weekly(db: Session, uid: int, today: date) -> dict:
             "text": text,
             "suggestion": suggestion,
             "rows": rows,
+            "quit_items": quit_items,
+            "quit_slips": quit_slips,
+            "quit_penalty_cents": quit_penalty_cents,
         }
 
 
@@ -674,7 +889,8 @@ def account_radar(
         .filter(Habit.user_id == uid, Habit.archived == False, Habit.deleted_at.is_(None))  # noqa: E712
         .all()
     )
-    acc_map = {h.id: (h.account or "") for h in habits}
+    # 戒除类不画进雷达（它没有"完成率"），也不算"未归类"
+    acc_map = {h.id: (h.account or "") for h in habits if (h.kind or KIND_DO) != KIND_QUIT}
 
     buckets = {k: {"checked": 0, "possible": 0, "items": 0} for k, _ in ACCOUNTS}
     for hid, row in by_id.items():
@@ -734,6 +950,8 @@ def household_overview(
             .filter(Habit.user_id == uid, Habit.archived == False, Habit.deleted_at.is_(None))  # noqa: E712
             .all()
         )
+        # 戒除类不计入「今天做了几件」（永远做不完，会把家人的完成率拖成 0）
+        habits = [h for h in habits if (h.kind or KIND_DO) != KIND_QUIT]
         if not habits:
             continue
         ids = [h.id for h in habits]

@@ -10,7 +10,7 @@
               共 {{ list.length }} 条 · 点行尾的笔与垃圾桶可以修改或删除
             </template>
             <template v-else>
-              {{ doneCount }}/{{ total }} 已完成<template v-if="bestStreak"> · 最长连续 {{ bestStreak }} 天</template>
+              {{ doneCount }}/{{ total }} 已完成<template v-if="bestStreak"> · 最长连续 {{ bestStreak }} 天</template><template v-if="quitList.length"> · 戒 {{ quitList.length }} 项{{ slipToday ? `（今天破 ${slipToday} 次）` : '（今天还没破）' }}</template>
             </template>
           </p>
         </div>
@@ -115,12 +115,12 @@
       </section>
 
       <!-- 今日清单 / 全部习惯（v2.46.275 补管理入口与分组） -->
-      <section v-if="total || restCount || managing" class="hb-card glass-card">
+      <section v-if="total || restCount || quitList.length || managing" class="hb-card glass-card">
         <ul class="hb-list">
           <!-- 日常：只列今天该做的。v2.46.266 起不再把月/年/周频塞进「今天」 -->
           <template v-if="!managing">
             <!-- 今天确实没有安排（比如只剩月频习惯），别留一张空卡片 -->
-            <li v-if="!todayList.length" class="hb-row hb-row--empty">
+            <li v-if="!todayList.length && !quitList.length" class="hb-row hb-row--empty">
               今天没有安排要做的事<template v-if="restCount"> · 其余 {{ restCount }} 个在别的日子</template>
             </li>
             <li v-for="h in todayList" :key="h.id" class="hb-row" :class="{ done: h.checked_today }">
@@ -162,6 +162,54 @@
             >＋</button>
             </div>
             </li>
+
+            <!-- v2.46.325「不想要做的事」：和上面要做的事同卡不同组。
+                 语义反过来 —— 上面「点了才算完成」，这里「点了就是犯错」。 -->
+            <template v-if="quitList.length">
+              <li class="hb-grouphd hb-grouphd--quit">
+                不想要做的事
+                <em>今天破了 {{ slipToday }} 次<template v-if="slipFeeToday"> · 罚 ¥{{ (slipFeeToday / 100).toFixed(0) }}</template></em>
+              </li>
+              <li
+                v-for="h in quitList"
+                :key="'q' + h.id"
+                class="hb-row hb-row--quit"
+                :class="{ slip: (h.today_count || 0) > (h.quit_allow || 0) }"
+              >
+                <div class="hb-line">
+                  <div class="hb-hit hb-hit--quit">
+                    <span class="hb-ico" :style="h.color ? { color: h.color } : null">
+                      <AppIcon :icon="h.icon || '✕'" :size="18" />
+                    </span>
+                    <span class="hb-main">
+                      <span class="hb-name">{{ h.name }}</span>
+                      <span class="hb-meta">
+                        <b class="hb-prog" :class="{ full: (h.today_count || 0) <= (h.quit_allow || 0) }">
+                          今天 {{ h.today_count || 0 }} 次
+                        </b>
+                        <template v-if="h.quit_allow"> · 允许 {{ h.quit_allow }} 次不罚</template>
+                        <template v-if="h.penalty_cents"> · 每次罚 ¥{{ (h.penalty_cents / 100).toFixed(0) }}</template>
+                        <template v-if="h.quit_penalty_today"> · 今日已罚 ¥{{ (h.quit_penalty_today / 100).toFixed(0) }}</template>
+                        <template v-if="h.penalty_total_cents"> · 累计 ¥{{ (h.penalty_total_cents / 100).toFixed(0) }}</template>
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    v-if="h.today_count"
+                    class="hb-undo"
+                    type="button"
+                    title="记错了，撤一次"
+                    @click.stop="onSlip(h, -1)"
+                  >↺</button>
+                  <button
+                    class="hb-slip"
+                    type="button"
+                    :title="`又做了一次，今天第 ${(h.today_count || 0) + 1} 次`"
+                    @click.stop="onSlip(h, 1)"
+                  >又做了</button>
+                </div>
+              </li>
+            </template>
           </template>
 
           <!-- 管理模式（v2.46.275）：按「今天 / 排在其他日子」分组。
@@ -240,6 +288,13 @@
             <span>罚金</span>
           </div>
         </div>
+        <p v-if="weekly.quit_items && weekly.quit_items.length" class="hb-wk-quit">
+          戒除恶习：本周破了 <b>{{ weekly.quit_slips }}</b> 次<template v-if="weekly.quit_penalty_cents">
+          · 罚 ¥{{ (weekly.quit_penalty_cents / 100).toFixed(0) }}</template>
+          <span class="hb-wk-quit-list">
+            <em v-for="q in weekly.quit_items" :key="'wq' + q.id">{{ q.name }} {{ q.slips }} 次</em>
+          </span>
+        </p>
         <p class="hb-wk-text">{{ weekly.text }}</p>
         <p class="hb-wk-advice"><span>小玄</span>{{ weekly.suggestion }}</p>
       </section>
@@ -294,8 +349,27 @@
       <div class="hb-form">
         <label class="hb-field">
           <span>名称</span>
-          <el-input v-model="form.name" maxlength="64" placeholder="例如：走 6000 步" />
+          <el-input v-model="form.name" maxlength="64" placeholder="例如：走 6000 步 / 别扳手指" />
         </label>
+        <!-- v2.46.325 类型：要做的事 vs 不想要做的事。两者语义相反，字段完全不同，
+             所以直接用两套表单，而不是塞一堆「对 quit 无意义」的输入框。 -->
+        <div class="hb-field">
+          <span>类型</span>
+          <div class="hb-seg">
+            <button
+              type="button"
+              class="hb-seg-btn"
+              :class="{ on: form.kind === 'do' }"
+              @click="form.kind = 'do'"
+            >要做的事</button>
+            <button
+              type="button"
+              class="hb-seg-btn"
+              :class="{ on: form.kind === 'quit' }"
+              @click="form.kind = 'quit'"
+            >不想要做的事</button>
+          </div>
+        </div>
         <!-- v2.46.248：维度放最前面 —— 先定「这属于哪一块」，图标自动跟着换，
              也顺带解释了雷达图那六个轴是怎么来的 -->
         <div class="hb-field">
@@ -330,6 +404,7 @@
           </div>
         </div>
         <!-- 多久做一次（v2.46.256）：原来只能设「每周几次」，表达不了「每月 15 号交房租」 -->
+        <template v-if="form.kind === 'do'">
         <div class="hb-field">
           <span>多久做一次</span>
           <div class="hb-seg">
@@ -387,17 +462,36 @@
           <el-input-number v-model="form.daily_target" :min="0" :max="50" controls-position="right" />
         </label>
         <p class="hb-hint">{{ freqHint }}</p>
+        </template>
+
+        <!-- 戒除类：没有周期、没有「完成」，只有"允许几次"和"每超一次罚多少" -->
+        <template v-else>
+          <label class="hb-field">
+            <span>每天允许几次（0 = 做一次就罚）</span>
+            <el-input-number v-model="form.quit_allow" :min="0" :max="20" controls-position="right" />
+          </label>
+          <p class="hb-hint">
+            目标本来是 0 次；这里只是给自己留的口子 —— 超过这个数，每多一次就罚一次。
+          </p>
+        </template>
+
         <label class="hb-field">
-          <span>断链自罚（每天，元；填 0 = 关闭）</span>
+          <span>{{ form.kind === 'quit' ? '每超一次罚（元；填 0 = 只记录不罚）' : '断链自罚（每天，元；填 0 = 关闭）' }}</span>
           <el-input-number v-model="form.penalty_yuan" :min="0" :max="1000" :step="1" :precision="2" controls-position="right" />
         </label>
-        <label class="hb-field">
+        <label v-if="form.kind === 'do'" class="hb-field">
           <span>宽限天数（连续漏的前 N 天不罚）</span>
           <el-input-number v-model="form.penalty_grace" :min="0" :max="7" controls-position="right" />
         </label>
         <p class="hb-form-tip">
-          开了自罚后，漏一天会自动从「个人零花」转一笔到「存款」，漏几天转几笔 ——
-          罚的钱不消失，变成存款。
+          <template v-if="form.kind === 'quit'">
+            每记一次「又做了」就从「个人零花」转一笔到「存款」—— 钱不消失，只是变得不好花。
+            同一天记多笔会合并成一张罚单（金额累加），不会刷出一长串流水。
+          </template>
+          <template v-else>
+            开了自罚后，漏一天会自动从「个人零花」转一笔到「存款」，漏几天转几笔 ——
+            罚的钱不消失，变成存款。
+          </template>
         </p>
       </div>
       <template #footer>
@@ -434,8 +528,13 @@ const store = useHabitsStore()
 const {
   list, todayList, weekly, radar, household, reviews,
   loading, doneCount, total, progress, pending, bestStreak, allDone,
-  restCount,
+  restCount, quitList, slipToday,
 } = storeToRefs(store)
+
+/** 戒除类判定（kind='quit'） */
+const isQuit = (h) => (h?.kind || 'do') === 'quit'
+/** 今天破戒累计罚了多少（含被允许的次数不罚） */
+const slipFeeToday = computed(() => quitList.value.reduce((s2, h) => s2 + (Number(h.quit_penalty_today) || 0), 0))
 
 /** 六账户（顺序与后端 ACCOUNTS 一致，雷达图按这个顺序画） */
 const ACCOUNT_OPTIONS = [
@@ -510,11 +609,20 @@ const managing = ref(false)
  * 其他日子那组还显式写一句「改或删都在这里」。
  */
 const manageGroups = computed(() => {
-  const todayItems = list.value.filter((h) => h.is_due_today !== false)
-  const restItems = list.value.filter((h) => h.is_due_today === false)
+  const quitItems = list.value.filter((h) => isQuit(h))
+  const todayItems = list.value.filter((h) => h.is_due_today !== false && !isQuit(h))
+  const restItems = list.value.filter((h) => h.is_due_today === false && !isQuit(h))
   const out = []
   if (todayItems.length) {
     out.push({ key: 'today', title: `今天该做 · ${todayItems.length} 条`, hint: '', items: todayItems })
+  }
+  if (quitItems.length) {
+    out.push({
+      key: 'quit',
+      title: `不想要做的事 · ${quitItems.length} 条`,
+      hint: '记一次就罚一次，罚金从个人零花转进存款',
+      items: quitItems,
+    })
   }
   if (restItems.length) {
     out.push({
@@ -538,6 +646,9 @@ const form = reactive({
   penalty_grace: 0,
   account: '',
   // 周期调度（v2.46.256）
+  // 类型（v2.46.325）：do = 要做的事；quit = 不想要做的事（按次数罚）
+  kind: 'do',
+  quit_allow: 0,
   freq: 'daily',          // daily | weekly | monthly | yearly
   interval: 1,            // 每天 → 每 N 天
   weekdays: [],           // 每周 → 选中的星期（1=周一…7=周日）
@@ -620,6 +731,25 @@ async function onStep(h) {
   } catch { /* 拦截器已提示 */ }
 }
 
+/** 「又做了一次」/ 撤销（v2.46.325）。数字立刻涨，罚金以后端为准。 */
+async function onSlip(h, delta = 1) {
+  try {
+    const n = await store.slip(h, delta)
+    if (delta > 0 && h.penalty_cents) {
+      const over = n - (h.quit_allow || 0)
+      if (over > 0) {
+        ElMessage({
+          message: `${h.name}：今天第 ${n} 次，罚 ¥${((h.penalty_cents * over) / 100).toFixed(0)}`,
+          type: 'warning',
+          duration: 2000,
+        })
+      }
+    }
+  } catch {
+    ElMessage({ message: '没记上，再点一次', type: 'warning', duration: 2000 })
+  }
+}
+
 async function onToggle(h) {
   try {
     await store.toggle(h)
@@ -633,6 +763,7 @@ function openCreate() {
   Object.assign(form, {
     id: 0, name: '', icon: ICON_CHOICES[0], weekly_goal: 0, daily_target: 0,
     penalty_yuan: 0, penalty_grace: 0, account: ACCOUNT_OPTIONS[0].key,
+    kind: 'do', quit_allow: 0,
     freq: 'daily', interval: 1, weekdays: [], monthDays: '', yearMonth: 3, yearDay: 1,
   })
   dialog.value = true
@@ -648,6 +779,8 @@ function openEdit(h) {
     penalty_yuan: (h.penalty_cents || 0) / 100,
     penalty_grace: h.penalty_grace || 0,
     account: h.account || '',
+    kind: h.kind || 'do',
+    quit_allow: Number(h.quit_allow) || 0,
     freq: h.freq || 'daily',
     interval: h.interval || 1,
     weekdays: (h.weekdays || '').split(',').filter(Boolean).map(Number),
@@ -672,6 +805,8 @@ async function submit() {
       penalty_cents: Math.round((Number(form.penalty_yuan) || 0) * 100),
       penalty_grace: form.penalty_grace || 0,
       account: form.account || '',
+      kind: form.kind,
+      quit_allow: form.kind === 'quit' ? (Number(form.quit_allow) || 0) : 0,
       // 周期调度：只把当前档位用得上的字段发过去（其余留空，后端也会归一化）
       freq: form.freq,
       interval: form.freq === 'daily' ? (Number(form.interval) || 1) : 1,
@@ -887,6 +1022,13 @@ async function maybeWeekendReview() {
 .hb-wk-stat span { font-size: 11px; color: var(--tc-text-3, #5b6f8a); }
 .hb-wk-stat.warn { background: rgba(255, 83, 71, .10); }
 .hb-wk-stat.warn b { color: var(--color-danger, #cf2540); }
+.hb-wk-quit {
+  margin: 6px 10px 0; font-size: 12px; color: var(--lj-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.hb-wk-quit b { color: var(--lj-vermilion, #b4513f); }
+.hb-wk-quit-list { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-left: 8px; opacity: .8; }
+.hb-wk-quit-list em { font-style: normal; font-size: 11.5px; }
 .hb-wk-text { margin: 10px 10px 0; font-size: 12.5px; color: var(--tc-text-2, #46586e); line-height: 1.65; }
 .hb-wk-advice {
   margin: 8px 10px 6px; padding-left: 8px; font-size: 12.5px; line-height: 1.65;
@@ -1019,5 +1161,31 @@ async function maybeWeekendReview() {
 .hb-plus:hover { background: var(--lj-seal-soft); border-color: var(--lj-seal); }
 .hb-prog { font-weight: 700; color: var(--lj-seal); font-variant-numeric: tabular-nums; }
 .hb-prog.full { color: var(--color-success, #0f7a56); }
+
+/* ---------- 不想要做的事（v2.46.325） ----------
+   和「要做的事」刻意用不同色系：那边是青色/鎏金（做到了），这边是赭红（犯了）。
+   整行不是按钮 —— 点正文不该记一次破戒，必须是明确的「又做了」。 */
+.hb-grouphd--quit { color: var(--lj-vermilion, #b4513f); }
+.hb-row--quit .hb-ico { color: var(--lj-vermilion, #b4513f); }
+.hb-hit--quit { cursor: default; }
+.hb-hit--quit:hover { background: transparent; }
+.hb-row--quit.slip .hb-name { color: var(--lj-vermilion, #b4513f); }
+.hb-row--quit .hb-prog { color: var(--lj-seal); }
+.hb-row--quit .hb-prog.full { color: var(--color-success, #0f7a56); }
+.hb-slip {
+  flex: none; height: 30px; padding: 0 12px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--lj-vermilion, #b4513f);
+  background: transparent; color: var(--lj-vermilion, #b4513f);
+  font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
+  transition: background-color .15s, color .15s;
+}
+.hb-slip:hover,
+.hb-slip:active { background: var(--lj-vermilion, #b4513f); color: #fff; }
+.hb-undo {
+  flex: none; width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--lj-line-strong); background: transparent;
+  color: var(--lj-text-3); font-size: 14px; line-height: 1; padding: 0;
+}
+.hb-undo:hover { color: var(--lj-vermilion, #b4513f); border-color: var(--lj-vermilion, #b4513f); }
 .hb-hint { margin-left: 8px; font-size: 11.5px; color: var(--lj-text-3); line-height: 1.5; }
 </style>

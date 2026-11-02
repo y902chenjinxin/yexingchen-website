@@ -34,6 +34,15 @@ class Habit(Base):
     # 每天目标次数（v2.46.245）：0/1 = 布尔打卡（老语义）；>1 = 一天要做 N 次
     # 例如「今天喝 3 杯水」→ daily_target=3，喝一杯就 count+1，到 3 才算完成
     daily_target = Column(Integer, nullable=False, default=0, server_default="0")
+    # ---------- 不想要做的事 / 戒除（v2.46.325）----------
+    # 夜星：「增加个不想要做的事，支持设定惩罚，按每天做了多少次来，强行约束自己的行为」
+    #   kind='do'   → 原来的「要做的事」，完成度越低越差
+    #   kind='quit' → 「不想要做的事」（扳手指、咬指甲、刷短视频），0 次才是目标；
+    #                 每记一次 = count+1，超过 quit_allow 的部分按 penalty_cents 逐次罚
+    # daily_target 对 quit 无意义（goal 恒为 0），所以另开一个字段，别复用出歧义。
+    kind = Column(String(8), nullable=False, default="do", server_default="do")
+    # 每天允许几次不罚（0 = 做一次就罚）。给「一天忍不住两次以内算了」留口子。
+    quit_allow = Column(Integer, nullable=False, default=0, server_default="0")
     # ---------- 周期调度（v2.46.256）----------
     # 夜星：「只支持按周来选做几天，没法按天、按月、按年来选，某月固定一天做什么都没有。」
     # 原来的 weekly_goal 只是「每周想做几次」的统计目标，不影响「今天该不该做」，

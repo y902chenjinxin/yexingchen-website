@@ -45,12 +45,18 @@ export const useHabitsStore = defineStore('habits', () => {
    * 按周/月/年调度的习惯不该每天出现 —— 后端返回 is_due_today，
    * 老数据没有这个字段时按「该做」处理（保守：宁可多显示，也别漏提醒）。
    */
-  const todayList = computed(() => list.value.filter((h) => h.is_due_today !== false))
+  const isQuitHabit = (h) => (h?.kind || 'do') === 'quit'
+  /** 今天该做的（不含「不想要做的事」）—— 完成率不能混进戒除类 */
+  const todayList = computed(() => list.value.filter((h) => h.is_due_today !== false && !isQuitHabit(h)))
+  /** 「不想要做的事」：今天列表里单独一组（v2.46.325） */
+  const quitList = computed(() => list.value.filter((h) => isQuitHabit(h)))
 
   const doneCount = computed(() => todayList.value.filter((h) => h.checked_today).length)
+  /** 今天破戒总次数（戒除类汇总，给页头一句提示） */
+  const slipToday = computed(() => quitList.value.reduce((s2, h) => s2 + (Number(h.today_count) || 0), 0))
   const total = computed(() => todayList.value.length)
   /** 今天不用做的（月度/年度任务等），给卡片上一句「另有 N 个今天不用做」 */
-  const restCount = computed(() => Math.max(0, list.value.length - todayList.value.length))
+  const restCount = computed(() => Math.max(0, list.value.length - todayList.value.length - quitList.value.length))
   /** 是否「一天 N 次」型习惯（v2.46.245） */
   const isCountHabit = (h) => Number(h?.daily_target || 0) > 1
   /**
@@ -147,6 +153,39 @@ export const useHabitsStore = defineStore('habits', () => {
       throw e
     }
     return nxt
+  }
+
+  /**
+   * 记一次破戒（v2.46.325）：只对 kind='quit' 生效。
+   * 乐观更新 —— 点一下数字立刻涨；罚金以后端返回为准（当天累计是幂等的）。
+   */
+  async function slip(habit, delta = 1) {
+    const prev = {
+      c: Number(habit.today_count) || 0,
+      fee: Number(habit.quit_penalty_today) || 0,
+      total: Number(habit.penalty_total_cents) || 0,
+    }
+    const nxt = Math.max(0, prev.c + delta)
+    if (nxt === prev.c) return prev.c
+    habit.today_count = nxt
+    try {
+      const res = await workbenchApi.habits.slip(habit.id, delta)
+      const d = res?.data || res || {}
+      if (d.today_count != null) habit.today_count = Number(d.today_count)
+      if (d.penalty_cents != null) habit.quit_penalty_today = Number(d.penalty_cents)
+      if (d.delta_cents != null) habit.penalty_total_cents = Math.max(0, prev.total + Number(d.delta_cents))
+      if (Array.isArray(habit.heat) && habit.heat.length) {
+        const today = localDay()
+        const cell = habit.heat.find((c) => c.date === today)
+        if (cell) cell.checked = nxt > 0
+      }
+      return habit.today_count
+    } catch (e) {
+      habit.today_count = prev.c
+      habit.quit_penalty_today = prev.fee
+      habit.penalty_total_cents = prev.total
+      throw e
+    }
   }
 
   /** 打卡 / 取消打卡（乐观更新 + 失败回滚） */
@@ -268,8 +307,8 @@ export const useHabitsStore = defineStore('habits', () => {
   return {
     list, weekly, radar, household, reviews, lastSettle, loading, error, day,
     doneCount, total, progress, pending, bestStreak, allDone, todayList, restCount,
-    unitDone, unitTotal, isCountHabit,
-    load, toggle, step, create, update, remove, settle, loadWeekly,
+    unitDone, unitTotal, isCountHabit, isQuitHabit, quitList, slipToday,
+    load, toggle, step, slip, create, update, remove, settle, loadWeekly,
     loadRadar, loadHousehold, loadReviews, makeReview,
   }
 })

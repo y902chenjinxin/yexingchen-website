@@ -1280,11 +1280,27 @@ function formatTime(timeStr) {
 :global(body.novel-shelf-mode .dsb-open-fab) {
   display: none !important;
 }
-/* 🔴 .island-inner 在手机上仍带着桌面的左右 40px 内边距（探针实测 390 → 内容只剩 310，
-   卡片被压到 95px 宽）。这里**不动外层**（动了会连带把刊头标题顶到屏幕边），
-   改成让书架自己负 margin 外扩，视觉上正好是 16px 边距。 */
+/* 🔴 v2.46.325：原来写的是 `margin: 0 -40px`（外扩 40px 抵消旧布局的侧栏留白）。
+   桌面版改版后外层 padding 换成了页面级 40px / 手机端 16px 两套，写死 -40 就过头了 ——
+   夜星截图里三列书墙比屏幕还宽，最左最右各被切掉一截，「都挤到边缘了」。
+
+   改用**满宽出血**公式，它对外层 padding 免疫：
+     margin-left: calc(50% - 50vw)
+   因为 50% 取的是父级**内容宽**的一半，(父宽-padding)/2 - 屏宽/2 恰好 = -padding。
+   外层是 16 还是 40、以后改成多少，都不用再来改这里。 */
 .manage-pane.is-shelf-pane {
-  margin-left: -40px;
-  margin-right: -40px;
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 0 16px !important;
+  box-sizing: border-box;
+}
+/* 宽屏（折叠屏展开 / 平板横屏）三列会被拉成巨幅海报，加列数而不是加卡宽 */
+@media (min-width: 620px) {
+  .novel-shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 860px) {
+  .novel-shelf { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 </style>
