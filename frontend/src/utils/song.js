@@ -34,6 +34,23 @@ function trackScore(notes) {
   return notes.length * (0.35 + 0.65 * mono) * (1 + (avg - 60) / 100)
 }
 
+/**
+ * 选一个整八度平移量，让尽量多的音落进本站音域（C3~F5）。
+ *
+ * 为什么必须整体平移而不是逐个折叠：`midiToKey` 遇到超音域会**单个**折八度，
+ * 高音被折下来会和低音撞在一起 —— 旋律突然掉八度，听着像跑调。
+ * 整八度平移不改调性（八度不是调），只是整体高低。
+ */
+function fitOctave(midis) {
+  let best = 0
+  let bestOk = -1
+  for (const shift of [0, -12, -24, 12]) {
+    const ok = midis.reduce((n, m) => n + (m + shift >= RANGE.min && m + shift <= RANGE.max ? 1 : 0), 0)
+    if (ok > bestOk) { best = shift; bestOk = ok }
+  }
+  return best
+}
+
 /** 从解析结果里挑主旋律轨；返回按时间排序的音符 */
 function pickMelody(parsed) {
   const cands = parsed.tracks
@@ -69,6 +86,10 @@ export function buildSongFromMidi(arrayBuffer, opts = {}) {
       dur: Math.max(step, Math.round(tickToSec(n.dur) / step) * step),
     }))
     .filter((n) => Number.isFinite(n.t))
+
+  // 先整体挪一个八度，再映射键位（避免高音被逐个折叠后和低音撞在同一个键上）
+  const shift = fitOctave(raw.map((n) => n.midi))
+  for (const n of raw) n.midi += shift
 
   // 同一时刻的音合成和弦：保留多个键，但去掉重复键
   const byTime = new Map()
@@ -106,6 +127,7 @@ export function buildSongFromMidi(arrayBuffer, opts = {}) {
       source: 'midi',
       trackNotes: melody.length,
       range: [Math.min(...raw.map((n) => n.midi)), Math.max(...raw.map((n) => n.midi))],
+      octaveShift: shift,
       generatedAt: new Date().toISOString(),
     },
   }
