@@ -5,7 +5,7 @@
   <!-- 桌面端：Bento Grid 数据驾驶舱 -->
   <div v-else class="workbench-page">
     <header class="wb-hero">
-      <div class="wb-eyebrow">玄 黄 · 工 作 台</div>
+      <div class="wb-eyebrow">星 阁 · 工 作 台</div>
       <h1 class="wb-title">把零散念头，沉淀为数据。</h1>
       <p class="wb-subtitle">今日 · 本月 · 累计，一目了然。</p>
     </header>

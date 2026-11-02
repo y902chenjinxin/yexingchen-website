@@ -54,7 +54,7 @@
             <path d="M50 4h26a20 20 0 0 1 20 20v52a20 20 0 0 1-20 20H24a20 20 0 0 1-20-20V24A20 20 0 0 1 24 4z" fill="none" stroke="url(#dsbNightRim)" stroke-width="3" />
             <path d="M32 77c7 8 15 10.5 23 8.5" fill="none" stroke="#67e8f9" stroke-width="2.8" stroke-linecap="round" opacity="0.9" />
           </svg>
-          <span class="dsb-brand-text">玄 黄</span>
+          <span class="dsb-brand-text">星 阁</span>
         </div>
         <button
           class="dsb-toggle"
