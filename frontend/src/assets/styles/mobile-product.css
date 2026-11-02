@@ -600,15 +600,23 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar { background: rgba(255,255,255,
  * 是「去管理后台感」时代的产物，但那三页的**全部内容**就在 .manage-pane 里，
  * 隐藏后页面直接空掉。改为：留内容，用手机化的紧凑表格与工具条呈现。 */
 /* 多带一个 :not() 提高一级特异性，压过 mobile-deink.css 里同形的 display:none */
+/* v2.46.326：这块内容区**不再画成一个白卡 + 一圈描边**。
+ * 夜星：「这里有蓝色的线条感觉很怪异……音乐、视频、笔记、工具都有」——
+ * 整块内容被一圈 1px 线框住（列表页还是满宽出血，框等于贴屏幕），
+ * 看着像「页面里套了个画框」。现在内容直接铺在纸面上，定义交给卡片自己。 */
 #app.is-mobile .island-inner:not(.island-inner-music):not(.island-inner-manage-off) .manage-pane {
   display: block !important;
   padding: 12px !important;
-  border-radius: var(--m-radius) !important;
-  background: var(--m-surface) !important;
-  border: 1px solid var(--m-line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
   box-shadow: none !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
+}
+/* 小说书架是番茄式满宽出血，内边距自己管（16px），别被上面的 12px 顶掉 */
+#app.is-mobile .island-inner:not(.island-inner-music):not(.island-inner-manage-off) .manage-pane.is-shelf-pane {
+  padding: 0 16px !important;
 }
 #app.is-mobile .manage-pane .manage-toolbar { margin-bottom: 10px; }
 #app.is-mobile .manage-pane .manage-toolbar > .el-input,

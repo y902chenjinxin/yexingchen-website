@@ -434,7 +434,11 @@ html[data-theme="day"] #app.is-mobile {
   --xz-paper: #eef3fa;
   --xz-card: rgba(255, 255, 255, .96);
   --xz-card-2: #f4f8fd;
-  --xz-card-border: rgba(14, 147, 184, .30);
+  /* v2.46.326：卡片描边从「青色 30%」改成中性墨灰 14%。
+   * 夜星：「这里有蓝色的线条感觉很怪异」—— 2px 青线在冷白底上读成"荧光蓝框"，
+   * 音乐/视频/笔记/工具每张卡都带一圈，整页像线框图。
+   * 卡片边缘交给白底 + 墨色硬阴影就够了，线条只做极轻的定界。 */
+  --xz-card-border: rgba(11, 22, 34, .14);
   --xz-card-shadow: 3px 3px 0 rgba(11, 22, 34, .82);   /* 白天保留 Neo-Brutalism 墨色硬偏移 */
   --xz-card-shadow-press: 1px 1px 0 rgba(11, 22, 34, .82);
   --xz-head-line: rgba(11, 22, 34, .38);
@@ -624,18 +628,25 @@ html[data-theme="day"] #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
   border-color: transparent !important;
 }
 
-/* ============ 10. 白天移动端：边框统一青（与工作台一致） ============
- * 夜星：「手机端全部模块是灰色边框，跟工作台青色边框不一致」。
- * 模块页边框来自 --m-line / --lj-line / --ls-line / --glass-border，原来多是「白 10%」→ 看着是灰。 */
+/* ============ 10. 白天移动端：线色统一「冷墨灰」，青色只留给交互态 ============
+ * 历史：v2.46.130 夜星说「全部模块是灰色边框，跟工作台青色边框不一致」，
+ *       于是这里把 --m-line / --lj-line / --ls-line / --glass-border 一起提到青色 26%。
+ * v2.46.326 夜星：「这里有蓝色的线条感觉很怪异……音乐、视频、笔记、工具都有」——
+ *       26% 的青画在冷白底上，会读成一层荧光蓝描边；全站每张卡、每条分隔都带一圈，
+ *       整页看起来像线框图，反而没有质感。
+ *
+ * 定论：**结构线一律中性**（冷墨灰、无色偏），青只用于可交互状态
+ *      （选中 / 悬停 / 主按钮 / 图标强调）。这样既保住「全站一致」的初衷，也不再有蓝框感。
+ *      想更淡只改这几个 alpha，不要再改色相。 */
 html[data-theme="day"] #app.is-mobile {
-  --m-line: rgba(14, 147, 184, .26);
-  --m-line-strong: rgba(14, 147, 184, .42);
-  --xz-card-border: rgba(14, 147, 184, .38);
-  --lj-line: rgba(14, 147, 184, .26);
-  --lj-line-strong: rgba(14, 147, 184, .42);
-  --ls-line: rgba(14, 147, 184, .26);
-  --ls-line-strong: rgba(14, 147, 184, .42);
-  --glass-border: rgba(14, 147, 184, .32);
+  --m-line: rgba(17, 38, 51, .10);
+  --m-line-strong: rgba(17, 38, 51, .20);
+  --xz-card-border: rgba(11, 22, 34, .14);
+  --lj-line: rgba(17, 38, 51, .10);
+  --lj-line-strong: rgba(17, 38, 51, .20);
+  --ls-line: rgba(17, 38, 51, .10);
+  --ls-line-strong: rgba(17, 38, 51, .20);
+  --glass-border: rgba(17, 38, 51, .10);
 }
 
 /* 桌面危险按钮：desktop-product.css 用 (1,2,0) 把 is-plain 设成白字，白底上看不见
