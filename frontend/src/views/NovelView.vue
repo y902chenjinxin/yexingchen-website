@@ -146,10 +146,13 @@
         <el-table-column v-if="!isMobile" label="上传时间" width="150">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" :width="isMobile ? 132 : 100" fixed="right">
+        <!-- v2.46.322：TXT 行有 4 个动作（阅读/编辑/重解析/删除），原 100px 列宽装不下，
+             第 3 个「重解析」被单元格裁掉一半、第 4 个「删除」完全看不见。
+             宽度按 4×30 + 3×4 + 单元格左右 padding 24 算 = 156，取 160 留余量。 -->
+        <el-table-column label="操作" :width="isMobile ? 168 : 160" fixed="right">
           <!-- v2.46.159：行内动作统一用 OpsCell -->
           <template #default="{ row }">
-            <OpsCell :row="row" :actions="rowActions" />
+            <OpsCell class="nv-ops" :row="row" :actions="rowActions" />
           </template>
         </el-table-column>
       </el-table>
@@ -916,6 +919,18 @@ function formatTime(timeStr) {
 .search-count {
   color: var(--ls-text-3);
   font-size: 13px;
+}
+
+/* v2.46.322：4 个行内动作压到 30px/间距 4px，160px 列宽刚好放下且不显拥挤
+   （IconButton 全局 icon-only 是 36px，这里表格行内才收窄，不影响别处）
+   带 .manage-pane 前缀是为了压过 OpsCell 自带的 `.ops{gap:6px}`（同特异性，靠顺序不稳） */
+.manage-pane .nv-ops {
+  gap: 4px;
+}
+.manage-pane .nv-ops :deep(.ibtn.is-icon-only) {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
 }
 
 /* 骨架行：鎏金光扫效果，由 SkeletonBlock 自身 ::after 实现 */
