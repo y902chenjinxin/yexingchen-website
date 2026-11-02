@@ -20,13 +20,42 @@ import time
 from typing import Optional
 
 # 章节标题：整行匹配、长度 ≤ 42（与前端旧逻辑保持一致，避免同一本书两边切分不同）
+# v2.46.320：去掉前导空白吞掉（改为按缩进严格判断，见 _indent_width）
 CHAPTER_RE = re.compile(
-    r'^[\s\u3000]*(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章回节卷篇]'
+    r'^(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章回节卷篇]'
     r'|卷\s*[0-9零一二三四五六七八九十百千万两]+'
     r'|序章|楔子|引子|尾声|后记|番外)[^\n]{0,40}$'
 )
 
+# v2.46.320：数字序号式标题 —— `0001、我要当演员` / `1. 标题` / `012 标题`
+# 《影帝的诸天轮回》（21MB）就是这种格式，全书 1868 个「0001、」标题，
+# 旧正则一个都不认，反而把正文里的「第一回合的KO！」当成章标题。
+NUM_CHAPTER_RE = re.compile(
+    r'^(?:\d{1,5}[ \t]*[、.．,，:：)）]|\d{3,5}[ \t]+)[ \t]*[^\s].{0,38}$'
+)
+
 CACHE_DIRNAME = '.cache'
+
+
+def _indent_width(line: str) -> int:
+    """行首缩进宽度（半角空格 1、全角空格 2、制表符 4）。
+
+    🔴 v2.46.320：这是区分「章标题」与「正文」最可靠的判据。中文 TXT 正文几乎都带缩进
+    （4 个半角空格或 2 个全角空格），标题通常顶格。旧逻辑 `^[\\s\\u3000]*` 把缩进也吞了，
+    于是正文里的「第一回合的KO！」「第一章咖喱酱被鬼拉下水啦！」都被当成章标题 ——
+    《影帝的诸天轮回》21MB 只切出 10 章，就是这个原因。
+    """
+    w = 0
+    for ch in line:
+        if ch == ' ':
+            w += 1
+        elif ch == '\t':
+            w += 4
+        elif ch == '\u3000':
+            w += 2
+        else:
+            break
+    return w
 
 
 def _decode(raw: bytes) -> tuple[str, str]:
@@ -57,14 +86,22 @@ def split_chapters(text: str) -> list[dict]:
     结果是 2479 个章节里一半只有标题没有正文，翻页体验灾难。
     判据：与下一个候选标题的间距 < 80 字符 → 视为目录项丢弃。
     """
-    # 1) 扫候选标题位置
-    cands: list[tuple[str, int]] = []
+    # 1) 扫候选标题位置（同时收集「严格」与「宽松」两份，最后择优）
+    strict: list[tuple[str, int]] = []
+    loose: list[tuple[str, int]] = []
     offset = 0
     for line in text.split('\n'):
         probe = line.strip()
-        if probe and len(probe) <= 42 and CHAPTER_RE.match(probe):
-            cands.append((probe, offset))
+        if probe and len(probe) <= 42 and (CHAPTER_RE.match(probe) or NUM_CHAPTER_RE.match(probe)):
+            loose.append((probe, offset))
+            if _indent_width(line) <= 2:
+                strict.append((probe, offset))
         offset += len(line) + 1
+
+    # v2.46.320：优先「无缩进」候选（正文带缩进、标题顶格）。
+    # 少数书的标题本身居中/缩进，此时严格候选会少得离谱 —— 少于 3 个就退回宽松，
+    # 避免为了修一本书把另一本书切成 1 章。
+    cands = strict if len(strict) >= 3 else loose
 
     if not cands:
         return [{'t': '正文', 's': 0, 'e': len(text)}]
