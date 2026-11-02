@@ -372,47 +372,9 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
   padding: 8px 12px; font-weight: 700; font-size: 12px;
 }
 
-/* ---- #2 FAB 原位展开：记一笔悬浮钮（仅移动端） ---- */
-#app.is-mobile .xz-fab {
-  position: fixed;
-  right: calc(14px + env(safe-area-inset-right, 0px));
-  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
-  z-index: 1550;              /* >TabBar 1500，<ElMessage 2000 */
-  display: flex; flex-direction: column-reverse; align-items: center; gap: 10px;
-}
-#app.is-mobile .xz-fab-main {
-  width: 52px; height: 52px;
-  border-radius: 18px;
-  border: 2px solid var(--xz-card-border);
-  background: var(--xz-btn-bg); color: var(--xz-btn-fg);
-  font-size: 26px; line-height: 1;
-  box-shadow: var(--xz-card-shadow);
-  cursor: pointer;
-  transition: transform var(--m-dur-out) var(--m-ease-spring), box-shadow .08s ease;
-}
-#app.is-mobile .xz-fab-main:active {
-  transform: translate(2px, 2px);
-  box-shadow: var(--xz-card-shadow-press);
-}
-#app.is-mobile .xz-fab-main.open { transform: rotate(45deg); }
-#app.is-mobile .xz-fab-act {
-  width: 44px; height: 44px;
-  border-radius: 14px;
-  border: 2px solid var(--xz-card-border);
-  background: var(--xz-card); color: var(--m-text);
-  font-size: 17px;
-  box-shadow: var(--xz-card-shadow);
-  cursor: pointer;
-  opacity: 0; transform: translateY(12px) scale(.6);
-  pointer-events: none;
-}
-#app.is-mobile .xz-fab.open .xz-fab-act {
-  opacity: 1; transform: none; pointer-events: auto;
-  transition: opacity var(--m-dur-out) ease, transform var(--m-dur-in) var(--m-ease-spring);
-}
-#app.is-mobile .xz-fab.open .xz-fab-act:nth-child(1) { transition-delay: 40ms; }
-#app.is-mobile .xz-fab.open .xz-fab-act:nth-child(2) { transition-delay: 90ms; }
-/* 桌面端不渲染 FAB：组件自身 v-if=isMobile */
+/* ---- #2 FAB 原位展开（v2.46.331 已删除）----
+   夜星：「记账页面右下角有个添加按钮，没啥用」—— 它和页头「记一笔」重复，
+   还压住列表最后一行。整块连同 .xz-fab 的样式一起删掉，别再放回来。 */
 
 /* ---- #9 顶栏滚动收起：下滑隐藏、上滑浮现（仅移动端布局） ---- */
 @media (max-width: 767px) {
@@ -439,7 +401,6 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
 }
 @media (max-height: 620px) {
   #app.is-mobile :is(.fin-kpi, .st-kpi-card, .abb-hero) { padding-top: 10px !important; padding-bottom: 10px !important; }
-  #app.is-mobile .xz-fab { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ======================================================================

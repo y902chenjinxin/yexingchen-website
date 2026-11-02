@@ -1,5 +1,6 @@
 /**
- * 物理惯性转盘（v2.46.330）—— 手指拖拽 + 阻尼惯性 + 精准吸附 + Canvas 火花粒子。
+ * 物理惯性转盘（v2.46.330 / v2.46.331 改「变速自行车」手感）
+ * —— 手指拖拽 + 飞轮蓄力 + 长惯性 + 精准吸附 + Canvas 火花粒子。
  *
  * 为什么不用 CSS transition：
  *   拖拽要"手指到哪盘到哪"，必须每帧直接写 transform；一旦有 transition，
@@ -21,14 +22,44 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const D2R = Math.PI / 180
 
-/** 角速度硬上限（deg/s）。约 4.2 圈/秒，再快就看不清扇区、只剩糊影。 */
-const MAX_SPEED = 1500
-/** 每 1/60 秒保留的速度比例（0.985 ≈ 3.6 秒衰减到 5%）。 */
-const DAMPING = 0.985
+/** 角速度硬上限（deg/s）。约 5 圈/秒，再快就看不清扇区、只剩糊影。 */
+const MAX_SPEED = 1800
+/**
+ * 指数衰减系数（1/秒）：`v *= exp(-K·dt)`。
+ *
+ * v2.46.331 夜星要的是「变速自行车」：蹬起来以后松手能溜很久。
+ * 原来的 0.985/帧 ≈ exp(-0.91·dt)，满速 1.2 秒就停了；
+ * 现在 K=0.135，满速从 1800 掉到 40 要 ln(45)/0.135 ≈ 28 秒，
+ * 正好卡在「最多 30 秒」以内。K 越小溜得越久，但太小会变成永动机。
+ */
+const SLOW_K = 0.135
+/**
+ * 弱推的衰减更狠一点。
+ *
+ * 纯指数衰减的时长只随初速**对数**变化：轻轻一拨（300°/s）也会溜 17 秒，
+ * 那就不像自行车了。所以让 K 随初速在 0.135~0.255 之间插值：
+ *   · 满速 1800 → K=0.135 → 约 28 秒
+ *   · 中等 900  → K=0.195 → 约 16 秒
+ *   · 轻推 300  → K=0.255 → 约 8 秒
+ */
+const SLOW_K_WEAK = 0.255
 /** 低于这个角速度就放弃惯性，进入吸附（deg/s）。 */
-const MIN_SPEED = 46
-/** 惯性最长持续时间，到点强制收尾。 */
-const MAX_SPIN_MS = 5000
+const MIN_SPEED = 40
+/** 惯性最长持续时间，到点强制收尾（夜星要求的上限）。 */
+const MAX_SPIN_MS = 30000
+
+/* ---------- 飞轮「变速」参数 ----------
+ * 前期慢、越转越快：齿轮比 gear 从 0.55 起步（比手指慢，像刚起步踩不动），
+ * 持续转就往上充能到 2.8（轮子比手指转得快，像挂上高速档）。
+ * 一停手就掉档，反向立刻回 1 —— 不然反向那一下会迟钝得像灌了铅。 */
+const GEAR_START = 0.55
+const GEAR_MAX = 2.8
+/** 充能速率：手指 900°/s 时约 2.2 秒挂到最高档。 */
+const GEAR_GAIN = 2.2
+/** 掉档速率（1/秒）。 */
+const GEAR_FALL = 0.9
+/** 松手时把手指速度放大一点，接到齿轮比上（飞轮比手快是应该的）。 */
+const RELEASE_BOOST = 1.08
 /** 累计转动小于这个角度、且时间很短 → 视为"点了一下"（防误触）。 */
 const TAP_DEG = 5
 const TAP_MS = 420
@@ -60,6 +91,8 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
 
   let mode = ''          // '' | 'inertia' | 'ease' | 'snap'
   let vel = 0            // deg/s，带符号
+  let gear = 1           // 飞轮齿轮比（拖拽期）
+  let decayK = SLOW_K    // 本次松手用的衰减系数
   let rafId = 0
   let lastT = 0
   let startedAt = 0
@@ -76,6 +109,8 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
   let cy = 0
   let lastAngle = 0
   let startT = 0
+  let lastSampleT = 0
+  let lastDir = 0
   let moved = 0
   const samples = []     // [{t, r}]
 
@@ -120,11 +155,11 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
     return idxAt(mod(-rot.value, 360))
   }
 
-  function emitCross() {
+  function emitCross(v = 0) {
     const i = segUnderPointer()
     if (i === lastIdx) return
     lastIdx = i
-    onCross?.(i)
+    onCross?.(i, v)   // 带上当前角速度：转得飞快时上层不该每格都「哒」
   }
 
   /* ============================ 粒子：Canvas ============================ */
@@ -237,10 +272,11 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
     lastT = now
 
     if (mode === 'inertia') {
-      vel *= Math.pow(DAMPING, dt * 60)
+      // 🔴 按时间衰减（exp(-K·dt)），不是按帧。按帧的话 120Hz 屏衰减快一倍。
+      vel *= Math.exp(-decayK * dt)
       rot.value += vel * dt
       speed.value = Math.abs(vel)
-      emitCross()
+      emitCross(Math.abs(vel))
       spawn(dt, vel)
       if (Math.abs(vel) < MIN_SPEED || now - startedAt > MAX_SPIN_MS) beginSnap()
     } else if (mode === 'ease' || mode === 'snap') {
@@ -250,7 +286,7 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
       // 导数 = 3·dist·(1-t)²/时长，用来决定还要不要撒火花
       const vNow = (easeDist * 3 * inv * inv) / (easeDur / 1000)
       speed.value = Math.abs(vNow)
-      emitCross()
+      emitCross(Math.abs(vNow))
       if (mode === 'ease') spawn(dt, vNow)
       if (t >= 1) finish()
     }
@@ -363,7 +399,11 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
     dragging.value = true
     lastAngle = angleAt(e.clientX, e.clientY)
     startT = performance.now()
+    lastSampleT = startT
     moved = 0
+    // 每次按下都从低档起步：像刚踩上踏板，力气还没传过去
+    gear = GEAR_START
+    lastDir = 0
     samples.length = 0
     samples.push({ t: startT, r: rot.value })
     lastIdx = segUnderPointer()
@@ -379,6 +419,7 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
   function onMove(e) {
     if (!dragging.value) return
     e.preventDefault()
+    const t = performance.now()
     const a = angleAt(e.clientX, e.clientY)
     // 归一化到 (-180,180]：手指跨过 ±180° 那条线时角度会从 179 跳到 -179，
     // 不归一化的话转盘会在那一瞬间倒转一整圈。
@@ -386,20 +427,29 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
     lastAngle = a
     if (!d) return
 
-    rot.value += d
+    const dt = clamp((t - lastSampleT) / 1000, 0.008, 0.06)
+    lastSampleT = t
+    /** 手指自己的角速度（还没乘齿轮） */
+    const finger = Math.abs(d) / dt
+
+    /* ---------- 变速：一直转就挂高档 ----------
+       反向时立刻回 1 档，否则往回转的头几十度会被齿轮比吃掉，手感像灌了铅。 */
+    const dir = d > 0 ? 1 : -1
+    if (lastDir && dir !== lastDir) gear = 1
+    lastDir = dir
+    if (finger > 80) gear = Math.min(GEAR_MAX, gear + (finger / 900) * GEAR_GAIN * dt)
+    else gear = Math.max(GEAR_START, gear - GEAR_FALL * dt)
+
+    // 轮子转过的角度 = 手指 × 齿轮比。gear>1 时轮子比手指快，就是"越来越快"。
+    rot.value += d * gear
     moved += Math.abs(d)
 
-    const t = performance.now()
     samples.push({ t, r: rot.value })
     if (samples.length > 24) samples.shift()
 
-    emitCross()
-
-    const prev = samples[samples.length - 2]
-    if (prev) {
-      const inst = Math.abs(d) / Math.max(0.008, (t - prev.t) / 1000)
-      if (inst > FX_SPEED) spawn(0.016, inst * Math.sign(d))
-    }
+    const wheelSpeed = finger * gear
+    emitCross(wheelSpeed)
+    if (wheelSpeed > FX_SPEED) spawn(dt, wheelSpeed * dir)
     ensure()
   }
 
@@ -415,8 +465,9 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
       return
     }
 
-    let v = estimateVel(now)
-    v = clamp(v, -MAX_SPEED, MAX_SPEED)
+    /* 注意：estimateVel 算的是 (rot 差 / 时间)，而 rot 在拖拽时已经乘过齿轮比了，
+       所以这里拿到的是**轮子自己的**角速度，不能再乘一次 gear（会双计）。 */
+    let v = clamp(estimateVel(now) * RELEASE_BOOST, -MAX_SPEED, MAX_SPEED)
     if (Math.abs(v) < 40) {
       // 慢慢推了一点就松手：不硬甩，直接吸附到最近的段（像机械旋钮的"咔"）
       vel = 0
@@ -424,6 +475,9 @@ export function useFlickWheel({ wheelRef, canvasRef, getSpans, onSettle, onHint,
       return
     }
     vel = v
+    // 初速越高溜得越久（见 SLOW_K_WEAK 注释）
+    const t = Math.min(1, Math.abs(v) / MAX_SPEED)
+    decayK = SLOW_K + (SLOW_K_WEAK - SLOW_K) * (1 - t)
     mode = 'inertia'
     spinning.value = true
     startedAt = now

@@ -263,8 +263,10 @@ const {
   wheelRef: wheelEl,
   canvasRef: fxCanvas,
   getSpans: spansForWheel,
-  /* 跨扇区「哒」一声 —— 跟阅读设置滑杆、模块条带同一套刻度反馈 */
-  onCross: () => tick(0.8),
+  /* 跨扇区「哒」一声 —— 跟阅读设置滑杆、模块条带同一套刻度反馈。
+     但转得飞快时不能响：6 段盘 × 1000°/s ≈ 每秒 17 次，连成一片像电钻。
+     只在慢下来（<720°/s）时响，收尾那几秒"一格一格"的机械感刚好。 */
+  onCross: (_i, v) => { if (v < 720) tick(0.8) },
   onHint: showHint,
   onSettle: onWheelSettle,
 })

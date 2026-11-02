@@ -126,10 +126,10 @@ const state = () => {
   const atRelease = await page.evaluate(state)
   console.log('松手：', JSON.stringify({ rot: atRelease.rot, spinning: atRelease.spinning, fast: atRelease.fast }))
 
-  // 等停稳（≤7s）
+  // 等停稳（v2.46.331 起是"变速自行车"，最长 30s，这里给 34s 余量）
   const t0 = Date.now()
   let settled = atRelease
-  while (Date.now() - t0 < 7000) {
+  while (Date.now() - t0 < 34000) {
     settled = await page.evaluate(state)
     if (!settled.spinning) break
     await page.waitForTimeout(150)
@@ -145,7 +145,8 @@ const state = () => {
 
   // ---- 断言 ----
   const problems = []
-  if (fin.spinning) problems.push('7 秒还没停')
+  if (fin.spinning) problems.push('34 秒还没停')
+  if (fin.ms > 30500) problems.push('超过 30 秒上限：' + fin.ms + 'ms')
   if (fin.offsetFromMid == null || Math.abs(fin.offsetFromMid) > 0.8) problems.push('落点没对准中线：' + fin.offsetFromMid)
   if (!fin.result) problems.push('没有展示结果')
   if (fin.result !== fin.hitLabel) problems.push(`结果(${fin.result}) ≠ 指针所指(${fin.hitLabel})`)

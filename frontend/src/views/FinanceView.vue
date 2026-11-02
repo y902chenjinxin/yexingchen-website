@@ -761,13 +761,6 @@
       </section>
     </div>
 
-    <!-- FAB 原位展开（#2）：移动端常驻记一笔，展开快选收支类型 -->
-    <div v-if="isMobileLayout" class="xz-fab" :class="{ open: fabOpen }">
-      <button class="xz-fab-main" :class="{ open: fabOpen }" aria-label="记一笔" @click.stop="toggleFab"><AppIcon icon="＋" /></button>
-      <button class="xz-fab-act" aria-label="记一笔支出" @click.stop="quickNew('expense')">支</button>
-      <button class="xz-fab-act" aria-label="记一笔收入" @click.stop="quickNew('income')">收</button>
-    </div>
-
     <!-- ============ 分类管理弹窗 ============ -->
     <div class="fin-cat-dialog">
       <el-dialog
@@ -1028,7 +1021,6 @@ const saving = ref(false)
 
 /* ---- 交互升级（v2.46.33 · APP_design.md 对齐） ---- */
 const { isMobile } = useIsMobile()
-const isMobileLayout = isMobile
 
 /* 池子横滑的刻度反馈：只在手机端绑定（桌面是三列网格，没有滚动可言） */
 const poolsEl = ref(null)
@@ -1050,18 +1042,8 @@ const expandedId = ref(null)
 function toggleExpand(id) {
   expandedId.value = expandedId.value === id ? null : id
 }
-// 行内校验 shake（#25）+ FAB（#2）
+// 行内校验 shake（#25）
 const formShake = ref(false)
-const fabOpen = ref(false)
-function toggleFab() {
-  fabOpen.value = !fabOpen.value
-  haptic.light()
-}
-function quickNew(type) {
-  fabOpen.value = false
-  openNew()
-  pickType(type)
-}
 function typeLabel(t) {
   return t === 'income' ? '收入' : t === 'transfer' ? '调拨' : '支出'
 }
