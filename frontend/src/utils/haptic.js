@@ -248,6 +248,12 @@ let tapBound = false
  *
  * @returns {() => void} 解绑
  */
+/** 触摸设备判定：兜底音只在真机（无马达的 iOS）放，桌面浏览器点了不该有声音。 */
+function isTouchDevice() {
+  if (typeof window === 'undefined') return false
+  return (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window
+}
+
 export function installTapFeedback() {
   if (tapBound || typeof document === 'undefined') return () => {}
   tapBound = true
@@ -262,7 +268,10 @@ export function installTapFeedback() {
     // 组件自己刚发过反馈（同一事件的冒泡里）→ 不重复
     if (nowMs() - lastFireAt < TAP_DEDUPE_MS) return
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') fire(8)
-    else softClick() // iOS / 无马达设备：一声极轻的「嗒」兜底，别让手指毫无反馈
+    // iOS / 无马达设备：一声极轻的「嗒」兜底，别让手指毫无反馈。
+    // ⚠️ 必须限定触摸设备：桌面 Firefox/Safari 没有 navigator.vibrate，
+    //    按鼠标也放声音会变成"满屏点击音"，很吵。
+    else if (isTouchDevice()) softClick()
   }
 
   document.addEventListener('click', onClick, { passive: true })
