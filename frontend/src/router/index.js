@@ -201,6 +201,27 @@ const routes = [
     component: () => import('@/views/SpinToolView.vue'),
     meta: { requiresAuth: true }
   },
+  // 音乐造物主（v2.46.334）：大厅/选曲是内页，演奏页独立全屏路由。
+  //   ⚠️ 全屏路由不要放在 /play/ 前缀下 —— nginx 那边有 `location /play/pvz/` 的 alias，
+  //   换个前缀最省事（也顺带避免以后再加别名时踩到）。
+  {
+    path: '/tool/piano',
+    name: 'PianoLobby',
+    component: () => import('@/views/PianoLobbyView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/tool/songs',
+    name: 'SongsManage',
+    component: () => import('@/views/SongsManageView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/piano/:id',
+    name: 'PianoPlay',
+    component: () => import('@/views/PianoPlayView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 内置 OCR 文字识别（服务端 RapidOCR 本地推理）
   {
     path: '/tool/ocr',

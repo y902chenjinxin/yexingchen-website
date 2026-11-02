@@ -85,6 +85,8 @@ export const NAV_GROUPS = [
     // v2.40.23：娱乐由「生活 › 娱乐」二级子模块提升为一级模块
     label: '娱乐',
     items: [
+      // v2.46.334 音乐造物主：PC 端键盘弹奏（手机端点入口会提示去电脑上开）
+      { path: '/tool/piano', title: '音乐造物主', icon: Headset },
       { path: '/tool/games', title: '棋类游戏', icon: Football },
       // v2.46.144 两款单机游戏给侧栏直达入口 —— 此前只挂在「棋类游戏」页内部的休闲分组，
       // 从侧栏根本看不到，等于没接（夜星反馈「侧边栏娱乐模块没有看到」）。
