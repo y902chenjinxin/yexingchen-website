@@ -19,19 +19,57 @@ import re
 import time
 from typing import Optional
 
-# 章节标题：整行匹配、长度 ≤ 42（与前端旧逻辑保持一致，避免同一本书两边切分不同）
-# v2.46.320：去掉前导空白吞掉（改为按缩进严格判断，见 _indent_width）
-CHAPTER_RE = re.compile(
-    r'^(第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章回节卷篇]'
-    r'|卷\s*[0-9零一二三四五六七八九十百千万两]+'
-    r'|序章|楔子|引子|尾声|后记|番外)[^\n]{0,40}$'
-)
+# =====================================================================
+# 章节标题识别（v2.46.321 全面重写）
+# ---------------------------------------------------------------------
+# 判据从强到弱，任何单一判据都不足以定性，靠打分综合：
+#   ① 缩进   —— 正文带缩进（4 半角空格 / 2 全角空格），标题顶格。**最可靠**
+#   ② 空行   —— 标题通常独占一段，前后有空行
+#   ③ 句末标点 —— 标题极少以 。！？ 结尾（"第一回合的KO！"靠这条排除）
+#   ④ 格式   —— 覆盖常见写法，不止「第X章」
+#
+# 历史教训：
+#   - v2.46.283 只看格式，把正文里的「第一章咖喱酱被鬼拉下水啦！」当标题
+#   - v2.46.320 加缩进但太粗（strict/loose 二分），带缩进的真标题被整批丢掉
+#   - v2.46.321 改成打分：缩进只是扣分项，配合句末标点区分「带缩进的真标题」与
+#     「正文里的伪标题」。目标是宁可多几个短章，绝不丢正文。
+# =====================================================================
 
-# v2.46.320：数字序号式标题 —— `0001、我要当演员` / `1. 标题` / `012 标题`
-# 《影帝的诸天轮回》（21MB）就是这种格式，全书 1868 个「0001、」标题，
-# 旧正则一个都不认，反而把正文里的「第一回合的KO！」当成章标题。
-NUM_CHAPTER_RE = re.compile(
-    r'^(?:\d{1,5}[ \t]*[、.．,，:：)）]|\d{3,5}[ \t]+)[ \t]*[^\s].{0,38}$'
+TITLE_MAX_LEN = 42
+
+# 中/全角数字与中文数字
+_CN_NUM = '0-9０-９零〇一二三四五六七八九十百千万两壹贰叁肆伍陆柒捌玖拾佰仟'
+
+# 强格式：命中即有资格成为标题（仍要过打分）
+_STRONG_RES = [
+    # 第X章/回/节/卷/篇/集/部/话/幕（含全角数字、中文数字）
+    re.compile(rf'^第\s*[{_CN_NUM}]+\s*[章回節节卷篇集部话話幕]'),
+    # 卷X / 卷之X
+    re.compile(rf'^卷\s*之?\s*[{_CN_NUM}]+'),
+    # Chapter N
+    re.compile(r'^第?\s*chapter\s*[0-9]+', re.I),
+    # 无编号篇名
+    re.compile(
+        r'^(?:序章|序言|序|楔子|引子|前言|尾声|尾聲|后记|後記|番外|终章|終章|大结局|结局|結局'
+        r'|完本感言|写在前面|写在后面|作者的话|正文完|全书完|完本)'
+    ),
+    # 阿拉伯序号 + 分隔符：0001、 / 1. / 12，
+    re.compile(r'^\d{1,5}\s*[、.．,，:：)）]'),
+    # 中文序号 + 顿号：一、 / 十二、
+    re.compile(r'^[一二三四五六七八九十百千]{1,4}\s*[、.．]'),
+]
+
+# 弱格式：必须靠上下文补分才成立（数字+空格，至少三位，减少误判）
+_WEAK_RES = [
+    re.compile(r'^\d{3,5}\s+\S'),
+]
+
+# 包裹符号：`【第一章】开端` / `（第2章）测试` —— 替换成空格而不是删掉，
+# 这样「第X章」仍在行首可被匹配；用于显示时一律保留原文。
+_BRACKETS_RE = re.compile(r'[【】（）()《》「」〔〕\[\]<>]')
+# 噪音前缀：`正文 第四百四十四章 xxx` 这种带前缀的标题
+_NOISE_PREFIX_RE = re.compile(
+    r'^(?:正文|更新|公告|通知|求票|求收藏|求月票|求推荐|ps|PS|P\.S\.)(?=[\s:：、.\-])[\s:：、.\-]*'
 )
 
 CACHE_DIRNAME = '.cache'
@@ -40,10 +78,7 @@ CACHE_DIRNAME = '.cache'
 def _indent_width(line: str) -> int:
     """行首缩进宽度（半角空格 1、全角空格 2、制表符 4）。
 
-    🔴 v2.46.320：这是区分「章标题」与「正文」最可靠的判据。中文 TXT 正文几乎都带缩进
-    （4 个半角空格或 2 个全角空格），标题通常顶格。旧逻辑 `^[\\s\\u3000]*` 把缩进也吞了，
-    于是正文里的「第一回合的KO！」「第一章咖喱酱被鬼拉下水啦！」都被当成章标题 ——
-    《影帝的诸天轮回》21MB 只切出 10 章，就是这个原因。
+    区分「章标题」与「正文」最可靠的判据：中文 TXT 正文几乎都带缩进，标题通常顶格。
     """
     w = 0
     for ch in line:
@@ -56,6 +91,51 @@ def _indent_width(line: str) -> int:
         else:
             break
     return w
+
+
+def _normalize_title(probe: str) -> str:
+    """只用于「格式匹配」，不用于显示。"""
+    s = _BRACKETS_RE.sub(' ', probe)
+    s = re.sub(r'\s+', ' ', s).strip()
+    s = _NOISE_PREFIX_RE.sub('', s)
+    return s.strip()
+
+
+def _score_title(line: str, prev_blank: bool) -> tuple[bool, int]:
+    """给一行打分，判断它是不是章标题。返回 (是否标题, 分数)。
+
+    6 分 = 标准格式 + 顶格 + 前有空行
+    3 分 = 及格线（带缩进的真标题也能过）
+    0 分 = 正文
+    """
+    probe = line.strip()
+    if not probe or len(probe) > TITLE_MAX_LEN:
+        return False, 0
+    norm = _normalize_title(probe)
+    if not norm:
+        return False, 0
+
+    strong = any(rx.match(norm) for rx in _STRONG_RES)
+    weak = any(rx.match(norm) for rx in _WEAK_RES)
+    if not (strong or weak):
+        return False, 0
+
+    s = 3 if strong else 1
+    ind = _indent_width(line)
+    if ind <= 2:
+        s += 2          # 顶格
+    else:
+        s -= 1          # 带缩进 → 可能是正文，但不直接判死
+                        # （圣王有一批真标题带 4 空格缩进，判死会丢整章）
+    if prev_blank:
+        s += 1          # 标题前通常空一行
+    if probe[-1] in '。！？…!?」』”"）)':
+        s -= 2          # 句末标点收尾 → 更像正文（"第一回合的KO！"靠这条排除）
+
+    # 弱格式必须靠上下文补足
+    if weak and not strong and s < 4:
+        return False, s
+    return s >= 3, s
 
 
 def _decode(raw: bytes) -> tuple[str, str]:
@@ -78,45 +158,52 @@ def _decode(raw: bytes) -> tuple[str, str]:
     return raw.decode('utf-8', 'replace'), 'utf-8(含替换字符)'
 
 
-def split_chapters(text: str) -> list[dict]:
+def split_chapters(text: str, min_gap: int = 80) -> list[dict]:
     """单次扫描切章。返回 [{t: 标题, s: 字符起点, e: 字符终点}]。
 
-    🔴 必须过滤「目录页」（v2.46.283 实测）：很多 TXT 开头有整页目录，
-    「第001章 xxx」一行接一行 —— 直接按行切会把目录每一行都当成一章，
-    结果是 2479 个章节里一半只有标题没有正文，翻页体验灾难。
-    判据：与下一个候选标题的间距 < 80 字符 → 视为目录项丢弃。
+    v2.46.321 改动（对比 v2.46.320）：
+    1. 格式覆盖扩到 章/回/节/卷/篇/集/部/话/幕 + Chapter N + 【】（）包裹 + 「正文」前缀
+    2. 缩进从「一票否决」改成「扣 1 分」，配合句末标点区分真标题与正文里的伪标题
+    3. **不做序号递进过滤** —— 试过并有实测证据：对 1600 章的长篇，卷内重排/跳号很常见，
+       按邻域剔除会误杀真章节（圣王丢 10 个 3500 字的真章、极品家丁丢 3 个 4000~7000 字的）。
+       缩进 + 句末标点已经够用，宁可多几个短章，不能少一章正文。
+
+    目录页过滤仍保留：很多 TXT 开头有整页目录，「第001章 xxx」一行接一行，
+    直接按行切会切出一半只有标题没有正文的空章。判据是「与下一个标题间距过小」。
     """
-    # 1) 扫候选标题位置（同时收集「严格」与「宽松」两份，最后择优）
-    strict: list[tuple[str, int]] = []
-    loose: list[tuple[str, int]] = []
+    lines = text.split('\n')
+    strict: list[tuple[str, int]] = []   # 顶格候选
+    loose: list[tuple[str, int]] = []    # 全部候选（含带缩进的）
     offset = 0
-    for line in text.split('\n'):
-        probe = line.strip()
-        if probe and len(probe) <= 42 and (CHAPTER_RE.match(probe) or NUM_CHAPTER_RE.match(probe)):
+    prev_blank = True
+    for line in lines:
+        ok, _score = _score_title(line, prev_blank)
+        if ok:
+            probe = line.strip()          # 🔴 存原文：显示时不能丢括号/前缀
             loose.append((probe, offset))
             if _indent_width(line) <= 2:
                 strict.append((probe, offset))
+        prev_blank = not line.strip()
         offset += len(line) + 1
 
-    # v2.46.320：优先「无缩进」候选（正文带缩进、标题顶格）。
-    # 少数书的标题本身居中/缩进，此时严格候选会少得离谱 —— 少于 3 个就退回宽松，
-    # 避免为了修一本书把另一本书切成 1 章。
+    # 顶格候选够多说明这本书「正文带缩进、标题顶格」，用 strict 滤掉带缩进的伪标题；
+    # 否则说明标题本身也带缩进，只能全用 loose。
     cands = strict if len(strict) >= 3 else loose
 
     if not cands:
         return [{'t': '正文', 's': 0, 'e': len(text)}]
 
-    # 2) 目录项过滤：紧跟下一个标题（间距过小）= 目录行，不是真章节
+    # 目录项过滤：紧跟下一个标题（间距过小）= 目录行，不是真章节
     kept: list[tuple[str, int]] = []
     for i, (title, start) in enumerate(cands):
         nxt = cands[i + 1][1] if i + 1 < len(cands) else len(text)
-        if nxt - start < 80:
+        if nxt - start < min_gap:
             continue
         kept.append((title, start))
     if not kept:            # 全书都是短章（极端情况）：回退不过滤
         kept = cands
 
-    # 3) 组装区间：第一个真标题之前的内容算「开始」
+    # 组装区间：第一个真标题之前的内容算「开始」
     chapters: list[dict] = []
     if kept[0][1] > 0:
         chapters.append({'t': '开始', 's': 0, 'e': kept[0][1]})
