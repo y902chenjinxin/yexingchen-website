@@ -114,3 +114,21 @@ export function keyLayout(width) {
   }
   return { whiteW, blackW, pos }
 }
+
+/**
+ * 简谱表示（v2.46.336）
+ *
+ * MIDI → { deg: '1'..'7', acc: ''|'#', oct: -1|0|1 }
+ *   · deg 用唱名（C=1 D=2 E=3 F=4 G=5 A=6 B=7），黑键加 # 前缀（#1 = C#）
+ *   · oct 是相对 C4 的八度偏移：<0 下面点、>0 上面点（简谱的通行写法）
+ */
+const SOLFEGE = { 0: '1', 2: '2', 4: '3', 5: '4', 7: '5', 9: '6', 11: '7' }
+export function solfege(midi) {
+  const pc = ((midi % 12) + 12) % 12
+  const oct = Math.floor(midi / 12) - 5      // C4(60) → 0
+  const natural = SOLFEGE[pc]
+  if (natural) return { deg: natural, acc: '', oct }
+  // 黑键：取下方音的升号写法（#1 / #2 / #4 / #5 / #6）
+  const lower = Object.keys(SOLFEGE).map(Number).filter((k) => k < pc).sort((a, b) => b - a)[0]
+  return { deg: SOLFEGE[lower], acc: '#', oct }
+}

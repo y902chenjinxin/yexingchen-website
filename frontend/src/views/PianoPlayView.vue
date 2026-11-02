@@ -7,11 +7,37 @@
         <b>{{ song?.title || '加载中…' }}</b>
         <span v-if="song">{{ song.bpm }} BPM · {{ song.notes.length }} 个音</span>
       </div>
-      <div class="pp-progress"><i :style="{ width: progress + '%' }" /></div>
+      <div class="pp-modes">
+        <button
+          type="button" class="pp-mode" :class="{ on: mode === 'score' }"
+          :disabled="phase !== 'playing'" @click="switchMode('score')"
+        >看谱弹</button>
+        <button
+          type="button" class="pp-mode" :class="{ on: mode === 'fall' }"
+          :disabled="phase !== 'playing'" @click="switchMode('fall')"
+        >跟着落</button>
+      </div>
+      <div class="pp-progress"><i :style="{ width: progressPct + '%' }" /></div>
     </header>
 
-    <!-- 下落舞台 -->
-    <main ref="stageEl" class="pp-stage">
+    <!-- 舞台：曲谱模式（默认）/ 下落模式 -->
+    <main ref="stageEl" class="pp-stage" :class="{ 'is-score': mode === 'score' }">
+      <!-- 看谱弹：不赶时间，看着简谱一个一个按；按错也出声 -->
+      <template v-if="mode === 'score'">
+        <div class="pp-scorehd">
+          <span class="pp-hint">
+            看着谱子慢慢弹，按错也没关系（按对会往下走，想从哪句开始就点那句的编号）
+          </span>
+          <span v-if="cursor >= (song?.notes?.length || 0)" class="pp-done-chip">
+            弹完了 · 点句子编号重来
+          </span>
+          <span class="pp-count-badge">{{ Math.min(cursor, song?.notes?.length || 0) }} / {{ song?.notes?.length || 0 }}</span>
+        </div>
+        <PianoScore :notes="song?.notes || []" :active="cursor" @pick="pick" />
+      </template>
+
+      <!-- 跟着落：原来的节奏版 -->
+      <template v-else>
       <div class="pp-fade pp-fade--top" aria-hidden="true" />
 
       <!-- lane：左右边距与下方键盘完全一致，音符落点才能对上琴键 -->
@@ -41,6 +67,8 @@
       />
       </div>
 
+      </template>
+
       <!-- 开场 / 倒计时 / 结束 -->
       <div v-if="phase !== 'playing'" class="pp-overlay">
         <div v-if="phase === 'loading'" class="pp-ov-box">正在加载曲谱…</div>
@@ -56,13 +84,15 @@
         <div v-else-if="phase === 'ready'" class="pp-ov-box">
           <p class="pp-ov-lead">{{ song?.title }}</p>
           <p class="pp-ov-sub">
-            音符落到底线时按下对应字母<br />
+            <b>看谱弹</b>：简谱摊开，自己慢慢按，按错也没事<br />
+            <b>跟着落</b>：音符掉到底线时按对应字母（节奏版）<br />
             白键 <kbd>A S D F G H J K L</kbd> / <kbd>Q W E R T Y U I O</kbd><br />黑键 <kbd>1</kbd> ~ <kbd>0</kbd>
           </p>
           <div class="pp-ov-acts">
-            <button class="pp-btn primary" type="button" :disabled="starting" @click="start">
-              {{ starting ? '正在准备音频…' : '开始演奏' }}
+            <button class="pp-btn primary" type="button" :disabled="starting" @click="start('score')">
+              {{ starting ? '正在准备音频…' : '看谱弹' }}
             </button>
+            <button class="pp-btn" type="button" :disabled="starting" @click="start('fall')">跟着落</button>
             <button class="pp-btn" type="button" @click="exit">返回</button>
           </div>
           <p v-if="pianoError" class="pp-ov-err">{{ pianoError }}</p>
@@ -104,6 +134,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import PianoKeyboard from '@/components/piano/PianoKeyboard.vue'
+import PianoScore from '@/components/piano/PianoScore.vue'
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
 import { usePiano } from '@/composables/usePiano'
 import { getSong } from '@/api/songs'
@@ -116,6 +147,10 @@ const { ready: audioReady, init: initAudio, noteOn, noteOff, allOff, dispose: di
 
 const song = ref(null)
 const phase = ref('loading')     // loading | ready | countdown | playing | done | error
+/** 演奏形态：score = 看谱慢慢弹（默认）｜fall = 原来的节奏版 */
+const mode = ref('score')
+/** 曲谱模式下「建议你现在按」的音序号（按对才前进，按错不动，也不惩罚） */
+const cursor = ref(0)
 const errMsg = ref('')
 const starting = ref(false)
 const countdown = ref(3)
@@ -215,6 +250,14 @@ function tickFrame() {
   rafId = requestAnimationFrame(tickFrame)
 }
 
+const progressPct = computed(() => {
+  if (mode.value === 'score') {
+    const len = song.value?.notes?.length || 1
+    return Math.min(100, Math.round((cursor.value / len) * 100))
+  }
+  return progress.value
+})
+
 const duration = computed(() => {
   const l = song.value?.notes || []
   return l.length ? Math.max(...l.map((n) => n.time + (n.dur || 0))) : 0
@@ -233,7 +276,15 @@ function onKeyDown(key) {
   activeKeys.value = [...activeKeys.value, key]
   const midi = KEY_TO_MIDI.get(key)
   if (midi != null && audioReady.value) noteOn(midi, 0.9)
-  if (phase.value === 'playing') judge(key)
+
+  if (phase.value !== 'playing') return
+  if (mode.value === 'score') {
+    // 只判断"是不是谱子上这个音"：按对了往下走一格，按错什么都不发生（不扣分、不响提示音）
+    const target = song.value?.notes?.[cursor.value]
+    if (target && target.key === key) cursor.value += 1
+    return
+  }
+  judge(key)
 }
 
 function onKeyUp(key) {
@@ -324,7 +375,7 @@ function measure() {
   if (roll) roll.style.transform = `translate3d(0, ${offsetY(now.value)}px, 0)`
 }
 
-async function start() {
+async function start(m = 'score') {
   starting.value = true
   try {
     await initAudio()            // 必须在这次点击的调用栈里
@@ -333,6 +384,13 @@ async function start() {
     return
   }
   starting.value = false
+  mode.value = m
+  if (m === 'score') {
+    // 看谱弹：不要倒计时、不要时间轴，直接把谱子摊开
+    cursor.value = 0
+    phase.value = 'playing'
+    return
+  }
   phase.value = 'countdown'
   countdown.value = 3
   const timer = setInterval(() => {
@@ -342,6 +400,27 @@ async function start() {
       beginPlay()
     }
   }, 700)
+}
+
+/** 演奏中切换形态（看谱 ↔ 跟着落） */
+function switchMode(m) {
+  if (m === mode.value) return
+  if (m === 'score') {
+    if (rafId) cancelAnimationFrame(rafId)
+    rafId = 0
+    allOff()
+    mode.value = 'score'
+    cursor.value = 0
+  } else {
+    mode.value = 'fall'
+    beginPlay()
+  }
+}
+
+/** 曲谱模式：点某一句/某个音就从那里开始 */
+function pick(i) {
+  cursor.value = Math.max(0, Math.min((song.value?.notes?.length || 1) - 1, i))
+  allOff()
 }
 
 function beginPlay() {
@@ -358,6 +437,11 @@ function restart() {
   if (rafId) cancelAnimationFrame(rafId)
   rafId = 0
   activeKeys.value = []
+  if (mode.value === 'score') {
+    cursor.value = 0
+    phase.value = 'playing'
+    return
+  }
   beginPlay()
 }
 
@@ -423,7 +507,7 @@ onBeforeUnmount(() => {
 .pp-title b { font-size: 15px; font-weight: 700; letter-spacing: .02em; }
 .pp-title span { font-size: 11.5px; color: rgba(242, 237, 228, .5); font-variant-numeric: tabular-nums; }
 .pp-progress {
-  flex: 1; height: 3px; margin-left: auto; max-width: 320px;
+  flex: 1; height: 3px; max-width: 320px;
   background: rgba(255, 255, 255, .1); border-radius: 999px; overflow: hidden;
 }
 .pp-progress i {
@@ -435,6 +519,35 @@ onBeforeUnmount(() => {
 
 /* ---------- 舞台 ---------- */
 .pp-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+/* 曲谱模式：上下两段——提示行固定、简谱自己滚 */
+.pp-stage.is-score { display: flex; flex-direction: column; padding: 0 16px; }
+.pp-scorehd {
+  flex: none; display: flex; align-items: center; gap: 12px;
+  padding: 2px 4px 8px; border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+.pp-hint { font-size: 12px; color: rgba(242, 237, 228, .5); line-height: 1.6; }
+.pp-done-chip {
+  margin-left: auto; flex: none; font-size: 12px; font-weight: 700;
+  color: #ffe1a0; padding: 3px 10px; border-radius: 999px;
+  background: rgba(255, 225, 160, .14);
+  border: 1px solid rgba(255, 225, 160, .4);
+}
+.pp-count-badge {
+  margin-left: auto; flex: none; font-size: 11.5px; font-variant-numeric: tabular-nums;
+  color: rgba(255, 225, 160, .9); letter-spacing: .04em;
+}
+.pp-stage.is-score .ps { flex: 1 1 auto; min-height: 0; }
+
+/* 顶栏模式切换 */
+.pp-modes { display: flex; gap: 6px; margin-left: auto; }
+.pp-mode {
+  height: 26px; padding: 0 10px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: transparent; color: rgba(242, 237, 228, .6);
+  font-size: 12px; font-weight: 600;
+}
+.pp-mode.on { background: rgba(255, 225, 160, .16); border-color: rgba(255, 225, 160, .55); color: #ffe1a0; }
+.pp-mode:disabled { opacity: .4; cursor: default; }
 .pp-fade--top {
   position: absolute; inset: 0 0 auto 0; height: 26%; z-index: 3; pointer-events: none;
   background: linear-gradient(180deg, #07080c 0%, rgba(7, 8, 12, .85) 40%, transparent 100%);
