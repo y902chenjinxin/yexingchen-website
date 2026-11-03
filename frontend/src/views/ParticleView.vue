@@ -26,6 +26,22 @@
           </div>
 
           <div class="pt-sec">
+            <span class="pt-lab">风格</span>
+            <div class="pt-pals">
+              <button type="button" class="pt-pal" :class="{ on: cfg.style === 'glow' }"
+                      @click="set('style', 'glow')">
+                <i class="pt-pal-dot" style="background:radial-gradient(circle at 40% 36%,#fff,hsl(286 96% 62%) 46%,hsl(196 96% 56%) 78%)" />
+                <span>光晕</span>
+              </button>
+              <button type="button" class="pt-pal" :class="{ on: cfg.style === 'streak' }"
+                      @click="set('style', 'streak')">
+                <i class="pt-pal-dot" style="background:linear-gradient(160deg,#fff,hsl(48 100% 58%) 40%,hsl(348 92% 52%))" />
+                <span>光轨</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-sec">
             <span class="pt-lab">配色</span>
             <div class="pt-pals">
               <button
@@ -62,7 +78,7 @@
               <span class="pt-lab">粗细</span>
               <span class="pt-val">{{ cfg.size.toFixed(1) }}</span>
             </div>
-            <input type="range" min="1" max="9" step="0.1" :value="cfg.size"
+            <input type="range" min="4" max="40" step="0.5" :value="cfg.size"
                    class="pt-range" @input="set('size', +$event.target.value)" />
           </div>
 
@@ -73,6 +89,15 @@
             </div>
             <input type="range" min="0.05" max="1" step="0.01" :value="cfg.trail"
                    class="pt-range" @input="set('trail', +$event.target.value)" />
+          </div>
+
+          <div class="pt-sec">
+            <div class="pt-lab-row">
+              <span class="pt-lab">光晕</span>
+              <span class="pt-val">{{ cfg.bloom.toFixed(2) }}</span>
+            </div>
+            <input type="range" min="0" max="1.5" step="0.05" :value="cfg.bloom"
+                   class="pt-range" @input="set('bloom', +$event.target.value)" />
           </div>
 
           <p class="pt-note">
@@ -120,11 +145,13 @@ const aliveText = computed(() => (alive.value ? `${alive.value.toLocaleString()}
 
 const cfg = reactive({
   count: 3200,
-  size: 10.5,
+  size: 26,
   trail: 0.92,
   width: 0.055,
-  palette: 'nature',
+  style: 'glow',      // glow（光晕，照「魔幻粒子3D」）/ streak（光轨，老版）
+  palette: 'magic',
   invert: false,
+  bloom: 0.85,        // 0 = 关后处理
   auto: false,
 })
 
@@ -271,7 +298,7 @@ function loop(now) {
 function pump(dt) {
   if (!engine) return
   const n = fingers.size
-  const budget = cfg.count * 2.4       // 每秒总发射量上限（够填满池子，又不会瞬间爆）
+  const budget = cfg.count * (cfg.style === 'streak' ? 2.4 : 1.7)       // 每秒总发射量上限（够填满池子，又不会瞬间爆）
 
   if (n === 0) {
     if (!cfg.auto) return
@@ -308,7 +335,7 @@ function pump(dt) {
       speed: moving ? 760 : 520,
       spread: moving ? Math.PI * 0.5 : Math.PI * 2,
       angle: moving ? Math.atan2(vy, vx) : 0,
-      lifeRange: [0.95, 1.9],
+      lifeRange: [1.5, 3.0],
     })
     return
   }
@@ -322,7 +349,7 @@ function pump(dt) {
         speed: 820,
         spread: Math.PI * 0.3,
         angle: ang,
-        lifeRange: [0.9, 1.7],
+        lifeRange: [1.4, 2.8],
       })
     }
     const mx = (a.x + b.x) / 2
@@ -343,7 +370,7 @@ function pump(dt) {
         speed: 700,
         spread: Math.PI * 0.55,
         angle: ang,
-        lifeRange: [1.0, 2.0],
+        lifeRange: [1.5, 3.0],
       })
     }
     engine.emit(cx, cy, Math.max(1, Math.round(per * 0.6)), {
@@ -357,7 +384,7 @@ function pump(dt) {
     engine.emit(f.x, f.y, Math.max(1, Math.round(per * 0.8)), {
       speed: 900,
       spread: Math.PI * 2,
-      lifeRange: [0.85, 1.6],
+      lifeRange: [1.3, 2.6],
       sizeMul: 1.1,
     })
   }

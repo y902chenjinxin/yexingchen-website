@@ -827,7 +827,7 @@ def align_lyric(
     if not lyric_svc.has_timeline(m.lyric or ""):
         raise_error(ErrCode.INVALID_PARAM, "这首歌还没有带时间轴的歌词，先用「识别生成」")
     try:
-        res = lyric_align.align_audio(_audio_abs_path(m), m.lyric)
+        res = lyric_align.align_audio(_audio_abs_path(m), m.lyric, m.title or "", m.artist or "")
     except RuntimeError as exc:
         raise_error(ErrCode.INVALID_PARAM, str(exc)[:180])
 
@@ -835,7 +835,13 @@ def align_lyric(
     m.lyric_source = "aligned"
     m.lyric_at = datetime.now()
     db.commit()
-    return ResponseBase(msg=f"已对齐 {res['stats']['aligned']}/{res['stats']['lines']} 行", data={
+    st = res["stats"]
+    msg = (f"已对齐 {st['aligned']}/{st['lines']} 行"
+           + (f"，插值 {st['kept'] - st['aligned']} 行" if st["kept"] > st["aligned"] else "")
+           + (f"，丢弃 {st['dropped']} 行" if st.get("dropped") else ""))
+    if st.get("degraded"):
+        msg = f"只对上前 {st['aligned']}/{st['lines']} 行，已保留原歌词（建议改用「识别生成」）"
+    return ResponseBase(msg=msg, data={
         "id": m.id, "stats": res["stats"], "lyric": m.lyric,
     })
 
@@ -853,7 +859,8 @@ def transcribe_lyric(
     m = _find_track(db, music_id)
     hint = m.lyric or ""
     try:
-        res = lyric_align.transcribe_to_lrc(_audio_abs_path(m), hint if lyric_svc.has_timeline(hint) else "")
+        res = lyric_align.transcribe_to_lrc(
+            _audio_abs_path(m), hint if lyric_svc.has_timeline(hint) else "", m.title or "")
     except RuntimeError as exc:
         raise_error(ErrCode.INVALID_PARAM, str(exc)[:180])
 
@@ -952,11 +959,11 @@ def _align_worker(only_missing: bool) -> None:
             try:
                 path = _audio_abs_path(m)
                 if lyric_svc.has_timeline(m.lyric or ""):
-                    res = lyric_align.align_audio(path, m.lyric)
+                    res = lyric_align.align_audio(path, m.lyric, m.title or "", m.artist or "")
                     m.lyric = res["lyric"][:MAX_LYRIC_CHARS]
                     m.lyric_source = "aligned"
                 else:
-                    res = lyric_align.transcribe_to_lrc(path, "")
+                    res = lyric_align.transcribe_to_lrc(path, "", m.title or "")
                     m.lyric = res["lyric"][:MAX_LYRIC_CHARS]
                     m.lyric_source = "asr"
                 m.lyric_at = datetime.now()

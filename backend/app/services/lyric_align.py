@@ -50,6 +50,14 @@ META_RE = re.compile(
     r"OP|SP|发行|统筹|策划|纯音乐|此歌曲|这首歌|请欣赏|未经许可)\s*[:：]"
 )
 
+# 平台水印行（v2.46.354）。Kugou 的自动生成歌词会插一句
+# 「由酷狗凌音引擎提供声学技术服务」，没有冒号，旧 META_RE 漏了它 ——
+# 结果它一直挂在播放页的高亮位上。
+WATERMARK_RE = re.compile(
+    r"(由.{0,14}(提供|技术支持|制作)|酷狗|凌音引擎|网易云|QQ音乐|酷我|虾米|百度音乐|"
+    r"搜狗音乐|未经授权|翻唱自|原唱[:：])"
+)
+
 _recognizer = None
 _lock = threading.Lock()
 
@@ -92,14 +100,29 @@ def norm(s: str) -> str:
     return PUNCT_RE.sub("", s or "")
 
 
-def parse_lrc(text: str) -> list[tuple[float, str]]:
-    """LRC → [(秒, 文本)]，过滤制作信息行"""
+def parse_lrc(text: str, title: str = "", artist: str = "") -> list[tuple[float, str]]:
+    """LRC → [(秒, 文本)]，滤掉制作信息 / 平台水印 / 「歌名 - 歌手」标题行。
+
+    v2.46.354 加了两类过滤，都是童话镇（id 176）暴露出来的：
+      · `由酷狗凌音引擎提供声学技术服务` —— 平台水印，正则里没有冒号，旧 META_RE 漏了它；
+      · `童话镇 - 小野来了` —— 首行的「歌名 - 歌手」，同样没有冒号，
+        结果播放页第一句永远显示歌名。
+    title/artist 从库里带进来，只用来判断「这行是不是标题」，
+    不参与任何时间计算。
+    """
     out = []
+    nt = norm(title)
+    na = norm(artist)
     for line in (text or "").split("\n"):
         if not TIME_RE.search(line):
             continue
         content = TIME_RE.sub("", line).strip()
-        if not content or META_RE.match(content):
+        if not content or META_RE.match(content) or WATERMARK_RE.search(content):
+            continue
+        nc = norm(content)
+        # 「歌名」「歌名 - 歌手」「歌手 - 歌名」：长度必须接近歌名+歌手，
+        # 否则会误杀真歌词（"总有一条蜿蜒在童话镇里七彩的河" 也含歌名）
+        if nt and nt in nc and len(nc) <= len(nt) + len(na) + 6:
             continue
         for m, s, f in TIME_RE.findall(line):
             sec = int(m) * 60 + int(s) + (int(f.ljust(3, "0")) / 1000 if f else 0)
@@ -116,25 +139,6 @@ def build_lrc(pairs: list[tuple[float, str]]) -> str:
         s = t - m * 60
         lines.append(f"[{m:02d}:{s:05.2f}]{text}")
     return "\n".join(lines)
-
-
-def _lcs_cover(lyric: str, heard: str) -> float:
-    """识别文本有多少内容落在歌词行里。
-
-    为什么不用 Jaccard：识别常常只吐出半句（"旋笔一卷" vs "悬笔一绝 那岸边浪千叠"），
-    Jaccard 被行长度拖死。看"识别出的部分对了多少"更有判别力。
-    """
-    if not lyric or not heard:
-        return 0.0
-    la, lb = len(lyric), len(heard)
-    prev = [0] * (la + 1)
-    for i in range(1, lb + 1):
-        cur = [0] * (la + 1)
-        ch = heard[i - 1]
-        for j in range(1, la + 1):
-            cur[j] = prev[j - 1] + 1 if ch == lyric[j - 1] else max(prev[j], cur[j - 1])
-        prev = cur
-    return prev[la] / lb
 
 
 # ============================ 音频 → 人声段 ============================
@@ -240,75 +244,189 @@ def transcribe_segments(x: np.ndarray, segs) -> list[tuple[float, float, str]]:
 
 
 # ============================ 对齐 ============================
+#
+# ## v2.46.354 为什么推翻重写
+#
+# 原来按「原 LRC 时间 ±4s 窗口内找识别段」配对。夜星：「童话镇的歌曲比歌词快两句」。
+# 实测（id 176）：55 行只配上 12 行，其余 43 行**原样保留了源 LRC 的时间**，
+# 而源 LRC 是酷狗自动生成的（首行水印「凌音引擎」，时间轴一路排到 12:51，
+# 音频只有 4:16），于是：
+#   00:23.75 听说白雪公主在逃跑  ← 真人声从 00:17.72 就开唱了
+#   00:45.34~00:47.67 四句挤在 2.3 秒里（自动生成的时间轴根本没对齐）
+# 表现出来就是「歌词比歌慢，慢两句左右」。
+#
+# 根因不是窗口宽度，是**把源时间当成了坐标系**。翻唱/DJ 版和原版的时间轴
+# 没有任何稳定关系（实测三首偏差 +0.56 / -1.61 / -0.48 秒，方向都不一样），
+# 一旦某行配不上就退回源时间 = 把一个错误的时间留在原地。
+#
+# 所以改成**只用识别结果排序，完全不看源时间**：歌词行和识别段都是有序的，
+# 这就是一个单调序列对齐问题，DP 解（55×37 的格子，毫秒级）。
+# 源时间只在两处还用得上：① 判断前导行该不该保留 ② 全对不上时的兜底。
+
+_MIN_SIM = 0.30      # 低于这个相似度不考虑配对
+_SKIP_LINE = 0.60    # 这行没被唱 / 识别漏了 → 丢弃的代价
+_SKIP_SEG = 0.012    # 跳过一个识别段（伴奏、气口）几乎免费
+_MULTI_PEN = 0.10    # 一段里塞第二行以后的额外代价（一口气唱 2~3 行很常见）
+
 
 def _distribute(rows: list[dict], segs_index: dict) -> None:
     """多行落在同一段 → 段内按字数比例分配时间。
 
     否则「忙不迭 千年碑易拓」和「却难拓你的美」会挤在同一秒亮起来。
     """
+    # 只在「已配上的行」序列里找连续段。中间夹一条没配上的行（seg=None）不能把
+    # 一段切断 —— 否则 [seg36, None, seg36] 会被当成两个单行，谁都分不到时间，
+    # 最后一起被单调兜底压成 +0.05 的连珠炮（首版童话镇尾段就是这个毛病）。
+    idx = [k for k, r in enumerate(rows) if r["seg"] is not None]
     i = 0
-    while i < len(rows):
+    while i < len(idx):
         j = i
-        while j + 1 < len(rows) and rows[j + 1]["ok"] and rows[j + 1]["seg"] is not None \
-                and rows[j]["seg"] is not None and rows[j + 1]["seg"] == rows[j]["seg"]:
+        while j + 1 < len(idx) and rows[idx[j + 1]]["seg"] == rows[idx[i]]["seg"]:
             j += 1
         if j > i:
-            a, b = segs_index[rows[i]["seg"]]
-            total = sum(len(norm(rows[k]["text"])) or 1 for k in range(i, j + 1)) or 1
+            rows_ = [rows[idx[x]] for x in range(i, j + 1)]
+            a, b = segs_index[rows_[0]["seg"]]
+            total = sum(len(norm(r["text"])) or 1 for r in rows_) or 1
             acc = a
-            for k in range(i, j + 1):
-                share = (b - a) * (len(norm(rows[k]["text"])) or 1) / total
-                rows[k]["t"] = round(acc, 2)
+            for r in rows_:
+                share = (b - a) * (len(norm(r["text"])) or 1) / total
+                r["t"] = round(acc, 2)
                 acc += share
         i = j + 1
 
 
-def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
-          window: float = 4.0, cover: float = 0.45, max_shift: float = 3.5) -> list[dict]:
-    """歌词行 ↔ 识别段 对齐。
+def _sim(lyric: str, heard: str) -> float:
+    """行 ↔ 识别段的相似度：LCS 的双向覆盖 F1。
 
-    lines 带原时间（先验）；heard 是 [(start, end, text)]。
-    返回每行 {t, text, ok, score, heard}。
+    旧的 `_lcs_cover` 只算「识别文本有多少落在歌词里」（分母是识别长度）。
+    一段识别常含两三句，分母被拉大 —— 完全命中的行也只有 0.4 分，
+    和“沾个边”的行（0.3 分）几乎分不开，窗口里随便抓一段就配上了。
+    改成双向：P = 覆盖了多少这行，R = 这段里有多少是这行，取 F1。
     """
-    segs_index = {i: (a, b) for i, (a, b, _) in enumerate(heard)}
-    rows = []
-    for t, content in lines:
-        nc = norm(content)
-        hits = []
-        for i, (a, b, txt) in enumerate(heard):
-            if b < t - window or a > t + window or len(txt) < 2:
-                continue
-            sc = _lcs_cover(nc, txt)
-            if sc >= cover:
-                hits.append((i, a, sc, txt))
-        if not hits:
-            rows.append({"t": t, "text": content, "ok": False, "score": 0.0, "heard": "", "seg": None})
-            continue
-        # 取最早：一行常被唱成两段（换气），后半段文本更长、分数更高，
-        # 但歌词行的时间是**句首**，取最高分会整句晚 2~3 秒。
-        hits.sort(key=lambda h: h[1])
-        i, a, sc, txt = hits[0]
-        if abs(a - t) > max_shift and sc < 0.75:
-            # 偏太多又没有强证据 → 很可能匹配到隔壁句，保留原值更安全
-            rows.append({"t": t, "text": content, "ok": False, "score": sc, "heard": txt, "seg": i})
-        else:
-            rows.append({"t": a, "text": content, "ok": True, "score": sc, "heard": txt, "seg": i})
+    if not lyric or not heard:
+        return 0.0
+    la, lb = len(lyric), len(heard)
+    prev = [0] * (la + 1)
+    for i in range(1, lb + 1):
+        cur = [0] * (la + 1)
+        ch = heard[i - 1]
+        for j in range(1, la + 1):
+            cur[j] = prev[j - 1] + 1 if ch == lyric[j - 1] else max(prev[j], cur[j - 1])
+        prev = cur
+    lcs = prev[la]
+    if not lcs:
+        return 0.0
+    p, r = lcs / la, lcs / lb
+    return 2 * p * r / (p + r)
 
+
+def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
+          dur: float = 0.0) -> list[dict]:
+    """歌词行 ↔ 识别段 单调对齐（不看源时间）。
+
+    转移只有四种：
+      丢掉这一行       +0.60
+      跳过一段识别     +0.012   （伴奏/气口，随便跳）
+      行配段（都前进）+1-sim
+      行配段（段不动） +1-sim+0.10   ← 一段唱好几行
+    """
+    n, m = len(lines), len(heard)
+    if not n:
+        return []
+    if not m:
+        return [{"t": t, "text": c, "ok": False, "score": 0.0, "heard": "", "seg": None}
+                for t, c in lines]
+
+    nl = [norm(c) for _t, c in lines]
+    sims = [[_sim(nl[i], heard[j][2]) for j in range(m)] for i in range(n)]
+
+    INF = float("inf")
+    dp = [[INF] * (m + 1) for _ in range(n + 1)]
+    back: list[list] = [[None] * (m + 1) for _ in range(n + 1)]
+    dp[0][0] = 0.0
+    for i in range(n + 1):
+        row, brow = dp[i], back[i]
+        for j in range(m + 1):
+            cur = row[j]
+            if cur == INF:
+                continue
+            if j < m and cur + _SKIP_SEG < row[j + 1]:
+                row[j + 1] = cur + _SKIP_SEG
+                brow[j + 1] = ("seg", i, j)
+            if i == n:
+                continue
+            if cur + _SKIP_LINE < dp[i + 1][j]:
+                dp[i + 1][j] = cur + _SKIP_LINE
+                back[i + 1][j] = ("drop", i, j)
+            if j < m and sims[i][j] >= _MIN_SIM:
+                c = cur + 1.0 - sims[i][j]
+                if c < dp[i + 1][j + 1]:
+                    dp[i + 1][j + 1] = c
+                    back[i + 1][j + 1] = ("match", i, j)
+                if c + _MULTI_PEN < dp[i + 1][j]:
+                    dp[i + 1][j] = c + _MULTI_PEN
+                    back[i + 1][j] = ("multi", i, j)
+
+    assign: list = [None] * n
+    i, j = n, m
+    while i > 0 or j > 0:
+        act, pi, pj = back[i][j]
+        if act in ("match", "multi"):
+            assign[pi] = pj
+        i, j = pi, pj
+
+    rows = []
+    for k, (t, content) in enumerate(lines):
+        s = assign[k]
+        if s is None:
+            rows.append({"t": t, "text": content, "ok": False, "score": 0.0, "heard": "", "seg": None})
+        else:
+            rows.append({"t": heard[s][0], "text": content, "ok": True,
+                         "score": round(sims[k][s], 3), "heard": heard[s][2], "seg": s})
+    if not any(r["ok"] for r in rows):
+        return rows
+
+    segs_index = {k: (a, b) for k, (a, b, _) in enumerate(heard)}
     _distribute(rows, segs_index)
 
-    # 没对齐上的行：如果夹在两行已对齐的中间，按比例插值（比留着原值准）
-    for k, r in enumerate(rows):
-        if r["ok"]:
-            continue
-        prev = next((rows[x] for x in range(k - 1, -1, -1) if rows[x]["ok"]), None)
-        nxt = next((rows[x] for x in range(k + 1, len(rows)) if rows[x]["ok"]), None)
-        if prev and nxt and nxt["t"] > prev["t"]:
-            span = sum(1 for x in range(k, len(rows)) if not rows[x]["ok"] and (nxt is None or rows[x] is not nxt))
-            step = (nxt["t"] - prev["t"]) / max(1, span + 1)
-            r["t"] = round(prev["t"] + step * (sum(1 for x in range(k, -1, -1) if not rows[x]["ok"])), 2)
-            r["interp"] = True
+    first = next(k for k, r in enumerate(rows) if r["ok"])
+    last = max(k for k, r in enumerate(rows) if r["ok"])
 
-    # 单调性兜底：时间必须递增，插值/分配偶尔会产生倒序
+    # 中间的空缺：夹在两行已对齐的中间 → 按行数插值（比留源时间准得多）
+    k0 = first
+    while k0 <= last:
+        if rows[k0]["ok"]:
+            k0 += 1
+            continue
+        k1 = k0
+        while k1 <= last and not rows[k1]["ok"]:
+            k1 += 1
+        prev, nxt = rows[k0 - 1], (rows[k1] if k1 <= last else None)
+        if nxt is not None and nxt["t"] > prev["t"]:
+            cnt = k1 - k0
+            for q in range(cnt):
+                rows[k0 + q]["t"] = round(prev["t"] + (nxt["t"] - prev["t"]) * (q + 1) / (cnt + 1), 2)
+                rows[k0 + q]["interp"] = True
+        k0 = k1
+
+    # 收尾：前导行只在「源时间还落在第一句之前」时保留（宣传语/纯人声前奏），
+    # 尾巴上没配上的行一律丢 —— 源 LRC 经常比音频长（id 176 排到 12:51）
+    out = []
+    for k, r in enumerate(rows):
+        if r["ok"] or r.get("interp"):
+            out.append(r)
+        elif k < first and rows[first]["t"] >= r["t"] >= 0:
+            out.append(r)
+        else:
+            r["dropped"] = True
+            out.append(None)
+    out = [r for r in out if r]
+    rows = out
+
+    # 单调性兜底（插值/分配偶尔会产生倒序），顺便把超出音频长度的尾巴砍掉
+    limit = (dur + 1.5) if dur > 0 else None
+    if limit:
+        rows = [r for r in rows if r["t"] <= limit]
     for k in range(1, len(rows)):
         if rows[k]["t"] <= rows[k - 1]["t"]:
             rows[k]["t"] = round(rows[k - 1]["t"] + 0.05, 2)
@@ -317,56 +435,107 @@ def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
 
 # ============================ 对外入口 ============================
 
-def align_audio(audio_path: str, lyric_text: str) -> dict:
-    """主入口：音频 + 已有 LRC → 对齐后的 LRC 与统计。"""
-    lines = parse_lrc(lyric_text)
-    if not lines:
-        raise RuntimeError("这份歌词没有时间轴，先用「识别」生成再对齐")
+_CACHE_DIR = os.environ.get("LYRIC_ASR_CACHE_DIR", "") or "/var/www/yexingchen/backend/.cache/lyric_asr"
+
+
+def _segments_for(audio_path: str):
+    """音频 → (heard, 时长)。带磁盘缓存。
+
+    识别是重活（19x 实时，一首 4 分钟歌 13 秒）。调对齐算法时不该把
+    ASR 重跑一遍 —— 280 首就是 70 分钟白烧。缓存键 = 文件名+大小+修改时间，
+    音频被替换了自然失效。
+    """
+    import hashlib
+    import json
+    st = os.stat(audio_path)
+    key = hashlib.md5(
+        f"{os.path.basename(audio_path)}|{st.st_size}|{int(st.st_mtime)}".encode()
+    ).hexdigest()
+    cf = os.path.join(_CACHE_DIR, key + ".json")
+    if os.path.isfile(cf):
+        try:
+            with open(cf, encoding="utf-8") as f:
+                d = json.load(f)
+            return [tuple(x) for x in d["heard"]], float(d["dur"])
+        except Exception:
+            pass
 
     x = pcm_from_file(audio_path)
     dur = len(x) / SR
     segs = split_long(x, vad_segments(x))
     heard = transcribe_segments(x, segs)
-    rows = align(lines, heard)
+    try:
+        os.makedirs(_CACHE_DIR, exist_ok=True)
+        tmp = cf + f".{os.getpid()}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"dur": dur, "heard": [list(h) for h in heard]}, f, ensure_ascii=False)
+        os.replace(tmp, cf)
+    except OSError:
+        pass
+    return heard, dur
+
+
+def align_audio(audio_path: str, lyric_text: str, title: str = "", artist: str = "") -> dict:
+    """主入口：音频 + 已有 LRC → 对齐后的 LRC 与统计。"""
+    lines = parse_lrc(lyric_text, title, artist)
+    if not lines:
+        raise RuntimeError("这份歌词没有时间轴，先用「识别」生成再对齐")
+
+    heard, dur = _segments_for(audio_path)
+    rows = align(lines, heard, dur)
 
     ok = sum(1 for r in rows if r["ok"])
+    n = len(lines)
+    ratio = ok / n if n else 0.0
+
+    # 兜底：几乎一行都配不上（ASR 全废 / 纯音乐没人声 / 歌词不是这首歌），
+    # 就别动原文 —— 留着一个"能读但慢半拍"的版本，好过换个完全不认识的。
+    # need 按行数缩放：库里有一堆只有一个标题行的纯音乐条目，
+    # 用固定的 "至少 3 行" 会把它们全判成降级。
+    need = min(3, n)
+    if ok < need or ratio < 0.18:
+        return {
+            "lyric": lyric_text,
+            "rows": rows,
+            "stats": {"lines": n, "segments": len(heard), "aligned": ok, "ratio": round(ratio, 2),
+                      "kept": n, "dropped": 0, "duration": round(dur, 1), "degraded": True},
+        }
+
     return {
         "lyric": build_lrc([(r["t"], r["text"]) for r in rows]),
         "rows": rows,
         "stats": {
-            "lines": len(lines),
-            "segments": len(segs),
+            "lines": n,
+            "segments": len(heard),
             "aligned": ok,
-            "kept": len(rows) - ok,
+            "ratio": round(ratio, 2),
+            "kept": len(rows),
+            "dropped": n - len(rows),
             "duration": round(dur, 1),
+            "degraded": False,
         },
     }
 
 
-def transcribe_to_lrc(audio_path: str, hint_text: str = "") -> dict:
+def transcribe_to_lrc(audio_path: str, hint_text: str = "", title: str = "") -> dict:
     """新音频 → LRC。有歌词文本就按文本对齐，没有就直接用识别结果。
 
     识别的文本会有错别字（"悬笔一绝"→"旋笔一卷"），所以**只要用户给了歌词文本，
     就以用户的文本为准**，识别结果只用来定时间。
     """
-    x = pcm_from_file(audio_path)
-    dur = len(x) / SR
-    segs = split_long(x, vad_segments(x))
-    heard = transcribe_segments(x, segs)
+    heard, dur = _segments_for(audio_path)
+    with_time = parse_lrc(hint_text, title)
 
-    hint_lines = [(0.0, ln.strip()) for ln in (hint_text or "").split("\n") if ln.strip()]
-    # 用户给的文本可能带 LRC 时间（那就当先验用）
-    with_time = parse_lrc(hint_text)
     if with_time:
-        hint_lines = with_time
-
-    if hint_lines:
-        if with_time:
-            rows = align(hint_lines, heard)
-            pairs = [(r["t"], r["text"]) for r in rows]
-            aligned = sum(1 for r in rows if r["ok"])
-        else:
-            pairs, aligned = _align_without_hint(hint_lines, heard)
+        rows = align(with_time, heard, dur)
+        pairs = [(r["t"], r["text"]) for r in rows]
+        aligned = sum(1 for r in rows if r["ok"])
+    elif (hint_text or "").strip():
+        # 纯文本歌词：没有源时间可用，只能靠单调对齐，配不上的行直接丢
+        plain = [(0.0, ln.strip()) for ln in hint_text.split("\n") if ln.strip()]
+        rows = align(plain, heard, dur)
+        pairs = [(r["t"], r["text"]) for r in rows if r["ok"] or r.get("interp")]
+        aligned = sum(1 for r in rows if r["ok"])
     else:
         pairs = [(a, txt) for a, _b, txt in heard if txt]
         aligned = len(pairs)
@@ -374,40 +543,10 @@ def transcribe_to_lrc(audio_path: str, hint_text: str = "") -> dict:
     return {
         "lyric": build_lrc(pairs),
         "stats": {
-            "segments": len(segs),
+            "segments": len(heard),
             "lines": len(pairs),
             "aligned": aligned,
             "duration": round(dur, 1),
-            "mode": "with-hint" if hint_lines else "asr-only",
+            "mode": "with-hint" if hint_text.strip() else "asr-only",
         },
     }
-
-
-def _align_without_hint(hint_lines, heard):
-    """没有时间先验时的序列对齐（贪心单调 + 断点回退）。
-
-    不用 DP：歌词行数（几十）和段数（几十）都不大，但 DP 的路径在
-    "一段含多行"时会给出反直觉的分配；贪心加单调约束更可控也更好调。
-    """
-    rows, cursor = [], 0
-    for _t, content in hint_lines:
-        nc = norm(content)
-        best, best_sc = None, 0.0
-        for i in range(cursor, min(cursor + 6, len(heard))):      # 只往前看 6 段
-            a, b, txt = heard[i]
-            if len(txt) < 2:
-                continue
-            sc = _lcs_cover(nc, txt)
-            if sc > best_sc:
-                best, best_sc = i, sc
-        if best is not None and best_sc >= 0.4:
-            rows.append({"t": heard[best][0], "text": content, "ok": True, "seg": best})
-            cursor = best
-        else:
-            # 匹配不上就沿用上一行时间 + 段均摊，保证单调且不飞出去
-            base = rows[-1]["t"] + 2.5 if rows else (heard[0][0] if heard else 0.0)
-            rows.append({"t": round(base, 2), "text": content, "ok": False, "seg": None})
-
-    segs_index = {i: (a, b) for i, (a, b, _) in enumerate(heard)}
-    _distribute(rows, segs_index)
-    return [(r["t"], r["text"]) for r in rows], sum(1 for r in rows if r["ok"])
