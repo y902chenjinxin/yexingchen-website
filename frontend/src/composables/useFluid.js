@@ -363,6 +363,22 @@ void main() {
 }
 `
 
+/**
+ * 8 个档位 —— 照 APK 的 8 个效果名（resources.arsc 里的 string）。
+ * APK 每个档位是一套独立的 native 引擎 + display shader；这里用同一套流体
+ * 配不同的显示模式/配色/参数来对位，观感上能一一对应。
+ */
+export const PRESETS = [
+  { key: 'liquid', name: '魔幻液体', mode: 0, palette: 'magic', curl: 24, glow: 1.5, detail: 0.55, density: 0.6, hue: 0 },
+  { key: 'rainbow', name: '七彩流动', mode: 0, palette: 'rainbow', curl: 20, glow: 1.2, detail: 0.4, density: 0.5, hue: 0.0, hueDrift: 1 },
+  { key: 'fire', name: '火魅幻境', mode: 0, palette: 'fire', curl: 34, glow: 2.4, detail: 0.7, density: 0.85, hue: 0 },
+  { key: 'trippy', name: '扭曲轨道', mode: 1, palette: 'neon', curl: 44, glow: 1.4, detail: 0.3, density: 0.55, hue: 0 },
+  { key: 'beam', name: '奇点与光束', mode: 1, palette: 'ice', curl: 10, glow: 2.6, detail: 0.25, density: 0.9, hue: 0 },
+  { key: 'atom', name: '虚幻原子', mode: 0, palette: 'ice', curl: 6, glow: 1.0, detail: 0.3, density: 0.4, hue: 0 },
+  { key: 'wave', name: '艺术引力波', mode: 1, palette: 'magic', curl: 52, glow: 1.8, detail: 0.45, density: 0.7, hue: 0 },
+  { key: 'pick', name: '推荐', mode: 1, palette: 'fire', curl: 30, glow: 2.0, detail: 0.6, density: 0.75, hue: 0 },
+]
+
 function createProgram(gl, vsSrc, fsSrc) {
   const mk = (type, src) => {
     const s = gl.createShader(type)

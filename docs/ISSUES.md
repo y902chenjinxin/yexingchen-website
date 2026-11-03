@@ -7,6 +7,32 @@
 
 ---
 
+## v2.46.356 复刻原版界面（2026-11-03）
+
+### V246356-001：Android 二进制 XML 的属性块是 20 字节不是 24
+
+- `START_ELEMENT` 的属性结构：`ns(4) + name(4) + rawValue(4) + size(2) + res0(1) +
+  dataType(1) + data(4)` = 20。按 24 字节解析会直接读飞。
+- 顺带：`layout_width="-1"` 是 MATCH_PARENT、`"-2"` 是 WRAP_CONTENT；
+  dp 尺寸是 complex float：`值 = data >> 8`，`单位 = data & 0xf`。
+
+### V246356-002：`resources.arsc` 才是文案/图标的真源
+
+- 布局里只有 `@0x7f0200d6` 这种 id，光看 layout 不知道是哪个图标。
+  解析 arsc 的 package → type 表 → entry 才能反查成 `res/drawable-xxhdpi-v4/ic_recording.png`。
+- 关键：type 名顺序来自 `typeStrings` 池，entry 值可能是 string pool 索引
+  （文件路径）或 typed value（颜色）。
+
+### V246356-003：原版布局里工具栏和 FAB 是重叠的
+
+- `magic3d_main.xml`：FloatingToolbar `match_parent` + 底边 52dp + 高 64dp（占 52~116），
+  FAB 底边 84dp + 56dp（占 84~140）—— 两者重叠 84~116。
+- 原版第 6 个图标就是被 FAB 压住的。复刻时把工具栏右边收到 84px，
+  6 个图标都能看见，视觉上也更干净。
+
+---
+
+
 ## v2.46.355 流体引擎（2026-11-03）
 
 ### V246355-001：编码纹理不能用 `gl.clear(0,0,0,0)` 清零
