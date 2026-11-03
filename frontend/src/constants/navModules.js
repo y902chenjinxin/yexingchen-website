@@ -90,9 +90,8 @@ export const NAV_GROUPS = [
     items: [
       // v2.46.334 音乐造物主：PC 端键盘弹奏（手机端点入口会提示去电脑上开）
       { path: '/tool/piano', title: '音乐造物主', icon: Headset },
-      // v2.46.347 3D 粒子：手机专属（多点触控 + 竖屏），电脑端点了会提示。
-      // 路由是独立全屏页 /particle，不走岛屿内页 —— 这东西要整屏黑才有味道。
-      { path: '/particle', title: '魔幻粒子3D', icon: MagicStick, phoneOnly: true },
+      // v2.46.360 3D 粒子：three.js 底座，手机专属（触屏轨道控制）
+      { path: '/particle', title: '3D 粒子', icon: MagicStick, phoneOnly: true },
       { path: '/tool/games', title: '棋类游戏', icon: Football },
       // v2.46.144 两款单机游戏给侧栏直达入口 —— 此前只挂在「棋类游戏」页内部的休闲分组，
       // 从侧栏根本看不到，等于没接（夜星反馈「侧边栏娱乐模块没有看到」）。
