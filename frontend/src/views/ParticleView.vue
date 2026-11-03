@@ -190,7 +190,9 @@ import { createParticleEngine } from '@/composables/useParticles'
 import { createFluidEngine } from '@/composables/useFluid'
 import { tick } from '@/utils/haptic'
 
-const { exit: exitFullscreen } = useFullscreenPage()
+// 全屏壳管理（隐藏侧栏/锁 viewport）。🔴 只用它的挂载/卸载钩子，
+// 不要解构 exit() —— 那是路由级全屏页的「history.back 退出」，本页没走路由。
+useFullscreenPage()
 
 const TABS = ['三维', '线性', '流动', '我']
 
@@ -203,21 +205,21 @@ const CATALOG = {
     },
     {
       key: 'beam', name: '奇点与光束', engine: 'particles', hue: 290,
-      cfg: { style: 'streak', motion: 'free', size: 9, count: 3600, bloom: 0.9, width: 0.05, trail: 0.95, burst: true },
+      cfg: { style: 'streak', motion: 'free', size: 12, count: 3600, bloom: 1.1, width: 0.05, trail: 0.95, burst: true, palette: 'violet' },
     },
     {
       key: 'spark', name: '星河', engine: 'particles', hue: 30,
-      cfg: { style: 'streak', motion: 'free', size: 6, count: 2600, bloom: 0.7, width: 0.045, trail: 0.85, spark: true },
+      cfg: { style: 'streak', motion: 'free', size: 9, count: 3200, bloom: 1.0, width: 0.05, trail: 0.88, spark: true, palette: 'magic' },
     },
     {
       key: 'bolt', name: '电光', engine: 'particles', hue: 210,
-      cfg: { style: 'streak', motion: 'free', size: 5, count: 2000, bloom: 0.75, width: 0.04, trail: 0.9, bolt: true },
+      cfg: { style: 'streak', motion: 'free', size: 7, count: 2600, bloom: 1.0, width: 0.045, trail: 0.9, bolt: true, palette: 'storm' },
     },
   ],
   线性: [
     {
       key: 'flow', name: '粒子流', engine: 'particles', hue: 215,
-      cfg: { style: 'streak', motion: 'free', size: 5, count: 4200, bloom: 0.6, width: 0.035, trail: 0.9, cloud: true },
+      cfg: { style: 'streak', motion: 'free', size: 8, count: 4200, bloom: 0.9, width: 0.04, trail: 0.92, cloud: true, palette: 'ice' },
     },
   ],
   流动: [
@@ -347,7 +349,10 @@ function close() {
   playing.value = false
   stopLoop()
   destroyEngine()
-  exitFullscreen()
+  // 🔴 绝不能调 exitFullscreen()：那是「路由级全屏页」的退出（history.back），
+  // 而播放页是本路由内的组件状态切换，没有发生任何路由跳转 ——
+  // 调了等于把整个魔幻粒子模块退出去（用户点一次「返回列表」就被踢回上一页）。
+  // body 的 fs-page class 由组件卸载时的 onBeforeUnmount 统一清理，这里不用管。
 }
 
 function resize() {
@@ -401,25 +406,30 @@ function seedEffect(e) {
     return
   }
   if (e.cfg.spark) {
-    // 星河：全屏随机星点 + 短光线（照图 3）
-    for (let i = 0; i < 420; i++) {
+    // 星河：全屏随机星点 + 短光线（照图 3）。进场先铺 800 颗，之后 pump 持续补
+    for (let i = 0; i < 800; i++) {
       api.emit(Math.random() * W, Math.random() * H, 1, {
         speed: 40 + Math.random() * 220,
         lifeRange: [1.6, 3.4],
-        sizeMul: 0.8,
+        sizeMul: 0.9,
       })
     }
     return
   }
   if (e.cfg.cloud) {
     // 粒子流：蓝色细线云（照图 5）
-    for (let i = 0; i < 900; i++) {
+    for (let i = 0; i < 1100; i++) {
       api.emit(Math.random() * W, Math.random() * H, 1, {
-        speed: 24 + Math.random() * 130,
+        speed: 40 + Math.random() * 160,
         lifeRange: [2.2, 4.2],
-        sizeMul: 0.9,
+        sizeMul: 0.95,
       })
     }
+    return
+  }
+  if (e.cfg.burst) {
+    // 奇点与光束：进场先来一发大的，别让用户对着黑屏（照图 4）
+    window.setTimeout(() => burst(W / 2, H * 0.44, 1.8), 350)
     return
   }
   if (e.cfg.bolt) {
@@ -487,7 +497,7 @@ function pump(dt) {
   }
   if (e.cfg.spark) {
     // 星河：持续补星点，手指处多喷
-    const n = fingers.size ? 8 : 3
+    const n = fingers.size ? 10 : 5
     for (let i = 0; i < n; i++) {
       if (fingers.size) {
         const f = [...fingers.values()][i % fingers.size]
@@ -501,9 +511,14 @@ function pump(dt) {
     return
   }
   if (e.cfg.bolt) {
-    // 电光：周期性劈一条（照图 7）
+    // 电光：周期性劈一条（照图 7）；背景持续补少量蓝白星尘
+    for (let i = 0; i < 2; i++) {
+      api.emit(Math.random() * W, Math.random() * H, 1, {
+        speed: 20 + Math.random() * 90, lifeRange: [1.8, 3.2], sizeMul: 0.7,
+      })
+    }
     boltAcc += dt
-    const every = fingers.size ? 0.32 : 0.85
+    const every = fingers.size ? 0.26 : 0.45
     if (boltAcc > every) {
       boltAcc = 0
       let sx = W / 2
@@ -514,13 +529,13 @@ function pump(dt) {
         sy = f.y
       }
       api.bolt(sx, sy, -Math.PI / 2 + (Math.random() - 0.5) * 1.6,
-        200 + Math.random() * 220, [1, 1, 1])
+        260 + Math.random() * 260, [1, 1, 1])
     }
     return
   }
   if (e.cfg.cloud) {
     // 粒子流：低速蓝线持续补
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 7; i++) {
       api.emit(Math.random() * W, Math.random() * H, 1, {
         speed: 24 + Math.random() * 120, lifeRange: [2.2, 4.0], sizeMul: 0.85,
       })
@@ -532,7 +547,11 @@ function pump(dt) {
 function burst(x, y, mul = 1) {
   const api = engine?.api
   if (!api) return
-  api.emit(x, y, Math.round(300 * mul), { speed: 420 * mul, lifeRange: [0.9, 1.7], sizeMul: 1 })
+  api.emit(x, y, Math.round(300 * mul), { speed: 460 * mul, lifeRange: [0.9, 1.7], sizeMul: 1 })
+  // 长尾层：慢一点、粗一点、命长一点 —— 拉出「光束」的放射感
+  api.emit(x, y, Math.round(90 * mul), { speed: 260 * mul, lifeRange: [1.6, 2.6], sizeMul: 1.9 })
+  // 白色过曝核：emit 里 15% 的"芯"粒子强制近白，大 sizeMul + 低速 = 中心白球
+  api.emit(x, y, Math.round(46 * mul), { speed: 70, lifeRange: [1.2, 2.2], sizeMul: 3.0 })
   api.emit(x, y, Math.round(60 * mul), { speed: 120, lifeRange: [0.5, 0.9], sizeMul: 2.4 })
   tick(0.6)
 }
@@ -758,6 +777,13 @@ function ballGlow(e) {
     0 0 90px var(--glow),
     inset 0 0 30px rgba(255, 255, 255, 0.16);
   transition: transform 0.18s;
+  /* 呼吸：原版主页的预览球是活的（每个引擎实时渲染的低配版）。
+     网页上 8 个球同时开 WebGL context 不现实，用呼吸动画对位「活」的感觉 */
+  animation: ball-breathe 2.6s ease-in-out infinite;
+}
+@keyframes ball-breathe {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.055); filter: brightness(1.18); }
 }
 .eff:active .ball { transform: scale(0.94); }
 .eff span {

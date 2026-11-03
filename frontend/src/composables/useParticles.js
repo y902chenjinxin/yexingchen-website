@@ -189,6 +189,9 @@ export const PALETTES = {
   nature: { name: '自然', hues: [0, 120], sat: [100, 100], light: [50, 54], steps: 3 },
   fire: { name: '焰', hues: [4, 46], sat: [100, 100], light: [50, 54], steps: 0, flow: 1 },
   ice: { name: '霜', hues: [180, 240], sat: [72, 100], light: [52, 60], steps: 0, flow: 1 },
+  // 档位专用色（CATALOG 按 key 引用）：
+  violet: { name: '紫芒', hues: [258, 318], sat: [96, 100], light: [54, 62], steps: 0, flow: 1 },
+  storm: { name: '雷暴', hues: [192, 232], sat: [60, 95], light: [60, 76], steps: 0, flow: 1 },
 }
 
 export function createParticleEngine(canvas, options = {}) {
@@ -578,47 +581,53 @@ export function createParticleEngine(canvas, options = {}) {
     const sp = Math.hypot(dx, dy) || 0.001
     data[off] = x
     data[off + 1] = y
-    data[off + 2] = (dx / sp) * 0.6    // 方向留在 a_vel 里，数值压到近乎不动
+    data[off + 2] = (dx / sp) * 1.0    // 方向留在 a_vel 里，数值压到近乎不动
     data[off + 3] = (dy / sp) * 0.6
     data[off + 4] = color[0]
     data[off + 5] = color[1]
     data[off + 6] = color[2]
-    baseSize[i] = sp * 2.6 * sizeMul   // streak 的段长 ≈ size
+    baseSize[i] = sp * 1.35 * sizeMul   // 相邻段在中点重叠 ~35%，尾巴渐变把节点缝补上
     data[off + 7] = baseSize[i]
-    life[i] = 0.16
-    maxLife[i] = 0.16
+    life[i] = 0.34
+    maxLife[i] = 0.34
   }
 
   /** 电光：从 (x,y) 沿 angle 生长一条折线（主路 + 随机分叉） */
   function bolt(x, y, angle, len, color) {
-    const steps = 16
-    let px = x, py = y, a = angle
+    // 经典闪电 = 主方向前进 + 横向大幅交替偏移（Z 字锯齿）。
+    // 🔴 别用「每段随机转个角度」的写法：段长只有 20~30px 时，±0.5rad 的
+    //    折角让相邻段近乎平行，12 段连出来是一把梳子/一根羽毛（前两版都栽这）。
+    //    Z 字偏移让相邻段夹角 ≈ 2×atan(横向/前进) ≈ 60~110°，才是闪电的折。
+    const steps = 10
+    const along = len / steps
+    const ux = Math.cos(angle)
+    const uy = Math.sin(angle)
+    const vx = -uy
+    const vy = ux            // 垂直方向
+    let px = x
+    let py = y
     const pts = [[x, y]]
     for (let i = 0; i < steps; i++) {
-      a += (Math.random() - 0.5) * 0.85
-      const step = (len / steps) * (0.7 + Math.random() * 0.6)
-      px += Math.cos(a) * step
-      py += Math.sin(a) * step
+      const side = Math.random() < 0.5 ? -1 : 1
+      const lateral = side * (10 + Math.random() * 18)
+      px += ux * along + vx * lateral
+      py += uy * along + vy * lateral
       pts.push([px, py])
     }
     for (let i = 0; i < steps; i++) {
       const [x0, y0] = pts[i]
       const [x1, y1] = pts[i + 1]
-      emitSeg((x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0, color, 0.9)
-      // 分叉：从主路随机甩出去一截
-      if (Math.random() < 0.3 && i > 2) {
-        let bx = x0, by = y0, ba = a + (Math.random() - 0.5) * 2.6
-        for (let j = 0; j < 4; j++) {
-          const nx = bx + Math.cos(ba) * (len / steps) * 0.8
-          const ny = by + Math.sin(ba) * (len / steps) * 0.8
-          emitSeg((bx + nx) / 2, (by + ny) / 2, nx - bx, ny - by, color, 0.55)
-          bx = nx; by = ny
-          ba += (Math.random() - 0.5) * 1.1
-        }
+      emitSeg((x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0, color, 1.1)
+      // 分叉：少而短，从节点沿"前进+横向"甩出去
+      if (Math.random() < 0.18 && i > 2) {
+        const d = along * 2.2
+        const dxa = (x1 - x0) * 0.7 + vx * (Math.random() < 0.5 ? -1 : 1) * d * 0.6
+        const dya = (y1 - y0) * 0.7 + vy * (Math.random() < 0.5 ? -1 : 1) * d * 0.6
+        emitSeg((x1 + x1 + dxa) / 2, (y1 + y1 + dya) / 2, dxa, dya, color, 0.5)
       }
     }
-    // 节点亮芯
-    emit(pts[0][0], pts[0][1], 10, { speed: 40, lifeRange: [0.1, 0.18] })
+    // 起点亮芯
+    emit(pts[0][0], pts[0][1], 8, { speed: 40, lifeRange: [0.1, 0.2] })
   }
 
   function resize(w, h) {
@@ -734,9 +743,13 @@ export function createParticleEngine(canvas, options = {}) {
       }
       data[off] += data[off + 2] * dt
       data[off + 1] += data[off + 3] * dt
-      data[off + 2] *= drag
-      data[off + 3] *= drag
-      data[off + 3] += (cfg.style === 'streak' ? 26 : 12) * dt   // 一点重力
+      // 静止/解析定位的粒子（电光线段 |v|≈1、轨道粒子 v=0）免受力：
+      // 重力一帧就能把它们的"方向载荷"扭成竖直，线段会齐刷刷躺平
+      if (Math.abs(data[off + 2]) + Math.abs(data[off + 3]) > 1.2) {
+        data[off + 2] *= drag
+        data[off + 3] *= drag
+        data[off + 3] += (cfg.style === 'streak' ? 26 : 12) * dt   // 一点重力
+      }
 
       const sp = Math.hypot(data[off + 2], data[off + 3])
       const t = life[i] / maxLife[i]
