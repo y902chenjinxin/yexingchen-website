@@ -8,7 +8,7 @@
       <!-- 顶部信息条：只在第一次进来显示几秒 -->
       <div class="pt-hud">
         <span class="pt-tip">{{ tip }}</span>
-        <span class="pt-num">{{ aliveText }}</span>
+        <span class="pt-num">{{ fpsText }}</span>
       </div>
 
       <button class="pt-gear" type="button" aria-label="设置" @click.stop="panelOpen = !panelOpen">
@@ -17,26 +17,26 @@
 
       <button class="pt-exit" type="button" aria-label="退出" @click.stop="exit">←</button>
 
-      <!-- 设置面板（参考图那样从底部起，毛玻璃） -->
+      <!-- 设置面板（从底部起，毛玻璃） -->
       <transition name="pt-sheet">
         <div v-if="panelOpen" class="pt-sheet" @pointerdown.stop>
           <div class="pt-sheet-hd">
-            <b>粒子</b>
+            <b>流体</b>
             <button class="pt-sheet-x" type="button" @click="panelOpen = false">完成</button>
           </div>
 
           <div class="pt-sec">
-            <span class="pt-lab">风格</span>
+            <span class="pt-lab">质感</span>
             <div class="pt-pals">
-              <button type="button" class="pt-pal" :class="{ on: cfg.style === 'glow' }"
-                      @click="set('style', 'glow')">
-                <i class="pt-pal-dot" style="background:radial-gradient(circle at 40% 36%,#fff,hsl(286 96% 62%) 46%,hsl(196 96% 56%) 78%)" />
-                <span>光晕</span>
+              <button type="button" class="pt-pal" :class="{ on: cfg.mode === 0 }"
+                      @click="set('mode', 0)">
+                <i class="pt-pal-dot" style="background:radial-gradient(circle at 36% 32%,#fff 4%,hsl(286 96% 60%) 38%,hsl(196 96% 54%) 78%)" />
+                <span>浓郁</span>
               </button>
-              <button type="button" class="pt-pal" :class="{ on: cfg.style === 'streak' }"
-                      @click="set('style', 'streak')">
-                <i class="pt-pal-dot" style="background:linear-gradient(160deg,#fff,hsl(48 100% 58%) 40%,hsl(348 92% 52%))" />
-                <span>光轨</span>
+              <button type="button" class="pt-pal" :class="{ on: cfg.mode === 1 }"
+                      @click="set('mode', 1)">
+                <i class="pt-pal-dot" style="background:conic-gradient(from 20deg,#ff2d55,#ffcc00,#34c759,#00c7be,#5e5ce6,#ff2d55)" />
+                <span>油膜</span>
               </button>
             </div>
           </div>
@@ -44,64 +44,76 @@
           <div class="pt-sec">
             <span class="pt-lab">配色</span>
             <div class="pt-pals">
-              <button
-                v-for="(p, k) in PALETTES" :key="k"
-                type="button" class="pt-pal" :class="{ on: cfg.palette === k }"
-                @click="setPalette(k)"
-              >
+              <button v-for="(p, k) in PALETTES" :key="k"
+                      type="button" class="pt-pal" :class="{ on: cfg.palette === k }"
+                      @click="setPalette(k)">
                 <i class="pt-pal-dot" :style="{ background: palPreview(k) }" />
                 <span>{{ p.name }}</span>
               </button>
             </div>
           </div>
 
-          <label class="pt-row">
-            <span>反转颜色</span>
-            <input type="checkbox" :checked="cfg.invert" class="pt-switch" @change="set('invert', $event.target.checked)" />
-          </label>
-          <label class="pt-row">
-            <span>自动播放</span>
-            <input type="checkbox" :checked="cfg.auto" class="pt-switch" @change="set('auto', $event.target.checked)" />
-          </label>
-
           <div class="pt-sec">
             <div class="pt-lab-row">
-              <span class="pt-lab">数量</span>
-              <span class="pt-val">{{ cfg.count.toLocaleString() }}</span>
+              <span class="pt-lab">浓度</span>
+              <span class="pt-val">{{ cfg.densityDissipation.toFixed(2) }}</span>
             </div>
-            <input type="range" min="400" max="6000" step="100" :value="cfg.count"
-                   class="pt-range" @input="set('count', +$event.target.value)" />
+            <input type="range" min="0.2" max="4" step="0.05" :value="cfg.densityDissipation"
+                   class="pt-range" @input="set('densityDissipation', +$event.target.value)" />
           </div>
 
           <div class="pt-sec">
             <div class="pt-lab-row">
-              <span class="pt-lab">粗细</span>
-              <span class="pt-val">{{ cfg.size.toFixed(1) }}</span>
+              <span class="pt-lab">流速</span>
+              <span class="pt-val">{{ cfg.velocityDissipation.toFixed(2) }}</span>
             </div>
-            <input type="range" min="4" max="40" step="0.5" :value="cfg.size"
-                   class="pt-range" @input="set('size', +$event.target.value)" />
+            <input type="range" min="0.02" max="1" step="0.02" :value="cfg.velocityDissipation"
+                   class="pt-range" @input="set('velocityDissipation', +$event.target.value)" />
           </div>
 
           <div class="pt-sec">
             <div class="pt-lab-row">
-              <span class="pt-lab">拖尾长度</span>
-              <span class="pt-val">{{ cfg.trail.toFixed(2) }}</span>
+              <span class="pt-lab">卷曲</span>
+              <span class="pt-val">{{ cfg.curl.toFixed(0) }}</span>
             </div>
-            <input type="range" min="0.05" max="1" step="0.01" :value="cfg.trail"
-                   class="pt-range" @input="set('trail', +$event.target.value)" />
+            <input type="range" min="0" max="60" step="1" :value="cfg.curl"
+                   class="pt-range" @input="set('curl', +$event.target.value)" />
+          </div>
+
+          <div class="pt-sec">
+            <div class="pt-lab-row">
+              <span class="pt-lab">笔触</span>
+              <span class="pt-val">{{ brushPx }}px</span>
+            </div>
+            <input type="range" min="0.0001" max="0.002" step="0.00005" :value="cfg.splatRadius"
+                   class="pt-range" @input="set('splatRadius', +$event.target.value)" />
           </div>
 
           <div class="pt-sec">
             <div class="pt-lab-row">
               <span class="pt-lab">光晕</span>
-              <span class="pt-val">{{ cfg.bloom.toFixed(2) }}</span>
+              <span class="pt-val">{{ cfg.glow.toFixed(2) }}</span>
             </div>
-            <input type="range" min="0" max="1.5" step="0.05" :value="cfg.bloom"
-                   class="pt-range" @input="set('bloom', +$event.target.value)" />
+            <input type="range" min="0" max="3" step="0.05" :value="cfg.glow"
+                   class="pt-range" @input="set('glow', +$event.target.value)" />
           </div>
 
+          <div class="pt-sec">
+            <div class="pt-lab-row">
+              <span class="pt-lab">纹理</span>
+              <span class="pt-val">{{ cfg.detail.toFixed(2) }}</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.05" :value="cfg.detail"
+                   class="pt-range" @input="set('detail', +$event.target.value)" />
+          </div>
+
+          <label class="pt-row">
+            <span>反转颜色</span>
+            <input type="checkbox" :checked="cfg.invert" class="pt-switch" @change="set('invert', $event.target.checked)" />
+          </label>
+
           <p class="pt-note">
-            一个手指喷一束，两个手指对撞，三个手指转圈，四个以上全屏炸。
+            手指划过的痕迹会像墨一样被推开、卷起来，松手后靠惯性继续流。
           </p>
         </div>
       </transition>
@@ -111,73 +123,74 @@
 
 <script setup>
 /**
- * 3D 粒子（v2.46.347）
+ * 3D 粒子 → 流体（v2.46.355）
  *
- * 夜星：「娱乐模块加个 3D 粒子、魔幻粒子的小游戏，只支持手机端打开」
- *       「支持设置粒子数量、尺寸、颜色」「不同的手指数量按压实现不同的效果」。
+ * 夜星：「不行，你这个设计太粗糙了，我现在就要跟逆向的 apk 一模一样的效果」。
  *
- * 视觉照着参考图做：粒子是**速度线**不是圆点，中心靠加法混合过曝成白，
- * 外圈才显色相。实现见 composables/useParticles.js。
+ * 上一版是粒子 + 辉光后处理。粒子系统本质是「一堆点各自飞」，做不出
+ * 「黏稠、卷曲、被推开」的观感。那个 APK 用的是 Stable Fluids：
+ * 速度场 + 压力投影 + 半拉格朗日平流，见 composables/useFluid.js 顶部注释。
  *
- * 手势（Pointer Events，天然支持多点）：
- *   1 指 → 从指尖向外喷射
- *   2 指 → 两股朝对方打，中点炸出火花
- *   3 指 → 绕三角中心切向喷（漩涡）
- *   4 指+ → 每个手指全向爆发，速度更快
- *   快速点一下 → 一次性小爆炸
+ * 手势还是那套 Pointer Events（天然多点）：
+ *   单指拖动 → 注入速度和染料
+ *   多指同时 → 每根手指各自一股
+ *   点一下   → 原地一滴浓墨（给一点随机初速，会自己散开）
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import DeviceGate from '@/components/common/DeviceGate.vue'
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
-import { createParticleEngine, PALETTES } from '@/composables/useParticles'
+import { createFluidEngine, PALETTES } from '@/composables/useFluid'
 import { tick } from '@/utils/haptic'
 
-// useFullscreenPage 自己会在 onMounted 进全屏外壳、onBeforeUnmount 退出，
-// 只返回一个 exit（走浏览器历史，跟系统返回键同一条路径）。不用再手动调。
 const { exit: exitFullscreen } = useFullscreenPage()
 
 const cv = ref(null)
 const panelOpen = ref(false)
 const showHud = ref(true)
-const alive = ref(0)
+const fps = ref(0)
 const tip = ref('按住屏幕试试')
-const aliveText = computed(() => (alive.value ? `${alive.value.toLocaleString()} 粒` : ''))
 
 const cfg = reactive({
-  count: 3200,
-  size: 26,
-  trail: 0.92,
-  width: 0.055,
-  style: 'glow',      // glow（光晕，照「魔幻粒子3D」）/ streak（光轨，老版）
+  mode: 0,
   palette: 'magic',
+  densityDissipation: 0.6,
+  velocityDissipation: 0.9,
+  curl: 24,
+  splatRadius: 0.0005,
+  glow: 1.5,
+  detail: 0.55,
   invert: false,
-  bloom: 0.85,        // 0 = 关后处理
-  auto: false,
 })
+
+const fpsText = computed(() => (fps.value ? `${fps.value} fps` : ''))
+/** 笔触半径从 uv 换算成屏幕像素，面板上给人看得懂的数 */
+const brushPx = computed(() => Math.round(Math.sqrt(cfg.splatRadius) * 800))
 
 let engine = null
 let raf = 0
 let lastT = 0
 let hudTimer = 0
-let emitAcc = 0
+let idleAcc = 0
+let frameAcc = 0
+let frameCnt = 0
 
-/** 手指：pointerId -> { x, y, px, py, t, moved } */
+/** pointerId -> { x, y, px, py, t } */
 const fingers = new Map()
-/** 按下的瞬间点（判断"点击"而不是"拖动"） */
 const downAt = new Map()
 
-// ---------- 生命周期 ----------
 onMounted(async () => {
   await nextTick()
   const el = cv.value
   if (!el) return
-  // ?debug=1 时保留绘图缓冲，方便探针/录制取像素（生产不带这个参数，省一次缓冲复制）
+  // ?debug=1 时保留绘图缓冲，方便探针取像素
   const debug = /(?:^|[?&])debug=1/.test(window.location.search)
-  engine = createParticleEngine(el, { ...cfg, debug })
+  engine = createFluidEngine(el, { ...cfg, debug })
   if (!engine.ok) {
-    tip.value = engine.reason === 'no-webgl' ? '这台设备的浏览器不支持 WebGL' : '粒子引擎初始化失败'
+    tip.value = engine.reason === 'no-webgl' ? '这台设备的浏览器不支持 WebGL' : '流体引擎初始化失败'
     return
   }
+  // 探针/调试用：dev 下把引擎挂到 window，方便直接调 splat 验证
+  if (import.meta.env.DEV) window.__fluid = engine
   resize()
   window.addEventListener('resize', resize)
   window.addEventListener('orientationchange', resize)
@@ -200,13 +213,11 @@ onBeforeUnmount(() => {
 
 function resize() {
   if (!engine) return
-  const w = window.innerWidth
-  const h = window.innerHeight
-  engine.resize(w, h)
+  engine.resize(window.innerWidth, window.innerHeight)
 }
 
 function onVis() {
-  // 切后台回来 dt 会很大（几秒），一帧推进几秒 = 粒子瞬移，画面直接崩
+  // 切后台回来 dt 会很大，一帧推进几秒 = 整锅汤瞬移，直接跳过
   if (document.visibilityState === 'visible') lastT = performance.now()
 }
 
@@ -214,9 +225,8 @@ function exit() {
   exitFullscreen()
 }
 
-// ---------- 手势 ----------
 function onDown(e) {
-  e.currentTarget.setPointerCapture?.(e.pointerId)
+  try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch { /* 合成事件没有真实 pointerId */ }
   const p = { x: e.clientX, y: e.clientY, px: e.clientX, py: e.clientY, t: performance.now() }
   fingers.set(e.pointerId, p)
   downAt.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() })
@@ -225,14 +235,12 @@ function onDown(e) {
   clearTimeout(hudTimer)
   hudTimer = window.setTimeout(() => { showHud.value = false }, 3200)
   tick(0.5)
-  burst(e.clientX, e.clientY, 26, 260)
+  drop(e.clientX, e.clientY)
 }
 
 function onMove(e) {
   const p = fingers.get(e.pointerId)
   if (!p) return
-  p.px = p.x
-  p.py = p.y
   p.x = e.clientX
   p.y = e.clientY
 }
@@ -240,12 +248,12 @@ function onMove(e) {
 function onUp(e) {
   const down = downAt.get(e.pointerId)
   const p = fingers.get(e.pointerId)
-  // 点一下就抬起（<220ms 且位移 <12px）→ 当作"戳一下"，给一次明显的爆炸
+  // 点一下就抬起（<220ms、位移 <12px）→ 再来一滴大的
   if (down && p) {
     const dt = performance.now() - down.t
     const dist = Math.hypot(p.x - down.x, p.y - down.y)
     if (dt < 220 && dist < 12) {
-      burst(p.x, p.y, 140, 420)
+      drop(p.x, p.y, 2.2)
       tick(0.8)
     }
   }
@@ -257,23 +265,48 @@ function onUp(e) {
 function fingerTip() {
   const n = fingers.size
   if (n <= 0) return '按住屏幕试试'
-  if (n === 1) return '一根手指：向外喷'
-  if (n === 2) return '两根手指：对撞'
-  if (n === 3) return '三根手指：漩涡'
-  return '四指以上：全屏爆发'
+  if (n === 1) return '拖动：把颜色推开'
+  return `${n} 根手指：几股一起搅`
 }
 
-/** 一次性爆发 */
-function burst(x, y, n, speed) {
+/** 原地一滴：给一点随机初速，它自己会被卷开 */
+function drop(x, y, mul = 1) {
   if (!engine) return
-  engine.emit(x, y, Math.max(6, Math.round(n * (engine.cfg.count / 3200))), {
-    speed,
-    spread: Math.PI * 2,
-    lifeRange: [0.9, 1.8],
-  })
+  const a = Math.random() * Math.PI * 2
+  const s = 26 * mul
+  engine.splat(x, y, Math.cos(a) * s, Math.sin(a) * s, engine.pointerColor(x, y))
 }
 
-// ---------- 主循环 ----------
+/** 按手指位移注入速度 + 染料 */
+function pump() {
+  if (!engine) return
+  if (!fingers.size) {
+    // 没人碰的时候让画面别死：偶尔在中间附近滴一滴
+    idleAcc += 1
+    if (idleAcc > 200) {
+      idleAcc = 0
+      const cx = window.innerWidth * (0.5 + (Math.random() - 0.5) * 0.35)
+      const cy = window.innerHeight * (0.5 + (Math.random() - 0.5) * 0.35)
+      drop(cx, cy, 0.5)
+    }
+    return
+  }
+  for (const f of fingers.values()) {
+    const dx = f.x - f.px
+    const dy = f.y - f.py
+    if (import.meta.env.DEV) {
+      window.__dbg = window.__dbg || { splats: 0, sumDx: 0 }
+      window.__dbg.splats++
+      window.__dbg.sumDx += Math.abs(dx)
+    }
+    if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
+      engine.splat(f.x, f.y, dx, dy, engine.pointerColor(f.x, f.y))
+      f.px = f.x
+      f.py = f.y
+    }
+  }
+}
+
 function loop(now) {
   raf = requestAnimationFrame(loop)
   if (document.visibilityState !== 'visible') {
@@ -283,146 +316,46 @@ function loop(now) {
   const dt = Math.min(0.05, Math.max(0.001, (now - lastT) / 1000))
   lastT = now
 
-  pump(dt)
+  pump()
   engine.step(dt)
   engine.draw()
-  alive.value = engine.alive
-}
 
-/**
- * 按当前手指数发射。
- *
- * 总量按 cfg.count 分配，指数越多每指越少 —— 否则十根手指（多人玩）时
- * 瞬间喷出十倍粒子，直接掉帧。
- */
-function pump(dt) {
-  if (!engine) return
-  const n = fingers.size
-  const budget = cfg.count * (cfg.style === 'streak' ? 2.4 : 1.7)       // 每秒总发射量上限（够填满池子，又不会瞬间爆）
-
-  if (n === 0) {
-    if (!cfg.auto) return
-    // 自动播放：从中心缓慢旋转喷
-    emitAcc += dt * budget * 0.55
-    const a = performance.now() / 2600
-    const cx = window.innerWidth / 2 + Math.cos(a) * 40
-    const cy = window.innerHeight / 2 + Math.sin(a * 1.3) * 40
-    if (emitAcc >= 1) {
-      const k = Math.min(60, Math.floor(emitAcc))
-      emitAcc -= k
-      engine.emit(cx, cy, k, { speed: 520, spread: Math.PI * 2, lifeRange: [1.1, 2.2] })
-    }
-    return
-  }
-
-  emitAcc += dt * budget
-  if (emitAcc < 1) return
-  // 上限 220 而不是 90：帧率低的时候（老机器 / 软件渲染）每帧只能跑几次，
-  // 90 会让实际发射率被帧率卡死（5fps 就只有 450/s，画面稀得像坏了）。
-  // 按 dt 累积的 emitAcc 本来就限住了总量，所以放大上限不会瞬间爆。
-  const total = Math.min(220, Math.floor(emitAcc))
-  emitAcc -= total
-  const per = Math.max(1, Math.round(total / n))
-  const list = [...fingers.values()]
-
-  if (n === 1) {
-    const f = list[0]
-    // 拖动时沿着移动方向甩，静止时全向 —— 拖动的手感像"挥光剑"
-    const vx = f.x - f.px
-    const vy = f.y - f.py
-    const moving = Math.hypot(vx, vy) > 2
-    engine.emit(f.x, f.y, per, {
-      speed: moving ? 760 : 520,
-      spread: moving ? Math.PI * 0.5 : Math.PI * 2,
-      angle: moving ? Math.atan2(vy, vx) : 0,
-      lifeRange: [1.5, 3.0],
-    })
-    return
-  }
-
-  if (n === 2) {
-    const [a, b] = list
-    // 各自朝对方打，中点会撞出一团更亮的火花（加法混合自动变白）
-    for (const [from, to] of [[a, b], [b, a]]) {
-      const ang = Math.atan2(to.y - from.y, to.x - from.x)
-      engine.emit(from.x, from.y, Math.max(1, Math.round(per * 0.85)), {
-        speed: 820,
-        spread: Math.PI * 0.3,
-        angle: ang,
-        lifeRange: [1.4, 2.8],
-      })
-    }
-    const mx = (a.x + b.x) / 2
-    const my = (a.y + b.y) / 2
-    engine.emit(mx, my, Math.max(1, Math.round(per * 0.5)), {
-      speed: 560, spread: Math.PI * 2, lifeRange: [0.8, 1.5],
-    })
-    return
-  }
-
-  if (n === 3) {
-    // 绕三角中心切向喷 → 旋涡
-    const cx = (list[0].x + list[1].x + list[2].x) / 3
-    const cy = (list[0].y + list[1].y + list[2].y) / 3
-    for (const f of list) {
-      const ang = Math.atan2(f.y - cy, f.x - cx) + Math.PI / 2
-      engine.emit(f.x, f.y, per, {
-        speed: 700,
-        spread: Math.PI * 0.55,
-        angle: ang,
-        lifeRange: [1.5, 3.0],
-      })
-    }
-    engine.emit(cx, cy, Math.max(1, Math.round(per * 0.6)), {
-      speed: 460, spread: Math.PI * 2, lifeRange: [0.9, 1.7],
-    })
-    return
-  }
-
-  // 4 指以上：每指全向爆发，速度更快、寿命更短（画面更"炸"）
-  for (const f of list) {
-    engine.emit(f.x, f.y, Math.max(1, Math.round(per * 0.8)), {
-      speed: 900,
-      spread: Math.PI * 2,
-      lifeRange: [1.3, 2.6],
-      sizeMul: 1.1,
-    })
+  frameAcc += dt
+  frameCnt++
+  if (frameAcc >= 0.5) {
+    fps.value = Math.round(frameCnt / frameAcc)
+    frameAcc = 0
+    frameCnt = 0
   }
 }
 
-// ---------- 设置 ----------
 function set(key, val) {
   cfg[key] = val
-  if (key === 'invert' || key === 'palette') {
-    // 颜色是发射时算的，已有粒子保持原色（这其实是想要的：改配色不回炉旧粒子）
-    engine?.applyOptions({ [key]: val })
-    return
-  }
   engine?.applyOptions({ [key]: val })
+  if (key === 'mode' || key === 'palette') tick(0.6)
 }
 
 function setPalette(k) {
   set('palette', k)
-  tick(0.6)
 }
 
-/** 配色按钮的预览球：取该配色中间色相 + 高饱和，跟实际粒子同一套参数 */
+/** 配色按钮的预览球：跟 splat 用的是同一套 HSV 参数 */
 function palPreview(k) {
   const p = PALETTES[k]
-  const h = (p.hues[0] + p.hues[1]) / 2
-  return `radial-gradient(circle at 34% 30%,
-    hsl(${h} ${p.sat[1]}% ${Math.min(92, p.light[1] + 18)}%),
-    hsl(${(h + 45) % 360} ${p.sat[0]}% ${p.light[0]}%) 62%,
-    hsl(${(h + 300) % 360} ${p.sat[1]}% ${p.light[0] - 8}%))`
+  const h0 = p.hues[0]
+  const h1 = p.hues[1] > p.hues[0] ? p.hues[1] : p.hues[0]
+  const h = (h0 + h1) / 2
+  return `radial-gradient(circle at 36% 32%,
+    #fff 3%,
+    hsl(${h} ${98 * p.sat}% 56%) 42%,
+    hsl(${(h + 55) % 360} ${98 * p.sat}% 44%) 82%)`
 }
 
-// 设置改动后如果面板关着，2 秒后自动收起提示条
 watch(panelOpen, (v) => {
   if (!v) return
   showHud.value = false
 })
 
-// 进页面先把「按住屏幕」的提示留在中间一会儿
 onMounted(() => {
   setTimeout(() => {
     if (!fingers.size) showHud.value = false
@@ -575,3 +508,4 @@ onMounted(() => {
 .pt-sheet-enter-active, .pt-sheet-leave-active { transition: transform .26s cubic-bezier(.2, .8, .3, 1), opacity .26s; }
 .pt-sheet-enter-from, .pt-sheet-leave-to { transform: translateY(24px); opacity: 0; }
 </style>
+

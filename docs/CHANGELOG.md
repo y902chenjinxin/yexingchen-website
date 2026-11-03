@@ -1,3 +1,51 @@
+## [v2.46.355] - 2026-11-03
+
+### 3D 粒子 → 真·GPU 流体：照「魔幻粒子3D」的稳定流体管线重做
+
+夜星：「不行，你这个设计太粗糙了，我现在就要跟逆向的 apk 一模一样的效果」。
+
+上一版（v2.46.354）只是「粒子 + 辉光后处理」，本质还是一堆点各自飞。那个 APK
+**不是粒子系统**：`assets/AdvectPaint.frag` 里一句
+`samplePos = varyTexCoord - texture2D(texVel, uv) * uVelScale`
+就是 Stable Fluids 的半拉格朗日平流 —— 每个像素按速度场往回取上一帧的颜色。
+粒子再怎么调也出不来「黏、卷、被推开」的观感。
+
+#### 从 APK 抄下来的（assets/*.frag 全是明文）
+
+- 速度/染料都用**两个字节编码浮点**（`AdvectPaintLow.frag` 的 `EncodeFloatRG` 与手写
+  `sampleTex` 双线性）—— 因为 8bit 纹理交给硬件 bilerp 会把低字节插坏
+- 可分离高斯 17 抽头，权重 0.05/0.09/0.12/0.15/0.16（`BlurHor.frag`）
+- 显示：`smoothstep(0,1,c)` **之后**再 `color += 1.5 × 模糊图`（`FluidRegularGlow.frag`）
+- 细节：`color *= (1.9 * detail)`（`detail_active`），detail 是 512×512 的 alpha 纹理
+- RGB→HSV 平移（`paint_hsl_active`），对应它的「七彩流动」
+
+#### 新增 `composables/useFluid.js`（约 700 行）
+
+- 速度场：半拉格朗日平流 → 涡度约束（curl/vorticity）→ 散度 → Jacobi 压力 20 次 →
+  减梯度。这套「压力投影」是液体不可压缩感的来源
+- 全程 RGBA8 + 双字节编码 + 手写 bilerp：一套路径跑遍所有设备，不赌浮点纹理扩展
+- 显示链：染料 → 程序化 detail（fbm+脊线，镜像平铺）→ smoothstep → 边缘高光 →
+  1.5×高斯辉光 → HSV 平移 → 抖动
+- 分辨率：模拟 192 短边、染料 512，手机实测 60fps
+
+#### 七个坑（都记进了 docs/ISSUES.md）
+
+1. 编码纹理 `gl.clear(0,0,0,0)` 解码出来是 **−量程**（速度初值 −2048 → 整锅炸飞），
+   必须写「零的编码」
+2. 散度/梯度擅自除以 texel → 数值放大 192 倍，速度顶到上限满场乱飞、染料被吹成雾
+3. 速度单位用 uv/s 时，涡度力/压力剪裁全不在一个尺度上 → 统一成 texel/s
+4. 8bit 染料 + smoothstep 必出色带 → 显示端加半 LSB 抖动
+5. `sin(n)*43758` 那种伪哈希在大 n 下精度丢失 → detail 纹理出现规律竖纹（满屏栅栏）
+6. fbm 是非周期噪声，REPEAT 平铺在接缝处硬切 → 改成镜像平铺
+7. `setPointerCapture` 在合成事件/部分浏览器上抛 NotFoundError，
+   抛了就把后面的 `fingers.set` 全跳过 —— 表现成「手指按了没反应」→ 包 try
+
+`useParticles.js` 已无任何引用，删除。
+
+版本 SW v667→v668、APP_VERSION v2.46.354→v2.46.355。
+
+---
+
 ## [v2.46.354] - 2026-11-03
 
 ### ① 歌词对齐推翻重写（全库 281 首重跑）+ ② 3D 粒子照「魔幻粒子3D」逆向重做
