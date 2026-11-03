@@ -96,6 +96,11 @@ def main() -> int:
         report.append(rec)
         if st.get("degraded"):
             deg_c += 1
+            # 标记出来，方便以后一眼看出「哪些歌的歌词根本对不上音频」
+            # （大多是纯音乐/伴奏版，或者库里的歌词是另一个版本的）
+            if not args.dry:
+                m.lyric_source = "align-failed"
+                db.commit()
             print(f"{tag} 降级保留原文（{st['aligned']}/{st['lines']}）{cost:.0f}s", flush=True)
             continue
         if not args.dry:

@@ -46,8 +46,14 @@ TAG_RE = re.compile(r"<\|[^|]*\|>")
 PUNCT_RE = re.compile(r"[\s，。！？、；：""''（）()【】《》,.!?~—－-]+")
 TIME_RE = re.compile(r"\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]")
 META_RE = re.compile(
-    r"^(作词|作曲|编曲|混音|母带|制作人|监制|出品|录音|和声|吉他|贝斯|鼓|键盘|弦乐|"
-    r"OP|SP|发行|统筹|策划|纯音乐|此歌曲|这首歌|请欣赏|未经许可)\s*[:：]"
+    r"^(作词|作曲|词曲|编曲|混音|母带|制作人|监制|总监制|出品人|出品|录音|配唱|和声|"
+    r"吉他|贝斯|鼓|键盘|弦乐|演奏|指挥|合唱|"
+    r"OP|SP|发行|企划|策划|统筹|制作统筹|制作协力|音乐总监|"
+    # v2.46.354：MV 片尾字幕。天地龙鳞整段 credits 被当成歌词，
+    # 20 行挤在 3~17 秒里，屏幕上就是机关枪，还占掉了正片的时间轴。
+    r"宣传|花絮|妆发|服装|造型|摄影|剪辑|调色|合成|道具|导演|总导演|制片|美术|设计|"
+    r"创意|海报|视觉|策略|行销|营销|文案|鸣谢|特别鸣谢|版权|声明|字幕|翻译|校对|后期|"
+    r"纯音乐|此歌曲|这首歌|请欣赏|未经许可)\s*[:：]"
 )
 
 # 平台水印行（v2.46.354）。Kugou 的自动生成歌词会插一句
@@ -263,10 +269,12 @@ def transcribe_segments(x: np.ndarray, segs) -> list[tuple[float, float, str]]:
 # 这就是一个单调序列对齐问题，DP 解（55×37 的格子，毫秒级）。
 # 源时间只在两处还用得上：① 判断前导行该不该保留 ② 全对不上时的兜底。
 
-_MIN_SIM = 0.30      # 低于这个相似度不考虑配对
+_MIN_SIM = 0.26      # 低于这个相似度不考虑配对（DJ 版识别错字多，0.30 会漏掉整句）
 _SKIP_LINE = 0.60    # 这行没被唱 / 识别漏了 → 丢弃的代价
 _SKIP_SEG = 0.012    # 跳过一个识别段（伴奏、气口）几乎免费
 _MULTI_PEN = 0.10    # 一段里塞第二行以后的额外代价（一口气唱 2~3 行很常见）
+_MIN_LINE_GAP = 1.2  # 一行歌词至少占这么长时间；插值挤不进去就丢掉这一整段空缺
+_MIN_LINE_DUR = 0.9  # 一段识别最多装 floor(时长/0.9) 行，防止压成机关枪
 
 
 def _distribute(rows: list[dict], segs_index: dict) -> None:
@@ -324,11 +332,11 @@ def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
           dur: float = 0.0) -> list[dict]:
     """歌词行 ↔ 识别段 单调对齐（不看源时间）。
 
-    转移只有四种：
-      丢掉这一行       +0.60
-      跳过一段识别     +0.012   （伴奏/气口，随便跳）
-      行配段（都前进）+1-sim
-      行配段（段不动） +1-sim+0.10   ← 一段唱好几行
+    转移三种：
+      丢掉这一行            +0.60
+      跳过一段识别          +0.012（伴奏/气口，随便跳）
+      一段配 k 行（k≥1）    +Σ(1-sim) + 0.10×(k-1)
+                           k 上限由这一段时长决定（见 caps）
     """
     n, m = len(lines), len(heard)
     if not n:
@@ -340,6 +348,11 @@ def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
     nl = [norm(c) for _t, c in lines]
     sims = [[_sim(nl[i], heard[j][2]) for j in range(m)] for i in range(n)]
 
+    # 每段最多装几行，由这一段唱了多久决定（一行按 0.9 秒算）。
+    # 不设上限时一段识别能吞十几行，段内按字数一分，屏幕上就是机关枪
+    # （全库审计：39 首出现 ≥3 处「相邻两行 <0.25 秒」）。
+    caps = [max(1, int((b - a) / _MIN_LINE_DUR)) for a, b, _ in heard]
+
     INF = float("inf")
     dp = [[INF] * (m + 1) for _ in range(n + 1)]
     back: list[list] = [[None] * (m + 1) for _ in range(n + 1)]
@@ -350,29 +363,37 @@ def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
             cur = row[j]
             if cur == INF:
                 continue
+            # 跳过这一段（伴奏、气口、没人声）
             if j < m and cur + _SKIP_SEG < row[j + 1]:
                 row[j + 1] = cur + _SKIP_SEG
-                brow[j + 1] = ("seg", i, j)
+                brow[j + 1] = ("seg", i, j, 0)
             if i == n:
                 continue
+            # 丢掉这一行（没被唱 / 识别漏了）
             if cur + _SKIP_LINE < dp[i + 1][j]:
                 dp[i + 1][j] = cur + _SKIP_LINE
-                back[i + 1][j] = ("drop", i, j)
-            if j < m and sims[i][j] >= _MIN_SIM:
-                c = cur + 1.0 - sims[i][j]
-                if c < dp[i + 1][j + 1]:
-                    dp[i + 1][j + 1] = c
-                    back[i + 1][j + 1] = ("match", i, j)
-                if c + _MULTI_PEN < dp[i + 1][j]:
-                    dp[i + 1][j] = c + _MULTI_PEN
-                    back[i + 1][j] = ("multi", i, j)
+                back[i + 1][j] = ("drop", i, j, 0)
+            # 这一段的 k 行（k=1..caps[j]，且都要够像）
+            if j >= m:
+                continue
+            acc = cur
+            for k in range(1, min(caps[j], n - i) + 1):
+                sc = sims[i + k - 1][j]
+                if sc < _MIN_SIM:
+                    break
+                acc += 1.0 - sc
+                c = acc + _MULTI_PEN * (k - 1)
+                if c < dp[i + k][j + 1]:
+                    dp[i + k][j + 1] = c
+                    back[i + k][j + 1] = ("match", i, j, k)
 
     assign: list = [None] * n
     i, j = n, m
     while i > 0 or j > 0:
-        act, pi, pj = back[i][j]
-        if act in ("match", "multi"):
-            assign[pi] = pj
+        act, pi, pj, k = back[i][j]
+        if act == "match":
+            for q in range(k):
+                assign[pi + q] = pj
         i, j = pi, pj
 
     rows = []
@@ -383,16 +404,34 @@ def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
         else:
             rows.append({"t": heard[s][0], "text": content, "ok": True,
                          "score": round(sims[k][s], 3), "heard": heard[s][2], "seg": s})
+
     if not any(r["ok"] for r in rows):
         return rows
 
     segs_index = {k: (a, b) for k, (a, b, _) in enumerate(heard)}
+
+    # 第一句之前的"孤儿行"：
+    #   · 只有一两行 → 多半是第一句被识别漏了（童话镇dj 开头「变成狼的大红袍」），
+    #     直接并进第一段参与分配，别让它挂在 0.00 / 0.10 这种挤在一起的位置上；
+    #   · 一整块 → 是 MV 片尾字幕，丢掉（天地龙鳞曾有 20 行 credits 挤在 0~0.85 秒）。
+    _first0 = next((k for k, r in enumerate(rows) if r["ok"]), None)
+    if _first0 is not None and 0 < _first0 <= 2:
+        _seg = rows[_first0]["seg"]
+        for k in range(_first0):
+            r = rows[k]
+            if 0 <= r["t"] <= rows[_first0]["t"] + 1:
+                r.update(seg=_seg, ok=True, score=0.0, leading=True)
+
     _distribute(rows, segs_index)
 
     first = next(k for k, r in enumerate(rows) if r["ok"])
     last = max(k for k, r in enumerate(rows) if r["ok"])
 
-    # 中间的空缺：夹在两行已对齐的中间 → 按行数插值（比留源时间准得多）
+    # 中间的空缺：夹在两行已对齐的中间 → 按行数插值（比留源时间准得多）。
+    #
+    # 🔴 但要有物理上限：65 个字也唱不完 3 秒。库里有一堆「歌词是完整版、
+    # 音频是剪辑版」的歌（鸳鸯戏 48 行 / 音频只唱 31 句），硬插会把 8 行压进
+    # 189~192 秒，屏幕上就是机关枪。间隔装不下就**整段丢掉**，宁可少几行。
     k0 = first
     while k0 <= last:
         if rows[k0]["ok"]:
@@ -402,8 +441,8 @@ def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
         while k1 <= last and not rows[k1]["ok"]:
             k1 += 1
         prev, nxt = rows[k0 - 1], (rows[k1] if k1 <= last else None)
-        if nxt is not None and nxt["t"] > prev["t"]:
-            cnt = k1 - k0
+        cnt = k1 - k0
+        if nxt is not None and nxt["t"] - prev["t"] >= _MIN_LINE_GAP * cnt:
             for q in range(cnt):
                 rows[k0 + q]["t"] = round(prev["t"] + (nxt["t"] - prev["t"]) * (q + 1) / (cnt + 1), 2)
                 rows[k0 + q]["interp"] = True
@@ -415,7 +454,9 @@ def align(lines: list[tuple[float, str]], heard: list[tuple[float, float, str]],
     for k, r in enumerate(rows):
         if r["ok"] or r.get("interp"):
             out.append(r)
-        elif k < first and rows[first]["t"] >= r["t"] >= 0:
+        elif k < first and rows[first]["t"] >= r["t"] >= 0 and first <= 2:
+            # 兜底：还有漏网的前导行，就按 1.2 秒倒排（真正能并段的上一步已经并了）
+            r["t"] = round(max(0.0, rows[first]["t"] - _MIN_LINE_GAP * (first - k)), 2)
             out.append(r)
         else:
             r["dropped"] = True
