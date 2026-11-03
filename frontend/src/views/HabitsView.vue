@@ -168,7 +168,10 @@
             <template v-if="quitList.length">
               <li class="hb-grouphd hb-grouphd--quit">
                 不想要做的事
-                <em>今天破了 {{ slipToday }} 次<template v-if="slipFeeToday"> · 罚 ¥{{ (slipFeeToday / 100).toFixed(0) }}</template></em>
+                <em>
+                  今天破了 {{ slipToday }} 次<template v-if="slipFeeToday"> · 罚 ¥{{ (slipFeeToday / 100).toFixed(0) }}</template>
+                  <template v-if="slipYesterday"> · 昨天 {{ slipYesterday }} 次<template v-if="slipFeeYesterday">（罚 ¥{{ (slipFeeYesterday / 100).toFixed(0) }}）</template></template>
+                </em>
               </li>
               <li
                 v-for="h in quitList"
@@ -187,6 +190,14 @@
                         <b class="hb-prog" :class="{ full: (h.today_count || 0) <= (h.quit_allow || 0) }">
                           今天 {{ h.today_count || 0 }} 次
                         </b>
+                        <!-- v2.46.346：昨天单独说一句。以前只显示「今天」+ 大杂烩的「累计」，
+                             今天没破戒时这一行只剩「今天 0 次」，看着像昨天根本没结账。 -->
+                        <template v-if="h.quit_yesterday_count">
+                          · <b class="hb-last" :class="{ penalized: h.quit_yesterday_cents }">
+                            昨天 {{ h.quit_yesterday_count }} 次<template v-if="h.quit_yesterday_cents">，罚 ¥{{ (h.quit_yesterday_cents / 100).toFixed(0) }}</template>
+                          </b>
+                        </template>
+                        <template v-else-if="h.penalty_total_cents && !h.today_count"> · 昨天没犯</template>
                         <template v-if="h.quit_allow"> · 允许 {{ h.quit_allow }} 次不罚</template>
                         <template v-if="h.penalty_cents"> · 每次罚 ¥{{ (h.penalty_cents / 100).toFixed(0) }}</template>
                         <template v-if="h.quit_penalty_today"> · 今日已罚 ¥{{ (h.quit_penalty_today / 100).toFixed(0) }}</template>
@@ -535,6 +546,9 @@ const {
 const isQuit = (h) => (h?.kind || 'do') === 'quit'
 /** 今天破戒累计罚了多少（含被允许的次数不罚） */
 const slipFeeToday = computed(() => quitList.value.reduce((s2, h) => s2 + (Number(h.quit_penalty_today) || 0), 0))
+/** 昨天破了几次 / 罚了多少（v2.46.346：「一天一结算」得让人看得见昨天那一笔） */
+const slipYesterday = computed(() => quitList.value.reduce((s2, h) => s2 + (Number(h.quit_yesterday_count) || 0), 0))
+const slipFeeYesterday = computed(() => quitList.value.reduce((s2, h) => s2 + (Number(h.quit_yesterday_cents) || 0), 0))
 
 /** 六账户（顺序与后端 ACCOUNTS 一致，雷达图按这个顺序画） */
 const ACCOUNT_OPTIONS = [
@@ -1171,6 +1185,9 @@ async function maybeWeekendReview() {
 .hb-hit--quit:hover { background: transparent; }
 .hb-row--quit.slip .hb-name { color: var(--lj-vermilion, #b4513f); }
 .hb-row--quit .hb-prog { color: var(--lj-seal); }
+/* 昨天那条已罚的次数：赭红，让"确实扣过钱"一眼可见 */
+.hb-last { font-weight: 700; color: var(--lj-text-2); }
+.hb-last.penalized { color: var(--lj-vermilion, #b4513f); }
 .hb-row--quit .hb-prog.full { color: var(--color-success, #0f7a56); }
 .hb-slip {
   flex: none; height: 30px; padding: 0 12px; border-radius: 9px; cursor: pointer;

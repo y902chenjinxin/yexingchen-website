@@ -193,6 +193,21 @@ def list_habits(
         .group_by(HabitPenalty.habit_id)
         .all()
     )
+
+    # v2.46.346：把「昨天」单独带回来。
+    # 夜星「昨天没罚款」——钱其实扣了（戒除恶习罚金 ¥2），但界面只显示「今天」和
+    # 大杂烩的「累计」，今天没破戒时那一行只剩「今天 0 次」，扫一眼就像没结过账。
+    y_int = _to_int(today - timedelta(days=1))
+    y_counts = dict(
+        db.query(HabitCheckin.habit_id, HabitCheckin.count)
+        .filter(HabitCheckin.checkin_date == y_int)
+        .all()
+    )
+    y_pens = dict(
+        db.query(HabitPenalty.habit_id, HabitPenalty.amount_cents)
+        .filter(HabitPenalty.miss_date == y_int)
+        .all()
+    )
     result = []
     for h in rows:
         # v2.46.245：一天 N 次的习惯要带次数回来。占位行也算「今天有记录」，
@@ -238,6 +253,9 @@ def list_habits(
                 max(0, today_count - int(h.quit_allow or 0)) * int(h.penalty_cents or 0)
                 if (h.kind or KIND_DO) == KIND_QUIT else 0
             ),
+            # 昨日小结（只对戒除类有意义）
+            "quit_yesterday_count": int(y_counts.get(h.id, 0) or 0) if (h.kind or KIND_DO) == KIND_QUIT else 0,
+            "quit_yesterday_cents": int(y_pens.get(h.id, 0) or 0) if (h.kind or KIND_DO) == KIND_QUIT else 0,
             "account": h.account or "",
             "penalty_total_cents": penalty_totals.get(h.id, 0),
             **stats,
@@ -448,6 +466,9 @@ def _settle_quit_day(db: Session, h: Habit, uid: int, day_int: int, count: Optio
             txn = db.query(FinanceTransaction).filter(FinanceTransaction.id == pen.txn_id).first()
             if txn:
                 txn.amount_cents = owed
+                # v2.46.346：金额改了 note 也要改。之前只在创建时写「第 N 次」，
+                # 涨到第 2 次后账本上变成「第 1 次 · 2 元」，对不上，很容易被当成算错。
+                txn.note = f"戒除恶习 · {h.name} · {day.isoformat()} 共 {count} 次"[:255]
         return {"amount_cents": owed, "over": over, "count": count, "delta_cents": delta}
 
     txn = FinanceTransaction(
@@ -473,6 +494,44 @@ def _settle_quit_day(db: Session, h: Habit, uid: int, day_int: int, count: Optio
         )
     )
     return {"amount_cents": owed, "over": over, "count": count, "delta_cents": owed}
+
+
+def _settle_quit_range(db: Session, h: Habit, uid: int, days: int = 30) -> int:
+    """把最近 N 天的破戒罚金全部对齐一遍，返回补出来的罚单数。
+
+    为什么要扫历史（v2.46.346 夜星「恶习一天一结算，昨天没罚款」）：
+    `slip` 只在**记的那一下**结算当天，一旦那次请求失败 / 服务重启 / 跨天，
+    那天的罚单就**永久丢失** —— 而 `settle` 原来只对齐「今天」，永远补不回来。
+
+    这里双向兜底：
+      · 有打卡记录没罚单 → 补建
+      · 有罚单但打卡被撤销（次数归零）→ 删单退钱
+    `_settle_quit_day` 本身幂等，重复调用不会重复扣。
+    """
+    start_i = _to_int(date.today() - timedelta(days=days))
+    checks = (
+        db.query(HabitCheckin)
+        .filter(HabitCheckin.habit_id == h.id, HabitCheckin.checkin_date >= start_i)
+        .all()
+    )
+    pens = (
+        db.query(HabitPenalty)
+        .filter(HabitPenalty.habit_id == h.id, HabitPenalty.miss_date >= start_i)
+        .all()
+    )
+    dates = {c.checkin_date for c in checks} | {p.miss_date for p in pens}
+    fixed = 0
+    for d in sorted(dates):
+        before = next((p.amount_cents for p in pens if p.miss_date == d), 0)
+        _settle_quit_day(db, h, uid, d)
+        db.flush()
+        after = next(
+            (p.amount_cents for p in db.query(HabitPenalty)
+             .filter(HabitPenalty.habit_id == h.id, HabitPenalty.miss_date == d).all()), 0
+        )
+        if after != before:
+            fixed += 1
+    return fixed
 
 
 @router.post("/{habit_id}/slip")
@@ -703,9 +762,8 @@ def settle_penalties(
     items = []
     for h in habits:
         if (h.kind or KIND_DO) == KIND_QUIT:
-            # 破戒罚金在同一接口里「对齐今天」即可（幂等；正常已经在 slip 时结过了，
-            # 这里只是兜住"slip 请求失败/离线补记"的情况）
-            _settle_quit_day(db, h, uid, _to_int(today))
+            # v2.46.346：原来只对齐「今天」，历史漏单补不上。改成扫最近 30 天。
+            _settle_quit_range(db, h, uid, 30)
             continue
         items.extend(_settle_one(db, h, uid, today))
     db.commit()
