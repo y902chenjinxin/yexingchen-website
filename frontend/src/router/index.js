@@ -222,6 +222,14 @@ const routes = [
     component: () => import('@/views/PianoPlayView.vue'),
     meta: { requiresAuth: true }
   },
+  // 3D 粒子（v2.46.347）：手机专属的全屏玩具，电脑端由 DeviceGate 拦。
+  // 前缀不用 /play/ —— nginx 有 /play/pvz/ 的 alias，别再往那个前缀上加东西。
+  {
+    path: '/particle',
+    name: 'Particle',
+    component: () => import('@/views/ParticleView.vue'),
+    meta: { requiresAuth: true }
+  },
   // 内置 OCR 文字识别（服务端 RapidOCR 本地推理）
   {
     path: '/tool/ocr',

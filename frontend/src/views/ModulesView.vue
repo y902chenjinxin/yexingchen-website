@@ -38,7 +38,7 @@
               :rel="it.newTab ? 'noopener noreferrer' : undefined"
               class="mdl-card"
               :class="{ 'is-center': centerOf(g) === i }"
-              @click="buzz"
+              @click="buzz(); guardNav($event, it)"
             >
               <span class="mdl-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
               <span class="mdl-card__lab">{{ it.title }}</span>
@@ -49,7 +49,7 @@
               class="mdl-card"
               :class="{ active: isActive(it.path), 'is-center': centerOf(g) === i }"
               :aria-current="isActive(it.path) ? 'page' : undefined"
-              @click="buzz"
+              @click="buzz(); guardNav($event, it)"
             >
               <span class="mdl-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
               <span class="mdl-card__lab">{{ it.title }}</span>
@@ -91,11 +91,18 @@
             :target="it.newTab ? '_blank' : undefined"
             :rel="it.newTab ? 'noopener noreferrer' : undefined"
             class="mdld-card"
+            @click="guardNav($event, it)"
           >
             <span class="mdld-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
             <span class="mdld-card__lab">{{ it.title }}</span>
           </a>
-          <RouterLink v-else :to="it.path" class="mdld-card" :class="{ active: isActive(it.path) }">
+          <RouterLink
+            v-else
+            :to="it.path"
+            class="mdld-card"
+            :class="{ active: isActive(it.path) }"
+            @click="guardNav($event, it)"
+          >
             <span class="mdld-card__ico" aria-hidden="true"><component :is="it.icon" /></span>
             <span class="mdld-card__lab">{{ it.title }}</span>
           </RouterLink>
@@ -115,6 +122,8 @@ import { centeredIndex } from '@/composables/useSnapTicks'
 import { tick as tickFeedback } from '@/utils/haptic'
 import { useMenusStore } from '@/stores/menus'
 import { buildNavModules, countNavItems, isNavItemActive, formatKbd } from '@/constants/navModules'
+import { isPhoneDevice } from '@/composables/useDevice'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -188,6 +197,31 @@ function onStripScroll(e) {
     if (!first) tickFeedback()   // 落位那一下不响，只有"跨格"才响
     centerMap[strip.dataset.gk || ''] = idx
   }))
+}
+
+/**
+ * 设备门槛（v2.46.347）：`pcOnly` / `phoneOnly` 的入口先判设备，不匹配就地提示、不跳转。
+ * `preventDefault()` 对 RouterLink 也有效（vue-router 会检查 defaultPrevented 放弃导航）。
+ */
+function guardNav(e, it) {
+  if (!it) return
+  if (it.pcOnly && isPhoneDevice()) {
+    e.preventDefault()
+    ElMessage({
+      message: `「${it.title}」需要键盘和大屏，请在电脑端打开`,
+      type: 'warning',
+      duration: 2600,
+    })
+    return
+  }
+  if (it.phoneOnly && !isPhoneDevice()) {
+    e.preventDefault()
+    ElMessage({
+      message: `「${it.title}」需要多点触控，请在手机端打开`,
+      type: 'warning',
+      duration: 2600,
+    })
+  }
 }
 
 function buzz() {

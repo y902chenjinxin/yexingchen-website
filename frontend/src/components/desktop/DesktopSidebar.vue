@@ -104,7 +104,8 @@
             :target="item.newTab ? '_blank' : undefined"
             :rel="item.newTab ? 'noopener noreferrer' : undefined"
             class="dsb-item"
-            :class="{ active: isActive(item.path) }"
+            :class="{ active: isActive(item.path), 'device-gated': item.pcOnly || item.phoneOnly }"
+            @click="guardNav($event, item)"
           >
             <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
             <span class="dsb-label">{{ item.title }}</span>
@@ -113,7 +114,8 @@
             v-else
             :to="item.path"
             class="dsb-item"
-            :class="{ active: isActive(item.path), 'super-only': item.superOnly }"
+            :class="{ active: isActive(item.path), 'super-only': item.superOnly, 'device-gated': item.pcOnly || item.phoneOnly }"
+            @click="guardNav($event, item)"
           >
             <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
             <span class="dsb-label">{{ item.title }}</span>
@@ -130,7 +132,8 @@
               :target="item.newTab ? '_blank' : undefined"
               :rel="item.newTab ? 'noopener noreferrer' : undefined"
               class="dsb-item dsb-item-sub"
-              :class="{ active: isActive(item.path) }"
+              :class="{ active: isActive(item.path), 'device-gated': item.pcOnly || item.phoneOnly }"
+              @click="guardNav($event, item)"
             >
               <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
               <span class="dsb-label">{{ item.title }}</span>
@@ -139,7 +142,8 @@
               v-else
               :to="item.path"
               class="dsb-item dsb-item-sub"
-              :class="{ active: isActive(item.path) }"
+              :class="{ active: isActive(item.path), 'device-gated': item.pcOnly || item.phoneOnly }"
+              @click="guardNav($event, item)"
             >
               <span class="dsb-ic" aria-hidden="true"><component :is="item.icon" /></span>
               <span class="dsb-label">{{ item.title }}</span>
@@ -177,7 +181,37 @@ import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { APP_VERSION } from '@/constants/version'
 import { buildNavModules, isNavItemActive, formatKbd } from '@/constants/navModules'
+import { isPhoneDevice } from '@/composables/useDevice'
+import { ElMessage } from 'element-plus'
 import DesktopSearchBox from './DesktopSearchBox.vue'
+
+/**
+ * 设备门槛（v2.46.347）：`pcOnly` / `phoneOnly` 的入口先判设备，不匹配就就地提示、不跳转。
+ *
+ * `preventDefault()` 对 RouterLink 同样有效 —— vue-router 的 click handler
+ * 会检查 `e.defaultPrevented` 并放弃导航，所以 `/particle` 这种内部路由也能拦住，
+ * 不会先跳过去再被 DeviceGate 挡（那种体验是"闪一下白屏再出提示"）。
+ */
+function guardNav(e, item) {
+  if (!item) return
+  if (item.pcOnly && isPhoneDevice()) {
+    e.preventDefault()
+    ElMessage({
+      message: `「${item.title}」需要键盘和大屏，请在电脑端打开`,
+      type: 'warning',
+      duration: 2600,
+    })
+    return
+  }
+  if (item.phoneOnly && !isPhoneDevice()) {
+    e.preventDefault()
+    ElMessage({
+      message: `「${item.title}」需要多点触控，请在手机端打开`,
+      type: 'warning',
+      duration: 2600,
+    })
+  }
+}
 
 const route = useRoute()
 const router = useRouter()

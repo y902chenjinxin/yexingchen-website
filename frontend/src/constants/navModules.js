@@ -10,6 +10,9 @@
  *   - `newTab: true` 再叠加一层：在新标签打开（默认同标签跳转，会离开应用且无返回路径）。
  *     仅对**第三方站**用 —— 站方页面不归我们管，同标签跳走就回不来了。
  * - `superOnly: true` 只有超管可见（由 buildNavModules 过滤）
+ * - `pcOnly: true` / `phoneOnly: true` 设备门槛（v2.46.347）：不匹配的一端点了给出提示，
+ *   不跳转。判定走 `composables/useDevice.js` 的 `isPhoneDevice()`，
+ *   **不是** `useIsMobile()`（那个是"是否用移动端外壳"，手机浏览器返回 false）。
  */
 import {
   House,
@@ -87,6 +90,9 @@ export const NAV_GROUPS = [
     items: [
       // v2.46.334 音乐造物主：PC 端键盘弹奏（手机端点入口会提示去电脑上开）
       { path: '/tool/piano', title: '音乐造物主', icon: Headset },
+      // v2.46.347 3D 粒子：手机专属（多点触控 + 竖屏），电脑端点了会提示。
+      // 路由是独立全屏页 /particle，不走岛屿内页 —— 这东西要整屏黑才有味道。
+      { path: '/particle', title: '3D 粒子', icon: MagicStick, phoneOnly: true },
       { path: '/tool/games', title: '棋类游戏', icon: Football },
       // v2.46.144 两款单机游戏给侧栏直达入口 —— 此前只挂在「棋类游戏」页内部的休闲分组，
       // 从侧栏根本看不到，等于没接（夜星反馈「侧边栏娱乐模块没有看到」）。
@@ -96,7 +102,8 @@ export const NAV_GROUPS = [
       // 第三方站（Sprite Fusion「Destroy Any Website」）：输入网址后横版闯关把该站砸到 100%。
       // 站方 CSP frame-ancestors 不含本站域名，**不能 iframe 内嵌**（实测被拦），故走外链新标签。
       // 站方限定桌面端，手机端打开会看到其自带的「请在电脑上玩」提示。
-      { path: 'https://destroy.spritefusion.com/', title: '拆站小游戏', icon: Aim, external: true, newTab: true },
+      // v2.46.347：站方只支持桌面（键盘 + 宽屏），手机端点了直接提示、不跳转。
+      { path: 'https://destroy.spritefusion.com/', title: '拆站小游戏', icon: Aim, external: true, newTab: true, pcOnly: true },
     ],
   },
   {
