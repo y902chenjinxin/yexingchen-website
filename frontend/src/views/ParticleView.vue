@@ -1,121 +1,144 @@
 <template>
   <DeviceGate need="phone" title="请在手机上打开 魔幻粒子3D">
-    <!-- ========== 启动页（splash.xml：纯黑 + 居中内容） ========== -->
-    <transition name="fade">
-      <div v-if="splashing" class="sp">
-        <div class="sp-logo">魔幻粒子3D</div>
-        <div class="sp-sub">不可错过的视觉盛宴</div>
-        <div class="sp-spin" />
-      </div>
-    </transition>
+    <div class="app">
+      <!-- ==================== 播放页（magic3d_main.xml） ==================== -->
+      <template v-if="playing">
+        <canvas ref="cv" class="cv"
+                @pointerdown.prevent="onDown" @pointermove.prevent="onMove"
+                @pointerup.prevent="onUp" @pointercancel.prevent="onUp" />
 
-    <!-- ========== 主界面（magic3d_main.xml） ========== -->
-    <div v-show="!splashing" class="app">
-      <canvas ref="cv" class="cv"
-              @pointerdown.prevent="onDown" @pointermove.prevent="onMove"
-              @pointerup.prevent="onUp" @pointercancel.prevent="onUp" @pointerleave.prevent="onUp" />
+        <!-- 四角热区：布局里是 4 个 1dp 透明按钮 -->
+        <button class="hot tl" type="button" aria-label="上一个" @click="stepEffect(-1)" />
+        <button class="hot tr" type="button" aria-label="下一个" @click="stepEffect(1)" />
+        <button class="hot bl" type="button" aria-label="隐藏菜单" @click="toggleMenu" />
+        <button class="hot br" type="button" aria-label="清屏" @click="clearAll" />
 
-      <!-- 四角热区：布局里就是 4 个 1dp 的透明 Button，不抢视觉只接手势 -->
-      <button class="hotzone tl" type="button" aria-label="上一个" @click="stepEffect(-1)" />
-      <button class="hotzone tr" type="button" aria-label="下一个" @click="stepEffect(1)" />
-      <button class="hotzone bl" type="button" aria-label="清屏" @click="clearAll" />
-      <button class="hotzone br" type="button" aria-label="菜单" @click="toggleMenu" />
-
-      <!-- 左上返回（网站需要，原 App 的二级页也是这个位置这个图标） -->
-      <button class="back" type="button" aria-label="返回" @click="exit">
-        <svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z" /></svg>
-      </button>
-
-      <!-- 效果名 + 录制按钮（布局里是 visibility=gone，隐藏菜单后才出现） -->
-      <div class="effname" :class="{ on: menuHidden }">{{ preset.name }}</div>
-      <button class="rec" type="button" :class="{ on: menuHidden }" aria-label="录制" @click="toggleRec">
-        <i />
-      </button>
-
-      <!-- 底部浮动工具栏（FloatingToolbar：64dp、底边 52dp、6 个图标） -->
-      <div class="ftool" :class="{ hide: menuHidden }">
-        <button v-for="t in TOOLS" :key="t.key" type="button"
-                class="ft-btn" :class="{ dim: t.dim }" :aria-label="t.label"
-                @click="run(t.key)">
-          <svg viewBox="0 0 24 24"><use :href="'#i-' + t.icon" /></svg>
+        <button class="back" type="button" aria-label="返回" @click="close">
+          <svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z" /></svg>
         </button>
-      </div>
 
-      <!-- 右下 FAB（ic_plus，青绿） -->
-      <button class="fab" type="button" :class="{ hide: menuHidden }" aria-label="选择效果" @click="openPicker">
-        <svg viewBox="0 0 24 24"><use href="#i-plus" /></svg>
-      </button>
+        <div class="effname" :class="{ on: menuHidden }">{{ current.name }}</div>
 
-      <!-- ========== 效果选择（FAB 呼出） ========== -->
-      <transition name="up">
-        <div v-if="picker" class="sheet pick" @pointerdown.stop>
-          <div class="sheet-hd">
-            <b>选择效果</b>
-            <button type="button" @click="picker = false">关闭</button>
-          </div>
-          <div class="pick-grid">
-            <button v-for="p in PRESETS" :key="p.key" type="button"
-                    class="pick-item" :class="{ on: p.key === preset.key }"
-                    @click="choosePreset(p)">
-              <i :style="{ background: swatch(p) }" />
-              <span>{{ p.name }}</span>
-            </button>
-          </div>
-        </div>
-      </transition>
-
-      <!-- ========== 自定义效果（dialog_particle_setting：卡片 + 滑杆 + 恢复） ========== -->
-      <transition name="up">
-        <div v-if="panel" class="sheet panel" @pointerdown.stop>
-          <div class="sheet-hd">
-            <b>自定义效果</b>
-            <button type="button" @click="panel = false">完成</button>
-          </div>
-          <div v-for="s in SLIDERS" :key="s.key" class="sl">
-            <span class="sl-lab">{{ s.label }}</span>
-            <input class="sl-range" type="range" :min="s.min" :max="s.max" :step="s.step"
-                   :value="cfg[s.key]" @input="setCfg(s.key, +$event.target.value)" />
-            <span class="sl-val">{{ fmt(s) }}</span>
-          </div>
-          <div class="sl">
-            <span class="sl-lab">颜色</span>
-            <div class="colors">
-              <button v-for="(p, k) in PALETTES" :key="k" type="button"
-                      class="dot" :class="{ on: cfg.palette === k }"
-                      :style="{ background: swatch({ palette: k }) }"
-                      @click="setCfg('palette', k)" />
-            </div>
-          </div>
-          <button class="restore" type="button" aria-label="恢复默认" @click="restore">
-            <svg viewBox="0 0 24 24"><use href="#i-restore" /></svg>
+        <!-- 底部浮动工具栏（FloatingToolbar，menu_demo.xml 的 6 项） -->
+        <div class="ftool" :class="{ hide: menuHidden }">
+          <button v-for="t in TOOLS" :key="t.key" type="button" class="ft-btn"
+                  :class="{ dim: t.dim }" :aria-label="t.label" @click="run(t.key)">
+            <svg viewBox="0 0 24 24"><use :href="'#i-' + t.icon" /></svg>
           </button>
         </div>
-      </transition>
 
-      <!-- ========== 我的截图 ========== -->
-      <transition name="up">
-        <div v-if="gallery" class="sheet shots" @pointerdown.stop>
-          <div class="sheet-hd">
-            <b>我的截图</b>
-            <button type="button" @click="gallery = false">关闭</button>
+        <!-- FAB：粒子页原版是白底青绿加号 -->
+        <button class="fab" type="button" :class="{ hide: menuHidden }" aria-label="返回列表" @click="close">
+          <svg viewBox="0 0 24 24"><use href="#i-plus" /></svg>
+        </button>
+
+        <!-- 参数面板（dialog_particle_setting.xml） -->
+        <transition name="up">
+          <div v-if="panel" class="sheet" @pointerdown.stop>
+            <div class="sheet-hd">
+              <b>自定义效果</b>
+              <button type="button" @click="panel = false">完成</button>
+            </div>
+            <div v-for="sl in sliders" :key="sl.key" class="sl">
+              <span class="sl-lab">{{ sl.label }}</span>
+              <input class="sl-range" type="range" :min="sl.min" :max="sl.max" :step="sl.step"
+                     :value="cfg[sl.key]" @input="setCfg(sl.key, +$event.target.value)" />
+              <span class="sl-val">{{ Number(cfg[sl.key]).toFixed(2) }}</span>
+            </div>
+            <button class="restore" type="button" aria-label="恢复默认" @click="restore">
+              <svg viewBox="0 0 24 24"><use href="#i-reset" /></svg>
+            </button>
           </div>
-          <p v-if="!shots.length" class="empty">还没有截图，点工具栏的「保存图片」</p>
-          <div class="shot-grid">
-            <div v-for="(s, i) in shots" :key="i" class="shot">
-              <img :src="s" alt="" />
-              <button type="button" @click="delShot(i)">×</button>
+        </transition>
+
+        <!-- 我的截图 -->
+        <transition name="up">
+          <div v-if="gallery" class="sheet" @pointerdown.stop>
+            <div class="sheet-hd">
+              <b>我的截图</b>
+              <button type="button" @click="gallery = false">关闭</button>
+            </div>
+            <p v-if="!shots.length" class="empty">还没有截图，点工具栏的「保存图片」</p>
+            <div class="shot-grid">
+              <div v-for="(s, i) in shots" :key="i" class="shot">
+                <img :src="s" alt="" />
+                <button type="button" @click="delShot(i)">×</button>
+              </div>
             </div>
           </div>
-        </div>
-      </transition>
+        </transition>
 
-      <!-- 轻提示 -->
-      <transition name="fade">
-        <div v-if="toast" class="toast">{{ toast }}</div>
-      </transition>
+        <transition name="fade">
+          <div v-if="toast" class="toast">{{ toast }}</div>
+        </transition>
+      </template>
+
+      <!-- ==================== 主页（activity_main_tab.xml：Tab + 效果列表） ==================== -->
+      <template v-else>
+        <div class="home">
+          <div class="hd">
+            <span class="hd-title">魔幻粒子3D</span>
+            <span class="hd-acts">
+              <button type="button" aria-label="我的截图" @click="gallery = true">
+                <svg viewBox="0 0 24 24"><use href="#i-shots" /></svg>
+              </button>
+              <button type="button" aria-label="我的录制" @click="toastMsg('先进效果播放页，再点底部录制按钮')">
+                <svg viewBox="0 0 24 24"><use href="#i-videos" /></svg>
+              </button>
+            </span>
+          </div>
+          <nav class="tabs">
+            <button v-for="t in TABS" :key="t" type="button"
+                    class="tab" :class="{ on: tab === t }" @click="tab = t">{{ t }}</button>
+          </nav>
+
+          <!-- 我的：截图列表 -->
+          <div v-if="tab === '我'" class="me">
+            <p v-if="!shots.length" class="empty">还没有截图</p>
+            <div class="shot-grid">
+              <div v-for="(s, i) in shots" :key="i" class="shot">
+                <img :src="s" alt="" />
+                <button type="button" @click="delShot(i)">×</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 效果列表：大圆球 + 名字 -->
+          <div v-else class="list">
+            <button v-for="(e, i) in list" :key="e.key" type="button" class="eff"
+                    :style="{ animationDelay: (i * 0.08) + 's' }" @click="open(e)">
+              <i class="ball" :style="{ background: ball(e), '--glow': ballGlow(e) }" />
+              <span>{{ e.name }}</span>
+            </button>
+          </div>
+
+          <!-- 背景光斑（原版是动态 BackgroundView，这里用 CSS 渐变 + bokeh 对位） -->
+          <i v-for="(b, i) in bokeh" :key="'b' + i" class="bokeh" :style="b" />
+        </div>
+
+        <transition name="up">
+          <div v-if="gallery" class="sheet" @pointerdown.stop>
+            <div class="sheet-hd">
+              <b>我的截图</b>
+              <button type="button" @click="gallery = false">关闭</button>
+            </div>
+            <p v-if="!shots.length" class="empty">还没有截图</p>
+            <div class="shot-grid">
+              <div v-for="(s, i) in shots" :key="i" class="shot">
+                <img :src="s" alt="" />
+                <button type="button" @click="delShot(i)">×</button>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <transition name="fade">
+          <div v-if="toast" class="toast">{{ toast }}</div>
+        </transition>
+      </template>
     </div>
 
-    <!-- 图标集：照 APK 里那几个 PNG 的形状重画 -->
+    <!-- 图标集 -->
     <svg class="sprite" aria-hidden="true">
       <symbol id="i-settings" viewBox="0 0 24 24">
         <path d="M3 6h8M15 6h6M11 3.6v4.8M3 12h4M11 12h10M7 9.6v4.8M3 18h12M19 18h2M15 15.6v4.8" />
@@ -138,8 +161,11 @@
       <symbol id="i-plus" viewBox="0 0 24 24">
         <path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z" />
       </symbol>
-      <symbol id="i-restore" viewBox="0 0 24 24">
-        <path d="M12 5a7 7 0 1 1-6.6 9.3M5 5v4h4" />
+      <symbol id="i-shots" viewBox="0 0 24 24">
+        <path d="M4 7h11v11H4zM9 4h11v11" />
+      </symbol>
+      <symbol id="i-videos" viewBox="0 0 24 24">
+        <path d="M6 5h12v14H6zM10 9.5l4 2.5-4 2.5z" />
       </symbol>
     </svg>
   </DeviceGate>
@@ -147,134 +173,368 @@
 
 <script setup>
 /**
- * 魔幻粒子3D（复刻版）v2.46.356
+ * 魔幻粒子3D（复刻版）v2.46.357
  *
- * 夜星：「你给我把之前的全部删除，按照逆向的，全盘照抄它的设计，
- *        一摸一样的界面，一摸一样的交互，功能全都一摸一样」。
+ * 夜星：「现在全是液体，我的原子和粒子呢」「你不是已经逆向了嘛，为什么不是按照人家做的来」
+ * 并给了 7 张原版截图 —— 图里大部分档位是**粒子**（彩色星点 / 蓝色细线云 /
+ * 原子轨道 / 电光），只有「流动」Tab 是液体。
  *
- * 界面全部照 res/layout/ 里的布局还原：
- *   · magic3d_main.xml   —— 全屏画布 + 底部 FloatingToolbar(64dp/底 52dp)
- *                            + 右下 FAB(ic_plus，青绿) + 录制按钮(48dp) + 四角 1dp 热区
- *   · menu_demo.xml      —— 工具栏 6 项：自定义效果 / 购买 / 保存图片 /
- *                            设为动态壁纸 / 隐藏菜单 / 清屏（图标照 icon_*.png）
- *   · dialog_particle_setting.xml —— 卡片 + 滑杆 + 底部「恢复默认」
- *   · splash.xml         —— 纯黑启动页
- *   · resources.arsc     —— 8 个档位名
- *
- * 渲染是 GPU 流体（composables/useFluid.js），8 档用同一套管线配不同参数对位。
+ * 结构照 activity_main_tab.xml：主页 = 顶栏 + Tab（三维/线性/流动/我）+ 渐变背景效果列表；
+ * 点效果进全屏播放页（magic3d_main.xml：工具栏 + FAB）。引擎按档位走：
+ * 粒子档走 useParticles（orbit/streak/bolt 三种运动），「流动」才用 useFluid。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import DeviceGate from '@/components/common/DeviceGate.vue'
 import { useFullscreenPage } from '@/composables/useFullscreenPage'
-import { createFluidEngine, PALETTES, PRESETS } from '@/composables/useFluid'
+import { createParticleEngine } from '@/composables/useParticles'
+import { createFluidEngine } from '@/composables/useFluid'
 import { tick } from '@/utils/haptic'
 
 const { exit: exitFullscreen } = useFullscreenPage()
 
-/** 工具栏 6 项，顺序照 menu_demo.xml */
+const TABS = ['三维', '线性', '流动', '我']
+
+/** 效果目录：engine 决定用哪套引擎，cfg 是各档参数 */
+const CATALOG = {
+  三维: [
+    {
+      key: 'atom', name: '虚幻原子', engine: 'particles', hue: 160,
+      cfg: { style: 'glow', motion: 'orbit', size: 11, count: 3200, bloom: 1.2, trail: 0.5 },
+    },
+    {
+      key: 'beam', name: '奇点与光束', engine: 'particles', hue: 290,
+      cfg: { style: 'streak', motion: 'free', size: 9, count: 3600, bloom: 0.9, width: 0.05, trail: 0.95, burst: true },
+    },
+    {
+      key: 'spark', name: '星河', engine: 'particles', hue: 30,
+      cfg: { style: 'streak', motion: 'free', size: 6, count: 2600, bloom: 0.7, width: 0.045, trail: 0.85, spark: true },
+    },
+    {
+      key: 'bolt', name: '电光', engine: 'particles', hue: 210,
+      cfg: { style: 'streak', motion: 'free', size: 5, count: 2000, bloom: 0.75, width: 0.04, trail: 0.9, bolt: true },
+    },
+  ],
+  线性: [
+    {
+      key: 'flow', name: '粒子流', engine: 'particles', hue: 215,
+      cfg: { style: 'streak', motion: 'free', size: 5, count: 4200, bloom: 0.6, width: 0.035, trail: 0.9, cloud: true },
+    },
+  ],
+  流动: [
+    {
+      key: 'liquid', name: '魔幻液体', engine: 'fluid', hue: 285,
+      cfg: { mode: 0, palette: 'magic', curl: 24, glow: 1.5, detail: 0.55, densityDissipation: 0.6, velocityDissipation: 0.9, splatRadius: 0.0005 },
+    },
+    {
+      key: 'rainbow', name: '七彩流动', engine: 'fluid', hue: 200,
+      cfg: { mode: 0, palette: 'rainbow', curl: 20, glow: 1.2, detail: 0.4, densityDissipation: 0.5, velocityDissipation: 0.9, splatRadius: 0.0005 },
+    },
+    {
+      key: 'fire', name: '火魅幻境', engine: 'fluid', hue: 20,
+      cfg: { mode: 0, palette: 'fire', curl: 34, glow: 2.2, detail: 0.7, densityDissipation: 0.85, velocityDissipation: 0.8, splatRadius: 0.0005 },
+    },
+    {
+      key: 'trippy', name: '扭曲轨道', engine: 'fluid', hue: 320,
+      cfg: { mode: 1, palette: 'neon', curl: 44, glow: 1.4, detail: 0.3, densityDissipation: 0.55, velocityDissipation: 0.8, splatRadius: 0.0005 },
+    },
+  ],
+  我: [],
+}
+
 const TOOLS = [
   { key: 'custom', icon: 'settings', label: '自定义效果' },
-  { key: 'buy', icon: 'heart', label: '我的截图', dim: true },
+  { key: 'shots', icon: 'heart', label: '我的截图' },
   { key: 'save', icon: 'image', label: '保存图片' },
   { key: 'wall', icon: 'grid', label: '设为动态壁纸', dim: true },
   { key: 'hide', icon: 'dots', label: '隐藏菜单' },
-  { key: 'clear', icon: 'reset', label: '清屏', dim: true },
+  { key: 'clear', icon: 'reset', label: '清屏' },
 ]
 
-const SLIDERS = [
+const sliders = [
   { key: 'curl', label: '卷曲', min: 0, max: 60, step: 1 },
   { key: 'glow', label: '光晕', min: 0, max: 3, step: 0.05 },
   { key: 'detail', label: '纹理', min: 0, max: 1, step: 0.05 },
   { key: 'densityDissipation', label: '浓度', min: 0.1, max: 3, step: 0.05 },
+  { key: 'size', label: '粗细', min: 2, max: 30, step: 0.5 },
 ]
 
 const cv = ref(null)
-const splashing = ref(true)
-const picker = ref(false)
+const playing = ref(false)
+const tab = ref('三维')
 const panel = ref(false)
 const gallery = ref(false)
 const menuHidden = ref(false)
 const toast = ref('')
 const shots = ref([])
-const idx = ref(0)
+const current = ref(CATALOG['三维'][0])
 
-const preset = computed(() => PRESETS[idx.value])
+const list = computed(() => CATALOG[tab.value] || [])
 
-const cfg = reactive({
-  mode: 0,
-  palette: 'magic',
-  curl: 24,
-  glow: 1.5,
-  detail: 0.55,
-  densityDissipation: 0.6,
-  velocityDissipation: 0.9,
-  splatRadius: 0.0005,
-  rim: 18,
-  invert: false,
-})
+const cfg = reactive({})
 
-let engine = null
+let engine = null          // { type: 'particles' | 'fluid', api }
 let raf = 0
 let lastT = 0
 let toastTimer = 0
 let idleAcc = 0
-let recorder = null
-let recChunks = []
+let boltAcc = 0
 
 const fingers = new Map()
 const downAt = new Map()
 
+// 背景光斑（原版主界面是动态 BackgroundView，这里用 CSS 渐变 + 随机 bokeh 对位）
+const bokeh = Array.from({ length: 14 }, () => {
+  const s = 26 + Math.random() * 120
+  return {
+    left: (Math.random() * 100) + '%',
+    top: (10 + Math.random() * 90) + '%',
+    width: s + 'px',
+    height: s + 'px',
+    opacity: 0.05 + Math.random() * 0.1,
+  }
+})
+
 // ---------------- 生命周期 ----------------
-onMounted(async () => {
+onMounted(() => {
+  try {
+    shots.value = JSON.parse(localStorage.getItem('xh_particle_shots') || '[]').slice(0, 24)
+  } catch { /* ignore */ }
+})
+
+onBeforeUnmount(() => {
+  stopLoop()
+  destroyEngine()
+})
+
+function stopLoop() {
+  if (raf) cancelAnimationFrame(raf)
+  raf = 0
+}
+
+function destroyEngine() {
+  if (engine?.api?.dispose) engine.api.dispose()
+  engine = null
+}
+
+// ---------------- 打开 / 关闭播放页 ----------------
+async function open(e) {
+  current.value = e
+  playing.value = true
   await nextTick()
   const el = cv.value
   if (!el) return
   const debug = /(?:^|[?&])debug=1/.test(window.location.search)
-  engine = createFluidEngine(el, { ...cfg, debug })
-  if (!engine.ok) {
-    toast.value = engine.reason === 'no-webgl' ? '这台设备的浏览器不支持 WebGL' : '引擎初始化失败'
+  const opts = { ...(e.cfg || {}), debug }
+  if (e.engine === 'fluid') {
+    engine = { type: 'fluid', api: createFluidEngine(el, opts) }
+  } else {
+    engine = { type: 'particles', api: createParticleEngine(el, opts) }
+  }
+  if (!engine.api.ok) {
+    toastMsg(engine.api.reason === 'no-webgl' ? '这台设备的浏览器不支持 WebGL' : '引擎初始化失败')
+    playing.value = false
     return
   }
-  if (import.meta.env.DEV) window.__fluid = engine
+  if (import.meta.env.DEV) window.__fx = engine.api
   resize()
-  applyPreset(PRESETS[0])
-
-  window.addEventListener('resize', resize)
-  window.addEventListener('orientationchange', resize)
-  document.addEventListener('visibilitychange', onVis)
+  applyEngine()
   lastT = performance.now()
   raf = requestAnimationFrame(loop)
+  tick(0.4)
+}
 
-  try {
-    shots.value = JSON.parse(localStorage.getItem('xh_particle_shots') || '[]').slice(0, 24)
-  } catch { /* ignore */ }
-
-  // 启动页留 1.3 秒，跟原版一样先进黑屏再进主界面
-  window.setTimeout(() => { splashing.value = false }, 1300)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', resize)
-  window.removeEventListener('orientationchange', resize)
-  document.removeEventListener('visibilitychange', onVis)
-  clearTimeout(toastTimer)
-  if (raf) cancelAnimationFrame(raf)
-  if (recorder && recorder.state === 'recording') recorder.stop()
-  engine?.dispose()
-  engine = null
-})
+function close() {
+  playing.value = false
+  stopLoop()
+  destroyEngine()
+  exitFullscreen()
+}
 
 function resize() {
-  if (!engine) return
-  engine.resize(window.innerWidth, window.innerHeight)
+  if (!engine?.api) return
+  engine.api.resize(window.innerWidth, window.innerHeight)
 }
 
-function onVis() {
-  if (document.visibilityState === 'visible') lastT = performance.now()
+function applyEngine() {
+  const e = current.value
+  if (!engine?.api) return
+  if (engine.type === 'fluid') {
+    engine.api.applyOptions({ ...e.cfg })
+    engine.api.clear()
+    // 开场先给两下，别让用户对着黑屏
+    for (let i = 0; i < 3; i++) {
+      engine.api.splat(
+        window.innerWidth * (0.35 + Math.random() * 0.3),
+        window.innerHeight * (0.35 + Math.random() * 0.3),
+        (Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60,
+        engine.api.pointerColor(window.innerWidth / 2, window.innerHeight / 2))
+    }
+    return
+  }
+  engine.api.applyOptions({ ...e.cfg, motion: e.cfg.motion || 'free' })
+  engine.api.clear()
+  seedEffect(e)
 }
 
-function exit() {
-  exitFullscreen()
+/** 各粒子档的开场画面 */
+function seedEffect(e) {
+  const api = engine.api
+  const W = window.innerWidth
+  const H = window.innerHeight
+  if (e.cfg.motion === 'orbit') {
+    // 霓虹花瓣：6 圈椭圆环，不同倾角 + 中心亮核（照图 6）
+    const rings = []
+    for (let k = 0; k < 6; k++) {
+      rings.push({
+        cx: W / 2, cy: H * 0.44,
+        a: 46 + k * 26,
+        ratio: 0.34 + (k % 3) * 0.1,
+        w: (0.55 + k * 0.22) * (k % 2 ? 1 : -1),
+        tilt: (k / 6) * Math.PI,
+        count: 64,
+        size: 9,
+        hue: 150 + k * 18,
+        hueSpan: 26,
+      })
+    }
+    api.emitOrbit(rings, { cx: W / 2, cy: H * 0.44, count: 80, size: 9 })
+    return
+  }
+  if (e.cfg.spark) {
+    // 星河：全屏随机星点 + 短光线（照图 3）
+    for (let i = 0; i < 420; i++) {
+      api.emit(Math.random() * W, Math.random() * H, 1, {
+        speed: 40 + Math.random() * 220,
+        lifeRange: [1.6, 3.4],
+        sizeMul: 0.8,
+      })
+    }
+    return
+  }
+  if (e.cfg.cloud) {
+    // 粒子流：蓝色细线云（照图 5）
+    for (let i = 0; i < 900; i++) {
+      api.emit(Math.random() * W, Math.random() * H, 1, {
+        speed: 24 + Math.random() * 130,
+        lifeRange: [2.2, 4.2],
+        sizeMul: 0.9,
+      })
+    }
+    return
+  }
+  if (e.cfg.bolt) {
+    // 电光：背景细线，主电光在 loop 里周期性劈（照图 7）
+    for (let i = 0; i < 500; i++) {
+      api.emit(Math.random() * W, Math.random() * H, 1, {
+        speed: 20 + Math.random() * 90,
+        lifeRange: [1.8, 3.2],
+        sizeMul: 0.7,
+      })
+    }
+  }
+}
+
+// ---------------- 主循环 ----------------
+function loop(now) {
+  raf = requestAnimationFrame(loop)
+  if (document.visibilityState !== 'visible') { lastT = now; return }
+  const dt = Math.min(0.05, Math.max(0.001, (now - lastT) / 1000))
+  lastT = now
+  pump(dt)
+  engine.api.step(dt)
+  engine.api.draw()
+}
+
+function pump(dt) {
+  if (!engine?.api) return
+  const api = engine.api
+  const e = current.value
+  const W = window.innerWidth
+  const H = window.innerHeight
+
+  if (engine.type === 'fluid') {
+    if (!fingers.size) {
+      idleAcc += dt
+      if (idleAcc > 4) {
+        idleAcc = 0
+        api.splat(W * (0.5 + (Math.random() - 0.5) * 0.4), H * (0.5 + (Math.random() - 0.5) * 0.4),
+          (Math.random() - 0.5) * 50, (Math.random() - 0.5) * 50, api.pointerColor(W / 2, H / 2))
+      }
+    }
+    for (const f of fingers.values()) {
+      const dx = f.x - f.px
+      const dy = f.y - f.py
+      if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
+        api.splat(f.x, f.y, dx, dy, api.pointerColor(f.x, f.y))
+        f.px = f.x
+        f.py = f.y
+      }
+    }
+    return
+  }
+
+  // ---- 粒子档 ----
+  if (e.cfg.burst) {
+    // 奇点与光束：点按从触点爆发，空闲偶尔从中心来一发（照图 4）
+    if (!fingers.size) {
+      idleAcc += dt
+      if (idleAcc > 2.4) { idleAcc = 0; burst(W / 2, H / 2, 1.6) }
+    }
+    for (const f of fingers.values()) {
+      if (!f.burst) { burst(f.x, f.y, 1); f.burst = true }
+    }
+    return
+  }
+  if (e.cfg.spark) {
+    // 星河：持续补星点，手指处多喷
+    const n = fingers.size ? 8 : 3
+    for (let i = 0; i < n; i++) {
+      if (fingers.size) {
+        const f = [...fingers.values()][i % fingers.size]
+        api.emit(f.x, f.y, 1, { speed: 90 + Math.random() * 260, lifeRange: [1.4, 2.8], sizeMul: 0.85 })
+      } else {
+        api.emit(Math.random() * W, Math.random() * H, 1, {
+          speed: 40 + Math.random() * 200, lifeRange: [1.6, 3.2], sizeMul: 0.75,
+        })
+      }
+    }
+    return
+  }
+  if (e.cfg.bolt) {
+    // 电光：周期性劈一条（照图 7）
+    boltAcc += dt
+    const every = fingers.size ? 0.32 : 0.85
+    if (boltAcc > every) {
+      boltAcc = 0
+      let sx = W / 2
+      let sy = H * 0.62
+      if (fingers.size) {
+        const f = [...fingers.values()][0]
+        sx = f.x
+        sy = f.y
+      }
+      api.bolt(sx, sy, -Math.PI / 2 + (Math.random() - 0.5) * 1.6,
+        200 + Math.random() * 220, [1, 1, 1])
+    }
+    return
+  }
+  if (e.cfg.cloud) {
+    // 粒子流：低速蓝线持续补
+    for (let i = 0; i < 4; i++) {
+      api.emit(Math.random() * W, Math.random() * H, 1, {
+        speed: 24 + Math.random() * 120, lifeRange: [2.2, 4.0], sizeMul: 0.85,
+      })
+    }
+  }
+}
+
+/** 白核 + 彩色长尾的爆发（图 4） */
+function burst(x, y, mul = 1) {
+  const api = engine?.api
+  if (!api) return
+  api.emit(x, y, Math.round(300 * mul), { speed: 420 * mul, lifeRange: [0.9, 1.7], sizeMul: 1 })
+  api.emit(x, y, Math.round(60 * mul), { speed: 120, lifeRange: [0.5, 0.9], sizeMul: 2.4 })
+  tick(0.6)
 }
 
 // ---------------- 手势 ----------------
@@ -282,11 +542,10 @@ function onDown(e) {
   try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch { /* 合成事件没有真 pointerId */ }
   fingers.set(e.pointerId, { x: e.clientX, y: e.clientY, px: e.clientX, py: e.clientY })
   downAt.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() })
-  if (menuHidden.value) {
-    menuHidden.value = false
-    return
+  if (menuHidden.value) { menuHidden.value = false; return }
+  if (engine?.type === 'fluid') {
+    engine.api.splat(e.clientX, e.clientY, 0, 0, engine.api.pointerColor(e.clientX, e.clientY))
   }
-  drop(e.clientX, e.clientY, 1)
   tick(0.4)
 }
 
@@ -300,100 +559,44 @@ function onMove(e) {
 function onUp(e) {
   const d = downAt.get(e.pointerId)
   const p = fingers.get(e.pointerId)
-  if (d && p) {
+  if (d && p && engine?.type === 'particles') {
     const dt = performance.now() - d.t
     const dist = Math.hypot(p.x - d.x, p.y - d.y)
-    // 轻点再来一下，跟原版一样"点一下就散开"
-    if (dt < 200 && dist < 10) drop(p.x, p.y, 1.8)
+    if (dt < 200 && dist < 10 && current.value.cfg.burst) burst(p.x, p.y, 1.2)
   }
   fingers.delete(e.pointerId)
   downAt.delete(e.pointerId)
 }
 
-function drop(x, y, mul = 1) {
-  if (!engine) return
-  const a = Math.random() * Math.PI * 2
-  const s = 24 * mul
-  engine.splat(x, y, Math.cos(a) * s, Math.sin(a) * s, engine.pointerColor(x, y))
+// ---------------- 播放页工具 ----------------
+function applyCfg() {
+  if (!engine?.api) return
+  engine.api.applyOptions({ ...cfg })
 }
 
-function pump() {
-  if (!engine) return
-  if (!fingers.size) {
-    idleAcc++
-    if (idleAcc > 160) {
-      idleAcc = 0
-      const cx = window.innerWidth * (0.5 + (Math.random() - 0.5) * 0.4)
-      const cy = window.innerHeight * (0.5 + (Math.random() - 0.5) * 0.4)
-      drop(cx, cy, 0.55)
-    }
-    return
-  }
-  for (const f of fingers.values()) {
-    const dx = f.x - f.px
-    const dy = f.y - f.py
-    if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
-      engine.splat(f.x, f.y, dx, dy, engine.pointerColor(f.x, f.y))
-      f.px = f.x
-      f.py = f.y
-    }
-  }
+function setCfg(k, v) {
+  cfg[k] = v
+  applyCfg()
+  tick(0.3)
 }
 
-function loop(now) {
-  raf = requestAnimationFrame(loop)
-  if (document.visibilityState !== 'visible') { lastT = now; return }
-  const dt = Math.min(0.05, Math.max(0.001, (now - lastT) / 1000))
-  lastT = now
-  pump()
-  engine.step(dt)
-  engine.draw()
-}
-
-// ---------------- 档位 ----------------
-function applyPreset(p) {
-  if (!p) return
-  idx.value = Math.max(0, PRESETS.findIndex((x) => x.key === p.key))
-  Object.assign(cfg, {
-    mode: p.mode,
-    palette: p.palette,
-    curl: p.curl,
-    glow: p.glow,
-    detail: p.detail,
-    densityDissipation: p.density,
-  })
-  engine?.applyOptions({ ...cfg })
-  engine?.clear()
-}
-
-function choosePreset(p) {
-  applyPreset(p)
-  picker.value = false
-  showToast(p.name)
-  tick(0.6)
-}
-
-function stepEffect(dir) {
-  const n = PRESETS.length
-  applyPreset(PRESETS[(idx.value + dir + n) % n])
-  showToast(preset.value.name)
+function restore() {
+  Object.assign(cfg, current.value.cfg)
+  applyCfg()
+  showToast('已恢复')
   tick(0.5)
 }
 
-function showToast(msg, ms = 1200) {
-  toast.value = msg
-  clearTimeout(toastTimer)
-  toastTimer = window.setTimeout(() => { toast.value = '' }, ms)
-}
-
-// ---------------- 工具栏 ----------------
-function run(key) {
-  if (key === 'custom') { panel.value = true; picker.value = false; gallery.value = false; return }
-  if (key === 'save') { saveShot(); return }
-  if (key === 'hide') { toggleMenu(); return }
-  if (key === 'clear') { clearAll(); return }
-  if (key === 'wall') { showToast('网页版做不了动态壁纸，先保存成图片吧', 1900); return }
-  if (key === 'buy') { gallery.value = true; panel.value = false; picker.value = false; return }
+function stepEffect(dir) {
+  const all = CATALOG['三维'].concat(CATALOG['线性'], CATALOG['流动'])
+  const n = all.length
+  const i = all.findIndex((x) => x.key === current.value.key)
+  const next = all[(i + dir + n) % n]
+  current.value = next
+  Object.assign(cfg, next.cfg || {})
+  applyEngine()
+  showToast(next.name)
+  tick(0.5)
 }
 
 function toggleMenu() {
@@ -402,18 +605,20 @@ function toggleMenu() {
 }
 
 function clearAll() {
-  engine?.clear()
+  engine?.api?.clear?.()
+  if (engine?.type === 'particles') seedEffect(current.value)
   tick(0.5)
 }
 
-function openPicker() {
-  picker.value = true
-  panel.value = false
-  gallery.value = false
-  tick(0.4)
+function run(key) {
+  if (key === 'custom') { panel.value = true; gallery.value = false; return }
+  if (key === 'save') { saveShot(); return }
+  if (key === 'hide') { toggleMenu(); return }
+  if (key === 'clear') { clearAll(); return }
+  if (key === 'wall') { showToast('网页版做不了动态壁纸，先保存成图片吧', 1900); return }
+  if (key === 'shots') { gallery.value = true; panel.value = false; return }
 }
 
-// ---------------- 保存 / 截图 ----------------
 function saveShot() {
   const c = cv.value
   if (!c) return
@@ -423,7 +628,7 @@ function saveShot() {
   a.download = `魔幻粒子3D-${Date.now()}.png`
   a.click()
   shots.value = [data, ...shots.value].slice(0, 24)
-  try { localStorage.setItem('xh_particle_shots', JSON.stringify(shots.value)) } catch { /* 满了就算了 */ }
+  try { localStorage.setItem('xh_particle_shots', JSON.stringify(shots.value)) } catch { /* ignore */ }
   showToast('已保存')
   tick(0.7)
 }
@@ -433,94 +638,34 @@ function delShot(i) {
   try { localStorage.setItem('xh_particle_shots', JSON.stringify(shots.value)) } catch { /* ignore */ }
 }
 
-// ---------------- 录制（MediaRecorder，网页版能做的部分） ----------------
-function toggleRec() {
-  if (!cv.value || !cv.value.captureStream || typeof MediaRecorder === 'undefined') {
-    showToast('这台设备的浏览器不支持录制', 1800)
-    return
-  }
-  if (recorder && recorder.state === 'recording') {
-    recorder.stop()
-    return
-  }
-  try {
-    const stream = cv.value.captureStream(30)
-    recorder = new MediaRecorder(stream, { mimeType: 'video/webm' })
-    recChunks = []
-    recorder.ondataavailable = (e) => { if (e.data.size) recChunks.push(e.data) }
-    recorder.onstop = () => {
-      const blob = new Blob(recChunks, { type: 'video/webm' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `魔幻粒子3D-${Date.now()}.webm`
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(url), 4000)
-      showToast('录制完成')
-    }
-    recorder.start()
-    showToast('录制中，再点一次结束', 2000)
-    tick(0.7)
-  } catch {
-    showToast('录制启动失败', 1600)
-  }
+function toastMsg(msg, ms = 1500) {
+  showToast(msg, ms)
 }
 
-// ---------------- 参数 ----------------
-function setCfg(k, v) {
-  cfg[k] = v
-  engine?.applyOptions({ [k]: v })
-  if (k === 'palette') tick(0.4)
+function showToast(msg, ms = 1500) {
+  toast.value = msg
+  clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => { toast.value = '' }, ms)
 }
 
-function restore() {
-  applyPreset(preset.value)
-  showToast('已恢复')
-  tick(0.5)
+// ---------------- 主页视觉 ----------------
+function ball(e) {
+  const h = e.hue
+  return `radial-gradient(circle at 42% 36%,
+    hsla(${h}, 70%, 88%, 0.9) 0%,
+    hsla(${h}, 76%, 62%, 0.92) 34%,
+    hsla(${(h + 28) % 360}, 80%, 44%, 0.88) 68%,
+    hsla(${(h + 60) % 360}, 82%, 30%, 0.55) 100%)`
 }
 
-function fmt(s) {
-  return Number(cfg[s.key]).toFixed(2)
-}
-
-function swatch(p) {
-  const pal = PALETTES[p.palette] || PALETTES.magic
-  const h = (pal.hues[0] + Math.min(pal.hues[1], pal.hues[0] + 60)) / 2
-  return `radial-gradient(circle at 34% 30%, #fff 4%,
-    hsl(${h} ${Math.round(96 * pal.sat)}% 58%) 45%,
-    hsl(${(h + 46) % 360} ${Math.round(96 * pal.sat)}% 44%) 85%)`
+function ballGlow(e) {
+  return `hsla(${e.hue}, 80%, 60%, 0.55)`
 }
 </script>
 
 <style scoped>
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 
-/* ---------- 启动页 ---------- */
-.sp {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  z-index: 30;
-}
-.sp-logo { color: #fff; font-size: 22px; letter-spacing: 3px; font-weight: 300; }
-.sp-sub { color: rgba(255, 255, 255, 0.45); font-size: 12px; letter-spacing: 1px; }
-.sp-spin {
-  position: absolute;
-  bottom: 64px;
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.16);
-  border-top-color: #00bfa5;
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ---------- 主界面 ---------- */
 .app {
   position: fixed;
   inset: 0;
@@ -531,19 +676,130 @@ function swatch(p) {
   -webkit-user-select: none;
   font-family: 'Roboto', system-ui, -apple-system, 'HarmonyOS Sans', sans-serif;
 }
-.cv { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 
-/* 四角热区：布局里就是 4 个 1dp 的透明 Button */
-.hotzone {
+/* ==================== 主页 ==================== */
+.home {
   position: absolute;
-  width: 44px; height: 44px;
-  padding: 0; border: 0;
-  background: transparent;
+  inset: 0;
+  /* 照原版截图：顶上金橙 → 中绿 → 底部深蓝 */
+  background:
+    radial-gradient(140% 60% at 50% -10%, rgba(255, 183, 3, 0.9), rgba(255, 183, 3, 0) 60%),
+    linear-gradient(180deg, #d99b1c 0%, #7fa03a 26%, #1f6e52 52%, #123c63 78%, #0b1e46 100%);
+  overflow: hidden;
 }
-.hotzone.tl { left: 0; top: 0; }
-.hotzone.tr { right: 0; top: 0; }
-.hotzone.bl { left: 0; bottom: 0; }
-.hotzone.br { right: 0; bottom: 0; }
+.hd {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 52px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #e8a41c, #d18f14);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  z-index: 4;
+}
+.hd-title { color: #fff; font-size: 17px; font-weight: 500; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+.hd-acts { display: flex; gap: 18px; }
+.hd-acts button { border: 0; background: transparent; padding: 4px; }
+.hd-acts svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.tabs {
+  position: absolute;
+  left: 0; right: 0; top: 52px;
+  height: 44px;
+  display: flex;
+  z-index: 4;
+}
+.tab {
+  flex: 1;
+  border: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 15px;
+  position: relative;
+}
+.tab.on { color: #fff; font-weight: 600; background: rgba(255, 255, 255, 0.06); }
+.tab.on::after {
+  content: '';
+  position: absolute;
+  left: 25%; right: 25%; bottom: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.list {
+  position: absolute;
+  inset: 96px 0 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  padding: 34px 0 60px;
+  z-index: 2;
+}
+.eff {
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: rise 0.5s both;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+.eff .ball {
+  width: 128px; height: 128px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 44px var(--glow),
+    0 0 90px var(--glow),
+    inset 0 0 30px rgba(255, 255, 255, 0.16);
+  transition: transform 0.18s;
+}
+.eff:active .ball { transform: scale(0.94); }
+.eff span {
+  color: #fff;
+  font-size: 17px;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+.bokeh {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.me {
+  position: absolute;
+  inset: 96px 0 0;
+  overflow-y: auto;
+  padding: 16px;
+  z-index: 2;
+}
+.empty { color: rgba(255, 255, 255, 0.55); text-align: center; padding: 40px 0; font-size: 13px; }
+.shot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.shot { position: relative; aspect-ratio: 9 / 16; border-radius: 8px; overflow: hidden; }
+.shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shot button {
+  position: absolute; right: 4px; top: 4px;
+  width: 20px; height: 20px;
+  border: 0; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff; font-size: 13px; line-height: 18px;
+  padding: 0;
+}
+
+/* ==================== 播放页 ==================== */
+.cv { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.hot { position: absolute; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; }
+.hot.tl { left: 0; top: 0; }
+.hot.tr { right: 0; top: 0; }
+.hot.bl { left: 0; bottom: 0; }
+.hot.br { right: 0; bottom: 0; }
 
 .back {
   position: absolute;
@@ -556,15 +812,14 @@ function swatch(p) {
 }
 .back svg { width: 24px; height: 24px; fill: rgba(255, 255, 255, 0.85); }
 
-/* 效果名：TextView 14sp 白色，居中偏下 */
 .effname {
   position: absolute;
   left: 0; right: 0;
-  bottom: 96px;
+  bottom: 100px;
   text-align: center;
   color: #fff;
   font-size: 14px;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   opacity: 0;
   transition: opacity 0.25s;
   pointer-events: none;
@@ -572,35 +827,10 @@ function swatch(p) {
 }
 .effname.on { opacity: 0.9; }
 
-/* 录制按钮：48dp 圆环 + 内点 */
-.rec {
-  position: absolute;
-  left: 50%;
-  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  width: 48px; height: 48px;
-  border-radius: 50%;
-  border: 3px solid #ff5a4e;
-  background: transparent;
-  display: grid; place-items: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
-}
-.rec.on { opacity: 1; pointer-events: auto; }
-.rec i {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: #ff5a4e;
-  animation: pulse 1.1s ease-in-out infinite;
-}
-@keyframes pulse { 50% { transform: scale(0.72); opacity: 0.6; } }
-
-/* 底部浮动工具栏：64dp 高、底边 52dp、圆角、投影 */
 .ftool {
   position: absolute;
   left: 12px;
-  right: 84px;           /* 原布局是 match_parent + FAB 浮在上面，第 6 个图标会被 FAB 压住，这里让位 */
+  right: 84px;
   bottom: calc(52px + env(safe-area-inset-bottom, 0px));
   height: 64px;
   border-radius: 10px;
@@ -615,14 +845,12 @@ function swatch(p) {
   z-index: 5;
 }
 .ftool.hide { transform: translateY(28px); opacity: 0; pointer-events: none; }
-
 .ft-btn {
   width: 44px; height: 44px;
   border: 0; padding: 0;
   background: transparent;
   display: grid; place-items: center;
   border-radius: 50%;
-  transition: background 0.15s;
 }
 .ft-btn:active { background: rgba(255, 255, 255, 0.12); }
 .ft-btn svg {
@@ -637,7 +865,7 @@ function swatch(p) {
 .ft-btn svg circle { stroke: none; fill: rgba(255, 255, 255, 0.95); }
 .ft-btn.dim svg circle { fill: rgba(255, 255, 255, 0.45); }
 
-/* FAB：ic_plus，青绿 */
+/* FAB：粒子页原版是白底青绿加号 */
 .fab {
   position: absolute;
   right: 16px;
@@ -645,17 +873,17 @@ function swatch(p) {
   width: 56px; height: 56px;
   border-radius: 50%;
   border: 0;
-  background: #00bfa5;
-  box-shadow: 0 6px 18px rgba(0, 191, 165, 0.45);
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   display: grid; place-items: center;
   transition: transform 0.2s ease, opacity 0.2s ease;
   z-index: 6;
 }
-.fab svg { width: 26px; height: 26px; fill: #fff; }
+.fab svg { width: 26px; height: 26px; fill: #00bfa5; }
 .fab:active { transform: scale(0.94); }
 .fab.hide { transform: scale(0.4); opacity: 0; pointer-events: none; }
 
-/* ---------- 底部面板 ---------- */
+/* ---------- 面板 ---------- */
 .sheet {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -667,43 +895,10 @@ function swatch(p) {
   max-height: 76vh;
   overflow-y: auto;
 }
-.sheet-hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0 14px;
-}
+.sheet-hd { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 14px; }
 .sheet-hd b { color: #fff; font-size: 15px; font-weight: 500; }
-.sheet-hd button {
-  border: 0; background: transparent;
-  color: #00bfa5; font-size: 14px;
-  padding: 6px 4px;
-}
+.sheet-hd button { border: 0; background: transparent; color: #00bfa5; font-size: 14px; padding: 6px 4px; }
 
-.pick-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px 8px;
-  padding-bottom: 6px;
-}
-.pick-item {
-  border: 0; background: transparent;
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
-}
-.pick-item i {
-  width: 54px; height: 54px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
-  transition: box-shadow 0.18s, transform 0.18s;
-}
-.pick-item span { color: rgba(255, 255, 255, 0.62); font-size: 11px; }
-.pick-item.on i {
-  box-shadow: 0 0 0 2px #00bfa5, 0 0 18px rgba(0, 191, 165, 0.5);
-  transform: scale(1.06);
-}
-.pick-item.on span { color: #fff; }
-
-/* 自定义效果：一行 = 标签 + 滑杆 + 数值 */
 .sl { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .sl-lab { width: 42px; color: rgba(255, 255, 255, 0.82); font-size: 13px; flex: none; }
 .sl-val {
@@ -731,14 +926,6 @@ function swatch(p) {
   width: 16px; height: 16px; border: 0;
   border-radius: 50%; background: #00bfa5;
 }
-.colors { display: flex; gap: 12px; flex: 1; }
-.dot {
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  border: 0;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
-}
-.dot.on { box-shadow: 0 0 0 2px #fff; }
 .restore {
   display: block;
   margin: 16px auto 0;
@@ -752,21 +939,6 @@ function swatch(p) {
   stroke-linecap: round; stroke-linejoin: round;
 }
 
-/* 我的截图 */
-.empty { color: rgba(255, 255, 255, 0.4); font-size: 13px; text-align: center; padding: 28px 0; }
-.shot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.shot { position: relative; aspect-ratio: 9 / 16; border-radius: 8px; overflow: hidden; }
-.shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.shot button {
-  position: absolute; right: 4px; top: 4px;
-  width: 20px; height: 20px;
-  border: 0; border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff; font-size: 13px; line-height: 18px;
-  padding: 0;
-}
-
-/* 轻提示 */
 .toast {
   position: absolute;
   left: 50%;
@@ -782,8 +954,7 @@ function swatch(p) {
   pointer-events: none;
 }
 
-/* 过渡 */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.35s; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 .up-enter-active, .up-leave-active { transition: transform 0.24s ease, opacity 0.24s ease; }
 .up-enter-from, .up-leave-to { transform: translateY(100%); opacity: 0.6; }
