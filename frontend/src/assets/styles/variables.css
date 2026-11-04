@@ -108,7 +108,13 @@
 
   /* ========== 字体 ========== */
   /* 字体族：latin 优先用现代无衬线 Inter，中文回退 Noto Sans SC；mono 用 JetBrains Mono */
-  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Source Han Serif CN', 'Songti SC', 'STSong', 'SimSun', serif;
+  /* v2.46.369：全站去衬线（夜星拍板「全改无衬线，最像参考图」）。
+   * `--font-serif` 语义保留但不指向衬线了——原本 24 个 vue 的 `font-serif` class 全靠它，
+   * 改这一行即可全站收敛，比逐个改模板安全。原栈留档：
+   *   'Noto Serif SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Source Han Serif CN',
+   *   'Songti SC', 'STSong', 'SimSun', serif
+   * 唯一保留衬线的地方是登录页品牌字「星阁」（liquid-glass.css 里显式写死）。 */
+  --font-serif: 'Inter', 'Inter Tight', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Helvetica Neue', sans-serif;
   --font-sans: 'Inter', 'Inter Tight', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Helvetica Neue', sans-serif;
   --font-mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
   --font-size-xs: 12px;

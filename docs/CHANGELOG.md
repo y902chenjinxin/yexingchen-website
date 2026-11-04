@@ -1,3 +1,45 @@
+## [v2.46.369] - 2026-11-04
+
+### 全站圆润化：对齐 iOS 参考（夜星：组件没人家的好看、不够圆润）
+
+**需求**：夜星给了一张 iOS 记账 App 截图，要求「各个模块」都往那种圆润感靠。
+拍板三项：全改无衬线 / 日间暖米底 / 移动端 + 桌面一起改。
+
+**诊断**（为什么看起来「糊、平、硬」）——四项叠加，不是单一圆角问题：
+
+| 维度 | 原值 | 新值 |
+|---|---|---|
+| 卡面填充（日） | `rgba(255,255,255,.55)` | `.88`（近白不透明，卡片才浮起来） |
+| 卡面描边（日） | `1px rgba(255,255,255,.85)` 白线 | `rgba(60,60,67,.07)` 中性内描边 |
+| 卡面阴影（日） | `0 10px 32px rgba(31,41,55,.10)` | `0 1px 2px .04 + 0 6px 18px .06`（贴身） |
+| 页面底色（日） | `#f4f5f9 → #eceef4` 冷灰蓝 | `#f8f6f1 → #efece5` 暖米 |
+| 卡片圆角 | 14~16px | 22px |
+| 控件圆角 | 10~14px | `--m-radius` 20 / `--m-radius-sm` 14 |
+| 主按钮 | 12px 方角 | `999px` 胶囊 |
+| 页头 | `1.5px` 粗墨下划线 | 无 |
+| 列表缝线 | `1px dashed` 手账虚线 | `1px solid rgba(60,60,67,.10)` |
+| 字体 | Noto Serif SC 衬线（数字/标题） | 全站无衬线（Inter/SF/PingFang） |
+| 桌面圆角 | `--dp-radius` 10/12px | 16px（卡片 18px） |
+
+**落点（4 个文件，不新增层，回滚=删 liquid-glass 一行 import）**：
+- `variables.css`：`--font-serif` 指向无衬线栈，一处收掉全站 24 个 vue 的 `font-serif`
+  class（原衬线栈留档在注释里）
+- `desktop-theme-night.css`：`--dp-serif` 同步无衬线（白天那份本来已是 sans）
+- `mobile-paper.css`：5 处硬编码 `'Noto Serif SC'… !important` 改 `var(--font-sans)`
+- `liquid-glass.css`：昼夜 `--lg-*` 调色 + 圆角 token 覆盖 + 新增 F 节
+  （页头线退役 / 缝线实线化 / 按钮胶囊 / 登录品牌字保留衬线）
+
+⚠️ 圆角 token 的坑：`--m-radius` 最终生效层是 `tech-theme.css` 第 9 节与
+`tech-theme-day.css` 第 7 节（1,2,1），不是 `mobile-paper.css`。覆盖必须写
+`#app.is-mobile, html[data-theme="day"] #app.is-mobile` 昼夜两份同权重。
+`--dp-radius` 同理要带 `:root[data-theme="day"]` 后缀。
+
+**保留项**：登录页品牌字「星阁」仍是衬线（`liquid-glass.css` 显式写死），夜间深空玻璃观感不动。
+
+**验证**：vite build 通过；产物 grep 确认 `#f8f6f1/#efece5`、`--m-radius: 20px`、
+`--dp-radius: 16px`、`border-radius:22px/999px`、`fin-head…{border-bottom:none`、
+`rgba(60,60,67,.1)`、`.site-title{font-family:"Noto Serif SC"…` 全部进包。
+
 ## [v2.46.368] - 2026-11-04
 
 ### 登录页粒子加密（夜星：粒子有点少，稍微加点）

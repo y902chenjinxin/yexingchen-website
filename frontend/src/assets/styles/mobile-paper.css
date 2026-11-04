@@ -137,14 +137,14 @@ html[data-theme="day"] #app.is-mobile {
    zoom 跟随 --m-font-scale（动态字体 #28）：不覆盖各 View 原字号体系，
    等比缩放渲染，WebView(Chromium/WebKit) 支持良好 */
 #app.is-mobile :is(.fin-kpi-val, .fin-pool-val, .fin-pcard-val, .abb-hero__num, .abb-stat strong, .st-kpi-v, .tv-kpi-v) {
-  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
+  font-family: var(--font-sans) !important;
   font-weight: 600 !important;
   zoom: var(--m-font-scale, 1);
   letter-spacing: -.01em !important;
 }
 /* 页头标题：衬线（杂志刊头） */
 #app.is-mobile :is(.fin-title, .st-title, .tv-title, .ct-title, .tk-title, .sb-title, .li-title, .va-title, .wd-title, .sd-title, .dh-title, .fd-title, .qk-title, .trash-title, .abb-title) {
-  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
+  font-family: var(--font-sans) !important;
   font-weight: 600 !important;
   zoom: var(--m-font-scale, 1);
   letter-spacing: .01em !important;
@@ -416,7 +416,7 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
  * ===================================================================== */
 /* 刊头：衬线 20px×zoom、左对齐、粗墨底线（与 fin/st/tv/ct 同款） */
 #app.is-mobile .profile-page .page-title {
-  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
+  font-family: var(--font-sans) !important;
   font-size: calc(20px * var(--m-font-scale, 1)) !important;
   font-weight: 600 !important;
   letter-spacing: .01em !important;
@@ -462,7 +462,7 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
   gap: 6px !important;
 }
 #app.is-mobile .island-inner .island-title {
-  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
+  font-family: var(--font-sans) !important;
   font-size: calc(21px * var(--m-font-scale, 1)) !important;
   font-weight: 600 !important;
   letter-spacing: .01em !important;
@@ -559,7 +559,7 @@ html[data-theme="day"] #app.is-mobile .mt-tab.active { color: #b0684a !important
   border-bottom: 1.5px solid var(--xz-head-line);
 }
 #app.is-mobile .mdl-title {
-  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif !important;
+  font-family: var(--font-sans) !important;
   font-weight: 600 !important;
   letter-spacing: .01em !important;
   zoom: var(--m-font-scale, 1);

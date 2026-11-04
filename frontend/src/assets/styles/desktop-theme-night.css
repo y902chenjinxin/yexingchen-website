@@ -36,7 +36,7 @@
   --dp-radius: 12px;
   --dp-radius-sm: 8px;
   /* 衬线：唯一东方记忆（仅品牌区使用） */
-  --dp-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --dp-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", "Noto Sans SC", sans-serif;
 
   /* ---- 全站映射 ---- */
   --color-bg: var(--dp-bg);
