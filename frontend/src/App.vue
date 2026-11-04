@@ -323,6 +323,16 @@ onMounted(async () => {
 /* ========== 移动端（沉浸式 + 底部两 Tab）：内容整体垫高，避免被 Tab 栏遮挡 ========== */
 #app.is-mobile {
   padding-bottom: calc(72px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+  transition: padding-bottom .28s ease;
+}
+/* v2.46.388：播放条也在底部（bottom 84px + 高 58px = 顶到 142px）。
+ * 72px 的垫高只够底栏，播放条一出现就压住正文最后两行 —— 页面底部的内容
+ * 永远看不全。NowPlayingBar 会给自己挂 body.has-npbar，这里统一补垫。 */
+body.has-npbar #app.is-mobile {
+  padding-bottom: calc(152px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+body.has-npbar #app.is-mobile.is-immersive {
+  padding-bottom: 0;
 }
 /* 牌桌全屏：Tab 栏已收起，垫高必须一并去掉，否则牌桌下方空出一条 */
 #app.is-mobile.is-immersive {

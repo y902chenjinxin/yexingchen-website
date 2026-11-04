@@ -68,6 +68,7 @@
     <p v-else class="notes-empty">尚无笔记，点击上方「新建笔记」落笔成篇。</p>
 
     <el-pagination
+      v-if="total > 0"
       v-model:current-page="page"
       :page-size="size"
       :total="total"

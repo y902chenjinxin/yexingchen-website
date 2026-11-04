@@ -716,13 +716,18 @@ onMounted(() => {
 })
 onBeforeUnmount(() => { exitShelfMode() })
 
-/** 没有封面时用「书名首字 + 渐变」，按 id 稳定取色（同一本书每次颜色一致） */
+/** 没有封面时用「书名首字 + 渐变」，按 id 稳定取色（同一本书每次颜色一致）
+ *  🔴 v2.46.388：原来是 #f0e6d2 这类**粉彩浅色**（米黄/浅绿/浅粉/浅蓝/浅紫）。
+ *  在深色书墙上就是九块彩色马卡龙，夜星说「组件颜色发灰」「书籍为什么也有框」——
+ *  每个浅色块在深底上边界特别清楚，天然读成「一个框」。
+ *  改成深色系：同一套色相，明度压到 #10~#3a，书封沉进画面里，
+ *  靠首字和顶部一道受光边区分彼此。 */
 const COVER_GRADS = [
-  ['#f0e6d2', '#cdb389'],
-  ['#e2ecE8', '#a9c6bd'],
-  ['#f0e2dc', '#c9a89f'],
-  ['#e4eaf2', '#aabccd'],
-  ['#ece4f0', '#b8a8c6'],
+  ['#2b3a52', '#141b26'],   // 夜蓝
+  ['#243b3a', '#101d1c'],   // 墨绿
+  ['#3d2f28', '#1b1410'],   // 赭石
+  ['#2b2f45', '#14151f'],   // 靛紫
+  ['#2f3339', '#14161a'],   // 石板
 ]
 function coverStyle(n) {
   const g = COVER_GRADS[Math.abs(Number(n.id) || 0) % COVER_GRADS.length]
@@ -1263,17 +1268,21 @@ function formatTime(timeStr) {
   /* v2.46.378：投影收一半。原来 8px/16px 的落影在深色页面上会糊成一圈灰边，
      看着像书本外面又套了个框（夜星：「书籍为什么也有框」）。
      书卡本身已经不再被玻璃规则收编，这里只需要一点点「贴住纸面」的影。 */
+  /* v2.46.388：深色书封只需要「贴在纸面上」的一点影 + 顶边受光，
+     不再有外描边（夜星：「这个框到底有啥用」）。 */
   box-shadow:
-    0 1px 2px rgba(16, 20, 26, .10),
-    0 4px 10px -8px rgba(16, 20, 26, .34);
+    inset 0 1px 0 rgba(255, 255, 255, .14),
+    0 2px 6px -2px rgba(0, 0, 0, .45);
   transition: transform .16s ease;
 }
 .ns-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ns-initial {
-  font-size: 32px;
-  font-weight: 400;
-  color: rgba(70, 58, 46, .42);
-  letter-spacing: .04em;
+  font-family: var(--font-serif, "Songti SC", "Noto Serif SC", Georgia, serif);
+  font-size: 34px;
+  font-weight: 300;
+  color: rgba(240, 246, 255, .50);
+  letter-spacing: .06em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
   user-select: none;
 }
 .ns-card:active .ns-cover { transform: scale(.97); }
@@ -1290,6 +1299,9 @@ function formatTime(timeStr) {
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  /* v2.46.378：固定两行高度。书名有长有短，不占满两行时整排书会参差不齐
+     （截图里第三列书名换行、下面多一行，第二排就被顶上去了） */
+  min-height: 2.64em;
 }
 .ns-sub {
   font-size: 12px;

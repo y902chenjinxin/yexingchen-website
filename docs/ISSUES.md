@@ -7,6 +7,42 @@
 
 ---
 
+## v2.46.388-393 「边缘线」查到第四层：主题变量里的 2px 青边（2026-11-04）
+
+> 夜星：「你现在做的都像是毛玻璃，不是液态的」「全项目液态玻璃展示」「不能去 github 上看下液态玻璃是怎么实现的嘛」
+
+**排查记（为什么 378~387 改了十版还在被说「有边缘线」）**
+
+1. 以为是 `border`（改 `--lg-line`）→ 线还在。
+2. 以为是 `.glass-card::before` 的 mask 描边（换 `--lg-rim`）→ 线还在。
+3. 以为是四道 `inset` 边光连成闭合框（层层降 alpha）→ 线还在。
+4. 写 `_probe_sweep.cjs` 遍历每个页面所有元素的 computed `borderTopWidth` + `borderTopColor`，
+   打印出真实值：`.fin-panel` = `2px solid rgba(45,226,255,.38)`。
+   → 来源 `mobile-paper.css` 第 2 节：`border: 2px solid var(--xz-card-border)`，
+   而 `tech-theme.css` 定义 `--xz-card-border: rgba(45,226,255,.38)`。
+
+**教训**
+- **「改不动」的样式要去查变量，不是查选择器。** 一个变量被几十个组件消费时，
+  逐条覆盖是打不完的（尤其中间还夹着 scoped CSS 晚注入的问题），改变量的值才是一遍过。
+- **不要靠肉眼在截图里找颜色**。390px 的屏、2x 图，1px 线和折光几乎分不清。
+  用 `getComputedStyle` 把 `borderTopColor` / `backgroundColor` / `backdropFilter`
+  三个值全量扫一遍，比看十张图快。
+- **「边缘线」和「玻璃侧壁」不是一回事**。夜星骂的是**闭合的荧光青框**（2px + 硬偏移阴影）；
+  iOS 玻璃卡本来就有四边 1px 的侧壁折光（顶 46% / 侧 12%）。为了去框把侧壁全砍掉，
+  卡就和背景糊成一片 —— 该保留的是「无彩、不成环」的折光。
+
+**另一条：`padding: 0 !important` 的一刀切**
+378 版为消灭页头「全宽出血」，给 `[class$="-head"]` 统一写了
+`padding-left/right: 0 !important`。出血是**负 margin** 造成的，padding 是页面自己的留白 ——
+一刀切之后小说页标题直接贴到屏幕左边缘。**去出血只清 margin。**
+
+**还有：浮层遮挡要算总高度**
+`.npbar` 底边 84px + 高 58px = 顶到 142px，而 `#app` 只垫 72px（底栏高度）。
+所以只要在放歌，每个页面最后两行都是被盖住的。修法不是给每页加 padding（十几个页面会漏），
+而是让浮层自己声明存在：`NowPlayingBar` 监听显隐 → `body.has-npbar` → CSS 统一垫 152px。
+
+---
+
 ## v2.46.378 「大蓝条」真凶是页头的 backdrop-filter（2026-11-04）
 
 > 夜星：「记账页面顶部现在是一个大蓝条，你能不能完整的检查下」「通讯录这块也是，一个大蓝条，

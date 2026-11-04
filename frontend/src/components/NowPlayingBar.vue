@@ -176,7 +176,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { fmtClock } from '@/utils/format'
 import { VideoPause, VideoPlay } from '@element-plus/icons-vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -260,6 +260,18 @@ function saveMiniPos() {
 }
 
 const minimized = ref(localStorage.getItem('np_minimized') === '1')
+
+/* v2.46.388：播放条是 position:fixed 浮层，永远压在正文上。
+ * 之前 #app 只垫了 72px（≈底栏高度），而播放条底边在 84px、自身高 58px，
+ * 所以页面最后两行一定被它盖住 —— 夜星截图里「各人各月转入」的数字消失、
+ * 小说书墙最底一排被压，都是这个。
+ * 让 body 带一个 has-npbar 类，由 liquid-glass.css 统一加垫高：
+ * 比在十几个页面各写一份 padding-bottom 可靠。 */
+const barVisible = computed(() => shouldShow.value && !minimized.value)
+watch(barVisible, (v) => {
+  if (typeof document === 'undefined') return
+  document.body.classList.toggle('has-npbar', !!v)
+}, { immediate: true })
 const miniPos = ref(loadMiniPos() || defaultMiniPos())
 const dragging = ref(false)
 
@@ -320,7 +332,11 @@ function onWinResize() {
   }
 }
 onMounted(() => window.addEventListener('resize', onWinResize))
-onBeforeUnmount(() => window.removeEventListener('resize', onWinResize))
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onWinResize)
+  // 组件卸载时把垫高还回去，否则该页底部会多出一截空白
+  if (typeof document !== 'undefined') document.body.classList.remove('has-npbar')
+})
 
 const MODE_LABEL = {
   list: { short: '列表', title: '列表循环' },

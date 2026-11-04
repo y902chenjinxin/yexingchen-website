@@ -2063,7 +2063,10 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-pool-hero-label { font-size: 11.5px; color: var(--lj-text-3); letter-spacing: .1em; }
 .fin-pool-hero-val { font-size: clamp(25px, 3.6vw, 33px); font-weight: 700; font-variant-numeric: tabular-nums; }
 .fin-pool-hero.savings .fin-pool-hero-val { color: var(--yq-accent); }
-.fin-pool-hero.public .fin-pool-hero-val { color: var(--yq-rain); }
+/* v2.46.388：公款原来用 --yq-rain，而手机端 tech-theme 把它定义成 #2de2ff
+   （纯霓虹青）—— 压在玻璃卡上就是一根荧光数字，夜星反复说「别再来青的」。
+   掺 82% 白：仍是「偏冷的白」，和存款的鎏金能区分开，但不再刺眼。 */
+.fin-pool-hero.public .fin-pool-hero-val { color: color-mix(in srgb, var(--yq-rain) 18%, #ffffff); }
 /* 放在着色规则之后，透支时盖过池子主色（同特异性、靠后生效） */
 .fin-pool-hero .fin-pool-hero-val.neg { color: var(--lj-vermilion); }
 

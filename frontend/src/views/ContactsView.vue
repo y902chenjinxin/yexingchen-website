@@ -64,27 +64,33 @@
               @change="onAvatarPicked(c, $event)"
             />
             <div class="ct-card-text">
-              <div class="ct-name-row">
+              <!-- v2.46.388：卡片只在「一眼」层级展示 —— 姓名 / 关系 / 生日倒计时 / 电话。
+                   原先一张卡固定四行（农历生日·年龄 / 电话 / 住址 / 身份照号）+
+                   一行五个图标按钮，一屏只放得下 1.5 个人，夜星说的「信息密布」就是这个。
+                   住址、身份照号、备注收进「展开」，操作按钮也跟着展开状态出现。 -->
+              <div class="ct-name-row" @click="toggleDetail(c.id)">
                 <span class="ct-name">{{ c.name }}</span>
                 <span v-if="c.relation" class="ct-rel">{{ c.relation }}</span>
                 <span v-if="c.is_pinned" class="ct-pin">置顶</span>
                 <span v-if="c.days_to_birthday !== null" class="ct-bday" :class="bdayCls(c.days_to_birthday)">
                   {{ bdayLabel(c.days_to_birthday) }}
                 </span>
+                <span class="ct-fold" :class="{ open: expandedId === c.id }" aria-hidden="true">⌄</span>
               </div>
               <div class="ct-meta">
-                <span v-if="c.birthday">{{ bdayText(c) }}{{ c.age ? ` · ${c.age} 岁` : '' }}</span>
                 <span v-if="c.phone">
-                  电话 <a class="ct-tel" :href="`tel:${c.phone}`">{{ c.phone }}</a>
+                  <a class="ct-tel" :href="`tel:${c.phone}`" @click.stop>{{ c.phone }}</a>
                 </span>
-                <span v-if="c.address">住址 {{ c.address }}</span>
-                <span v-if="c.identity_no">身份照号 {{ c.identity_no }}</span>
-                <!-- v2.46.378：去掉「XX 录入」——每张卡都重复同一句，纯噪音 -->
+                <span v-if="c.birthday" class="ct-soft">{{ bdayText(c) }}{{ c.age ? ` · ${c.age} 岁` : '' }}</span>
               </div>
-              <p v-if="c.notes" class="ct-notes">{{ c.notes }}</p>
+              <div v-if="expandedId === c.id" class="ct-detail">
+                <span v-if="c.address">住址 · {{ c.address }}</span>
+                <span v-if="c.identity_no">身份照号 · {{ c.identity_no }}</span>
+                <p v-if="c.notes" class="ct-notes">{{ c.notes }}</p>
+              </div>
             </div>
           </div>
-          <div class="ct-card-actions">
+          <div v-if="expandedId === c.id" class="ct-card-actions">
             <IconButton
               icon="camera"
               size="sm"
@@ -250,6 +256,13 @@ const loading = ref(true)
 const keyword = ref('')
 const relationFilter = ref('')
 const view = ref('list')
+/* v2.46.388：卡片展开态。默认收起（只露姓名/关系/生日/电话），
+   住址、身份照号、备注和那排操作按钮点开才出现。
+   一屏从 1.5 个人变成 4 个人，密度问题在「默认态」解决，不靠删数据。 */
+const expandedId = ref(null)
+function toggleDetail(id) {
+  expandedId.value = expandedId.value === id ? null : id
+}
 
 const dialog = ref(false)
 const saving = ref(false)
@@ -578,7 +591,11 @@ onMounted(reload)
 .ct-avatar-photo { padding: 0; overflow: hidden; cursor: zoom-in; }
 .ct-avatar-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .ct-card-text { flex: 1; min-width: 0; }
-.ct-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ct-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* v2.46.388：收起时用一个小折角提示「还有内容」，别用「详情」两个字占一格 */
+.ct-fold { margin-left: auto; font-size: 14px; line-height: 1; color: var(--lj-text-3);
+  transition: transform .2s ease; }
+.ct-fold.open { transform: rotate(180deg); }
 .ct-name { font-size: 16px; font-weight: 600; color: var(--lj-text); }
 .ct-rel { font-size: 12px; color: var(--lj-text-2); padding: 1px 8px; border-radius: 999px;
   border: 1px solid var(--lj-line); }
@@ -589,7 +606,12 @@ onMounted(reload)
 .ct-bday.is-near { color: var(--lj-ochre); border-color: var(--lj-ochre); }
 .ct-bday.is-soon { color: var(--lj-seal); border-color: var(--lj-seal); background: var(--lj-seal-soft); }
 .ct-bday.is-today { color: #0B0F14; background: var(--lj-seal); border-color: var(--lj-seal); font-weight: 600; }
-.ct-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--lj-text-2); }
+/* 默认态只有一行：电话 + 农历生日。收起时 meta 不再 wrap 成四行 */
+.ct-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 5px; font-size: 12.5px; color: var(--lj-text-2); }
+.ct-soft { color: var(--lj-text-3); }
+.ct-detail { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; font-size: 12px;
+  color: var(--lj-text-3); line-height: 1.7; }
+.ct-detail .ct-notes { margin: 2px 0 0; }
 .ct-tel { color: var(--lj-dai); text-decoration: none; }
 .ct-tel:hover { text-decoration: underline; }
 .ct-notes { margin: 6px 0 0; font-size: 12px; color: var(--lj-text-3); line-height: 1.6; }
