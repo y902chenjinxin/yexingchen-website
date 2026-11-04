@@ -24,27 +24,44 @@
 :root {
   --lg-blur: blur(30px) saturate(180%);
   --lg-blur-soft: blur(16px) saturate(160%);
-  /* 夜间（默认）：深色玻璃 */
-  --lg-tint: rgba(16, 24, 38, .42);
-  --lg-tint-strong: rgba(12, 18, 30, .58);
-  --lg-line: rgba(255, 255, 255, .16);
-  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, .20);
-  --lg-shadow: 0 1px 2px rgba(0, 0, 0, .26), 0 14px 34px -12px rgba(0, 0, 0, .55);
-  /* v2.46.374：卡面「上亮下透」斜向高光，玻璃的透光幕布 */
-  --lg-sheen: linear-gradient(168deg, rgba(255, 255, 255, .12) 0%, rgba(255, 255, 255, .02) 44%, rgba(255, 255, 255, 0) 72%);
+  /* 🔴 v2.46.377 液态玻璃成立的关键修正：
+   * v2.46.374~376 的夜间卡面是 rgba(16,24,38,.42) —— 一层「深色」。
+   * 深色玻璃叠在深色背景上只有两件事发生：卡片比背景更暗、彩晕被压掉，
+   * 于是满屏看起来就是「一块块实心深灰板」，夜星说「还是没做成液态玻璃」。
+   * 真正的玻璃总是「采集环境光后提亮」：所以夜间卡面改用**半透明白**，
+   * 卡片一定比背景亮；配合 blur 把背景彩晕糊成一层柔光透上来。 */
+  --lg-tint: rgba(255, 255, 255, .11);
+  --lg-tint-strong: rgba(255, 255, 255, .15);
+  --lg-line: rgba(255, 255, 255, .13);
+  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, .30);
+  /* 玻璃厚度：底部内侧一道极淡反光 + 深处的落影，卡才「浮」得起来 */
+  --lg-lo: inset 0 -1px 0 rgba(255, 255, 255, .07);
+  --lg-shadow: 0 0 0 .5px rgba(0, 0, 0, .34), 0 1px 1px rgba(0, 0, 0, .30), 0 18px 40px -14px rgba(0, 0, 0, .62);
+  /* 卡面「上亮下透」斜向高光，玻璃的透光幕布 */
+  --lg-sheen: linear-gradient(168deg, rgba(255, 255, 255, .16) 0%, rgba(255, 255, 255, .03) 42%, rgba(255, 255, 255, 0) 68%);
   /* 物理高光环：::before 遮罩描边用的渐变（顶左最亮 → 右下收暗） */
-  --lg-rim: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .04) 48%, rgba(255, 255, 255, .20));
+  --lg-rim: linear-gradient(150deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .05) 46%, rgba(255, 255, 255, .26));
   /* 白玻璃「可透」的另一半：右下极轻的厚度荫（不再叠彩色雾。
      夜星连着两轮都在说「蓝边」，卡片里再压一层青雾会被读成又一处蓝，
      环境色只让页面光场透上来，卡内只做几何光影） */
-  --lg-glow: radial-gradient(72% 52% at 100% 100%, rgba(0, 0, 0, .18), transparent 70%);
-  /* 氛围光场：底色 + 三团彩晕（雨青 / 紫 / 鎏金），玻璃的「透光幕布」 */
+  --lg-glow: radial-gradient(72% 52% at 100% 100%, rgba(0, 0, 0, .20), transparent 70%);
+  --lg-accent: #5fd8f5;
+  --lg-dash: rgba(255, 255, 255, .18);
+  /* 氛围光场：底色提亮一档（#0a0f1a 太黑，彩晕全被吃掉）。
+     🔴 v2.46.377：光场改成「可纵向平铺的光斑带」——
+     原来是一条 100% 高的大渐变，滚到页面中下部就只剩纯黑，玻璃没东西可透，
+     于是下半屏的卡片全是灰板。现在 780px 一段、repeat-y 平铺，
+     任何一屏至少压着两团彩晕；底色交给 background-color，光斑本身透明，
+     平铺不会有横向接缝。 */
+  /* 🔴 光斑必须铺满 780px 整段：上一版 4 团全挤在 0~26% 高度，
+     页面中下部（宫格区、正文卡）压根没有颜色，卡片透出来就是死白。
+     现在按 4% / 16% / 58% / 82% 分布，任何一屏都压着 2~3 团。 */
+  --lg-page-solid: #0b111c;
   --lg-page:
-    radial-gradient(46rem 34rem at 6% -6%, rgba(23, 176, 214, .34), transparent 62%),
-    radial-gradient(40rem 30rem at 96% 2%, rgba(122, 84, 218, .30), transparent 62%),
-    radial-gradient(46rem 34rem at 76% 78%, rgba(226, 128, 96, .18), transparent 64%),
-    radial-gradient(50rem 38rem at 22% 104%, rgba(201, 160, 107, .22), transparent 62%),
-    linear-gradient(180deg, #0a0f1a 0%, #070b13 100%);
+    radial-gradient(30rem 24rem at 4% 4%, rgba(23, 176, 214, .44), transparent 64%),
+    radial-gradient(26rem 20rem at 96% 16%, rgba(124, 88, 220, .40), transparent 64%),
+    radial-gradient(28rem 22rem at 8% 62%, rgba(201, 160, 107, .26), transparent 64%),
+    radial-gradient(26rem 20rem at 90% 84%, rgba(226, 128, 96, .22), transparent 64%);
 }
 html[data-theme="day"] {
   /* v2.46.374：v2.46.369 把卡面提到 88% 白，玻璃就「实」了——夜星的截图里
@@ -54,22 +71,34 @@ html[data-theme="day"] {
        · 页面彩晕 9% → 22~26%（够强，玻璃才有东西可折射）
        · 描边换白玻璃边（浅底上中性灰线会被读成「蓝边」）
        · 加 --lg-sheen（上亮下透）+ --lg-rim（顶左高光环） */
-  --lg-tint: rgba(255, 255, 255, .56);
-  --lg-tint-strong: rgba(255, 255, 255, .72);
-  --lg-line: rgba(255, 255, 255, .72);
-  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, .95);
-  --lg-shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 14px 30px -12px rgba(24, 24, 27, .18);
-  --lg-sheen: linear-gradient(168deg, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, .14) 44%, rgba(255, 255, 255, 0) 72%);
-  --lg-rim: linear-gradient(150deg, rgba(255, 255, 255, .98), rgba(255, 255, 255, .22) 46%, rgba(255, 255, 255, .70));
-  --lg-glow: radial-gradient(72% 52% at 100% 100%, rgba(60, 50, 40, .05), transparent 70%);
-  /* 底色保留暖中性（夜星否掉过冷蓝灰），彩晕加强到可见：
-     雨青 24% / 紫 20% / 陶土 14% / 鎏金 18% */
+  /* ✅ 最终取值：42% 白。白玻璃挡得越少，底下的彩色光斑越明显，
+     卡片左青右紫，一眼能看出「是透的」；42% 白 + #f5f5f7 底仍是浅色，
+     正文对比度不受影响（深灰字压在 ≥ #e8ecf2 上，对比 > 7:1）。 */
+  --lg-tint: rgba(255, 255, 255, .42);
+  --lg-tint-strong: rgba(255, 255, 255, .62);
+  --lg-line: rgba(255, 255, 255, .92);
+  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, 1);
+  --lg-lo: inset 0 -1px 0 rgba(255, 255, 255, .30);
+  --lg-shadow: 0 0 0 .5px rgba(29, 29, 31, .055), 0 1px 1px rgba(24, 24, 27, .05), 0 16px 32px -12px rgba(24, 24, 27, .20);
+  --lg-sheen: linear-gradient(168deg, rgba(255, 255, 255, .72) 0%, rgba(255, 255, 255, .18) 44%, rgba(255, 255, 255, 0) 72%);
+  --lg-rim: linear-gradient(150deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, .26) 46%, rgba(255, 255, 255, .76));
+  --lg-glow: radial-gradient(72% 52% at 100% 100%, rgba(60, 50, 40, .055), transparent 70%);
+  --lg-accent: #0b7d9c;
+  --lg-dash: rgba(29, 29, 31, .13);
+  /* 底色保留暖中性（夜星否掉过冷蓝灰），彩晕加强到肉眼可见。
+     白玻璃 60% 意味着「背后 40% 会透上来」——那 40% 必须真有颜色，
+     否则 60% 白 + blur 出来仍是一片白，玻璃在物理上不成立。
+     同样改成 780px 一段的平铺光斑带（见夜间注释）。
+     🔴 v2.46.377：底色回到夜星拍板过的 iOS 中性 #f5f5f7 ——
+     前几版用的暖米 #f1eee7 + 鎏金/陶土光，整体显旧发黄。 */
+  --lg-page-solid: #f5f5f7;
+  /* 冷色为主（雨青 + 紫），暖色只留极淡一层做过渡 ——
+     暖色一重，浅灰底就会往「发黄发旧」跑，夜星早前否过一次。 */
   --lg-page:
-    radial-gradient(44rem 32rem at 6% -8%, rgba(23, 176, 214, .24), transparent 62%),
-    radial-gradient(38rem 28rem at 96% 0%, rgba(167, 139, 250, .20), transparent 62%),
-    radial-gradient(42rem 30rem at 84% 72%, rgba(230, 145, 110, .14), transparent 64%),
-    radial-gradient(46rem 34rem at 18% 106%, rgba(201, 160, 107, .18), transparent 62%),
-    linear-gradient(180deg, #f6f4ef 0%, #eeece6 100%);
+    radial-gradient(30rem 24rem at 4% 4%, rgba(23, 176, 214, .30), transparent 64%),
+    radial-gradient(26rem 20rem at 96% 16%, rgba(150, 120, 250, .24), transparent 64%),
+    radial-gradient(28rem 22rem at 8% 62%, rgba(120, 175, 235, .18), transparent 64%),
+    radial-gradient(26rem 20rem at 90% 84%, rgba(214, 168, 108, .10), transparent 64%);
 }
 /* 手机端 blur 调低：一屏十余张卡同时毛玻璃，鸿蒙 WebView 扛得住 20px 扛不动 26px */
 /* v2.46.369 圆角圆润化：--m-radius 的最终生效层是 tech-theme.css 第 9 节（16px 系）
@@ -89,37 +118,72 @@ html[data-theme="day"] #app.is-mobile {
 }
 
 /* ===================== A. 氛围背景 ===================== */
+/* 🔴 v2.46.377：光场不用 `background: var(--lg-page)` 简写 ——
+ * 简写没法给「多层」统一指定 size / repeat，光斑会只画一次、下面全是底色。
+ * 长写四个分量 + `100% 780px / repeat-y`，才能让整页滚动过程中始终有彩晕，
+ * 玻璃卡片滑过光斑时透出的颜色跟着变，这是「看得出是玻璃」的物理前提。 */
 #app {
-  background: var(--lg-page) !important;
+  background-color: var(--lg-page-solid) !important;
+  background-image: var(--lg-page) !important;
+  background-size: 100% 100vh !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+  background-position: 0 0 !important;
 }
 /* 手机各页容器：压过宣纸层「--m-bg + 纸纹」，换同一张光场 */
 #app.is-mobile :is(.fin-page, .st-page, .tv-page, .ct-page, .notes-page, .profile-page, .assistant-page, .abb, .cd-page,
   .tk-page, .sb-page, .li-page, .va-page, .wd-page, .sd-page, .dh-page, .trash-page, .fd-page, .qk-page) {
-  background: var(--lg-page) !important;
+  background-color: var(--lg-page-solid) !important;
+  background-image: var(--lg-page) !important;
+  background-size: 100% 100vh !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+  background-position: 0 0 !important;
 }
 /* v2.46.376：体重/美食等「岛屿内页」走 IslandInnerBase，容器是 .island-inner，
    上一版名单里没有它 —— 于是它还铺着 mobile-paper 的 `--xz-paper + 纸纹`
    （截图里体重页整体比记账页灰一档就是这个）。一并换光场。 */
 #app.is-mobile .island-inner:not(.island-inner-music),
 html[data-theme="day"] #app.is-mobile .island-inner:not(.island-inner-music) {
-  background-color: transparent !important;
-  background-image: none !important;
-  background: var(--lg-page) !important;
+  background-color: var(--lg-page-solid) !important;
+  background-image: var(--lg-page) !important;
+  background-size: 100% 100vh !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+  background-position: 0 0 !important;
 }
 
 /* ===================== C. 卡面：恢复液态玻璃 ===================== */
 /* 手机主卡片组（名单同 mobile-paper.css 112-114，另收编 .gw-card） */
 #app.is-mobile :is(.glass, .glass-card, .fin-kpi, .fin-chart, .fin-ledger, .st-kpi-card, .st-form, .st-list,
   .tv-kpi-card, .tv-map, .tv-slide, .ct-card, .ct-cal-card, .notes-item, .info-card, .cd-card,
-  .wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .ht-card, .qk-card, .dh-card,
+  .wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .life-members, .ht-card, .qk-card, .dh-card,
   .fin-pool, .fin-pcard, .fin-panel, .fin-ptxns, .fin-todo, .fin-batch, .abb-hero, .abb-cell, .abb-stat,
   .assistant-main, .gw-card, .fin-members) {
-  background: var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
+  /* 三层叠加才是「一块玻璃」而不是「一块塑料」：
+     ① 顶部中央的弧形柔光（光从上方来，玻璃把它散开）—— 这是水润感的来源
+     ② 168° 斜向明暗（上亮下透）
+     ③ 右下角厚度荫 + 半透明白本体 */
+  background:
+    radial-gradient(120% 62% at 50% -18%, rgba(255, 255, 255, .22), transparent 62%),
+    var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
   -webkit-backdrop-filter: var(--lg-blur) !important;
   backdrop-filter: var(--lg-blur) !important;
   border: 1px solid var(--lg-line) !important;
   border-radius: 22px !important;
-  box-shadow: var(--lg-hi), var(--lg-shadow) !important;
+  /* 三道光决定「玻璃感」：顶边 1px 强高光（受光面）、底边 1px 弱反光（厚度）、
+     再往下才落影（浮起来）。只给顶光会像塑料片，三条都在才像一块玻璃。 */
+  box-shadow: var(--lg-hi), var(--lg-lo), var(--lg-shadow) !important;
+}
+html[data-theme="day"] #app.is-mobile :is(.glass, .glass-card, .fin-kpi, .fin-chart, .fin-ledger, .st-kpi-card, .st-form, .st-list,
+  .tv-kpi-card, .tv-map, .tv-slide, .ct-card, .ct-cal-card, .notes-item, .info-card, .cd-card,
+  .wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .life-members, .ht-card, .qk-card, .dh-card,
+  .fin-pool, .fin-pcard, .fin-panel, .fin-ptxns, .fin-todo, .fin-batch, .abb-hero, .abb-cell, .abb-stat,
+  .assistant-main, .gw-card, .fin-members) {
+  /* 日间那道顶部柔光要收着点：白玻璃本来就近白，再加 22% 会糊成死白 */
+  background:
+    radial-gradient(120% 62% at 50% -18%, rgba(255, 255, 255, .34), transparent 62%),
+    var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
 }
 
 /* 🔴 v2.46.374：蓝/青描边的真凶不是 border，是 tech-theme.css 476-505 的
@@ -152,20 +216,63 @@ html[data-theme="day"] #app.is-mobile :is(.abb-cell, .glass-card, .cd-card, .li-
   backdrop-filter: var(--lg-blur) !important;
   border: 1px solid var(--lg-line) !important;
   border-radius: 18px !important;
-  box-shadow: var(--lg-hi), var(--lg-shadow) !important;
+  box-shadow: var(--lg-hi), var(--lg-lo), var(--lg-shadow) !important;
 }
 
-/* ===================== D. 壳层玻璃 ===================== */
-/* 手机底栏：夜深玻璃 / 日白玻璃（压过 tech-theme / mobile-paper / tech-theme-day 三层） */
+/* 卡片内部的标题分隔线：玻璃卡里再画一条 1px 硬线，等于在玻璃上贴了条胶带。
+   v2.46.377 夜星第二次提「上面有横线」—— 上一轮只收了页头 (.fin-head/.st-head/
+   .inner-header)，卡片内的 .life-col-head 还留着。这里按类名后缀统一收口。 */
+#app.is-mobile :is(.life-col-head, [class$="-col-head"], [class$="-card-head"], [class$="-panel-head"]) {
+  border-bottom: none !important;
+}
+
+/* 空态框（.ls-empty）：宣纸层给的是 1px 深色描边，装进大玻璃卡里像「黑框」。   换玻璃体系的淡虚线 + 更淡的底，空态才不抢戏。 */
+#app.is-mobile .ls-empty {
+  border-color: var(--lg-dash) !important;
+  background: rgba(255, 255, 255, .18) !important;
+}
+html[data-theme="day"] #app.is-mobile .ls-empty {
+  background: rgba(255, 255, 255, .36) !important;
+}
+
+/* ===================== D. 壳层玻璃 ===================== *//* 手机底栏：夜深玻璃 / 日白玻璃（压过 tech-theme / mobile-paper / tech-theme-day 三层）
+ * 🔴 v2.46.377：夜星「标签页发灰，上面的快捷入口反而清楚」。原因在颜色不在玻璃：
+ *   底栏文字走 --lj-text-3 / --m-text-3（夜间 #8a8f98 中灰），压在近黑玻璃条上
+ *   就是一层灰字；而宫格块是白玻璃 + 彩色图标，自然清楚。
+ *   修法：底栏整条换白玻璃（和宫格同一配方），文字改用玻璃语义色板
+ *   --lg-fg-2（夜间亮白 / 日间深灰），选中项再浮起一颗白胶囊 ——
+ *   这就是 iOS 26 液态玻璃 TabBar 的样子。 */
 #app.is-mobile .mt-tabbar {
-  background: var(--lg-tint-strong) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 46%),
+    var(--lg-tint-strong) !important;
   -webkit-backdrop-filter: var(--lg-blur) !important;
   backdrop-filter: var(--lg-blur) !important;
   border-top: 1px solid var(--lg-line) !important;
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, .24) !important;
+  box-shadow: inset 0 1px 0 var(--lg-line), 0 -10px 30px rgba(0, 0, 0, .22) !important;
 }
 html[data-theme="day"] #app.is-mobile .mt-tabbar {
-  box-shadow: 0 -10px 26px rgba(31, 41, 55, .08) !important;
+  /* 日间 --lg-line 是白色，做不了「上方内容与玻璃条的分界」，这里单独给一条中性淡灰 */
+  border-top: 1px solid rgba(29, 29, 31, .10) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .96), 0 -10px 26px rgba(31, 41, 55, .08) !important;
+}
+#app.is-mobile .mt-tab {
+  /* 底栏文字单独用更实的一档：--lg-fg-2 是「次要文字」色（0.78），
+     放在玻璃条上仍会被读成灰字 —— 夜星连着两轮都说「标签发灰」。 */
+  color: rgba(235, 242, 250, .82) !important;
+  border-radius: 16px;
+  transition: color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+html[data-theme="day"] #app.is-mobile .mt-tab {
+  color: rgba(48, 48, 54, .90) !important;
+}
+#app.is-mobile .mt-tab.active {
+  color: var(--lg-accent) !important;
+  background: var(--lg-ctl-bg-active) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 2px 10px rgba(0, 0, 0, .16) !important;
+}
+html[data-theme="day"] #app.is-mobile .mt-tab.active {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 1px 4px rgba(31, 41, 55, .10) !important;
 }
 /* 桌面侧栏（scoped 底色无 !important，此处稳赢） */
 #app:not(.is-mobile) .dsb {
@@ -705,7 +812,7 @@ html[data-theme="night"] {
 }
 html[data-theme="day"] {
   --lg-fg: #1d1d1f;
-  --lg-fg-2: rgba(60, 60, 67, .64);
+  --lg-fg-2: rgba(60, 60, 67, .78);
   --lg-fg-3: rgba(60, 60, 67, .44);
   --lg-good: #1a7f5a;
   --lg-bad: #c0392b;
