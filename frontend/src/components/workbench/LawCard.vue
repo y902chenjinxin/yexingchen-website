@@ -97,19 +97,19 @@ onMounted(() => load(0))
 .lw-en { font-size: 11px; color: var(--tc-text-3, #5b6f8a); letter-spacing: .01em; }
 .lw-who {
   font-size: 10.5px; padding: 1px 6px; border-radius: 4px;
-  background: rgba(15, 60, 110, .05); color: var(--tc-text-3, #5b6f8a);
+  background: rgba(29, 29, 31, .05); color: var(--tc-text-3, #5b6f8a);
 }
 .lw-one { margin: 6px 0 0; font-size: 13.5px; line-height: 1.75; color: var(--tc-text-2, #46586e); font-weight: 500; }
 
 .lw-body { margin-top: 12px; }
 .lw-explain {
   margin: 0 0 12px; padding: 11px 13px; border-radius: 10px;
-  background: rgba(15, 60, 110, .035);
+  background: rgba(29, 29, 31, .035);
   font-size: 13.5px; line-height: 1.95; color: var(--tc-text-2, #46586e); white-space: pre-wrap;
 }
 
 .lw-note { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px; padding: 9px 0; }
-.lw-note + .lw-note { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .1)); }
+.lw-note + .lw-note { border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .1)); }
 .lw-note b {
   font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--tc-cyan-deep, #0a708c);
   border-left: 2px solid var(--tc-cyan, #0e93b8); padding-left: 8px; line-height: 1.7;

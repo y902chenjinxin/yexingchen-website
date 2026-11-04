@@ -25,20 +25,20 @@
   --tc-violet: #6d4aff;        /* 紫：白底上要更深更饱和，否则发粉发淡 */
   --tc-violet-bright: #8a6bff;
   --tc-magenta: #d1318b;
-  --tc-bg-0: #e4ebf5;          /* 最深：外壳/页脚 */
-  --tc-bg-1: #f2f6fb;          /* 页底：冷白 */
+  --tc-bg-0: #e8e8ed;          /* 最深：外壳/页脚（中性灰，Apple systemGray5 系） */
+  --tc-bg-1: #f5f5f7;          /* 页底：iOS 中性灰白（原冷蓝白 #f2f6fb，夜星：「整体淡淡蓝灰怪怪的」） */
   --tc-bg-2: #ffffff;          /* 卡面 */
   --tc-surface: #ffffff;
-  --tc-line: rgba(15, 60, 110, .14);
-  --tc-line-strong: rgba(15, 60, 110, .26);
-  --tc-text: #0b1622;
-  --tc-text-2: #46586e;
-  --tc-text-3: #5b6f8a;
+  --tc-line: rgba(29, 29, 31, .14);
+  --tc-line-strong: rgba(29, 29, 31, .26);
+  --tc-text: #1d1d1f;
+  --tc-text-2: #515154;
+  --tc-text-3: #6e6e73;
   --tc-glow-cyan: rgba(14, 147, 184, .22);
   --tc-glow-violet: rgba(109, 74, 255, .18);
   /* 白天主按钮：实色青→蓝 + 白字（亮底上不能再用「深字压亮渐变」，对比反而更低） */
-  --tc-btn-grad: linear-gradient(135deg, #12a8cf, #3358d4);
-  --tc-btn-grad-hover: linear-gradient(135deg, #17b6dd, #3d63e0);
+  --tc-btn-grad: linear-gradient(135deg, #12a8cf, #0a708c);
+  --tc-btn-grad-hover: linear-gradient(135deg, #17b6dd, #0a7492);
   --tc-btn-fg: #ffffff;
   --tc-btn-ring: rgba(14, 147, 184, .30);
 }
@@ -50,20 +50,20 @@
   --color-bg: var(--tc-bg-1);
   --color-bg-elevated: var(--tc-bg-2);
   --color-bg-glass: rgba(255, 255, 255, .78);
-  --ink-black: #0b1622;        /* 白天这组是「深墨」，按钮/描边用 */
-  --ink-dark: #16273a;
-  --ink-medium: #46586e;
-  --ink-light: #7285a0;
+  --ink-black: #1d1d1f;        /* 白天这组是「深墨」，按钮/描边用 */
+  --ink-dark: #2c2c2e;
+  --ink-medium: #515154;
+  --ink-light: #8e8e93;
   --bg-deep: var(--tc-bg-0);
   --bg-indigo: var(--tc-bg-1);
   --bg-night: var(--tc-bg-2);
 
   /* 文字 */
   --color-text: var(--tc-text);
-  --color-text-dark: #0b1622;  /* 浅底深字（原 #1a1a1a，改冷墨） */
+  --color-text-dark: #1d1d1f;  /* 浅底深字（中性墨） */
   --color-text-secondary: var(--tc-text-2);
   --color-text-muted: var(--tc-text-3);
-  --color-text-light: #f2f6fb; /* 深底上的浅字 */
+  --color-text-light: #f5f5f7; /* 深底上的浅字 */
 
   /* 主色 */
   --color-primary: var(--tc-cyan);
@@ -127,20 +127,20 @@
 
   /* 玻璃 / 阴影：白天靠「浅投影 + 发丝边」，不靠发光 */
   --glass-blur: blur(18px) saturate(150%);
-  --glass-border: rgba(15, 60, 110, .14);
+  --glass-border: rgba(29, 29, 31, .14);
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .9);
   --glass-shadow:
-    0 1px 2px rgba(15, 60, 110, .06),
-    0 10px 28px rgba(15, 60, 110, .08);
+    0 1px 2px rgba(29, 29, 31, .06),
+    0 10px 28px rgba(29, 29, 31, .08);
   --glow-rain: rgba(14, 147, 184, .10);
   --glow-gold: rgba(14, 147, 184, .08);
-  --shadow-sm: 0 1px 3px rgba(15, 60, 110, .08);
+  --shadow-sm: 0 1px 3px rgba(29, 29, 31, .08);
   --shadow: var(--glass-shadow);
-  --shadow-lg: 0 18px 44px rgba(15, 60, 110, .12);
+  --shadow-lg: 0 18px 44px rgba(29, 29, 31, .12);
   --shadow-glow: 0 0 24px rgba(14, 147, 184, .18);
-  --shadow-ink: 0 8px 22px rgba(15, 60, 110, .14);
+  --shadow-ink: 0 8px 22px rgba(29, 29, 31, .14);
   --shadow-jade: 0 0 14px rgba(14, 147, 184, .16);
-  --shadow-xl: 0 24px 52px rgba(15, 60, 110, .16);
+  --shadow-xl: 0 24px 52px rgba(29, 29, 31, .16);
 
   /* 圆角：沿用暗色一套 */
   --radius-sm: 10px;
@@ -170,8 +170,8 @@
   --dp-bg2: var(--tc-bg-0);
   --dp-surface: #ffffff;
   --dp-surface2: #f6f9fd;
-  --dp-line: rgba(15, 60, 110, .12);
-  --dp-line-strong: rgba(15, 60, 110, .22);
+  --dp-line: rgba(29, 29, 31, .12);
+  --dp-line-strong: rgba(29, 29, 31, .22);
   --dp-text: var(--tc-text);
   --dp-text2: var(--tc-text-2);
   --dp-text3: var(--tc-text-3);
@@ -179,9 +179,9 @@
   --dp-accent-hover: var(--tc-cyan-deep);
   --dp-accent-strong: var(--tc-cyan-deep);
   --dp-accent-faint: rgba(14, 147, 184, .10);
-  --dp-shadow: 0 1px 2px rgba(15, 60, 110, .05), 0 8px 24px rgba(15, 60, 110, .07);
-  --dp-glow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 1px 2px rgba(15, 60, 110, .05), 0 12px 30px rgba(15, 60, 110, .08);
-  --dp-raised: 0 2px 6px rgba(15, 60, 110, .06), 0 20px 48px rgba(15, 60, 110, .10);
+  --dp-shadow: 0 1px 2px rgba(29, 29, 31, .05), 0 8px 24px rgba(29, 29, 31, .07);
+  --dp-glow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 1px 2px rgba(29, 29, 31, .05), 0 12px 30px rgba(29, 29, 31, .08);
+  --dp-raised: 0 2px 6px rgba(29, 29, 31, .06), 0 20px 48px rgba(29, 29, 31, .10);
 
   /* Element Plus：白底深字 + 青主色 */
   --el-bg-color: #ffffff;
@@ -191,12 +191,12 @@
   --el-text-color-regular: #34445a;
   --el-text-color-secondary: var(--tc-text-2);
   --el-text-color-placeholder: var(--tc-text-3);
-  --el-border-color: rgba(15, 60, 110, .18);
-  --el-border-color-light: rgba(15, 60, 110, .12);
-  --el-border-color-lighter: rgba(15, 60, 110, .09);
-  --el-border-color-extra-light: rgba(15, 60, 110, .06);
+  --el-border-color: rgba(29, 29, 31, .18);
+  --el-border-color-light: rgba(29, 29, 31, .12);
+  --el-border-color-lighter: rgba(29, 29, 31, .09);
+  --el-border-color-extra-light: rgba(29, 29, 31, .06);
   --el-fill-color-blank: #ffffff;
-  --el-fill-color-light: #f4f8fd;
+  --el-fill-color-light: #f5f5f7;
   --el-fill-color-lighter: #f8fbfe;
   --el-mask-color: rgba(228, 235, 245, .72);
   --el-color-primary: #0a708c;
@@ -209,7 +209,7 @@
   --el-color-success: #0f7a56;
   --el-color-danger: #cf2540;
   --el-color-warning: #a86400;
-  --el-color-info: #46586e;
+  --el-color-info: #515154;
 }
 
 /* ============ 3. 全局动效背景（覆盖第 2 节） ============
@@ -218,14 +218,14 @@
 #app::before {
   background:
     radial-gradient(58% 48% at 12% 6%, rgba(14, 147, 184, .10), transparent 62%),
-    radial-gradient(52% 44% at 90% 94%, rgba(51, 88, 212, .08), transparent 64%),
+    radial-gradient(52% 44% at 90% 94%, rgba(169, 128, 79, .08), transparent 64%),
     radial-gradient(46% 40% at 50% 52%, rgba(109, 74, 255, .05), transparent 72%),
     var(--tc-bg-1);
 }
 #app::after {
   background-image:
-    linear-gradient(rgba(15, 60, 110, .055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 60, 110, .055) 1px, transparent 1px);
+    linear-gradient(rgba(29, 29, 31, .055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 29, 31, .055) 1px, transparent 1px);
   background-size: 46px 46px;
   opacity: .6;
 }
@@ -234,13 +234,13 @@
 :root[data-theme="day"] .el-button {
   --el-button-bg-color: #ffffff;
   --el-button-border-color: var(--tc-line-strong);
-  --el-button-text-color: #22344a;
+  --el-button-text-color: #1d1d1f;
   --el-button-hover-bg-color: rgba(14, 147, 184, .08);
   --el-button-hover-border-color: var(--tc-cyan);
   --el-button-hover-text-color: var(--tc-cyan-deep);
   --el-button-active-bg-color: rgba(14, 147, 184, .14);
   --el-button-active-border-color: var(--tc-cyan-deep);
-  box-shadow: 0 1px 2px rgba(15, 60, 110, .06);
+  box-shadow: 0 1px 2px rgba(29, 29, 31, .06);
   backdrop-filter: none;
 }
 :root[data-theme="day"] .el-button:hover {
@@ -251,13 +251,13 @@
   --el-button-text-color: #04121f;
   background:
     linear-gradient(135deg, var(--tc-cyan-bright), var(--tc-blue)) padding-box,
-    linear-gradient(135deg, var(--tc-cyan-bright), var(--tc-violet)) border-box;
+    linear-gradient(135deg, var(--tc-cyan-bright), var(--tc-cyan-deep)) border-box;
   box-shadow: 0 6px 18px rgba(14, 147, 184, .28);
 }
 :root[data-theme="day"] .el-button--primary:hover {
   background:
-    linear-gradient(135deg, #17b6dd, #3d63e0) padding-box,
-    linear-gradient(135deg, #17b6dd, var(--tc-violet-bright)) border-box;
+    linear-gradient(135deg, #17b6dd, #0a7492) padding-box,
+    linear-gradient(135deg, #17b6dd, var(--tc-cyan-deep)) border-box;
   box-shadow: 0 8px 24px rgba(14, 147, 184, .36);
 }
 :root[data-theme="day"] .el-button.is-link,
@@ -281,7 +281,7 @@
 :root[data-theme="day"] .el-card {
   background: #ffffff;
   border-color: var(--tc-line);
-  box-shadow: 0 1px 2px rgba(15, 60, 110, .05), 0 8px 22px rgba(15, 60, 110, .07);
+  box-shadow: 0 1px 2px rgba(29, 29, 31, .05), 0 8px 22px rgba(29, 29, 31, .07);
 }
 :root[data-theme="day"] .el-dialog,
 :root[data-theme="day"] .el-drawer,
@@ -290,7 +290,7 @@
   background: #ffffff;
   border: 1px solid var(--tc-line);
   color: var(--tc-text);
-  box-shadow: 0 24px 60px rgba(15, 60, 110, .18);
+  box-shadow: 0 24px 60px rgba(29, 29, 31, .18);
   /* v2.46.229：补圆角（与夜间版 radius-lg 一致）。EP 默认 4px 直角白盒观感差。 */
   border-radius: var(--radius-lg, 14px);
 }
@@ -302,59 +302,59 @@
 :root[data-theme="day"] .el-table {
   --el-table-bg-color: #ffffff;
   --el-table-tr-bg-color: #ffffff;
-  --el-table-header-bg-color: #f4f8fd;
-  --el-table-border-color: rgba(15, 60, 110, .10);
+  --el-table-header-bg-color: #f5f5f7;
+  --el-table-border-color: rgba(29, 29, 31, .10);
   --el-table-row-hover-bg-color: rgba(14, 147, 184, .06);
   color: var(--tc-text);
 }
-:root[data-theme="day"] .el-table th.el-table__cell { color: #22344a; font-weight: 700; }
+:root[data-theme="day"] .el-table th.el-table__cell { color: #1d1d1f; font-weight: 700; }
 
 :root[data-theme="day"] .el-tag {
   background: rgba(14, 147, 184, .10);
   border-color: rgba(14, 147, 184, .28);
   color: var(--tc-cyan-deep);
 }
-:root[data-theme="day"] .el-progress-bar__outer { background: rgba(15, 60, 110, .10); }
+:root[data-theme="day"] .el-progress-bar__outer { background: rgba(29, 29, 31, .10); }
 :root[data-theme="day"] .el-pagination { color: var(--tc-text-2); }
 
 /* ============ 5. 通用卡片 / 工具类（白底版） ============ */
 :root[data-theme="day"] :is(.tech-panel, .glass-card, .ls-card, .jade-card) {
   background:
     linear-gradient(160deg, rgba(255, 255, 255, .96), rgba(246, 249, 253, .92)) padding-box,
-    linear-gradient(140deg, rgba(14, 147, 184, .38), rgba(51, 88, 212, .16) 55%, rgba(15, 60, 110, .10)) border-box;
+    linear-gradient(140deg, rgba(14, 147, 184, .38), rgba(14, 147, 184, .16) 55%, rgba(29, 29, 31, .10)) border-box;
   border: 1px solid transparent;
-  box-shadow: 0 1px 2px rgba(15, 60, 110, .05), 0 10px 26px rgba(15, 60, 110, .08);
+  box-shadow: 0 1px 2px rgba(29, 29, 31, .05), 0 10px 26px rgba(29, 29, 31, .08);
 }
 /* 文字渐变：白底上必须压深，否则「亮青」几乎等于无字 */
 :root[data-theme="day"] :is(.text-gold, .text-gold-premium) {
-  background: linear-gradient(92deg, #0a7492, #0a708c 48%, #3358d4);
+  background: linear-gradient(92deg, #0a7492, #0a708c 48%, #12a8cf);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: none;
 }
 :root[data-theme="day"] .tech-gradient-text {
-  background: linear-gradient(92deg, #0a708c, #3358d4);
+  background: linear-gradient(92deg, #0a708c, #12a8cf);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 :root[data-theme="day"] .tech-glow { text-shadow: none; }
 :root[data-theme="day"] .tech-divider {
-  background: linear-gradient(90deg, transparent, rgba(15, 60, 110, .22), transparent);
+  background: linear-gradient(90deg, transparent, rgba(29, 29, 31, .22), transparent);
 }
 
 /* ============ 6. 页面级：暗色写死的块改成冷白 ============ */
 :root[data-theme="day"] .login-page {
   background:
     radial-gradient(70% 52% at 20% 10%, rgba(14, 147, 184, .16), transparent 62%),
-    radial-gradient(60% 46% at 82% 80%, rgba(51, 88, 212, .12), transparent 62%),
-    linear-gradient(180deg, #f7fafd 0%, #e8eff8 100%) !important;
+    radial-gradient(60% 46% at 82% 80%, rgba(169, 128, 79, .10), transparent 62%),
+    linear-gradient(180deg, #f5f5f7 0%, #e9e9ee 100%) !important;
 }
 :root[data-theme="day"] .login-card {
   background: rgba(255, 255, 255, .88) !important;
   border-color: var(--tc-line-strong) !important;
-  box-shadow: 0 2px 6px rgba(15, 60, 110, .06), 0 24px 56px rgba(15, 60, 110, .12) !important;
+  box-shadow: 0 2px 6px rgba(29, 29, 31, .06), 0 24px 56px rgba(29, 29, 31, .12) !important;
 }
 /* v2.46.260：.site-subtitle 已从登录页删除，选择器同步移除 */
 :root[data-theme="day"] .login-page .back-link,
@@ -367,7 +367,7 @@
 :root[data-theme="day"] .filing-links a:hover { color: var(--tc-cyan-deep) !important; }
 
 :root[data-theme="day"] .island-page {
-  background: linear-gradient(180deg, #f7fafd 0%, #e9f0f9 100%) !important;
+  background: linear-gradient(180deg, #f5f5f7 0%, #ececf0 100%) !important;
 }
 :root[data-theme="day"] .island-header {
   background: rgba(255, 255, 255, .82) !important;
@@ -407,46 +407,46 @@
 /* 代码块：白底页面上用浅灰纸 + 深墨字（暗色那种深底块在白天太跳） */
 :root[data-theme="day"] .fd-rich pre,
 :root[data-theme="day"] .ne-content pre {
-  background: #eef4fb !important;
-  color: #16273a !important;
+  background: #f2f2f7 !important;
+  color: #2c2c2e !important;
   border: 1px solid var(--tc-line) !important;
 }
 
 /* ============ 7. 移动端（白天的「亮科技」令牌，覆盖 tech-theme.css 第 9 节） ============ */
 html[data-theme="day"] #app.is-mobile {
-  --m-bg: #eef3fa;
+  --m-bg: #f5f5f7;
   --m-bg-elevated: #ffffff;
   --m-surface: rgba(255, 255, 255, .94);
-  --m-surface-2: #f4f8fd;
-  --m-line: rgba(15, 60, 110, .12);
-  --m-line-strong: rgba(15, 60, 110, .24);
-  --m-text: #0b1622;
-  --m-text-2: #46586e;
-  --m-text-3: #5b6f8a;
+  --m-surface-2: #f5f5f7;
+  --m-line: rgba(29, 29, 31, .12);
+  --m-line-strong: rgba(29, 29, 31, .24);
+  --m-text: #1d1d1f;
+  --m-text-2: #515154;
+  --m-text-3: #6e6e73;
   --m-accent: #0a708c;
   --m-accent-strong: #0a7492;
   --m-positive: #0f7a56;
   --m-negative: #cf2540;
   --m-warning: #a86400;
-  --m-shadow: 0 8px 22px rgba(15, 60, 110, .10);
+  --m-shadow: 0 8px 22px rgba(29, 29, 31, .10);
 
-  --xz-ink: #0b1622;
-  --xz-paper: #eef3fa;
+  --xz-ink: #1d1d1f;
+  --xz-paper: #f5f5f7;
   --xz-card: rgba(255, 255, 255, .96);
-  --xz-card-2: #f4f8fd;
+  --xz-card-2: #f5f5f7;
   /* v2.46.326：卡片描边从「青色 30%」改成中性墨灰 14%。
    * 夜星：「这里有蓝色的线条感觉很怪异」—— 2px 青线在冷白底上读成"荧光蓝框"，
    * 音乐/视频/笔记/工具每张卡都带一圈，整页像线框图。
    * 卡片边缘交给白底 + 墨色硬阴影就够了，线条只做极轻的定界。 */
-  --xz-card-border: rgba(11, 22, 34, .14);
-  --xz-card-shadow: 3px 3px 0 rgba(11, 22, 34, .82);   /* 白天保留 Neo-Brutalism 墨色硬偏移 */
-  --xz-card-shadow-press: 1px 1px 0 rgba(11, 22, 34, .82);
-  --xz-head-line: rgba(11, 22, 34, .38);
+  --xz-card-border: rgba(29, 29, 31, .14);
+  --xz-card-shadow: 3px 3px 0 rgba(29, 29, 31, .82);   /* 白天保留 Neo-Brutalism 墨色硬偏移 */
+  --xz-card-shadow-press: 1px 1px 0 rgba(29, 29, 31, .82);
+  --xz-head-line: rgba(29, 29, 31, .38);
   --xz-teal: #0e93b8;           /* 大色块：白底上的实色青（背景块，保持饱和） */
   /* 🔴 这里必须是深色字：`--xz-teal-ink` 被 mobile-paper 直接当文字色用（不一定配上青底），
    * 白天填白就会「白字白底」——夜星反馈的「记账本月收入看不清」就是这条（实测 1.07:1）。 */
-  --xz-teal-ink: #0b1622;
-  --xz-ochre: #3358d4;
+  --xz-teal-ink: #1d1d1f;
+  --xz-ochre: #a9804f;
   --xz-gold: #0a708c;
   --xz-btn-bg: #0a708c;   /* 纯色，理由同 tech-theme 第 9 节 */
   --xz-btn-fg: #ffffff;
@@ -455,13 +455,13 @@ html[data-theme="day"] #app.is-mobile {
   /* 白天移动端文字 / yq 方言（对应 tech-theme 第 9 节的夜间版）：
    * mobile-ab-theme 把 --color-text-muted 写成 #8a8f98、#62666d，白底上对比仅 ~2.9~3.0，
    * 看着「发灰发淡」（夜星：音乐页歌名看不清）。统一压到深墨灰/深青。 */
-  --color-text: #0b1622;
-  --color-text-secondary: #46586e;
-  --color-text-muted: #5b6f8a;
-  --color-text-light: #f2f6fb;
-  --xiu-text: #0b1622;
-  --xiu-text-2: #46586e;
-  --xiu-text-3: #5b6f8a;
+  --color-text: #1d1d1f;
+  --color-text-secondary: #515154;
+  --color-text-muted: #6e6e73;
+  --color-text-light: #f5f5f7;
+  --xiu-text: #1d1d1f;
+  --xiu-text-2: #515154;
+  --xiu-text-3: #6e6e73;
   --yq-rain: #0a708c;
   --yq-rain-bright: #12a8cf;
   --yq-rain-deep: #0a7492;
@@ -472,7 +472,7 @@ html[data-theme="day"] #app.is-mobile {
   --yq-accent-fg: #ffffff;
   --yq-accent-glow: rgba(14, 147, 184, .26);
   --color-primary: #0a708c;
-  --color-secondary: #3358d4;
+  --color-secondary: #0e93b8;
   --color-accent: #6d4aff;
   --color-gold: #0a708c;
   --color-gold-bright: #12a8cf;
@@ -487,40 +487,40 @@ html[data-theme="day"] #app.is-mobile {
 
   --lj-paper: rgba(255, 255, 255, .86);
   --lj-glass: rgba(255, 255, 255, .80);
-  --lj-line: rgba(15, 60, 110, .14);
-  --lj-line-strong: rgba(15, 60, 110, .26);
-  --lj-ochre: #3358d4;
+  --lj-line: rgba(29, 29, 31, .14);
+  --lj-line-strong: rgba(29, 29, 31, .26);
+  --lj-ochre: #a9804f;
   --lj-seal: #0a708c;
   --lj-seal-hover: #12a8cf;
   --ls-paper: #ffffff;
-  --ls-paper-2: #f6f9fd;
+  --ls-paper-2: #f7f7fa;
   --ls-glass: rgba(255, 255, 255, .80);
-  --ls-line: rgba(15, 60, 110, .14);
-  --ls-line-strong: rgba(15, 60, 110, .26);
+  --ls-line: rgba(29, 29, 31, .14);
+  --ls-line-strong: rgba(29, 29, 31, .26);
   --ls-bg-glow: rgba(14, 147, 184, .10);
-  --ls-ochre: #3358d4;
+  --ls-ochre: #a9804f;
   --ls-dai: #0a708c;
-  --glass-border: rgba(15, 60, 110, .18);
+  --glass-border: rgba(29, 29, 31, .18);
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, .9);
 }
 
 /* 移动端 teleport 浮层（白天） */
 html[data-theme="day"].m-app {
-  --xz-ink: #0b1622;
+  --xz-ink: #1d1d1f;
   --xz-card: #ffffff;
-  --xz-card-2: #f4f8fd;
-  --xz-card-border: rgba(15, 60, 110, .20);
+  --xz-card-2: #f5f5f7;
+  --xz-card-border: rgba(29, 29, 31, .20);
   --xz-gold: #0a708c;
   --xz-btn-bg: #0a708c;
   --xz-btn-fg: #ffffff;
-  --xz-line: rgba(15, 60, 110, .16);
+  --xz-line: rgba(29, 29, 31, .16);
 }
 
 /* 移动端硬编码（对应 tech-theme.css 9b 的白天版） */
 html[data-theme="day"] #app.is-mobile .mt-tabbar {
   background: rgba(255, 255, 255, .94) !important;
-  border-top: 1px solid rgba(15, 60, 110, .14) !important;
-  box-shadow: 0 -8px 22px rgba(15, 60, 110, .10) !important;
+  border-top: 1px solid rgba(29, 29, 31, .14) !important;
+  box-shadow: 0 -8px 22px rgba(29, 29, 31, .10) !important;
 }
 html[data-theme="day"] #app.is-mobile .mt-tab.active { color: var(--tc-cyan-deep) !important; }
 
@@ -531,7 +531,7 @@ html[data-theme="day"] #app.is-mobile :is(.glass-card, .ls-card, .glass) {
   border: 1px solid var(--glass-border) !important;
 }
 html[data-theme="day"] #app.is-mobile .profile-page .theme-seg-btn.active {
-  background: linear-gradient(135deg, #12a8cf, #3358d4) !important;
+  background: linear-gradient(135deg, #12a8cf, #0a708c) !important;
   box-shadow: 0 4px 14px rgba(14, 147, 184, .26) !important;
   color: #ffffff !important;
 }
@@ -541,23 +541,23 @@ html[data-theme="day"] #app.is-mobile .fin-row-swipe {
 }
 html[data-theme="day"] #app.is-mobile .fin-row-swipe button { border-color: #cf2540; color: #cf2540; }
 html[data-theme="day"] #app.is-mobile .pt-paper {
-  background: linear-gradient(160deg, #ffffff, #f4f8fd) !important;
+  background: linear-gradient(160deg, #ffffff, #f5f5f7) !important;
   border-color: var(--tc-line-strong) !important;
 }
 html[data-theme="day"] #app.is-mobile :is(.pt-text, .pt-date, .pt-loading) { color: var(--tc-text) !important; }
 html[data-theme="day"] #app.is-mobile .note-editor .ne-content pre {
-  background: #eef4fb !important;
-  color: #16273a !important;
+  background: #f2f2f7 !important;
+  color: #2c2c2e !important;
 }
 /* 手机登录卡主按钮（mobile-paper.css 曾写死回旧鎏金） */
 html[data-theme="day"] #app.is-mobile .login-card .el-button--primary {
-  background: linear-gradient(135deg, #12a8cf, #3358d4) !important;
+  background: linear-gradient(135deg, #12a8cf, #0a708c) !important;
   color: #ffffff !important;
   border: 1px solid rgba(14, 147, 184, .45) !important;
 }
 html[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
   background: #ffffff !important;
-  border: 1px solid rgba(15, 60, 110, .18) !important;
+  border: 1px solid rgba(29, 29, 31, .18) !important;
 }
 html[data-theme="day"] #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
   border-color: #0a708c !important;
@@ -641,7 +641,7 @@ html[data-theme="day"] #app.is-mobile :is(.fin-quick-tag.on, .fin-fund.active) {
 html[data-theme="day"] #app.is-mobile {
   --m-line: rgba(17, 38, 51, .10);
   --m-line-strong: rgba(17, 38, 51, .20);
-  --xz-card-border: rgba(11, 22, 34, .14);
+  --xz-card-border: rgba(29, 29, 31, .14);
   --lj-line: rgba(17, 38, 51, .10);
   --lj-line-strong: rgba(17, 38, 51, .20);
   --ls-line: rgba(17, 38, 51, .10);
@@ -709,7 +709,7 @@ html[data-theme="day"] #app.is-mobile {
 :root[data-theme="day"] select { color-scheme: light; }
 :root[data-theme="day"] select option {
   background-color: #ffffff;
-  color: #0b1622;
+  color: #1d1d1f;
 }
 :root[data-theme="day"] select option:checked {
   background-color: #e8f6fa;

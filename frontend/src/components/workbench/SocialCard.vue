@@ -143,12 +143,12 @@ onMounted(() => load(0))
 .so-body { margin-top: 10px; }
 .so-story {
   margin: 0 0 12px; padding: 11px 13px; border-radius: 10px;
-  background: rgba(15, 60, 110, .04);
+  background: rgba(29, 29, 31, .04);
   font-size: 13.5px; line-height: 1.95; color: var(--tc-text-2, #46586e); white-space: pre-wrap;
 }
 
 .so-note { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 10px; padding: 9px 0; }
-.so-note + .so-note { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .1)); }
+.so-note + .so-note { border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .1)); }
 .so-note b {
   font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--tc-cyan-deep, #0a708c);
   border-left: 2px solid var(--tc-cyan, #0e93b8); padding-left: 8px; line-height: 1.7;
@@ -166,7 +166,7 @@ onMounted(() => load(0))
 .so-say-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .so-say-head b { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--lj-seal, #a9812f); }
 .so-copy {
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14)); background: transparent;
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .14)); background: transparent;
   border-radius: 6px; padding: 1px 8px; font: inherit; font-size: 10.5px; cursor: pointer;
   color: var(--tc-text-3, #5b6f8a);
 }

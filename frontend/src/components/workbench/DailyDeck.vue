@@ -115,7 +115,7 @@ onMounted(() => {
 .dk-chip {
   flex: none;
   padding: 4px 12px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .16));
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .16));
   background: transparent; font: inherit; font-size: 12px; line-height: 1.6;
   color: var(--tc-text-2, #46586e);
   transition: background-color .15s, border-color .15s, color .15s;

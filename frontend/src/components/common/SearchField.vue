@@ -91,7 +91,7 @@ function clear() {
   border-radius: 9px;
   overflow: hidden;
   background: var(--tc-bg-2, rgba(255, 255, 255, .04));
-  box-shadow: inset 0 0 0 1px var(--tc-line, rgba(15, 60, 110, .18));
+  box-shadow: inset 0 0 0 1px var(--tc-line, rgba(29, 29, 31, .18));
   transition: box-shadow .18s;
 }
 .sf:focus-within {
@@ -131,7 +131,7 @@ function clear() {
   gap: 5px;
   padding: 0 11px;
   border: 0;
-  border-left: 1px solid var(--tc-line, rgba(15, 60, 110, .16));
+  border-left: 1px solid var(--tc-line, rgba(29, 29, 31, .16));
   background: rgba(45, 226, 255, .08);
   color: var(--tc-cyan-deep, #0a708c);
   font: inherit;

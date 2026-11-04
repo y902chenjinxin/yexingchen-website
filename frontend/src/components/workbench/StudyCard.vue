@@ -153,7 +153,7 @@ onMounted(() => load(0))
 .sc-meta { display: flex; align-items: center; gap: 9px; margin: -4px 0 12px; }
 .sc-prog {
   position: relative; flex: 1 1 auto; max-width: 190px; height: 3px; border-radius: 2px;
-  background: rgba(15, 60, 110, .1); overflow: hidden;
+  background: rgba(29, 29, 31, .1); overflow: hidden;
 }
 .sc-prog i {
   display: block; height: 100%; border-radius: 2px;
@@ -179,8 +179,8 @@ onMounted(() => load(0))
 .sc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .sc-chip {
   font-size: 12px; padding: 3px 8px; border-radius: 7px;
-  background: rgba(15, 60, 110, .05); color: var(--tc-text, #0b1622);
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .1));
+  background: rgba(29, 29, 31, .05); color: var(--tc-text, #0b1622);
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .1));
 }
 .sc-chip i { font-style: normal; color: var(--tc-text-3, #5b6f8a); margin-right: 5px; font-size: 10.5px; }
 .sc-coll { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -204,7 +204,7 @@ onMounted(() => load(0))
 .sc-sent-toggle {
   width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 8px 12px; border-radius: 10px; font: inherit;
-  border: 1px dashed var(--tc-line-strong, rgba(15, 60, 110, .26)); background: transparent;
+  border: 1px dashed var(--tc-line-strong, rgba(29, 29, 31, .26)); background: transparent;
   color: var(--tc-text-2, #46586e);
 }
 .sc-sent-toggle.open { border-style: solid; }

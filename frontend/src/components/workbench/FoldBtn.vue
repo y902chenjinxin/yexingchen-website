@@ -28,7 +28,7 @@ defineEmits(['toggle'])
 <style scoped>
 .fbtn {
   display: inline-flex; align-items: center; gap: 3px;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .16));
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .16));
   border-radius: 999px; background: transparent; cursor: pointer;
   padding: 3px 9px 3px 10px;
   font: inherit; font-size: 11.5px; line-height: 1.5; white-space: nowrap;

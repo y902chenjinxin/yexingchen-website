@@ -925,7 +925,7 @@ async function maybeWeekendReview() {
 .hb-progress { display: flex; align-items: center; gap: 16px; padding: 16px 18px; margin-bottom: 14px; }
 .hb-ring { position: relative; width: 64px; height: 64px; flex: none; }
 .hb-ring svg { width: 64px; height: 64px; transform: rotate(-90deg); }
-.hb-ring-bg { fill: none; stroke: var(--tc-line, rgba(15, 60, 110, .14)); stroke-width: 6; }
+.hb-ring-bg { fill: none; stroke: var(--tc-line, rgba(29, 29, 31, .14)); stroke-width: 6; }
 .hb-ring-fg {
   fill: none; stroke: var(--tc-cyan, #0e93b8); stroke-width: 6; stroke-linecap: round;
   transition: stroke-dasharray .35s cubic-bezier(.2, .8, .2, 1);
@@ -949,7 +949,7 @@ async function maybeWeekendReview() {
 .hb-card-sub { font-size: 11.5px; color: var(--tc-text-3, #5b6f8a); }
 
 .hb-list { list-style: none; margin: 0; padding: 0; }
-.hb-row + .hb-row { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .14)); }
+.hb-row + .hb-row { border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .14)); }
 
 /* ---------- 管理模式的分组小标题（v2.46.275） ---------- */
 .hb-grouphd {
@@ -957,7 +957,7 @@ async function maybeWeekendReview() {
   padding: 12px 2px 6px;
   font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
   color: var(--tc-text-3, #5b6f8a);
-  border-top: 1px solid var(--tc-line, rgba(15, 60, 110, .1));
+  border-top: 1px solid var(--tc-line, rgba(29, 29, 31, .1));
 }
 .hb-grouphd:first-child { border-top: 0; padding-top: 4px; }
 .hb-grouphd em {
@@ -978,7 +978,7 @@ async function maybeWeekendReview() {
 .hb-more {
   width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin-top: 10px; padding: 10px 2px 2px;
-  border: 0; border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .14));
+  border: 0; border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .14));
   background: transparent; cursor: pointer; font: inherit;
   font-size: 12px; color: var(--tc-text-3, #5b6f8a); text-align: left;
   transition: color .15s;
@@ -999,7 +999,7 @@ async function maybeWeekendReview() {
 .hb-meta { font-size: 11.5px; color: var(--tc-text-3, #5b6f8a); font-variant-numeric: tabular-nums; }
 .hb-tick {
   width: 24px; height: 24px; border-radius: 50%; flex: none;
-  border: 1.5px solid var(--tc-line-strong, rgba(15, 60, 110, .26));
+  border: 1.5px solid var(--tc-line-strong, rgba(29, 29, 31, .26));
   display: flex; align-items: center; justify-content: center; color: transparent;
   transition: background-color .16s, border-color .16s, color .16s;
 }
@@ -1018,7 +1018,7 @@ async function maybeWeekendReview() {
 .hb-cells i {
   /* 30 格排一行：给明确高度，别靠 aspect-ratio（flex 里宽度先定，高度会被算成 0，看着像虚线） */
   flex: 1 1 0; height: 9px; min-width: 4px; border-radius: 2.5px;
-  background: var(--tc-line, rgba(15, 60, 110, .14));
+  background: var(--tc-line, rgba(29, 29, 31, .14));
 }
 .hb-cells i.on { background: var(--tc-cyan, #0e93b8); }
 .hb-heat-n { width: 42px; text-align: right; font-size: 11px; color: var(--tc-text-3, #5b6f8a); font-variant-numeric: tabular-nums; }
@@ -1059,7 +1059,7 @@ async function maybeWeekendReview() {
 .hb-field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--tc-text-2, #46586e); }
 .hb-icons { display: flex; flex-wrap: wrap; gap: 6px; }
 .hb-icon-btn {
-  width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--tc-line, rgba(15, 60, 110, .14));
+  width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--tc-line, rgba(29, 29, 31, .14));
   background: transparent; color: var(--tc-text-2, #46586e); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
@@ -1073,7 +1073,7 @@ async function maybeWeekendReview() {
 .hb-seg { display: flex; gap: 5px; flex-wrap: wrap; }
 .hb-seg-btn {
   padding: 5px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12.5px;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14)); background: transparent;
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .14)); background: transparent;
   color: var(--tc-text-2, #46586e); transition: border-color .15s, color .15s, background-color .15s;
 }
 .hb-seg-btn:hover { border-color: var(--tc-cyan, #0e93b8); color: var(--tc-cyan-deep, #0a708c); }
@@ -1084,7 +1084,7 @@ async function maybeWeekendReview() {
 .hb-week { display: flex; gap: 5px; flex-wrap: wrap; }
 .hb-wd-btn {
   min-width: 44px; padding: 5px 8px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 12.5px;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14)); background: transparent;
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .14)); background: transparent;
   color: var(--tc-text-2, #46586e); transition: border-color .15s, color .15s, background-color .15s;
 }
 .hb-wd-btn:hover { border-color: var(--tc-cyan, #0e93b8); }
@@ -1097,7 +1097,7 @@ async function maybeWeekendReview() {
 .hb-acc-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 11px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14));
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .14));
   background: transparent; color: var(--tc-text-2, #46586e);
   font: inherit; font-size: 12.5px; line-height: 1.4;
 }
@@ -1111,8 +1111,8 @@ async function maybeWeekendReview() {
 /* 雷达 */
 .hb-radar-wrap { display: flex; justify-content: center; padding: 4px 8px 2px; }
 .hb-radar { width: 100%; max-width: 380px; height: auto; overflow: visible; }
-.hb-radar-grid polygon { fill: none; stroke: var(--tc-line, rgba(15, 60, 110, .14)); stroke-width: .6; }
-.hb-radar-grid line { stroke: var(--tc-line, rgba(15, 60, 110, .12)); stroke-width: .5; }
+.hb-radar-grid polygon { fill: none; stroke: var(--tc-line, rgba(29, 29, 31, .14)); stroke-width: .6; }
+.hb-radar-grid line { stroke: var(--tc-line, rgba(29, 29, 31, .12)); stroke-width: .5; }
 .hb-radar-area {
   fill: rgba(14, 147, 184, .18);
   stroke: var(--tc-cyan, #0e93b8);
@@ -1130,7 +1130,7 @@ async function maybeWeekendReview() {
   display: grid; grid-template-columns: 26px 1fr auto; grid-template-rows: auto auto;
   align-items: center; gap: 2px 8px; padding: 9px 6px;
 }
-.hb-fam-item + .hb-fam-item { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .12)); }
+.hb-fam-item + .hb-fam-item { border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .12)); }
 .hb-fam-ava { grid-row: span 2; font-size: 18px; text-align: center; }
 .hb-fam-name { font-size: 13.5px; font-weight: 600; color: var(--tc-text, #0b1622); }
 .hb-fam-name em { font-style: normal; font-weight: 400; color: var(--tc-text-3, #5b6f8a); font-size: 11.5px; }
@@ -1151,7 +1151,7 @@ async function maybeWeekendReview() {
   display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: 2px 8px;
   padding: 8px 2px; font-size: 12px;
 }
-.hb-hist-item + .hb-hist-item { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .12)); }
+.hb-hist-item + .hb-hist-item { border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .12)); }
 .hb-hist-week { color: var(--tc-text-3, #5b6f8a); font-variant-numeric: tabular-nums; }
 .hb-hist-rate { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-success, #0f7a56); }
 .hb-hist-rate.low { color: var(--color-danger, #cf2540); }

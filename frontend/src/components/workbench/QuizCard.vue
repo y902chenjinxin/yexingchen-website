@@ -319,7 +319,7 @@ onMounted(() => {
 .qz-lv {
   flex: none; margin-top: 2px; padding: 1px 7px; border-radius: 5px;
   font-size: 10.5px; font-weight: 600; letter-spacing: .04em;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .16)); color: var(--tc-text-3, #5b6f8a);
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .16)); color: var(--tc-text-3, #5b6f8a);
 }
 .qz-lv.lv3 { border-color: rgba(201, 105, 74, .5); color: #b4552f; }
 .qz-q { margin: 0; font-size: 14px; line-height: 1.8; color: var(--tc-text, #0b1622); }
@@ -335,12 +335,12 @@ onMounted(() => {
   font-size: 11.5px; color: var(--tc-text-3, #5b6f8a); letter-spacing: .01em;
 }
 .qz-table th, .qz-table td {
-  padding: 6px 10px; border-bottom: 1px solid var(--tc-line, rgba(15, 60, 110, .1));
+  padding: 6px 10px; border-bottom: 1px solid var(--tc-line, rgba(29, 29, 31, .1));
   text-align: right; white-space: nowrap; color: var(--tc-text-2, #46586e);
 }
 .qz-table th {
   font-weight: 600; font-size: 11.5px; color: var(--tc-text-3, #5b6f8a);
-  background: rgba(15, 60, 110, .035); border-bottom-color: var(--tc-line, rgba(15, 60, 110, .16));
+  background: rgba(29, 29, 31, .035); border-bottom-color: var(--tc-line, rgba(29, 29, 31, .16));
 }
 .qz-table th:first-child, .qz-table td:first-child {
   text-align: left; font-weight: 500; color: var(--tc-text, #0b1622);
@@ -352,7 +352,7 @@ onMounted(() => {
 .qz-opt {
   width: 100%; display: flex; align-items: center; gap: 10px;
   padding: 9px 12px; border-radius: 10px; cursor: pointer; text-align: left;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14));
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .14));
   background: transparent; font: inherit;
   transition: border-color .15s, background-color .15s, opacity .15s;
 }
@@ -365,7 +365,7 @@ onMounted(() => {
   flex: none; width: 20px; height: 20px; border-radius: 50%;
   display: grid; place-items: center;
   font-size: 11px; font-weight: 700; letter-spacing: 0;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .2)); color: var(--tc-text-3, #5b6f8a);
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .2)); color: var(--tc-text-3, #5b6f8a);
 }
 .qz-txt { flex: 1; min-width: 0; font-size: 13px; line-height: 1.65; color: var(--tc-text-2, #46586e); }
 .qz-mark { flex: none; font-size: 14px; font-weight: 700; }
@@ -390,7 +390,7 @@ onMounted(() => {
 .qz-verdict.bad { color: #b4552f; }
 .qz-why {
   margin: 0; padding: 11px 13px; border-radius: 10px;
-  background: rgba(15, 60, 110, .035);
+  background: rgba(29, 29, 31, .035);
   font-size: 13px; line-height: 1.9; color: var(--tc-text-2, #46586e); white-space: pre-wrap;
 }
 .qz-trick {
@@ -404,10 +404,10 @@ onMounted(() => {
 }
 
 /* ---------- 相关阅读 ---------- */
-.qz-rel { margin-top: 11px; border: 1px solid var(--tc-line, rgba(15, 60, 110, .12)); border-radius: 11px; overflow: hidden; }
+.qz-rel { margin-top: 11px; border: 1px solid var(--tc-line, rgba(29, 29, 31, .12)); border-radius: 11px; overflow: hidden; }
 .qz-rel-head {
   width: 100%; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  padding: 9px 12px; border: 0; background: rgba(15, 60, 110, .028);
+  padding: 9px 12px; border: 0; background: rgba(29, 29, 31, .028);
   cursor: pointer; text-align: left; font: inherit;
 }
 .qz-rel-head:hover { background: rgba(14, 147, 184, .06); }
@@ -439,13 +439,13 @@ onMounted(() => {
 /* ---------- 底部：七天格 + 累计 ---------- */
 .qz-foot {
   margin: 12px 0 0; padding-top: 10px;
-  border-top: 1px solid var(--tc-line, rgba(15, 60, 110, .08));
+  border-top: 1px solid var(--tc-line, rgba(29, 29, 31, .08));
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .qz-days { display: flex; gap: 4px; }
 .qz-day {
   width: 16px; height: 16px; border-radius: 4px;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .16)); background: transparent;
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .16)); background: transparent;
 }
 .qz-day.ok { background: var(--tc-cyan, #0e93b8); border-color: var(--tc-cyan, #0e93b8); }
 .qz-day.bad { background: #c9694a; border-color: #c9694a; }

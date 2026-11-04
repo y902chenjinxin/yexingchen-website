@@ -129,20 +129,20 @@ defineExpose({ show })
   display: flex; flex-direction: column;
   border-radius: 18px; overflow: hidden;
   background: var(--color-bg, #fff);
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .14));
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .14));
   box-shadow: 0 30px 70px -30px rgba(0, 0, 0, .5);
 }
 
 .qw-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 14px 18px; border-bottom: 1px solid var(--tc-line, rgba(15, 60, 110, .1));
+  padding: 14px 18px; border-bottom: 1px solid var(--tc-line, rgba(29, 29, 31, .1));
   flex: none;
 }
 .qw-title { font-size: 15px; font-weight: 700; color: var(--tc-text, #0b1622); display: flex; align-items: baseline; gap: 8px; }
 .qw-title em { font-style: normal; font-size: 11.5px; font-weight: 600; color: var(--tc-text-3, #5b6f8a); }
 .qw-acts { display: flex; gap: 8px; }
 .qw-btn {
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .16)); border-radius: 999px;
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .16)); border-radius: 999px;
   background: transparent; cursor: pointer; padding: 4px 13px;
   font: inherit; font-size: 12px; color: var(--tc-text-2, #46586e);
 }
@@ -152,13 +152,13 @@ defineExpose({ show })
 .qw-body { padding: 6px 18px 18px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .qw-empty { margin: 26px 0; text-align: center; font-size: 13px; line-height: 1.8; color: var(--tc-text-3, #5b6f8a); }
 
-.qw-item { padding: 14px 0; border-bottom: 1px dashed var(--tc-line, rgba(15, 60, 110, .12)); }
+.qw-item { padding: 14px 0; border-bottom: 1px dashed var(--tc-line, rgba(29, 29, 31, .12)); }
 .qw-item:last-child { border-bottom: 0; }
 .qw-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .qw-date { font-size: 11px; color: var(--tc-text-3, #5b6f8a); font-variant-numeric: tabular-nums; }
 .qw-topic {
   font-size: 10.5px; padding: 1px 7px; border-radius: 5px;
-  background: rgba(15, 60, 110, .06); color: var(--tc-text-2, #46586e);
+  background: rgba(29, 29, 31, .06); color: var(--tc-text-2, #46586e);
 }
 .qw-del {
   margin-left: auto; width: 22px; height: 22px; border: 0; border-radius: 6px;
@@ -178,7 +178,7 @@ defineExpose({ show })
 .qw-key {
   flex: none; width: 18px; height: 18px; border-radius: 50%;
   display: grid; place-items: center; font-size: 10.5px; font-weight: 700;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .2)); color: var(--tc-text-3, #5b6f8a);
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .2)); color: var(--tc-text-3, #5b6f8a);
 }
 .qw-opt.is-ok { background: rgba(14, 147, 184, .09); border-color: rgba(14, 147, 184, .4); }
 .qw-opt.is-ok .qw-key { background: var(--tc-cyan, #0e93b8); border-color: var(--tc-cyan, #0e93b8); color: #fff; }
@@ -188,7 +188,7 @@ defineExpose({ show })
 
 .qw-why {
   margin: 0; padding: 9px 12px; border-radius: 9px;
-  background: rgba(15, 60, 110, .035);
+  background: rgba(29, 29, 31, .035);
   font-size: 12.5px; line-height: 1.85; color: var(--tc-text-2, #46586e); white-space: pre-wrap;
 }
 .qw-trick {

@@ -90,7 +90,7 @@ onMounted(async () => {
 
 <style scoped>
 .rel { padding: 13px 18px 14px; cursor: pointer; transition: border-color .15s; }
-.rel:hover { border-color: var(--tc-line-strong, rgba(15, 60, 110, .26)); }
+.rel:hover { border-color: var(--tc-line-strong, rgba(29, 29, 31, .26)); }
 
 .rel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
 .rel-tag {
@@ -103,7 +103,7 @@ onMounted(async () => {
 .rel-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .rel-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
-  border: 1px solid var(--tc-line, rgba(15, 60, 110, .12)); background: transparent;
+  border: 1px solid var(--tc-line, rgba(29, 29, 31, .12)); background: transparent;
   font: inherit; cursor: pointer; max-width: 100%;
 }
 .rel-chip:hover { border-color: var(--tc-cyan, #0e93b8); background: rgba(14, 147, 184, .05); }

@@ -119,7 +119,7 @@ onMounted(async () => {
 .wk-body { padding: 2px 16px 14px; }
 .wk-text {
   margin: 0 0 11px; padding: 11px 13px; border-radius: 10px;
-  background: rgba(15, 60, 110, .035);
+  background: rgba(29, 29, 31, .035);
   font-size: 13px; line-height: 1.95; color: var(--tc-text-2, #46586e);
 }
 
@@ -136,7 +136,7 @@ onMounted(async () => {
 
 .wk-foot {
   margin: 11px 0 0; padding-top: 9px;
-  border-top: 1px solid var(--tc-line, rgba(15, 60, 110, .08));
+  border-top: 1px solid var(--tc-line, rgba(29, 29, 31, .08));
   font-size: 11px; color: var(--tc-text-3, #5b6f8a); letter-spacing: .02em;
 }
 

@@ -114,7 +114,7 @@ onMounted(() => load(0))
 .lz-body { margin-top: 12px; }
 
 .lz-note { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; padding: 9px 0; }
-.lz-note + .lz-note { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .1)); }
+.lz-note + .lz-note { border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .1)); }
 .lz-note b {
   font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--tc-cyan-deep, #0a708c);
   border-left: 2px solid var(--tc-cyan, #0e93b8); padding-left: 8px; line-height: 1.7;
@@ -124,7 +124,7 @@ onMounted(() => load(0))
 /* 例子给一点底色，跟两段分析分开：读的时候是先看故事再看道理 */
 .lz-note--eg p {
   padding: 9px 12px; border-radius: 9px;
-  background: rgba(15, 60, 110, .035);
+  background: rgba(29, 29, 31, .035);
   color: var(--tc-text-2, #46586e);
 }
 .lz-note--how b { color: var(--lj-seal, #a9812f); border-left-color: var(--lj-seal, #a9812f); }
@@ -132,7 +132,7 @@ onMounted(() => load(0))
 
 .lz-foot {
   margin: 10px 0 0; padding-top: 9px;
-  border-top: 1px solid var(--tc-line, rgba(15, 60, 110, .08));
+  border-top: 1px solid var(--tc-line, rgba(29, 29, 31, .08));
   font-size: 11px; color: var(--tc-text-3, #5b6f8a); letter-spacing: .02em;
 }
 

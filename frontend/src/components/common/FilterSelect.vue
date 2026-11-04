@@ -75,11 +75,11 @@ function onChange(v) {
   min-height: 32px;
   border-radius: 9px;
   font-size: 13px;
-  box-shadow: inset 0 0 0 1px var(--tc-line, rgba(15, 60, 110, .18));
+  box-shadow: inset 0 0 0 1px var(--tc-line, rgba(29, 29, 31, .18));
   background: var(--tc-bg-2, rgba(255, 255, 255, .04));
 }
 .fs :deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
-  box-shadow: inset 0 0 0 1px var(--tc-line-strong, rgba(15, 60, 110, .3));
+  box-shadow: inset 0 0 0 1px var(--tc-line-strong, rgba(29, 29, 31, .3));
 }
 .fs :deep(.el-select__wrapper.is-focused) {
   box-shadow: inset 0 0 0 1px var(--tc-cyan, #2de2ff) !important;

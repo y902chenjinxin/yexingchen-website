@@ -107,7 +107,7 @@ onMounted(() => load(0))
 }
 
 .kn-note { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 10px; padding: 10px 0 10px 0; }
-.kn-note + .kn-note { border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .1)); }
+.kn-note + .kn-note { border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .1)); }
 .kn-note b {
   font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--tc-cyan-deep, #0a708c);
   border-left: 2px solid var(--tc-cyan, #0e93b8); padding-left: 8px; line-height: 1.6;
@@ -117,7 +117,7 @@ onMounted(() => load(0))
 
 .kn-q {
   margin: 10px 0 0; padding-top: 10px; font-size: 12.5px; line-height: 1.7;
-  border-top: 1px dashed var(--tc-line, rgba(15, 60, 110, .1));
+  border-top: 1px dashed var(--tc-line, rgba(29, 29, 31, .1));
   color: var(--tc-text-3, #5b6f8a); font-style: italic;
 }
 .kn-q::before { content: '？'; margin-right: 6px; font-style: normal; opacity: .6; }
