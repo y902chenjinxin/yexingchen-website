@@ -306,3 +306,75 @@ html[data-theme="night"] #app.is-mobile :is(.fin-row, .music-item) {
 html:root .login-page .site-title {
   font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', Georgia, serif !important;
 }
+
+/* ===================== G. 描边收口：全站去蓝/青边（v2.46.370） =====================
+ * 夜星：「还是有一些组件边缘是蓝色的线」。
+ * 根因不在组件，在 token —— 液态玻璃的 C 节只换了「大卡类」的 border，
+ * 小组件（按钮 / chip / 分段控件 / 分隔线 / 搜索框）走的是下面这批 token：
+ *   夜间 --tc-line rgba(120,180,255,.16) 淡蓝 / --m-line rgba(45,226,255,.26) 霓虹青
+ *        --lj-line rgba(45,226,255,.24) / --glass-border rgba(45,226,255,.34)
+ *        --dp-line rgba(167,139,250,.16) 紫蓝（desktop-theme-night）
+ *   日间 --m-line/--lj-line/--ls-line rgba(17,38,51,.10) 深蓝墨
+ * 液态玻璃的线条语义是「白高光边 / 中性墨边」，不该带色相，故全部改中性。
+ * 权重说明：这批 token 定义在 #app.is-mobile（1,1,0）与 html[data-theme="day"] #app.is-mobile
+ * （1,2,1），所以要按同权重逐层重声明，光写 :root 会被压掉。
+ * 品牌雨青（--tc-cyan / --m-accent）是主色，保留不动。
+ * ============================================================================= */
+
+/* --- 夜间：白高光细线 --- */
+:root,
+html[data-theme="night"] {
+  --tc-line: rgba(255, 255, 255, .10);
+  --tc-line-strong: rgba(255, 255, 255, .18);
+  --glass-border: rgba(255, 255, 255, .14);
+  --lj-line: rgba(255, 255, 255, .10);
+  --lj-line-strong: rgba(255, 255, 255, .18);
+  --ls-line: rgba(255, 255, 255, .10);
+  --ls-line-strong: rgba(255, 255, 255, .18);
+  --xz-line: rgba(255, 255, 255, .10);
+  --dp-line: rgba(255, 255, 255, .10);
+  --dp-line-strong: rgba(255, 255, 255, .18);
+}
+#app.is-mobile,
+html[data-theme="night"] #app.is-mobile,
+html[data-theme="night"].m-app {
+  --m-line: rgba(255, 255, 255, .12);
+  --m-line-strong: rgba(255, 255, 255, .20);
+  --lj-line: rgba(255, 255, 255, .10);
+  --lj-line-strong: rgba(255, 255, 255, .18);
+  --ls-line: rgba(255, 255, 255, .10);
+  --ls-line-strong: rgba(255, 255, 255, .18);
+  --xz-line: rgba(255, 255, 255, .10);
+  --glass-border: rgba(255, 255, 255, .14);
+}
+
+/* --- 日间：中性墨细线（去 #112633 的蓝相） --- */
+html[data-theme="day"] {
+  --tc-line: rgba(60, 60, 67, .12);
+  --tc-line-strong: rgba(60, 60, 67, .20);
+  --glass-border: rgba(60, 60, 67, .12);
+  --lj-line: rgba(60, 60, 67, .12);
+  --lj-line-strong: rgba(60, 60, 67, .20);
+  --ls-line: rgba(60, 60, 67, .12);
+  --ls-line-strong: rgba(60, 60, 67, .20);
+  --xz-line: rgba(60, 60, 67, .12);
+  --dp-line: rgba(60, 60, 67, .12);
+  --dp-line-strong: rgba(60, 60, 67, .20);
+}
+html[data-theme="day"] #app.is-mobile,
+html[data-theme="day"].m-app {
+  --m-line: rgba(60, 60, 67, .12);
+  --m-line-strong: rgba(60, 60, 67, .20);
+  --lj-line: rgba(60, 60, 67, .12);
+  --lj-line-strong: rgba(60, 60, 67, .20);
+  --ls-line: rgba(60, 60, 67, .12);
+  --ls-line-strong: rgba(60, 60, 67, .20);
+  --xz-line: rgba(60, 60, 67, .12);
+  --glass-border: rgba(60, 60, 67, .12);
+}
+
+/* 早先按「手机端统一青色边框」写死的几处（tech-theme 第 9 节、v2.46.130），
+   现在玻璃化后青色边成了突兀的蓝线，一并收口。 */
+#app.is-mobile :is(.glass-card, .info-card, .tk-item, .ht-card, .qk-card, .dh-card, .life-col) {
+  border-color: var(--m-line) !important;
+}

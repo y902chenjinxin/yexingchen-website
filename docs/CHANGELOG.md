@@ -1,3 +1,32 @@
+## [v2.46.370] - 2026-11-04
+
+### 修复：全站组件边缘蓝线（token 级收口）
+
+**反馈（夜星）**：「还是有一些组件边缘是蓝色的线」。
+
+**根因**：液态玻璃 C 节只覆盖了「大卡类」的 border，小组件（按钮 / chip / 分段控件 /
+搜索框 / 分隔线）走的是另一批 line token，昼夜都还带色相：
+
+| token | 位置 | 原值 | 色相 |
+|---|---|---|---|
+| `--tc-line` | tech-theme.css | `rgba(120,180,255,.16)` | 淡蓝 |
+| `--m-line` | tech-theme.css（`#app.is-mobile`） | `rgba(45,226,255,.26)` | 霓虹青 |
+| `--lj-line` / `--glass-border` | tech-theme.css | `rgba(45,226,255,.24/.34)` | 霓虹青 |
+| `--xz-line` | tech-theme.css | `rgba(45,226,255,.16)` | 霓虹青 |
+| `--dp-line` | desktop-theme-night.css | `rgba(167,139,250,.16)` | 紫蓝 |
+| `--m-line` 等 | tech-theme-day.css | `rgba(17,38,51,.10)` | 深蓝墨 |
+
+**修法**（`liquid-glass.css` 新增 G 节）：液态玻璃的线条语义是「白高光边 / 中性墨边」，
+不带色相。昼夜两套逐层重声明全部 line token —— 夜间 `rgba(255,255,255,.10~.20)`，
+日间 `rgba(60,60,67,.12~.20)`。因为 token 定义在 `#app.is-mobile`（1,1,0）与
+`html[data-theme="day"] #app.is-mobile`（1,2,1），必须按同权重逐层写，只写 `:root` 会被压掉。
+品牌雨青（`--tc-cyan` / `--m-accent`）是主色，保留不动。
+
+### 交付
+
+- 验证：vite build 通过；产物 grep 确认 G 节 token 与 `xuanhuang-v683`、`v2.46.370` 进包
+- 回滚：删 `main.js` 的 `liquid-glass.css` import 一行
+
 ## [v2.46.369] - 2026-11-04
 
 ### 全站圆润化：对齐 iOS 参考（夜星：组件没人家的好看、不够圆润）
