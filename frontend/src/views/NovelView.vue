@@ -4,8 +4,12 @@
       <PageToolbar v-if="!isTouch">
         <!-- v2.46.159：统一下拉/搜索组件（SearchField 内含查询按钮与清除） -->
         <SearchField v-model="keyword" placeholder="搜索标题/作者" width="260px" @search="doSearch" />
-        <span v-if="keyword" class="search-count">匹配 {{ novelStore.list.length }} 条</span>
-        <el-button v-if="keyword" size="small" plain @click="keyword = ''">清空筛选</el-button>
+        <!-- v2.46.362：分类筛选（固定枚举 novelCategories.js，客户端过滤） -->
+        <el-select v-model="filterCategory" clearable placeholder="全部分类" size="small" class="nv-cat-filter">
+          <el-option v-for="c in NOVEL_CATEGORIES" :key="c" :label="c" :value="c" />
+        </el-select>
+        <span v-if="keyword" class="search-count">匹配 {{ filteredNovels.length }} 条</span>
+        <el-button v-if="keyword || filterCategory" size="small" plain @click="clearFilters">清空筛选</el-button>
         <el-button type="danger" plain size="small" :disabled="!selectedRows.length" @click="handleBatchDelete">
           批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
         </el-button>
@@ -58,6 +62,19 @@
               <path d="M4 7h16M4 12h16M4 17h16" />
             </svg>
           </button>
+        </div>
+
+        <!-- v2.46.362：手机书架分类 chips（横向滑动，点击切换 / 再点取消） -->
+        <div v-if="!selecting" class="nv-cats">
+          <button class="nv-chip" :class="{ on: !filterCategory }" type="button" @click="filterCategory = ''">全部</button>
+          <button
+            v-for="c in NOVEL_CATEGORIES"
+            :key="c"
+            class="nv-chip"
+            :class="{ on: filterCategory === c }"
+            type="button"
+            @click="filterCategory = filterCategory === c ? '' : c"
+          >{{ c }}</button>
         </div>
 
         <!-- 选择态：取消 / 已选 / 删除（番茄「管理」模式同构） -->
@@ -157,7 +174,7 @@
         </el-table-column>
       </el-table>
       <EmptyState
-        v-if="!novelStore.loading && novelStore.list.length === 0"
+        v-if="!novelStore.loading && filteredNovels.length === 0"
         tone="data"
         title="还没有添加小说"
         description="把读过的章节粘贴进来，系统帮你管理进度、收藏句子、生成摘要"
@@ -194,7 +211,11 @@
         </el-form-item>
         <el-form-item label="标题"><el-input v-model="uploadForm.title" placeholder="小说标题" /></el-form-item>
         <el-form-item label="作者"><el-input v-model="uploadForm.author" placeholder="作者" /></el-form-item>
-        <el-form-item label="分类"><el-input v-model="uploadForm.category" placeholder="分类" /></el-form-item>
+        <el-form-item label="分类">
+          <el-select v-model="uploadForm.category" placeholder="选择分类" clearable filterable style="width: 100%">
+            <el-option v-for="c in NOVEL_CATEGORIES" :key="c" :label="c" :value="c" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="标签"><el-input v-model="uploadForm.tags" placeholder="多个标签用逗号分隔" /></el-form-item>
       </el-form>
       <template #footer>
@@ -208,7 +229,12 @@
       <el-form :model="editForm" label-width="80px">
         <el-form-item label="标题"><el-input v-model="editForm.title" placeholder="小说标题" /></el-form-item>
         <el-form-item label="作者"><el-input v-model="editForm.author" placeholder="作者" /></el-form-item>
-        <el-form-item label="分类"><el-input v-model="editForm.category" placeholder="分类" /></el-form-item>
+        <el-form-item label="分类">
+          <!-- v2.46.362：固定枚举下拉（夜星要求）。历史自由文本仍会显示原值，保存时可选枚举值替换 -->
+          <el-select v-model="editForm.category" placeholder="选择分类" clearable filterable style="width: 100%">
+            <el-option v-for="c in NOVEL_CATEGORIES" :key="c" :label="c" :value="c" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="标签"><el-input v-model="editForm.tags" placeholder="多个标签用逗号分隔" /></el-form-item>
       </el-form>
       <template #footer>
@@ -244,7 +270,9 @@
           <el-input v-model="batchForm.author" placeholder="应用到所有文件（可选）" clearable />
         </el-form-item>
         <el-form-item label="批量分类">
-          <el-input v-model="batchForm.category" placeholder="应用到所有文件（可选）" clearable />
+          <el-select v-model="batchForm.category" placeholder="应用到所有文件（可选）" clearable filterable style="width: 100%">
+            <el-option v-for="c in NOVEL_CATEGORIES" :key="c" :label="c" :value="c" />
+          </el-select>
         </el-form-item>
         <el-form-item label="批量标签">
           <el-input v-model="batchForm.tags" placeholder="应用到所有文件，多个用逗号分隔（可选）" clearable />
@@ -387,6 +415,7 @@ import { reorderNovel } from '@/api/novel'
 import { useRowDragSort } from '@/composables/useRowDragSort'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useRouter } from 'vue-router'
+import { NOVEL_CATEGORIES } from '@/constants/novelCategories'
 
 const novelStore = useNovelStore()
 const { isMobile } = useIsMobile()
@@ -403,11 +432,26 @@ const coverFile = ref(null)
 const uploadForm = ref({ title: '', author: '', category: '', tags: '' })
 
 /* ---- 管理分页（客户端，默认10条）----
-   v2.46.161：统一走 usePagedList（自带越界修正）。store 属性不是 ref，包一层 computed 再传。 */
+   v2.46.161：统一走 usePagedList（自带越界修正）。store 属性不是 ref，包一层 computed 再传。
+   v2.46.362：数据源换成「按分类过滤后的列表」（分类筛选对桌面表格 / 手机书架同时生效） */
+const filterCategory = ref('')
+const filteredNovels = computed(() => {
+  const list = novelStore.list || []
+  if (!filterCategory.value) return list
+  return list.filter((n) => (n.category || '').trim() === filterCategory.value)
+})
+
 const { page, pageSize, total, paged: pagedRows, sizes, onPageChange, onSizeChange } = usePagedList(
-  computed(() => novelStore.list),
+  computed(() => filteredNovels.value),
   { defaultSize: 10 }
 )
+
+/* v2.46.362：清空搜索 + 分类两个筛选 */
+function clearFilters() {
+  keyword.value = ''
+  filterCategory.value = ''
+  doSearch()
+}
 
 /* v2.46.188：PC 端按住左键上下拖拽调顺序（手机端不启用，避免和滚动冲突） */
 useRowDragSort({
@@ -708,9 +752,11 @@ const picked = ref([])
 const shelfRows = computed(() => {
   if (!isTouch.value) return pagedRows.value
   const kw = String(keyword.value || '').trim().toLowerCase()
-  const all = novelStore.list || []
-  if (!kw) return all
-  return all.filter(
+  const cat = filterCategory.value
+  let rows = novelStore.list || []
+  if (cat) rows = rows.filter((n) => (n.category || '').trim() === cat)
+  if (!kw) return rows
+  return rows.filter(
     (n) =>
       String(n.title || '').toLowerCase().includes(kw) ||
       String(n.author || '').toLowerCase().includes(kw),
@@ -1135,6 +1181,40 @@ function formatTime(timeStr) {
 
 /* 选择态那一条：取消 —— 已选 n 本 —— 删除 */
 .nv-bar-sel { justify-content: space-between; }
+
+/* v2.46.362：分类筛选 chips（手机书架横向滑动） */
+.nv-cats {
+  display: flex;
+  gap: 8px;
+  margin: -6px 0 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.nv-cats::-webkit-scrollbar { display: none; }
+.nv-chip {
+  flex: none;
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 15px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: inherit;
+  font-size: 13px;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: .72;
+  -webkit-tap-highlight-color: transparent;
+}
+.nv-chip.on {
+  background: var(--yq-accent, #c7a96b);
+  color: #fff;
+  opacity: 1;
+}
+
+/* v2.46.362：桌面工具栏的分类筛选下拉宽度 */
+.nv-cat-filter { width: 130px; }
 .nv-txt-btn {
   height: 34px;
   padding: 0 6px;
