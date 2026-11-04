@@ -723,11 +723,13 @@ onBeforeUnmount(() => { exitShelfMode() })
  *  改成深色系：同一套色相，明度压到 #10~#3a，书封沉进画面里，
  *  靠首字和顶部一道受光边区分彼此。 */
 const COVER_GRADS = [
-  ['#2b3a52', '#141b26'],   // 夜蓝
-  ['#243b3a', '#101d1c'],   // 墨绿
-  ['#3d2f28', '#1b1410'],   // 赭石
-  ['#2b2f45', '#14151f'],   // 靛紫
-  ['#2f3339', '#14161a'],   // 石板
+  // v2.46.413：背景从近黑提成青蓝后，原来那套「近黑书封」直接陷进背景，
+  // 一屏看过去像六个空洞。色相提到中低亮度、饱和度拉高，和青蓝背景拉开距离。
+  ['#3d4f85', '#1c2444'],   // 靛蓝
+  ['#2f6350', '#142e26'],   // 松绿
+  ['#7a5030', '#2e1c11'],   // 赭石
+  ['#513a72', '#221933'],   // 靛紫
+  ['#4b5563', '#1d232b'],   // 石板
 ]
 function coverStyle(n) {
   const g = COVER_GRADS[Math.abs(Number(n.id) || 0) % COVER_GRADS.length]
@@ -1270,9 +1272,12 @@ function formatTime(timeStr) {
      书卡本身已经不再被玻璃规则收编，这里只需要一点点「贴住纸面」的影。 */
   /* v2.46.388：深色书封只需要「贴在纸面上」的一点影 + 顶边受光，
      不再有外描边（夜星：「这个框到底有啥用」）。 */
+  /* v2.46.413：背景提亮后书封会「陷」进去 —— 只有落影才让它浮起来。
+     这是影，不是框（夜星骂的是描边，不是厚度）。 */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .14),
-    0 2px 6px -2px rgba(0, 0, 0, .45);
+    inset 0 1px 0 rgba(255, 255, 255, .18),
+    0 10px 22px -10px rgba(0, 0, 0, .72),
+    0 3px 8px -3px rgba(0, 0, 0, .45);
   transition: transform .16s ease;
 }
 .ns-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1280,7 +1285,7 @@ function formatTime(timeStr) {
   font-family: var(--font-serif, "Songti SC", "Noto Serif SC", Georgia, serif);
   font-size: 34px;
   font-weight: 300;
-  color: rgba(240, 246, 255, .50);
+  color: rgba(240, 246, 255, .70);
   letter-spacing: .06em;
   text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
   user-select: none;

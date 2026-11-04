@@ -268,18 +268,23 @@
               </div>
             </div>
 
-            <div class="fin-form-actions">
-              <button v-if="form.editing" class="fin-btn ghost" @click="form.show = false">取消</button>
-              <!-- 提交按钮状态机（#3）：同位 空闲→加载→✔/失败，不换组件 -->
-              <StateButton
-                class="fin-btn primary"
-                :action="save"
-                :label="form.editing ? '保存修改' : '记入账本'"
-                loading-label="保存中…"
-                done-label="已入账"
-                error-label="未成功，重试"
-              />
-            </div>
+            <!-- v2.46.403：提交区原来写在 .fin-form-body 内部，它的负边距
+                 （margin: 0 -20px）把 body 的 scrollWidth 撑到 370 > 350，
+                 于是整个抽屉能左右拖 —— 夜星说的「记账弹窗为什么能左右滑」。
+                 移到 body 外，抽屉的 flex 直接管它：头固定 / 中间自滚 / 底固定。 -->
+          </div>
+
+          <div class="fin-form-actions">
+            <button v-if="form.editing" class="fin-btn ghost" @click="form.show = false">取消</button>
+            <!-- 提交按钮状态机（#3）：同位 空闲→加载→✔/失败，不换组件 -->
+            <StateButton
+              class="fin-btn primary"
+              :action="save"
+              :label="form.editing ? '保存修改' : '记入账本'"
+              loading-label="保存中…"
+              done-label="已入账"
+              error-label="未成功，重试"
+            />
           </div>
         </section>
       </transition>
@@ -361,10 +366,13 @@
         </div>
 
         <div class="fin-mtags">
+          <!-- v2.46.402：原来这颗标签也带金额 ¥237.55，而它和上方摘要卡的
+               「本月支出 237.55」是同一个数 —— 一屏里同一个数字说两遍，
+               夜星读成「本月支出和家人账目重合了」。这里改成纯「重置筛选」胶囊。 -->
           <button class="fin-mtag" :class="{ on: !memberFilter }" @click="pickMember('')">
             <span class="fin-mtag-avatar"><AppIcon icon="🏠" :size="15" /></span>
             <span class="fin-mtag-name">全部家人</span>
-            <span class="fin-mtag-amt">¥ {{ money(breakdown.total?.expense) }}</span>
+            <span class="fin-mtag-amt">{{ breakdown.total?.count || 0 }} 笔</span>
           </button>
           <button
             v-for="m in memberTags"

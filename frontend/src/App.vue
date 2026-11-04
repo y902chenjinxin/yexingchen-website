@@ -321,15 +321,19 @@ onMounted(async () => {
 }
 
 /* ========== 移动端（沉浸式 + 底部两 Tab）：内容整体垫高，避免被 Tab 栏遮挡 ========== */
+/* 🔴 v2.46.406：底栏实测只有 60px 高（_probe_tabbar），这里一直垫 72px ——
+ * 每页底部凭空多出 12px 空白，夜星说的「下面还空着」有一半是这个。
+ * 播放条 bottom 84 + 高 58 → 顶到 142，而底栏顶在 784（844-60），
+ * 中间留了 24px 缝，正文从那道缝里露出来（截图里「6:30 按时睡觉」压在「主页」上）。 */
 #app.is-mobile {
-  padding-bottom: calc(72px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: calc(64px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
   transition: padding-bottom .28s ease;
 }
 /* v2.46.388：播放条也在底部（bottom 84px + 高 58px = 顶到 142px）。
  * 72px 的垫高只够底栏，播放条一出现就压住正文最后两行 —— 页面底部的内容
  * 永远看不全。NowPlayingBar 会给自己挂 body.has-npbar，这里统一补垫。 */
 body.has-npbar #app.is-mobile {
-  padding-bottom: calc(152px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: calc(128px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
 }
 body.has-npbar #app.is-mobile.is-immersive {
   padding-bottom: 0;
@@ -340,7 +344,8 @@ body.has-npbar #app.is-mobile.is-immersive {
 }
 /* 播放条在移动端悬浮于两 Tab 栏之上 */
 #app.is-mobile .npbar {
-  bottom: calc(84px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
+  /* 贴住底栏顶边（60px）+ 6px 呼吸；原来 84 会在中间留一条 24px 的缝 */
+  bottom: calc(66px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
 }
 /* 移动端桌宠：上移到 Tab 栏之上并适度缩小，避免压住导航/内容 */
 #app.is-mobile .whale-stage {
