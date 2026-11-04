@@ -131,9 +131,10 @@
         </section>
       </transition>
 
-      <!-- 记一笔（内联面板，非弹窗） -->
+      <!-- 记一笔（v2.46.372：内联面板 → 底部抽屉，主页不再被 140 行表单撑长） -->
+      <div v-if="form.show" class="fin-drawer-mask" @click.self="form.show = false"></div>
       <transition name="fd">
-        <section v-if="form.show" class="fin-form glass" :class="{ 'xz-shake': formShake }">
+        <section v-if="form.show" class="fin-form fin-form--drawer glass" :class="{ 'xz-shake': formShake }">
           <div class="fin-form-head">
             <span class="fin-form-title">{{ form.editing ? '编辑流水' : '记一笔' }}</span>
             <span v-if="form.editing" class="fin-form-edit-tag">正在编辑 #{{ form.editingId }}</span>
@@ -333,25 +334,18 @@
            净流入本质是「收入 − 支出」，与已有的收入、支出两张卡重复，故一并去掉。 -->
       <!-- ===== 总览 Tab ===== -->
       <template v-if="activeTab === 'overview'">
-      <section class="fin-kpis m-stagger" aria-label="账本数据概览">
-        <div class="fin-kpi glass">
-          <span class="fin-kpi-label">{{ unitLabel }}收入</span>
-          <span class="fin-kpi-val income">+ ¥ {{ animIncome.toFixed(2) }}</span>
-        </div>
-        <div class="fin-kpi glass">
-          <span class="fin-kpi-label">{{ unitLabel }}支出</span>
-          <span class="fin-kpi-val expense">− ¥ {{ animExpense.toFixed(2) }}</span>
-        </div>
-        <div class="fin-kpi glass">
-          <span class="fin-kpi-label">{{ unitLabel }}笔数</span>
-          <span class="fin-kpi-val">{{ animCount }}</span>
-          <span class="fin-kpi-sub">笔流水</span>
-        </div>
-        <div class="fin-kpi glass">
-          <span class="fin-kpi-label">累计结余</span>
-          <span class="fin-kpi-val" :class="summary.balance >= 0 ? 'income' : 'expense'">{{ summary.balance >= 0 ? '+' : '−' }} ¥ {{ animBalance.toFixed(2) }}</span>
-        </div>
-      </section>
+      <!-- 账本摘要（v2.46.372）：4 张平级 KPI → 1 个主数 + 3 个迷你指标，一屏读完 -->
+      <ModuleSummary
+        class="fin-summary m-stagger"
+        :label="`${unitLabel}支出`"
+        :value="animExpense"
+        unit="¥"
+        :stats="[
+          { label: `${unitLabel}收入`, value: `+ ¥ ${animIncome.toFixed(2)}`, tone: 'income' },
+          { label: `${unitLabel}笔数`, value: String(animCount) },
+          { label: '累计结余', value: `${summary.balance >= 0 ? '+' : '−'} ¥ ${animBalance.toFixed(2)}` },
+        ]"
+      />
 
       <!-- 家人账目：人员标签 + 汇总数据 -->
       <section class="fin-members glass">
@@ -876,6 +870,7 @@ import TrendChart from '@/components/finance/TrendChart.vue'
 import FundMatrix from '@/components/finance/FundMatrix.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import ModuleSummary from '@/components/common/ModuleSummary.vue'
 import StateButton from '@/components/common/StateButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Stepper from '@/components/common/Stepper.vue'
@@ -1873,6 +1868,42 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
 /* 记一笔面板 */
 .fin-form { border-radius: 16px; padding: 18px 20px; margin-bottom: 18px; }
+/* v2.46.372：记账表单改底部抽屉
+   浮层一律 fixed 贴屏幕（容器高度在手机浏览器上不可靠），
+   高度用 dvh 不用 vh（vh=layout viewport，地址栏一收就顶出屏幕）。 */
+.fin-drawer-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1580;
+  background: rgba(12, 16, 22, .38);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.fin-form--drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1590;
+  margin: 0;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 22px 22px 0 0;
+  padding: 18px 20px calc(18px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, .28);
+}
+.fin-form--drawer::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: -8px auto 10px;
+  border-radius: 999px;
+  background: var(--lj-line-strong, rgba(60, 60, 67, .20));
+}
 .fin-form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .fin-form-title { font-size: 16px; letter-spacing: .08em; }
 .fin-form-edit-tag { font-size: 12px; color: var(--lj-ochre); }
