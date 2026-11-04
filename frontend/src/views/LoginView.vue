@@ -6,6 +6,8 @@
       <span class="lg-orb lg-orb--b"></span>
       <span class="lg-orb lg-orb--c"></span>
       <span class="lg-grid"></span>
+      <!-- v2.46.366 纯白浮尘：细白点慢漂 + 微闪，无光晕无连线 -->
+      <canvas ref="dustCanvas" class="lg-dust"></canvas>
     </div>
 
     <!-- 登录卡片 -->
@@ -191,6 +193,124 @@ function onTiltLeave() {
   if (cardEl.value) cardEl.value.style.transform = ''
 }
 
+/** ============ 纯白浮尘粒子（v2.46.366） ============
+ * 夜星要求：只要纯白细点，不要光晕、不要彩色、不要连线。
+ * 做法：单张 canvas 逐点画白圆，半径 0.5~1.7px、基础透明度 0.10~0.55，
+ * 极慢上飘 + 正弦微闪（±30%），全程不提亮、不加 shadow。
+ * 密度按面积自适应（小屏自动减量），DPR 封顶 2；页面隐藏即暂停，
+ * prefers-reduced-motion 时只画一帧静态尘点。 */
+const dustCanvas = ref(null)
+let dustCtx = null
+let dustDots = []
+let dustRaf = 0
+let dustTimer = 0
+let dustLast = 0
+let dustStatic = false
+
+const TAU = Math.PI * 2
+const DUST_REF_AREA = 1920 * 937
+const DUST_BASE = 120      // 1920×937 基准 120 粒
+const DUST_MIN = 48        // 小屏下限（再少就空）
+const DUST_MAX = 150       // 大屏上限（顾性能）
+
+function dustCount(w, h) {
+  return Math.max(DUST_MIN, Math.min(DUST_MAX, Math.round((DUST_BASE * w * h) / DUST_REF_AREA)))
+}
+
+function initDust(w, h) {
+  dustDots = []
+  const n = dustCount(w, h)
+  for (let i = 0; i < n; i++) {
+    dustDots.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: 0.5 + Math.random() * 1.2,
+      a: 0.10 + Math.random() * 0.45,
+      vx: (Math.random() - 0.5) * 0.16,   // 横向极慢摆动
+      vy: -(0.04 + Math.random() * 0.18), // 整体缓缓上飘（浮尘感）
+      ph: Math.random() * TAU,            // 闪烁相位
+      sp: 0.4 + Math.random() * 0.9,      // 闪烁速度
+    })
+  }
+}
+
+function setupDust() {
+  const canvas = dustCanvas.value
+  if (!canvas) return
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const w = canvas.clientWidth
+  const h = canvas.clientHeight
+  if (!w || !h) return
+  canvas.width = Math.round(w * dpr)
+  canvas.height = Math.round(h * dpr)
+  dustCtx = canvas.getContext('2d')
+  if (!dustCtx) return
+  dustCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  initDust(w, h)
+}
+
+function paintDust(ts) {
+  const canvas = dustCanvas.value
+  const ctx = dustCtx
+  if (!canvas || !ctx) return
+  const w = canvas.clientWidth
+  const h = canvas.clientHeight
+  if (!w || !h) return
+  // 帧间隔归一化到 60fps：掉帧不加速，长时间挂起后夹取
+  const dt = dustLast ? Math.min(3, Math.max(0.2, (ts - dustLast) / 16.67)) : 1
+  dustLast = ts
+  ctx.clearRect(0, 0, w, h)
+  ctx.fillStyle = '#ffffff'
+  for (const d of dustDots) {
+    d.x += d.vx * dt
+    d.y += d.vy * dt
+    // 出界回绕（上下换边时重掷 x，避免阵型重复）
+    if (d.y < -4) { d.y = h + 4; d.x = Math.random() * w }
+    else if (d.y > h + 4) { d.y = -4; d.x = Math.random() * w }
+    if (d.x < -4) d.x = w + 4
+    else if (d.x > w + 4) d.x = -4
+    const tw = 0.7 + 0.3 * Math.sin((ts / 900) * d.sp + d.ph)
+    ctx.globalAlpha = d.a * tw
+    ctx.beginPath()
+    ctx.arc(d.x, d.y, d.r, 0, TAU)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+}
+
+function loopDust(ts) {
+  paintDust(ts)
+  dustRaf = requestAnimationFrame(loopDust)
+}
+
+function stopDust() {
+  if (dustRaf) cancelAnimationFrame(dustRaf)
+  dustRaf = 0
+}
+
+function startDust() {
+  stopDust()
+  dustLast = 0
+  if (dustStatic) {
+    paintDust(0)              // 减动效：只留一帧静态尘点
+    return
+  }
+  dustRaf = requestAnimationFrame(loopDust)
+}
+
+function onDustResize() {
+  clearTimeout(dustTimer)
+  dustTimer = setTimeout(() => {
+    setupDust()
+    if (dustStatic) paintDust(0)
+  }, 160)
+}
+
+function onDustVisibility() {
+  if (document.hidden) stopDust()
+  else if (!dustStatic) startDust()
+}
+
 onMounted(() => {
   document.body.classList.add('login-route')
   tiltEnabled = window.matchMedia('(pointer: fine)').matches
@@ -199,6 +319,12 @@ onMounted(() => {
     window.addEventListener('pointermove', onTiltMove, { passive: true })
     document.documentElement.addEventListener('pointerleave', onTiltLeave)
   }
+  // 纯白浮尘粒子
+  dustStatic = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  setupDust()
+  startDust()
+  window.addEventListener('resize', onDustResize)
+  document.addEventListener('visibilitychange', onDustVisibility)
 })
 
 onBeforeUnmount(() => {
@@ -207,6 +333,10 @@ onBeforeUnmount(() => {
     window.removeEventListener('pointermove', onTiltMove)
     document.documentElement.removeEventListener('pointerleave', onTiltLeave)
   }
+  stopDust()
+  clearTimeout(dustTimer)
+  window.removeEventListener('resize', onDustResize)
+  document.removeEventListener('visibilitychange', onDustVisibility)
   document.body.classList.remove('login-route')
 })
 
@@ -381,6 +511,16 @@ function resetRegister() {
   opacity: .9;
 }
 @keyframes lg-grid-move { from { background-position: 0 0; } to { background-position: 0 46px; } }
+/* 纯白浮尘粒子层：canvas 铺满氛围层，压在彩晕/网格之上、玻璃卡之下。
+   只画白点（无光晕、无连线、无彩色），细节全在脚本里 */
+.lg-dust {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: .85;
+}
 
 /* 登录卡片：液态玻璃本体（v2.46.364 方案④）。
    背景描边阴影的最终生效值在 liquid-glass.css（后加载 !important），此处保持同族；
