@@ -52,7 +52,27 @@
         </button>
       </div>
 
-      <div class="life-sum-grid">
+      <!-- v2.46.372：摘要主数（L1）—— 一屏先看到「现在多少」，汇总表降为可折叠 -->
+      <ModuleSummary
+        v-if="!isMeals && weightHero"
+        class="life-hero-sum"
+        :label="filterMember ? `${activeMemberName} · 最新体重` : '最新体重'"
+        :value="weightHero.latest.toFixed(1)"
+        unit="kg"
+        :badge="weightHero.lastAt"
+        :stats="[
+          { label: '较上次', value: weightHero.delta === null ? '—' : `${weightHero.delta > 0 ? '+' : ''}${weightHero.delta} kg` },
+          { label: '区间变化', value: weightHero.span === null ? '—' : `${weightHero.span > 0 ? '+' : ''}${weightHero.span} kg` },
+          { label: '记录', value: `${weightHero.count} 条` },
+        ]"
+      />
+
+      <button class="life-sum-fold" type="button" :aria-expanded="sumOpen" @click="sumOpen = !sumOpen">
+        <span>{{ isMeals ? '美食汇总' : '全家汇总' }}</span>
+        <span class="life-sum-fold-caret" aria-hidden="true">{{ sumOpen ? '▴' : '▾' }}</span>
+      </button>
+
+      <div v-show="sumOpen" class="life-sum-grid">
         <!-- 体重汇总 -->
         <div v-if="!isMeals" class="life-sum-card">
           <div class="life-sum-title"><AppIcon icon="⚖️" :size="13" /> 体重汇总</div>
@@ -426,6 +446,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import ModuleSummary from '@/components/common/ModuleSummary.vue'
 import ChartTip from '@/components/charts/ChartTip.vue'
 import { useChartHover } from '@/composables/useChartHover'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -482,6 +503,26 @@ function memberCountText(id) {
 }
 
 // ============================== 家人汇总 ==============================
+// v2.46.372：全家汇总默认折叠，一屏先给主数
+const sumOpen = ref(false)
+
+// v2.46.372：摘要主数（三层模型的 L1）—— 当前视图下最新体重 / 较上次差值 / 区间变化
+const weightHero = computed(() => {
+  const rows = weightFiltered.value
+  if (!rows.length) return null
+  const asc = [...rows].sort((a, b) => new Date(a.measured_at) - new Date(b.measured_at))
+  const last = Number(asc[asc.length - 1].weight_kg)
+  const prev = asc.length > 1 ? Number(asc[asc.length - 2].weight_kg) : null
+  const first = Number(asc[0].weight_kg)
+  return {
+    latest: last,
+    delta: prev === null ? null : +(last - prev).toFixed(1),
+    span: asc.length > 1 ? +(last - first).toFixed(1) : null,
+    count: asc.length,
+    lastAt: (asc[asc.length - 1].measured_at || '').slice(0, 10),
+  }
+})
+
 // 体重：每人 记录数 / 最新值 / 区间首末变化 / 最近测量日
 const weightSummary = computed(() => {
   const byMember = new Map()
@@ -947,6 +988,23 @@ onBeforeUnmount(() => {
 .life-mtag.on .life-mtag-meta { color: inherit; }
 
 .life-sum-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+/* v2.46.372：摘要主数 + 折叠开关 */
+.life-hero-sum { display: block; margin-bottom: 14px; }
+.life-sum-fold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px 2px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--lj-text-2, #515154);
+  cursor: pointer;
+  text-align: left;
+}
+.life-sum-fold-caret { font-size: 11px; opacity: .6; }
 /* 窄屏改单列时不能写裸 1fr：1fr = minmax(auto, 1fr)，轨道最小宽度会被
    nowrap 表格的 min-content 顶住，卡片被撑出视口（375px 下溢出 30px）。
    必须显式 minmax(0, 1fr)，让轨道能收缩、把溢出交给 .life-sum-table-wrap 横向滚动。 */
