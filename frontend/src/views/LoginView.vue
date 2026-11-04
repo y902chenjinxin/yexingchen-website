@@ -193,12 +193,19 @@ function onTiltLeave() {
   if (cardEl.value) cardEl.value.style.transform = ''
 }
 
-/** ============ 纯白浮尘粒子（v2.46.366） ============
- * 夜星要求：只要纯白细点，不要光晕、不要彩色、不要连线。
- * 做法：单张 canvas 逐点画白圆，半径 0.5~1.7px、基础透明度 0.10~0.55，
- * 极慢上飘 + 正弦微闪（±30%），全程不提亮、不加 shadow。
- * 密度按面积自适应（小屏自动减量），DPR 封顶 2；页面隐藏即暂停，
- * prefers-reduced-motion 时只画一帧静态尘点。 */
+/** ============ 纯白粒子星座网（v2.46.367） ============
+ * 夜星要求：线条那种粒子特效——白点之间互相连线成网，鼠标靠近也拉线；
+ * 仍然纯度纯白、不带光晕光晕。（v2.46.366 只画了点没连线，这次补上）
+ *
+ * 做法：
+ *  - 白点半径 0.7~2.1px、透明度 0.25~0.6，随机方向匀速漂移，撞边反弹
+ *  - 两点距离 < linkDist（按屏幕短边自适应 110~170px）时连线，越近越亮，
+ *    最亮 alpha 0.26，线宽 1px；按距离分 5 档批量 path 描边（省 draw call）
+ *  - 指针 170px 内拉线（alpha 0.34），鼠标离开即断
+ *  - 卡片区不消失而是「淡出」：卡矩形外 90px 内羽化，卡后压到 18%，
+ *    避免线条糊在玻璃卡背后显脏
+ * 全程不设 shadowBlur、不用径向渐变 → 零发光感。
+ * 性能：DPR≤2、页面隐藏停 rAF、减动效只画静态帧、帧间隔归一化 60fps。 */
 const dustCanvas = ref(null)
 let dustCtx = null
 let dustDots = []
@@ -206,12 +213,23 @@ let dustRaf = 0
 let dustTimer = 0
 let dustLast = 0
 let dustStatic = false
+let dustLinkDist = 150
+let dustCardBox = null          // 卡片相对 canvas 的矩形（用于卡区淡出）
+const dustPointer = { x: -9999, y: -9999, on: false }
 
 const TAU = Math.PI * 2
 const DUST_REF_AREA = 1920 * 937
-const DUST_BASE = 120      // 1920×937 基准 120 粒
-const DUST_MIN = 48        // 小屏下限（再少就空）
-const DUST_MAX = 150       // 大屏上限（顾性能）
+const DUST_BASE = 120            // 1920×937 基准 120 粒
+const DUST_MIN = 48
+const DUST_MAX = 150
+const LINK_DIST_MIN = 110        // 连线距离下限（手机小屏）
+const LINK_DIST_MAX = 170        // 连线距离上限（大屏）
+const LINK_ALPHA = 0.30          // 连线最亮值（两点重合时）
+const LINK_BANDS = 5             // 连线亮度分档数
+const POINTER_LINK_DIST = 170    // 指针拉线半径
+const POINTER_LINK_ALPHA = 0.34
+const CARD_FEATHER = 90          // 卡片区羽化宽度
+const CARD_MIN_FADE = 0.18       // 卡片正后方压到的比例
 
 function dustCount(w, h) {
   return Math.max(DUST_MIN, Math.min(DUST_MAX, Math.round((DUST_BASE * w * h) / DUST_REF_AREA)))
@@ -221,17 +239,39 @@ function initDust(w, h) {
   dustDots = []
   const n = dustCount(w, h)
   for (let i = 0; i < n; i++) {
+    const ang = Math.random() * TAU
+    const sp = 0.16 + Math.random() * 0.42
     dustDots.push({
       x: Math.random() * w,
       y: Math.random() * h,
-      r: 0.5 + Math.random() * 1.2,
-      a: 0.10 + Math.random() * 0.45,
-      vx: (Math.random() - 0.5) * 0.16,   // 横向极慢摆动
-      vy: -(0.04 + Math.random() * 0.18), // 整体缓缓上飘（浮尘感）
-      ph: Math.random() * TAU,            // 闪烁相位
-      sp: 0.4 + Math.random() * 0.9,      // 闪烁速度
+      r: 0.7 + Math.random() * 1.4,
+      a: 0.25 + Math.random() * 0.35,
+      vx: Math.cos(ang) * sp,
+      vy: Math.sin(ang) * sp,
+      f: 1,                                 // 本帧的卡片淡出系数
     })
   }
+}
+
+// 卡片区淡出：矩形内 18%，外扩 CARD_FEATHER 内线性回升到 100%
+function cardFade(x, y) {
+  const b = dustCardBox
+  if (!b) return 1
+  const dx = x < b.x ? b.x - x : (x > b.x + b.w ? x - (b.x + b.w) : 0)
+  const dy = y < b.y ? b.y - y : (y > b.y + b.h ? y - (b.y + b.h) : 0)
+  if (!dx && !dy) return CARD_MIN_FADE
+  const d = Math.sqrt(dx * dx + dy * dy)
+  if (d >= CARD_FEATHER) return 1
+  return CARD_MIN_FADE + (1 - CARD_MIN_FADE) * (d / CARD_FEATHER)
+}
+
+function measureCardBox() {
+  const canvas = dustCanvas.value
+  const card = cardEl.value
+  if (!canvas || !card) { dustCardBox = null; return }
+  const cr = card.getBoundingClientRect()
+  const xr = canvas.getBoundingClientRect()
+  dustCardBox = { x: cr.left - xr.left, y: cr.top - xr.top, w: cr.width, h: cr.height }
 }
 
 function setupDust() {
@@ -246,6 +286,8 @@ function setupDust() {
   dustCtx = canvas.getContext('2d')
   if (!dustCtx) return
   dustCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  dustLinkDist = Math.max(LINK_DIST_MIN, Math.min(LINK_DIST_MAX, Math.min(w, h) * 0.2))
+  measureCardBox()
   initDust(w, h)
 }
 
@@ -260,17 +302,75 @@ function paintDust(ts) {
   const dt = dustLast ? Math.min(3, Math.max(0.2, (ts - dustLast) / 16.67)) : 1
   dustLast = ts
   ctx.clearRect(0, 0, w, h)
-  ctx.fillStyle = '#ffffff'
+
+  // 1) 位置更新：匀速漂移，撞边反弹（不用回绕，网眼才不停重组）
   for (const d of dustDots) {
     d.x += d.vx * dt
     d.y += d.vy * dt
-    // 出界回绕（上下换边时重掷 x，避免阵型重复）
-    if (d.y < -4) { d.y = h + 4; d.x = Math.random() * w }
-    else if (d.y > h + 4) { d.y = -4; d.x = Math.random() * w }
-    if (d.x < -4) d.x = w + 4
-    else if (d.x > w + 4) d.x = -4
-    const tw = 0.7 + 0.3 * Math.sin((ts / 900) * d.sp + d.ph)
-    ctx.globalAlpha = d.a * tw
+    if (d.x < d.r) { d.x = d.r; d.vx = Math.abs(d.vx) }
+    else if (d.x > w - d.r) { d.x = w - d.r; d.vx = -Math.abs(d.vx) }
+    if (d.y < d.r) { d.y = d.r; d.vy = Math.abs(d.vy) }
+    else if (d.y > h - d.r) { d.y = h - d.r; d.vy = -Math.abs(d.vy) }
+    d.f = cardFade(d.x, d.y)
+  }
+
+  // 2) 点间连线：按距离分档收集到 5 条 Path2D，一次一档 stroke
+  const linkDist = dustLinkDist
+  const ld2 = linkDist * linkDist
+  const bands = []
+  for (let i = 0; i < LINK_BANDS; i++) bands.push(new Path2D())
+  const n = dustDots.length
+  for (let i = 0; i < n; i++) {
+    const a = dustDots[i]
+    for (let j = i + 1; j < n; j++) {
+      const b = dustDots[j]
+      const dx = a.x - b.x
+      if (dx > linkDist || dx < -linkDist) continue
+      const dy = a.y - b.y
+      if (dy > linkDist || dy < -linkDist) continue
+      const d2 = dx * dx + dy * dy
+      if (d2 > ld2) continue
+      const f = a.f < b.f ? a.f : b.f
+      if (f < 0.2) continue
+      // 越近越亮：t=1 两点重合
+      const t = 1 - Math.sqrt(d2) / linkDist
+      const band = Math.min(LINK_BANDS - 1, Math.floor(t * LINK_BANDS))
+      bands[band].moveTo(a.x, a.y)
+      bands[band].lineTo(b.x, b.y)
+    }
+  }
+  ctx.lineWidth = 1
+  for (let i = 0; i < LINK_BANDS; i++) {
+    const t = (i + 0.5) / LINK_BANDS
+    ctx.strokeStyle = `rgba(255,255,255,${(LINK_ALPHA * t).toFixed(3)})`
+    ctx.stroke(bands[i])
+  }
+
+  // 3) 指针拉线（只有桌面精确指针才有，触屏不会乱闪）
+  if (dustPointer.on) {
+    const pd2 = POINTER_LINK_DIST * POINTER_LINK_DIST
+    const pp = new Path2D()
+    let has = false
+    for (const d of dustDots) {
+      if (d.f < 0.2) continue
+      const dx = d.x - dustPointer.x
+      const dy = d.y - dustPointer.y
+      if (dx * dx + dy * dy > pd2) continue
+      pp.moveTo(d.x, d.y)
+      pp.lineTo(dustPointer.x, dustPointer.y)
+      has = true
+    }
+    if (has) {
+      ctx.strokeStyle = `rgba(255,255,255,${POINTER_LINK_ALPHA})`
+      ctx.stroke(pp)
+    }
+  }
+
+  // 4) 白点本体（点在最后画，压住线头）
+  ctx.fillStyle = '#ffffff'
+  for (const d of dustDots) {
+    if (d.f < 0.2) continue
+    ctx.globalAlpha = d.a * d.f
     ctx.beginPath()
     ctx.arc(d.x, d.y, d.r, 0, TAU)
     ctx.fill()
@@ -292,7 +392,7 @@ function startDust() {
   stopDust()
   dustLast = 0
   if (dustStatic) {
-    paintDust(0)              // 减动效：只留一帧静态尘点
+    paintDust(0)              // 减动效：只留一帧静态星座网
     return
   }
   dustRaf = requestAnimationFrame(loopDust)
@@ -311,6 +411,20 @@ function onDustVisibility() {
   else if (!dustStatic) startDust()
 }
 
+// 指针位置（转成 canvas 坐标；登录页不滚动，矩形取一次即可）
+function onDustPointer(e) {
+  const canvas = dustCanvas.value
+  if (!canvas) return
+  const r = canvas.getBoundingClientRect()
+  dustPointer.x = e.clientX - r.left
+  dustPointer.y = e.clientY - r.top
+  dustPointer.on = true
+}
+
+function onDustPointerLeave() {
+  dustPointer.on = false
+}
+
 onMounted(() => {
   document.body.classList.add('login-route')
   tiltEnabled = window.matchMedia('(pointer: fine)').matches
@@ -319,12 +433,14 @@ onMounted(() => {
     window.addEventListener('pointermove', onTiltMove, { passive: true })
     document.documentElement.addEventListener('pointerleave', onTiltLeave)
   }
-  // 纯白浮尘粒子
+  // 纯白粒子星座网
   dustStatic = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   setupDust()
   startDust()
   window.addEventListener('resize', onDustResize)
   document.addEventListener('visibilitychange', onDustVisibility)
+  window.addEventListener('pointermove', onDustPointer, { passive: true })
+  document.documentElement.addEventListener('pointerleave', onDustPointerLeave)
 })
 
 onBeforeUnmount(() => {
@@ -337,6 +453,8 @@ onBeforeUnmount(() => {
   clearTimeout(dustTimer)
   window.removeEventListener('resize', onDustResize)
   document.removeEventListener('visibilitychange', onDustVisibility)
+  window.removeEventListener('pointermove', onDustPointer)
+  document.documentElement.removeEventListener('pointerleave', onDustPointerLeave)
   document.body.classList.remove('login-route')
 })
 
