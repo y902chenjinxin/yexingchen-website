@@ -2,6 +2,10 @@
   <div id="app" :class="{ 'is-mobile': isMobile, 'is-immersive': immersive }">
     <!-- 全站科技风 · 画布粒子/网格背景（固定层，置于内容之下，pointer-events:none） -->
     <TechBackdrop />
+    <!-- v2.46.378 全站唯一氛围光场层（fixed 铺满视口，永不随滚动断开）。
+         之前光场写在 #app 的 background 上，被 body 的实色背景压掉，
+         手机端「顶部大蓝条 / 底部一大片灰」都是这层的缺失造成的。 -->
+    <div class="lg-ambient" aria-hidden="true"></div>
     <el-config-provider :locale="zhCn">
     <!-- Skip Link键盘导航 -->
     <a href="#main-content" class="skip-link">跳转到内容</a>

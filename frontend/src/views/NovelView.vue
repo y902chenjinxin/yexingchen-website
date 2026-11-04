@@ -1255,14 +1255,17 @@ function formatTime(timeStr) {
   position: relative;
   aspect-ratio: 3 / 4;
   width: 100%;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* v2.46.378：投影收一半。原来 8px/16px 的落影在深色页面上会糊成一圈灰边，
+     看着像书本外面又套了个框（夜星：「书籍为什么也有框」）。
+     书卡本身已经不再被玻璃规则收编，这里只需要一点点「贴住纸面」的影。 */
   box-shadow:
-    0 1px 2px rgba(16, 20, 26, .14),
-    0 8px 16px -12px rgba(16, 20, 26, .5);
+    0 1px 2px rgba(16, 20, 26, .10),
+    0 4px 10px -8px rgba(16, 20, 26, .34);
   transition: transform .16s ease;
 }
 .ns-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }

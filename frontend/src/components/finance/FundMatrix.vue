@@ -67,24 +67,30 @@ const grandTotal = computed(() => props.rows.reduce((s, r) => s + (r.total || 0)
 .fin-mtr.total { font-weight: 600; background: rgba(199,169,107,.08); }
 .fin-mtr.total td { border-bottom: none; }
 
-/* ---- 移动端块化：月份为卡、成员竖排（data-name 供 ::before 显示行名） ---- */
+/* ---- 移动端块化：月份为小标题、成员竖排（data-name 供 ::before 显示行名） ----
+ * v2.46.378 简化：原来是「每个月份一个虚线圆角框 + 行间虚线 + 合计行变实线框」，
+ * 三层线框叠在一张玻璃卡里，手机上一屏全是线（夜星：「公款和存款内容都挤在一块」）。
+ * 现在去掉全部框线，只靠留白和字号分层：月份做小号灰标题，成员行无分隔，
+ * 合计行加粗但不填底。信息一条没少，视觉噪音去掉三分之二。 */
 @media (max-width: 560px) {
   .fin-mtable-wrap { overflow-x: visible; }
-  .fin-mtable { display: block; width: 100%; font-size: 12.5px; }
+  .fin-mtable { display: block; width: 100%; font-size: 13px; }
   .fin-mtable thead { display: none; }
   .fin-mtable tbody { display: block; }
-  .fin-mtable tr { display: block; padding: 10px 12px; margin-bottom: 10px;
-    border: 1px dashed var(--m-line-strong, rgba(43,43,38,.3)); border-radius: 12px; }
+  .fin-mtable tr { display: block; padding: 0; margin: 0 0 16px;
+    border: 0; border-radius: 0; }
   .fin-mtable tr:last-child { margin-bottom: 0; }
   .fin-mtable td { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-    padding: 4px 0; border-bottom: none; white-space: normal; text-align: right; }
-  .fin-mtable td.c-name { font-weight: 600; color: var(--lj-text);
-    font-size: 13px; padding-bottom: 6px; margin-bottom: 2px;
-    border-bottom: 1px dashed var(--m-line-strong, rgba(43,43,38,.3)); }
+    padding: 5px 0; border-bottom: none; white-space: normal; text-align: right; }
+  .fin-mtable td.c-name { display: block; font-weight: 600; color: var(--lj-text-3);
+    font-size: 11.5px; letter-spacing: .08em; padding: 0 0 4px; margin-bottom: 0;
+    border-bottom: none; }
   .fin-mtable td.c-name::before { content: ""; }
-  .fin-mtable td.c-num::before { content: attr(data-name); font-size: 12px;
-    font-weight: 500; color: var(--lj-text-2); white-space: nowrap; }
-  .fin-mtr.total { background: none; border-style: solid; }
+  .fin-mtable td.c-num::before { content: attr(data-name); font-size: 13px;
+    font-weight: 400; color: var(--lj-text-2); white-space: nowrap; }
+  .fin-mtable td.c-num.strong, .fin-mtr.total td.c-num { font-weight: 600; }
+  .fin-mtr.total { background: none; border-style: none; margin-top: 4px; }
+  .fin-mtr.total td.c-name { color: var(--lj-text); }
   .fin-mtr.total td.c-num::before { color: var(--lj-text); }
 }
 </style>

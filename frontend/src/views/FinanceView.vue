@@ -2157,6 +2157,19 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .fin-members-caret { display: inline-block; transition: transform .18s ease; }
 .fin-members-caret.open { transform: rotate(90deg); }
 .fin-mtags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+/* v2.46.378：家人标签在手机上一行横滑，不再换行堆成两三排（夜星嫌密）。 */
+@media (max-width: 700px) {
+  .fin-mtags {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 10px;
+    padding-bottom: 2px;
+  }
+  .fin-mtags::-webkit-scrollbar { display: none; }
+  .fin-mtag { flex: 0 0 auto; }
+}
 .fin-mtag { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px;
   border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer;
   font-family: var(--font-serif); font-size: 13px; transition: border-color .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease; }

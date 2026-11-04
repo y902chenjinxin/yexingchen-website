@@ -79,7 +79,7 @@
                 </span>
                 <span v-if="c.address">住址 {{ c.address }}</span>
                 <span v-if="c.identity_no">身份照号 {{ c.identity_no }}</span>
-                <span v-if="c.creator_name" class="ct-creator"><AppIcon :icon="c.creator_avatar || '👤'" :size="14" /> {{ c.creator_name }} 录入</span>
+                <!-- v2.46.378：去掉「XX 录入」——每张卡都重复同一句，纯噪音 -->
               </div>
               <p v-if="c.notes" class="ct-notes">{{ c.notes }}</p>
             </div>
@@ -234,7 +234,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
-import AppIcon from '@/components/common/AppIcon.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import { contactsApi, RELATION_OPTIONS } from '@/api/family'
 import { thumb } from '@/utils/img'

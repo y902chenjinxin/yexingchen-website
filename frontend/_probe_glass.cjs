@@ -24,6 +24,8 @@ const PAGES = [
   { url: '/workbench', name: 'home' },
   { url: '/finance', name: 'finance' },
   { url: '/life', name: 'life' },
+  { url: '/contacts', name: 'contacts' },
+  { url: '/novel', name: 'novel' },
 ]
 
 ;(async () => {
