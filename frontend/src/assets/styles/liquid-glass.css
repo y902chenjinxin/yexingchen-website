@@ -378,3 +378,157 @@ html[data-theme="day"].m-app {
 #app.is-mobile :is(.glass-card, .info-card, .tk-item, .ht-card, .qk-card, .dh-card, .life-col) {
   border-color: var(--m-line) !important;
 }
+
+/* ===================== H. 组件玻璃化（v2.46.371） =====================
+ * 夜星：「页面里面的组件也要液态玻璃那种水润的感觉」。
+ *
+ * 难点：全站 100+ 个模块私有类名（fin-btn / gt-btn / wd-btn / aid-btn …），
+ * C 节那种「手工名单」永远追不上，这也是「有些模块对、有些不符」的根因。
+ * 所以本节点改用「属性选择器批量匹配 + 通用组件直指」，一次管住同类控件。
+ *
+ * 水润感配方（四层叠加，缺一层就变「灰块」）：
+ *   1) 半透明白底 —— 底下的彩晕能透上来
+ *   2) 顶部 1px 白内高光 —— 玻璃的 specular 亮边，这是「水」的关键
+ *   3) 底部 1px 暗内影 —— 制造厚度，让控件像有体积的胶囊
+ *   4) 极细描边 —— 收住轮廓，不抢视线
+ *
+ * 性能：小组件不加 backdrop-filter（一屏几十个，鸿蒙 WebView 直接掉帧），
+ * 只靠半透明 + 高光模拟；模糊留给大卡面（C 节）。
+ * ================================================================== */
+
+:root,
+html[data-theme="night"] {
+  --lg-ctl-bg: rgba(255, 255, 255, .07);
+  --lg-ctl-bg-hover: rgba(255, 255, 255, .12);
+  --lg-ctl-bg-active: rgba(255, 255, 255, .16);
+  --lg-ctl-hi: inset 0 1px 0 rgba(255, 255, 255, .16);
+  --lg-ctl-lo: inset 0 -1px 0 rgba(0, 0, 0, .30);
+  --lg-ctl-line: rgba(255, 255, 255, .12);
+  --lg-ctl-shadow: 0 2px 8px rgba(0, 0, 0, .22);
+}
+html[data-theme="day"],
+html[data-theme="day"] #app.is-mobile {
+  --lg-ctl-bg: rgba(255, 255, 255, .70);
+  --lg-ctl-bg-hover: rgba(255, 255, 255, .92);
+  --lg-ctl-bg-active: rgba(255, 255, 255, 1);
+  --lg-ctl-hi: inset 0 1px 0 rgba(255, 255, 255, .98);
+  --lg-ctl-lo: inset 0 -1px 0 rgba(31, 41, 55, .05);
+  --lg-ctl-line: rgba(60, 60, 67, .10);
+  --lg-ctl-shadow: 0 1px 3px rgba(31, 41, 55, .06);
+}
+
+/* --- 1) 通用按钮：图标按钮 / 科技按钮 / Element 次级按钮 --- */
+.ibtn,
+.tech-btn,
+.play-btn-hud,
+.el-button:not(.el-button--primary):not(.el-button--danger):not(.is-text):not(.is-link) {
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo), var(--lg-ctl-shadow) !important;
+}
+.ibtn:hover,
+.tech-btn:hover,
+.el-button:not(.el-button--primary):not(.el-button--danger):not(.is-text):not(.is-link):hover {
+  background: var(--lg-ctl-bg-hover) !important;
+}
+.ibtn:active,
+.tech-btn:active,
+.el-button:not(.el-button--primary):not(.el-button--danger):not(.is-text):not(.is-link):active {
+  background: var(--lg-ctl-bg-active) !important;
+  box-shadow: var(--lg-ctl-hi), inset 0 1px 2px rgba(0, 0, 0, .10) !important;
+}
+
+/* --- 2) 模块私有次级按钮：属性选择器批量收编 ---
+ * 只匹配「class 属性以 -btn 结尾」的元素，也就是单类名按钮；
+ * 再用 :not() 显式排除主操作/选中/危险态——它们根本不该被匹配，
+ * 而不是「先覆盖再还原」（CSS 没有可靠的还原到原值的手段）。 */
+#app.is-mobile [class$="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger) {
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo), var(--lg-ctl-shadow) !important;
+  border-radius: 14px;
+}
+#app.is-mobile [class$="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):hover {
+  background: var(--lg-ctl-bg-hover) !important;
+}
+#app.is-mobile [class$="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):active {
+  background: var(--lg-ctl-bg-active) !important;
+  box-shadow: var(--lg-ctl-hi), inset 0 1px 2px rgba(0, 0, 0, .12) !important;
+}
+
+/* --- 3) Chip / 胶囊标签：玻璃药丸 --- */
+[class*="-chip"],
+[class*="-tag"]:not(.el-tag) {
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
+  border-radius: 999px !important;
+}
+[class*="-chip"].on,
+[class*="-chip"].active,
+[class*="-chip"].is-on {
+  box-shadow: var(--lg-ctl-hi), 0 0 0 1px var(--m-accent, #0e93b8) inset !important;
+}
+
+/* --- 4) 输入 / 选择 / 文本域：内嵌玻璃腔体 --- */
+#app.is-mobile :is(.el-input__wrapper, .el-select__wrapper, .el-textarea__inner),
+#app.is-mobile .el-input__wrapper,
+html[data-theme="day"] #app.is-mobile :is(.el-input__wrapper, .el-select__wrapper, .el-textarea__inner) {
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
+  border-radius: 14px !important;
+}
+#app.is-mobile :is(.el-input__wrapper.is-focus, .el-select__wrapper.is-focused),
+html[data-theme="day"] #app.is-mobile :is(.el-input__wrapper.is-focus, .el-select__wrapper.is-focused) {
+  border-color: var(--m-accent, #0e93b8) !important;
+  box-shadow:
+    var(--lg-ctl-hi),
+    0 0 0 3px rgba(14, 147, 184, .16) !important;
+}
+
+/* --- 5) 分段控件：整条做玻璃槽，选中块浮起 --- */
+#app.is-mobile :is(.fin-dim, .hw-seg, .gw-seg, [class*="-seg"]:not([class*="-seg-btn"])) {
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  box-shadow: var(--lg-ctl-lo) !important;
+  border-radius: 999px !important;
+}
+#app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn"]) {
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+#app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn"]):is(.on, .active) {
+  background: var(--lg-ctl-bg-hover) !important;
+  box-shadow: var(--lg-ctl-hi), 0 1px 3px rgba(0, 0, 0, .14) !important;
+}
+
+/* --- 6) 桌面端：同一套配方，圆角收一档（18px 卡对应 12px 控件） --- */
+#app:not(.is-mobile) :is(.ibtn, .tech-btn) {
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo), var(--lg-ctl-shadow) !important;
+}
+#app:not(.is-mobile) :is(.el-input__wrapper, .el-select__wrapper, .el-textarea__inner) {
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
+  border-radius: 12px !important;
+}
+
+/* --- 7) 补齐 C 节名单漏掉的区块容器 ---
+ * C 节是手工名单，模块新增或改名的容器（.fin-pool-hero 自写 16px 圆角、
+ * .life-sum 等）就漏在外面，于是「有些模块跟首页不一样」。
+ * 这里按类名后缀批量兜底：面板 / 主视觉块 / 汇总块一律玻璃卡。 */
+#app.is-mobile :is([class$="-panel"], [class$="-hero"], [class$="-sum"], [class$="-overview"]) {
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 42%),
+    var(--lg-tint) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-line) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--lg-hi), var(--lg-shadow) !important;
+}
