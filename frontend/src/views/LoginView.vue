@@ -1,10 +1,15 @@
 <template>
   <div class="login-page">
-    <!-- 雨青粒子网背景（原始实现：粒子漂移 + 连线 + 鼠标聚拢） -->
-    <canvas ref="particleCanvas" class="particle-bg" aria-hidden="true"></canvas>
+    <!-- 液态玻璃氛围层：三团彩晕漂移 + 透视网格（v2.46.364 方案④，替代旧粒子网） -->
+    <div class="lg-ambient" aria-hidden="true">
+      <span class="lg-orb lg-orb--a"></span>
+      <span class="lg-orb lg-orb--b"></span>
+      <span class="lg-orb lg-orb--c"></span>
+      <span class="lg-grid"></span>
+    </div>
 
     <!-- 登录卡片 -->
-    <div class="login-card">
+    <div ref="cardEl" class="login-card">
       <h1 class="site-title font-serif">星阁</h1>
 
       <!-- 登录表单 -->
@@ -160,247 +165,48 @@ import { register as registerApi, verifyCode as verifyCodeApi } from '@/api/auth
 import TechButton from '@/components/common/TechButton.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 
-/** ============ 雨青粒子网背景（原始实现，保留用户偏好的绿色调） ============ */
-const particleCanvas = ref(null)
-let pctx = null
-let particles = []
-let rafId = 0
-let resizeTimer = 0
-const pointer = { x: -9999, y: -9999 }
-let reduceMotion = false
+/** ============ 液态玻璃：卡片鼠标视差（v2.46.364 方案④） ============
+ * 仅精确指针（桌面）且未开启「减弱动态效果」时启用，手机端自动跳过；
+ * rAF 节流，指针离开窗口复位。氛围层（光晕/网格）为纯 CSS 动画，无 JS。 */
+const cardEl = ref(null)
+let tiltRaf = 0
+let tiltEnabled = false
 
-/**
- * 雨青粒子网参数（依据 docs/ai/WORK_LOG.md 记录的 v2.x 原始实现复原，v2.40.12 再加密）：
- *   - 雨青粒子漂移：克制 0.32 速
- *   - 粒子间距离 180px 内 连极细雨青线，透明度 (1 - d/180) × 0.22
- *   - 鼠标 190px 影响半径内吸引粒子，并加亮连线向光标聚拢（α × 0.30）
- *   - 粒子带径向微光晕，核为冷白青
- *   - prefers-reduced-motion 时退化为静态帧
- * 密度沿革：原始 72 粒 → 嫌「太多」降 40 → 嫌「稀疏」改面积自适应（52 基准，155px/0.18）
- *   → 仍嫌稀疏再加密（66 基准，180px/0.22）。再往上加就该改用「中心疏密分区 +
- *   更亮连线」而不是继续堆粒子，否则小屏会糊。
- * 疏密分区：登录卡片正后方保持稀疏（玻璃卡底下太密会显脏），粒子被软性推离卡片区，
- *   越靠中心推力越大；出生时也避开卡片区，避免首帧爆开。
- */
-const LINK_DIST = 150           // 粒子间连线最大距离（对齐 a.html links.distance 150）
-const POINTER_DIST = 140        // 鼠标影响半径（对齐 a.html grab.distance 140）
-const BASE_SPEED = 0.32         // 克制漂移速度（原始值）
-const MAX_SPEED = 0.9           // 速度上限（原始值）
-const PULL = 0.022              // 鼠标吸引力（原始值）
-const LINE_ALPHA = 0.20         // 连线透明度上限（对齐 a.html links.opacity 0.2）
-// 面积自适应粒子数：1920×937 基准取 66，夹取 44~80（下限保证小屏不空，上限顾手机端性能）
-const PARTICLE_BASE = 66
-const PARTICLE_MIN = 44
-const PARTICLE_MAX = 80
-const REF_AREA = 1920 * 937
-// 疏密分区：卡片外扩 48px 的矩形内粒子被软推离
-const ZONE_PAD = 48
-const ZONE_PUSH = 0.05
-let cardZone = { x: 0, y: 0, w: 0, h: 0 }   // 相对 canvas 的卡片区（含外扩），w=0 表示无卡片
-
-function particleCountFor(w, h) {
-  return Math.max(PARTICLE_MIN, Math.min(PARTICLE_MAX, Math.round((PARTICLE_BASE * (w * h)) / REF_AREA)))
+function onTiltMove(e) {
+  const el = cardEl.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  const nx = (e.clientX - r.left) / r.width - 0.5
+  const ny = (e.clientY - r.top) / r.height - 0.5
+  if (tiltRaf) cancelAnimationFrame(tiltRaf)
+  tiltRaf = requestAnimationFrame(() => {
+    if (!cardEl.value) return
+    cardEl.value.style.transform =
+      `perspective(900px) rotateY(${(nx * 8).toFixed(2)}deg) rotateX(${(-ny * 6).toFixed(2)}deg)`
+  })
 }
 
-function inZone(x, y) {
-  return cardZone.w > 0 && x > cardZone.x && x < cardZone.x + cardZone.w
-    && y > cardZone.y && y < cardZone.y + cardZone.h
-}
-
-function initParticles(w, h) {
-  particles = []
-  const count = particleCountFor(w, h)
-  for (let i = 0; i < count; i++) {
-    let x = 0, y = 0
-    for (let tries = 0; tries < 8; tries++) {
-      x = Math.random() * w
-      y = Math.random() * h
-      if (!inZone(x, y)) break
-    }
-    if (inZone(x, y)) {
-      // 极小屏下 8 次都落在卡片区：退化为沿四边撒
-      const edge = Math.floor(Math.random() * 4)
-      if (edge === 0) { x = Math.random() * w; y = 0 }
-      else if (edge === 1) { x = Math.random() * w; y = h }
-      else if (edge === 2) { x = 0; y = Math.random() * h }
-      else { x = w; y = Math.random() * h }
-    }
-    particles.push({
-      x, y,
-      vx: (Math.random() - 0.5) * 2 * BASE_SPEED,
-      vy: (Math.random() - 0.5) * 2 * BASE_SPEED,
-      r: 1 + Math.random() * 2       // 1~3px（对齐 a.html size {min:1,max:3}）
-    })
-  }
-}
-
-// 全站科技风（TECH_OVERHAUL 2026-10-20）：粒子改为霓虹青 + 鼠标聚拢线改品紫，
-// 与全站 cyan/violet 霓虹体系统一，深底上呼吸感最强
-const COL_LINE = '45, 226, 255'         // 霓虹青连线
-const COL_POINTER = '185, 139, 255'     // 鼠标连线（品紫）
-const COL_HALO = '45, 226, 255'         // 粒子光晕（青）
-const COL_CORE = '180, 240, 255'        // 粒子核（浅青白）
-
-function setupCanvas() {
-  const canvas = particleCanvas.value
-  if (!canvas) return
-  const dpr = Math.min(window.devicePixelRatio || 1, 2)
-  const w = canvas.clientWidth
-  const h = canvas.clientHeight
-  canvas.width = w * dpr
-  canvas.height = h * dpr
-  pctx = canvas.getContext('2d')
-  pctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  // 疏密分区：记录登录卡片（外扩 ZONE_PAD）相对 canvas 的矩形
-  const page = canvas.closest('.login-page')
-  const card = page ? page.querySelector('.login-card') : null
-  if (card) {
-    const cr = card.getBoundingClientRect()
-    const xr = canvas.getBoundingClientRect()
-    cardZone = {
-      x: cr.left - xr.left - ZONE_PAD,
-      y: cr.top - xr.top - ZONE_PAD,
-      w: cr.width + ZONE_PAD * 2,
-      h: cr.height + ZONE_PAD * 2
-    }
-  } else {
-    cardZone = { x: 0, y: 0, w: 0, h: 0 }
-  }
-  reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  initParticles(w, h)
-}
-
-function draw() {
-  if (rafId) cancelAnimationFrame(rafId)
-  if (reduceMotion) return
-  rafId = requestAnimationFrame(draw)
-  const canvas = particleCanvas.value
-  if (!canvas || !pctx) return
-  const w = canvas.clientWidth
-  const h = canvas.clientHeight
-  if (!w || !h) return
-  pctx.clearRect(0, 0, w, h)
-
-  // 更新位置 + 鼠标吸引（与文档记录的原始实现一致）+ 卡片区软推离
-  for (const p of particles) {
-    const dxp = pointer.x - p.x
-    const dyp = pointer.y - p.y
-    const dp = Math.hypot(dxp, dyp)
-    if (dp < POINTER_DIST && dp > 0.5) {
-      const pull = (1 - dp / POINTER_DIST) * PULL
-      p.vx += (dxp / dp) * pull
-      p.vy += (dyp / dp) * pull
-    }
-    // 疏密分区：卡片矩形（含外扩）内软性推离，越靠中心推力越大
-    if (cardZone.w > 0) {
-      const cx = cardZone.x + cardZone.w / 2
-      const cy = cardZone.y + cardZone.h / 2
-      const dxz = p.x - cx
-      const dyz = p.y - cy
-      const zx = cardZone.w / 2
-      const zy = cardZone.h / 2
-      if (Math.abs(dxz) < zx && Math.abs(dyz) < zy) {
-        const depth = 1 - Math.max(Math.abs(dxz) / zx, Math.abs(dyz) / zy)
-        if (Math.abs(dxz) >= Math.abs(dyz)) p.vx += (dxz >= 0 ? 1 : -1) * depth * ZONE_PUSH
-        else p.vy += (dyz >= 0 ? 1 : -1) * depth * ZONE_PUSH
-      }
-    }
-    const sp = Math.hypot(p.vx, p.vy)
-    if (sp > MAX_SPEED) {
-      p.vx = (p.vx / sp) * MAX_SPEED
-      p.vy = (p.vy / sp) * MAX_SPEED
-    }
-    p.x += p.vx
-    p.y += p.vy
-    if (p.x < 0) { p.x = 0; p.vx *= -1 }
-    else if (p.x > w) { p.x = w; p.vx *= -1 }
-    if (p.y < 0) { p.y = 0; p.vy *= -1 }
-    else if (p.y > h) { p.y = h; p.vy *= -1 }
-  }
-
-  pctx.lineWidth = 1
-  // 粒子间连线
-  for (let i = 0; i < particles.length; i++) {
-    const a = particles[i]
-    for (let j = i + 1; j < particles.length; j++) {
-      const b = particles[j]
-      const dx = a.x - b.x
-      const dy = a.y - b.y
-      const d = Math.hypot(dx, dy)
-      if (d < LINK_DIST) {
-        const alpha = (1 - d / LINK_DIST) * LINE_ALPHA
-        pctx.strokeStyle = `rgba(${COL_LINE}, ${alpha.toFixed(3)})`
-        pctx.beginPath()
-        pctx.moveTo(a.x, a.y)
-        pctx.lineTo(b.x, b.y)
-        pctx.stroke()
-      }
-    }
-    // 鼠标连线（指针周围线条聚拢）
-    if (pointer.x > -9000 && pointer.y > -9000) {
-      const dp = Math.hypot(a.x - pointer.x, a.y - pointer.y)
-      if (dp < POINTER_DIST) {
-        const alpha = (1 - dp / POINTER_DIST) * 0.50   // 对齐 a.html grab.links.opacity 0.5
-        pctx.strokeStyle = `rgba(${COL_POINTER}, ${alpha.toFixed(3)})`
-        pctx.beginPath()
-        pctx.moveTo(a.x, a.y)
-        pctx.lineTo(pointer.x, pointer.y)
-        pctx.stroke()
-      }
-    }
-  }
-
-  // 粒子（光晕 + 核）
-  for (const p of particles) {
-    const halo = pctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4)
-    halo.addColorStop(0, `rgba(${COL_HALO}, 0.35)`)
-    halo.addColorStop(1, `rgba(${COL_HALO}, 0)`)
-    pctx.fillStyle = halo
-    pctx.beginPath()
-    pctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2)
-    pctx.fill()
-    pctx.fillStyle = `rgba(${COL_CORE}, 0.7)`
-    pctx.beginPath()
-    pctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-    pctx.fill()
-  }
-}
-
-function onPointerMove(e) {
-  const canvas = particleCanvas.value
-  if (!canvas) return
-  const rect = canvas.getBoundingClientRect()
-  pointer.x = e.clientX - rect.left
-  pointer.y = e.clientY - rect.top
-}
-
-function onPointerLeave() {
-  pointer.x = -9999
-  pointer.y = -9999
-}
-
-function onResize() {
-  clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(() => {
-    setupCanvas()
-  }, 150)
+function onTiltLeave() {
+  if (tiltRaf) cancelAnimationFrame(tiltRaf)
+  if (cardEl.value) cardEl.value.style.transform = ''
 }
 
 onMounted(() => {
   document.body.classList.add('login-route')
-  setupCanvas()
-  window.addEventListener('resize', onResize)
-  window.addEventListener('pointermove', onPointerMove, { passive: true })
-  window.addEventListener('pointerout', onPointerLeave)
-  draw()
+  tiltEnabled = window.matchMedia('(pointer: fine)').matches
+    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (tiltEnabled) {
+    window.addEventListener('pointermove', onTiltMove, { passive: true })
+    document.documentElement.addEventListener('pointerleave', onTiltLeave)
+  }
 })
 
 onBeforeUnmount(() => {
-  if (rafId) cancelAnimationFrame(rafId)
-  clearTimeout(resizeTimer)
-  window.removeEventListener('resize', onResize)
-  window.removeEventListener('pointermove', onPointerMove)
-  window.removeEventListener('pointerout', onPointerLeave)
+  if (tiltRaf) cancelAnimationFrame(tiltRaf)
+  if (tiltEnabled) {
+    window.removeEventListener('pointermove', onTiltMove)
+    document.documentElement.removeEventListener('pointerleave', onTiltLeave)
+  }
   document.body.classList.remove('login-route')
 })
 
@@ -515,42 +321,88 @@ function resetRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 基础深空底；liquid-glass.css（最后加载）会按昼夜主题覆盖成
+     「深空三彩晕 / 日间浅灰淡彩」，这里保持同族值避免闪烁 */
   background:
-    radial-gradient(60% 50% at 18% 12%, rgba(45, 226, 255, .14), transparent 60%),
-    radial-gradient(55% 45% at 84% 88%, rgba(185, 139, 255, .14), transparent 62%),
-    #05080f;
+    radial-gradient(56rem 40rem at 14% -8%, rgba(14, 147, 184, .22), transparent 60%),
+    radial-gradient(44rem 34rem at 86% 6%, rgba(110, 70, 190, .16), transparent 62%),
+    radial-gradient(52rem 40rem at 50% 112%, rgba(201, 160, 107, .14), transparent 60%),
+    linear-gradient(180deg, #0b111c 0%, #060a12 100%);
   position: relative;
   overflow: hidden;
 }
 
-/* 雨青粒子网画布（固定铺满，不参与文档流） */
-.particle-bg {
-  position: fixed;
+/* ============ 液态玻璃氛围层（纯 CSS，无 JS） ============ */
+.lg-ambient {
+  position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
   z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
+.lg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: .8;
+  will-change: transform;
+}
+.lg-orb--a {
+  width: 46vmax; height: 46vmax; left: -12vmax; top: -16vmax;
+  background: radial-gradient(circle at 35% 35%, rgba(14, 147, 184, .5), rgba(14, 147, 184, 0) 68%);
+  animation: lg-drift-a 26s ease-in-out infinite alternate;
+}
+.lg-orb--b {
+  width: 40vmax; height: 40vmax; right: -14vmax; top: -8vmax;
+  background: radial-gradient(circle at 40% 40%, rgba(110, 70, 190, .4), rgba(110, 70, 190, 0) 68%);
+  animation: lg-drift-b 32s ease-in-out infinite alternate;
+}
+.lg-orb--c {
+  width: 44vmax; height: 44vmax; left: 30vw; bottom: -20vmax;
+  background: radial-gradient(circle at 50% 40%, rgba(201, 160, 107, .32), rgba(201, 160, 107, 0) 68%);
+  animation: lg-drift-c 38s ease-in-out infinite alternate;
+}
+@keyframes lg-drift-a { to { transform: translate(9vmax, 7vmax) scale(1.12); } }
+@keyframes lg-drift-b { to { transform: translate(-8vmax, 9vmax) scale(1.15); } }
+@keyframes lg-drift-c { to { transform: translate(6vmax, -8vmax) scale(1.1); } }
+/* 透视网格：底部无限滚动，玻璃世界的「地面」 */
+.lg-grid {
+  position: absolute;
+  left: -40%; right: -40%; bottom: -34%; height: 56%;
+  background-image:
+    linear-gradient(rgba(14, 147, 184, .22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 147, 184, .22) 1px, transparent 1px);
+  background-size: 46px 46px;
+  transform: perspective(700px) rotateX(64deg);
+  transform-origin: center top;
+  -webkit-mask-image: linear-gradient(transparent, #000 46%);
+  mask-image: linear-gradient(transparent, #000 46%);
+  animation: lg-grid-move 3.6s linear infinite;
+  opacity: .8;
+}
+@keyframes lg-grid-move { from { background-position: 0 0; } to { background-position: 0 46px; } }
 
-/* 登录卡片（深色玻璃，克制淡入）——v2.46.104：登录页已是深黑 #050510 + 白粒子（a.html 风），
-   卡片转深色玻璃与背景、desktop-product 全局深墨青输入框统一；文字亮色化提升可读性 */
+/* 登录卡片：液态玻璃本体（v2.46.364 方案④）。
+   背景描边阴影的最终生效值在 liquid-glass.css（后加载 !important），此处保持同族；
+   鼠标视差 transform 由 JS 写入，transition 做平滑 */
 .login-card {
   position: relative;
   z-index: 100;
   width: 360px;
   padding: 40px;
-  background: linear-gradient(160deg, rgba(20, 30, 48, .72), rgba(10, 16, 28, .86));
-  -webkit-backdrop-filter: blur(24px) saturate(185%);
-  backdrop-filter: blur(24px) saturate(185%);
-  border: 1px solid var(--tc-line, rgba(120, 180, 255, .18));
-  border-radius: 20px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .02) 46%),
+    rgba(14, 21, 34, .38);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  backdrop-filter: blur(40px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 26px;
   box-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.04),
-    0 8px 24px rgba(0, 0, 0, 0.5),
-    0 24px 60px rgba(0, 0, 0, 0.55),
-    0 0 40px rgba(45, 226, 255, .12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, .22),
+    0 24px 70px rgba(0, 0, 0, .45),
+    0 6px 22px rgba(0, 0, 0, .28);
+  will-change: transform;
+  transition: transform .18s ease-out;
   opacity: 0;
   animation: card-in 0.5s ease-out 0.15s forwards;
 }
@@ -560,31 +412,42 @@ function resetRegister() {
   to { opacity: 1; }
 }
 
-/* 霓虹渐变描边（青→紫） */
+/* 旋转流光光环：藏在玻璃后面的呼吸光晕（雨青→鎏金），透过毛玻璃渗出来 */
 .login-card::before {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(45, 226, 255, .7), rgba(185, 139, 255, .55), rgba(45, 226, 255, .12));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  inset: -26px;
+  border-radius: 40px;
+  z-index: -1;
+  background: conic-gradient(
+    from var(--lg-spin, 0deg),
+    rgba(14, 147, 184, 0) 0%,
+    rgba(14, 147, 184, .55) 18%,
+    rgba(201, 160, 107, .45) 30%,
+    rgba(14, 147, 184, 0) 46%,
+    rgba(110, 70, 190, .30) 66%,
+    rgba(14, 147, 184, 0) 88%
+  );
+  filter: blur(26px);
+  opacity: .55;
+  animation: lg-ring 9s linear infinite;
   pointer-events: none;
 }
 
-/* 顶部青色高光扫描线 */
+@keyframes lg-ring {
+  to { --lg-spin: 360deg; }
+}
+
+/* 顶部柔光高光（旧霓虹扫描线退役，换液态玻璃的「玻璃沿反光」） */
 .login-card::after {
   content: '';
   position: absolute;
   top: 0;
-  left: 12%;
-  right: 12%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--tc-cyan, #2de2ff), transparent);
-  border-radius: 0 0 4px 4px;
-  box-shadow: 0 0 12px rgba(45, 226, 255, .6);
+  left: 14%;
+  right: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .65), transparent);
+  pointer-events: none;
 }
 
 .site-title {
@@ -593,10 +456,10 @@ function resetRegister() {
   /* v2.46.260：副标题「神农遗风，云上洞天」已删（夜星：现在没有这块因素了），
      间距由原来「8 + 副标题 + 30」收成这里一手管，标题与表单之间不留空洞 */
   margin-bottom: 22px;
-  background: linear-gradient(135deg, #7beeff 0%, #b98bff 50%, #7beeff 100%);
+  background: linear-gradient(120deg, #8fdcf2 0%, #f0e6cf 52%, #8fdcf2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 10px rgba(45, 226, 255, .35));
+  filter: drop-shadow(0 2px 12px rgba(14, 147, 184, .35));
 }
 
 .login-form {
@@ -616,7 +479,7 @@ function resetRegister() {
   font-size: 13px; color: rgba(220, 236, 232, 0.85); cursor: pointer;
 }
 .remember-check {
-  width: 16px; height: 16px; accent-color: var(--tc-cyan, #2de2ff);
+  width: 16px; height: 16px; accent-color: var(--tc-cyan, #17b0d6);
   cursor: pointer;
 }
 .remember-hint { font-size: 12px; color: rgba(157, 178, 212, 0.5); }
@@ -630,28 +493,29 @@ function resetRegister() {
 }
 
 .password-toggle:hover {
-  color: var(--tc-cyan, #2de2ff);
+  color: var(--tc-cyan, #17b0d6);
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(13, 20, 33, 0.7) !important;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(120, 180, 255, 0.28) !important;
-  border-radius: 10px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 :deep(.el-input__wrapper:hover),
 :deep(.el-input__wrapper.is-focus) {
-  border-color: rgba(45, 226, 255, 0.7) !important;
+  border-color: rgba(14, 147, 184, 0.85) !important;
+  box-shadow: 0 0 0 4px rgba(14, 147, 184, 0.16) !important;
 }
 
 :deep(.el-input__inner) {
-  color: #e6f0ff !important;
-  -webkit-text-fill-color: #e6f0ff;
-  caret-color: #e6f0ff;
+  color: #eef4fb !important;
+  -webkit-text-fill-color: #eef4fb;
+  caret-color: #eef4fb;
 }
 
 /* 浏览器自动填充（记住我 / 密码管理器）：Chrome 会强制给 input 刷
@@ -664,41 +528,41 @@ function resetRegister() {
 :deep(input:autofill),
 :deep(input:autofill:hover),
 :deep(input:autofill:focus) {
-  -webkit-text-fill-color: #e6f0ff !important;
-  color: #e6f0ff !important;
-  -webkit-box-shadow: 0 0 0 1000px rgba(13, 20, 33, 0.96) inset !important;
-  box-shadow: 0 0 0 1000px rgba(13, 20, 33, 0.96) inset !important;
-  background-color: rgba(13, 20, 33, 0.96) !important;
+  -webkit-text-fill-color: #eef4fb !important;
+  color: #eef4fb !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(14, 21, 34, 0.94) inset !important;
+  box-shadow: 0 0 0 1000px rgba(14, 21, 34, 0.94) inset !important;
+  background-color: rgba(14, 21, 34, 0.94) !important;
   transition: background-color 9999s ease-out 0s;
   filter: none !important;
-  caret-color: #e6f0ff;
+  caret-color: #eef4fb;
 }
-/* 自动填充时同步把外框描边维持霓虹青 */
+/* 自动填充时同步把外框描边维持雨青 */
 :deep(.el-input__wrapper:has(input:-webkit-autofill)),
 :deep(.el-input__wrapper:has(input:autofill)) {
-  background: rgba(13, 20, 33, 0.96) !important;
-  border-color: rgba(45, 226, 255, 0.5) !important;
+  background: rgba(14, 21, 34, 0.94) !important;
+  border-color: rgba(14, 147, 184, 0.5) !important;
 }
 
 :deep(.el-input__inner::placeholder) {
-  color: rgba(157, 178, 212, 0.66) !important;
+  color: rgba(210, 224, 240, 0.55) !important;
 }
 
 :deep(.el-input__suffix .el-icon),
 :deep(.el-input__clear),
 :deep(.el-input__password) {
-  color: rgba(157, 178, 212, 0.75) !important;
+  color: rgba(210, 224, 240, 0.75) !important;
 }
 
 :deep(.el-button--primary) {
-  background: linear-gradient(135deg, var(--tc-cyan, #2de2ff) 0%, var(--tc-blue, #6a8bff) 100%) !important;
-  border: 1px solid rgba(45, 226, 255, 0.4) !important;
-  color: #04121f !important;
-  box-shadow: 0 4px 15px rgba(45, 226, 255, 0.3) !important;
+  background: linear-gradient(135deg, #17b0d6 0%, #0a708c 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 22px rgba(14, 147, 184, 0.38) !important;
 }
 
 :deep(.el-button--primary:hover) {
-  background: linear-gradient(135deg, var(--tc-cyan-bright, #7beeff) 0%, var(--tc-violet, #b98bff) 100%) !important;
+  background: linear-gradient(135deg, #1fbfe4 0%, #0c7d9c 100%) !important;
 }
 
 .register-link {
@@ -711,7 +575,7 @@ function resetRegister() {
 }
 
 .register-link:hover {
-  color: var(--tc-cyan, #2de2ff);
+  color: var(--tc-cyan, #17b0d6);
 }
 
 /* 注册流程 */
@@ -760,7 +624,7 @@ function resetRegister() {
   align-items: center;
   justify-content: center;
   font-size: 30px;
-  color: var(--tc-cyan, #2de2ff);
+  color: var(--tc-cyan, #17b0d6);
 }
 
 /* 登录加载特效（克制：仅中央呼吸光 + 旋转细环） */
@@ -783,7 +647,7 @@ function resetRegister() {
   position: absolute;
   width: 110px;
   height: 110px;
-  background: radial-gradient(circle, rgba(45, 226, 255, 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(14, 147, 184, 0.3) 0%, transparent 70%);
   border-radius: 50%;
   animation: glow-pulse 2.2s ease-in-out infinite;
 }
@@ -797,9 +661,9 @@ function resetRegister() {
   position: absolute;
   width: 76px;
   height: 76px;
-  border: 1.5px solid rgba(45, 226, 255, 0.45);
+  border: 1.5px solid rgba(14, 147, 184, 0.45);
   border-radius: 50%;
-  border-top-color: rgba(185, 139, 255, 0.85);
+  border-top-color: rgba(201, 160, 107, 0.85);
   animation: ring-rotate 1.1s linear infinite;
 }
 
@@ -815,9 +679,10 @@ function resetRegister() {
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(10, 16, 28, 0.9);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(45, 226, 255, 0.18);
+  background: rgba(10, 16, 26, 0.55);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   padding: 10px 20px;
 }
 
@@ -867,6 +732,11 @@ function resetRegister() {
   .login-card {
     animation: none;
     opacity: 1;
+  }
+  .lg-orb,
+  .lg-grid,
+  .login-card::before {
+    animation: none;
   }
 }
 </style>

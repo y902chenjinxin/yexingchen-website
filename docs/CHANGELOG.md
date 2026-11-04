@@ -1,3 +1,30 @@
+## [v2.46.364] - 2026-11-04
+
+### 全站液态玻璃：登录页方案④ + 卡面/背景玻璃化（夜星：「登录页要炫酷；全站改苹果液态玻璃，背景要跟玻璃相辅相成」）
+
+**背景**：demo 四套风格（`artifacts/login-style-demo.html`），夜星选④液态玻璃，
+并要求全站卡面改液态玻璃、背景铺彩色光场让玻璃「有东西可透」。
+
+**修法**：
+- 新增 `assets/styles/liquid-glass.css`（main.js 真正的最后加载层），靠
+  「同特异性 + !important + 后加载」压过 desktop-product G 节 / mobile-product /
+  mobile-paper 的「实色化 + backdrop-filter:none」三组旧规则
+- `--lg-*` token：夜（深色玻璃 rgba(17,25,40,.46)）/ 日（白玻璃 rgba(255,255,255,.55)）
+  两套，手机端 blur 单独降到 20px（一屏十余张毛玻璃卡，26px 鸿蒙 WebView 扛不住）
+- 氛围光场：`--lg-page`（雨青/紫/鎏金三团 radial 彩晕 + 底色渐变）铺上 `#app`
+  与手机 19 个页容器，替换宣纸层的 `--m-bg + 纸纹`
+- 卡面恢复玻璃：手机 38 个卡类 + 桌面 `.glass/.glass-card/.card-deep/.ls-card/.jade-card`；
+  按压态从贴纸硬偏移换玻璃轻缩；手机 TabBar/桌面侧栏/手机弹窗（含 html.m-app，
+  el-dialog append-to-body 后 #app 前缀是死规则）玻璃化
+- 登录页：删雨青粒子网（-240 行 JS），换三团彩晕漂移 + 透视网格（纯 CSS）+
+  卡片鼠标 3D 视差（rAF 节流，仅 pointer:fine 且未开减动效）+ 旋转流光光环
+  （conic + @property --lg-spin，藏在玻璃后渗光）；液态玻璃卡（blur 40px、
+  26px 圆角、白发丝边）；昼夜双主题全覆盖（日间自动填充黑底白字反转、
+  文字可读性补齐）；备案页脚玻璃化；登录按钮/标题/加载特效统一雨青+鎏金
+
+**验证**：eslint 通过；vite build 通过；grep 产物确认 liquid-glass/lg-orb/--lg-spin/
+xuanhuang-v677/v2.46.364 已进包。手机端多卡 blur 性能与日间可读性待夜星真机核。
+
 ## [v2.46.363] - 2026-11-04
 
 ### 日间主题去蓝灰：换 iOS 纯净中性色板（夜星：「白天整体淡淡的蓝灰，怪怪的」）

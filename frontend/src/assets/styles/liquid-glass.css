@@ -1,0 +1,295 @@
+/* ======================================================================
+ * liquid-glass.css — 全站液态玻璃层（v2.46.364 · main.js 最后加载）
+ *
+ * 夜星拍板（2026-11-04）：登录页选「方案④ 液态玻璃」，全站卡面与背景
+ * 统一改苹果液态玻璃；背景铺彩色氛围光场，让玻璃有东西可透。
+ *
+ * 本文件职责（全部靠「最后加载 + 同特异性 !important」压制前层）：
+ *   A. 氛围背景：#app 与手机各页容器换彩色光场（夜深空 / 日浅灰淡彩）
+ *   B. 玻璃 token：--lg-*（夜/日两套，blur 强度手机端单独调低）
+ *   C. 卡面：恢复 .glass-card 族毛玻璃（压过 desktop-product G 节、
+ *      mobile-product / mobile-paper 的「实色 + backdrop-filter:none」）
+ *   D. 壳层：手机 TabBar / 桌面侧栏 / 手机弹窗 玻璃化
+ *   E. 登录页：压过 desktop-product N 节 / tech-theme-day 6 节 /
+ *      variables.css 旧日间 / mobile-paper 宣纸金边 / tech-theme 9b
+ * ===================================================================== */
+
+@property --lg-spin {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* ===================== B. 玻璃 token ===================== */
+:root {
+  --lg-blur: blur(26px) saturate(180%);
+  --lg-blur-soft: blur(16px) saturate(160%);
+  /* 夜间（默认）：深色玻璃 */
+  --lg-tint: rgba(17, 25, 40, .46);
+  --lg-tint-strong: rgba(12, 18, 30, .66);
+  --lg-line: rgba(255, 255, 255, .14);
+  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, .16);
+  --lg-shadow: 0 10px 36px rgba(0, 0, 0, .34);
+  /* 氛围光场：底色 + 三团彩晕（雨青 / 紫 / 鎏金），玻璃的「透光幕布」 */
+  --lg-page:
+    radial-gradient(52rem 36rem at 12% -6%, rgba(14, 147, 184, .16), transparent 62%),
+    radial-gradient(44rem 32rem at 88% 4%, rgba(110, 70, 190, .12), transparent 62%),
+    radial-gradient(50rem 38rem at 50% 108%, rgba(201, 160, 107, .10), transparent 60%),
+    linear-gradient(180deg, #0a0f1a 0%, #070b13 100%);
+}
+html[data-theme="day"] {
+  --lg-tint: rgba(255, 255, 255, .55);
+  --lg-tint-strong: rgba(255, 255, 255, .74);
+  --lg-line: rgba(255, 255, 255, .85);
+  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, .95);
+  --lg-shadow: 0 10px 32px rgba(31, 41, 55, .10);
+  --lg-page:
+    radial-gradient(52rem 36rem at 12% -6%, rgba(14, 147, 184, .12), transparent 62%),
+    radial-gradient(44rem 32rem at 88% 4%, rgba(167, 139, 250, .10), transparent 62%),
+    radial-gradient(50rem 38rem at 50% 108%, rgba(230, 180, 100, .13), transparent 60%),
+    linear-gradient(180deg, #f4f5f9 0%, #eceef4 100%);
+}
+/* 手机端 blur 调低：一屏十余张卡同时毛玻璃，鸿蒙 WebView 扛得住 20px 扛不动 26px */
+#app.is-mobile {
+  --lg-blur: blur(20px) saturate(170%);
+}
+
+/* ===================== A. 氛围背景 ===================== */
+#app {
+  background: var(--lg-page) !important;
+}
+/* 手机各页容器：压过宣纸层「--m-bg + 纸纹」，换同一张光场 */
+#app.is-mobile :is(.fin-page, .st-page, .tv-page, .ct-page, .notes-page, .profile-page, .assistant-page, .abb, .cd-page,
+  .tk-page, .sb-page, .li-page, .va-page, .wd-page, .sd-page, .dh-page, .trash-page, .fd-page, .qk-page) {
+  background: var(--lg-page) !important;
+}
+
+/* ===================== C. 卡面：恢复液态玻璃 ===================== */
+/* 手机主卡片组（名单同 mobile-paper.css 112-114，另收编 .gw-card） */
+#app.is-mobile :is(.glass, .glass-card, .fin-kpi, .fin-chart, .fin-ledger, .st-kpi-card, .st-form, .st-list,
+  .tv-kpi-card, .tv-map, .tv-slide, .ct-card, .ct-cal-card, .notes-item, .info-card, .cd-card,
+  .wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .life-members, .ht-card, .qk-card, .dh-card,
+  .fin-pool, .fin-pcard, .fin-panel, .fin-ptxns, .fin-todo, .fin-batch, .abb-hero, .abb-cell, .abb-stat,
+  .assistant-main, .gw-card) {
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 42%),
+    var(--lg-tint) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-line) !important;
+  border-radius: var(--m-radius, 16px) !important;
+  box-shadow: var(--lg-hi), var(--lg-shadow) !important;
+}
+/* 按压态：贴纸硬偏移 → 玻璃轻缩 */
+#app.is-mobile :is(.abb-cell, .glass-card, .cd-card, .li-card, .life-col, .qk-card, .dh-card, .fin-pool, .ht-card):active {
+  transform: scale(.985);
+  box-shadow: var(--lg-hi), 0 4px 16px rgba(0, 0, 0, .22) !important;
+}
+html[data-theme="day"] #app.is-mobile :is(.abb-cell, .glass-card, .cd-card, .li-card, .life-col, .qk-card, .dh-card, .fin-pool, .ht-card):active {
+  box-shadow: var(--lg-hi), 0 4px 14px rgba(31, 41, 55, .12) !important;
+}
+
+/* 桌面通用卡（名单同 desktop-product.css G 节 + 玉简） */
+#app:not(.is-mobile) :is(.glass, .glass-card, .card-deep, .ls-card, .jade-card) {
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, 0) 42%),
+    var(--lg-tint) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-line) !important;
+  box-shadow: var(--lg-hi), var(--lg-shadow) !important;
+}
+
+/* ===================== D. 壳层玻璃 ===================== */
+/* 手机底栏：夜深玻璃 / 日白玻璃（压过 tech-theme / mobile-paper / tech-theme-day 三层） */
+#app.is-mobile .mt-tabbar {
+  background: var(--lg-tint-strong) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border-top: 1px solid var(--lg-line) !important;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, .24) !important;
+}
+html[data-theme="day"] #app.is-mobile .mt-tabbar {
+  box-shadow: 0 -10px 26px rgba(31, 41, 55, .08) !important;
+}
+/* 桌面侧栏（scoped 底色无 !important，此处稳赢） */
+#app:not(.is-mobile) .dsb {
+  background: var(--lg-tint-strong) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border-right: 1px solid var(--lg-line) !important;
+}
+/* 手机弹窗：注意 el-dialog append-to-body 后 DOM 落在 body 下，
+   #app.is-mobile 前缀是死规则（docs/ISSUES.md V246279），必须带 html.m-app */
+#app.is-mobile :is(.el-dialog, .el-popover, .el-select__popper),
+html.m-app :is(.el-dialog, .el-popover, .el-select__popper) {
+  background: var(--lg-tint-strong) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-line) !important;
+}
+
+/* ===================== E. 登录页：液态玻璃门面 ===================== */
+/* 整页背景：深空三彩晕 / 日间浅灰淡彩（压过 desktop-product N 节、tech-theme-day 6 节、variables.css） */
+.login-page {
+  background:
+    radial-gradient(56rem 40rem at 14% -8%, rgba(14, 147, 184, .22), transparent 60%),
+    radial-gradient(44rem 34rem at 86% 6%, rgba(110, 70, 190, .16), transparent 62%),
+    radial-gradient(52rem 40rem at 50% 112%, rgba(201, 160, 107, .14), transparent 60%),
+    linear-gradient(180deg, #0b111c 0%, #060a12 100%) !important;
+}
+html[data-theme="day"] .login-page {
+  background:
+    radial-gradient(56rem 40rem at 14% -8%, rgba(14, 147, 184, .16), transparent 60%),
+    radial-gradient(44rem 34rem at 86% 6%, rgba(167, 139, 250, .14), transparent 62%),
+    radial-gradient(52rem 40rem at 50% 112%, rgba(230, 180, 100, .16), transparent 60%),
+    linear-gradient(180deg, #f6f7fb 0%, #e9ebf2 100%) !important;
+}
+/* 登录卡：液态玻璃本体 */
+.login-card {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .02) 46%),
+    rgba(14, 21, 34, .38) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(190%) !important;
+  backdrop-filter: blur(40px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, .22) !important;
+  border-radius: 26px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .22),
+    0 24px 70px rgba(0, 0, 0, .45),
+    0 6px 22px rgba(0, 0, 0, .28) !important;
+}
+html[data-theme="day"] .login-card {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .84), rgba(255, 255, 255, .5) 52%) !important;
+  border: 1px solid rgba(255, 255, 255, .9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    0 24px 60px rgba(31, 41, 55, .14),
+    0 6px 20px rgba(31, 41, 55, .08) !important;
+}
+/* 手机端：压掉宣纸金边 + 硬偏移阴影（mobile-paper.css 868-874） */
+#app.is-mobile .login-card {
+  border: 1px solid rgba(255, 255, 255, .22) !important;
+  border-radius: 24px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .22),
+    0 24px 70px rgba(0, 0, 0, .45) !important;
+}
+html[data-theme="day"] #app.is-mobile .login-card {
+  border: 1px solid rgba(255, 255, 255, .9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    0 24px 60px rgba(31, 41, 55, .14) !important;
+}
+/* 输入框：玻璃内嵌（压过 desktop-product N 节 ID 权重修复、tech-theme 9b、tech-theme-day 手机段） */
+#app:not(.is-mobile) .login-page .el-input__wrapper,
+#app:not(.is-mobile) .login-page .el-textarea__inner,
+#app.is-mobile .login-card .el-input__wrapper {
+  background: rgba(255, 255, 255, .09) !important;
+  border: 1px solid rgba(255, 255, 255, .28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
+  border-radius: 12px;
+}
+#app:not(.is-mobile) .login-page .el-input__wrapper:hover,
+#app:not(.is-mobile) .login-page .el-input__wrapper.is-focus,
+#app.is-mobile .login-card .el-input__wrapper:hover,
+#app.is-mobile .login-card .el-input__wrapper.is-focus {
+  border-color: rgba(14, 147, 184, .85) !important;
+  box-shadow: 0 0 0 4px rgba(14, 147, 184, .16) !important;
+}
+html[data-theme="day"] #app:not(.is-mobile) .login-page .el-input__wrapper,
+html[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
+  background: rgba(255, 255, 255, .66) !important;
+  border: 1px solid rgba(29, 29, 31, .16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9) !important;
+}
+html[data-theme="day"] #app:not(.is-mobile) .login-page .el-input__wrapper.is-focus,
+html[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper.is-focus {
+  border-color: rgba(14, 147, 184, .8) !important;
+  box-shadow: 0 0 0 4px rgba(14, 147, 184, .14) !important;
+}
+/* 输入文字：夜浅 / 日深（压过 desktop-product 与 tech-theme-day 的文字色） */
+#app:not(.is-mobile) .login-page .el-input__inner,
+#app.is-mobile .login-card .el-input__inner {
+  color: #eef4fb !important;
+  -webkit-text-fill-color: #eef4fb !important;
+  caret-color: #eef4fb;
+}
+#app:not(.is-mobile) .login-page .el-input__inner::placeholder,
+#app.is-mobile .login-card .el-input__inner::placeholder {
+  color: rgba(210, 224, 240, .55) !important;
+}
+#app:not(.is-mobile) .login-page :is(.el-input__suffix .el-icon, .el-input__clear, .el-input__password),
+#app.is-mobile .login-card :is(.el-input__suffix .el-icon, .el-input__clear, .el-input__password) {
+  color: rgba(210, 224, 240, .75) !important;
+}
+html[data-theme="day"] #app:not(.is-mobile) .login-page .el-input__inner,
+html[data-theme="day"] #app.is-mobile .login-card .el-input__inner {
+  color: #1d1d1f !important;
+  -webkit-text-fill-color: #1d1d1f !important;
+  caret-color: #1d1d1f;
+}
+html[data-theme="day"] #app:not(.is-mobile) .login-page .el-input__inner::placeholder,
+html[data-theme="day"] #app.is-mobile .login-card .el-input__inner::placeholder {
+  color: rgba(60, 60, 67, .48) !important;
+}
+html[data-theme="day"] #app:not(.is-mobile) .login-page :is(.el-input__suffix .el-icon, .el-input__clear, .el-input__password),
+html[data-theme="day"] #app.is-mobile .login-card :is(.el-input__suffix .el-icon, .el-input__clear, .el-input__password) {
+  color: rgba(60, 60, 67, .55) !important;
+}
+/* 日间自动填充：scoped 只写了夜间深底 inset，白天会黑底白字，这里反转 */
+html[data-theme="day"] .login-page input:-webkit-autofill,
+html[data-theme="day"] .login-page input:autofill {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, .92) inset !important;
+  box-shadow: 0 0 0 1000px rgba(255, 255, 255, .92) inset !important;
+  -webkit-text-fill-color: #1d1d1f !important;
+  color: #1d1d1f !important;
+  caret-color: #1d1d1f;
+}
+/* 登录按钮：雨青渐变，昼夜统一（压过 mobile-paper 鎏金 / tech-theme 青蓝 / tech-theme-day） */
+.login-card .el-button--primary,
+#app.is-mobile .login-card .el-button--primary,
+html[data-theme="day"] #app.is-mobile .login-card .el-button--primary {
+  background: linear-gradient(135deg, #17b0d6, #0a708c) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 8px 22px rgba(14, 147, 184, .38) !important;
+  font-weight: 650;
+}
+.login-card .el-button--primary:hover {
+  background: linear-gradient(135deg, #1fbfe4, #0c7d9c) !important;
+}
+/* 备案页脚：玻璃条 */
+.filing-footer {
+  background: rgba(10, 16, 26, .55) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  border-top: 1px solid rgba(255, 255, 255, .12) !important;
+}
+html[data-theme="day"] .filing-footer {
+  background: rgba(255, 255, 255, .55) !important;
+  border-top-color: rgba(29, 29, 31, .10) !important;
+}
+html[data-theme="day"] .filing-links a { color: rgba(29, 29, 31, .72) !important; }
+/* 日间文字可读性：scoped 只写了夜间浅色，白天在白玻璃上会隐形 */
+html[data-theme="day"] .login-page :is(.remember-label, .register-link, .back-link) {
+  color: rgba(29, 29, 31, .72) !important;
+}
+html[data-theme="day"] .login-page :is(.remember-hint, .text-secondary, .filing-divider) {
+  color: rgba(29, 29, 31, .48) !important;
+}
+html[data-theme="day"] .login-page .password-toggle { color: rgba(29, 29, 31, .6) !important; }
+html[data-theme="day"] .login-page .step-title { color: #1d1d1f !important; }
+html[data-theme="day"] .login-page .register-link:hover,
+html[data-theme="day"] .login-page .back-link:hover { color: #0a708c !important; }
+/* 氛围层：白天把光晕和网格收敛一档，保持素净 */
+html[data-theme="day"] .login-page .lg-orb { opacity: .5; }
+html[data-theme="day"] .login-page .lg-grid { opacity: .3; }
+
+/* ===================== 减动效 ===================== */
+@media (prefers-reduced-motion: reduce) {
+  .lg-orb, .lg-grid, .login-card::before {
+    animation: none !important;
+  }
+}

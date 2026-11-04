@@ -53,6 +53,9 @@ import './assets/styles/tech-theme.css'
 // 昼间（亮色）皮肤（TECH_DAY 2026-10-20）：夜里是「深空底+亮霓虹」，白天是「冷白底+深青墨」，
 // 两套是不同配色关系而非明暗缩放。必须排在 tech-theme.css 之后，才能按 :root[data-theme="day"] 覆盖
 import './assets/styles/tech-theme-day.css'
+// 全站液态玻璃层（LIQUID_GLASS 2026-11-04）：真正的最后加载层，恢复卡面/壳层毛玻璃 +
+// 铺氛围光场背景 + 登录页液态玻璃门面，压过 desktop-product/mobile-paper 的实色化
+import './assets/styles/liquid-glass.css'
 
 // 主题应用统一收口在 stores/prefs.js（data-theme + meta theme-color，#32）
 import { applyTheme } from '@/stores/prefs'
