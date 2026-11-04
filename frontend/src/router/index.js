@@ -222,14 +222,6 @@ const routes = [
     component: () => import('@/views/PianoPlayView.vue'),
     meta: { requiresAuth: true }
   },
-  // 3D 粒子（v2.46.360 重做）：three.js 底座的纯 3D 粒子，手机专属。
-  // 前缀不用 /play/ —— nginx 有 /play/pvz/ 的 alias，别再往那个前缀上加东西。
-  {
-    path: '/particle',
-    name: 'Particle',
-    component: () => import('@/views/Particle3DView.vue'),
-    meta: { requiresAuth: true }
-  },
   // 内置 OCR 文字识别（服务端 RapidOCR 本地推理）
   {
     path: '/tool/ocr',
