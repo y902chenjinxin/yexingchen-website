@@ -584,6 +584,20 @@ html[data-theme="day"] #app.is-mobile :is(.fin-tab, .fin-fund, .fin-cat, .fin-qu
   box-shadow: inset 0 1px 0 #fff, 0 1px 4px rgba(31, 41, 55, .12) !important;
 }
 
+/* 🔴 v2.46.397 「药丸套药丸」的真凶：379 版这条规则把底画在了 **input 本体**上
+ *   `#app.is-mobile .fin-form input:not([type=checkbox]):not([type=radio])`（特异性 1,3,1）
+ * 于是渲染成两层：input 自己 .15 白的内药丸 + wrapper .07 白的外药丸，
+ * 日期框尤其明显（能看到一大一小两个错位的圆角框）。
+ * Element 的结构是「wrapper 画底 + inner 透明」，底只能由 wrapper 负责。
+ * 这里用 (1,4,1) 把 inner 按回透明 —— 比原规则多一层 .el-input 才压得住
+ * （:not() 的两个属性选择器把原规则抬到了 1,3,1）。 */
+#app.is-mobile .fin-form .el-input .el-input__wrapper .el-input__inner {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
 /* --- 11b) 「记一笔」抽屉本体（v2.46.388）---
  * 夜星截图：整块抽屉是一片发亮的蓝，金额 0.00 / 日期几乎看不清，
  * 最下面「备注」被常驻的「记入账本」压掉了半截。三个根因：
@@ -631,11 +645,43 @@ html[data-theme="day"] #app.is-mobile .fin-form--drawer {
 html[data-theme="day"] #app.is-mobile .fin-form--drawer .fin-form-actions {
   background: linear-gradient(180deg, rgba(250, 250, 252, 0), rgba(250, 250, 252, .98) 34%) !important;
 }
-/* 抽屉里的输入腔体：底再压暗一档、字给纯白加粗，浅底浅字的问题一次解决 */
-#app.is-mobile .fin-form--drawer :is(.el-input__wrapper, .fin-amount, .fin-date, .fin-note-input) {
+/* 抽屉里的输入腔体：底再压暗一档、字给纯白加粗，浅底浅字的问题一次解决。
+ * 🔴 v2.46.396 这里有个「药丸套药丸」+「浅灰药丸」的问题，是两个错叠出来的：
+ *   ① Element 的 el-input-number / el-date-editor 根元素（.fin-amount / .fin-date）
+ *      和内层 .el-input__wrapper 是**两层**，我给两层都写了底和圆角，
+ *      于是渲染出两个错位的药丸（日期框尤其明显，能看到一大一小两个圆角）。
+ *      → 根元素必须保持透明无框，只画内层 wrapper。
+ *   ② 内层 wrapper 上带着 backdrop-filter（跟页头「大蓝条」同一个物理机制），
+ *      它把背后光场模糊采样进药丸里，.07 白被提亮成中灰 ——
+ *      所以无论把 background 调多暗，看起来都是一块浅灰。
+ *      → 输入腔体一律 backdrop-filter: none。 */
+#app.is-mobile .fin-form--drawer :is(.fin-amount, .fin-date, .el-input-number, .el-date-editor, .el-textarea) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#app.is-mobile .fin-form--drawer :is(.el-input__wrapper, .fin-note-input, .el-textarea__inner) {
   background: rgba(255, 255, 255, .07) !important;
   border: 1px solid rgba(255, 255, 255, .12) !important;
+  border-radius: 14px !important;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, .18) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* v2.46.398：input 本体改透明后，日期框缩成 Element 默认的 220px
+   （`.el-date-editor--date { width: var(--el-date-editor-width) }` 是 0,2,0，
+   比 FinanceView 里 `.fin-date { width: 100% }` 的 0,1,0 更高），
+   于是日期框比金额框短一大截。这里用 !important 拉满整行。 */
+#app.is-mobile .fin-form--drawer .fin-date {
+  display: flex !important;
+  align-items: center;
+  width: 100% !important;
+}
+#app.is-mobile .fin-form--drawer .fin-date .el-input__wrapper {
+  width: 100% !important;
+  flex: 1 1 auto !important;
 }
 #app.is-mobile .fin-form--drawer :is(input, textarea) {
   color: #f4f7fb !important;
@@ -650,10 +696,20 @@ html[data-theme="day"] #app.is-mobile .fin-form--drawer .fin-form-actions {
   -webkit-text-fill-color: rgba(232, 240, 250, .66) !important;
   font-weight: 400;
 }
-html[data-theme="day"] #app.is-mobile .fin-form--drawer :is(.el-input__wrapper, .fin-amount, .fin-date, .fin-note-input) {
+html[data-theme="day"] #app.is-mobile .fin-form--drawer :is(.fin-amount, .fin-date, .el-input-number, .el-date-editor, .el-textarea) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+html[data-theme="day"] #app.is-mobile .fin-form--drawer :is(.el-input__wrapper, .fin-note-input, .el-textarea__inner) {
   background: rgba(255, 255, 255, .86) !important;
   border-color: rgba(29, 29, 31, .08) !important;
   box-shadow: inset 0 1px 2px rgba(31, 41, 55, .06) !important;
+}
+/* 抽屉内的胶囊（支出/收入/调拨、资金池、分类）：描边从 .24 收到 .12，
+   一屏二十来颗胶囊每颗一圈 24% 白边，攒起来比卡片边框还抢眼。 */
+#app.is-mobile .fin-form--drawer :is(.fin-tab, .fin-fund, .fin-cat, .fin-quick-tag) {
+  border-color: rgba(255, 255, 255, .12) !important;
 }
 html[data-theme="day"] #app.is-mobile .fin-form--drawer :is(input, textarea) {
   color: #1d1d1f !important;

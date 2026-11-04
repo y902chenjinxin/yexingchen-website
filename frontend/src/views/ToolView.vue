@@ -39,15 +39,15 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="160" show-overflow-tooltip />
-        <el-table-column label="链接(url)" min-width="150" show-overflow-tooltip>
+        <el-table-column v-if="!isMobile" prop="description" label="描述" min-width="160" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" label="链接(url)" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.kind === 'builtin'" class="route-cell">{{ row.url }}</span>
             <a v-else-if="row.url" :href="row.url" target="_blank" rel="noopener noreferrer" class="file-link">{{ row.url }}</a>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="排序" width="120" align="center">
+        <el-table-column v-if="!isMobile" label="排序" width="120" align="center">
           <template #default="{ row }">
             <el-button size="small" text :disabled="isFirst(row)" @click="move(row, -1)"><AppIcon icon="↑" :size="14" /></el-button>
             <el-button size="small" text :disabled="isLast(row)" @click="move(row, 1)"><AppIcon icon="↓" :size="14" /></el-button>
@@ -58,7 +58,7 @@
             <el-switch v-model="row._enabled" size="small" @change="toggleEnabled(row, $event)" />
           </template>
         </el-table-column>
-        <el-table-column label="上传时间" width="130">
+        <el-table-column v-if="!isMobile" label="上传时间" width="130">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="140" fixed="right">
@@ -136,6 +136,13 @@ import IconButton from '@/components/common/IconButton.vue'
 import OpsCell from '@/components/common/OpsCell.vue'
 import { ElMessage } from 'element-plus'
 import { useToolStore } from '@/stores/tool'
+import { useIsMobile } from '@/composables/useIsMobile'
+
+/* v2.46.393：390px 屏上这张表有 7 列（名称/描述/链接/排序/状态/上传时间/操作），
+   横向必然溢出，「描述」被卡片右边缘直接切断 —— 夜星说的「信息密布 + 看不全」。
+   手机端只留「名称 / 状态 / 操作」，其余列整列不渲染（不是 CSS 隐藏：
+   el-table 会按 colgroup 保留列宽，隐藏单元格会留一条空沟）。 */
+const { isMobile } = useIsMobile()
 import { getToolList, createTool, updateTool, deleteTool } from '@/api/tool'
 
 const router = useRouter()

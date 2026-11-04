@@ -583,7 +583,9 @@ onMounted(reload)
 .ct-card-main { display: flex; gap: 14px; flex: 1; min-width: 260px; align-items: flex-start; }
 .ct-avatar { width: 42px; height: 42px; flex: none; border-radius: 12px; display: flex;
   align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 18px;
-  background: rgba(127,168,163,.16); color: var(--lj-dai); border: 1px solid var(--lj-line);
+  /* v2.46.395：占位头像原来是青灰底 + 青字（rgba(127,168,163,.16)），
+     一屏六个联系人就是六块青，和「荧光青清零」相冲。改中性白玻璃 + 亮字。 */
+  background: rgba(255, 255, 255, .07); color: #cfd8e3; border: 1px solid rgba(255, 255, 255, .10);
   cursor: pointer; transition: transform .15s ease, box-shadow .2s ease, border-color .2s; }
 .ct-avatar:hover { border-color: var(--lj-seal); transform: translateY(-1px); }
 .ct-avatar.pin { background: var(--lj-seal-soft); color: var(--lj-seal); border-color: var(--lj-seal); }

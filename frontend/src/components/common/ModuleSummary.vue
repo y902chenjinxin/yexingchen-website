@@ -174,7 +174,10 @@ const deltaTone = computed(() => {
   gap: 8px;
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid var(--lg-ctl-line, rgba(255, 255, 255, .14));
+  /* v2.46.394：夜星反复提「上面有横线，去除，其他模块也一起去除」——
+     主数值与下方三项统计之间原来有一条 1px 分隔线。
+     玻璃卡里再画硬线等于在玻璃上贴胶带，改由 16px 留白分隔。 */
+  border-top: 0;
 }
 
 .ms-stat {
