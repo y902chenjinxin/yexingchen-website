@@ -344,22 +344,22 @@ function resetRegister() {
   position: absolute;
   border-radius: 50%;
   filter: blur(70px);
-  opacity: .8;
+  opacity: .9;
   will-change: transform;
 }
 .lg-orb--a {
   width: 46vmax; height: 46vmax; left: -12vmax; top: -16vmax;
-  background: radial-gradient(circle at 35% 35%, rgba(14, 147, 184, .5), rgba(14, 147, 184, 0) 68%);
+  background: radial-gradient(circle at 35% 35%, rgba(20, 168, 208, .62), rgba(14, 147, 184, 0) 68%);
   animation: lg-drift-a 26s ease-in-out infinite alternate;
 }
 .lg-orb--b {
   width: 40vmax; height: 40vmax; right: -14vmax; top: -8vmax;
-  background: radial-gradient(circle at 40% 40%, rgba(110, 70, 190, .4), rgba(110, 70, 190, 0) 68%);
+  background: radial-gradient(circle at 40% 40%, rgba(124, 82, 210, .52), rgba(110, 70, 190, 0) 68%);
   animation: lg-drift-b 32s ease-in-out infinite alternate;
 }
 .lg-orb--c {
   width: 44vmax; height: 44vmax; left: 30vw; bottom: -20vmax;
-  background: radial-gradient(circle at 50% 40%, rgba(201, 160, 107, .32), rgba(201, 160, 107, 0) 68%);
+  background: radial-gradient(circle at 50% 40%, rgba(214, 172, 116, .46), rgba(201, 160, 107, 0) 68%);
   animation: lg-drift-c 38s ease-in-out infinite alternate;
 }
 @keyframes lg-drift-a { to { transform: translate(9vmax, 7vmax) scale(1.12); } }
@@ -370,15 +370,15 @@ function resetRegister() {
   position: absolute;
   left: -40%; right: -40%; bottom: -34%; height: 56%;
   background-image:
-    linear-gradient(rgba(14, 147, 184, .22) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(14, 147, 184, .22) 1px, transparent 1px);
+    linear-gradient(rgba(20, 168, 208, .30) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 168, 208, .30) 1px, transparent 1px);
   background-size: 46px 46px;
   transform: perspective(700px) rotateX(64deg);
   transform-origin: center top;
   -webkit-mask-image: linear-gradient(transparent, #000 46%);
   mask-image: linear-gradient(transparent, #000 46%);
   animation: lg-grid-move 3.6s linear infinite;
-  opacity: .8;
+  opacity: .9;
 }
 @keyframes lg-grid-move { from { background-position: 0 0; } to { background-position: 0 46px; } }
 
@@ -428,8 +428,8 @@ function resetRegister() {
     rgba(110, 70, 190, .30) 66%,
     rgba(14, 147, 184, 0) 88%
   );
-  filter: blur(26px);
-  opacity: .55;
+  filter: blur(22px);
+  opacity: .72;
   animation: lg-ring 9s linear infinite;
   pointer-events: none;
 }
