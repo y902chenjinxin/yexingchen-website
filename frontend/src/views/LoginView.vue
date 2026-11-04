@@ -193,19 +193,22 @@ function onTiltLeave() {
   if (cardEl.value) cardEl.value.style.transform = ''
 }
 
-/** ============ 纯白粒子星座网（v2.46.367） ============
+/** ============ 纯白粒子星座网（v2.46.367，v2.46.368 加密） ============
  * 夜星要求：线条那种粒子特效——白点之间互相连线成网，鼠标靠近也拉线；
- * 仍然纯度纯白、不带光晕光晕。（v2.46.366 只画了点没连线，这次补上）
+ * 仍然纯度纯白、不带光晕。
  *
  * 做法：
  *  - 白点半径 0.7~2.1px、透明度 0.25~0.6，随机方向匀速漂移，撞边反弹
- *  - 两点距离 < linkDist（按屏幕短边自适应 110~170px）时连线，越近越亮，
- *    最亮 alpha 0.26，线宽 1px；按距离分 5 档批量 path 描边（省 draw call）
+ *  - 两点距离 < linkDist（按屏幕短边自适应 90~150px）时连线，越近越亮，
+ *    最亮 alpha 0.30，线宽 1px；按距离分 5 档批量 path 描边（省 draw call）
  *  - 指针 170px 内拉线（alpha 0.34），鼠标离开即断
  *  - 卡片区不消失而是「淡出」：卡矩形外 90px 内羽化，卡后压到 18%，
  *    避免线条糊在玻璃卡背后显脏
  * 全程不设 shadowBlur、不用径向渐变 → 零发光感。
- * 性能：DPR≤2、页面隐藏停 rAF、减动效只画静态帧、帧间隔归一化 60fps。 */
+ * 性能：DPR≤2、页面隐藏停 rAF、减动效只画静态帧、帧间隔归一化 60fps。
+ * 密度：v2.46.368 按夜星「粒子有点少」把基准 120→180，同时把 linkDist
+ *   系数 .20→.135 收窄——线数约等于 n²·L²，只加粒子会让网瞬间糊成一团，
+ *   加密时两个旋钮要一起动（当前 1080p 约 430 条线，观感与加密前同级）。 */
 const dustCanvas = ref(null)
 let dustCtx = null
 let dustDots = []
@@ -213,17 +216,18 @@ let dustRaf = 0
 let dustTimer = 0
 let dustLast = 0
 let dustStatic = false
-let dustLinkDist = 150
+let dustLinkDist = 130
 let dustCardBox = null          // 卡片相对 canvas 的矩形（用于卡区淡出）
 const dustPointer = { x: -9999, y: -9999, on: false }
 
 const TAU = Math.PI * 2
 const DUST_REF_AREA = 1920 * 937
-const DUST_BASE = 120            // 1920×937 基准 120 粒
-const DUST_MIN = 48
-const DUST_MAX = 150
-const LINK_DIST_MIN = 110        // 连线距离下限（手机小屏）
-const LINK_DIST_MAX = 170        // 连线距离上限（大屏）
+const DUST_BASE = 180            // 1920×937 基准 180 粒（v2.46.368：120→180）
+const DUST_MIN = 64
+const DUST_MAX = 210
+const LINK_DIST_MIN = 90         // 连线距离下限（手机小屏）
+const LINK_DIST_MAX = 150        // 连线距离上限（大屏）
+const LINK_DIST_RATIO = 0.135    // 连线距离 = 屏幕短边 × 该系数
 const LINK_ALPHA = 0.30          // 连线最亮值（两点重合时）
 const LINK_BANDS = 5             // 连线亮度分档数
 const POINTER_LINK_DIST = 170    // 指针拉线半径
@@ -286,7 +290,7 @@ function setupDust() {
   dustCtx = canvas.getContext('2d')
   if (!dustCtx) return
   dustCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  dustLinkDist = Math.max(LINK_DIST_MIN, Math.min(LINK_DIST_MAX, Math.min(w, h) * 0.2))
+  dustLinkDist = Math.max(LINK_DIST_MIN, Math.min(LINK_DIST_MAX, Math.min(w, h) * LINK_DIST_RATIO))
   measureCardBox()
   initDust(w, h)
 }
