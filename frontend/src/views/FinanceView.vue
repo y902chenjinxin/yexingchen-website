@@ -1,5 +1,5 @@
 <template>
-  <div class="fin-page">
+  <div class="fin-page" :class="{ 'is-drawer-open': form.show }">
     <div class="lj-bg" aria-hidden="true">
       <div class="lj-paper-texture"></div>
       <div class="lj-wash w1"></div>
@@ -133,7 +133,7 @@
 
       <!-- 记一笔（v2.46.372：内联面板 → 底部抽屉，主页不再被 140 行表单撑长） -->
       <div v-if="form.show" class="fin-drawer-mask" @click.self="form.show = false"></div>
-      <transition name="fd">
+      <transition name="fd-drawer">
         <section v-if="form.show" class="fin-form fin-form--drawer glass" :class="{ 'xz-shake': formShake }">
           <div class="fin-form-head">
             <span class="fin-form-title">{{ form.editing ? '编辑流水' : '记一笔' }}</span>
@@ -1764,6 +1764,14 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   overflow-x: hidden;
 }
 .fin-inner { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; }
+/* 🔴 v2.46.375：抽屉底部被「底部 TabBar」遮住。
+ * `.fin-inner` 上有 `position: relative; z-index: 1` —— 它自己就是一个层叠上下文，
+ * 抽屉写在里面的 z-index:1590 只在这个上下文内比较，出不了 .fin-inner。
+ * 而 MobileTabBar 是 App 根级的 fixed 元素（z-index:1500），于是它整条压在抽屉底部之上
+ * （连遮罩也被它盖着，所以底部看起来「缺一块」）。
+ * 修法：抽屉打开时把 .fin-inner 整体抬到 1600（全站浮层统一档，>TabBar 1500、<ElMessage 2000），
+ * 它在根级与 TabBar 直接比较，抽屉就盖得住底栏了。 */
+.fin-page.is-drawer-open .fin-inner { z-index: 1600; }
 
 .lj-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
   background:
@@ -1911,6 +1919,25 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   margin: -8px auto 10px;
   border-radius: 999px;
   background: var(--lj-line-strong, rgba(60, 60, 67, .20));
+}
+/* 抽屉从底部滑上来（原来的 fd 是「从上往下落」，放在底部抽屉上方向是反的） */
+.fd-drawer-enter-active, .fd-drawer-leave-active { transition: transform .3s cubic-bezier(.22, .61, .36, 1), opacity .3s ease; }
+.fd-drawer-enter-from, .fd-drawer-leave-to { transform: translateY(100%); opacity: .6; }
+@media (prefers-reduced-motion: reduce) {
+  .fd-drawer-enter-active, .fd-drawer-leave-active { transition-duration: .01s; }
+}
+/* v2.46.375：提交按钮常驻抽屉底部（表格变长时不用滚到底才能提交），
+   并补足安全区，避免被系统导航条压住。 */
+.fin-form--drawer .fin-form-actions {
+  position: sticky;
+  bottom: calc(-1 * (18px + env(safe-area-inset-bottom, 0px)));
+  z-index: 2;
+  margin: 0 -20px calc(-1 * (18px + env(safe-area-inset-bottom, 0px)));
+  padding: 12px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: var(--lg-tint-strong, rgba(255, 255, 255, .92));
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border-top: 1px solid var(--lg-line, rgba(60, 60, 67, .10));
 }
 .fin-form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .fin-form-title { font-size: 16px; letter-spacing: .08em; }

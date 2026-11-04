@@ -165,6 +165,12 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar {
   backdrop-filter: var(--lg-blur) !important;
   border-right: 1px solid var(--lg-line) !important;
 }
+/* 手机结算抽屉：贴屏幕底，下方两角必须切平（C 节把 .glass 圆角统一成 22px，
+   底部会留出一道圆弧缝，露出底下的内容） */
+#app.is-mobile .fin-form--drawer {
+  border-radius: 22px 22px 0 0 !important;
+}
+
 /* 手机弹窗：注意 el-dialog append-to-body 后 DOM 落在 body 下，
    #app.is-mobile 前缀是死规则（docs/ISSUES.md V246279），必须带 html.m-app */
 #app.is-mobile :is(.el-dialog, .el-popover, .el-select__popper),
