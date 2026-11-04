@@ -299,10 +299,8 @@
             <span class="fin-pool-name">{{ p.label }}</span>
           </span>
           <span class="fin-pool-val" :class="{ neg: p.balance < 0 }">¥ {{ money(p.balance) }}</span>
-          <span class="fin-pool-flags">
-            <span v-if="p.balance < 0" class="fin-pool-over">已透支</span>
-            <span v-else class="fin-pool-ok">余 {{ money(p.balance) }}</span>
-          </span>
+          <!-- v2.46.374：这行原来还挂着「已透支 / 余 x」一枚 flag，与上面的大数字重复；
+               余额为负时数字已经是红色带负号，不需要再标一次，直接去掉减噪。 -->
           <span class="fin-pool-sub">转入 ¥ {{ money(p.inflow) }} · 已用 ¥ {{ money(p.outflow) }}</span>
         </button>
       </section>
@@ -351,7 +349,15 @@
       <section class="fin-members glass">
         <div class="fin-members-head">
           <h2 class="fin-chart-title">家人账目</h2>
-          <span class="fin-members-hint">点标签看各自的，合计为全家</span>
+          <!-- v2.46.374：原来「标签行 + 5 列明细表 + 合计行」三层同时铺开，
+               而收入/支出/笔数/结余上一张摘要卡刚说过一遍，等于同一组数字讲两次。
+               改成：默认只留标签行（点标签看谁），明细表收进「明细」开关。 -->
+          <button
+            v-if="breakdown.members && breakdown.members.length"
+            class="fin-members-toggle"
+            :aria-expanded="showMemberTable"
+            @click="showMemberTable = !showMemberTable"
+          >{{ showMemberTable ? '收起' : '明细' }}<span class="fin-members-caret" :class="{ open: showMemberTable }">›</span></button>
         </div>
 
         <div class="fin-mtags">
@@ -373,7 +379,7 @@
           </button>
         </div>
 
-        <div v-if="breakdown.members && breakdown.members.length" class="fin-mtable-wrap">
+        <div v-if="showMemberTable && breakdown.members && breakdown.members.length" class="fin-mtable-wrap">
           <table class="fin-mtable">
             <thead>
               <tr>
@@ -412,7 +418,7 @@
             </tbody>
           </table>
         </div>
-        <EmptyState v-else title="本期暂无流水" sub="记一笔，从今天开始攒账" />
+        <EmptyState v-else-if="!(breakdown.members && breakdown.members.length)" title="本期暂无流水" sub="记一笔，从今天开始攒账" />
       </section>
 
       <!-- 图表区 -->
@@ -1092,6 +1098,8 @@ const unclassifiedOnly = ref(false)
 /* ---- 人员标签 + 家人汇总 ---- */
 // '' = 全部家人；否则是创建者 user_id（后端 member_user_id 过滤）
 const memberFilter = ref('')
+// 家人明细表默认收起（v2.46.374：与上方摘要卡重复，主题是「一屏读完」）
+const showMemberTable = ref(false)
 const members = ref([])
 const breakdown = ref({ members: [], total: {} })
 
@@ -2108,9 +2116,19 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
 /* 家人账目：人员标签 + 汇总表 */
 .fin-members { border-radius: 16px; padding: 18px; margin-bottom: 18px; }
-.fin-members-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.fin-members-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .fin-members-head .fin-chart-title { margin: 0; }
 .fin-members-hint { font-size: 12px; color: var(--lj-text-3); }
+/* 明细开关（v2.46.374）：右侧小字 + 旋转箭头，不收重量级外观 */
+.fin-members-toggle {
+  display: inline-flex; align-items: center; gap: 3px;
+  margin-left: auto; padding: 4px 2px; border: 0; background: none;
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  color: var(--m-accent, var(--lj-dai));
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.fin-members-caret { display: inline-block; transition: transform .18s ease; }
+.fin-members-caret.open { transform: rotate(90deg); }
 .fin-mtags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .fin-mtag { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px;
   border: 1px solid var(--lj-line); background: transparent; color: var(--lj-text-2); cursor: pointer;

@@ -22,37 +22,54 @@
 
 /* ===================== B. 玻璃 token ===================== */
 :root {
-  --lg-blur: blur(26px) saturate(180%);
+  --lg-blur: blur(30px) saturate(180%);
   --lg-blur-soft: blur(16px) saturate(160%);
   /* 夜间（默认）：深色玻璃 */
-  --lg-tint: rgba(17, 25, 40, .46);
-  --lg-tint-strong: rgba(12, 18, 30, .66);
-  --lg-line: rgba(255, 255, 255, .14);
-  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, .16);
-  --lg-shadow: 0 1px 2px rgba(0, 0, 0, .24), 0 8px 24px rgba(0, 0, 0, .28);
+  --lg-tint: rgba(16, 24, 38, .42);
+  --lg-tint-strong: rgba(12, 18, 30, .58);
+  --lg-line: rgba(255, 255, 255, .16);
+  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, .20);
+  --lg-shadow: 0 1px 2px rgba(0, 0, 0, .26), 0 14px 34px -12px rgba(0, 0, 0, .55);
+  /* v2.46.374：卡面「上亮下透」斜向高光，玻璃的透光幕布 */
+  --lg-sheen: linear-gradient(168deg, rgba(255, 255, 255, .12) 0%, rgba(255, 255, 255, .02) 44%, rgba(255, 255, 255, 0) 72%);
+  /* 物理高光环：::before 遮罩描边用的渐变（顶左最亮 → 右下收暗） */
+  --lg-rim: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .04) 48%, rgba(255, 255, 255, .20));
+  /* 白玻璃「可透」的另一半：右下极轻的厚度荫（不再叠彩色雾。
+     夜星连着两轮都在说「蓝边」，卡片里再压一层青雾会被读成又一处蓝，
+     环境色只让页面光场透上来，卡内只做几何光影） */
+  --lg-glow: radial-gradient(72% 52% at 100% 100%, rgba(0, 0, 0, .18), transparent 70%);
   /* 氛围光场：底色 + 三团彩晕（雨青 / 紫 / 鎏金），玻璃的「透光幕布」 */
   --lg-page:
-    radial-gradient(52rem 36rem at 12% -6%, rgba(14, 147, 184, .16), transparent 62%),
-    radial-gradient(44rem 32rem at 88% 4%, rgba(110, 70, 190, .12), transparent 62%),
-    radial-gradient(50rem 38rem at 50% 108%, rgba(201, 160, 107, .10), transparent 60%),
+    radial-gradient(46rem 34rem at 6% -6%, rgba(23, 176, 214, .34), transparent 62%),
+    radial-gradient(40rem 30rem at 96% 2%, rgba(122, 84, 218, .30), transparent 62%),
+    radial-gradient(46rem 34rem at 76% 78%, rgba(226, 128, 96, .18), transparent 64%),
+    radial-gradient(50rem 38rem at 22% 104%, rgba(201, 160, 107, .22), transparent 62%),
     linear-gradient(180deg, #0a0f1a 0%, #070b13 100%);
 }
 html[data-theme="day"] {
-  /* v2.46.369 圆润化：卡面从 55% 半透提到 88%（参考图是纯白卡浮在暖米底上），
-     描边从「白线」换成极淡的中性内描边——白线在浅底上不可见，只会让卡片发灰。 */
-  --lg-tint: rgba(255, 255, 255, .88);
-  --lg-tint-strong: rgba(255, 255, 255, .95);
-  --lg-line: rgba(60, 60, 67, .07);
-  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, 1);
-  /* 阴影从「10px/32px 大扩散」收成「贴身的 2px + 6px」：扩散越大越像悬空，
-     参考图的卡片是「贴住纸面」的，只有极轻的一层。 */
-  --lg-shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 6px 18px rgba(24, 24, 27, .06);
-  /* 底色换暖米（#f8f6f1→#efece5），彩晕同步降饱和——冷灰底配白卡会显脏 */
+  /* v2.46.374：v2.46.369 把卡面提到 88% 白，玻璃就「实」了——夜星的截图里
+     所有卡都是一块死白，压根看不出液态玻璃。液态玻璃的成立条件是
+     「底下有颜色可透」+「卡面只挡一半」。所以：
+       · 卡面 88% → 52~58%（彩晕能透上来，卡片带一层环境色）
+       · 页面彩晕 9% → 22~26%（够强，玻璃才有东西可折射）
+       · 描边换白玻璃边（浅底上中性灰线会被读成「蓝边」）
+       · 加 --lg-sheen（上亮下透）+ --lg-rim（顶左高光环） */
+  --lg-tint: rgba(255, 255, 255, .56);
+  --lg-tint-strong: rgba(255, 255, 255, .72);
+  --lg-line: rgba(255, 255, 255, .72);
+  --lg-hi: inset 0 1px 0 rgba(255, 255, 255, .95);
+  --lg-shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 14px 30px -12px rgba(24, 24, 27, .18);
+  --lg-sheen: linear-gradient(168deg, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, .14) 44%, rgba(255, 255, 255, 0) 72%);
+  --lg-rim: linear-gradient(150deg, rgba(255, 255, 255, .98), rgba(255, 255, 255, .22) 46%, rgba(255, 255, 255, .70));
+  --lg-glow: radial-gradient(72% 52% at 100% 100%, rgba(60, 50, 40, .05), transparent 70%);
+  /* 底色保留暖中性（夜星否掉过冷蓝灰），彩晕加强到可见：
+     雨青 24% / 紫 20% / 陶土 14% / 鎏金 18% */
   --lg-page:
-    radial-gradient(52rem 36rem at 12% -6%, rgba(14, 147, 184, .09), transparent 62%),
-    radial-gradient(44rem 32rem at 88% 4%, rgba(167, 139, 250, .07), transparent 62%),
-    radial-gradient(50rem 38rem at 50% 108%, rgba(201, 160, 107, .12), transparent 60%),
-    linear-gradient(180deg, #f8f6f1 0%, #efece5 100%);
+    radial-gradient(44rem 32rem at 6% -8%, rgba(23, 176, 214, .24), transparent 62%),
+    radial-gradient(38rem 28rem at 96% 0%, rgba(167, 139, 250, .20), transparent 62%),
+    radial-gradient(42rem 30rem at 84% 72%, rgba(230, 145, 110, .14), transparent 64%),
+    radial-gradient(46rem 34rem at 18% 106%, rgba(201, 160, 107, .18), transparent 62%),
+    linear-gradient(180deg, #f6f4ef 0%, #eeece6 100%);
 }
 /* 手机端 blur 调低：一屏十余张卡同时毛玻璃，鸿蒙 WebView 扛得住 20px 扛不动 26px */
 /* v2.46.369 圆角圆润化：--m-radius 的最终生效层是 tech-theme.css 第 9 节（16px 系）
@@ -87,15 +104,28 @@ html[data-theme="day"] #app.is-mobile {
   .tv-kpi-card, .tv-map, .tv-slide, .ct-card, .ct-cal-card, .notes-item, .info-card, .cd-card,
   .wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .life-members, .ht-card, .qk-card, .dh-card,
   .fin-pool, .fin-pcard, .fin-panel, .fin-ptxns, .fin-todo, .fin-batch, .abb-hero, .abb-cell, .abb-stat,
-  .assistant-main, .gw-card) {
-  background:
-    linear-gradient(165deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 42%),
-    var(--lg-tint) !important;
+  .assistant-main, .gw-card, .fin-members) {
+  background: var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
   -webkit-backdrop-filter: var(--lg-blur) !important;
   backdrop-filter: var(--lg-blur) !important;
   border: 1px solid var(--lg-line) !important;
   border-radius: 22px !important;
   box-shadow: var(--lg-hi), var(--lg-shadow) !important;
+}
+
+/* 🔴 v2.46.374：蓝/青描边的真凶不是 border，是 tech-theme.css 476-505 的
+ * `.glass-card::before` —— 用 mask 抠出的「1px 渐变描边」，颜色是
+ * 雨青 65% → 紫 50% → 雨青 12%。它在所有 .glass-card / .tech-panel / .ls-card
+ * 上跑，外层 border 改成什么颜色都盖不住（改的是另一层）。
+ * 夜星说的「首页组件还是有蓝色边线」就是它。
+ * 处理：保留这套 mask 技法（圆角描边最干净），只把配色换成中性的
+ * 「玻璃高光环」——顶左亮、右下暗，才是液态玻璃的物理边缘。 */
+.tech-panel::before,
+.glass-card::before,
+.ls-card::before,
+.jade-card::before {
+  background: var(--lg-rim) !important;
+  opacity: 1 !important;
 }
 /* 按压态：贴纸硬偏移 → 玻璃轻缩 */
 #app.is-mobile :is(.abb-cell, .glass-card, .cd-card, .li-card, .life-col, .qk-card, .dh-card, .fin-pool, .ht-card):active {
@@ -108,9 +138,7 @@ html[data-theme="day"] #app.is-mobile :is(.abb-cell, .glass-card, .cd-card, .li-
 
 /* 桌面通用卡（名单同 desktop-product.css G 节 + 玉简） */
 #app:not(.is-mobile) :is(.glass, .glass-card, .card-deep, .ls-card, .jade-card) {
-  background:
-    linear-gradient(165deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, 0) 42%),
-    var(--lg-tint) !important;
+  background: var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
   -webkit-backdrop-filter: var(--lg-blur) !important;
   backdrop-filter: var(--lg-blur) !important;
   border: 1px solid var(--lg-line) !important;
@@ -374,9 +402,12 @@ html[data-theme="day"].m-app {
 }
 
 /* 早先按「手机端统一青色边框」写死的几处（tech-theme 第 9 节、v2.46.130），
-   现在玻璃化后青色边成了突兀的蓝线，一并收口。 */
+   现在玻璃化后青色边成了突兀的蓝线，一并收口。
+   🔴 v2.46.374：这里原本收口到 --m-line（中性灰 .12）。但它在 C 节之后、
+   同权重同 !important，于是把 C 节刚设的「白玻璃边 --lg-line」又盖回灰线 ——
+   灰线落在暖色底上仍被读成「蓝边」。玻璃的边只该是白高光，这里改收口到 --lg-line。 */
 #app.is-mobile :is(.glass-card, .info-card, .tk-item, .ht-card, .qk-card, .dh-card, .life-col) {
-  border-color: var(--m-line) !important;
+  border-color: var(--lg-line) !important;
 }
 
 /* ===================== H. 组件玻璃化（v2.46.371） =====================
@@ -405,20 +436,34 @@ html[data-theme="night"] {
   --lg-ctl-lo: inset 0 -1px 0 rgba(0, 0, 0, .30);
   --lg-ctl-line: rgba(255, 255, 255, .12);
   --lg-ctl-shadow: 0 2px 8px rgba(0, 0, 0, .22);
+  /* 分段控件 / chip 的「选中块」与文字色（v2.46.374） */
+  --lg-ctl-on-bg: rgba(255, 255, 255, .22);
+  --lg-ctl-on-fg: #ffffff;
+  --lg-ctl-fg: rgba(255, 255, 255, .72);
+  --lg-ctl-groove: rgba(0, 0, 0, .22);
+  --lg-ctl-groove-line: rgba(255, 255, 255, .10);
 }
 html[data-theme="day"],
 html[data-theme="day"] #app.is-mobile {
-  --lg-ctl-bg: rgba(255, 255, 255, .70);
-  --lg-ctl-bg-hover: rgba(255, 255, 255, .92);
+  --lg-ctl-bg: rgba(255, 255, 255, .58);
+  --lg-ctl-bg-hover: rgba(255, 255, 255, .82);
   --lg-ctl-bg-active: rgba(255, 255, 255, 1);
   --lg-ctl-hi: inset 0 1px 0 rgba(255, 255, 255, .98);
   --lg-ctl-lo: inset 0 -1px 0 rgba(31, 41, 55, .05);
-  --lg-ctl-line: rgba(60, 60, 67, .10);
-  --lg-ctl-shadow: 0 1px 3px rgba(31, 41, 55, .06);
+  --lg-ctl-line: rgba(255, 255, 255, .80);
+  --lg-ctl-shadow: 0 1px 3px rgba(31, 41, 55, .07);
+  --lg-ctl-on-bg: #ffffff;
+  --lg-ctl-on-fg: #1d1d1f;
+  --lg-ctl-fg: rgba(29, 29, 31, .62);
+  --lg-ctl-groove: rgba(120, 120, 128, .12);
+  --lg-ctl-groove-line: rgba(255, 255, 255, .70);
 }
 
-/* --- 1) 通用按钮：图标按钮 / 科技按钮 / Element 次级按钮 --- */
-.ibtn,
+/* --- 1) 通用按钮：图标按钮 / 科技按钮 / Element 次级按钮 ---
+ * 🔴 v2.46.374：必须排除 .ibtn--primary / .ibtn--danger。
+ * 上一版把 `.ibtn` 一律刷成白玻璃，但主操作变体的文字色是 --tc-btn-fg（白），
+ * 结果「记一笔」按钮 = 白字 + 白玻璃 = 夜星截图里那个**空白方块**。 */
+.ibtn:not(.ibtn--primary):not(.ibtn--danger),
 .tech-btn,
 .play-btn-hud,
 .el-button:not(.el-button--primary):not(.el-button--danger):not(.is-text):not(.is-link) {
@@ -426,12 +471,12 @@ html[data-theme="day"] #app.is-mobile {
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo), var(--lg-ctl-shadow) !important;
 }
-.ibtn:hover,
+.ibtn:not(.ibtn--primary):not(.ibtn--danger):hover,
 .tech-btn:hover,
 .el-button:not(.el-button--primary):not(.el-button--danger):not(.is-text):not(.is-link):hover {
   background: var(--lg-ctl-bg-hover) !important;
 }
-.ibtn:active,
+.ibtn:not(.ibtn--primary):not(.ibtn--danger):active,
 .tech-btn:active,
 .el-button:not(.el-button--primary):not(.el-button--danger):not(.is-text):not(.is-link):active {
   background: var(--lg-ctl-bg-active) !important;
@@ -439,19 +484,21 @@ html[data-theme="day"] #app.is-mobile {
 }
 
 /* --- 2) 模块私有次级按钮：属性选择器批量收编 ---
- * 只匹配「class 属性以 -btn 结尾」的元素，也就是单类名按钮；
- * 再用 :not() 显式排除主操作/选中/危险态——它们根本不该被匹配，
- * 而不是「先覆盖再还原」（CSS 没有可靠的还原到原值的手段）。 */
-#app.is-mobile [class$="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger) {
+ * 🔴 v2.46.374：`[class$="-btn"]` 是**属性值结尾**匹配，只在「整个 class 属性
+ * 以 -btn 收尾」时命中。`class="fin-btn primary"` 结尾是 primary → 不命中；
+ * `class="fin-dim-btn on"` 结尾是 on → 也不命中。这正是「日/月/年 三颗长得
+ * 完全不一样」的根因（未选中的 日 命中拿了玻璃框，选中的 月 不命中反而变成白块）。
+ * 改 `[class*="-btn"]`（任意位置包含）并排除分段控件，交给第 5 节统一处理。 */
+#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]) {
   background: var(--lg-ctl-bg) !important;
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo), var(--lg-ctl-shadow) !important;
   border-radius: 14px;
 }
-#app.is-mobile [class$="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):hover {
+#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]):hover {
   background: var(--lg-ctl-bg-hover) !important;
 }
-#app.is-mobile [class$="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):active {
+#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]):active {
   background: var(--lg-ctl-bg-active) !important;
   box-shadow: var(--lg-ctl-hi), inset 0 1px 2px rgba(0, 0, 0, .12) !important;
 }
@@ -463,10 +510,15 @@ html[data-theme="day"] #app.is-mobile {
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
   border-radius: 999px !important;
+  color: var(--lg-ctl-fg) !important;
 }
 [class*="-chip"].on,
 [class*="-chip"].active,
-[class*="-chip"].is-on {
+[class*="-chip"].is-on,
+[class*="-tag"].on,
+[class*="-tag"].active {
+  background: var(--lg-ctl-on-bg) !important;
+  color: var(--lg-ctl-on-fg) !important;
   box-shadow: var(--lg-ctl-hi), 0 0 0 1px var(--m-accent, #0e93b8) inset !important;
 }
 
@@ -487,22 +539,33 @@ html[data-theme="day"] #app.is-mobile :is(.el-input__wrapper.is-focus, .el-selec
     0 0 0 3px rgba(14, 147, 184, .16) !important;
 }
 
-/* --- 5) 分段控件：整条做玻璃槽，选中块浮起 --- */
-#app.is-mobile :is(.fin-dim, .hw-seg, .gw-seg, [class*="-seg"]:not([class*="-seg-btn"])) {
-  background: var(--lg-ctl-bg) !important;
-  border: 1px solid var(--lg-ctl-line) !important;
-  box-shadow: var(--lg-ctl-lo) !important;
+/* --- 5) 分段控件：整条做玻璃槽，选中块浮起（iOS 分段控件）---
+ * v2.46.374：上一版三颗按钮各不相同（没选中的有玻璃框、选中的变白块、另一颗裸奔），
+ * 因为按结尾匹配 + :not() 权重打架。这里重写为「灰槽 + 白色浮块」的唯一写法，
+ * 三颗按钮一律透明，只有 .on 一颗浮起，形状才一致。 */
+#app.is-mobile :is(.fin-dim, .hw-seg, .gw-seg, [class*="-seg"]:not([class*="-seg-btn"])),
+html[data-theme="day"] #app.is-mobile :is(.fin-dim, .hw-seg, .gw-seg, [class*="-seg"]:not([class*="-seg-btn"])) {
+  background: var(--lg-ctl-groove) !important;
+  border: 1px solid var(--lg-ctl-groove-line) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .05) !important;
   border-radius: 999px !important;
 }
-#app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn"]) {
-  border-radius: 999px !important;
-  box-shadow: none !important;
+#app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn"]),
+html[data-theme="day"] #app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn"]) {
   background: transparent !important;
-  border-color: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  border-radius: 999px !important;
+  color: var(--lg-ctl-fg) !important;
+  font-weight: 600;
+  transition: background-color .18s ease, color .18s ease, box-shadow .18s ease;
 }
-#app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn"]):is(.on, .active) {
-  background: var(--lg-ctl-bg-hover) !important;
-  box-shadow: var(--lg-ctl-hi), 0 1px 3px rgba(0, 0, 0, .14) !important;
+#app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn"]):is(.on, .active),
+html[data-theme="day"] #app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn"]):is(.on, .active) {
+  background: var(--lg-ctl-on-bg) !important;
+  border-color: transparent !important;
+  color: var(--lg-ctl-on-fg) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .14), var(--lg-ctl-hi) !important;
 }
 
 /* --- 6) 桌面端：同一套配方，圆角收一档（18px 卡对应 12px 控件） --- */
@@ -518,14 +581,23 @@ html[data-theme="day"] #app.is-mobile :is(.el-input__wrapper.is-focus, .el-selec
   border-radius: 12px !important;
 }
 
+/* --- 8) 桌面端补齐：模块页自己的卡片容器 --- */
+#app:not(.is-mobile) :is([class*="-card"], [class*="-panel"], [class*="-hero"]):not(.el-card):not([class*="__"]) {
+  background: var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-line) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--lg-hi), var(--lg-shadow) !important;
+}
+
 /* --- 7) 补齐 C 节名单漏掉的区块容器 ---
  * C 节是手工名单，模块新增或改名的容器（.fin-pool-hero 自写 16px 圆角、
  * .life-sum 等）就漏在外面，于是「有些模块跟首页不一样」。
- * 这里按类名后缀批量兜底：面板 / 主视觉块 / 汇总块一律玻璃卡。 */
-#app.is-mobile :is([class$="-panel"], [class$="-hero"], [class$="-sum"], [class$="-overview"]) {
-  background:
-    linear-gradient(165deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 42%),
-    var(--lg-tint) !important;
+ * v2.46.374：和 H-2 同一个坑——结尾匹配只在 class 文字恰好收尾时命中，
+ * `.zz-card on` 之类一律漏网。全改 `[class*=]` 子串匹配，并补上 -card 一族。 */
+#app.is-mobile :is([class*="-panel"], [class*="-hero"], [class*="-sum"], [class*="-overview"], [class*="-card"]):not(.el-card):not([class*="__"]) {
+  background: var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
   -webkit-backdrop-filter: var(--lg-blur) !important;
   backdrop-filter: var(--lg-blur) !important;
   border: 1px solid var(--lg-line) !important;
