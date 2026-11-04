@@ -59,6 +59,7 @@
         :label="filterMember ? `${activeMemberName} · 最新体重` : '最新体重'"
         :value="weightHero.latest.toFixed(1)"
         unit="kg"
+        unit-after
         :badge="weightHero.lastAt"
         :stats="[
           { label: '较上次', value: weightHero.delta === null ? '—' : `${weightHero.delta > 0 ? '+' : ''}${weightHero.delta} kg` },
@@ -948,25 +949,32 @@ onBeforeUnmount(() => {
 }
 .life-tb-range { flex: 0 0 auto; }
 
-/* 人员标签 + 家人汇总 */
+/* 人员标签 + 家人汇总
+   v2.46.376：原来这里是「一张大卡里再套：标题行 + 竖排家人标签 + 摘要卡 + 折叠 + 表格」，
+   夜星说「信息还是密」。改成：外层不再是一张卡（去底色/描边/阴影），
+   标签行横排单行可滑，摘要卡自己当主角，折叠表照旧收着。 */
 .life-members {
-  background: var(--ls-paper);
-  border: 1px solid var(--ls-line);
-  border-radius: var(--ls-radius, 12px);
-  padding: 18px 20px;
-  box-shadow: var(--ls-shadow, 0 1px 2px rgba(0,0,0,.04));
-  margin-bottom: 18px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  margin-bottom: 4px;
 }
-.life-members-head {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: 12px; flex-wrap: wrap;
-  margin-bottom: 12px; padding-bottom: 8px;
-  border-bottom: 1px solid var(--ls-line);
-}
+/* 页头副标题已经写了「家人共享 · 体重趋势与记录」，这一行纯重复 */
+.life-members-head { display: none; }
 .life-members-head h3 { margin: 0; font-size: 15px; color: var(--lj-text); letter-spacing: .04em; }
 
-.life-mtags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.life-mtags {
+  display: flex; flex-wrap: nowrap; gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.life-mtags::-webkit-scrollbar { display: none; }
 .life-mtag {
+  flex: none;
   display: inline-flex; align-items: center; gap: 7px;
   padding: 6px 13px; border-radius: 999px;
   border: 1px solid var(--ls-line); background: transparent;

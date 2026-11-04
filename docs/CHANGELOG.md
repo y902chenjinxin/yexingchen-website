@@ -1,3 +1,44 @@
+## [v2.46.376] - 2026-11-04
+
+### 五条真机反馈
+
+**1. 体重管理页标题下的横线 → `--xz-head-line` 的 1.5px 粗墨线**
+- `mobile-paper.css:460` 给 `.island-inner .inner-header` 写了 `border-bottom: 1.5px solid var(--xz-head-line)`。
+  体重/美食等岛屿内页全走 `IslandInnerBase`，所以都带这条线；`fin/st/tv/ct` 上一轮已收，这次补齐岛屿内页。
+
+**2. 体重数字（以及记账「本月支出 ¥217.55」）不显示**
+- 根因：`ModuleSummary` 用的是 `var(--color-text-primary, #1d1d1f)` —— **这个 token 全站从来没定义过**，
+  于是永远回退成近黑 `#1d1d1f`。夜间玻璃卡是深蓝底，近黑字直接消失。
+  涨跌色同理写死 `#2e7d5b / #c0392b`（深绿/深红），夜间同样看不清。
+- 修法：玻璃体系新增自己的语义色板 `--lg-fg / --lg-fg-2 / --lg-fg-3 / --lg-good / --lg-bad`（昼夜翻转），
+  `ModuleSummary` 全部改用它；卡面也同步到新玻璃配方（`--lg-sheen` + `--lg-tint`）。
+- 顺带：`unit` 默认在前（¥ 场景），新增 `unitAfter` 让体重显示成「67.0 kg」而不是「kg 67.0」。
+
+**3. 记账页顶部一大块黑**
+- `mobile-product.css:71` 给 `.fin-head` 写了 `background: var(--m-bg) !important` + `margin: 0 -16px`
+  —— 全宽近黑实底（`#0b1016`），正是截图里那块。改成 `transparent`，让页面光场透上来。
+  同一处也解释了体重页整体比记账页灰：`.island-inner` 还铺着宣纸底 `--xz-paper`，已一并换 `--lg-page`。
+
+**4. 首页底部那排标签发灰、没有玻璃感**
+- 夜间 `--lg-ctl-bg` 只有 7% 白 —— 压在深蓝底上只会得到一层灰雾，白不够就透不出高光。
+- 改：白 11%、描边 18%、顶部高光 26%；chip 再叠一道 158° 斜向高光。
+
+**5. 添加页面统一成底部抽屉**
+- 不逐个改模块（全站 82 处 `el-dialog`，改不完也守不住）。直接在 ElDialog 这一层收口：
+  手机上所有 `el-dialog` 一律渲染成底部抽屉 —— 贴底、顶部 24px 圆角、最大 88dvh、
+  抓握条、body 内部滚动、footer 常驻 + 安全区、从底部滑上来。`is-fullscreen` 保持原样。
+- 用 `html.m-app` 前缀（el-dialog 是 append-to-body，`#app.is-mobile` 覆盖不到它）。
+
+**6. 体重页信息密度**
+- 「家人」卡不再是一张大卡套：外层去底色/描边/阴影，只留一行可横滑的标签；
+  摘要卡（最新体重）自己当主角。
+- 家人标签从竖排换行改单行横滑；「家人 · 近30天 · 点标签看各自的」那行删掉（页头副标题已说过）。
+
+### 交付
+
+- 验证：eslint 通过；vite build 通过；产物核验 `--lg-fg` 昼夜两套、`el-overlay-dialog`、
+  `lg-sheet-up`、`unitAfter`、`island-inner .inner-header`、`xuanhuang-v689`、`v2.46.376` 均进包
+
 ## [v2.46.375] - 2026-11-04
 
 ### 记一笔抽屉底部被底栏遮住（层叠上下文）

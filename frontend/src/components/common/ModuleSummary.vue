@@ -9,8 +9,9 @@
     </div>
 
     <div class="ms-value-row">
-      <span v-if="unit" class="ms-unit">{{ unit }}</span>
+      <span v-if="unit && !unitAfter" class="ms-unit">{{ unit }}</span>
       <span class="ms-value" :class="{ neg: isNeg }">{{ display }}</span>
+      <span v-if="unit && unitAfter" class="ms-unit ms-unit--after">{{ unit }}</span>
     </div>
 
     <div v-if="deltaText" class="ms-delta" :class="deltaTone">
@@ -39,6 +40,8 @@ const props = defineProps({
   value: { type: [Number, String], default: 0 },
   /** 货币/单位前缀，如「¥」；不传则不显示 */
   unit: { type: String, default: '' },
+  /** 单位放在数字后面（体重 kg、步数 步 这类中文习惯），默认在前（货币） */
+  unitAfter: { type: Boolean, default: false },
   /** 环比/差值百分比，正数升、负数降；null 不显示 */
   delta: { type: Number, default: null },
   /** 差值说明，如「较上月」 */
@@ -91,16 +94,17 @@ const deltaTone = computed(() => {
   gap: 0;
   padding: 20px 20px 18px;
   border-radius: 22px;
+  /* v2.46.376：卡面同步液态玻璃新配方（上亮下透 + 环境光），
+     与全站卡面同一套 token，昼夜都由 liquid-glass.css 提供 */
   background:
-    linear-gradient(165deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 44%),
-    var(--lg-tint, rgba(255, 255, 255, .88));
+    var(--lg-sheen, linear-gradient(165deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 44%)),
+    var(--lg-tint, rgba(255, 255, 255, .56));
   -webkit-backdrop-filter: var(--lg-blur, blur(20px) saturate(170%));
   backdrop-filter: var(--lg-blur, blur(20px) saturate(170%));
-  border: 1px solid var(--lg-line, rgba(60, 60, 67, .10));
+  border: 1px solid var(--lg-line, rgba(255, 255, 255, .2));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .55),
-    0 1px 2px rgba(31, 41, 55, .05),
-    0 6px 18px rgba(31, 41, 55, .06);
+    var(--lg-hi, inset 0 1px 0 rgba(255, 255, 255, .55)),
+    var(--lg-shadow, 0 6px 18px rgba(31, 41, 55, .06));
 }
 
 .ms-head {
@@ -110,18 +114,20 @@ const deltaTone = computed(() => {
   gap: 8px;
 }
 
+/* 🔴 全站没有定义过 --color-text-primary，原来的 var(..., #1d1d1f) 永远回退成近黑，
+   夜间落在深蓝玻璃上 → 主数字「不展示」。改用 --lg-fg 语义色板（昼夜翻转）。 */
 .ms-label {
   font-size: 12px;
   letter-spacing: .04em;
-  color: var(--color-text-tertiary, #8e8e93);
+  color: var(--lg-fg-3, #8e8e93);
 }
 
 .ms-badge {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
-  color: var(--color-text-tertiary, #8e8e93);
-  background: rgba(127, 127, 127, .10);
+  color: var(--lg-fg-3, #8e8e93);
+  background: rgba(127, 127, 127, .16);
 }
 
 .ms-value-row {
@@ -134,8 +140,9 @@ const deltaTone = computed(() => {
 .ms-unit {
   font-size: 17px;
   font-weight: 500;
-  color: var(--color-text-secondary, #515154);
+  color: var(--lg-fg-2, #515154);
 }
+.ms-unit--after { margin-left: 4px; }
 
 .ms-value {
   font-size: 34px;
@@ -143,10 +150,10 @@ const deltaTone = computed(() => {
   line-height: 1.15;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary, #1d1d1f);
+  color: var(--lg-fg, #1d1d1f);
 }
 
-.ms-value.neg { color: #c0392b; }
+.ms-value.neg { color: var(--lg-bad, #c0392b); }
 
 .ms-delta {
   display: inline-flex;
@@ -154,11 +161,11 @@ const deltaTone = computed(() => {
   gap: 4px;
   margin-top: 6px;
   font-size: 12px;
-  color: var(--color-text-tertiary, #8e8e93);
+  color: var(--lg-fg-3, #8e8e93);
 }
 
-.ms-delta.good { color: #2e7d5b; }
-.ms-delta.bad { color: #c0392b; }
+.ms-delta.good { color: var(--lg-good, #2e7d5b); }
+.ms-delta.bad { color: var(--lg-bad, #c0392b); }
 .ms-delta-arrow { font-size: 12px; }
 
 .ms-stats {
@@ -167,7 +174,7 @@ const deltaTone = computed(() => {
   gap: 8px;
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid var(--lg-ctl-line, rgba(60, 60, 67, .10));
+  border-top: 1px solid var(--lg-ctl-line, rgba(255, 255, 255, .14));
 }
 
 .ms-stat {
@@ -179,7 +186,7 @@ const deltaTone = computed(() => {
 
 .ms-stat-label {
   font-size: 11px;
-  color: var(--color-text-tertiary, #8e8e93);
+  color: var(--lg-fg-3, #8e8e93);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -189,14 +196,14 @@ const deltaTone = computed(() => {
   font-size: 15px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary, #1d1d1f);
+  color: var(--lg-fg, #1d1d1f);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ms-stat-value.income { color: #2e7d5b; }
-.ms-stat-value.expense { color: #c0392b; }
+.ms-stat-value.income { color: var(--lg-good, #2e7d5b); }
+.ms-stat-value.expense { color: var(--lg-bad, #c0392b); }
 
 @media (max-width: 420px) {
   .ms { padding: 16px 16px 14px; border-radius: 20px; }

@@ -97,12 +97,21 @@ html[data-theme="day"] #app.is-mobile {
   .tk-page, .sb-page, .li-page, .va-page, .wd-page, .sd-page, .dh-page, .trash-page, .fd-page, .qk-page) {
   background: var(--lg-page) !important;
 }
+/* v2.46.376：体重/美食等「岛屿内页」走 IslandInnerBase，容器是 .island-inner，
+   上一版名单里没有它 —— 于是它还铺着 mobile-paper 的 `--xz-paper + 纸纹`
+   （截图里体重页整体比记账页灰一档就是这个）。一并换光场。 */
+#app.is-mobile .island-inner:not(.island-inner-music),
+html[data-theme="day"] #app.is-mobile .island-inner:not(.island-inner-music) {
+  background-color: transparent !important;
+  background-image: none !important;
+  background: var(--lg-page) !important;
+}
 
 /* ===================== C. 卡面：恢复液态玻璃 ===================== */
 /* 手机主卡片组（名单同 mobile-paper.css 112-114，另收编 .gw-card） */
 #app.is-mobile :is(.glass, .glass-card, .fin-kpi, .fin-chart, .fin-ledger, .st-kpi-card, .st-form, .st-list,
   .tv-kpi-card, .tv-map, .tv-slide, .ct-card, .ct-cal-card, .notes-item, .info-card, .cd-card,
-  .wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .life-members, .ht-card, .qk-card, .dh-card,
+  .wd-card, .li-card, .va-card, .sb-panel, .tk-item, .life-col, .ht-card, .qk-card, .dh-card,
   .fin-pool, .fin-pcard, .fin-panel, .fin-ptxns, .fin-todo, .fin-batch, .abb-hero, .abb-cell, .abb-stat,
   .assistant-main, .gw-card, .fin-members) {
   background: var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
@@ -171,6 +180,77 @@ html[data-theme="day"] #app.is-mobile .mt-tabbar {
   border-radius: 22px 22px 0 0 !important;
 }
 
+/* ===================== D2. 手机端弹窗统一改「底部抽屉」（v2.46.376） =====================
+ * 夜星：「添加页面最好做成统一的都是底部抽屉，其他模块的也看下」。
+ * 各模块的「新增 XX」散落着十几种写法（自写面板 / el-dialog / el-drawer），
+ * 逐个改不现实，也没法保证以后新增的不跑偏。所以直接在 ElDialog 这一层收口：
+ * 手机上所有 el-dialog 一律渲染成底部抽屉（顶部圆角、贴底、最大 88dvh、内部滚动）。
+ * 注意：el-dialog 默认 append-to-body，DOM 落在 body 下，所以必须用 html.m-app 前缀
+ * （#app.is-mobile 前缀在这里是死规则，见 docs/ISSUES.md V246279）。 */
+html.m-app .el-overlay-dialog {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+html.m-app .el-dialog {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px 24px 0 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--lg-line, rgba(255, 255, 255, .2)) !important;
+  box-shadow: 0 -12px 44px rgba(0, 0, 0, .38) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  overflow: hidden;
+  animation: lg-sheet-up .3s cubic-bezier(.22, .61, .36, 1) both;
+}
+/* 顶部抓握条：让它是「抽屉」而不是「弹窗」 */
+html.m-app .el-dialog::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 8px auto 0;
+  flex: none;
+  border-radius: 999px;
+  background: var(--lg-fg-3, rgba(226, 236, 246, .4));
+  opacity: .55;
+}
+html.m-app .el-dialog__header {
+  padding: 10px 18px 6px !important;
+  flex: none;
+}
+html.m-app .el-dialog__body {
+  padding: 8px 18px 18px !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+html.m-app .el-dialog__footer {
+  padding: 10px 18px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  flex: none;
+}
+/* 全屏类弹窗保持原样（不然图片/编辑器会被压成一条） */
+html.m-app .el-dialog.is-fullscreen {
+  max-height: 100dvh;
+  border-radius: 0 !important;
+  animation: none;
+}
+html.m-app .el-dialog.is-fullscreen::before { display: none; }
+@keyframes lg-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.m-app .el-dialog { animation: none; }
+}
+
 /* 手机弹窗：注意 el-dialog append-to-body 后 DOM 落在 body 下，
    #app.is-mobile 前缀是死规则（docs/ISSUES.md V246279），必须带 html.m-app */
 #app.is-mobile :is(.el-dialog, .el-popover, .el-select__popper),
@@ -179,6 +259,12 @@ html.m-app :is(.el-dialog, .el-popover, .el-select__popper) {
   -webkit-backdrop-filter: var(--lg-blur) !important;
   backdrop-filter: var(--lg-blur) !important;
   border: 1px solid var(--lg-line) !important;
+}
+/* D2 收尾：上一条把四边描边写了，抽屉只要顶边一条（同权重同 !important，
+   必须写在它之后才压得住） */
+html.m-app .el-dialog {
+  border: 0 !important;
+  border-top: 1px solid var(--lg-line, rgba(255, 255, 255, .2)) !important;
 }
 
 /* ===================== E. 登录页：液态玻璃门面（恒定深空，不分昼夜） =====================
@@ -320,6 +406,18 @@ html:root[data-theme="day"] .login-page .back-link:hover { color: #17b0d6 !impor
 #app.is-mobile :is(.fin-head, .st-head, .tv-head, .ct-head) {
   border-bottom: none !important;
 }
+/* v2.46.376：同一条粗墨线在「岛屿内页」页头也有（mobile-paper 460），
+   体重管理页标题下那条横线就是它；页头背景还是 mobile-product 的 `--m-bg` 实底
+   —— 记账页顶部那块大黑块就是它（全宽 + 近黑 + 无玻璃）。
+   统一处理：线去掉，底改透明，让页面光场透上来。 */
+#app.is-mobile .island-inner .inner-header,
+html[data-theme="day"] #app.is-mobile .island-inner .inner-header {
+  border-bottom: none !important;
+}
+#app.is-mobile :is(.fin-head, .st-head, .tv-head, .ct-head),
+html[data-theme="day"] #app.is-mobile :is(.fin-head, .st-head, .tv-head, .ct-head) {
+  background: transparent !important;
+}
 
 /* 2) 列表缝线：手账虚线 → iOS 极淡实线 */
 #app.is-mobile :is(.fin-row, .music-item) {
@@ -435,12 +533,15 @@ html[data-theme="day"].m-app {
 
 :root,
 html[data-theme="night"] {
-  --lg-ctl-bg: rgba(255, 255, 255, .07);
-  --lg-ctl-bg-hover: rgba(255, 255, 255, .12);
-  --lg-ctl-bg-active: rgba(255, 255, 255, .16);
-  --lg-ctl-hi: inset 0 1px 0 rgba(255, 255, 255, .16);
+  /* v2.46.376：夜间控件底 .07 → .11、描边 .12 → .18。
+     夜星「首页下面那排标签都有点灰，没有液态玻璃的感觉」——
+     白色 7% 压在深蓝底上只会得到一层灰雾，白得不够就透不出玻璃的高光。 */
+  --lg-ctl-bg: rgba(255, 255, 255, .11);
+  --lg-ctl-bg-hover: rgba(255, 255, 255, .17);
+  --lg-ctl-bg-active: rgba(255, 255, 255, .22);
+  --lg-ctl-hi: inset 0 1px 0 rgba(255, 255, 255, .26);
   --lg-ctl-lo: inset 0 -1px 0 rgba(0, 0, 0, .30);
-  --lg-ctl-line: rgba(255, 255, 255, .12);
+  --lg-ctl-line: rgba(255, 255, 255, .18);
   --lg-ctl-shadow: 0 2px 8px rgba(0, 0, 0, .22);
   /* 分段控件 / chip 的「选中块」与文字色（v2.46.374） */
   --lg-ctl-on-bg: rgba(255, 255, 255, .22);
@@ -512,7 +613,9 @@ html[data-theme="day"] #app.is-mobile {
 /* --- 3) Chip / 胶囊标签：玻璃药丸 --- */
 [class*="-chip"],
 [class*="-tag"]:not(.el-tag) {
-  background: var(--lg-ctl-bg) !important;
+  background:
+    linear-gradient(158deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0) 58%),
+    var(--lg-ctl-bg) !important;
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
   border-radius: 999px !important;
@@ -587,7 +690,28 @@ html[data-theme="day"] #app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn
   border-radius: 12px !important;
 }
 
-/* --- 8) 桌面端补齐：模块页自己的卡片容器 --- */
+/* --- 9) 文本层级 token（v2.46.376）---
+ * 起因：ModuleSummary 用了 `--color-text-primary`，而**这个 token 全站根本没定义过**，
+ * 于是永远走 fallback `#1d1d1f`（近黑）。夜间玻璃卡是深蓝底 → 主数字直接看不见
+ * （夜星截图里体重「67.0」「本月支出 ¥217.55」都是黑的）。涨跌色同理写死 #2e7d5b / #c0392b。
+ * 这里给玻璃体系一套自己的语义色板，昼夜翻转，组件直接用。 */
+:root,
+html[data-theme="night"] {
+  --lg-fg: #eef4fb;
+  --lg-fg-2: rgba(226, 236, 246, .74);
+  --lg-fg-3: rgba(226, 236, 246, .50);
+  --lg-good: #4fd6a0;
+  --lg-bad: #ff8585;
+}
+html[data-theme="day"] {
+  --lg-fg: #1d1d1f;
+  --lg-fg-2: rgba(60, 60, 67, .64);
+  --lg-fg-3: rgba(60, 60, 67, .44);
+  --lg-good: #1a7f5a;
+  --lg-bad: #c0392b;
+}
+
+/* --- 10) 桌面端补齐：模块页自己的卡片容器 --- */
 #app:not(.is-mobile) :is([class*="-card"], [class*="-panel"], [class*="-hero"]):not(.el-card):not([class*="__"]) {
   background: var(--lg-sheen), var(--lg-glow), var(--lg-tint) !important;
   -webkit-backdrop-filter: var(--lg-blur) !important;

@@ -7,6 +7,35 @@
 
 ---
 
+## v2.46.376 夜间文字消失 / 顶部黑块 / 抽屉统一（2026-11-04）
+
+### V246376-001：`var(--color-text-primary, #1d1d1f)` —— token 根本不存在
+
+- 现象：夜间体重「67.0」、记账「本月支出 ¥217.55」及三个迷你指标全是黑的，看不见。
+- 根因：`--color-text-primary` 在全部样式表里**从未定义**（只有 secondary / tertiary 有），
+  所以永远走 fallback `#1d1d1f`。日间白卡上恰好正常，夜间深蓝玻璃上直接消失。
+- 教训：**写 `var(--x, fallback)` 前先 grep 一遍 `--x:` 是否真有定义**。
+  fallback 不是保险，是掩盖。
+- 修法：玻璃体系自带语义色板 `--lg-fg / -2 / -3 / --lg-good / --lg-bad`，昼夜翻转。
+
+### V246376-002：页头 `background: var(--m-bg)` 在深色主题下是一块全宽黑
+
+- 现象：记账页顶部（标题那一段）一大块纯黑，和下面的蓝紫光场断裂。
+- 根因：`mobile-product.css:71` 给 `.fin-head` 写死 `background: var(--m-bg) !important`
+  + `margin: 0 -16px` 做全宽出血。玻璃化之后页面是彩晕光场，这块近黑实底就成了补丁。
+- 修法：`background: transparent !important`，让光场透上来。
+
+### V246376-003：全站 82 处 el-dialog 的「统一形状」只能在 ElDialog 层收口
+
+- 需求：「添加页面统一做成底部抽屉」。
+- 逐个改模块不可维护，且以后新增的还会跑偏。改法是在全局把 `.el-overlay-dialog` 设成
+  `flex + align-items:flex-end`、`.el-dialog` 设 `margin:0` + `width:100%` + 顶部圆角 +
+  `max-height:88dvh`，一次覆盖全部。
+- 关键：**必须用 `html.m-app` 前缀**，el-dialog 是 append-to-body，DOM 在 body 下，
+  `#app.is-mobile` 前缀是死规则（同 V246279）。
+
+---
+
 ## v2.46.375 抽屉被底栏遮挡（2026-11-04）
 
 ### V246375-001：祖先 `z-index:1` 造出层叠上下文，内部 fixed 浮层永远压不住 TabBar
