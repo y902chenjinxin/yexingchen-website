@@ -653,16 +653,17 @@ function resetRegister() {
   width: 360px;
   padding: 40px;
   background:
-    linear-gradient(160deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .02) 46%),
-    rgba(14, 21, 34, .38);
-  -webkit-backdrop-filter: blur(40px) saturate(190%);
-  backdrop-filter: blur(40px) saturate(190%);
+    linear-gradient(168deg, rgba(255, 255, 255, .20), rgba(255, 255, 255, .06) 42%, rgba(255, 255, 255, .03)),
+    rgba(10, 16, 27, .30);
+  -webkit-backdrop-filter: blur(52px) saturate(200%);
+  backdrop-filter: blur(52px) saturate(200%);
   border: 1px solid rgba(255, 255, 255, .22);
-  border-radius: 26px;
+  border-radius: 30px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .22),
-    0 24px 70px rgba(0, 0, 0, .45),
-    0 6px 22px rgba(0, 0, 0, .28);
+    inset 0 1px 0 rgba(255, 255, 255, .34),
+    inset 0 0 32px rgba(255, 255, 255, .035),
+    0 30px 80px rgba(0, 0, 0, .46),
+    0 8px 24px rgba(0, 0, 0, .30);
   will-change: transform;
   transition: transform .18s ease-out;
   opacity: 0;
@@ -740,9 +741,53 @@ function resetRegister() {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 13px; color: rgba(220, 236, 232, 0.85); cursor: pointer;
 }
+/* 勾选框（v2.46.418 夜星）：默认的 accent-color 会画一块品牌青，跟液态玻璃不搭。
+ * 改成「玻璃空框 → 选中纯白填充 + 深色对勾」，跟 App Store / iOS 系统弹框的
+ * 白色勾选一致：不引入第二个色相，选中态用最高亮度（白）表达。 */
 .remember-check {
-  width: 16px; height: 16px; accent-color: var(--tc-cyan, #17b0d6);
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
+  display: grid;
+  place-content: center;
   cursor: pointer;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease, transform .12s ease;
+}
+.remember-check::after {
+  content: '';
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #101722;
+  border-bottom: 2px solid #101722;
+  border-radius: 1px;
+  opacity: 0;
+  transform: rotate(-45deg) translate(1px, -1px) scale(.4);
+  transition: opacity .16s ease, transform .2s cubic-bezier(.2, .9, .3, 1.35);
+}
+.remember-check:hover {
+  border-color: rgba(255, 255, 255, .55);
+  background: rgba(255, 255, 255, .13);
+}
+.remember-check:checked {
+  background: #fff;
+  border-color: #fff;
+  box-shadow: 0 1px 8px rgba(255, 255, 255, .30), inset 0 -1px 0 rgba(17, 24, 39, .08);
+}
+.remember-check:checked::after {
+  opacity: 1;
+  transform: rotate(-45deg) translate(1px, -1px) scale(1);
+}
+.remember-check:active { transform: scale(.9); }
+.remember-check:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .20);
 }
 .remember-hint { font-size: 12px; color: rgba(157, 178, 212, 0.5); }
 
@@ -759,19 +804,34 @@ function resetRegister() {
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.09) !important;
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
-  border-radius: 12px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .05) 46%, rgba(255, 255, 255, .03)) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(170%);
+  backdrop-filter: blur(10px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, .20) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(255, 255, 255, .05) !important;
+  transition: border-color .28s ease, box-shadow .28s ease, background .28s ease;
 }
 
-:deep(.el-input__wrapper:hover),
+:deep(.el-input__wrapper:hover) {
+  border-color: rgba(255, 255, 255, .32) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06) 46%, rgba(255, 255, 255, .04)) !important;
+}
+
+/* 聚焦（v2.46.418）：原来是一圈亮青描边 + 4px 青光晕，在深空底上太跳。
+ * 苹果原生液态玻璃的选中语义是「玻璃本身变亮」，不是加色环：
+ * 白描边提到 58%、顶部高光加强、外圈 3px 极淡白光 + 一点点落影把框托起来。 */
 :deep(.el-input__wrapper.is-focus) {
-  border-color: rgba(14, 147, 184, 0.85) !important;
-  box-shadow: 0 0 0 4px rgba(14, 147, 184, 0.16) !important;
+  border-color: rgba(255, 255, 255, .58) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .19), rgba(255, 255, 255, .07) 48%, rgba(255, 255, 255, .05)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .42),
+    inset 0 -1px 0 rgba(255, 255, 255, .06),
+    0 0 0 3px rgba(255, 255, 255, .09),
+    0 6px 18px -10px rgba(0, 0, 0, .55) !important;
 }
 
 :deep(.el-input__inner) {
@@ -792,18 +852,20 @@ function resetRegister() {
 :deep(input:autofill:focus) {
   -webkit-text-fill-color: #eef4fb !important;
   color: #eef4fb !important;
-  -webkit-box-shadow: 0 0 0 1000px rgba(14, 21, 34, 0.94) inset !important;
-  box-shadow: 0 0 0 1000px rgba(14, 21, 34, 0.94) inset !important;
-  background-color: rgba(14, 21, 34, 0.94) !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(16, 24, 38, 0.92) inset !important;
+  box-shadow: 0 0 0 1000px rgba(16, 24, 38, 0.92) inset !important;
+  background-color: rgba(16, 24, 38, 0.92) !important;
   transition: background-color 9999s ease-out 0s;
   filter: none !important;
   caret-color: #eef4fb;
 }
-/* 自动填充时同步把外框描边维持雨青 */
+/* 自动填充时外框与填充底同色（v2.46.418）：原来这里写的是雨青描边，
+ * 而 input 只覆盖自身的宽度，右侧眼睛区露出玻璃 → 一块深一块浅。
+ * 真正的 wrapper 同色规则在 liquid-glass.css（ID 权重才压得住），此处只声明语义。 */
 :deep(.el-input__wrapper:has(input:-webkit-autofill)),
 :deep(.el-input__wrapper:has(input:autofill)) {
-  background: rgba(14, 21, 34, 0.94) !important;
-  border-color: rgba(14, 147, 184, 0.5) !important;
+  background: rgba(16, 24, 38, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.26) !important;
 }
 
 :deep(.el-input__inner::placeholder) {

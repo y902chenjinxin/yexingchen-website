@@ -1003,7 +1003,8 @@ html:root[data-theme="day"] .login-page {
     radial-gradient(52rem 40rem at 50% 112%, rgba(201, 160, 107, .20), transparent 60%),
     linear-gradient(180deg, #0c1420 0%, #060a12 100%) !important;
 }
-/* 登录卡：液态玻璃本体 */
+/* 登录卡：液态玻璃本体（v2.46.418 对齐苹果原生：更低 tint + 更强模糊，
+   玻璃的亮度只来自顶边高光与内圈微光，颜色全部交给背后的彩晕采样） */
 .login-card,
 html:root[data-theme="day"] .login-card {
   /* 卡内收敛科技色板为雨青单色系：TechButton 取 --tc-cyan/--tc-blue，
@@ -1013,48 +1014,83 @@ html:root[data-theme="day"] .login-card {
   --tc-cyan-bright: #2ec6e8;
   --tc-violet: #0c7d9c;
   background:
-    linear-gradient(160deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .03) 46%),
-    rgba(14, 21, 34, .40) !important;
-  -webkit-backdrop-filter: blur(40px) saturate(190%) !important;
-  backdrop-filter: blur(40px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, .24) !important;
-  border-radius: 26px !important;
+    linear-gradient(168deg, rgba(255, 255, 255, .20) 0%, rgba(255, 255, 255, .06) 42%, rgba(255, 255, 255, .03) 100%),
+    rgba(10, 16, 27, .30) !important;
+  -webkit-backdrop-filter: blur(52px) saturate(200%) !important;
+  backdrop-filter: blur(52px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, .22) !important;
+  border-radius: 30px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .24),
-    0 24px 70px rgba(0, 0, 0, .45),
-    0 6px 22px rgba(0, 0, 0, .28) !important;
+    inset 0 1px 0 rgba(255, 255, 255, .34),
+    inset 0 0 32px rgba(255, 255, 255, .035),
+    0 30px 80px rgba(0, 0, 0, .46),
+    0 8px 24px rgba(0, 0, 0, .30) !important;
 }
 /* 手机端：压掉宣纸金边 + 硬偏移阴影（mobile-paper.css 868-874） */
 #app.is-mobile .login-card {
-  border: 1px solid rgba(255, 255, 255, .24) !important;
-  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, .22) !important;
+  border-radius: 28px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .24),
-    0 24px 70px rgba(0, 0, 0, .45) !important;
+    inset 0 1px 0 rgba(255, 255, 255, .34),
+    0 30px 80px rgba(0, 0, 0, .46) !important;
 }
 html:root[data-theme="day"] #app.is-mobile .login-card {
-  border: 1px solid rgba(255, 255, 255, .24) !important;
+  border: 1px solid rgba(255, 255, 255, .22) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .24),
-    0 24px 70px rgba(0, 0, 0, .45) !important;
+    inset 0 1px 0 rgba(255, 255, 255, .34),
+    0 30px 80px rgba(0, 0, 0, .46) !important;
 }
-/* 输入框：玻璃内嵌（压过 desktop-product N 节 ID 权重修复、tech-theme 9b、tech-theme-day 手机段） */
+/* 输入框：玻璃贴片（v2.46.418）
+ * 夜星：输入框选中的那圈亮青描边 + 青光晕太突兀，要苹果原生的液态玻璃。
+ * 苹果的做法是「玻璃自己变亮」，不加色环 —— 顶部一道受光渐变，四边白细线，
+ * focus 时把白边和顶部高光提上去，外面垫一层 3px 极淡白光。
+ * 压过 desktop-product N 节 ID 权重修复、tech-theme 9b、tech-theme-day 手机段 */
 #app:not(.is-mobile) .login-page .el-input__wrapper,
 #app:not(.is-mobile) .login-page .el-textarea__inner,
 #app.is-mobile .login-card .el-input__wrapper,
 html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
-  background: rgba(255, 255, 255, .10) !important;
-  border: 1px solid rgba(255, 255, 255, .26) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10) !important;
-  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .05) 46%, rgba(255, 255, 255, .03)) !important;
+  border: 1px solid rgba(255, 255, 255, .20) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .24),
+    inset 0 -1px 0 rgba(255, 255, 255, .05) !important;
+  border-radius: 14px !important;
+  -webkit-backdrop-filter: blur(10px) saturate(170%);
+  backdrop-filter: blur(10px) saturate(170%);
+  transition: border-color .28s ease, box-shadow .28s ease, background .28s ease;
 }
 #app:not(.is-mobile) .login-page .el-input__wrapper:hover,
-#app:not(.is-mobile) .login-page .el-input__wrapper.is-focus,
 #app.is-mobile .login-card .el-input__wrapper:hover,
+html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper:hover {
+  border-color: rgba(255, 255, 255, .32) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06) 46%, rgba(255, 255, 255, .04)) !important;
+}
+#app:not(.is-mobile) .login-page .el-input__wrapper.is-focus,
 #app.is-mobile .login-card .el-input__wrapper.is-focus,
 html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper.is-focus {
-  border-color: rgba(14, 147, 184, .85) !important;
-  box-shadow: 0 0 0 4px rgba(14, 147, 184, .16) !important;
+  border-color: rgba(255, 255, 255, .58) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .19), rgba(255, 255, 255, .07) 48%, rgba(255, 255, 255, .05)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .42),
+    inset 0 -1px 0 rgba(255, 255, 255, .06),
+    0 0 0 3px rgba(255, 255, 255, .09),
+    0 6px 18px -10px rgba(0, 0, 0, .55) !important;
+}
+/* 自动填充：Chrome 会给 input 刷浅蓝底，只能用 inset 实色盖住。
+ * 关键是 wrapper 必须同色 —— 原来 scoped 的 :has 规则权重不够，撑不过这里的
+ * ID 权重，结果 input 一块深、右侧眼睛区一块浅（夜星截图里的色块）。 */
+#app:not(.is-mobile) .login-page .el-input__wrapper:has(input:-webkit-autofill),
+#app:not(.is-mobile) .login-page .el-input__wrapper:has(input:autofill),
+#app.is-mobile .login-card .el-input__wrapper:has(input:-webkit-autofill),
+#app.is-mobile .login-card .el-input__wrapper:has(input:autofill) {
+  background: rgba(16, 24, 38, .92) !important;
+  border-color: rgba(255, 255, 255, .26) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 /* 输入文字：登录页恒定深底，文字恒浅（id 权重，昼夜通吃） */
 #app:not(.is-mobile) .login-page .el-input__inner,
