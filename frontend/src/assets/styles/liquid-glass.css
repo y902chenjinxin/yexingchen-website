@@ -301,13 +301,16 @@ html[data-theme="day"] #app.is-mobile {
 }
 /* 手机各页容器 + 岛屿内页：一律透明，把底色交还给唯一的固定光场层。
    用 `[class$="-page"]` 兜住以后新增的页面容器（只匹配页面级容器，
-   不会误伤 -card / -panel 这些内容块）。 */
+   不会误伤 -card / -panel 这些内容块）。
+   ⚠️ 必须 `:not(.login-page)`：登录页类名也以 -page 结尾，被兜住后深空底被清成
+   transparent，只剩 html 的 #f5f5f7 → 日间登录页变成浅灰紫玻璃、白字看不清
+   （v2.46.418 夜星截图）。登录页是品牌门面，恒定深空，不参与「透明交还」。 */
 #app.is-mobile :is(.fin-page, .st-page, .tv-page, .ct-page, .notes-page, .profile-page, .assistant-page, .abb, .cd-page,
   .tk-page, .sb-page, .li-page, .va-page, .wd-page, .sd-page, .dh-page, .trash-page, .fd-page, .qk-page,
-  [class$="-page"], .island-inner, .manage-pane, .fin-inner, .ct-inner),
+  [class$="-page"]:not(.login-page), .island-inner, .manage-pane, .fin-inner, .ct-inner),
 html[data-theme="day"] #app.is-mobile :is(.fin-page, .st-page, .tv-page, .ct-page, .notes-page, .profile-page, .assistant-page, .abb, .cd-page,
   .tk-page, .sb-page, .li-page, .va-page, .wd-page, .sd-page, .dh-page, .trash-page, .fd-page, .qk-page,
-  [class$="-page"], .island-inner, .manage-pane, .fin-inner, .ct-inner) {
+  [class$="-page"]:not(.login-page), .island-inner, .manage-pane, .fin-inner, .ct-inner) {
   background-color: transparent !important;
   background-image: none !important;
   /* 页面级容器绝不能带 backdrop-filter：它就是一块「视口大小的模糊层」，
@@ -1003,6 +1006,16 @@ html:root[data-theme="day"] .login-page {
     radial-gradient(52rem 40rem at 50% 112%, rgba(201, 160, 107, .20), transparent 60%),
     linear-gradient(180deg, #0c1420 0%, #060a12 100%) !important;
 }
+/* 手机端再钉一层（v2.46.418）：上面 305 行那段「页面容器一律透明」的
+ * `[class$="-page"]` 曾把登录页一起清掉（已加 :not(.login-page)，这里做双保险）。 */
+html:root #app.is-mobile .login-page,
+html:root[data-theme="day"] #app.is-mobile .login-page {
+  background:
+    radial-gradient(56rem 40rem at 14% -8%, rgba(14, 147, 184, .30), transparent 60%),
+    radial-gradient(44rem 34rem at 86% 6%, rgba(110, 70, 190, .22), transparent 62%),
+    radial-gradient(52rem 40rem at 50% 112%, rgba(201, 160, 107, .20), transparent 60%),
+    linear-gradient(180deg, #0c1420 0%, #060a12 100%) !important;
+}
 /* 登录卡：液态玻璃本体（v2.46.418 对齐苹果原生：更低 tint + 更强模糊，
    玻璃的亮度只来自顶边高光与内圈微光，颜色全部交给背后的彩晕采样） */
 .login-card,
@@ -1050,7 +1063,8 @@ html:root[data-theme="day"] #app.is-mobile .login-card {
 #app.is-mobile .login-card .el-input__wrapper,
 html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .05) 46%, rgba(255, 255, 255, .03)) !important;
+    radial-gradient(130% 64% at 50% -18%, rgba(255, 255, 255, .16), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .045) 46%, rgba(255, 255, 255, .028)) !important;
   border: 1px solid rgba(255, 255, 255, .20) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .24),
@@ -1065,18 +1079,23 @@ html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
 html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper:hover {
   border-color: rgba(255, 255, 255, .32) !important;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06) 46%, rgba(255, 255, 255, .04)) !important;
+    radial-gradient(130% 64% at 50% -18%, rgba(255, 255, 255, .21), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .055) 46%, rgba(255, 255, 255, .035)) !important;
 }
-#app:not(.is-mobile) .login-page .el-input__wrapper.is-focus,
-#app.is-mobile .login-card .el-input__wrapper.is-focus,
+/* focus 必须再提一层权重：文件后半段（Y 节 1418）还有一条
+ * `#app.is-mobile :is(.el-input__wrapper.is-focus, …)`（同为 1,3,0 且位置更后），
+ * 会把手机端 focus 改回 `--m-accent` 描边 + 青色 3px 环。html:root 提到 1,4,1。 */
+html:root #app:not(.is-mobile) .login-page .el-input__wrapper.is-focus,
+html:root #app.is-mobile .login-card .el-input__wrapper.is-focus,
 html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper.is-focus {
-  border-color: rgba(255, 255, 255, .58) !important;
+  border-color: rgba(255, 255, 255, .62) !important;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .19), rgba(255, 255, 255, .07) 48%, rgba(255, 255, 255, .05)) !important;
+    radial-gradient(130% 64% at 50% -18%, rgba(255, 255, 255, .26), transparent 64%),
+    linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .06) 48%, rgba(255, 255, 255, .04)) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .42),
+    inset 0 1px 0 rgba(255, 255, 255, .50),
     inset 0 -1px 0 rgba(255, 255, 255, .06),
-    0 0 0 3px rgba(255, 255, 255, .09),
+    0 0 0 3px rgba(255, 255, 255, .15),
     0 6px 18px -10px rgba(0, 0, 0, .55) !important;
 }
 /* 自动填充：Chrome 会给 input 刷浅蓝底，只能用 inset 实色盖住。
@@ -1091,6 +1110,71 @@ html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper.is-foc
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
+}
+/* 勾选框最终态（v2.46.418）：desktop-product.css 的
+ * `#app:not(.is-mobile) input:focus:not([class*="el-"])`（1,2,1）会给任何原生 input
+ * 套 `--yq-accent` 描边 + 3px 光晕，权重高于 scoped 的 `.remember-check`（0,3,0）
+ * ——「记住我」一点就被染色，这就是夜星看到的那块不搭的青。
+ * 用 html:root 提到 (1,4,1)，把两态钉死：玻璃空框 / 纯白填充。 */
+html:root #app .login-page .remember-check {
+  background: rgba(255, 255, 255, .08) !important;
+  border-color: rgba(255, 255, 255, .42) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22) !important;
+  outline: none !important;
+}
+html:root #app .login-page .remember-check:hover {
+  background: rgba(255, 255, 255, .13) !important;
+  border-color: rgba(255, 255, 255, .55) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22) !important;
+}
+html:root #app .login-page .remember-check:checked,
+html:root #app .login-page .remember-check:checked:hover,
+html:root #app .login-page .remember-check:checked:focus,
+html:root #app .login-page .remember-check:checked:focus-visible,
+html:root #app .login-page .remember-check:checked:active {
+  background: #fff !important;
+  border-color: #fff !important;
+  box-shadow:
+    0 1px 8px rgba(255, 255, 255, .30),
+    inset 0 -1px 0 rgba(17, 24, 39, .08) !important;
+  outline: none !important;
+}
+html:root #app .login-page .remember-check:focus-visible:not(:checked) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .22),
+    0 0 0 3px rgba(255, 255, 255, .20) !important;
+}
+/* 登录按钮（v2.46.418）：Y 节把 `.tech-btn` 一律刷成控件玻璃底（未排除 --primary），
+ * 日间 `--lg-ctl-bg` 是浅灰 → 登录按钮变成夜星最反感的「灰塑料块」。
+ * 苹果液态玻璃的主按钮是「乳白磨砂胶囊 + 深墨字」，与勾选框选中态同一套语言，
+ * 这里把它钉成白色玻璃胶囊，昼夜一致。 */
+html:root #app#app .login-page .tech-btn--primary {
+  background:
+    linear-gradient(180deg, #ffffff, rgba(252, 252, 253, .96)) !important;
+  border: 1px solid rgba(255, 255, 255, .92) !important;
+  color: #10161f !important;
+  border-radius: 999px !important;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 10px 26px -12px rgba(0, 0, 0, .55) !important;
+}
+html:root #app#app .login-page .tech-btn--primary:hover {
+  background: #fff !important;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 12px 30px -12px rgba(0, 0, 0, .60) !important;
+  transform: translateY(-1px);
+}
+html:root #app#app .login-page .tech-btn--primary:active {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(246, 247, 249, .92)) !important;
+  transform: translateY(1px) scale(.99);
+}
+html:root #app#app .login-page .tech-btn--primary.is-disabled {
+  background: rgba(255, 255, 255, .55) !important;
+  border-color: rgba(255, 255, 255, .55) !important;
+  color: rgba(16, 22, 31, .55) !important;
+  box-shadow: none !important;
 }
 /* 输入文字：登录页恒定深底，文字恒浅（id 权重，昼夜通吃） */
 #app:not(.is-mobile) .login-page .el-input__inner,
@@ -1353,17 +1437,20 @@ html[data-theme="day"] #app.is-mobile {
  * 以 -btn 收尾」时命中。`class="fin-btn primary"` 结尾是 primary → 不命中；
  * `class="fin-dim-btn on"` 结尾是 on → 也不命中。这正是「日/月/年 三颗长得
  * 完全不一样」的根因（未选中的 日 命中拿了玻璃框，选中的 月 不命中反而变成白块）。
- * 改 `[class*="-btn"]`（任意位置包含）并排除分段控件，交给第 5 节统一处理。 */
-#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]) {
+ * 改 `[class*="-btn"]`（任意位置包含）并排除分段控件，交给第 5 节统一处理。
+ * 🔴 v2.46.418：再排除 `[class*="__"]`。BEM 子元素 `.tech-btn__label` /
+ * `.tech-btn__sweep` 的 class 同样包含 "-btn"，被一起刷成玻璃底 ——
+ * 登录按钮正中长出一颗白色小方块（夜星截图「一块套一块」的同一类问题）。 */
+#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]):not([class*="__"]) {
   background: var(--lg-ctl-bg) !important;
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo), var(--lg-ctl-shadow) !important;
   border-radius: 14px;
 }
-#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]):hover {
+#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]):not([class*="__"]):hover {
   background: var(--lg-ctl-bg-hover) !important;
 }
-#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]):active {
+#app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]):not([class*="__"]):active {
   background: var(--lg-ctl-bg-active) !important;
   box-shadow: var(--lg-ctl-hi), inset 0 1px 2px rgba(0, 0, 0, .12) !important;
 }

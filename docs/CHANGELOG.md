@@ -29,8 +29,23 @@
   `liquid-glass.css` 的 ID 权重面前失效（scoped 只有 0,4,0），
   补同权重的 `:has(input:-webkit-autofill)` 让 wrapper 与 input 同色 `.92`、同白边
 
-验证：`npx eslint src/views/LoginView.vue` 通过；产物 grep 确认新规则进包；
-夜星线上自验（纯视觉改动，本地不跑浏览器取证）。
+#### 自查中又挖出三个连带 bug（本地 Playwright 复现，全部修掉）
+
+| 现象 | 根因 | 修法 |
+|---|---|---|
+| 日间打开登录页是**浅灰紫**玻璃 + 白字看不清 | 第 305 行「手机各页容器一律透明」用 `[class$="-page"]` 兜底，`.login-page` 也以 `-page` 结尾被清成 `transparent`，只剩 html 的 `#f5f5f7` | 选择器改 `[class$="-page"]:not(.login-page)`；E 节再加一条 `html:root #app.is-mobile .login-page` 深空底双保险 |
+| 登录按钮正中长出一颗**白色小方块** | Y 节 `[class*="-btn"]` 收编次级按钮，BEM 子元素 `.tech-btn__label` / `.tech-btn__sweep` 的 class 也包含 `-btn`，被一起刷成玻璃底 | 三条规则统一加 `:not([class*="__"])` |
+| 登录按钮是「**灰塑料块**」 | 同上，`.tech-btn` 被一律刷 `--lg-ctl-bg`，主变体 `--primary` 没被排除 | 登录页主按钮钉成乳白胶囊：`#fff → rgba(252,252,253,.96)` + 深墨 `#10161f` + 999px 圆角 + 白内高光；`#app#app` 提权（`[class*=-btn]:not(...)×7` 的特异性高达 1,9,0，只能靠重复 ID 压过） |
+
+另外把 focus 的白提高一档（边框 `.62`、外圈 `3px rgba(255,255,255,.15)`、顶部高光 `.50`），
+并在输入框底加 `radial-gradient(130% 64% at 50% -18%, 白 16%, transparent 62%)`
+做苹果的「顶部弧形受光带」—— 未聚焦与聚焦的区别在深底上才看得出来。
+
+验证：`npx eslint src/views/LoginView.vue` 通过；本地 SPA 预览（390×844 / dpr2~3 /
+UA `XuanHuangApp` 与桌面 UA 两条分支）逐项读 computed：focus 白边 `.58~.62` + 白环
+`rgba(255,255,255,.15)`、勾选 `rgb(255,255,255)` + `::after` opacity 1、按钮渐变 `#fff→#fcfcfd`。
+产物核验：`not(.login-page)` 进包、`.remember-check{appearance:none}` 进 LoginView CSS、
+`xuanhuang-v732`。
 
 ---
 

@@ -803,9 +803,13 @@ function resetRegister() {
   color: var(--tc-cyan, #17b0d6);
 }
 
+/* 输入框（v2.46.418 苹果原生液态玻璃）：顶部弧形受光 + 白细边，
+ * focus 只提亮玻璃不加色环。最终生效值在 liquid-glass.css（ID 权重 + !important），
+ * 这里保持同族值，避免加载顺序抖动。 */
 :deep(.el-input__wrapper) {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .05) 46%, rgba(255, 255, 255, .03)) !important;
+    radial-gradient(130% 64% at 50% -18%, rgba(255, 255, 255, .16), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .045) 46%, rgba(255, 255, 255, .028)) !important;
   -webkit-backdrop-filter: blur(10px) saturate(170%);
   backdrop-filter: blur(10px) saturate(170%);
   border: 1px solid rgba(255, 255, 255, .20) !important;
@@ -817,20 +821,22 @@ function resetRegister() {
 :deep(.el-input__wrapper:hover) {
   border-color: rgba(255, 255, 255, .32) !important;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06) 46%, rgba(255, 255, 255, .04)) !important;
+    radial-gradient(130% 64% at 50% -18%, rgba(255, 255, 255, .21), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .055) 46%, rgba(255, 255, 255, .035)) !important;
 }
 
 /* 聚焦（v2.46.418）：原来是一圈亮青描边 + 4px 青光晕，在深空底上太跳。
  * 苹果原生液态玻璃的选中语义是「玻璃本身变亮」，不是加色环：
- * 白描边提到 58%、顶部高光加强、外圈 3px 极淡白光 + 一点点落影把框托起来。 */
+ * 白描边提到 62%、顶部弧形受光加强、外圈 3px 极淡白光 + 落影把框托起来。 */
 :deep(.el-input__wrapper.is-focus) {
-  border-color: rgba(255, 255, 255, .58) !important;
+  border-color: rgba(255, 255, 255, .62) !important;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .19), rgba(255, 255, 255, .07) 48%, rgba(255, 255, 255, .05)) !important;
+    radial-gradient(130% 64% at 50% -18%, rgba(255, 255, 255, .26), transparent 64%),
+    linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .06) 48%, rgba(255, 255, 255, .04)) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .42),
+    inset 0 1px 0 rgba(255, 255, 255, .50),
     inset 0 -1px 0 rgba(255, 255, 255, .06),
-    0 0 0 3px rgba(255, 255, 255, .09),
+    0 0 0 3px rgba(255, 255, 255, .15),
     0 6px 18px -10px rgba(0, 0, 0, .55) !important;
 }
 
