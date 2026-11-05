@@ -1062,6 +1062,14 @@ html:root[data-theme="day"] #app.is-mobile .login-page {
  *      它压暗背景 30%，只能靠加倍白 tint 补亮度，而补亮度就是去饱和）；
  *   ② 大面积白色线性渐变 → 顶部 34% 的弧形受光带 + 极淡整体 tint；
  *   ③ 描边分四边给色（上 40% / 侧 17% / 下 7%），做出「光从上面来」的渐变边。 */
+/* v2.46.427 性能：`#app::after`（tech-theme.css 339）是全站一条 fixed 全屏
+ * 46px 网格，26s 循环动 background-position —— 非合成属性，每帧重绘整屏。
+ * 登录页被 `.login-page` 的不透明深空底整片盖住（视觉上一个像素都看不见），
+ * 却照样每帧白画一整屏，而且它就压在登录卡 backdrop 之下。登录路由直接停它。 */
+body.login-route #app::after {
+  animation: none !important;
+}
+
 .login-card,
 html:root[data-theme="day"] .login-card {
   /* 卡内收敛科技色板为雨青单色系：TechButton 取 --tc-cyan/--tc-blue，
@@ -1102,6 +1110,9 @@ html:root[data-theme="day"] .login-card {
  *    后加载），会把上面分的四边色一并冲成 `rgba(201,164,92,.38)` 金边。
  *    用 html:root 前缀把权重抬到 1,2,0，简写就压不过这里的四边长写。 */
 html:root #app.is-mobile .login-card {
+  /* v2.46.427 试过把手机端 backdrop 降到 24px（想省重采样成本），实测帧率没变、
+     但卡内色彩结构变硬（不再是柔和的乳白玻璃），已回退到与桌面同一套 42px。
+     闪烁的真凶是「每帧重绘」，不是模糊半径 —— 见 LoginView.vue 里的网格/光环/canvas。 */
   border: 1px solid transparent !important;
   border-top-color: rgba(255, 255, 255, .72) !important;
   border-right-color: rgba(255, 255, 255, .34) !important;
@@ -1317,7 +1328,9 @@ html:root[data-theme="day"] .login-page .back-link:hover { color: #17b0d6 !impor
 
 /* ===================== 减动效 ===================== */
 @media (prefers-reduced-motion: reduce) {
-  .lg-orb, .lg-grid, .login-card::before {
+  /* v2.46.427：网格已改为静态（原来 background-position 每帧重绘是闪烁元凶），
+     这里只管还在动的两层彩晕。 */
+  .lg-orb, .lg-ambient::after {
     animation: none !important;
   }
 }

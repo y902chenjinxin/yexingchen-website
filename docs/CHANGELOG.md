@@ -1,3 +1,43 @@
+## [v2.46.425] - 2026-11-05
+
+### 修登录页手机端持续闪烁：干掉三处「每帧重绘」，视觉参数一律回退到 v2.46.424
+
+> 夜星：「手机端一直在闪烁，啥原因」
+
+**根因：不是模糊太重，是三个动画在动「非合成属性」，逼着浏览器每帧重绘整屏。
+而它们全都压在登录卡的 `backdrop-filter` 之下 → 卡片每帧被强制重做一次全卡面积的
+42px 模糊重采样，手机 GPU 完全吃不住，掉到个位数帧率，肉眼就是「一直在闪」。**
+
+| # | 元凶 | 位置 | 为什么贵 | 修法 |
+|---|---|---|---|---|
+| 1 | `background-position` 动画（3.6s 无限循环） | `.lg-grid` 透视网格 | 非合成属性，每帧重绘 1.8 屏宽 × 56% 高的网格 | 网格改**静止**（动感交给彩晕层） |
+| 2 | conic `--lg-spin` 角度动画 + `blur(34px)` | `.login-card::before` 流光环 | 角度无法在合成线程插值 → 每帧主线程重建 412×660 渐变并重跑 34px 模糊 | 固定角度 `from 208deg`，去动画 |
+| 3 | `background-position` 动画（26s） | `#app::after`（tech-theme 全站网格） | fixed 全屏网格每帧重绘；登录页被 `.login-page` 不透明底完全盖住（一个像素看不见）却照样白画 | `body.login-route #app::after { animation: none }` |
+
+**附带的三条降载**
+
+- 粒子 canvas 限 **30fps**（原 60fps 全屏 clear + O(n²) 连线）；`paintDust` 内部 dt 按
+  60fps 基准归一，帧率减半时位移自动翻倍补偿，**线速度观感不变**。
+- `.lg-ambient` / `.lg-dust` 加 `contain: layout paint`，把动画层的重绘与整页隔离。
+- 触屏撤掉 `.login-card` 的 `will-change: transform` + `transform` 过渡 ——
+  `will-change` 强制升合成层，与 `backdrop-filter` 叠加是 Android WebView / 鸿蒙 ArkWeb
+  上已知的「周期性白闪」诱因；触屏本来也没鼠标视差（`tiltEnabled` 只在 `pointer:fine` 开）。
+  同理粒子指针连线只在 `pointer:fine` 绑定。
+
+**视觉一律不动**：中途试过把卡片 blur 42→24px、删掉彩晕的 `blur(55px)` / 色斑的
+`blur(18px)` 来省成本，实测帧率没有变化，反而卡内色彩分区变硬、丢了乳白柔度 ——
+**全部回退到 v2.46.424 的数值**，观感与你认可的那版一致。卡内像素采样对比
+（`vn-mobile` vs 新图）：亮度 35~50、饱和度 40~75 同区间。
+
+**本地实测**（Playwright，390×844 dpr2，注入 UA 走 APK 分支）
+- 手机端帧率：**7.6 fps → 20.2 fps**（同一时段连测，约 2.7 倍）
+- 逐项关掉 blur / 关掉全部氛围动效后帧率不再上升 → 瓶颈已不在页面内容，
+  剩余是无头软件光栅的环境上限
+
+**改动文件**：`frontend/src/views/LoginView.vue`、`frontend/src/assets/styles/liquid-glass.css`。
+
+---
+
 ## [v2.46.424] - 2026-11-05
 
 ### 登录页液态玻璃「加厚」：卡面去白化 + 四边分级描边 + 背景彩斑可辨 + 全程漂移

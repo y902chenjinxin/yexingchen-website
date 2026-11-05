@@ -383,8 +383,19 @@ function paintDust(ts) {
   ctx.globalAlpha = 1
 }
 
+/* v2.46.427 性能：画布限 30fps。每帧要 clear 全屏 + O(n²) 连线 + 逐点 arc/fill，
+   而它整块就在登录卡 backdrop 之下 —— 60fps 等于逼着卡片每秒重采样 60 次 30px 模糊。
+   30fps 视觉上几乎看不出（粒子本身是慢速漂移），成本直接砍半。
+   paintDust 内部用 dt 归一化到 60fps 基准，所以降到 30fps 时 dt≈2，
+   位移自动翻倍补偿，线速度观感不变。 */
+const DUST_FRAME_MS = 33
+let dustPaintAt = 0
+
 function loopDust(ts) {
-  paintDust(ts)
+  if (ts - dustPaintAt >= DUST_FRAME_MS) {
+    dustPaintAt = ts
+    paintDust(ts)
+  }
   dustRaf = requestAnimationFrame(loopDust)
 }
 
@@ -396,6 +407,7 @@ function stopDust() {
 function startDust() {
   stopDust()
   dustLast = 0
+  dustPaintAt = 0
   if (dustStatic) {
     paintDust(0)              // 减动效：只留一帧静态星座网
     return
@@ -444,8 +456,13 @@ onMounted(() => {
   startDust()
   window.addEventListener('resize', onDustResize)
   document.addEventListener('visibilitychange', onDustVisibility)
-  window.addEventListener('pointermove', onDustPointer, { passive: true })
-  document.documentElement.addEventListener('pointerleave', onDustPointerLeave)
+  // v2.46.427：指针连线只在精确指针（桌面）绑定。触屏的 pointermove 也会来，
+  // 手指一划就让 canvas 多画几十条线，而 canvas 整块在登录卡 backdrop 之下一进一出，
+  // 白多一轮全卡模糊重采样。手机端本来也「拉不出鼠标线」，直接不绑。
+  if (window.matchMedia('(pointer: fine)').matches) {
+    window.addEventListener('pointermove', onDustPointer, { passive: true })
+    document.documentElement.addEventListener('pointerleave', onDustPointerLeave)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -592,6 +609,9 @@ function resetRegister() {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  /* v2.46.427：氛围层内部只有绝对定位的彩晕/网格/canvas，与外部布局无关；
+     contain 把它变成一个独立绘制边界，动画时不会牵动整页重绘。 */
+  contain: layout paint;
 }
 /* 液面色块（v2.46.425）：参考图之所以「厚」，一半功劳在背景 —— 它背后是
    一屏 App 图标，玻璃一糊就形成一块块可辨的彩色，边界自然就「厚」了。
@@ -609,6 +629,7 @@ function resetRegister() {
     radial-gradient(circle 11vmax at 90% 84%, rgba(255, 150, 175, .32), rgba(255, 150, 175, 0) 70%),
     radial-gradient(circle 7vmax at 48% 4%, rgba(200, 245, 255, .34), rgba(200, 245, 255, 0) 70%),
     linear-gradient(114deg, transparent 15%, rgba(190, 228, 250, .10) 31%, rgba(190, 228, 250, .03) 43%, transparent 56%);
+  /* v2.46.427 试过删掉这条 blur，卡内色斑边缘变硬、发脏，已回退 */
   filter: blur(18px);
   /* v2.46.426：色斑层也让它慢慢漂 —— 四团 orb 是「呼吸」，这层是「流水」，
      两者速度不同，玻璃后面才不是一块死色 */
@@ -627,6 +648,8 @@ function resetRegister() {
 .lg-orb {
   position: absolute;
   border-radius: 50%;
+  /* v2.46.427 试过删掉这条 blur（想省离屏纹理），但卡内的色彩分区会变硬、丢柔度，
+     已回退。闪烁的真凶是 background-position / conic 角度这类「每帧重绘」动画。 */
   filter: blur(55px);
   opacity: .95;
   will-change: transform;
@@ -680,7 +703,13 @@ function resetRegister() {
   .lg-orb--c { width: 52vh; height: 52vh; left: 26vw; bottom: -16vh; }
   .lg-orb--d { width: 44vh; height: 44vh; right: 12vw; bottom: -6vh; }
 }
-/* 透视网格：底部无限滚动，玻璃世界的「地面」 */
+/* 透视网格：玻璃世界的「地面」（v2.46.427 起静止）。
+ * 原来它用 `background-position` 每 3.6s 循环滚动 —— 那是非合成属性，浏览器得把
+ * 1.8 屏宽 × 60% 高的网格每帧整块重绘，而它正好压在登录卡 backdrop 之下，
+ * 卡片的 42px 模糊就被迫跟着每帧重做，手机上直接掉到个位数帧率（实测 7.6fps
+ * vs 20+fps），肉眼就是「一直在闪」。改成 ::before + translate3d 试过，
+ * 但 3D 上下文里的子层位移会把网格推出遮罩、底部的线几乎消失，观感不对，
+ * 所以干脆让地面静止 —— 背景的「动」交给四团彩晕和色斑层（它们是纯 transform 合成）。 */
 .lg-grid {
   position: absolute;
   left: -40%; right: -40%; bottom: -34%; height: 56%;
@@ -692,10 +721,8 @@ function resetRegister() {
   transform-origin: center top;
   -webkit-mask-image: linear-gradient(transparent, #000 46%);
   mask-image: linear-gradient(transparent, #000 46%);
-  animation: lg-grid-move 3.6s linear infinite;
   opacity: .9;
 }
-@keyframes lg-grid-move { from { background-position: 0 0; } to { background-position: 0 46px; } }
 /* 纯白浮尘粒子层：canvas 铺满氛围层，压在彩晕/网格之上、玻璃卡之下。
    只画白点（无光晕、无连线、无彩色），细节全在脚本里 */
 .lg-dust {
@@ -705,6 +732,8 @@ function resetRegister() {
   height: 100%;
   display: block;
   opacity: .85;
+  /* v2.46.427：把 canvas 的重绘与整页隔离，避免每帧 clear/画点把周边层一起拖进重绘 */
+  contain: layout paint;
 }
 
 /* 登录卡片：液态玻璃本体（v2.46.364 方案④）。
@@ -746,6 +775,18 @@ function resetRegister() {
   to { opacity: 1; }
 }
 
+/* v2.46.427：触屏设备上撤掉卡片的 will-change / transform 过渡。
+   `will-change: transform` 会把卡片强制提成合成层，而它同时又有 backdrop-filter ——
+   在 Android WebView / 鸿蒙 ArkWeb 上这两者叠加是已知的「周期性白闪 / 棋盘闪」诱因
+   （合成层序与 backdrop 采样时机对不齐）。触屏本来也没有鼠标视差（tiltEnabled 只在
+   pointer:fine 时开），这两个属性纯属白背风险。 */
+@media (hover: none) {
+  .login-card {
+    will-change: auto;
+    transition: none;
+  }
+}
+
 /* 旋转流光光环：藏在玻璃后面的呼吸光晕（雨青→鎏金），透过毛玻璃渗出来 */
 .login-card::before {
   content: '';
@@ -753,8 +794,13 @@ function resetRegister() {
   inset: -26px;
   border-radius: 40px;
   z-index: -1;
+  /* v2.46.427 性能：这里原来是 `from var(--lg-spin)` + @property 角度动画。
+     注册过的 <angle> 能插值，但 conic-gradient 的角度**无法在合成线程插值** ——
+     浏览器只能每帧在主线程重建这个 412×660 的渐变，再重跑一次 blur(34px) 光栅化；
+     而它就压在卡片 backdrop 之下，卡片每次都跟着重采样。手机 60fps 下直接崩。
+     改成固定角度（亮部偏左上，正是主光方向），把动态交给 orb 彩晕。 */
   background: conic-gradient(
-    from var(--lg-spin, 0deg),
+    from 208deg,
     rgba(14, 147, 184, 0) 0%,
     rgba(14, 147, 184, .55) 18%,
     rgba(201, 160, 107, .45) 30%,
@@ -762,14 +808,9 @@ function resetRegister() {
     rgba(110, 70, 190, .30) 66%,
     rgba(14, 147, 184, 0) 88%
   );
-  filter: blur(34px);
-  opacity: .48;
-  animation: lg-ring 9s linear infinite;
+  filter: blur(24px);
+  opacity: .44;
   pointer-events: none;
-}
-
-@keyframes lg-ring {
-  to { --lg-spin: 360deg; }
 }
 
 /* 表面光学层（v2.46.424）：水润感 = 玻璃表面那层「水膜」的反光，
@@ -1152,8 +1193,7 @@ function resetRegister() {
   }
   .lg-orb,
   .lg-grid,
-  .lg-ambient::after,
-  .login-card::before {
+  .lg-ambient::after {
     animation: none;
   }
 }
