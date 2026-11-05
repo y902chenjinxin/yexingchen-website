@@ -1,3 +1,38 @@
+## [v2.46.426] - 2026-11-05
+
+### 修登录页手机上滑底部露白块：`#app` 的 64px Tab 垫高在登录页没归零
+
+> 夜星：「手机端向上滑，下面出现一条白块」
+
+**根因：`#app.is-mobile { padding-bottom: calc(64px + safe-bottom) }` 是给底部
+两 Tab 留位的，登录页不在主框架里（没有 Tab 栏）却照样垫着 → `#app` 高
+`764 = 700(视口) + 64`，页面可滚 64px。一上滑 `.login-page`（`min-height:100vh`）
+整体让位，底部那 64px 露出 `html` 的 `--lg-page-solid`；日间这个 token 是
+`#f5f5f7` 浅灰（登录页本身恒定深空，只有 html 底还跟着昼夜），
+底部 fixed 备案条 `rgba(10,16,26,.55)` + `blur(18px)` 采到这层浅色，
+整条翻成灰白 —— 就是那条「白块」。**
+
+探针实测（390×700，日间）：
+```
+修前 scrollHeight 764 / innerHeight 700 → canScroll 64，html bg rgb(245,245,247)
+修后 scrollHeight 700 / innerHeight 700 → canScroll 0， html bg rgb(8,14,24)
+```
+
+修法（三条一起，缺一条都还会露）：
+1. `body.login-route #app.is-mobile { padding-bottom: 0 }` —— 治本，页面不可滚。
+2. `html.login-route` 底色钉 `#080e18` —— 登录页恒定深空，不该跟着昼夜切；
+   LoginView 在 `onMounted / onBeforeUnmount` 同步挂载与移除该类。
+3. `html.login-route, body.login-route { overflow: hidden; overscroll-behavior: none }`
+   —— 单屏页面直接锁死，也顺手挡掉 iOS/安卓的橡皮筋回弹。
+4. 备案条改写为 `rgba(8,14,24,.80)` 不透明深玻璃 + 亮字（`.filing-links a`
+   `.filing-divider` 一并按 `body.login-route` 前缀重写，压过 tech-theme-day /
+   variables 里那两条 `rgba(255,255,255,.80)` 日间白底覆盖）——
+   不再依赖 backdrop 采样，采样到什么底都不会翻白。
+
+验证：`probe-crack` 探针日间 + 上滑，`canScroll 0`、滚动后 `scrollY 0`；
+手机 390×700 / 桌面 1080×675 截图备案条均为深色玻璃、无白块；
+390×640 点进注册表单，卡片 168~472、提交按钮 404，内容完整未裁。
+
 ## [v2.46.425] - 2026-11-05
 
 ### 修登录页手机端持续闪烁：干掉三处「每帧重绘」，视觉参数一律回退到 v2.46.424

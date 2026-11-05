@@ -1313,6 +1313,38 @@ html[data-theme="day"] #app.is-mobile .login-card .el-button--primary {
   backdrop-filter: blur(18px) saturate(160%) !important;
   border-top: 1px solid rgba(255, 255, 255, .12) !important;
 }
+/* ===== v2.46.428 登录页白块收口 =====
+ * 三件事一起做，缺一条都还会露白：
+ * ① 登录路由下 html 底钉深空（日间 token 是 #f5f5f7 浅灰，露一点就是白条）
+ * ② html/body 锁死不滚（登录页是单屏，本就不该有滚动）
+ * ③ 备案条本身改写为不透明深玻璃 + 亮字（不再依赖 backdrop 采样；
+ *    它一旦采样到浅色底就会整体翻白，这是「白块」的直接观感来源） */
+html.login-route,
+html.login-route[data-theme="day"] {
+  background-color: #080e18 !important;
+}
+html.login-route,
+body.login-route {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+html body.login-route .filing-footer,
+html:root[data-theme="day"] body.login-route .filing-footer {
+  background: rgba(8, 14, 24, .80) !important;
+  border-top-color: rgba(255, 255, 255, .10) !important;
+  color: rgba(232, 244, 252, .88) !important;
+}
+html body.login-route .filing-links a,
+html:root[data-theme="day"] body.login-route .filing-links a {
+  color: rgba(232, 244, 252, .88) !important;
+}
+html body.login-route .filing-links a:hover {
+  color: #6fe3ff !important;
+}
+html body.login-route .filing-divider,
+html:root[data-theme="day"] body.login-route .filing-divider {
+  color: rgba(232, 244, 252, .40) !important;
+}
 html:root[data-theme="day"] .filing-footer {
   background: rgba(10, 16, 26, .55) !important;
   border-top-color: rgba(255, 255, 255, .12) !important;

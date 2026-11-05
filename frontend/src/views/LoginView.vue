@@ -444,6 +444,11 @@ function onDustPointerLeave() {
 
 onMounted(() => {
   document.body.classList.add('login-route')
+  // v2.46.428：html 也要挂类。登录页恒定深空，而全站 html 底色是昼夜 token
+  // （日间 --lg-page-solid = #f5f5f7 浅灰）。手机端 #app 曾被垫高 64px 导致页面
+  // 可滚，一上滑 .login-page 让位，底部就露出这层浅灰 = 「下面一条白块」。
+  // 垫高已归零，这里做第二层兜底：露出来也是深空色。
+  document.documentElement.classList.add('login-route')
   tiltEnabled = window.matchMedia('(pointer: fine)').matches
     && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (tiltEnabled) {
@@ -478,6 +483,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onDustPointer)
   document.documentElement.removeEventListener('pointerleave', onDustPointerLeave)
   document.body.classList.remove('login-route')
+  document.documentElement.classList.remove('login-route')
 })
 
 const router = useRouter()

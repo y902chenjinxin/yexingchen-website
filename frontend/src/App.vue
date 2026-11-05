@@ -332,6 +332,13 @@ onMounted(async () => {
 /* v2.46.388：播放条也在底部（bottom 84px + 高 58px = 顶到 142px）。
  * 72px 的垫高只够底栏，播放条一出现就压住正文最后两行 —— 页面底部的内容
  * 永远看不全。NowPlayingBar 会给自己挂 body.has-npbar，这里统一补垫。 */
+/* v2.46.428：登录页不在主框架里（没有底部两 Tab），64px 垫高必须归零。
+ * 原来垫高照留 → #app 比视口高 64px → 页面可滚 → 一上滑 .login-page 整体
+ * 让位，底部 fixed 备案条背后就换成 html 的浅灰底（日间 #f5f5f7），
+ * 透过玻璃读成「下面一条白块」。夜星截图复现：scrollHeight 764 / innerHeight 700。 */
+body.login-route #app.is-mobile {
+  padding-bottom: 0;
+}
 body.has-npbar #app.is-mobile {
   padding-bottom: calc(128px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
 }
