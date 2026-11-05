@@ -753,9 +753,9 @@ function resetRegister() {
   /* v2.46.426：去掉顶部 radial 受光 —— 它 26% 就衰减完，在标题下方留下
      一道看得见的分界，头部整块泛白像贴了标签。整卡只用一条极淡线性 tint。 */
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .016) 0%, rgba(255, 255, 255, .010) 60%, rgba(255, 255, 255, .007) 100%);
-  -webkit-backdrop-filter: blur(42px) saturate(170%) brightness(1.14);
-  backdrop-filter: blur(42px) saturate(170%) brightness(1.14);
+    linear-gradient(180deg, rgba(248, 252, 255, .034) 0%, rgba(246, 250, 255, .025) 52%, rgba(244, 248, 255, .019) 100%);
+  -webkit-backdrop-filter: blur(26px) saturate(124%) brightness(1.02);
+  backdrop-filter: blur(26px) saturate(124%) brightness(1.02);
   border: 1px solid transparent;
   border-top-color: rgba(255, 255, 255, .72);
   border-right-color: rgba(255, 255, 255, .34);
@@ -765,11 +765,10 @@ function resetRegister() {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .60),
     inset 0 0 0 1px rgba(255, 255, 255, .10),
-    inset 0 0 12px -5px rgba(255, 255, 255, .26),
-    inset 0 0 24px rgba(0, 0, 0, .14),
-    inset 0 0 70px rgba(255, 255, 255, .03),
-    0 20px 46px rgba(0, 0, 0, .26),
-    0 2px 8px rgba(0, 0, 0, .16);
+    inset 0 0 12px -5px rgba(255, 255, 255, .13),
+    inset 0 0 22px rgba(0, 0, 0, .09),
+    0 16px 38px rgba(0, 0, 0, .17),
+    0 2px 7px rgba(0, 0, 0, .10);
   will-change: transform;
   transition: transform .18s ease-out;
   opacity: 0;

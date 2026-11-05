@@ -1082,11 +1082,11 @@ html:root[data-theme="day"] .login-card {
     /* v2.46.426：去掉顶部那块 radial 受光 —— 它 26% 就衰减完，在标题下方
        留下一道看得见的分界，头部整块泛白像贴了个标签（夜星：「头部很怪」）。
        改成整卡一条极淡的线性 tint，亮度全靠 backdrop 的 brightness，卡内才均匀。 */
-    linear-gradient(180deg, rgba(255, 255, 255, .016) 0%, rgba(255, 255, 255, .010) 60%, rgba(255, 255, 255, .007) 100%) !important;
+    linear-gradient(180deg, rgba(248, 252, 255, .034) 0%, rgba(246, 250, 255, .025) 52%, rgba(244, 248, 255, .019) 100%) !important;
   /* blur 30→52：参考图的背景被糊成「大色块」（图标只剩轮廓色），
      这正是「厚玻璃」的视觉来源 —— 玻璃越厚，透过来越糊。 */
-  -webkit-backdrop-filter: blur(42px) saturate(170%) brightness(1.14) !important;
-  backdrop-filter: blur(42px) saturate(170%) brightness(1.14) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(124%) brightness(1.02) !important;
+  backdrop-filter: blur(26px) saturate(124%) brightness(1.02) !important;
   border: 1px solid transparent !important;
   border-top-color: rgba(255, 255, 255, .72) !important;
   border-right-color: rgba(255, 255, 255, .34) !important;
@@ -1099,11 +1099,10 @@ html:root[data-theme="day"] .login-card {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .60),
     inset 0 0 0 1px rgba(255, 255, 255, .10),
-    inset 0 0 12px -5px rgba(255, 255, 255, .26),
-    inset 0 0 24px rgba(0, 0, 0, .14),
-    inset 0 0 70px rgba(255, 255, 255, .03),
-    0 20px 46px rgba(0, 0, 0, .26),
-    0 2px 8px rgba(0, 0, 0, .16) !important;
+    inset 0 0 12px -5px rgba(255, 255, 255, .13),
+    inset 0 0 22px rgba(0, 0, 0, .09),
+    0 16px 38px rgba(0, 0, 0, .17),
+    0 2px 7px rgba(0, 0, 0, .10) !important;
 }
 /* 手机端：压掉宣纸金边 + 硬偏移阴影（mobile-paper.css 868-874）
  * ⚠️ 四边必须在这条里重写一遍：mobile-paper 用 `border` 简写（权重同级、
@@ -1122,11 +1121,10 @@ html:root #app.is-mobile .login-card {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .60),
     inset 0 0 0 1px rgba(255, 255, 255, .10),
-    inset 0 0 12px -5px rgba(255, 255, 255, .26),
-    inset 0 0 24px rgba(0, 0, 0, .14),
-    inset 0 0 70px rgba(255, 255, 255, .03),
-    0 20px 46px rgba(0, 0, 0, .26),
-    0 2px 8px rgba(0, 0, 0, .16) !important;
+    inset 0 0 12px -5px rgba(255, 255, 255, .13),
+    inset 0 0 22px rgba(0, 0, 0, .09),
+    0 16px 38px rgba(0, 0, 0, .17),
+    0 2px 7px rgba(0, 0, 0, .10) !important;
 }
 html:root[data-theme="day"] #app.is-mobile .login-card {
   border: 1px solid transparent !important;
@@ -1138,11 +1136,10 @@ html:root[data-theme="day"] #app.is-mobile .login-card {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .60),
     inset 0 0 0 1px rgba(255, 255, 255, .10),
-    inset 0 0 12px -5px rgba(255, 255, 255, .26),
-    inset 0 0 24px rgba(0, 0, 0, .14),
-    inset 0 0 70px rgba(255, 255, 255, .03),
-    0 20px 46px rgba(0, 0, 0, .26),
-    0 2px 8px rgba(0, 0, 0, .16) !important;
+    inset 0 0 12px -5px rgba(255, 255, 255, .13),
+    inset 0 0 22px rgba(0, 0, 0, .09),
+    0 16px 38px rgba(0, 0, 0, .17),
+    0 2px 7px rgba(0, 0, 0, .10) !important;
 }
 /* 输入框：玻璃贴片（v2.46.418）
  * 夜星：输入框选中的那圈亮青描边 + 青光晕太突兀，要苹果原生的液态玻璃。
