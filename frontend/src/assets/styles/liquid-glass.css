@@ -134,10 +134,12 @@
   --lg-card-hi: inset 0 1px 0 rgba(255, 255, 255, .32);
   --lg-lift: 0 10px 24px -14px rgba(0, 0, 0, .55);
   --lg-lift-on: 0 6px 18px -8px rgba(0, 0, 0, .55);
-  --lg-track: rgba(255, 255, 255, .06);
-  --lg-track-line: rgba(255, 255, 255, .10);
-  --lg-thumb: rgba(255, 255, 255, .26);
-  --lg-thumb-hi: inset 0 1px 0 rgba(255, 255, 255, .50);
+  /* 🔴 v2.46.419：轨道原来是白 6%（深底上加白 = 灰），滑块白 26%（灰白块）。
+     改成 iOS 深色分段控件：**更暗的槽 + 近白实心滑块**。 */
+  --lg-track: rgba(0, 0, 0, .22);
+  --lg-track-line: rgba(255, 255, 255, .12);
+  --lg-thumb: rgba(255, 255, 255, .88);
+  --lg-thumb-hi: inset 0 1px 0 rgba(255, 255, 255, .60);
 }
 html[data-theme="day"] {
   /* v2.46.374：v2.46.369 把卡面提到 88% 白，玻璃就「实」了——夜星的截图里
@@ -196,7 +198,7 @@ html[data-theme="day"] {
   --lg-card-hi: inset 0 1px 0 rgba(255, 255, 255, 1);
   --lg-lift: 0 10px 24px -14px rgba(24, 24, 27, .26);
   --lg-lift-on: 0 6px 18px -8px rgba(24, 24, 27, .22);
-  --lg-track: rgba(255, 255, 255, .42);
+  --lg-track: rgba(120, 120, 128, .10);
   --lg-track-line: rgba(29, 29, 31, .06);
   --lg-thumb: #ffffff;
   --lg-thumb-hi: inset 0 1px 0 rgba(255, 255, 255, 1);
@@ -209,6 +211,36 @@ html[data-theme="day"] #app.is-mobile {
   --lg-blur: blur(24px) saturate(190%);
   --m-radius: 20px;
   --m-radius-sm: 14px;
+}
+/* 🔴 v2.46.419 手机端「紧凑光场」——「胶囊发灰」的真正物理原因
+ *
+ * `--lg-page` 原来写的是 `radial-gradient(78rem 64rem at …)`：78rem = 1248px。
+ * 桌面 1440 宽才勉强看得出渐变；手机屏只有 390 宽，一个 1248px 的椭圆几乎铺满
+ * 整屏，而且中心还在屏幕外 → **屏幕内色彩变化接近 0，等于一层纯色深蓝**。
+ * 玻璃靠 `rgba(255,255,255,X)` 采样背景，采样到纯色 → RGB 三通道等量加白
+ * → **数学上必然得到中性灰**。这就是夜星反复骂的「灰胶囊 / 灰按钮」。
+ *
+ * 修法：手机端换一套按视口比例（vw/vh）铺的光场，一屏内能看到 4~5 团色斑。
+ * 玻璃透上来才有青、紫、暖三色，才是液态玻璃而不是灰塑料。
+ * 昼夜两套（day 的底是 #f5f5f7，白玻璃叠上去本来就浅，颜色要更淡才不会脏）。 */
+/* 🔴 v2.46.421：光斑必须铺到**屏幕中部**。
+ * 上一版三团光斑的中心都在 `-10% / 104%`（屏幕左右外侧），中间只剩一片近黑蓝
+ * → 玻璃控件（首页标签、记账胶囊）采样到的永远是纯色 → 加白就成灰。
+ * 这次把第三团挪到 `30% 46%`、第五团到 `44% 100%`，保证纵向任何位置都有色可透。 */
+#app.is-mobile {
+  --lg-page:
+    radial-gradient(92vw 50vh at 16% 0%, rgba(24, 186, 222, .50), transparent 66%),
+    radial-gradient(76vw 44vh at 94% 10%, rgba(130, 90, 232, .34), transparent 68%),
+    radial-gradient(96vw 54vh at 30% 46%, rgba(18, 164, 204, .34), transparent 70%),
+    radial-gradient(72vw 44vh at 98% 64%, rgba(208, 158, 104, .16), transparent 72%),
+    radial-gradient(92vw 50vh at 44% 100%, rgba(30, 132, 214, .30), transparent 70%);
+}
+html[data-theme="day"] #app.is-mobile {
+  --lg-page:
+    radial-gradient(92vw 50vh at 16% 0%, rgba(56, 156, 196, .30), transparent 68%),
+    radial-gradient(76vw 44vh at 94% 10%, rgba(136, 116, 240, .22), transparent 70%),
+    radial-gradient(96vw 54vh at 30% 46%, rgba(86, 146, 220, .18), transparent 72%),
+    radial-gradient(72vw 44vh at 98% 64%, rgba(214, 168, 108, .10), transparent 74%);
 }
 /* 桌面端圆角：--dp-radius 定义在 desktop-theme-(day|night)，同样昼夜两份覆盖 */
 :root,
@@ -537,13 +569,14 @@ html[data-theme="day"] #app.is-mobile :is(.abb-cell, .glass-card, .cd-card, .li-
 #app.is-mobile .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
   background-color: rgba(255, 255, 255, .04) !important;
 }
-#app.is-mobile .fin-mtag.on,
+/* 🔴 v2.46.419：选中家人胶囊原来是白 .16 + 白字（深底上就是「灰底白字」）。
+ * iOS 的选中语义是实心块，这里跟分段控件用同一组 token。 */
 #app.is-mobile .fin-mtag.on, .life-mtag.on,
 #app.is-mobile .fin-mtag.active, .life-mtag.active {
-  border-color: rgba(255, 255, 255, .86) !important;
-  background: rgba(255, 255, 255, .16) !important;
-  color: #fff !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .40) !important;
+  border-color: transparent !important;
+  background: var(--lg-ctl-on-bg) !important;
+  color: var(--lg-ctl-on-fg) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .18) !important;
 }
 html[data-theme="day"] #app.is-mobile .fin-mtag.on,
 html[data-theme="day"] #app.is-mobile .fin-mtag.on, .life-mtag.on,
@@ -1377,30 +1410,52 @@ html[data-theme="day"].m-app {
 html[data-theme="night"] {
   /* v2.46.376：夜间控件底 .07 → .11、描边 .12 → .18。
      夜星「首页下面那排标签都有点灰，没有液态玻璃的感觉」——
-     白色 7% 压在深蓝底上只会得到一层灰雾，白得不够就透不出玻璃的高光。 */
-  --lg-ctl-bg: rgba(255, 255, 255, .13);
-  --lg-ctl-bg-hover: rgba(255, 255, 255, .20);
-  --lg-ctl-bg-active: rgba(255, 255, 255, .27);
-  --lg-ctl-hi: inset 0 1px 0 rgba(255, 255, 255, .36);
-  --lg-ctl-lo: inset 0 -1px 0 rgba(0, 0, 0, .26);
-  --lg-ctl-line: rgba(255, 255, 255, .24);
+     白色 7% 压在深蓝底上只会得到一层灰雾，白得不够就透不出玻璃的高光。
+   * 🔴 v2.46.419 反向修正：上一版提到 .13 后**更灰了**。原因是白度越高，
+     背景的青蓝被冲得越淡，RGB 越接近中性 → 灰。苹果深色液态玻璃的玻璃面
+     本身几乎无色（白 6~8%），「水润」全靠边缘 specular + 背景色透过 blur 提纯。
+     所以：面色降到 .075，把重量搬到「顶边白 .50 + 底边折射 .07」和
+     `backdrop-filter: saturate(200%)` 上。 */
+  /* 🔴 v2.46.420 关键一刀：把「纯白 tint」换成「冷白 tint」。
+   *
+   * 纯白 rgba(255,255,255,α) 叠在深蓝上，数学上是把 R/G/B 同时往 255 拉 ——
+   * **饱和度必然下降**，越叠越接近中性灰。这就是「怎么调白度都还是灰」的死结。
+   * 苹果深色液态玻璃的高光是**偏冷的白**（带一点冰蓝），叠上去色相不丢，
+   * 玻璃看起来是「更亮的蓝」而不是「灰」。同一招用在描边和受光渐变上。 */
+  --lg-ctl-bg: rgba(178, 222, 246, .145);
+  --lg-ctl-bg-hover: rgba(184, 226, 248, .20);
+  --lg-ctl-bg-active: rgba(190, 230, 250, .26);
+  --lg-ctl-hi: inset 0 1px 0 rgba(230, 247, 255, .52);
+  --lg-ctl-lo: inset 0 -1px 0 rgba(120, 170, 210, .16);
+  /* 描边必须比面淡：原来 .20 比填充亮一倍，眼睛只看见一圈白线
+     （夜星读成「边缘线」）。苹果的 specular 是「面亮、边极细」。 */
+  --lg-ctl-line: rgba(158, 208, 238, .11);
   --lg-ctl-shadow: 0 2px 10px rgba(0, 0, 0, .26);
-  /* 分段控件 / chip 的「选中块」与文字色（v2.46.374） */
-  --lg-ctl-on-bg: rgba(255, 255, 255, .22);
-  --lg-ctl-on-fg: #ffffff;
-  --lg-ctl-fg: rgba(255, 255, 255, .72);
-  --lg-ctl-groove: rgba(0, 0, 0, .22);
-  --lg-ctl-groove-line: rgba(255, 255, 255, .10);
+  /* chip 面上的受光渐变（原来写死 .18 白，叠在 ctl 底上变 .25 → 中灰） */
+  --lg-ctl-sheen: rgba(206, 238, 255, .14);
+  /* 分段控件 / chip 的「选中块」与文字色（v2.46.374）
+   * 🔴 v2.46.419：选中块原来写 `.22` 半透明白 + 白字 —— 白 .22 叠深底只到
+   * 中灰，白字压在中灰上就是夜星说的「灰胶囊」。iOS 深色分段控件的选中块
+   * 是**接近纯白的实心块 + 深色字**（不是半透明白），这里对齐。 */
+  --lg-ctl-on-bg: rgba(255, 255, 255, .88);
+  --lg-ctl-on-fg: #12161d;
+  --lg-ctl-fg: rgba(255, 255, 255, .78);
+  --lg-ctl-groove: rgba(0, 0, 0, .18);
+  --lg-ctl-groove-line: rgba(255, 255, 255, .12);
 }
 html[data-theme="day"],
 html[data-theme="day"] #app.is-mobile {
-  --lg-ctl-bg: rgba(255, 255, 255, .58);
-  --lg-ctl-bg-hover: rgba(255, 255, 255, .82);
-  --lg-ctl-bg-active: rgba(255, 255, 255, 1);
+  /* 🔴 v2.46.421 日间：留 .58 时「未选中」和「选中（纯白）」几乎分不出来
+   * （浅底上白叠白）。降到 .42 让底色透上来，选中块才是唯一纯白；
+   * 描边换深色细线 —— 白线在浅底上等于不存在，只剩灰雾。 */
+  --lg-ctl-bg: rgba(255, 255, 255, .42);
+  --lg-ctl-bg-hover: rgba(255, 255, 255, .66);
+  --lg-ctl-bg-active: rgba(255, 255, 255, .92);
   --lg-ctl-hi: inset 0 1px 0 rgba(255, 255, 255, .98);
   --lg-ctl-lo: inset 0 -1px 0 rgba(31, 41, 55, .05);
-  --lg-ctl-line: rgba(255, 255, 255, .80);
+  --lg-ctl-line: rgba(60, 60, 67, .10);
   --lg-ctl-shadow: 0 1px 3px rgba(31, 41, 55, .07);
+  --lg-ctl-sheen: rgba(255, 255, 255, .22);
   --lg-ctl-on-bg: #ffffff;
   --lg-ctl-on-fg: #1d1d1f;
   --lg-ctl-fg: rgba(29, 29, 31, .62);
@@ -1419,6 +1474,8 @@ html[data-theme="day"] #app.is-mobile {
   background: var(--lg-ctl-bg) !important;
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo), var(--lg-ctl-shadow) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(190%);
+  backdrop-filter: blur(12px) saturate(190%);
 }
 .ibtn:not(.ibtn--primary):not(.ibtn--danger):hover,
 .tech-btn:hover,
@@ -1446,6 +1503,8 @@ html[data-theme="day"] #app.is-mobile {
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo), var(--lg-ctl-shadow) !important;
   border-radius: 14px;
+  -webkit-backdrop-filter: blur(12px) saturate(190%);
+  backdrop-filter: blur(12px) saturate(190%);
 }
 #app.is-mobile [class*="-btn"]:not(.primary):not(.on):not(.active):not(.danger):not(.is-danger):not([class*="-seg-btn"]):not([class*="-dim-btn"]):not([class*="__"]):hover {
   background: var(--lg-ctl-bg-hover) !important;
@@ -1460,15 +1519,23 @@ html[data-theme="day"] #app.is-mobile {
  * .fin-mtag-name / .fin-mtag-amt / .fin-mtags —— 每个胶囊内部又长出三颗
  * 999px 圆角的玻璃丸，正是夜星反复骂的「一块套一块」。
  * 排除所有含 mtag 的类，并排除 -chip-/-tag- 这类「父类的子元素」。 */
-[class*="-chip"]:not([class*="-chip-"]),
-[class*="-tag"]:not(.el-tag):not([class*="mtag"]):not([class*="-tag-"]) {
+/* 🔴 v2.46.419：再加 `:not([class*="-chips"])` / `:not([class*="-tags"])`。
+ * `.dk-chips`（标签行的**容器**）含子串 "-chip"，一直被一起刷成玻璃底 ——
+ * 于是「容器一层 .13 + 每颗胶囊又一层 .13」，既是一块套一块，白度还翻倍成中灰。
+ * 夜星首页那排「英语/知识/场景」灰胶囊，一半的灰来自这个容器。 */
+[class*="-chip"]:not([class*="-chips"]):not([class*="-chip-"]),
+[class*="-tag"]:not(.el-tag):not([class*="mtag"]):not([class*="-tags"]):not([class*="-tag-"]) {
   background:
-    linear-gradient(158deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0) 58%),
+    linear-gradient(158deg, var(--lg-ctl-sheen), transparent 58%),
     var(--lg-ctl-bg) !important;
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
   border-radius: 999px !important;
   color: var(--lg-ctl-fg) !important;
+  /* 液态玻璃的「色」必须来自背景：没有采样就只剩均匀加白 = 灰。
+     小组件只做 12px 模糊（鸿蒙 WebView 一屏几十个，再高就掉帧）。 */
+  -webkit-backdrop-filter: blur(12px) saturate(190%);
+  backdrop-filter: blur(12px) saturate(190%);
 }
 [class*="-chip"]:not([class*="-chip-"]).on,
 [class*="-chip"]:not([class*="-chip-"]).active,
@@ -1501,6 +1568,8 @@ html[data-theme="day"] #app.is-mobile :is(.el-input__wrapper, .el-select__wrappe
   border: 1px solid var(--lg-ctl-line) !important;
   box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
   border-radius: 14px !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
 }
 #app.is-mobile :is(.el-input__wrapper.is-focus, .el-select__wrapper.is-focused),
 html[data-theme="day"] #app.is-mobile :is(.el-input__wrapper.is-focus, .el-select__wrapper.is-focused) {
@@ -1537,6 +1606,57 @@ html[data-theme="day"] #app.is-mobile :is([class*="-seg-btn"], [class*="-dim-btn
   border-color: transparent !important;
   color: var(--lg-ctl-on-fg) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .14), var(--lg-ctl-hi) !important;
+}
+
+/* --- 5b) 记账页玻璃收口（v2.46.419）---
+ * FinanceView.vue 的 scoped 里有 22 处硬编码 `rgba(127,168,163,α)`——
+ * 那是「宣纸水墨」主题的**莫兰迪灰青绿**。在深色液态玻璃底上，灰青绿读起来
+ * 就是「灰」：`.fin-tabs` 槽、`.fin-mtag.on` 家人胶囊、`.fin-tab.active`
+ * 支出/收入/调拨、`.fin-cat.active` 分类，全是这块灰。
+ *
+ * 这些类名不含 -btn / -chip / -tag，Y 节 1~5 一条都命中不了，所以按精确类名
+ * 单独收口（禁止再用属性子串，`.fin-tab` 会连 `.fin-tab-item` 一起吃掉）。 */
+html:root #app.is-mobile :is(.fin-tabs, .fin-dim) {
+  background: var(--lg-ctl-groove) !important;
+  border: 1px solid var(--lg-ctl-groove-line) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .06) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+}
+html:root #app.is-mobile :is(.fin-tabs > .fin-tab-item, .fin-dim > .fin-dim-btn) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--lg-ctl-fg) !important;
+}
+html:root #app.is-mobile :is(.fin-tabs > .fin-tab-item.on, .fin-dim > .fin-dim-btn.on) {
+  background: var(--lg-ctl-on-bg) !important;
+  color: var(--lg-ctl-on-fg) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .55) !important;
+}
+/* 独立药丸：抽屉三键 / 分类 / 资金池 / 家人标签 */
+html:root #app.is-mobile :is(.fin-tab, .fin-mtag, .fin-cat, .fin-fund) {
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
+  color: var(--lg-ctl-fg) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(190%);
+  backdrop-filter: blur(12px) saturate(190%);
+}
+html:root #app.is-mobile :is(.fin-tab:hover, .fin-mtag:hover, .fin-cat:hover, .fin-fund:hover) {
+  background: var(--lg-ctl-bg-hover) !important;
+  color: var(--lg-ctl-fg) !important;
+}
+html:root #app.is-mobile :is(.fin-tab.active, .fin-mtag.on, .fin-cat.active, .fin-fund.active) {
+  background: var(--lg-ctl-on-bg) !important;
+  border-color: transparent !important;
+  color: var(--lg-ctl-on-fg) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .18) !important;
+}
+/* 选中白丸里的次要信息：跟主字同色系，别再用灰绿 --lj-seal */
+html:root #app.is-mobile :is(.fin-mtag.on, .fin-cat.active) :is(.fin-mtag-name, .fin-mtag-amt) {
+  color: inherit !important;
+  opacity: .72;
 }
 
 /* --- 6) 桌面端：同一套配方，圆角收一档（18px 卡对应 12px 控件） --- */
@@ -1595,18 +1715,23 @@ html[data-theme="day"] {
 }
 
 /* ⑧ 抽屉内部的 chip（资金池 / 分类 / 类型 / 快捷标签）也是「透明底 + 7% 白框」
- *    → 夜星说的「所有的都变成灰色了」。统一给玻璃底，选中给白药丸。 */
+ *    → 夜星说的「所有的都变成灰色了」。统一给玻璃底，选中给白药丸。
+ *    🔴 v2.46.419：原来这里写死白 .14 / .32 —— .14 叠在抽屉的 #12263a 上
+ *    就是一块中性灰；.32 + 白字更是「灰底白字」。全部换成 token，
+ *    选中态改成 iOS 的「近白实心 + 深墨字」。 */
 html:root #app.is-mobile .fin-form--drawer :is(.fin-fund, .fin-cat, .fin-tab, .fin-quick-tag) {
-  background: rgba(255, 255, 255, .14) !important;
-  border: 1px solid rgba(255, 255, 255, .20) !important;
-  color: rgba(238, 245, 252, .86) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18) !important;
+  background: var(--lg-ctl-bg) !important;
+  border: 1px solid var(--lg-ctl-line) !important;
+  color: var(--lg-ctl-fg) !important;
+  box-shadow: var(--lg-ctl-hi), var(--lg-ctl-lo) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(190%);
+  backdrop-filter: blur(12px) saturate(190%);
 }
 html:root #app.is-mobile .fin-form--drawer :is(.fin-fund.active, .fin-cat.active, .fin-tab.active, .fin-quick-tag.on) {
-  background: rgba(255, 255, 255, .32) !important;
-  border-color: rgba(255, 255, 255, .56) !important;
-  color: #fff !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .48), 0 4px 14px -8px rgba(0, 0, 0, .55) !important;
+  background: var(--lg-ctl-on-bg) !important;
+  border-color: transparent !important;
+  color: var(--lg-ctl-on-fg) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 4px 14px -8px rgba(0, 0, 0, .45) !important;
 }
 
 /* ===================== Z. 最终收口：卡上不许有描边 ===================== */
