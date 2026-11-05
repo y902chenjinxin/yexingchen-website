@@ -109,6 +109,35 @@
     radial-gradient(70rem 58rem at 92% -4%, rgba(80, 70, 180, .20), transparent 64%),
     radial-gradient(74rem 62rem at -6% 66%, rgba(14, 150, 186, .22), transparent 66%),
     radial-gradient(66rem 56rem at 104% 98%, rgba(190, 150, 100, .10), transparent 68%);
+
+  /* 🔴 v2.46.414 控件层 token（Y 节专用），昼夜两套。
+   *
+   * 为什么必须成对：主题是**按小时自动切**的（prefs.js：6–18 点 = day）。
+   * v2.46.401~413 的控件全部写成「白 X% + 白字」——那套只在夜间成立。
+   * 早上 9 点打开就是日间模式：白 5.5% 叠在 #f5f5f7 上 ≈ 什么都没加，
+   * 只剩 backdrop-filter 采样出的一块灰白，夜星看到的就是「灰胶囊」。
+   * 日间玻璃的物理反过来：**卡比背景更白**（白 60%+），靠落影分层，
+   * 描边得用深色（浅底上白边看不见），文字必须转深色。 */
+  --lg-chip: rgba(255, 255, 255, .085);
+  --lg-chip-line: rgba(255, 255, 255, .15);
+  --lg-chip-fg: rgba(238, 245, 252, .86);
+  --lg-chip-amt: rgba(226, 236, 248, .62);
+  --lg-chip-on: rgba(255, 255, 255, .22);
+  --lg-chip-on-line: rgba(255, 255, 255, .44);
+  --lg-chip-on-fg: #ffffff;
+  --lg-chip-on-amt: rgba(255, 255, 255, .84);
+  --lg-chip-hi: inset 0 1px 0 rgba(255, 255, 255, .20);
+  --lg-chip-hi-on: inset 0 1px 0 rgba(255, 255, 255, .46);
+  --lg-card-face: rgba(255, 255, 255, .055);
+  --lg-card-top: rgba(255, 255, 255, .20);
+  --lg-card-sheen: rgba(255, 255, 255, .11);
+  --lg-card-hi: inset 0 1px 0 rgba(255, 255, 255, .32);
+  --lg-lift: 0 10px 24px -14px rgba(0, 0, 0, .55);
+  --lg-lift-on: 0 6px 18px -8px rgba(0, 0, 0, .55);
+  --lg-track: rgba(255, 255, 255, .06);
+  --lg-track-line: rgba(255, 255, 255, .10);
+  --lg-thumb: rgba(255, 255, 255, .26);
+  --lg-thumb-hi: inset 0 1px 0 rgba(255, 255, 255, .50);
 }
 html[data-theme="day"] {
   /* v2.46.374：v2.46.369 把卡面提到 88% 白，玻璃就「实」了——夜星的截图里
@@ -136,11 +165,41 @@ html[data-theme="day"] {
   /* 日间同样：半径 ≥ 66rem、浓度 .06~.14，避免顶部压出一条青色带。
      底色维持夜星拍板的 iOS 中性 #f5f5f7。 */
   --lg-page-solid: #f5f5f7;
+  /* v2.46.416：日间彩晕 .14/.12/.09/.06 太淡 —— 卡片是白 50%，透过来的几乎是纯白，
+     读成「白纸卡」而不是液态玻璃。苹果浅色液态玻璃的底本身是有色温的（淡青/淡紫），
+     玻璃只挡一半，透上来才有颜色。提到 .26/.20/.16/.10，卡面立刻带环境色。 */
   --lg-page:
-    radial-gradient(78rem 66rem at 8% -28%, rgba(64, 156, 190, .14), transparent 68%),
-    radial-gradient(72rem 60rem at 106% -6%, rgba(140, 120, 240, .12), transparent 68%),
-    radial-gradient(76rem 64rem at -8% 76%, rgba(96, 150, 220, .09), transparent 70%),
-    radial-gradient(66rem 56rem at 108% 102%, rgba(214, 168, 108, .06), transparent 70%);
+    radial-gradient(78rem 66rem at 8% -28%, rgba(56, 156, 196, .26), transparent 66%),
+    radial-gradient(72rem 60rem at 106% -6%, rgba(136, 116, 240, .20), transparent 66%),
+    radial-gradient(76rem 64rem at -8% 76%, rgba(86, 146, 220, .16), transparent 68%),
+    radial-gradient(66rem 56rem at 108% 102%, rgba(214, 168, 108, .10), transparent 70%);
+
+  /* 🔴 v2.46.414 日间控件层：同一组 token 换成「比背景更白」的模型。
+     浅底上的玻璃不能靠加白发光（白叠白 = 无），只能靠三件事分层：
+       ① 卡面白度 60~72%（比 #f5f5f7 明显更白）
+       ② 顶边一道纯白高光 + 底部一层淡影
+       ③ 描边用**深色**（rgba(0,0,0,.07)）—— 白边在浅底上等于没有，只剩灰
+     文字同步转深，夜间那套 rgba(238,245,252,.86) 在白卡上是白字白底。 */
+  --lg-chip: rgba(255, 255, 255, .62);
+  --lg-chip-line: rgba(29, 29, 31, .07);
+  --lg-chip-fg: #2b3340;
+  --lg-chip-amt: rgba(60, 70, 84, .62);
+  --lg-chip-on: #ffffff;
+  --lg-chip-on-line: rgba(29, 29, 31, .09);
+  --lg-chip-on-fg: #14181f;
+  --lg-chip-on-amt: rgba(40, 48, 60, .70);
+  --lg-chip-hi: inset 0 1px 0 rgba(255, 255, 255, 1);
+  --lg-chip-hi-on: inset 0 1px 0 rgba(255, 255, 255, 1);
+  --lg-card-face: rgba(255, 255, 255, .66);
+  --lg-card-top: rgba(255, 255, 255, .95);
+  --lg-card-sheen: rgba(255, 255, 255, .70);
+  --lg-card-hi: inset 0 1px 0 rgba(255, 255, 255, 1);
+  --lg-lift: 0 10px 24px -14px rgba(24, 24, 27, .26);
+  --lg-lift-on: 0 6px 18px -8px rgba(24, 24, 27, .22);
+  --lg-track: rgba(255, 255, 255, .42);
+  --lg-track-line: rgba(29, 29, 31, .06);
+  --lg-thumb: #ffffff;
+  --lg-thumb-hi: inset 0 1px 0 rgba(255, 255, 255, 1);
 }
 /* 手机端 blur 调低：一屏十余张卡同时毛玻璃，鸿蒙 WebView 扛得住 20px 扛不动 26px */
 /* v2.46.369 圆角圆润化：--m-radius 的最终生效层是 tech-theme.css 第 9 节（16px 系）
@@ -1485,28 +1544,28 @@ html:root #app.is-mobile .fin-mtag:not(.on):not(.active), .life-mtag:not(.on):no
 html:root #app.is-mobile .fin-fund:not(.on):not(.active),
 html:root #app.is-mobile .fin-cat:not(.active),
 html:root #app.is-mobile .fin-tab:not(.active) {
-  background: rgba(255, 255, 255, .085) !important;
-  border: 1px solid rgba(255, 255, 255, .15) !important;
-  color: rgba(238, 245, 252, .86) !important;
+  background: var(--lg-chip) !important;
+  border: 1px solid var(--lg-chip-line) !important;
+  color: var(--lg-chip-fg) !important;
   -webkit-backdrop-filter: blur(16px) saturate(185%) !important;
   backdrop-filter: blur(16px) saturate(185%) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .20) !important;
+  box-shadow: var(--lg-chip-hi) !important;
 }
 html:root #app.is-mobile .fin-mtag:not(.on) .fin-mtag-amt {
-  color: rgba(226, 236, 248, .62) !important;
+  color: var(--lg-chip-amt) !important;
 }
 
 /* ② 选中 = 白玻璃药丸。不用荧光色描边，靠「更亮 + 顶高光」表达选中 */
 html:root #app.is-mobile :is(.fin-mtag.on, .fin-mtag.active, .fin-fund.on, .fin-cat.active, .fin-tab.active) {
-  background: rgba(255, 255, 255, .22) !important;
-  border: 1px solid rgba(255, 255, 255, .44) !important;
-  color: #fff !important;
+  background: var(--lg-chip-on) !important;
+  border: 1px solid var(--lg-chip-on-line) !important;
+  color: var(--lg-chip-on-fg) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .46),
-    0 6px 18px -8px rgba(0, 0, 0, .55) !important;
+    var(--lg-chip-hi-on),
+    var(--lg-lift-on) !important;
 }
 html:root #app.is-mobile :is(.fin-mtag.on, .fin-mtag.active) .fin-mtag-amt {
-  color: rgba(255, 255, 255, .84) !important;
+  color: var(--lg-chip-on-amt) !important;
 }
 
 /* ③ 首页 15 个快捷宫格：Z 节已把描边归零，这里靠「顶亮 + 环境色」把它立起来 */
@@ -1586,8 +1645,8 @@ html:root #app.is-mobile .fin-pool-icon { font-size: 15px !important; }
 /* ⑦ 分栏 Tab：底色原先是 rgba(127,168,163,.08)（青灰 = 灰），选中是纯色胶囊。
  *    统一成「玻璃轨道 + 白玻璃滑块」，和上面 chip 一套语言。 */
 html:root #app.is-mobile .fin-tabs {
-  background: rgba(255, 255, 255, .06) !important;
-  border: 1px solid rgba(255, 255, 255, .10) !important;
+  background: var(--lg-track) !important;
+  border: 1px solid var(--lg-track-line) !important;
   -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
   backdrop-filter: blur(18px) saturate(180%) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12) !important;
@@ -1596,9 +1655,62 @@ html:root #app.is-mobile .fin-tabs {
  * 按钮自己反而被强制 background: transparent。所以要让 Tab 变玻璃，
  * 得改滑块的颜色，不是改按钮。 */
 html:root #app.is-mobile .fin-tab-ind {
-  background: rgba(255, 255, 255, .26) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .50), 0 4px 12px -6px rgba(0, 0, 0, .5) !important;
+  background: var(--lg-thumb) !important;
+  box-shadow:
+    var(--lg-thumb-hi),
+    var(--lg-lift-on) !important;
 }
 html:root #app.is-mobile .fin-tab-item.on {
-  color: #fff !important;
+  color: var(--lg-chip-on-fg) !important;
+}
+
+/* ===================== Y2. 日间控件层（v2.46.414） ===================== */
+/* 主题 6:00–18:00 自动切 day（prefs.js applyTheme）。Y 节那套「白 5.5% 叠深底」
+ * 在日间等于什么都没加 —— 白叠浅底只能得到一块灰白，这就是夜星早上看到的
+ * 「首页标签按钮胶囊依然是灰色」。日间必须反过来：**卡比背景更白 + 落影 + 深色细边**。
+ * 特异性抬到 (1,5,1) 并带 !important，压过 Y 节 (1,4,1) 与各页 scoped 样式。 */
+html:root[data-theme="day"] #app.is-mobile .abb-cell {
+  background:
+    /* 白度再降一档（.50→.38，下半 .28→.14）：日间玻璃必须留出「透」的比例，
+       挡住 50% 时底下的青/紫晕只剩 50%，观感仍是白纸卡。38% 时卡面是「淡青白」，
+       比背景亮但不是纯白 —— 这才是浅色液态玻璃。 */
+    radial-gradient(120% 70% at 50% -20%, rgba(255, 255, 255, .90), transparent 58%),
+    linear-gradient(160deg, rgba(255, 255, 255, .66), rgba(255, 255, 255, .14) 76%),
+    rgba(255, 255, 255, .38) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 1px 2px rgba(24, 24, 27, .05),
+    0 10px 22px -14px rgba(24, 24, 27, .30) !important;
+}
+/* 资金池三卡：深色 .07 白在浅底上同样是灰板 */
+html:root[data-theme="day"] #app.is-mobile .fin-pool {
+  background:
+    radial-gradient(120% 70% at 50% -20%, rgba(255, 255, 255, .92), transparent 62%),
+    rgba(255, 255, 255, .54) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 8px 20px -12px rgba(24, 24, 27, .24) !important;
+}
+/* 日间 chip 不需要 backdrop 采样（浅底上 saturate 无彩可提，只会把背后文字抹成灰雾） */
+html:root[data-theme="day"] #app.is-mobile :is(.fin-mtag, .fin-fund, .fin-cat, .fin-tab, .fin-quick-tag) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* 抽屉内 chip：⑧ 那条只有夜间值（白 14% + 白字），日间抽屉是浅底 → 白字白底看不见 */
+html:root[data-theme="day"] #app.is-mobile .fin-form--drawer :is(.fin-fund, .fin-cat, .fin-tab, .fin-quick-tag) {
+  background: rgba(255, 255, 255, .74) !important;
+  border: 1px solid rgba(29, 29, 31, .08) !important;
+  color: #2b3340 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+}
+html:root[data-theme="day"] #app.is-mobile .fin-form--drawer :is(.fin-fund.active, .fin-cat.active, .fin-tab.active, .fin-quick-tag.on) {
+  background: #ffffff !important;
+  border-color: rgba(29, 29, 31, .10) !important;
+  color: #14181f !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 4px 14px -8px rgba(24, 24, 27, .28) !important;
 }
