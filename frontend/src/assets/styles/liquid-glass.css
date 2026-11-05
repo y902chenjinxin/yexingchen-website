@@ -1037,20 +1037,22 @@ html:root[data-theme="day"] .login-page {
      整屏都落在同一段缓变里，采样出的背景几乎是纯色，玻璃无彩色可透。
      改 vw 后屏内才有明显色差，卡片 blur 后能读出「青 / 紫 / 暖」三段。 */
   background:
-    radial-gradient(112vw 60vh at 12% -6%, rgba(20, 170, 210, .52), transparent 64%),
-    radial-gradient(94vw 52vh at 92% 2%, rgba(122, 78, 214, .44), transparent 66%),
-    radial-gradient(104vw 58vh at 46% 110%, rgba(210, 168, 112, .30), transparent 64%),
-    linear-gradient(180deg, #0e1a2c 0%, #080e18 100%) !important;
+    radial-gradient(78vmax 52vmax at 12% 26%, rgba(22, 178, 220, .42), transparent 62%),
+    radial-gradient(72vmax 48vmax at 92% 18%, rgba(132, 90, 222, .38), transparent 64%),
+    radial-gradient(78vmax 52vmax at 56% 100%, rgba(216, 176, 122, .28), transparent 62%),
+    radial-gradient(130vmax 78vmax at 50% 54%, rgba(38, 86, 132, .46), transparent 76%),
+    linear-gradient(180deg, #12253a 0%, #0b1726 56%, #08111e 100%) !important;
 }
 /* 手机端再钉一层（v2.46.418）：上面 305 行那段「页面容器一律透明」的
  * `[class$="-page"]` 曾把登录页一起清掉（已加 :not(.login-page)，这里做双保险）。 */
 html:root #app.is-mobile .login-page,
 html:root[data-theme="day"] #app.is-mobile .login-page {
   background:
-    radial-gradient(112vw 60vh at 12% -6%, rgba(20, 170, 210, .52), transparent 64%),
-    radial-gradient(94vw 52vh at 92% 2%, rgba(122, 78, 214, .44), transparent 66%),
-    radial-gradient(104vw 58vh at 46% 110%, rgba(210, 168, 112, .30), transparent 64%),
-    linear-gradient(180deg, #0e1a2c 0%, #080e18 100%) !important;
+    radial-gradient(78vmax 52vmax at 12% 26%, rgba(22, 178, 220, .42), transparent 62%),
+    radial-gradient(72vmax 48vmax at 92% 18%, rgba(132, 90, 222, .38), transparent 64%),
+    radial-gradient(78vmax 52vmax at 56% 100%, rgba(216, 176, 122, .28), transparent 62%),
+    radial-gradient(130vmax 78vmax at 50% 54%, rgba(38, 86, 132, .46), transparent 76%),
+    linear-gradient(180deg, #12253a 0%, #0b1726 56%, #08111e 100%) !important;
 }
 /* 登录卡：液态玻璃本体（v2.46.423 对齐 iOS 原生，C 档）
  * 参考图实测：玻璃内亮度比背景高 30~70%，饱和度只损失约 25%。
@@ -1069,24 +1071,31 @@ html:root[data-theme="day"] .login-card {
   --tc-cyan-bright: #2ec6e8;
   --tc-violet: #0c7d9c;
   background:
-    radial-gradient(128% 34% at 50% -6%, rgba(255, 255, 255, .26), rgba(255, 255, 255, 0) 72%),
-    linear-gradient(180deg, rgba(255, 255, 255, .085) 0%, rgba(255, 255, 255, .05) 52%, rgba(255, 255, 255, .032) 100%) !important;
-  -webkit-backdrop-filter: blur(52px) saturate(210%) !important;
-  backdrop-filter: blur(52px) saturate(210%) !important;
+    /* v2.46.426：去掉顶部那块 radial 受光 —— 它 26% 就衰减完，在标题下方
+       留下一道看得见的分界，头部整块泛白像贴了个标签（夜星：「头部很怪」）。
+       改成整卡一条极淡的线性 tint，亮度全靠 backdrop 的 brightness，卡内才均匀。 */
+    linear-gradient(180deg, rgba(255, 255, 255, .016) 0%, rgba(255, 255, 255, .010) 60%, rgba(255, 255, 255, .007) 100%) !important;
+  /* blur 30→52：参考图的背景被糊成「大色块」（图标只剩轮廓色），
+     这正是「厚玻璃」的视觉来源 —— 玻璃越厚，透过来越糊。 */
+  -webkit-backdrop-filter: blur(42px) saturate(170%) brightness(1.14) !important;
+  backdrop-filter: blur(42px) saturate(170%) brightness(1.14) !important;
   border: 1px solid transparent !important;
-  border-top-color: rgba(255, 255, 255, .40) !important;
-  border-right-color: rgba(255, 255, 255, .17) !important;
-  border-bottom-color: rgba(255, 255, 255, .07) !important;
-  border-left-color: rgba(255, 255, 255, .17) !important;
-  border-radius: 34px !important;
-  /* 边缘折射：顶边镜面反射 + 顶部内侧折射带 + 底部反光 + 内圈微光，投影砍半 */
+  border-top-color: rgba(255, 255, 255, .72) !important;
+  border-right-color: rgba(255, 255, 255, .34) !important;
+  border-bottom-color: rgba(255, 255, 255, .16) !important;
+  border-left-color: rgba(255, 255, 255, .34) !important;
+  border-radius: 44px !important;
+  /* 剖面（参考图放大看）：最外 1px 极亮线 → 内侧 1px 微暗环（倒角收边）
+     → 卡内几乎透明。「厚」是亮线＋暗环这 2px 的对比撑出来的，
+     不是靠一圈渐变白带 —— 白带只会把它糊成塑料。 */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .55),
-    inset 0 2px 5px -2px rgba(255, 255, 255, .30),
-    inset 0 -1px 0 rgba(255, 255, 255, .09),
-    inset 0 0 44px rgba(255, 255, 255, .045),
-    0 22px 56px rgba(0, 0, 0, .26),
-    0 4px 14px rgba(0, 0, 0, .16) !important;
+    inset 0 1px 0 rgba(255, 255, 255, .60),
+    inset 0 0 0 1px rgba(255, 255, 255, .10),
+    inset 0 0 12px -5px rgba(255, 255, 255, .26),
+    inset 0 0 24px rgba(0, 0, 0, .14),
+    inset 0 0 70px rgba(255, 255, 255, .03),
+    0 20px 46px rgba(0, 0, 0, .26),
+    0 2px 8px rgba(0, 0, 0, .16) !important;
 }
 /* 手机端：压掉宣纸金边 + 硬偏移阴影（mobile-paper.css 868-874）
  * ⚠️ 四边必须在这条里重写一遍：mobile-paper 用 `border` 简写（权重同级、
@@ -1094,30 +1103,35 @@ html:root[data-theme="day"] .login-card {
  *    用 html:root 前缀把权重抬到 1,2,0，简写就压不过这里的四边长写。 */
 html:root #app.is-mobile .login-card {
   border: 1px solid transparent !important;
-  border-top-color: rgba(255, 255, 255, .40) !important;
-  border-right-color: rgba(255, 255, 255, .17) !important;
-  border-bottom-color: rgba(255, 255, 255, .07) !important;
-  border-left-color: rgba(255, 255, 255, .17) !important;
-  border-radius: 34px !important;
+  border-top-color: rgba(255, 255, 255, .72) !important;
+  border-right-color: rgba(255, 255, 255, .34) !important;
+  border-bottom-color: rgba(255, 255, 255, .16) !important;
+  border-left-color: rgba(255, 255, 255, .34) !important;
+  border-radius: 44px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .55),
-    inset 0 2px 5px -2px rgba(255, 255, 255, .30),
-    inset 0 -1px 0 rgba(255, 255, 255, .09),
-    inset 0 0 44px rgba(255, 255, 255, .045),
-    0 22px 56px rgba(0, 0, 0, .26) !important;
+    inset 0 1px 0 rgba(255, 255, 255, .60),
+    inset 0 0 0 1px rgba(255, 255, 255, .10),
+    inset 0 0 12px -5px rgba(255, 255, 255, .26),
+    inset 0 0 24px rgba(0, 0, 0, .14),
+    inset 0 0 70px rgba(255, 255, 255, .03),
+    0 20px 46px rgba(0, 0, 0, .26),
+    0 2px 8px rgba(0, 0, 0, .16) !important;
 }
 html:root[data-theme="day"] #app.is-mobile .login-card {
   border: 1px solid transparent !important;
-  border-top-color: rgba(255, 255, 255, .40) !important;
-  border-right-color: rgba(255, 255, 255, .17) !important;
-  border-bottom-color: rgba(255, 255, 255, .07) !important;
-  border-left-color: rgba(255, 255, 255, .17) !important;
+  border-top-color: rgba(255, 255, 255, .72) !important;
+  border-right-color: rgba(255, 255, 255, .34) !important;
+  border-bottom-color: rgba(255, 255, 255, .16) !important;
+  border-left-color: rgba(255, 255, 255, .34) !important;
+  border-radius: 44px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .55),
-    inset 0 2px 5px -2px rgba(255, 255, 255, .30),
-    inset 0 -1px 0 rgba(255, 255, 255, .09),
-    inset 0 0 44px rgba(255, 255, 255, .045),
-    0 22px 56px rgba(0, 0, 0, .26) !important;
+    inset 0 1px 0 rgba(255, 255, 255, .60),
+    inset 0 0 0 1px rgba(255, 255, 255, .10),
+    inset 0 0 12px -5px rgba(255, 255, 255, .26),
+    inset 0 0 24px rgba(0, 0, 0, .14),
+    inset 0 0 70px rgba(255, 255, 255, .03),
+    0 20px 46px rgba(0, 0, 0, .26),
+    0 2px 8px rgba(0, 0, 0, .16) !important;
 }
 /* 输入框：玻璃贴片（v2.46.418）
  * 夜星：输入框选中的那圈亮青描边 + 青光晕太突兀，要苹果原生的液态玻璃。
@@ -1131,16 +1145,17 @@ html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
   /* v2.46.423：输入框改「凹」。苹果的输入区是嵌进玻璃里的槽，不是浮在
      玻璃上面的另一块玻璃 —— 底色比卡面暗一档、顶部一道内阴影、底部一条反光，
      这样卡片是凸的、输入框是凹的，层次才出来（原来两个都凸，糊成一片）。 */
+  /* v2.46.424：卡面提亮后，原来的 .19 深槽混出来是「灰」，改深蓝 .30 才干净 */
   background:
-    linear-gradient(180deg, rgba(4, 10, 20, .19), rgba(8, 16, 28, .09)) !important;
+    linear-gradient(180deg, rgba(7, 15, 30, .30), rgba(11, 21, 38, .17)) !important;
   /* 只留「上暗下亮」两条边：左右透明。四面都描一圈白线会把它读成
      另一块卡片（一块套一块），苹果的凹槽是没有左右边的。 */
   border: 1px solid transparent !important;
-  border-top-color: rgba(0, 0, 0, .22) !important;
-  border-bottom-color: rgba(255, 255, 255, .14) !important;
+  border-top-color: rgba(0, 0, 0, .26) !important;
+  border-bottom-color: rgba(255, 255, 255, .16) !important;
   box-shadow:
-    inset 0 2px 5px -1px rgba(0, 0, 0, .34),
-    inset 0 1px 0 rgba(0, 0, 0, .10) !important;
+    inset 0 2px 6px -1px rgba(0, 0, 0, .38),
+    inset 0 1px 0 rgba(0, 0, 0, .12) !important;
   border-radius: 14px !important;
   -webkit-backdrop-filter: blur(10px) saturate(180%);
   backdrop-filter: blur(10px) saturate(180%);
@@ -1151,7 +1166,7 @@ html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper {
 html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper:hover {
   border-bottom-color: rgba(255, 255, 255, .22) !important;
   background:
-    linear-gradient(180deg, rgba(6, 14, 26, .14), rgba(12, 22, 38, .07)) !important;
+    linear-gradient(180deg, rgba(9, 18, 34, .24), rgba(14, 26, 44, .13)) !important;
 }
 /* focus 必须再提一层权重：文件后半段（Y 节 1418）还有一条
  * `#app.is-mobile :is(.el-input__wrapper.is-focus, …)`（同为 1,3,0 且位置更后），
@@ -1163,7 +1178,7 @@ html:root[data-theme="day"] #app.is-mobile .login-card .el-input__wrapper.is-foc
   border-color: rgba(255, 255, 255, .46) !important;
   background:
     radial-gradient(130% 70% at 50% -16%, rgba(255, 255, 255, .20), transparent 66%),
-    linear-gradient(180deg, rgba(12, 24, 40, .12), rgba(18, 32, 50, .06)) !important;
+    linear-gradient(180deg, rgba(10, 20, 38, .20), rgba(16, 30, 52, .11)) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .52),
     inset 0 2px 4px -2px rgba(0, 0, 0, .18),

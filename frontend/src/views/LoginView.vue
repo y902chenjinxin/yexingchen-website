@@ -5,6 +5,7 @@
       <span class="lg-orb lg-orb--a"></span>
       <span class="lg-orb lg-orb--b"></span>
       <span class="lg-orb lg-orb--c"></span>
+      <span class="lg-orb lg-orb--d"></span>
       <span class="lg-grid"></span>
       <!-- v2.46.366 纯白浮尘：细白点慢漂 + 微闪，无光晕无连线 -->
       <canvas ref="dustCanvas" class="lg-dust"></canvas>
@@ -592,34 +593,93 @@ function resetRegister() {
   overflow: hidden;
   pointer-events: none;
 }
+/* 液面色块（v2.46.425）：参考图之所以「厚」，一半功劳在背景 —— 它背后是
+   一屏 App 图标，玻璃一糊就形成一块块可辨的彩色，边界自然就「厚」了。
+   我们的背景只有三团大光斑，糊完还是渐变，卡内一片空。这里补几颗
+   中号（9~12vmax）低透明色斑，错落铺开，让玻璃里「有东西」。 */
+.lg-ambient::after {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  background:
+    radial-gradient(circle 11vmax at 22% 26%, rgba(90, 210, 255, .34), rgba(90, 210, 255, 0) 70%),
+    radial-gradient(circle 8vmax at 74% 16%, rgba(190, 130, 255, .46), rgba(190, 130, 255, 0) 70%),
+    radial-gradient(circle 10vmax at 66% 56%, rgba(255, 200, 130, .36), rgba(255, 200, 130, 0) 70%),
+    radial-gradient(circle 7vmax at 26% 70%, rgba(110, 190, 255, .42), rgba(110, 190, 255, 0) 70%),
+    radial-gradient(circle 11vmax at 90% 84%, rgba(255, 150, 175, .32), rgba(255, 150, 175, 0) 70%),
+    radial-gradient(circle 7vmax at 48% 4%, rgba(200, 245, 255, .34), rgba(200, 245, 255, 0) 70%),
+    linear-gradient(114deg, transparent 15%, rgba(190, 228, 250, .10) 31%, rgba(190, 228, 250, .03) 43%, transparent 56%);
+  filter: blur(18px);
+  /* v2.46.426：色斑层也让它慢慢漂 —— 四团 orb 是「呼吸」，这层是「流水」，
+     两者速度不同，玻璃后面才不是一块死色 */
+  animation: lg-swatch 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes lg-swatch {
+  0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+  100% { transform: translate3d(4vmax, -5vmax, 0) scale(1.16) rotate(4deg); }
+}
+/* v2.46.424 水润化：三团彩晕原来贴在屏幕四角（top -9vmax / bottom -13vmax），
+   而登录卡正好在屏幕正中——卡片背后是三个光斑的「接缝」，全屏最暗的地方。
+   玻璃 blur 采样到的就是一片近黑，怎么加白都只是灰。
+   现在把三团挪到卡片身后（直径 56~62vmax，覆盖 390×844 的中段），
+   让玻璃有真正的彩色可透。尺寸不能再大，超过一屏就没色差了。 */
 .lg-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(50px);
-  opacity: .92;
+  filter: blur(55px);
+  opacity: .95;
   will-change: transform;
 }
-/* v2.46.423：直径 46vmax → 26vmax 上下。原来一团就盖满整屏，
-   blur 之后屏内没有色差，玻璃采样到的是纯色；缩小后每团变成一个
-   「能看出形状的色块」，玻璃透上来才有青 / 紫 / 暖的空间层次。 */
 .lg-orb--a {
-  width: 28vmax; height: 28vmax; left: -6vmax; top: -9vmax;
-  background: radial-gradient(circle at 35% 35%, rgba(24, 176, 214, .68), rgba(14, 147, 184, 0) 68%);
-  animation: lg-drift-a 26s ease-in-out infinite alternate;
+  width: 60vmax; height: 60vmax; left: -20vmax; top: 40vh;
+  background: radial-gradient(circle at 42% 42%, rgba(24, 176, 214, .48), rgba(14, 147, 184, 0) 66%);
+  animation: lg-drift-a 17s ease-in-out infinite alternate;
 }
 .lg-orb--b {
-  width: 26vmax; height: 26vmax; right: -8vmax; top: -5vmax;
-  background: radial-gradient(circle at 40% 40%, rgba(130, 86, 216, .58), rgba(110, 70, 190, 0) 68%);
-  animation: lg-drift-b 32s ease-in-out infinite alternate;
+  width: 56vmax; height: 56vmax; right: -22vmax; top: 18vh;
+  background: radial-gradient(circle at 46% 44%, rgba(132, 88, 218, .42), rgba(110, 70, 190, 0) 66%);
+  animation: lg-drift-b 23s ease-in-out infinite alternate;
 }
 .lg-orb--c {
-  width: 30vmax; height: 30vmax; left: 32vw; bottom: -13vmax;
-  background: radial-gradient(circle at 50% 40%, rgba(220, 178, 122, .50), rgba(201, 160, 107, 0) 68%);
-  animation: lg-drift-c 38s ease-in-out infinite alternate;
+  width: 62vmax; height: 62vmax; left: 20vw; bottom: -10vmax;
+  background: radial-gradient(circle at 48% 44%, rgba(224, 180, 124, .34), rgba(201, 160, 107, 0) 66%);
+  animation: lg-drift-c 27s ease-in-out infinite alternate;
 }
-@keyframes lg-drift-a { to { transform: translate(9vmax, 7vmax) scale(1.12); } }
-@keyframes lg-drift-b { to { transform: translate(-8vmax, 9vmax) scale(1.15); } }
-@keyframes lg-drift-c { to { transform: translate(6vmax, -8vmax) scale(1.1); } }
+/* v2.46.426：第四团（暖粉）——夜星要「整个背景都在动、颜色在变」，
+   三团各走各的只在原地呼吸，缺一个横向穿场的色源。这团从右下往左上飘，
+   和青/紫交叉时卡片里会看到明显的色相变化（青→紫→粉）。 */
+.lg-orb--d {
+  width: 52vmax; height: 52vmax; right: -16vmax; bottom: 4vh;
+  background: radial-gradient(circle at 50% 46%, rgba(255, 138, 168, .42), rgba(255, 120, 160, 0) 68%);
+  animation: lg-drift-d 21s ease-in-out infinite alternate;
+}
+/* 位移都加大：原来 6~9vmax 的来回在满屏尺度上几乎看不出「在动」 */
+@keyframes lg-drift-a {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(14vmax, 10vmax) scale(1.18); }
+}
+@keyframes lg-drift-b {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-12vmax, 13vmax) scale(1.2); }
+}
+@keyframes lg-drift-c {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-10vmax, -12vmax) scale(1.16); }
+}
+@keyframes lg-drift-d {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-13vmax, -9vmax) scale(1.14); }
+}
+/* v2.46.426 桌面端必须单独一套：vmax 在 1440 宽屏上等于 1440px，
+   60vmax＝864px 的四团光斑直接把整屏铺平 → 卡片透出来是一片灰紫，
+   字都快看不见了。桌面改用 vh 定尺寸（跟屏幕高度挂钩），位置也收进画面里。 */
+@media (min-width: 1024px) {
+  .lg-orb--a { width: 52vh; height: 52vh; left: 4vw; top: 10vh; }
+  .lg-orb--b { width: 48vh; height: 48vh; right: 2vw; top: 4vh; }
+  .lg-orb--c { width: 52vh; height: 52vh; left: 26vw; bottom: -16vh; }
+  .lg-orb--d { width: 44vh; height: 44vh; right: 12vw; bottom: -6vh; }
+}
 /* 透视网格：底部无限滚动，玻璃世界的「地面」 */
 .lg-grid {
   position: absolute;
@@ -655,26 +715,26 @@ function resetRegister() {
   z-index: 100;
   width: 360px;
   padding: 40px;
-  /* v2.46.423：去掉深色染色层（苹果玻璃里没有），改为顶部弧形受光带 +
-     极淡整体 tint；描边分四边给色形成「上亮下暗」的渐变边 */
+  /* v2.46.426：去掉顶部 radial 受光 —— 它 26% 就衰减完，在标题下方留下
+     一道看得见的分界，头部整块泛白像贴了标签。整卡只用一条极淡线性 tint。 */
   background:
-    radial-gradient(128% 34% at 50% -6%, rgba(255, 255, 255, .26), rgba(255, 255, 255, 0) 72%),
-    linear-gradient(180deg, rgba(255, 255, 255, .085) 0%, rgba(255, 255, 255, .05) 52%, rgba(255, 255, 255, .032) 100%);
-  -webkit-backdrop-filter: blur(52px) saturate(210%);
-  backdrop-filter: blur(52px) saturate(210%);
+    linear-gradient(180deg, rgba(255, 255, 255, .016) 0%, rgba(255, 255, 255, .010) 60%, rgba(255, 255, 255, .007) 100%);
+  -webkit-backdrop-filter: blur(42px) saturate(170%) brightness(1.14);
+  backdrop-filter: blur(42px) saturate(170%) brightness(1.14);
   border: 1px solid transparent;
-  border-top-color: rgba(255, 255, 255, .40);
-  border-right-color: rgba(255, 255, 255, .17);
-  border-bottom-color: rgba(255, 255, 255, .07);
-  border-left-color: rgba(255, 255, 255, .17);
-  border-radius: 34px;
+  border-top-color: rgba(255, 255, 255, .72);
+  border-right-color: rgba(255, 255, 255, .34);
+  border-bottom-color: rgba(255, 255, 255, .16);
+  border-left-color: rgba(255, 255, 255, .34);
+  border-radius: 44px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .55),
-    inset 0 2px 5px -2px rgba(255, 255, 255, .30),
-    inset 0 -1px 0 rgba(255, 255, 255, .09),
-    inset 0 0 44px rgba(255, 255, 255, .045),
-    0 22px 56px rgba(0, 0, 0, .26),
-    0 4px 14px rgba(0, 0, 0, .16);
+    inset 0 1px 0 rgba(255, 255, 255, .60),
+    inset 0 0 0 1px rgba(255, 255, 255, .10),
+    inset 0 0 12px -5px rgba(255, 255, 255, .26),
+    inset 0 0 24px rgba(0, 0, 0, .14),
+    inset 0 0 70px rgba(255, 255, 255, .03),
+    0 20px 46px rgba(0, 0, 0, .26),
+    0 2px 8px rgba(0, 0, 0, .16);
   will-change: transform;
   transition: transform .18s ease-out;
   opacity: 0;
@@ -703,7 +763,7 @@ function resetRegister() {
     rgba(14, 147, 184, 0) 88%
   );
   filter: blur(34px);
-  opacity: .34;
+  opacity: .48;
   animation: lg-ring 9s linear infinite;
   pointer-events: none;
 }
@@ -712,17 +772,30 @@ function resetRegister() {
   to { --lg-spin: 360deg; }
 }
 
-/* 顶部柔光高光：新的边框已经分四边给色（上 40%），这条只做中线补光，
-   透明度必须收住，否则跟 border-top + inset 高光叠成一条刺眼的亮线 */
+/* 表面光学层（v2.46.424）：水润感 = 玻璃表面那层「水膜」的反光，
+   不是一条 1px 亮线。三层叠：
+     ① 内圈折射亮环 —— 玻璃有厚度，光沿厚度被导到边缘，中心透明不压内容；
+     ② 顶部液面高光 —— 宽而柔的椭圆反光，压在 26% 偏左上（不对称才像真实光源）；
+     ③ 底缘反光弧 —— 水珠底缘那道亮线。
+   `inset:0` 全铺但中心区（60% 以内）alpha 为 0，文字/输入框不受影响。 */
 .login-card::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .34), transparent);
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
+  background:
+    /* ① 内环：边缘一圈极淡的亮，模拟玻璃倒角把光导到边上的效果 */
+    radial-gradient(120% 110% at 50% 50%, rgba(255, 255, 255, 0) 72%, rgba(255, 255, 255, .10) 92%, rgba(255, 255, 255, .22) 100%),
+    /* ② 顶缘亮弧：宽而柔就够，别成一片白雾（会把标题区读成「贴了标签」） */
+    radial-gradient(110% 7% at 50% -2%, rgba(255, 255, 255, .14), rgba(255, 255, 255, 0) 76%),
+    /* ③ 四角高光：圆角矩形的光在 45° 弧面上聚集，参考图最亮的就是这四个角。
+       位置按圆角 44px 算 —— 弧顶点在距边 13px 处（44×(1-0.707)≈13）。
+       尺寸必须小（20px）且 alpha 收着，大了就成一块「污渍」。 */
+    radial-gradient(20px 20px at 13px 13px, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(20px 20px at calc(100% - 13px) 13px, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(20px 20px at 13px calc(100% - 13px), rgba(255, 255, 255, .13), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(20px 20px at calc(100% - 13px) calc(100% - 13px), rgba(255, 255, 255, .13), rgba(255, 255, 255, 0) 72%);
 }
 
 .site-title {
@@ -821,23 +894,23 @@ function resetRegister() {
  * 最终生效值在 liquid-glass.css（ID 权重 + !important），这里保持同族值避免抖动。 */
 :deep(.el-input__wrapper) {
   background:
-    linear-gradient(180deg, rgba(4, 10, 20, .19), rgba(8, 16, 28, .09)) !important;
+    linear-gradient(180deg, rgba(7, 15, 30, .30), rgba(11, 21, 38, .17)) !important;
   -webkit-backdrop-filter: blur(10px) saturate(180%);
   backdrop-filter: blur(10px) saturate(180%);
   border: 1px solid transparent !important;
-  border-top-color: rgba(0, 0, 0, .22) !important;
-  border-bottom-color: rgba(255, 255, 255, .14) !important;
+  border-top-color: rgba(0, 0, 0, .26) !important;
+  border-bottom-color: rgba(255, 255, 255, .16) !important;
   border-radius: 14px !important;
   box-shadow:
-    inset 0 2px 5px -1px rgba(0, 0, 0, .34),
-    inset 0 1px 0 rgba(0, 0, 0, .10) !important;
+    inset 0 2px 6px -1px rgba(0, 0, 0, .38),
+    inset 0 1px 0 rgba(0, 0, 0, .12) !important;
   transition: border-color .28s ease, box-shadow .28s ease, background .28s ease;
 }
 
 :deep(.el-input__wrapper:hover) {
   border-bottom-color: rgba(255, 255, 255, .22) !important;
   background:
-    linear-gradient(180deg, rgba(6, 14, 26, .14), rgba(12, 22, 38, .07)) !important;
+    linear-gradient(180deg, rgba(9, 18, 34, .24), rgba(14, 26, 44, .13)) !important;
 }
 
 /* 聚焦：槽被点亮（深色压层减少 + 白边提亮），不是外挂一圈色 */
@@ -1079,6 +1152,7 @@ function resetRegister() {
   }
   .lg-orb,
   .lg-grid,
+  .lg-ambient::after,
   .login-card::before {
     animation: none;
   }
